@@ -1,0 +1,16 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 10px;
+}
+
+.role {
+  font-weight: bold;
+}
+
+.message {
+  background-color: var(--surface-ground);
+  padding: 10px;
+  border-radius: 5px;
+}
