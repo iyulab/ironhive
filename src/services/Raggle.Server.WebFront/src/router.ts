@@ -2,8 +2,7 @@ import { createBrowserRouter } from 'react-router-dom';
 import {
   Layout,
   Chat,
-  SourceList,
-  SourceForm,
+  Sources,
 } from './components';
 
 export const router = createBrowserRouter([
@@ -16,12 +15,8 @@ export const router = createBrowserRouter([
         Component: Chat,
       },
       {
-        path: "source",
-        Component: SourceList,
-      },
-      {
-        path: "source/:id",
-        Component: SourceForm,
+        path: "sources/:id?",
+        Component: Sources
       }
     ]
   }

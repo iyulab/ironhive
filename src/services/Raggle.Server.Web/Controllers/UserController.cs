@@ -1,34 +1,50 @@
 using Microsoft.AspNetCore.Mvc;
 using Raggle.Server.API.Models;
 using Raggle.Server.API.Repositories;
+using System.Text.Json;
 
-namespace Raggle.Server.API.Controllers
+namespace Raggle.Server.API.Controllers;
+
+[ApiController]
+[Route("/user")]
+public class UserController : ControllerBase
 {
-    [ApiController]
-    [Route("/user")]
-    public class UserController : ControllerBase
+    private readonly UserRepository _user;
+
+    public UserController(UserRepository user)
     {
-        private readonly ILogger<UserController> _logger;
-        private readonly UserRepository _user;
+        _user = user;
+    }
 
-        public UserController(ILogger<UserController> logger, UserRepository user)
-        {
-            _logger = logger;
-            _user = user;
+    [HttpGet("{userId:guid}")]
+    public async Task<IActionResult> GetUserAsync(Guid userId)
+    {
+        var user = await _user.GetAsync(userId);
+        if (user == null) 
+        { 
+            return NotFound();
         }
-
-        [HttpGet("{userId:guid}")]
-        public async Task<IActionResult> GetUser(Guid userId)
+        else
         {
-            var user = await _user.GetUser(userId);
+            await _user.UpdateAsync(userId, JsonSerializer.SerializeToElement(new
+            {
+                lastAccessAt = DateTime.UtcNow.ToString("o")
+            }));
             return Ok(user);
         }
+    }
 
-        [HttpPut("{userId:guid}")]
-        public async Task<IActionResult> UpdateUser(Guid userId, [FromBody] User user)
-        {
-            await _user.UpdateUser(user);
-            return Ok();
-        }
+    [HttpPost]
+    public async Task<IActionResult> CreateUserAsync([FromBody] User user)
+    {
+        await _user.InsertAsync(user);
+        return Ok();
+    }
+
+    [HttpPatch("{userId:guid}")]
+    public async Task<IActionResult> UpdateUserAsync(Guid userId, [FromBody] JsonElement updates)
+    {
+        await _user.UpdateAsync(userId, updates);
+        return Ok();
     }
 }

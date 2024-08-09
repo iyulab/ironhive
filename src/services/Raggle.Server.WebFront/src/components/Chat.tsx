@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button, Textarea } from "@fluentui/react-components";
-import styles from './Chat.module.scss';
-import { Hub } from '@/services/Hub';
-import Message from './Message';
-import { API } from '@/services/API';
 import { useNavigate } from 'react-router-dom';
+import { Button, Textarea } from "@fluentui/react-components";
+
+import { Hub } from '@/services/Hub';
+import { API } from '@/services/API';
+import { Storage } from '@/services/Storage';
+import Message from './Message';
+
+import styles from './Chat.module.scss';
 
 interface ChatHistory {
   role: 'user' | 'bot';
@@ -45,16 +48,19 @@ export function Chat() {
 
   const getHistory = async () => {
     const user = await API.getUser();
-    if(user.chatHistory) {
+    if(user && user.chatHistory) {
       const history = user.chatHistory.map((chat: any) => {
         const role = chat.role.label;
         const message = chat.items[0].text;
-        return {
-          role: role,
-          message: message,
-        }
+        return { role: role, message: message }
       })
       setHistory(history)
+    } else {
+      await API.createUser({
+        id: Storage.userId,
+        chatHistory: []
+      });
+      setHistory([])
     }
   }
 
@@ -65,7 +71,8 @@ export function Chat() {
   return (
     <div className={styles.container}>
       <div className={styles.control}>
-        <Button onClick={() => navigate("source")}>Add Source</Button>
+        <Button onClick={() => navigate("sources")}>Sources</Button>
+        <Button onClick={() => navigate("source")}>Source (+)</Button>
         <Button onClick={clearHistory}>Clear</Button>
       </div>
       <div className={styles.history}>

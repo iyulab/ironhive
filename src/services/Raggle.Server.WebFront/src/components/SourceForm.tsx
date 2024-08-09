@@ -1,216 +1,163 @@
 import { useEffect, useState } from 'react';
-import styles from './SourceForm.module.scss';
 import { Upload, Button, Form, Input, Space } from 'antd';
-import { DataSource, FileSource, OpenApiSource, PostgresSource, SqlServerSource } from '@/models/DataSource';
+
+import { DataSource, FileMeta } from '@/models/DataSource';
 import { Storage } from '@/services/Storage';
-import { useParams } from 'react-router-dom';
 
-export function SourceForm() {
-  const { id } = useParams<{ id: string }>();
-  const [source, setSource] = useState<DataSource | undefined>(undefined);
+import styles from './SourceForm.module.scss';
 
-  useEffect(() => {
-    if (id) {
-      const source = Storage.getTempSource(id);
-      setSource(source);
-    }
-  }, []);
+export function SourceForm({ source, onSubmit, onDelete } : { 
+  source?: DataSource,
+  onSubmit: (source: DataSource) => void,
+  onDelete: () => void
+}) {
+  const [mount, setMount] = useState(false);
+  const [form] = Form.useForm();
+  const [files, setFiles] = useState<FileMeta[]>([]);
 
-  return (
-    <div className={styles.container}>
-      {source?.$type === 'file' && <FileSourceForm source={source} />}
-      {source?.$type === 'openapi' && <OpenApiSourceForm source={source} />}
-      {source?.$type === 'sqlserver' && <SqlServerSourceForm source={source} />}
-      {source?.$type === 'postgres' && <PostgresSourceForm source={source} />} 
-    </div>
-  )
-}
-
-function FileSourceForm({ source }: { source: FileSource }) {
-
-  useEffect(() => {
-
-  }, [source]);
-
-  return (
-    <Form
-      className={styles.form}
-      name='file-source-form'
-      layout="vertical" 
-      initialValues={{ ...source }}
-      onFinish={(values) => console.log('values', values)}
-    >
-      <Form.Item 
-        label="Name"
-        name='name'
-        rules={[{ required: true }]}
-      >
-        <Input />
-      </Form.Item>
+  const renderFileItem = () => {
+    console.log('render file item', files);
+    return (
       <Form.Item 
         label="Files"
-        valuePropName='fileList'
-        rules={[{ required: true }]}
       >
         <Upload
-          action={`${Storage.host}/file/${Storage.userId}/${source.id}`}
+          multiple={true}
+          action={`${Storage.host}/file/${source?.id}`}
           listType="picture"
-          beforeUpload={(f) => console.log('beforeUpload',f)}
-          defaultFileList={[]}
+          beforeUpload={checkDuplicateFiles}
+          defaultFileList={files.map(f => ({
+            uid: f.name,
+            name: f.name,
+            size: f.size,
+            type: f.type,
+            status: 'done' 
+          }))}
+          onChange={onFileChanged}
         >
           <Button>Upload</Button>
         </Upload>
       </Form.Item>
+    )
+  }
+
+  const renderOpenApiSchema = () => {
+    return (
       <Form.Item 
-        label="Description"
-        name='description'
+        label="Schema"
+        name={['details', 'schema']}
         rules={[{ required: true }]}
-        extra="Please describe the files you are uploading here. This is an important part that AI uses for data search and understanding. The more detailed the description, the better the AI can understand the data."
       >
         <Input.TextArea />
       </Form.Item>
+    );
+  }
+
+  const renderConnectionString = () => {
+    return (
+      <Form.Item 
+        label="Connection String"
+        name={['details', 'connectionString']}
+        rules={[{ required: true }]}
+      >
+        <Input />
+      </Form.Item>
+    );
+  }
+
+  const checkDuplicateFiles = (file: File) => {
+    const isExist = files.some(f => f.name === file.name);
+    console.log('check duplicate', file, isExist);
+    return isExist ? Upload.LIST_IGNORE : true;
+  }
+
+  const onFileChanged = async (info: any) => {
+    console.log('file changed', info.file);
+    if (info.file.status === 'done') {
+      console.log('file uploaded', info.file);
+      const file = {
+        type: info.file.type,
+        name: info.file.name,
+        size: info.file.size,
+      }
+      setFiles([...files, file]);
+    } else if (info.file.status === 'removed') {
+      setFiles(files.filter(f => f.name !== info.file.name));
+    }
+  }
+
+  const onFinish = (values: any) => {
+    if (!source) return;
+    source.name = values.name;
+    source.description = values.description;
+    if (source.type === 'file') {
+      source.details = { files: files };
+    } else if (source.type === 'openapi') {
+      source.details = { schema: values.details.schema };
+    } else if (source.type === 'sqlserver' || source.type === 'mongo') {
+      source.details = { connectionString: values.details.connectionString };
+    }
+    onSubmit(source);
+  }
+
+  useEffect(() => {
+    setMount(false);
+    if (source) {
+      console.log('mount source form', source);
+      form.resetFields();
+      console.log('source details', source.details.files);
+      setFiles(source?.details?.files || []);
+      setMount(true);
+    } else {
+      console.log('unmount source form');
+      setFiles([]);
+    }
+  }, [source, form]);
+
+  return mount && (
+    <Form
+      form={form}
+      className={styles.form}
+      layout="vertical"
+      initialValues={{ ...source }}
+      onFinish={onFinish}
+    >
       <Form.Item>
-        <Space>
-          <Button type="default" htmlType='submit'>
+        <Space direction='horizontal' align='end'>
+          <Button type="default">
             Fill Description
+          </Button>
+          <Button type="default" onClick={onDelete}>
+            Delete
           </Button>
           <Button type="primary" htmlType='submit'>
             Submit
           </Button>
         </Space>
       </Form.Item>
-    </Form>
-  )
-}
-
-function OpenApiSourceForm({ source }: { source: OpenApiSource }) {
-
-  useEffect(() => {
-    
-  }, [source]);
-
-  return (
-    <Form
-      className={styles.form}
-      name='file-source-form'
-      layout="vertical" 
-      initialValues={{ name: source.name }}
-      onFinish={(values) => console.log('values', values)}
-    >
-      <Form.Item 
+      <Form.Item
+        layout="vertical"
         label="Name"
-        name='name'
+        name="name"
         rules={[{ required: true }]}
       >
         <Input />
       </Form.Item>
-      <Form.Item 
-        label="Schema"
-        name="schema"
-        rules={[{ required: true }]}
-      >
-        <Input.TextArea />
-      </Form.Item>
-      <Form.Item 
+      <Form.Item
+        layout="vertical"
         label="Description"
         name='description'
-        rules={[{ required: true }]}
       >
         <Input.TextArea />
       </Form.Item>
-      <Form.Item>
-        <Button type="primary" htmlType='submit'>
-          Submit
-        </Button>
-      </Form.Item>
-    </Form>
-  )
-}
-
-function SqlServerSourceForm({ source }: { source: SqlServerSource }) {
-
-  useEffect(() => {
-
-  }, [source]);
-
-  return (
-    <Form
-      className={styles.form}
-      name='file-source-form'
-      layout="vertical" 
-      initialValues={{ name: source.name }}
-      onFinish={(values) => console.log('values', values)}
-    >
-      <Form.Item 
-        label="Name"
-        name='name'
-        rules={[{ required: true }]}
-      >
-        <Input />
-      </Form.Item>
-      <Form.Item 
-        label="Connection String"
-        name='connectionString'
-        rules={[{ required: true }]}
-      >
-        <Input />
-      </Form.Item>
-      <Form.Item 
-        label="Description"
-        name='description'
-        rules={[{ required: true }]}
-      >
-        <Input.TextArea />
-      </Form.Item>
-      <Form.Item>
-        <Button type="primary" htmlType='submit'>
-          Submit
-        </Button>
-      </Form.Item>
-    </Form>
-  )
-}
-
-function PostgresSourceForm({ source }: { source: PostgresSource }) {
-
-  useEffect(() => {
-
-  }, [source]);
-
-  return (
-    <Form
-      className={styles.form}
-      name='file-source-form'
-      layout="vertical" 
-      initialValues={{ name: source.name }}
-      onFinish={(values) => console.log('values', values)}
-    >
-      <Form.Item 
-        label="Name"
-        name='name'
-        rules={[{ required: true }]}
-      >
-        <Input />
-      </Form.Item>
-      <Form.Item 
-        label="Connection String"
-        name='connectionString'
-        rules={[{ required: true }]}
-      >
-        <Input />
-      </Form.Item>
-      <Form.Item 
-        label="Description"
-        name='description'
-        rules={[{ required: true }]}
-      >
-        <Input.TextArea />
-      </Form.Item>
-      <Form.Item>
-        <Button type="primary" htmlType='submit'>
-          Submit
-        </Button>
-      </Form.Item>
+      {source?.type === 'file'
+        ? renderFileItem()
+        : source?.type === 'openapi'
+        ? renderOpenApiSchema()
+        : source?.type === 'sqlserver' || source?.type === 'mongo'
+        ? renderConnectionString()
+        : null
+      }
     </Form>
   )
 }

@@ -8,10 +8,10 @@ import {
   PrimeReactProvider,
 } from 'primereact/api';
 
+import { Storage, Theme } from '@/services/Storage';
 import { Header } from './Header';
 
 import styles from './Layout.module.scss';
-import { Storage, Theme } from '@/services/Storage';
 
 export function Layout() {
   const [theme, setTheme] = useState<Theme>(Storage.theme);

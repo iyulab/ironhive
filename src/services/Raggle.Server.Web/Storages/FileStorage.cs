@@ -12,60 +12,80 @@ public class FileStorage
         _baseDirectory = config.GetSection("FileStorage:Path").Value;
     }
 
-    public async Task UploadFile(string index, string fileName, Stream stream)
+    public async Task UploadAsync(string index, string fileName, Stream stream)
     {
         var paths = index.Split('/');
         var filePath = Path.Combine(_baseDirectory, Path.Combine(paths), fileName);
-
         var directoryPath = Path.GetDirectoryName(filePath);
-        if (!Directory.Exists(directoryPath))
+        if (!string.IsNullOrEmpty(directoryPath) && !Directory.Exists(directoryPath))
         {
             Directory.CreateDirectory(directoryPath);
         }
 
-        using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write);
+        using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite);
         await stream.CopyToAsync(fileStream);
     }
 
-    public async Task<byte[]> DownloadFile(string index, string fileName)
+    public Stream Download(string index, string fileName)
     {
         var paths = index.Split('/');
         var filePath = Path.Combine(_baseDirectory, Path.Combine(paths), fileName);
-
         if (!File.Exists(filePath))
         {
             throw new FileNotFoundException("File not found.");
         }
 
-        return await File.ReadAllBytesAsync(filePath);
+        return new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
     }
 
-    public async Task<string[]> GetFileNames(string index)
+    public IEnumerable<UploadedFile> GetUploadedFiles(string index)
     {
         var paths = index.Split('/');
         var directoryPath = Path.Combine(_baseDirectory, Path.Combine(paths));
-
-        if (!File.Exists(directoryPath))
+        if (!Directory.Exists(directoryPath))
         {
-            throw new FileNotFoundException("File not found.");
+            throw new FileNotFoundException("Directory not found.");
         }
 
         var files = Directory.GetFiles(directoryPath);
-        return files.Select(Path.GetFileName).ToArray();
+        var uploadedFiles = new List<UploadedFile>();
+        foreach (var filePath in files)
+        {
+            var fileName = Path.GetFileName(filePath);
+            var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            uploadedFiles.Add(new UploadedFile { FileName = fileName, Content = fileStream });
+        }
+
+        return uploadedFiles;
     }
 
-    public async Task<bool> DeleteFile(string index, string fileName)
+    public void DeleteFile(string index, string fileName)
     {
         var paths = index.Split('/');
         var filePath = Path.Combine(_baseDirectory, Path.Combine(paths), fileName);
-
         if (!File.Exists(filePath))
         {
             throw new FileNotFoundException("File not found.");
         }
 
         File.Delete(filePath);
-
-        return true;
     }
+
+    public void DeleteDirectory(string index)
+    {
+        var paths = index.Split('/');
+        var directoryPath = Path.Combine(_baseDirectory, Path.Combine(paths));
+        if (!Directory.Exists(directoryPath))
+        {
+            throw new DirectoryNotFoundException("Directory not found.");
+        }
+
+        Directory.Delete(directoryPath, true);
+    }
+}
+
+public class UploadedFile
+{
+    public required string FileName { get; set; }
+    public required Stream Content { get; set; }
 }

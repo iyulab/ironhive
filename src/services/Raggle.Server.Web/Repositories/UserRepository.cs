@@ -7,83 +7,105 @@ namespace Raggle.Server.API.Repositories;
 
 public class UserRepository
 {
-    private readonly ILogger<UserRepository> _logger;
     private readonly string _connectionString;
 
-    public UserRepository(ILogger<UserRepository> logger, IConfiguration config)
+    public UserRepository(IConfiguration config)
     {
-        _logger = logger;
         _connectionString = config.GetConnectionString("Sqlite");
-        CheckTable().Wait();
     }
 
-    public async Task CheckTable()
+    public async Task<User?> GetAsync(Guid userId)
     {
         using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync();
-        using var command = connection.CreateCommand();
-        command.CommandText = "CREATE TABLE IF NOT EXISTS Users (ID TEXT PRIMARY KEY, ChatHistory TEXT)";
-        await command.ExecuteNonQueryAsync();
-    }
 
-    public async Task<User> GetUser(Guid id)
-    {
-        using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync();
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT * FROM Users WHERE ID = @ID";
-        command.Parameters.AddWithValue("@ID", id);
+        command.Parameters.AddWithValue("@ID", userId.ToString());
+
         using var reader = await command.ExecuteReaderAsync();
         if (await reader.ReadAsync())
         {
             var user = new User
             {
-                ID = reader.GetGuid(0),
-                ChatHistory = JsonSerializer.Deserialize<ChatHistory>(reader.GetString(1))
+                ID = Guid.Parse(reader.GetString(0)),
+                ChatHistory = JsonSerializer.Deserialize<ChatHistory>(reader.GetString(1)) ?? [],
+                LastAccessAt = DateTime.Parse(reader.GetString(2)),
+                CreatedAt = DateTime.Parse(reader.GetString(3)),
             };
             return user;
         }
-        else
+        return null;
+    }
+
+    public async Task InsertAsync(User user)
+    {
+        var isExist = await GetAsync(user.ID);
+        if (isExist != null)
+            return;
+
+        using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync();
+
+        using var command = connection.CreateCommand();
+        command.CommandText = @"
+                INSERT INTO Users (ID, ChatHistory, LastAccessAt, CreatedAt) 
+                VALUES (@ID, @ChatHistory, @LastAccessAt, @CreatedAt)";
+        command.Parameters.AddWithValue("@ID", user.ID.ToString());
+        command.Parameters.AddWithValue("@ChatHistory", JsonSerializer.Serialize(user.ChatHistory));
+        command.Parameters.AddWithValue("@LastAccessAt", DateTime.UtcNow.ToString("o"));
+        command.Parameters.AddWithValue("@CreatedAt", DateTime.UtcNow.ToString("o"));
+
+        await command.ExecuteNonQueryAsync();
+    }
+
+    public async Task UpdateAsync(Guid userId, JsonElement updates)
+    {
+        using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync();
+
+        var updateFields = new List<string>();
+        var parameters = new List<SqliteParameter>();
+
+        if (updates.TryGetProperty("chatHistory", out var chatHistory))
         {
-            var user = new User
-            {
-                ID = id,
-                ChatHistory = new ChatHistory()
-            };
-            await CreateUser(user);
-            return user;
+            updateFields.Add("ChatHistory = @ChatHistory");
+            parameters.Add(new SqliteParameter("@ChatHistory", JsonSerializer.Serialize(chatHistory)));
         }
-    }
+        if (updates.TryGetProperty("lastAccessAt", out var lastAccessAt))
+        {
+            updateFields.Add("LastAccessAt = @LastAccessAt");
+            parameters.Add(new SqliteParameter("@LastAccessAt", lastAccessAt.GetString()));
+        }
+        if (updateFields.Count == 0)
+        {
+            throw new ArgumentException("No valid fields to update.", nameof(updates));
+        }
 
-    public async Task CreateUser(User user)
-    {
-        using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync();
+        var updateQuery = $"UPDATE Users SET {string.Join(", ", updateFields)} WHERE ID = @ID";
+
         using var command = connection.CreateCommand();
-        command.CommandText = "INSERT INTO Users (ID, ChatHistory) VALUES (@ID, @ChatHistory)";
-        command.Parameters.AddWithValue("@ID", user.ID);
-        command.Parameters.AddWithValue("@ChatHistory", JsonSerializer.Serialize(user.ChatHistory));
+        command.CommandText = updateQuery;
+        command.Parameters.AddWithValue("@ID", userId.ToString());
+
+        foreach (var parameter in parameters)
+        {
+            command.Parameters.Add(parameter);
+        }
+
         await command.ExecuteNonQueryAsync();
     }
 
-    public async Task UpdateUser(User user)
+    public async Task DeleteAsync(Guid userId)
     {
         using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync();
-        using var command = connection.CreateCommand();
-        command.CommandText = "UPDATE Users SET ChatHistory = @ChatHistory WHERE ID = @ID";
-        command.Parameters.AddWithValue("@ID", user.ID);
-        command.Parameters.AddWithValue("@ChatHistory", JsonSerializer.Serialize(user.ChatHistory));
-        await command.ExecuteNonQueryAsync();
-    }
 
-    public async Task DeleteUser(string id)
-    {
-        using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync();
         using var command = connection.CreateCommand();
         command.CommandText = "DELETE FROM Users WHERE ID = @ID";
-        command.Parameters.AddWithValue("@ID", Guid.Parse(id));
+        command.Parameters.AddWithValue("@ID", userId.ToString());
+        
         await command.ExecuteNonQueryAsync();
     }
+
 }

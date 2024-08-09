@@ -6,7 +6,7 @@ export class Hub {
 
   public static async connect() {
     this.hub = new HubConnectionBuilder()
-      .withUrl(`${Storage.host}/chat?userId=${Storage.userId}`)
+      .withUrl(`${Storage.host}/stream?userId=${Storage.userId}`)
       // .configureLogging({ log: (level, message) => console.log(`[${level}] ${message}`)})
       .build();
     await this.hub.start();
@@ -18,6 +18,10 @@ export class Hub {
 
   public static chat(message: string) {
     return this.hub?.stream('Chat', Storage.userId, message);
+  }
+
+  public static async describe(content: string) {
+    return this.hub?.stream('Describe', content);
   }
 
 }

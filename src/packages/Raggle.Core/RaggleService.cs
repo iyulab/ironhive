@@ -55,6 +55,12 @@ public class RaggleService : IRaggleService
         await _memory.DeleteDocumentAsync(documentId: documentId, index: index);
     }
 
+    public async Task<DataPipelineStatus?> GetEmbeddingStatusAsync(string documentId, string? index = null)
+    {
+        index ??= DEFAULT_INDEX;
+        return await _memory.GetDocumentStatusAsync(documentId: documentId, index: index);
+    }
+
     public async Task<string> GetInformationAsync(
         string query, 
         int? limit = null, 

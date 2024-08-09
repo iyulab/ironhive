@@ -3,20 +3,27 @@ using Raggle.Server.API.Assistant;
 using Raggle.Server.API.Repositories;
 using Raggle.Server.API.Stores;
 using System.Text;
+using System.Text.Json;
 
 namespace Raggle.Server.API.Hubs;
 
 public class ChatHub : Hub
 {
     private readonly ILogger<ChatHub> _logger;
-    private readonly SearchAssistant _bot;
+    private readonly SearchAssistant _searcher;
+    private readonly DescriptionAssistant _describer;
     private readonly UserRepository _user;
     private readonly ConnectionStore _con;
 
-    public ChatHub(ILogger<ChatHub> logger, SearchAssistant bot, UserRepository user, ConnectionStore con)
+    public ChatHub(ILogger<ChatHub> logger, 
+        SearchAssistant searcher,
+        DescriptionAssistant describer,
+        UserRepository user, 
+        ConnectionStore con)
     {
         _logger = logger;
-        _bot = bot;
+        _searcher = searcher;
+        _describer = describer;
         _user = user;
         _con = con;
     }
@@ -38,10 +45,10 @@ public class ChatHub : Hub
 
     public async IAsyncEnumerable<string> Chat(Guid userId, string query)
     {
-        var user = await _user.GetUser(userId);
+        var user = await _user.GetAsync(userId);
         user.ChatHistory.AddUserMessage(query);
         var answer = new StringBuilder();
-        await foreach (var response in _bot.Search(user.ChatHistory))
+        await foreach (var response in _searcher.Search(user.ChatHistory))
         {
             if (response != null)
             {
@@ -50,7 +57,17 @@ public class ChatHub : Hub
             }
         }
         user.ChatHistory.AddAssistantMessage(answer.ToString());
-        _user.UpdateUser(user);
-        Console.WriteLine("Chatting...");
+        await _user.UpdateAsync(user.ID, JsonSerializer.SerializeToElement(new
+        {
+            ChatHistory = user.ChatHistory
+        }));
+    }
+
+    public async IAsyncEnumerable<string> Describe(string content)
+    {
+        await foreach (var response in _describer.Describe(content))
+        {
+            yield return response;
+        }
     }
 }

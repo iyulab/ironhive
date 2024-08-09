@@ -6,21 +6,87 @@ export class API {
     const res = await fetch(url, {
       method: 'GET',
     });
-    const user = await res.json();
-    return user;
+    if (res.status === 404) {
+      return undefined;
+    } else {
+      const user = await res.json();
+      return user;
+    }
+  }
+
+  public static async createUser(user: any) {
+    const url = new URL(`${Storage.host}/user`);
+    await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(user)
+    });
   }
 
   public static async clearHistory() {
     const url = new URL(`${Storage.host}/user/${Storage.userId}`);
     await fetch(url, {
-      method: 'PUT',
+      method: 'PATCH',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        id: Storage.userId,
         chatHistory: []
       })
     });
   }
+
+  public static async getSources(userId: string) {
+    const url = new URL(`${Storage.host}/sources/${userId}`);
+    const res = await fetch(url, {
+      method: 'GET',
+    });
+    const sources = await res.json();
+    return sources;
+  }
+
+  public static async getSource(sourceId: string) {
+    const url = new URL(`${Storage.host}/source/${sourceId}`);
+    const res = await fetch(url, {
+      method: 'GET',
+    });
+    const source = await res.json();
+    return source;
+  }
+
+  public static async createSource(source: any) {
+    const url = new URL(`${Storage.host}/source`);
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(source)
+    });
+    const createdSource = await res.json();
+    return createdSource;
+  }
+
+  public static async updateSource(source: any) {
+    const url = new URL(`${Storage.host}/source/${source.id}`);
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(source)
+    });
+    const updatedSource = await res.json();
+    return updatedSource;
+  }
+
+  public static async deleteSource(sourceId: string) {
+    const url = new URL(`${Storage.host}/source/${sourceId}`);
+    await fetch(url, {
+      method: 'DELETE',
+    });
+  }
+
 }
