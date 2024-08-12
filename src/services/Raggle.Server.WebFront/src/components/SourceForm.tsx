@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
-import { Upload, Button, Form, Input, Space } from 'antd';
+import { Upload, Button, Form, Input, Space, notification } from 'antd';
 
 import { DataSource, FileMeta } from '@/models/DataSource';
 import { Storage } from '@/services/Storage';
 
 import styles from './SourceForm.module.scss';
+import { API } from '@/services/API';
 
 export function SourceForm({ source, onSubmit, onDelete } : { 
   source?: DataSource,
   onSubmit: (source: DataSource) => void,
   onDelete: () => void
 }) {
+  const [api, contextHolder] = notification.useNotification();
   const [mount, setMount] = useState(false);
   const [form] = Form.useForm();
   const [files, setFiles] = useState<FileMeta[]>([]);
@@ -25,7 +27,7 @@ export function SourceForm({ source, onSubmit, onDelete } : {
           multiple={true}
           action={`${Storage.host}/file/${source?.id}`}
           listType="picture"
-          beforeUpload={checkDuplicateFiles}
+          beforeUpload={checkFile}
           defaultFileList={files.map(f => ({
             uid: f.name,
             name: f.name,
@@ -65,10 +67,19 @@ export function SourceForm({ source, onSubmit, onDelete } : {
     );
   }
 
-  const checkDuplicateFiles = (file: File) => {
+  const checkFile = async (file: File) => {
+    console.log('check file', file);
+    const isSupported = await API.CheckFile(file.name);
+    if (!isSupported) {
+      alert('File not supported', 'Please upload a valid file type');
+      return Upload.LIST_IGNORE;
+    }
     const isExist = files.some(f => f.name === file.name);
-    console.log('check duplicate', file, isExist);
-    return isExist ? Upload.LIST_IGNORE : true;
+    if (isExist) {
+      alert('File already exists', 'Please upload a different file');
+      return Upload.LIST_IGNORE;
+    }
+    return true;
   }
 
   const onFileChanged = async (info: any) => {
@@ -100,6 +111,15 @@ export function SourceForm({ source, onSubmit, onDelete } : {
     onSubmit(source);
   }
 
+  const alert = (title: string, message: string) => {
+    api.open({
+      message: title,
+      description: message,
+      showProgress: true,
+      pauseOnHover: true,
+    });
+  }
+
   useEffect(() => {
     setMount(false);
     if (source) {
@@ -122,6 +142,7 @@ export function SourceForm({ source, onSubmit, onDelete } : {
       initialValues={{ ...source }}
       onFinish={onFinish}
     >
+      {contextHolder}
       <Form.Item>
         <Space direction='horizontal' align='end'>
           <Button type="default">

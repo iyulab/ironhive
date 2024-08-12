@@ -29,6 +29,7 @@ export function Chat() {
     stream?.subscribe({
       next: (response) => {
         botMessage += response;
+        console.log(response);
         setStream(botMessage);
       },
       complete: () => {
@@ -43,18 +44,19 @@ export function Chat() {
 
   const clearHistory = async () => {
     await API.clearHistory();
-    getHistory();
+    setHistory([]);
   }
 
   const getHistory = async () => {
     const user = await API.getUser();
     if(user && user.chatHistory) {
+      console.log(user.chatHistory);
       const history = user.chatHistory.map((chat: any) => {
         const role = chat.role.label;
         const message = chat.items[0].text;
         return { role: role, message: message }
       })
-      setHistory(history)
+      setHistory(history);
     } else {
       await API.createUser({
         id: Storage.userId,
@@ -72,7 +74,6 @@ export function Chat() {
     <div className={styles.container}>
       <div className={styles.control}>
         <Button onClick={() => navigate("sources")}>Sources</Button>
-        <Button onClick={() => navigate("source")}>Source (+)</Button>
         <Button onClick={clearHistory}>Clear</Button>
       </div>
       <div className={styles.history}>

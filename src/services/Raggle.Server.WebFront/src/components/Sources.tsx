@@ -57,6 +57,8 @@ export function Sources() {
         console.log('GET Temp source', _source);
       }
       setSource(_source);
+      // const status = await API.getSourceStatus(id);
+      // console.log('GET source status', status);
     } else {
       setSource(undefined);
     }

@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.SignalR;
+using Microsoft.SemanticKernel;
 using Raggle.Server.API.Assistant;
 using Raggle.Server.API.Repositories;
 using Raggle.Server.API.Stores;
+using Raggle.Server.Web.Repositories;
 using System.Text;
 using System.Text.Json;
 
@@ -13,19 +15,22 @@ public class ChatHub : Hub
     private readonly SearchAssistant _searcher;
     private readonly DescriptionAssistant _describer;
     private readonly UserRepository _user;
+    private readonly SourceRepository _source;
     private readonly ConnectionStore _con;
 
     public ChatHub(ILogger<ChatHub> logger, 
-        SearchAssistant searcher,
-        DescriptionAssistant describer,
-        UserRepository user, 
-        ConnectionStore con)
+        SearchAssistant searcherAssistant,
+        DescriptionAssistant describerAssistant,
+        UserRepository userRepo,
+        SourceRepository sourceRepo,
+        ConnectionStore conStore)
     {
         _logger = logger;
-        _searcher = searcher;
-        _describer = describer;
-        _user = user;
-        _con = con;
+        _searcher = searcherAssistant;
+        _describer = describerAssistant;
+        _user = userRepo;
+        _source = sourceRepo;
+        _con = conStore;
     }
 
     public override Task OnConnectedAsync()
@@ -43,24 +48,15 @@ public class ChatHub : Hub
         return base.OnDisconnectedAsync(exception);
     }
 
-    public async IAsyncEnumerable<string> Chat(Guid userId, string query)
+    public async IAsyncEnumerable<string> Chat(Guid userId, string query, IEnumerable<Guid>? sourceIds)
     {
-        var user = await _user.GetAsync(userId);
-        user.ChatHistory.AddUserMessage(query);
-        var answer = new StringBuilder();
-        await foreach (var response in _searcher.Search(user.ChatHistory))
+        await foreach (var response in _searcher.AskAsync(userId, query, sourceIds))
         {
             if (response != null)
             {
-                answer.Append(response);
                 yield return response;
             }
         }
-        user.ChatHistory.AddAssistantMessage(answer.ToString());
-        await _user.UpdateAsync(user.ID, JsonSerializer.SerializeToElement(new
-        {
-            ChatHistory = user.ChatHistory
-        }));
     }
 
     public async IAsyncEnumerable<string> Describe(string content)

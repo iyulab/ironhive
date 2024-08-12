@@ -30,6 +30,13 @@ public class SourceController : ControllerBase
         return Ok(source);
     }
 
+    [HttpGet("{sourceId:guid}/status")]
+    public async Task<IActionResult> GetSourceStatusAsync(Guid sourceId)
+    {
+        var status = await _source.GetStatusAsync(sourceId);
+        return Ok(status);
+    }
+
     [HttpPost]
     public async Task<IActionResult> CreateSourceAsync([FromBody] DataSource source)
     {

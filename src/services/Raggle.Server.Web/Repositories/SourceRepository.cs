@@ -1,4 +1,5 @@
 ﻿using Microsoft.Data.Sqlite;
+using Microsoft.KernelMemory;
 using Raggle.Server.API.Models;
 using Raggle.Server.API.Storages;
 using System.Security.Cryptography;
@@ -73,8 +74,13 @@ public class SourceRepository
                 UpdatedAt = reader.IsDBNull(7) ? null : DateTime.Parse(reader.GetString(7))
             };
         }
-
         return null;
+    }
+
+    public async Task<IEnumerable<DataPipelineStatus>> GetStatusAsync(Guid sourceId)
+    {
+        var source = await GetAsync(sourceId);
+        return await _vector.GetDocumentsAsync(source);
     }
 
     public async Task<DataSource> InsertAsync(DataSource source)

@@ -6,3 +6,11 @@
   flex-direction: column;
   overflow: hidden;
 }
+
+.header {
+  height: 50px;
+}
+
+.main {
+  height: calc(100% - 50px);
+}

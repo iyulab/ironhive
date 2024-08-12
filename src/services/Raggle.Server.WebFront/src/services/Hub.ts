@@ -17,7 +17,7 @@ export class Hub {
   }
 
   public static chat(message: string) {
-    return this.hub?.stream('Chat', Storage.userId, message);
+    return this.hub?.stream('Chat', Storage.userId, message, null);
   }
 
   public static async describe(content: string) {

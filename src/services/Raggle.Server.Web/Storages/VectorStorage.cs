@@ -5,10 +5,12 @@ using Microsoft.KernelMemory.DocumentStorage.DevTools;
 using Microsoft.KernelMemory.FileSystem.DevTools;
 using Microsoft.KernelMemory.MemoryStorage.DevTools;
 using Microsoft.KernelMemory.Pipeline;
+using Raggle.Server.API.Assistant;
 using Raggle.Server.API.Models;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 #pragma warning disable KMEXP01
 
@@ -57,24 +59,59 @@ public class VectorStorage
         _file = fileStorage;
     }
 
-    private IKernelMemory GetMemory(OpenAIOptions options, string baseDir)
+    public async Task<IEnumerable<DataPipelineStatus>> GetDocumentsAsync(DataSource source)
     {
-        return _memory;
+        var statusList = new List<DataPipelineStatus>();
+        if (source.Type == "file")
+        {
+            var details = JsonSerializer.Deserialize<FileDetails>(source.Details.Value.GetRawText(), new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+            foreach (var file in details.Files)
+            {
+                var documentId = GetDocumentId(source.ID, file.Name);
+                var status = await GetDocumentAsync(documentId, source.ID.ToString());
+                statusList.Add(status);
+            }
+        }
+        return statusList;
     }
 
-    public async Task<DataPipelineStatus?> GetDocumentStatusAsync(string documentId, string index)
+    public async Task<DataPipelineStatus?> GetDocumentAsync(string documentId, string index)
     {
         var status = await _memory.GetDocumentStatusAsync(documentId: documentId, index: index);
         return status;
     }
 
-    public async Task<SearchResult> SearchAsync(string query, string index, ICollection<MemoryFilter> filters)
+    public async Task<List<SearchReference>> SearchAsync(string query, string index, ICollection<MemoryFilter>? filters)
     {
+        var results = new List<SearchReference>();
         var result = await _memory.SearchAsync(
             query: query,
             index: index,
-            filters: filters);
-        return result;
+            filters: filters,
+            minRelevance: 0.3,
+            limit: 10);
+        if (result.Results.Count > 0)
+        {
+            foreach (var r in result.Results)
+            {
+                foreach (var p in r.Partitions)
+                {
+                    results.Add(new SearchReference
+                    {
+                        Name = r.SourceName,
+                        Type = r.SourceContentType,
+                        Relevance = p.Relevance,
+                        Content = Regex.Unescape(p.Text),
+                    });
+                }
+            }
+            return results;
+        }
+
+        return results;
     }
 
     public async Task MemorizeTextAsync(string text, string documentId, string index)
@@ -92,16 +129,6 @@ public class VectorStorage
             content: content,
             documentId: documentId,
             index: sourceId);
-    }
-
-    public async Task DeleteDocumentAsync(string index, string documentId)
-    {
-        await _memory.DeleteDocumentAsync(documentId: documentId, index: index);
-    }
-
-    public async Task DeleteIndexAsync(string index)
-    {
-        await _memory.DeleteIndexAsync(index);        
     }
 
     public async Task MemorizeSourceAsync(DataSource source)
@@ -144,7 +171,17 @@ public class VectorStorage
         }
     }
 
-    private string GetDocumentId(Guid sourceId, string fileName)
+    public async Task DeleteDocumentAsync(string index, string documentId)
+    {
+        await _memory.DeleteDocumentAsync(documentId: documentId, index: index);
+    }
+
+    public async Task DeleteIndexAsync(string index)
+    {
+        await _memory.DeleteIndexAsync(index);
+    }
+
+    public string GetDocumentId(Guid sourceId, string fileName)
     {
         var content = $"{sourceId}{fileName}";
         var encryption = SHA256.HashData(Encoding.UTF8.GetBytes(content));

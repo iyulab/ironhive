@@ -89,4 +89,21 @@ export class API {
     });
   }
 
+  public static async getSourceStatus(sourceId: string) {
+    const url = new URL(`${Storage.host}/source/${sourceId}/status`);
+    const res = await fetch(url, {
+      method: 'GET',
+    });
+    const status = await res.json();
+    return status;
+  }
+
+  public static async CheckFile(filename: string) {
+    const url = new URL(`${Storage.host}/file/${filename}`);
+    const res = await fetch(url, {
+      method: 'GET',
+    });
+    return res.ok;
+  }
+
 }

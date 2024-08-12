@@ -21,7 +21,8 @@ public class ConnectionStore
 
     public async Task<string> Get(string connectionId)
     {
-        return await _db.StringGetAsync(connectionId);
+        var result = await _db.StringGetAsync(connectionId);
+        return result.ToString();
     }
 
     public async Task Remove(string connectionId)

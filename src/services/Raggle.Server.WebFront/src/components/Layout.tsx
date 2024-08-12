@@ -45,8 +45,12 @@ export function Layout() {
     <FluentProvider theme={fluentTheme}>
       <PrimeReactProvider>
         <div className={styles.container}>
-          <Header />
-          <Outlet />
+          <div className={styles.header}>
+            <Header />
+          </div>
+          <div className={styles.main}>
+            <Outlet />
+          </div>
         </div>
       </PrimeReactProvider>
     </FluentProvider>

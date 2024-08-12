@@ -7,8 +7,18 @@ public static class DatabaseService
 {
     public static async Task InitializeSqlite(string connectionString)
     {
+        await EnableWALModeAsync(connectionString);
         await CreateUsersAsync(connectionString);
         await CreateSourcesAsync(connectionString);
+    }
+
+    private static async Task EnableWALModeAsync(string connectionString)
+    {
+        using var connection = new SqliteConnection(connectionString);
+        await connection.OpenAsync();
+        using var command = connection.CreateCommand();
+        command.CommandText = "PRAGMA journal_mode=WAL";
+        await command.ExecuteNonQueryAsync();
     }
 
     private static async Task CreateUsersAsync(string connectionString)
