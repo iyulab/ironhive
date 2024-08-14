@@ -1,50 +1,28 @@
 using Microsoft.AspNetCore.Mvc;
-using Raggle.Server.API.Models;
-using Raggle.Server.API.Repositories;
-using System.Text.Json;
+using Raggle.Server.Web;
+using Raggle.Server.Web.Database;
+using Raggle.Server.Web.Models;
 
-namespace Raggle.Server.API.Controllers;
-
+[Route("/api/user")]
 [ApiController]
-[Route("/user")]
 public class UserController : ControllerBase
 {
-    private readonly UserRepository _user;
+    private readonly AppRepository<User> _repo;
 
-    public UserController(UserRepository user)
+    public UserController(AppRepository<User> userRepository)
     {
-        _user = user;
+        _repo = userRepository;
     }
 
-    [HttpGet("{userId:guid}")]
-    public async Task<IActionResult> GetUserAsync(Guid userId)
+    [HttpGet]
+    public async Task<ActionResult<User>> GetUserAsync(
+        [FromHeader(Name = Constants.UserHeader)] Guid userId)
     {
-        var user = await _user.GetAsync(userId);
-        if (user == null) 
-        { 
-            return NotFound();
-        }
-        else
-        {
-            await _user.UpdateAsync(userId, JsonSerializer.SerializeToElement(new
-            {
-                lastAccessAt = DateTime.UtcNow.ToString("o")
-            }));
-            return Ok(user);
-        }
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> CreateUserAsync([FromBody] User user)
-    {
-        await _user.InsertAsync(user);
-        return Ok();
-    }
-
-    [HttpPatch("{userId:guid}")]
-    public async Task<IActionResult> UpdateUserAsync(Guid userId, [FromBody] JsonElement updates)
-    {
-        await _user.UpdateAsync(userId, updates);
-        return Ok();
+        var user = await _repo.GetByIdAsync(userId);
+        user = user is null
+            ? await _repo.AddAsync(new User { ID = userId })
+            : await _repo.UpdateAsync(user);
+        
+        return Ok(user);
     }
 }

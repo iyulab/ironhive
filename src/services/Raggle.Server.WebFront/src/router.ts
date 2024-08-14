@@ -1,23 +1,11 @@
 import { createBrowserRouter } from 'react-router-dom';
-import {
-  Layout,
-  Chat,
-  Sources,
-} from './components';
+import { 
+  Layout 
+} from './components/layouts/Layout';
 
 export const router = createBrowserRouter([
   {
     path: '/',
-    Component: Layout,
-    children: [
-      {
-        index: true,
-        Component: Chat,
-      },
-      {
-        path: "sources/:id?",
-        Component: Sources
-      }
-    ]
+    Component: Layout
   }
 ]);

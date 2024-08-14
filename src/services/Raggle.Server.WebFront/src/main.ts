@@ -1,8 +1,9 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { Hub } from './services/Hub';
 import { RouterProvider } from 'react-router-dom';
+
 import { router } from './router';
+import { App } from './services/App';
 
 const root = document.getElementById('root');
 
@@ -13,7 +14,7 @@ if (root) {
     ? React.createElement(React.StrictMode, null, routeDOM)
     : routeDOM;
 
-  Hub.connect();
+  await App.initAsync();
   rootDOM.render(app);
 } else {
   document.body.innerHTML = 'No root element found';

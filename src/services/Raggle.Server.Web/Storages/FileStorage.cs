@@ -1,7 +1,4 @@
-﻿using NRedisStack.Search;
-using System.Threading.Tasks;
-
-namespace Raggle.Server.API.Storages;
+﻿namespace Raggle.Server.Web.Storages;
 
 public class FileStorage
 {

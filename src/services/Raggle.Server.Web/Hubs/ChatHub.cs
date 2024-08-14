@@ -1,56 +1,42 @@
 ﻿using Microsoft.AspNetCore.SignalR;
-using Microsoft.SemanticKernel;
-using Raggle.Server.API.Assistant;
-using Raggle.Server.API.Repositories;
-using Raggle.Server.API.Stores;
-using Raggle.Server.Web.Repositories;
-using System.Text;
-using System.Text.Json;
+using Raggle.Server.Web.Services;
+using Raggle.Server.Web.Stores;
 
-namespace Raggle.Server.API.Hubs;
+namespace Raggle.Server.Web.Hubs;
 
-public class ChatHub : Hub
+public class AppHub : Hub
 {
-    private readonly ILogger<ChatHub> _logger;
-    private readonly SearchAssistant _searcher;
-    private readonly DescriptionAssistant _describer;
-    private readonly UserRepository _user;
-    private readonly SourceRepository _source;
     private readonly ConnectionStore _con;
+    private readonly UserAssistantService _assistant;
+    private readonly ChatGenerateService _chat;
 
-    public ChatHub(ILogger<ChatHub> logger, 
-        SearchAssistant searcherAssistant,
-        DescriptionAssistant describerAssistant,
-        UserRepository userRepo,
-        SourceRepository sourceRepo,
-        ConnectionStore conStore)
+    public AppHub(
+        ConnectionStore connectionStore, 
+        UserAssistantService assistantService,
+        ChatGenerateService chatService)
     {
-        _logger = logger;
-        _searcher = searcherAssistant;
-        _describer = describerAssistant;
-        _user = userRepo;
-        _source = sourceRepo;
-        _con = conStore;
+        _con = connectionStore;
+        _assistant = assistantService;
+        _chat = chatService;
     }
 
-    public override Task OnConnectedAsync()
+    public async override Task OnConnectedAsync()
     {
-        if (Context.GetHttpContext().Request.Query.TryGetValue("userid", out var values))
-        {
-            _con.Set(Context.ConnectionId, values.First());
-        }
-        return base.OnConnectedAsync();
+        var userId = GetUserId();
+        await _con.SetAsync(userId, Context.ConnectionId);
+        await base.OnConnectedAsync();
     }
 
-    public override Task OnDisconnectedAsync(Exception? exception)
+    public async override Task OnDisconnectedAsync(Exception? exception)
     {
-        _con.Remove(Context.ConnectionId).ConfigureAwait(false);
-        return base.OnDisconnectedAsync(exception);
+        var userId = GetUserId();
+        await _con.RemoveAsync(userId);
+        await base.OnDisconnectedAsync(exception);
     }
 
-    public async IAsyncEnumerable<string> Chat(Guid userId, string query, IEnumerable<Guid>? sourceIds)
+    public async IAsyncEnumerable<string> Chat(Guid assistantId, string query, IEnumerable<string>? tags)
     {
-        await foreach (var response in _searcher.AskAsync(userId, query, sourceIds))
+        await foreach (var response in _assistant.AskAsync(assistantId, query, tags))
         {
             if (response != null)
             {
@@ -59,11 +45,17 @@ public class ChatHub : Hub
         }
     }
 
-    public async IAsyncEnumerable<string> Describe(string content)
+    public async IAsyncEnumerable<string> Explain(string content)
     {
-        await foreach (var response in _describer.Describe(content))
+        await foreach (var response in _chat.ExplainAsync(content))
         {
-            yield return response;
+            yield return response.ToString();
         }
+    }
+
+    private Guid GetUserId()
+    {
+        var userIdStr = Context.GetHttpContext()?.Request.Query["userid"].FirstOrDefault();
+        return Guid.TryParse(userIdStr, out var userId) ? userId : Guid.Empty;
     }
 }

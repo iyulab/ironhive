@@ -1,32 +1,31 @@
-﻿using Raggle.Server.API.Repositories;
-using StackExchange.Redis;
+﻿using StackExchange.Redis;
 
-namespace Raggle.Server.API.Stores;
+namespace Raggle.Server.Web.Stores;
 
 public class ConnectionStore
 {
-    private readonly ILogger<ConnectionStore> _logger;
     private readonly IDatabase _db;
 
-    public ConnectionStore(ILogger<ConnectionStore> logger, IConfiguration config)
+    public ConnectionStore(IConfiguration config)
     {
-        _logger = logger;
-        _db = ConnectionMultiplexer.Connect(config.GetConnectionString("Redis")).GetDatabase();
+        var connectionString = config.GetConnectionString("Redis")
+                               ?? throw new ArgumentNullException("Redis connection string is missing");
+        _db = ConnectionMultiplexer.Connect(connectionString).GetDatabase();
     }
 
-    public async Task Set(string connectionId, string userId)
+    public async Task SetAsync(Guid userId, string connectionId)
     {
-        await _db.StringSetAsync(connectionId, userId);
+        await _db.StringSetAsync(userId.ToString(), connectionId);
     }
 
-    public async Task<string> Get(string connectionId)
+    public async Task<string> GetAsync(Guid userId)
     {
-        var result = await _db.StringGetAsync(connectionId);
+        var result = await _db.StringGetAsync(userId.ToString());
         return result.ToString();
     }
 
-    public async Task Remove(string connectionId)
+    public async Task RemoveAsync(Guid userId)
     {
-        await _db.KeyDeleteAsync(connectionId);
+        await _db.KeyDeleteAsync(userId.ToString());
     }
 }

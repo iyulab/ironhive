@@ -1,109 +1,97 @@
+import axios from "axios";
+
 import { Storage } from "./Storage";
+import { Assistant, Connection, Knowledge, User } from "@/models/Model";
 
 export class API {
-  public static async getUser() {
-    const url = new URL(`${Storage.host}/user/${Storage.userId}`);
-    const res = await fetch(url, {
-      method: 'GET',
-    });
-    if (res.status === 404) {
-      return undefined;
-    } else {
-      const user = await res.json();
-      return user;
-    }
+
+  public static async getUserAsync() {
+    return await this.getAsync<User>(`user`);
   }
 
-  public static async createUser(user: any) {
-    const url = new URL(`${Storage.host}/user`);
-    await fetch(url, {
-      method: 'POST',
+  public static async getAssistantAsync() {
+    return await this.getAsync<Assistant>(`assistant`);
+  }
+
+  public static async updateAssistantAsync(assistant: Assistant) {
+    return await this.putAsync<Assistant>(`assistant`, assistant);
+  }
+
+  public static async getKnowledgesAsync(skip: number, limit: number) {
+    return await this.getAsync<Knowledge[]>(`knowledges?skip=${skip}&limit=${limit}`);
+  }
+
+  public static async getKnowledgeAsync(id: string) {
+    return await this.getAsync<Knowledge>(`knowledge/${id}`);
+  }
+
+  public static async createKnowledgeAsync(knowledge: Knowledge) {
+    return await this.postAsync<Knowledge>(`knowledge`, knowledge);
+  }
+
+  public static async updateKnowledgeAsync(knowledge: Knowledge) {
+    return await this.putAsync<Knowledge>(`knowledge`, knowledge);
+  }
+
+  public static async deleteKnowledgeAsync(id: string) {
+    return await this.deleteAsync(`knowledge/${id}`);
+  }
+
+  public static async getConnectionsAsync(skip: number, limit: number) {
+    return await this.getAsync<Connection[]>(`connections?skip=${skip}&limit=${limit}`);
+  }
+
+  public static async getConnectionAsync(id: string) {
+    return await this.getAsync<Connection>(`connection/${id}`);
+  }
+
+  public static async createConnectionAsync(connection: Connection) {
+    return await this.postAsync<Connection>(`connection`, connection);
+  }
+
+  public static async updateConnectionAsync(connection: Connection) {
+    return await this.putAsync<Connection>(`connection`, connection);
+  }
+
+  public static async deleteConnectionAsync(id: string) {
+    return await this.deleteAsync(`connection/${id}`);
+  }
+
+
+
+
+  private static async getAsync<T>(url: string) {
+    const request = this.createRequest();
+    const response = await request.get<T>(url);
+    return response.data;
+  }
+
+  private static async postAsync<T>(url: string, data: T) {
+    const request = this.createRequest();
+    const response = await request.post<T>(url, data);
+    return response.data;
+  }
+
+  private static async putAsync<T>(url: string, data: T) {
+    const request = this.createRequest();
+    const response = await request.put<T>(url, data);
+    return response.data;
+  }
+
+  private static async deleteAsync(url: string) {
+    const request = this.createRequest();
+    const response = await request.delete<boolean>(url);
+    return response.data;
+  }
+
+  private static createRequest() {
+    return axios.create({
+      baseURL: `${Storage.host}/api`,
+      timeout: 3_000,
       headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(user)
+        'User-ID': Storage.userId
+      }
     });
-  }
-
-  public static async clearHistory() {
-    const url = new URL(`${Storage.host}/user/${Storage.userId}`);
-    await fetch(url, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        chatHistory: []
-      })
-    });
-  }
-
-  public static async getSources(userId: string) {
-    const url = new URL(`${Storage.host}/sources/${userId}`);
-    const res = await fetch(url, {
-      method: 'GET',
-    });
-    const sources = await res.json();
-    return sources;
-  }
-
-  public static async getSource(sourceId: string) {
-    const url = new URL(`${Storage.host}/source/${sourceId}`);
-    const res = await fetch(url, {
-      method: 'GET',
-    });
-    const source = await res.json();
-    return source;
-  }
-
-  public static async createSource(source: any) {
-    const url = new URL(`${Storage.host}/source`);
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(source)
-    });
-    const createdSource = await res.json();
-    return createdSource;
-  }
-
-  public static async updateSource(source: any) {
-    const url = new URL(`${Storage.host}/source/${source.id}`);
-    const res = await fetch(url, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(source)
-    });
-    const updatedSource = await res.json();
-    return updatedSource;
-  }
-
-  public static async deleteSource(sourceId: string) {
-    const url = new URL(`${Storage.host}/source/${sourceId}`);
-    await fetch(url, {
-      method: 'DELETE',
-    });
-  }
-
-  public static async getSourceStatus(sourceId: string) {
-    const url = new URL(`${Storage.host}/source/${sourceId}/status`);
-    const res = await fetch(url, {
-      method: 'GET',
-    });
-    const status = await res.json();
-    return status;
-  }
-
-  public static async CheckFile(filename: string) {
-    const url = new URL(`${Storage.host}/file/${filename}`);
-    const res = await fetch(url, {
-      method: 'GET',
-    });
-    return res.ok;
   }
 
 }
