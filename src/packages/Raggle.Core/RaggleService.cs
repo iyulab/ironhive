@@ -8,11 +8,12 @@ namespace Raggle.Core;
 
 public class RaggleService : IRaggleService
 {
-    private const string DEFAULT_INDEX = "index_test_tt";
+    private const string DEFAULT_INDEX = "default";
     private readonly IChatCompletionService _chat;
     private readonly IKernelMemory _memory;
     private readonly IPromptProvider? _prompt;
-    private readonly ChatHistory _history;
+
+    public ChatHistory? History { get; private set; }
 
     public RaggleService(
         IChatCompletionService chatService, 
@@ -22,7 +23,6 @@ public class RaggleService : IRaggleService
         _memory = kernelMemory;
         _chat = chatService;
         _prompt = promptProvider;
-        _history = new(promptProvider?.GetPrompt() ?? string.Empty);
     }
 
     public async Task<string> MemorizeTextAsync(string documentId, string text, string? index = null)
@@ -55,10 +55,11 @@ public class RaggleService : IRaggleService
         await _memory.DeleteDocumentAsync(documentId: documentId, index: index);
     }
 
-    public async Task<DataPipelineStatus?> GetEmbeddingStatusAsync(string documentId, string? index = null)
+    public async Task<DataPipelineStatus?> GetMemorizeStatusAsync(string documentId, string? index = null)
     {
         index ??= DEFAULT_INDEX;
-        return await _memory.GetDocumentStatusAsync(documentId: documentId, index: index);
+        var status = await _memory.GetDocumentStatusAsync(documentId: documentId, index: index);
+        return status;
     }
 
     public async Task<string> GetInformationAsync(
@@ -86,10 +87,19 @@ public class RaggleService : IRaggleService
         ICollection<MemoryFilter>? filters = null)
     {
         var information = await GetInformationAsync(query: query, filters: filters);
-        _history[0].Content = _prompt?.GetPromptWithInfo(information) ?? string.Empty;
-        _history.AddUserMessage(query);
+        if (History is null)
+        {
+            History = new ChatHistory();
+            History.AddSystemMessage(_prompt?.GetPromptWithInfo(information) ?? $"[information]\n{information}");
+        }
+        else
+        {
+            History[0].Content = _prompt?.GetPromptWithInfo(information) ?? $"[information]\n{information}";
+        }
+        
+        History.AddUserMessage(query);
         var reply = new StringBuilder();
-        await foreach (var stream in _chat.GetStreamingChatMessageContentsAsync(_history))
+        await foreach (var stream in _chat.GetStreamingChatMessageContentsAsync(History))
         {
             var content = stream.Content;
             if (content is not null)
@@ -98,12 +108,11 @@ public class RaggleService : IRaggleService
                 yield return content;
             }
         }
-        _history.AddAssistantMessage(reply.ToString());
+        History.AddAssistantMessage(reply.ToString());
     }
 
     public void ClearHistory()
     {
-        _history.Clear();
-        _history.AddSystemMessage(_prompt?.GetPrompt() ?? string.Empty);
+        History?.Clear();
     }
 }

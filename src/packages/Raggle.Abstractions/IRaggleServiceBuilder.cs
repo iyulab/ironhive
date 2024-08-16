@@ -9,4 +9,6 @@ public interface IRaggleServiceBuilder
     IKernelBuilder KernelBuilder { get; set; }
     IKernelMemoryBuilder MemoryBuilder { get; set; }
     IPromptProvider? PromptProvider { get; set; }
+
+    IRaggleService Build();
 }

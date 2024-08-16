@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
-import { Button, Empty, List, Modal, Typography } from "antd";
+import { Button, Empty, List, Modal } from "antd";
 import { BookOutlined } from "@ant-design/icons";
 import VirtualList from 'rc-virtual-list';
 
 import { Knowledge } from "@/models/Model";
 import { API } from "@/services/API";
+import { KnowledgeForm } from "../forms/KnowledgeForm";
 
 export function KnowledgeList() {
+  const [openModal, setOpenModal] = useState(false);
   const [knowledges, setKnowledges] = useState<Knowledge[]>([]);
+  const [knowledge, setKnowledge] = useState<Knowledge | null>(null);
   
   const ContainerHeight = 500;
 
@@ -21,18 +24,14 @@ export function KnowledgeList() {
     }
   };
 
+  const updateKnowledge = async (knowledge: Knowledge) => {
+    setKnowledge(knowledge);
+    setOpenModal(true);
+  }
+
   const createNewKnowledge = async () => {
-    Modal.info({
-      title: "Create New Knowledge",
-      content: (
-        <Typography.Paragraph>
-          This feature is not implemented yet.
-        </Typography.Paragraph>
-      ),
-      onOk() {
-        console.log("OK");
-      },
-    })
+    setKnowledge(null);
+    setOpenModal(true);
   }
 
   const fetchKnowledges = async () => {
@@ -45,28 +44,38 @@ export function KnowledgeList() {
   }, []);
   
   return knowledges.length > 0 ? (
-    <List>
-      <VirtualList
-        data={knowledges}
-        height={ContainerHeight}
-        itemHeight={47}
-        itemKey="id"
-        onScroll={onScroll}
+    <>
+      <List>
+        <VirtualList
+          data={knowledges}
+          height={ContainerHeight}
+          itemHeight={47}
+          itemKey="id"
+          onScroll={onScroll}
+        >
+          {(item) => (
+            <List.Item key={item.id} onClick={() => updateKnowledge(item)}>
+              <List.Item.Meta
+                avatar={<BookOutlined />}
+                title={item.name}
+                description={item.description}
+              />
+              <Button type="primary" onClick={() => console.log("click button")}>
+                Connect
+              </Button>
+            </List.Item>
+          )}
+        </VirtualList>
+      </List>
+      <Modal
+        title={knowledge ? 'Update Knowledge' : 'Create Knowledge'}
+        open={openModal}
+        onCancel={() => setOpenModal(false)}
+        footer={null}
       >
-        {(item) => (
-          <List.Item key={item.id} onClick={() => console.log("click list")}>
-            <List.Item.Meta
-              avatar={<BookOutlined />}
-              title={item.name}
-              description={item.description}
-            />
-            <Button type="primary" onClick={() => console.log("click button")}>
-              Connect
-            </Button>
-          </List.Item>
-        )}
-      </VirtualList>
-    </List>
+        { knowledge && <KnowledgeForm knowledge={knowledge} /> }
+      </Modal>
+    </>
   ) : (
     <Empty
       image="https://gw.alipayobjects.com/zos/antfincdn/ZHrcdLPrvN/empty.svg"

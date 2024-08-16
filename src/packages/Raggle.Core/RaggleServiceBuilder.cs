@@ -45,9 +45,9 @@ public static partial class RaggleServiceBuilderExtension
         {
             APIKey = option.ApiKey,
             TextGenerationType = TextGenerationTypes.Chat,
-            TextModel = option.TextModel.GetValue(),
+            TextModel = option.TextModel,
             TextModelMaxTokenTotal = option.TextModelMaxToken,
-            EmbeddingModel = option.EmbeddingModel.GetValue(),
+            EmbeddingModel = option.EmbeddingModel,
             EmbeddingModelMaxTokenTotal = option.EmbeddingModelMaxToken,
             MaxEmbeddingBatchSize = option.MaxEmbeddingBatchSize,
             MaxRetries = option.MaxRetries,
@@ -57,13 +57,13 @@ public static partial class RaggleServiceBuilderExtension
         builder.MemoryBuilder.Services.AddOpenAITextEmbeddingGeneration(openAIConfig, textEmbeddingTokenizer);
         builder.MemoryBuilder.Services.AddOpenAITextGeneration(openAIConfig, textGenerationTokenizer);
 
-        builder.MemoryBuilder.AddIngestionEmbeddingGenerator(new OpenAITextEmbeddingGenerator(
-            config: openAIConfig,
-            textTokenizer: textEmbeddingTokenizer
-        ));
+        //builder.MemoryBuilder.AddIngestionEmbeddingGenerator(new OpenAITextEmbeddingGenerator(
+        //    config: openAIConfig,
+        //    textTokenizer: textEmbeddingTokenizer
+        //));
 
         builder.KernelBuilder.AddOpenAIChatCompletion(
-            modelId: option.TextModel.GetValue(),
+            modelId: option.TextModel,
             apiKey: option.ApiKey
         );
 
@@ -76,8 +76,7 @@ public static partial class RaggleServiceBuilderExtension
     {
         builder.MemoryBuilder.WithSimpleFileStorage(new SimpleFileStorageConfig
         {
-            Directory = option.ChunkDirectory,
-            StorageType = FileSystemTypes.Disk
+            StorageType = FileSystemTypes.Volatile
         })
         .WithSimpleVectorDb(new SimpleVectorDbConfig
         {

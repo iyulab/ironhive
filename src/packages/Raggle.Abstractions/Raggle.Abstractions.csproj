@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\kernel-memory\service\Abstractions\Abstractions.csproj" />
+    <PackageReference Include="Microsoft.KernelMemory.Abstractions" Version="0.70.240803.1" />
   </ItemGroup>
 
 </Project>
