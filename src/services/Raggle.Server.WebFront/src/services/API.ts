@@ -57,9 +57,6 @@ export class API {
     return await this.deleteAsync(`connection/${id}`);
   }
 
-
-
-
   private static async getAsync<T>(url: string) {
     const request = this.createRequest();
     const response = await request.get<T>(url);
@@ -87,9 +84,10 @@ export class API {
   private static createRequest() {
     return axios.create({
       baseURL: `${Storage.host}/api`,
-      timeout: 3_000,
+      timeout: 10_000,
       headers: {
-        'User-ID': Storage.userId
+        'User-ID': Storage.userId,
+        'Accept-Language': navigator.language,
       }
     });
   }

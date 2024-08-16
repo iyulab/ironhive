@@ -1,24 +1,27 @@
 import { useState } from "react";
-import { Button, Form, Input, Upload } from "antd";
+import { Button, Form, Input, message, Space, Upload } from "antd";
 
 import { Knowledge } from "@/models/Model";
 
-export function KnowledgeForm({ knowledge }: { knowledge?: Knowledge }) {
+export function KnowledgeForm({ knowledge, onSubmit, onCancel }: 
+  { knowledge?: Knowledge, onSubmit: (knowledge: Knowledge) => void, onCancel: () => void }
+) {
   const [form] = Form.useForm();
   const [files, setFiles] = useState<any[]>([]);
   
   const checkFile = async (file: File) => {
     console.log('check file', file);
     // const isSupported = await API.CheckFile(file.name);
-    if (!file.type.startsWith('image/')) {
-      // alert('File not supported', 'Please upload a valid file type');
-      return Upload.LIST_IGNORE;
-    }
+    // if (!file.type.startsWith('image/')) {
+    //   // alert('File not supported', 'Please upload a valid file type');
+    //   return Upload.LIST_IGNORE;
+    // }
     const isExist = files.some(f => f.name === file.name);
     if (isExist) {
-      // alert('File already exists', 'Please upload a different file');
+      message.error('File already exists');
       return Upload.LIST_IGNORE;
     }
+    form.getFieldsValue();
     return true;
   }
 
@@ -37,52 +40,75 @@ export function KnowledgeForm({ knowledge }: { knowledge?: Knowledge }) {
     }
   }
 
-  const onFinish = (values: any) => {
-    console.log('on finish', values);
+  const onFinish = async () => {
+    const dd = await form.validateFields();
+    console.log('form values', dd);
+    const values = form.getFieldsValue();
+
   };
 
+  const normFile = (e: any) => {
+    console.log('norm file', e);
+    if (Array.isArray(e)) {
+      return e;
+    }
+    return e && e.fileList;
+  }
+
   return (
-    <Form
-      form={form}
-      layout="vertical"
-      onFinish={onFinish}
-      initialValues={knowledge}
-    >
-      <Form.Item
+    <>
+      <Form
+        form={form}
         layout="vertical"
-        label="Name"
-        name="name"
-        rules={[{ required: true }]}
+        onFinish={onFinish}
+        initialValues={knowledge ?? {}}
       >
-        <Input />
-      </Form.Item>
-      <Form.Item
-        layout="vertical"
-        label="Description"
-        name='description'
-      >
-        <Input.TextArea />
-      </Form.Item>
-      <Form.Item 
-        label="Files"
-      >
-        <Upload
-          multiple={true}
-          action={``}
-          listType="picture"
-          beforeUpload={checkFile}
-          defaultFileList={files.map(f => ({
-            uid: f.name,
-            name: f.name,
-            size: f.size,
-            type: f.type,
-            status: 'done' 
-          }))}
-          onChange={onFileChanged}
+        <Form.Item
+          layout="vertical"
+          label="Name"
+          name="name"
+          rules={[{ required: true }]}
         >
-          <Button>Upload</Button>
-        </Upload>
-      </Form.Item>
-    </Form>
+          <Input />
+        </Form.Item>
+        <Form.Item
+          layout="vertical"
+          label="Description"
+          name='description'
+        >
+          <Input.TextArea />
+        </Form.Item>
+        <Form.Item 
+          label="Files"
+          valuePropName="fileList"
+          getValueFromEvent={normFile}
+        >
+          <Upload
+            multiple={true}
+            action={``}
+            listType="picture"
+            beforeUpload={checkFile}
+            defaultFileList={files.map(f => ({
+              uid: f.name,
+              name: f.name,
+              size: f.size,
+              type: f.type,
+              status: 'done' 
+            }))}
+            onChange={onFileChanged}
+          >
+            <Button>Upload</Button>
+          </Upload>
+        </Form.Item>
+      </Form>
+      <Space>
+        <Button onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="primary" onClick={onFinish}>
+          Submit
+        </Button>
+      </Space>
+    </>
   );
 }

@@ -1,40 +1,46 @@
-export interface User {
+export interface EntityBase {
   id: string;
   createdAt?: string;
   updatedAt?: string;
 }
 
-export interface Assistant {
-  id: string;
-  userID: string;
+export interface UserEntity extends EntityBase {
+  userID?: string;
+}
+
+export interface User extends EntityBase {
+  device: string;
+}
+
+export interface Assistant extends UserEntity {
   name: string;
-  instruction: string;
+  instruction?: string;
   knowledges: string[];
   connections: string[];
   openAPIs: string[];
   chatHistory: any;
 }
 
-export interface Knowledge {
-  id: string;
-  userID: string;
+export interface Knowledge extends UserEntity {
   name: string;
-  description: string;
-  files: any[];
+  description?: string;
+  files: KnowledgeFile[];
 }
 
-export interface Connection {
-  id: string;
-  userID: string;
+export interface KnowledgeFile {
   type: string;
   name: string;
-  description: string;
+  size: number;
+}
+
+export interface Connection extends UserEntity {
+  type: string;
+  name: string;
+  description?: string;
   connectionString: string;
 }
 
-export interface OpenAPI {
-  id: string;
-  userID: string;
+export interface OpenAPI extends UserEntity {
   schemeType: string;
   schema: string;
 }

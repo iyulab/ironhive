@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, KeyboardEvent, useRef } from 'react';
 import { Button, Empty, Input, Space, Tooltip  } from "antd";
 import { FileAddOutlined, BookOutlined, DatabaseOutlined, ClearOutlined, SendOutlined } from '@ant-design/icons';
 
@@ -20,6 +20,7 @@ const transformHistory = (history: any) => {
 }
 
 export function Chat() {
+  const historyRef = useRef<HTMLDivElement>(null);
   const [userMessage, setUserMessage] = useState<string>("");
   const [streamMessage, setStreamMessage] = useState<string>("");
   const [chatHistory, setChatHistory] = useState<ChatHistory[]>(transformHistory(App.assistant.chatHistory));
@@ -50,11 +51,21 @@ export function Chat() {
     });
   }
 
+  const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && e.ctrlKey) {
+      sendMessage();
+    }
+  }
+
   const clearHistory = async () => {
     App.assistant.chatHistory = [];
     App.assistant = await API.updateAssistantAsync(App.assistant);
     setChatHistory([]);
   }
+
+  useEffect(() => {
+    historyRef.current?.scrollTo(0, historyRef.current.scrollHeight);
+  }, [chatHistory, streamMessage]);
 
   useEffect(() => {
     Hub.connect();
@@ -67,7 +78,7 @@ export function Chat() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.history}>
+      <div className={styles.history} ref={historyRef}>
         {chatHistory.length > 0 ? (
           <>
             {chatHistory.map((item, index) => (
@@ -92,11 +103,12 @@ export function Chat() {
       </div>
       <div className={styles.input}>
         <Input.TextArea
-          placeholder="Type a message..."
+          placeholder="Press Ctrl + Enter to send message"
           variant='borderless'
           autoSize={{ minRows: 3, maxRows: 10 }}
           value={userMessage}
           onChange={(e) => setUserMessage(e.target.value)}
+          onKeyDown={onKeyDown}
         />
         <div className={styles.control}>
           <Space.Compact>
