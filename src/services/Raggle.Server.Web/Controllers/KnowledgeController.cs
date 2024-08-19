@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Raggle.Server.Web.Database;
 using Raggle.Server.Web.Models;
+using Raggle.Server.Web.Storages;
 
 namespace Raggle.Server.Web.Controllers;
 
@@ -9,10 +10,14 @@ namespace Raggle.Server.Web.Controllers;
 public class KnowledgeController : ControllerBase
 {
     private readonly AppRepository<Knowledge> _repo;
+    private readonly VectorStorage _vector;
 
-    public KnowledgeController(AppRepository<Knowledge> knowledgeRepository)
+    public KnowledgeController(
+        AppRepository<Knowledge> knowledgeRepository,
+        VectorStorage vectorStorage)
     {
         _repo = knowledgeRepository;
+        _vector = vectorStorage;
     }
 
     [HttpGet("/api/knowledges")]
@@ -28,6 +33,12 @@ public class KnowledgeController : ControllerBase
             skip: skip,                             // 건너뛸 항목 수
             limit: limit                            // 반환할 항목 수
         );
+
+        foreach (var knowledge in knowledges)
+        {
+            var status = await _vector.GetKnowledgeStatusAsync(knowledge);
+            Console.WriteLine($"Knowledge {knowledge.ID} has {status.Count()} documents.");
+        }
 
         return Ok(knowledges);
     }
@@ -46,17 +57,24 @@ public class KnowledgeController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Knowledge>> PostKnowledgeAsync(
         [FromHeader(Name = Constants.UserHeader)] Guid userId,
-        [FromBody] Knowledge knowledge)
+        [FromBody] Knowledge? knowledge)
     {
+        knowledge ??= new Knowledge();
         knowledge.UserID = userId;
         knowledge = await _repo.AddAsync(knowledge);
-        return CreatedAtAction(nameof(GetKnowledgeAsync), new { knowledgeId = knowledge.ID }, knowledge);
+        return Ok(knowledge);
     }
 
     [HttpPut]
     public async Task<ActionResult<Knowledge>> PutKnowledgeAsync([FromBody] Knowledge knowledge)
     {
-        knowledge = await _repo.UpdateAsync(knowledge);
+        var oldKnowledge = await _repo.GetByIdAsync(knowledge.ID, true);
+        if (oldKnowledge == null)
+        {
+            return NotFound();
+        }
+        var newKnowledge = await _repo.UpdateAsync(knowledge);
+        await _vector.ReMemorizeKnowledgeAsync(oldKnowledge, newKnowledge);
         return Ok(knowledge);
     }
 
@@ -66,6 +84,7 @@ public class KnowledgeController : ControllerBase
         try
         {
             await _repo.DeleteAsync(knowledgeId);
+            await _vector.DeleteKnowledgeAsync(knowledgeId);
             return Ok();
         }
         catch (KeyNotFoundException ex)

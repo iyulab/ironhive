@@ -26,7 +26,7 @@ public class FileController : ControllerBase
         }
         catch (NotSupportedException)
         {
-            return StatusCode(415, "지원되지 않는 파일 타입입니다.");
+            return StatusCode(415, $"{filename}은 지원되지 않는 파일 타입입니다.");
         }
         catch (Exception ex)
         {

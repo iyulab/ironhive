@@ -84,6 +84,12 @@ public class AppRepository<T> where T : BaseEntity
 
     public async Task<T> AddAsync(T entity)
     {
+        // 동일한 ID 존재 확인
+        while (await _dbSet.AnyAsync(e => e.ID == entity.ID))
+        {
+            entity.ID = Guid.NewGuid();
+        }
+
         await _dbSet.AddAsync(entity);
         await _context.SaveChangesAsync();
         return entity;

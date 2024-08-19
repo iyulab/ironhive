@@ -15,11 +15,11 @@ public class Assistant : UserEntity
 
     // 이 속성은 DB에 직접 매핑되지 않음
     [NotMapped]
-    public ChatHistory? ChatHistory
+    public ChatHistory ChatHistory
     {
         get => string.IsNullOrEmpty(ChatHistoryJson)
             ? new ChatHistory()
-            : JsonSerializer.Deserialize<ChatHistory>(ChatHistoryJson);
+            : JsonSerializer.Deserialize<ChatHistory>(ChatHistoryJson) ?? [];
         set => ChatHistoryJson = JsonSerializer.Serialize(value);
     }
 }

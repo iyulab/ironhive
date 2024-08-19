@@ -52,7 +52,7 @@ export function Chat() {
   }
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && e.ctrlKey) {
+    if (e.key === 'Enter' && e.shiftKey === false && chatDisabled === false) {
       sendMessage();
     }
   }
@@ -103,7 +103,7 @@ export function Chat() {
       </div>
       <div className={styles.input}>
         <Input.TextArea
-          placeholder="Press Ctrl + Enter to send message"
+          placeholder="Shift + Enter to add a new line"
           variant='borderless'
           autoSize={{ minRows: 3, maxRows: 10 }}
           value={userMessage}
@@ -123,13 +123,13 @@ export function Chat() {
             </Tooltip>
           </Space.Compact>
           <Space.Compact>
-            <Tooltip title="clear history">
+            <Tooltip title="Clear Chat">
               <Button icon={<ClearOutlined />} 
                 onClick={clearHistory} />
             </Tooltip>
-            <Tooltip title="send message">
+            <Tooltip title="Send Message">
               <Button icon={<SendOutlined />}
-                disabled={chatDisabled}
+                loading={chatDisabled}
                 onClick={sendMessage} />
             </Tooltip>
           </Space.Compact>

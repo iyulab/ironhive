@@ -1,4 +1,5 @@
 import { API } from "./API";
+import { Storage } from "./Storage";
 import { Assistant, User } from "@/models/Model";
 
 export class App {
@@ -7,6 +8,7 @@ export class App {
 
   public static async initAsync() {
     this.user = await API.getUserAsync();
+    Storage.userId = this.user.id;
     this.assistant = await API.getAssistantAsync();
   }
   

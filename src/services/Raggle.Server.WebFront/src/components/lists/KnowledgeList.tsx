@@ -1,60 +1,65 @@
 import { useEffect, useState } from "react";
-import { Button, Empty, List, Modal } from "antd";
+import { Button, Empty, Input, List, Modal, Space } from "antd";
 import { BookOutlined } from "@ant-design/icons";
 import VirtualList from 'rc-virtual-list';
 
 import { Knowledge } from "@/models/Model";
 import { API } from "@/services/API";
 import { KnowledgeForm } from "../forms/KnowledgeForm";
-import { Storage } from "@/services/Storage";
-
-const createNewKnowledge = () => {
-  return { id: Storage.getRandomUUID(), name: 'unknown', files: [] };
-}
+import { App } from "@/services/App";
 
 export function KnowledgeList() {
   const [openModal, setOpenModal] = useState(false);
   const [knowledges, setKnowledges] = useState<Knowledge[]>([]);
-  const [knowledge, setKnowledge] = useState<Knowledge | undefined>(createNewKnowledge());
+  const [knowledge, setKnowledge] = useState<Knowledge | undefined>();
   
   const ContainerHeight = 500;
-
-  const appendData = () => {
-
-  }
-
   const onScroll = (e: React.UIEvent<HTMLElement, UIEvent>) => {
-    if (Math.abs(e.currentTarget.scrollHeight - e.currentTarget.scrollTop - ContainerHeight) <= 1) {
-      appendData();
+    const target = e.currentTarget;
+    if (Math.abs(target.scrollHeight - target.scrollTop - ContainerHeight) <= 1) {
+      console.log('scroll to bottom');
     }
   };
-
-  const updateKnowledge = async (knowledge?: Knowledge) => {
-    setKnowledge(knowledge || createNewKnowledge());
-    setOpenModal(true);
-  }
-
-  const onSubmit = async (knowledge: Knowledge) => {
-    if (knowledge.createdAt) {
-      await API.updateKnowledgeAsync(knowledge);
-    } else {
-      await API.createKnowledgeAsync(knowledge);
-    }
-    fetchKnowledges();
-    setKnowledge(undefined);
-    setOpenModal(false);
-  }
-
-  const onCancel = () => {
-    console.log(knowledge);
-    setKnowledge(undefined);
-    setOpenModal(false);
-  }
 
   const fetchKnowledges = async () => {
     const knowledges = await API.getKnowledgesAsync(0, 10);
     setKnowledges(knowledges);
-  } 
+  }
+
+  const editKnowledge = async (knowledge: Knowledge) => {
+    setKnowledge(knowledge);
+    setOpenModal(true);
+  }
+
+  const createKnowledge = async () => {
+    const newKnowledge = await API.createKnowledgeAsync();
+    App.assistant.knowledges.push(newKnowledge.id);
+    App.assistant = await API.updateAssistantAsync(App.assistant);
+    setKnowledge(newKnowledge);
+    setOpenModal(true);
+  }
+
+  const updateKnowledge = async (knowledge: Knowledge) => {
+    await API.updateKnowledgeAsync(knowledge);
+    setOpenModal(false);
+    setKnowledge(undefined);
+    fetchKnowledges();
+  }
+
+  const deleteKnowledge = async (knowledgeId: string) => {
+    await API.deleteKnowledgeAsync(knowledgeId);
+    App.assistant.knowledges = App.assistant.knowledges.filter(id => id !== knowledgeId);
+    App.assistant = await API.updateAssistantAsync(App.assistant);
+    fetchKnowledges();
+  }
+
+  const cancelKnowledge = async () => {
+    if (knowledge && !knowledge.updatedAt) {
+      await API.deleteKnowledgeAsync(knowledge.id);
+    }
+    setOpenModal(false);
+    setKnowledge(undefined);
+  }
 
   useEffect(() => {
     fetchKnowledges();
@@ -62,49 +67,62 @@ export function KnowledgeList() {
   
   return (
     <>
-      <Modal
-        title={knowledge ? 'Update Knowledge' : 'Create Knowledge'}
-        open={openModal}
-        onCancel={onCancel}
-        footer={null}
-      >
-        {<KnowledgeForm 
-          knowledge={knowledge} 
-          onSubmit={updateKnowledge} 
-          onCancel={onCancel} 
-        />}
-      </Modal>
+      {knowledge && (
+        <Modal
+          title={knowledge?.createdAt ? 'Update Knowledge' : 'Create Knowledge'}
+          open={openModal}
+          closable={false}
+          footer={null}
+        >
+          <KnowledgeForm
+            knowledge={knowledge}
+            onSubmit={updateKnowledge}
+            onCancel={cancelKnowledge}
+          />
+        </Modal>
+      )}
   
       {knowledges.length > 0 ? (
-        <List>
-          <VirtualList
-            data={knowledges}
-            height={ContainerHeight}
-            itemHeight={47}
-            itemKey="id"
-            onScroll={onScroll}
-          >
-            {(item) => (
-              <List.Item key={item.id} onClick={() => updateKnowledge(item)}>
-                <List.Item.Meta
-                  avatar={<BookOutlined />}
-                  title={item.name}
-                  description={item.description}
-                />
-                <Button type="primary" onClick={() => console.log('click button')}>
-                  Connect
-                </Button>
-              </List.Item>
-            )}
-          </VirtualList>
-        </List>
+        <>
+          <Space>
+            <Input.Search placeholder="Search knowledge" />
+            <Button type="primary" onClick={createKnowledge}>
+              Create New
+            </Button>
+          </Space>
+          <List>
+            <VirtualList
+              data={knowledges}
+              height={ContainerHeight}
+              itemHeight={47}
+              itemKey="id"
+              onScroll={onScroll}
+            >
+              {(item) => (
+                <List.Item key={item.id}>
+                  <List.Item.Meta
+                    avatar={<BookOutlined />}
+                    title={item.name}
+                    description={item.description}
+                  />
+                  <Button type="link" onClick={() => editKnowledge(item)}>
+                    Edit
+                  </Button>
+                  <Button type="link" onClick={() => deleteKnowledge(item.id)}>
+                    Delete
+                  </Button>
+                </List.Item>
+              )}
+            </VirtualList>
+          </List>
+        </>
       ) : (
         <Empty
           image="https://gw.alipayobjects.com/zos/antfincdn/ZHrcdLPrvN/empty.svg"
           imageStyle={{ height: 100 }}
           description="No knowledges found, create one!"
         >
-          <Button type="primary" onClick={() => updateKnowledge()}>
+          <Button type="primary" onClick={createKnowledge}>
             Create New
           </Button>
         </Empty>

@@ -14,8 +14,13 @@ if (root) {
     ? React.createElement(React.StrictMode, null, routeDOM)
     : routeDOM;
 
-  await App.initAsync();
-  rootDOM.render(app);
+  try {
+    await App.initAsync();
+    rootDOM.render(app);
+  } catch (error: any) {
+    console.error(error);
+    root.innerHTML = 'Failed to initialize the app';
+  }
 } else {
   document.body.innerHTML = 'No root element found';
 }

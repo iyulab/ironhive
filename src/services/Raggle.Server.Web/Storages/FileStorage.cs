@@ -23,7 +23,7 @@ public class FileStorage
         await stream.CopyToAsync(fileStream);
     }
 
-    public Stream Download(string index, string fileName)
+    public Stream GetStream(string index, string fileName)
     {
         var paths = index.Split('/');
         var filePath = Path.Combine(_baseDirectory, Path.Combine(paths), fileName);
@@ -32,7 +32,9 @@ public class FileStorage
             throw new FileNotFoundException("File not found.");
         }
 
-        return new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        var bytes = File.ReadAllBytes(filePath);
+        var data = new BinaryData(bytes);
+        return data.ToStream();
     }
 
     public IEnumerable<UploadedFile> GetUploadedFiles(string index)
@@ -49,7 +51,7 @@ public class FileStorage
         foreach (var filePath in files)
         {
             var fileName = Path.GetFileName(filePath);
-            var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            var fileStream = GetStream(index, fileName);
             uploadedFiles.Add(new UploadedFile { FileName = fileName, Content = fileStream });
         }
 
@@ -60,24 +62,20 @@ public class FileStorage
     {
         var paths = index.Split('/');
         var filePath = Path.Combine(_baseDirectory, Path.Combine(paths), fileName);
-        if (!File.Exists(filePath))
+        if (File.Exists(filePath))
         {
-            throw new FileNotFoundException("File not found.");
+            File.Delete(filePath);
         }
-
-        File.Delete(filePath);
     }
 
     public void DeleteDirectory(string index)
     {
         var paths = index.Split('/');
         var directoryPath = Path.Combine(_baseDirectory, Path.Combine(paths));
-        if (!Directory.Exists(directoryPath))
+        if (Directory.Exists(directoryPath))
         {
-            throw new DirectoryNotFoundException("Directory not found.");
+            Directory.Delete(directoryPath, true);
         }
-
-        Directory.Delete(directoryPath, true);
     }
 }
 

@@ -119,7 +119,11 @@ public class UserAssistantService
             Kernel = kernel,
             ExecutionSettings = new OpenAIPromptExecutionSettings
             {
-                ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions
+                ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions,
+                TopP = 0.9,
+                Temperature = 1.0,
+                FrequencyPenalty = 0.0,
+                PresencePenalty = 0.0,
             }
         };
     }

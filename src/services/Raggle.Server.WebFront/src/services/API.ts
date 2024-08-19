@@ -17,6 +17,12 @@ export class API {
     return await this.putAsync<Assistant>(`assistant`, assistant);
   }
 
+  public static async checkSupportFileAsync(filename: string) {
+    const request = this.createRequest();
+    const encodedFilename = encodeURIComponent(filename);
+    await request.get(`file/check?filename=${encodedFilename}`);
+  }
+
   public static async getKnowledgesAsync(skip: number, limit: number) {
     return await this.getAsync<Knowledge[]>(`knowledges?skip=${skip}&limit=${limit}`);
   }
@@ -25,7 +31,7 @@ export class API {
     return await this.getAsync<Knowledge>(`knowledge/${id}`);
   }
 
-  public static async createKnowledgeAsync(knowledge: Knowledge) {
+  public static async createKnowledgeAsync(knowledge?: Knowledge) {
     return await this.postAsync<Knowledge>(`knowledge`, knowledge);
   }
 
@@ -63,7 +69,7 @@ export class API {
     return response.data;
   }
 
-  private static async postAsync<T>(url: string, data: T) {
+  private static async postAsync<T>(url: string, data?: T) {
     const request = this.createRequest();
     const response = await request.post<T>(url, data);
     return response.data;
@@ -86,8 +92,7 @@ export class API {
       baseURL: `${Storage.host}/api`,
       timeout: 10_000,
       headers: {
-        'User-ID': Storage.userId,
-        'Accept-Language': navigator.language,
+        'User-ID': Storage.userId
       }
     });
   }

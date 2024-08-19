@@ -7,12 +7,13 @@ export class Storage {
     return this._host;
   }
 
-  public static get userId(): string {
-    if (!this._userId) {
-      this._userId = this.getRandomUUID();
-      localStorage.setItem(this.userIdKey, this._userId);
-    }
+  public static get userId(): string | null {
     return this._userId;
+  }
+
+  public static set userId(value: string) {
+    localStorage.setItem(this.userIdKey, value);
+    this._userId = value;
   }
 
   public static getRandomUUID(): string {
