@@ -1,0 +1,6 @@
+[submodule "externels/kernel-memory"]
+	path = externels/kernel-memory
+	url = https://github.com/microsoft/kernel-memory.git
+[submodule "externels/llama.cpp"]
+	path = externels/llama.cpp
+	url = https://github.com/ggerganov/llama.cpp.git
