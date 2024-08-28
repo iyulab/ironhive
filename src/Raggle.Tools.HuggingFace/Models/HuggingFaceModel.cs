@@ -1,6 +1,6 @@
 ﻿using System.Text.Json;
 
-namespace Raggle.Tools.HuggingFace;
+namespace Raggle.Tools.ModelSearch.Models;
 
 /// <summary>
 /// Represents a HuggingFace model.
@@ -38,9 +38,11 @@ public class HuggingFaceModel
     public DateTime LastModified { get; set; }
 
     /// <summary>
-    /// the siblings of the model.
+    /// Represents the collection of files associated with the model,
+    /// such as configuration files, tokenizer files, and other necessary components
+    /// that are stored in the HuggingFace repository.
     /// </summary>
-    public JsonElement[] Siblings { get; set; } = Array.Empty<JsonElement>();
+    public IEnumerable<JsonElement> Siblings { get; set; } = [];
 
     /// <summary>
     /// Get the file paths for the model with the specified format.

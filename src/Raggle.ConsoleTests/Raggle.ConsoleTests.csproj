@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\tools\Raggle.Tools.HuggingFace\Raggle.Tools.HuggingFace.csproj" />
+    <ProjectReference Include="..\Raggle.Tools.HuggingFace\Raggle.Tools.ModelSearch.csproj" />
   </ItemGroup>
 
 </Project>

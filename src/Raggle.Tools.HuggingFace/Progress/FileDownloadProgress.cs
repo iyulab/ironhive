@@ -1,5 +1,8 @@
-﻿namespace Raggle.Tools.HuggingFace;
+﻿namespace Raggle.Tools.ModelSearch.Progress;
 
+/// <summary>
+/// information about the progress of a file download.
+/// </summary>
 public class FileDownloadProgress
 {
     /// <summary>
