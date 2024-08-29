@@ -37,20 +37,12 @@ rootCommand.SetHandler(async (path, init) =>
     }
     
     var settings = builder.GetSettings();
-    if (settings is null)
-    {
-        settings = new SetupUI().Setup(path);
-        builder.SaveSettings(settings);
-    }
 
-    var raggle = builder.BuildRaggleService(settings);
-    builder.Dispose();
-
-    var fs = new FileSystem(raggle);
+    var fs = new FileSystem();
     await fs.Initialize(settings.WorkingDirectory);
     fs.Watch(settings.WorkingDirectory);
 
-    var chat = new ChatUI(raggle);
+    var chat = new ChatUI();
     await chat.StartAsync();
 
 }, pathOption, initOption);

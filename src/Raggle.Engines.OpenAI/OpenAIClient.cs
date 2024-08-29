@@ -1,14 +1,15 @@
-﻿using Raggle.Tools.ModelSearch.Models;
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
 using System.Text.Json;
 
-namespace Raggle.Tools.ModelSearch.Clients;
+namespace Raggle.Engines.OpenAI;
 
 /// <summary>
 /// a search client for interacting with the OpenAI API.
 /// </summary>
 public class OpenAIClient
 {
+    private const string OPENAI_HOST = "api.openai.com";
+    private const string OPENAI_GET_MODELS_PATH = "/v1/engines";
     private readonly HttpClient _client;
 
     /// <summary>
@@ -48,8 +49,8 @@ public class OpenAIClient
         var requestUri = new UriBuilder
         {
             Scheme = "https",
-            Host = Constants.OPENAI_HOST,
-            Path = Constants.OPENAI_GET_MODELS_PATH
+            Host = OPENAI_HOST,
+            Path = OPENAI_GET_MODELS_PATH
         }.Uri;
 
         var jsonDocument = await _client.GetFromJsonAsync<JsonDocument>(requestUri, cancellationToken);
@@ -78,7 +79,7 @@ public class OpenAIClient
 
         // Apply filters and limit the number of models returned
         models = models?
-            .Where(m => filters == null || !filters.Any() || filters.Contains(m.Type))
+            .Where(m => filters == null || filters.Length == 0 || filters.Contains(m.Type))
             .GroupBy(m => m.Type)
             .SelectMany(group => group.OrderByDescending(m => m.CreatedAt))
             .Take(limit > 0 ? limit : models.Length)

@@ -1,6 +1,6 @@
 ﻿using LLama.Native;
 
-namespace Raggle.Extensions.LLamaSharp;
+namespace Raggle.Engines.LLamaSharp;
 
 public static class LLamaSharpNative
 {

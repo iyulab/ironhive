@@ -1,6 +1,4 @@
-﻿using Raggle.Tools.ModelSearch.Models;
-
-namespace Raggle.Tools.ModelSearch.Clients;
+﻿namespace Raggle.Engines.Anthropic;
 
 /// <summary>
 /// a search client for interacting with Anthropic models.

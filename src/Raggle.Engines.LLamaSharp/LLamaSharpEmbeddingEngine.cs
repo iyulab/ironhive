@@ -1,7 +1,7 @@
 ﻿using LLama.Common;
 using LLama;
 
-namespace Raggle.Extensions.LLamaSharp;
+namespace Raggle.Engines.LLamaSharp;
 
 public class LLamaSharpEmbeddingEngine
 {

@@ -6,7 +6,7 @@ using LLamaSharp.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel;
 using ChatHistory = Microsoft.SemanticKernel.ChatCompletion.ChatHistory;
 
-namespace Raggle.Extensions.LLamaSharp;
+namespace Raggle.Engines.LLamaSharp;
 
 public class LLamaSharpChatEngine : IDisposable
 {

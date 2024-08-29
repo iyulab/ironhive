@@ -1,15 +1,12 @@
 ﻿using Spectre.Console;
-using Raggle.Abstractions;
 
 namespace Raggle.Console.UI;
 
 public class ChatUI
 {
-    private readonly IRaggleService _raggle;
-
-    public ChatUI(IRaggleService raggleService)
+    public ChatUI()
     {
-        _raggle = raggleService;
+        
     }
 
     public async Task StartAsync()
@@ -26,16 +23,11 @@ public class ChatUI
             }
             if (IsEqual(prompt, Constants.CLEAR_COMMAND))
             {
-                _raggle.ClearHistory();
                 AnsiConsole.Clear();
                 continue;
             }
 
             AnsiConsole.Markup($"[bold {Constants.BOT_COLOR}]{Constants.BOT_NAME} >[/] ");
-            await foreach (var stream in _raggle.AskStreamingAsync(prompt))
-            {
-                AnsiConsole.Write(stream ?? "");
-            }
             AnsiConsole.WriteLine();
         }
     }

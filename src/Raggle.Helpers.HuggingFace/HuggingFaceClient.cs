@@ -2,16 +2,16 @@
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Web;
-using Raggle.Tools.ModelSearch.Models;
-using Raggle.Tools.ModelSearch.Progress;
 
-namespace Raggle.Tools.ModelSearch.Clients;
+namespace Raggle.Helpers.HuggingFace;
 
 /// <summary>
 /// a search and download client for interacting with the Hugging Face API.
 /// </summary>
 public class HuggingFaceClient
 {
+    private const string HF_HOST = "huggingface.co";
+    private const string HF_GET_MODELS_PATH = "/api/models";
     private readonly HttpClient _client;
 
     /// <summary>
@@ -72,8 +72,8 @@ public class HuggingFaceClient
         var requestUri = new UriBuilder
         {
             Scheme = "https",
-            Host = Constants.HF_HOST,
-            Path = Constants.HF_GET_MODELS_PATH,
+            Host = HF_HOST,
+            Path = HF_GET_MODELS_PATH,
             Query = query.ToString()
         }.ToString();
 
@@ -103,7 +103,7 @@ public class HuggingFaceClient
         var requestUri = new UriBuilder
         {
             Scheme = "https",
-            Host = Constants.HF_HOST,
+            Host = HF_HOST,
             Path = $"/{repoId}/resolve/main/{filePath}",
             Query = "download=true"
         }.ToString();
@@ -186,8 +186,8 @@ public class HuggingFaceClient
         var requestUri = new UriBuilder
         {
             Scheme = "https",
-            Host = Constants.HF_HOST,            
-            Path = $"{Constants.HF_GET_MODELS_PATH}/{repoId}",
+            Host = HF_HOST,
+            Path = $"{HF_GET_MODELS_PATH}/{repoId}",
         }.ToString();
 
         var response = await _client.GetFromJsonAsync<HuggingFaceModel>(requestUri, cancellationToken);

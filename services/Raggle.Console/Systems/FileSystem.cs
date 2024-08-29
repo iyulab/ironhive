@@ -1,5 +1,4 @@
 ﻿using Spectre.Console;
-using Raggle.Abstractions;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -8,11 +7,9 @@ namespace Raggle.Console.Systems;
 public class FileSystem
 {
     private readonly FileSystemWatcher _watcher = new();
-    private readonly IRaggleService _raggle;
 
-    public FileSystem(IRaggleService raggleService)
+    public FileSystem()
     {
-        _raggle = raggleService;
     }
 
     public async Task Initialize(string baseDir)
@@ -103,7 +100,6 @@ public class FileSystem
     private async Task MemorizeFileAsync(string path)
     {
         var documentId = GenerateDocumentId(path);
-        await _raggle.MemorizeDocumentAsync(documentId, path);
     }
 
     private async Task MemorizeFilesAsync(IEnumerable<string> paths)
@@ -114,7 +110,6 @@ public class FileSystem
     private async Task UnMemorizeFileAsync(string path)
     {
         var documentId = GenerateDocumentId(path);
-        await _raggle.UnMemorizeAsync(documentId);
     }
 
     private async Task UnMemorizeFilesAsync(IEnumerable<string> paths)

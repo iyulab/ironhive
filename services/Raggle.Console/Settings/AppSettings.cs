@@ -1,7 +1,4 @@
-﻿using Raggle.Core.Options.Platforms;
-using Raggle.Core.Options.Prompts;
-using Raggle.Core.Options.VectorDB;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 
 namespace Raggle.Console.Settings;
 
@@ -22,7 +19,6 @@ public enum PlatformTypes
 public class PlatformOptions
 {
     public PlatformTypes Type { get; set; } = PlatformTypes.OpenAI;
-    public OpenAIOption OpenAI { get; set; } = new();
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter))]
@@ -34,7 +30,6 @@ public enum VectorDBTypes
 public class VectorDBOptions
 {
     public VectorDBTypes Type { get; set; } = VectorDBTypes.File;
-    public FileVectorDBOption FileVectorDB { get; set; } = new();
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter))]
@@ -46,5 +41,4 @@ public enum PromptTypes
 public class PromptOptions
 {
     public PromptTypes Type { get; set; } = PromptTypes.Simple;
-    public SimplePromptOption SimplePrompt { get; set; } = new();
 }

@@ -1,4 +1,4 @@
-﻿namespace Raggle.Tools.ModelSearch.Progress;
+﻿namespace Raggle.Helpers.HuggingFace;
 
 public class RepoDownloadProgress
 {

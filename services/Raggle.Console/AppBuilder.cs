@@ -1,6 +1,4 @@
-﻿using Raggle.Abstractions;
-using Raggle.Console.Settings;
-using Raggle.Core;
+﻿using Raggle.Console.Settings;
 using System.Text.Json;
 
 namespace Raggle.Console;
@@ -21,34 +19,6 @@ public class AppBuilder : IDisposable
     public void Dispose()
     {
         GC.SuppressFinalize(this);
-    }
-
-    public IRaggleService BuildRaggleService(AppSettings settings)
-    {
-        var builder = new RaggleServiceBuilder();
-        var platformType = settings.Platforms.Type;
-        if (platformType == PlatformTypes.OpenAI)
-        {
-            builder.WithOpenAI(settings.Platforms.OpenAI);
-        }
-
-        var vectorType = settings.VectorDB.Type;
-        if (vectorType == VectorDBTypes.File)
-        {
-            var vectorOption = settings.VectorDB.FileVectorDB;
-            vectorOption.ChunkDirectory = Path.Combine(_configDir, Constants.FILES_DIRECTORY);
-            vectorOption.VectorDirectory = Path.Combine(_configDir, Constants.VECTOR_DIRECTORY);
-            builder.WithFileVectorDB(vectorOption);
-        }
-
-        var promptType = settings.Prompts.Type;
-        if (promptType == PromptTypes.Simple)
-        {
-            var promptOption = settings.Prompts.SimplePrompt;
-            builder.WithSimplePrompt(promptOption);
-        }
-
-        return builder.Build();
     }
 
     public void SaveSettings(AppSettings settings)

@@ -1,6 +1,4 @@
-﻿
-
-using Microsoft.KernelMemory;
+﻿using Microsoft.KernelMemory;
 
 namespace Raggle.Abstractions;
 

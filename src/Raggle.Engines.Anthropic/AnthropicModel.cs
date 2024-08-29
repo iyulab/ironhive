@@ -1,4 +1,4 @@
-﻿namespace Raggle.Tools.ModelSearch.Models;
+﻿namespace Raggle.Engines.Anthropic;
 
 /// <summary>
 /// Represents a Anthropic model.

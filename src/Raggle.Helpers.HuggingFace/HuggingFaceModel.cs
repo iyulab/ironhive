@@ -1,6 +1,6 @@
 ﻿using System.Text.Json;
 
-namespace Raggle.Tools.ModelSearch.Models;
+namespace Raggle.Helpers.HuggingFace;
 
 /// <summary>
 /// Represents a HuggingFace model.
