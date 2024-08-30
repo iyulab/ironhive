@@ -7,4 +7,11 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Raggle.Engines.Anthropic\Raggle.Engines.Anthropic.csproj" />
+    <ProjectReference Include="..\Raggle.Engines.LLamaSharp\Raggle.Engines.LLamaSharp.csproj" />
+    <ProjectReference Include="..\Raggle.Engines.OpenAI\Raggle.Engines.OpenAI.csproj" />
+    <ProjectReference Include="..\Raggle.Helpers.HuggingFace\Raggle.Helpers.HuggingFace.csproj" />
+  </ItemGroup>
+
 </Project>

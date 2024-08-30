@@ -10,8 +10,6 @@ namespace Raggle.Helpers.HuggingFace;
 /// </summary>
 public class HuggingFaceClient
 {
-    private const string HF_HOST = "huggingface.co";
-    private const string HF_GET_MODELS_PATH = "/api/models";
     private readonly HttpClient _client;
 
     /// <summary>
@@ -45,35 +43,25 @@ public class HuggingFaceClient
     /// <returns>
     /// The task result contains an array of <see cref="HuggingFaceModel"/> objects
     /// </returns>
-    public async Task<IEnumerable<HuggingFaceModel>> GetModelsAsync(
+    public async Task<IEnumerable<HuggingFaceModel>> SearchModelsAsync(
         string? search = null,
         string[]? filters = null,
         int limit = 5,
         CancellationToken cancellationToken = default)
     {
-        var query = HttpUtility.ParseQueryString(string.Empty);
-        query["sort"] = "downloads";
-        query["direction"] = "-1";
-        query["full"] = "true";
-        query["config"] = "false";
-        if (!string.IsNullOrWhiteSpace(search))
-        {
+        var query = HttpUtility.ParseQueryString(HuggingFaceConstants.GetModelsDefaultQuery);
+        if (!string.IsNullOrWhiteSpace(search))        
             query["search"] = search;
-        }
         if (filters != null && filters.Length > 0)
-        {
             query["filter"] = string.Join(",", filters.Select(filter => filter.Trim()));
-        }
         if (limit > 0)
-        {
             query["limit"] = limit.ToString();
-        }
 
         var requestUri = new UriBuilder
         {
             Scheme = "https",
-            Host = HF_HOST,
-            Path = HF_GET_MODELS_PATH,
+            Host = HuggingFaceConstants.Host,
+            Path = HuggingFaceConstants.GetModelsPath,
             Query = query.ToString()
         }.ToString();
 
@@ -94,18 +82,12 @@ public class HuggingFaceClient
         string outputPath,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        if (!Path.HasExtension(outputPath))
-        {
-            outputPath = Path.Combine(outputPath, Path.GetFileName(filePath));
-        }
-        EnsureDirectory(outputPath);
-
         var requestUri = new UriBuilder
         {
             Scheme = "https",
-            Host = HF_HOST,
-            Path = $"/{repoId}/resolve/main/{filePath}",
-            Query = "download=true"
+            Host = HuggingFaceConstants.Host,
+            Path = string.Format(HuggingFaceConstants.GetFilePath, repoId, filePath),
+            Query = HuggingFaceConstants.GetFileDefaultQuery
         }.ToString();
 
         using var response = await _client.GetAsync(requestUri, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -113,6 +95,12 @@ public class HuggingFaceClient
 
         var totalBytes = response.Content.Headers.ContentLength;
         var hasTotalBytes = totalBytes != null;
+
+        if (!Path.HasExtension(outputPath))
+        {
+            outputPath = Path.Combine(outputPath, Path.GetFileName(filePath));
+        }
+        EnsureDirectory(outputPath);
 
         using var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken);
         await using var fileStream = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
@@ -186,8 +174,8 @@ public class HuggingFaceClient
         var requestUri = new UriBuilder
         {
             Scheme = "https",
-            Host = HF_HOST,
-            Path = $"{HF_GET_MODELS_PATH}/{repoId}",
+            Host = HuggingFaceConstants.Host,
+            Path = string.Format(HuggingFaceConstants.GetModelPath, repoId)
         }.ToString();
 
         var response = await _client.GetFromJsonAsync<HuggingFaceModel>(requestUri, cancellationToken);
@@ -242,7 +230,8 @@ public class HuggingFaceClient
         var client = new HttpClient();
         if (!string.IsNullOrWhiteSpace(token) && token.StartsWith("hf_"))
         {
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+            client.DefaultRequestHeaders.Add(HuggingFaceConstants.AuthHeaderName, 
+                string.Format(HuggingFaceConstants.AuthHeaderValue, token));
         }
         return client;
     }

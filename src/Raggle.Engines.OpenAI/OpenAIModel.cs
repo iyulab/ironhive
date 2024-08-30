@@ -1,4 +1,6 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace Raggle.Engines.OpenAI;
 
@@ -18,7 +20,7 @@ public enum OpenAIModelType
     /// <summary>
     /// Represents the Dalle (Text-to-Image) model.
     /// </summary>
-    Dalle,
+    Dall_e,
 
     /// <summary>
     /// Represents the TTS (Text-to-Speech) model.
@@ -26,17 +28,17 @@ public enum OpenAIModelType
     TTS,
 
     /// <summary>
-    /// Represents the Whisper model.
+    /// Represents the Whisper (Audio-to-Text) model.
     /// </summary>
     Whisper,
 
     /// <summary>
-    /// Represents the GPTBase model.
+    /// Represents the GPT Base (legacy text-generation) model.
     /// </summary>
-    GPTBase,
+    GPT_Base,
 
     /// <summary>
-    /// Represents an unknown model type.
+    /// Represents an unknown (not specified this library) model type.
     /// </summary>
     Unknown
 }
@@ -47,17 +49,72 @@ public enum OpenAIModelType
 public class OpenAIModel
 {
     /// <summary>
-    /// the model type.
+    /// The model type.
     /// </summary>
-    public OpenAIModelType Type { get; set; }
+    public OpenAIModelType Type => GetModelType(ID);
 
     /// <summary>
-    /// the model ID.
+    /// The model ID.
     /// </summary>
-    public string ModelId { get; set; } = string.Empty;
+    [JsonPropertyName("id")]
+    public string ID { get; set; } = string.Empty;
 
     /// <summary>
-    /// the creation date and time of the model.
+    /// The model owner.
     /// </summary>
-    public DateTime CreatedAt { get; set; }
+    [JsonPropertyName("owned_by")]
+    public string OwnedBy { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The creation date and time of the model.
+    /// </summary>
+    [JsonPropertyName("created")]
+    [JsonConverter(typeof(UnixTimeToDateTimeConverter))]
+    public DateTime Created { get; set; }
+
+    private static readonly Dictionary<string, OpenAIModelType> ModelTypeMappings = new()
+    {
+        { "gpt", OpenAIModelType.GPT },
+        { "embedding", OpenAIModelType.Embeddings },
+        { "dall-e", OpenAIModelType.Dall_e },
+        { "whisper", OpenAIModelType.Whisper },
+        { "tts", OpenAIModelType.TTS },
+        { "babbage", OpenAIModelType.GPT_Base },
+        { "davinci", OpenAIModelType.GPT_Base }
+    };
+
+    /// <summary>
+    /// Maps the model ID to a specific model type.
+    /// </summary>
+    /// <param name="modelId">The model ID.</param>
+    /// <returns>The corresponding OpenAIModelType.</returns>
+    private static OpenAIModelType GetModelType(string modelId)
+    {
+        foreach (var mapping in ModelTypeMappings)
+        {
+            if (Regex.IsMatch(modelId, mapping.Key, RegexOptions.IgnoreCase))
+            {
+                return mapping.Value;
+            }
+        }
+        return OpenAIModelType.Unknown;
+    }
+}
+
+/// <summary>
+/// Converts Unix time (seconds since epoch) to DateTime.
+/// </summary>
+public class UnixTimeToDateTimeConverter : JsonConverter<DateTime>
+{
+    public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        var unixTime = reader.GetInt64();
+        return DateTimeOffset.FromUnixTimeSeconds(unixTime).DateTime;
+    }
+
+    public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
+    {
+        var unixTime = new DateTimeOffset(value).ToUnixTimeSeconds();
+        writer.WriteNumberValue(unixTime);
+    }
 }

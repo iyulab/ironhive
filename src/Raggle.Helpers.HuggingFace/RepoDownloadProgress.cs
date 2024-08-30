@@ -47,4 +47,21 @@ public class RepoDownloadProgress
             }
         }
     }
+
+    public override string ToString()
+    {
+        var completedCount = CompletedFiles.Count;
+        var totalCount = TotalFiles.Count();
+        var remainingCount = RemainingFiles.Count();
+        var progressPercentage = TotalProgress * 100;
+
+        var currentProgressDetails = string.Join("\n", CurrentProgresses.Select(p => $"[{p.UploadPath}: {p.FormattedProgress}]"));
+
+        return $"Total Progress: {progressPercentage:F2}%\n" +
+               $"Completed: {completedCount} / {totalCount}\n" +
+               $"Remaining: {remainingCount}\n" +
+               $"Is Completed: {IsCompleted}\n" +
+               $"Current Progresses:\n {currentProgressDetails}";
+    }
+
 }

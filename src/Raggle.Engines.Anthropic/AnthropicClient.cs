@@ -1,20 +1,28 @@
-﻿namespace Raggle.Engines.Anthropic;
+﻿using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
+namespace Raggle.Engines.Anthropic;
 
 /// <summary>
 /// a search client for interacting with Anthropic models.
 /// </summary>
 public class AnthropicClient
 {
-    private static readonly IEnumerable<AnthropicModel> PredefinedModels =
-    [
-        new() { ModelId = "claude-3-5-sonnet-20240620" },
-        new() { ModelId = "claude-3-opus-20240229" },
-        new() { ModelId = "claude-3-sonnet-20240229" },
-        new() { ModelId = "claude-3-haiku-20240307" },
-        new() { ModelId = "claude-2.1" },
-        new() { ModelId = "claude-2.0" },
-        new() { ModelId = "claude-instant-1.2" },
-    ];
+    private readonly HttpClient _client;
+    private readonly JsonSerializerOptions _options = new() 
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
+
+    /// <summary>
+    /// creates a new instance of the <see cref="AnthropicClient"/> class.
+    /// </summary>
+    public AnthropicClient(AnthropicConfig config)
+    {
+        _client = CreateHttpClient(config);
+    }
 
     /// <summary>
     /// Gets the predefined Anthropic models.
@@ -23,8 +31,51 @@ public class AnthropicClient
     /// it is important to manually update this method when new models are available or old models are deprecated.
     /// </summary>
     /// <returns>An enumerable collection of <see cref="AnthropicModel"/> objects.</returns>
-    public IEnumerable<AnthropicModel> GetModels()
+    public IEnumerable<AnthropicModel> GetChatModels()
     {
-        return PredefinedModels;
+        return AnthropicConstants.PredefinedChatModels;
+    }
+
+    public async Task<MessagesResponse> PostMessagesAsync(MessagesRequest request)
+    {
+        var requestUri = new UriBuilder
+        {
+            Scheme = "https",
+            Host = AnthropicConstants.Host,
+            Path = AnthropicConstants.PostMessagesPath,
+        }.ToString();
+        request.Stream = false;
+        var content = new StringContent(JsonSerializer.Serialize(request, _options), Encoding.UTF8, "application/json");
+        var response = await _client.PostAsync(requestUri, content);
+        response.EnsureSuccessStatusCode();
+        var message = await response.Content.ReadFromJsonAsync<MessagesResponse>() 
+            ?? throw new InvalidOperationException("Failed to deserialize response.");
+        return message;
+    }
+
+    public IAsyncEnumerable<MessagesResponse> PostChatStreamAsync(MessagesRequest request)
+    {
+        var requestUri = new UriBuilder
+        {
+            Host = AnthropicConstants.Host,
+            Path = AnthropicConstants.PostMessagesPath,
+        }.Uri;
+        request.Stream = true;
+        var content = new StringContent(JsonSerializer.Serialize(request), Encoding.UTF8, "application/json");
+        var response = _client.PostAsync(requestUri, content);
+        return JsonSerializer.DeserializeAsyncEnumerable<MessagesResponse>(response.Result.Content.ReadAsStream());
+    }
+
+    private static HttpClient CreateHttpClient(AnthropicConfig config)
+    {
+        if (string.IsNullOrEmpty(config.ApiKey))
+            throw new ArgumentException("API key is required.");
+        if (string.IsNullOrEmpty(config.Version))
+            throw new ArgumentException("Version is required.");
+
+        var client = new HttpClient();
+        client.DefaultRequestHeaders.Add(AnthropicConstants.AuthHeaderName, config.ApiKey);
+        client.DefaultRequestHeaders.Add(AnthropicConstants.VersionHeaderName, config.Version);
+        return client;
     }
 }

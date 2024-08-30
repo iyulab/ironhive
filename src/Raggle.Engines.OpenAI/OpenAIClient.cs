@@ -8,32 +8,27 @@ namespace Raggle.Engines.OpenAI;
 /// </summary>
 public class OpenAIClient
 {
-    private const string OPENAI_HOST = "api.openai.com";
-    private const string OPENAI_GET_MODELS_PATH = "/v1/engines";
     private readonly HttpClient _client;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="OpenAIClient"/> class.
     /// </summary>
-    /// <param name="token">
-    /// The OpenAI API token. This token is required to authenticate with the OpenAI API.
-    /// </param>
-    public OpenAIClient(string token)
+    public OpenAIClient(OpenAIConfig config)
     {
-        _client = CreateHttpClient(token);
+        _client = CreateHttpClient(config);
     }
 
-    private static readonly KeyValuePair<string, OpenAIModelType> DefaultModelType = new(string.Empty, OpenAIModelType.Unknown);
-    private static readonly Dictionary<string, OpenAIModelType> ModelTypeMapper = new()
-    {
-        { "gpt", OpenAIModelType.GPT },
-        { "embedding", OpenAIModelType.Embeddings },
-        { "dall-e", OpenAIModelType.Dalle },
-        { "whisper", OpenAIModelType.Whisper },
-        { "tts", OpenAIModelType.TTS },
-        { "babbage", OpenAIModelType.GPTBase },
-        { "davinci", OpenAIModelType.GPTBase }
-    };
+    /// <summary>
+    /// Gets the list of OpenAI gpt chat models.
+    /// </summary>
+    public async Task<IEnumerable<OpenAIModel>> GetChatModelsAsync() =>
+        await GetModelsAsync([ OpenAIModelType.GPT ]);
+
+    /// <summary>
+    /// Gets the list of OpenAI embedding models.
+    /// </summary>
+    public async Task<IEnumerable<OpenAIModel>> GetEmbeddingModelsAsync() =>
+        await GetModelsAsync([ OpenAIModelType.Embeddings ]);
 
     /// <summary>
     /// Gets the list of OpenAI models.
@@ -49,49 +44,41 @@ public class OpenAIClient
         var requestUri = new UriBuilder
         {
             Scheme = "https",
-            Host = OPENAI_HOST,
-            Path = OPENAI_GET_MODELS_PATH
-        }.Uri;
+            Host = OpenAIConstants.Host,
+            Path = OpenAIConstants.GetModelsPath
+        }.ToString();
 
         var jsonDocument = await _client.GetFromJsonAsync<JsonDocument>(requestUri, cancellationToken);
-
-        // Deserialize the JSON response into a list of OpenAIModel objects
-        var models = jsonDocument?.RootElement.GetProperty("data")
-                        .EnumerateArray()
-                        .Where(modelJson => modelJson.TryGetProperty("id", out var idProperty) && !string.IsNullOrEmpty(idProperty.GetString()))
-                        .Select(modelJson =>
-                        {
-                            var modelId = modelJson.GetProperty("id").GetString()!;
-                            var createdAtUnix = modelJson.GetProperty("created").GetInt64();
-                            var createdAt = DateTimeOffset.FromUnixTimeSeconds(createdAtUnix).UtcDateTime;
-                            var type = ModelTypeMapper
-                                            .FirstOrDefault(kvp => modelId.Contains(kvp.Key, StringComparison.OrdinalIgnoreCase), DefaultModelType)
-                                            .Value;
-
-                            return new OpenAIModel
-                            {
-                                Type = type,
-                                ModelId = modelId,
-                                CreatedAt = createdAt
-                            };
-                        })
-                        .ToArray();
+        var models = jsonDocument?.RootElement.GetProperty("data").Deserialize<IEnumerable<OpenAIModel>>();
 
         // Apply filters and limit the number of models returned
         models = models?
             .Where(m => filters == null || filters.Length == 0 || filters.Contains(m.Type))
             .GroupBy(m => m.Type)
-            .SelectMany(group => group.OrderByDescending(m => m.CreatedAt))
-            .Take(limit > 0 ? limit : models.Length)
+            .SelectMany(group => group.OrderByDescending(m => m.Created))
+            .Take(limit > 0 ? limit : models.Count())
             .ToArray();
 
         return models ?? [];
     }
 
-    private static HttpClient CreateHttpClient(string token)
+    public async Task<string> PostChatAsync()
     {
+        return string.Empty;
+    }
+
+    private static HttpClient CreateHttpClient(OpenAIConfig config)
+    {
+        if (string.IsNullOrWhiteSpace(config.ApiKey))
+            throw new ArgumentException("OpenAI API key is required.");
+
         var client = new HttpClient();
-        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+        client.DefaultRequestHeaders.Add(OpenAIConstants.AuthHeaderName,
+            string.Format(OpenAIConstants.AuthHeaderValue, config.ApiKey));
+        if (!string.IsNullOrWhiteSpace(config.Organization))
+            client.DefaultRequestHeaders.Add(OpenAIConstants.OrgHeaderName, config.Organization);
+        if (!string.IsNullOrWhiteSpace(config.Project))
+            client.DefaultRequestHeaders.Add(OpenAIConstants.ProjectHeaderName, config.Project);
         return client;
     }
 }
