@@ -1,4 +1,4 @@
-﻿namespace Raggle.Engines.OpenAI;
+﻿namespace Raggle.Engines.OpenAI.Configurations;
 
 /// <summary>
 /// Represents the configuration settings required to connect to the OpenAI API.

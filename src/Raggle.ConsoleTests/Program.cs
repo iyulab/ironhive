@@ -1,18 +1,8 @@
 ﻿using Raggle.Engines.Anthropic;
+using System.Text.Json;
 
-var ci = new AnthropicClient(new AnthropicConfig
-{
-    ApiKey = ""
-});
+var text = await File.ReadAllTextAsync(@"C:\data\Raggle\src\Raggle.ConsoleTests\Secrets.json");
+var secrets = JsonSerializer.Deserialize<Dictionary<string, string>>(text);
+var key = secrets?.GetValueOrDefault("Anthropic") ?? string.Empty;
 
-var response = await ci.PostMessagesAsync(new MessagesRequest
-{
-    Model = "claude-3-5-sonnet-20240620",
-    MaxTokens = 100,
-    Messages = [
-        new Message {
-            Role = MessageRole.user,
-            Content = "Hello how are you"
-        },
-    ],
-});
+

@@ -1,4 +1,4 @@
-﻿namespace Raggle.Engines.Anthropic;
+﻿namespace Raggle.Engines.Anthropic.Configurations;
 
 /// <summary>
 /// <see href="https://docs.anthropic.com/en/api/getting-started">Anthropic API Documentation</see>

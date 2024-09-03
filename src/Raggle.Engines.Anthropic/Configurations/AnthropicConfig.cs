@@ -1,4 +1,4 @@
-﻿namespace Raggle.Engines.Anthropic;
+﻿namespace Raggle.Engines.Anthropic.Configurations;
 
 /// <summary>
 /// Represents the configuration settings required to connect to the Anthropic API.

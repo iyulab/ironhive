@@ -6,7 +6,6 @@ using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel;
 using Raggle.Abstractions;
 using Microsoft.KernelMemory.AI.OpenAI;
-using Raggle.Abstractions.Attributes;
 using static Microsoft.KernelMemory.OpenAIConfig;
 using Raggle.Core.Options.Platforms;
 using Raggle.Core.Options.VectorDB;

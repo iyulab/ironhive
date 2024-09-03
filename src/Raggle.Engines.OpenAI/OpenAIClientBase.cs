@@ -1,34 +1,22 @@
 ﻿using System.Net.Http.Json;
 using System.Text.Json;
+using Raggle.Engines.OpenAI.Configurations;
 
 namespace Raggle.Engines.OpenAI;
 
-/// <summary>
-/// a search client for interacting with the OpenAI API.
-/// </summary>
-public class OpenAIClient
+public abstract class OpenAIClientBase
 {
-    private readonly HttpClient _client;
+    protected readonly HttpClient _client;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="OpenAIClient"/> class.
-    /// </summary>
-    public OpenAIClient(OpenAIConfig config)
+    protected OpenAIClientBase(string apiKey)
+    {
+        _client = CreateHttpClient(new OpenAIConfig { ApiKey = apiKey });
+    }
+
+    protected OpenAIClientBase(OpenAIConfig config)
     {
         _client = CreateHttpClient(config);
     }
-
-    /// <summary>
-    /// Gets the list of OpenAI gpt chat models.
-    /// </summary>
-    public async Task<IEnumerable<OpenAIModel>> GetChatModelsAsync() =>
-        await GetModelsAsync([ OpenAIModelType.GPT ]);
-
-    /// <summary>
-    /// Gets the list of OpenAI embedding models.
-    /// </summary>
-    public async Task<IEnumerable<OpenAIModel>> GetEmbeddingModelsAsync() =>
-        await GetModelsAsync([ OpenAIModelType.Embeddings ]);
 
     /// <summary>
     /// Gets the list of OpenAI models.
@@ -36,7 +24,7 @@ public class OpenAIClient
     /// <param name="filters">Optional filters to apply.</param>
     /// <param name="limit">The maximum number of models to return.</param>
     /// <returns>The list of OpenAI models.</returns>
-    public async Task<IEnumerable<OpenAIModel>> GetModelsAsync(
+    protected async Task<IEnumerable<OpenAIModel>> GetModelsAsync(
         OpenAIModelType[]? filters = null,
         int limit = -1,
         CancellationToken cancellationToken = default)
@@ -60,11 +48,6 @@ public class OpenAIClient
             .ToArray();
 
         return models ?? [];
-    }
-
-    public async Task<string> PostChatAsync()
-    {
-        return string.Empty;
     }
 
     private static HttpClient CreateHttpClient(OpenAIConfig config)
