@@ -2,15 +2,20 @@
 using LLama.Common;
 using LLamaSharp.KernelMemory;
 using LLamaSharp.SemanticKernel.ChatCompletion;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.KernelMemory;
+using Microsoft.KernelMemory.AI;
+using Microsoft.KernelMemory.AI.OpenAI;
 using Microsoft.KernelMemory.DocumentStorage.DevTools;
 using Microsoft.KernelMemory.FileSystem.DevTools;
 using Microsoft.KernelMemory.MemoryStorage.DevTools;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.OpenAI;
 using AuthorRole = Microsoft.SemanticKernel.ChatCompletion.AuthorRole;
 using ChatHistory = Microsoft.SemanticKernel.ChatCompletion.ChatHistory;
+using LlamaSharpTextGenerator = LLamaSharp.KernelMemory.LlamaSharpTextGenerator;
 
 #pragma warning disable KMEXP01
 #pragma warning disable SKEXP0001
@@ -22,22 +27,43 @@ public class RaggleService
     private ServiceOptions _options;
     public IKernelMemory? Memory { get; private set; }
 
+    // Test
+    public IDictionary<string, LLamaWeights> CachedModels { get; private set; } = new Dictionary<string, LLamaWeights>();
+
     public RaggleService(IOptionsMonitor<ServiceOptions> options)
     {
         _options = options.CurrentValue;
-        Initialize();
+        BuildMemory();
         options.OnChange((newOptions) =>
         {
             _options = newOptions;
-            Initialize();
+            BuildMemory();
         });
+    }
+
+    public LLamaWeights GetCachedModel(string modelId, ModelParams parameters)
+    {
+        if (CachedModels.ContainsKey(modelId))
+        {
+            return CachedModels[modelId];
+        }
+
+        if (CachedModels.Count > 2)
+        {
+            CachedModels.Remove(CachedModels.Keys.First(), out var onModel);
+            onModel?.Dispose();
+        }
+
+        var model = LLamaWeights.LoadFromFile(parameters);
+        CachedModels[modelId] = model;
+        return model;
     }
 
     public async IAsyncEnumerable<string> AskAsync(string modelId, ChatHistory history)
     {
         var query = history.Last().Content;
         var memory = await CheckMemoryAsync();
-        var searchResult =await memory.SearchAsync(query!);
+        var searchResult = await memory.SearchAsync(query!);
         var information = string.Empty;
         foreach (var result in searchResult.Results)
         {
@@ -51,16 +77,16 @@ public class RaggleService
         if (modelId.StartsWith("openai"))
         {
             var model = modelId.Split("/")[1];
-            var kernel = Kernel.CreateBuilder()
-                .AddOpenAIChatCompletion(model, _options.OpenAIKey)
-                .Build();
-            chat = kernel.GetRequiredService<IChatCompletionService>();
+            chat = new OpenAIChatCompletionService(model, _options.OpenAIKey);
         }
         else
         {
             var modelPath = Path.Combine(_options.ModelDirectory, $"{modelId}.gguf");
-            var parameters = new ModelParams(modelPath);
-            var model = await LLamaWeights.LoadFromFileAsync(parameters);
+            var parameters = new ModelParams(modelPath)
+            {
+                ContextSize = 1024,
+            };
+            var model = GetCachedModel(modelId, parameters);
             var executor = new StatelessExecutor(model, parameters);
             chat = new LLamaSharpChatCompletion(executor);
         }
@@ -125,10 +151,10 @@ public class RaggleService
         await memory.DeleteDocumentAsync(documentId, index);
     }
 
-    public void Initialize()
+    public void BuildMemory()
     {
         Memory = null;
-        var builder = new KernelMemoryBuilder();
+        
         var embeddingModel = _options.EmbeddingModel;
         var memoryDirectory = _options.MemoryDirectory;
         var fileDirectory = Path.Combine(memoryDirectory, "files");
@@ -143,46 +169,46 @@ public class RaggleService
             Directory.CreateDirectory(vectorDirectory);
         }
 
+        ITextEmbeddingGenerator? embeddingGenerator;
+        ITextGenerator? textGenerator;
         if (embeddingModel.StartsWith("openai"))
         {
             var modelId = embeddingModel.Split("/")[1];
-            var openAIConfig = new OpenAIConfig
+            var config = new OpenAIConfig
             {
                 APIKey = _options.OpenAIKey,
                 TextModel = "gpt-4o",
                 EmbeddingModel = modelId,
             };
-            openAIConfig.Validate();
+            config.Validate();
 
-            builder.Services.AddOpenAITextEmbeddingGeneration(openAIConfig);
-            builder.Services.AddOpenAITextGeneration(openAIConfig);
-
-            //builder.AddIngestionEmbeddingGenerator(new OpenAITextEmbeddingGenerator(
-            //    config: openAIConfig
-            //));
+            embeddingGenerator = new OpenAITextEmbeddingGenerator(config);
+            textGenerator = new OpenAITextGenerator(config);;
         }
         else
         {
             var modelPath = Path.Combine(_options.ModelDirectory, $"{embeddingModel}.gguf");
-            builder.WithLLamaSharpDefaults(new LLamaSharpConfig(modelPath)
+            var config = new LLamaSharpConfig(modelPath)
             {
                 DefaultInferenceParams = new InferenceParams
                 {
                     AntiPrompts = ["\n\n"]
-                }
-            });
-            //.WithSearchClientConfig(new SearchClientConfig
-            //{
-            //    MaxMatchesCount = 1,
-            //    AnswerTokens = 100,
-            //})
-            //.With(new TextPartitioningOptions
-            //{
-            //    MaxTokensPerParagraph = 300,
-            //    MaxTokensPerLine = 100,
-            //    OverlappingTokens = 30
-            //});
+                },
+            };
+
+            embeddingGenerator = new LLamaSharpTextEmbeddingGenerator(config);
+            textGenerator = new LlamaSharpTextGenerator(config);
         }
+
+        if (textGenerator == null || embeddingGenerator == null)
+        {
+            throw new Exception("Text generator or embedding generator not found");
+        }
+
+        var builder = new KernelMemoryBuilder();
+        builder.Services.AddSingleton<ITextEmbeddingGenerator>(embeddingGenerator);
+        builder.Services.AddSingleton<ITextGenerator>(textGenerator);
+        builder.AddIngestionEmbeddingGenerator(embeddingGenerator);
 
         builder.WithSimpleFileStorage(new SimpleFileStorageConfig
         {

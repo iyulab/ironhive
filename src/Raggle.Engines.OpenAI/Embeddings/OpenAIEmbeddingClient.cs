@@ -13,23 +13,24 @@ public class OpenAIEmbeddingClient : OpenAIClientBase
 
     public async Task<string> PostEmbeddingAsync(string text, string modelId, CancellationToken cancellationToken = default)
     {
-        var requestUri = new UriBuilder
-        {
-            Scheme = "https",
-            Host = OpenAIConstants.Host,
-            Path = OpenAIConstants.EmbedPath
-        }.ToString();
+        //var requestUri = new UriBuilder
+        //{
+        //    Scheme = "https",
+        //    Host = OpenAIConstants.Host,
+        //    Path = OpenAIConstants.EmbedPath
+        //}.ToString();
 
-        var request = new OpenAIRequest
-        {
-            Model = modelId,
-            Prompt = text
-        };
+        //var request = new OpenAIRequest
+        //{
+        //    Model = modelId,
+        //    Prompt = text
+        //};
 
-        var response = await _client.PostAsJsonAsync(requestUri, request, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        //var response = await _client.PostAsJsonAsync(requestUri, request, cancellationToken);
+        //response.EnsureSuccessStatusCode();
 
-        var jsonDocument = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(), cancellationToken: cancellationToken);
-        return jsonDocument.RootElement.GetProperty("choices")[0].GetProperty("text").GetString();
+        //var jsonDocument = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(), cancellationToken: cancellationToken);
+        //return jsonDocument.RootElement.GetProperty("choices")[0].GetProperty("text").GetString();
+        return "";
     }
 }

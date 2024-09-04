@@ -39,7 +39,7 @@ public class AssistantMessage : Message
     public string? Name { get; set; }
 
     [JsonPropertyName("tool_calls")]
-    public ICollection<ToolCall>? ToolCalls { get; set; }
+    public ICollection<object>? ToolCalls { get; set; }
 }
 
 public class ToolMessage : Message
