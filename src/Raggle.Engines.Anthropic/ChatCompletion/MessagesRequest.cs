@@ -7,8 +7,14 @@ public class MessagesRequest
     [JsonPropertyName("model")]
     public required string Model { get; set; }
 
+    [JsonPropertyName("max_tokens")]
+    public required int MaxTokens { get; set; }
+
     [JsonPropertyName("messages")]
     public required ICollection<Message> Messages { get; set; }
+
+    [JsonPropertyName("system")]
+    public string? System { get; set; }
 
     [JsonPropertyName("tool_choice")]
     public ToolChoice? ToolChoice { get; set; }
@@ -16,18 +22,21 @@ public class MessagesRequest
     [JsonPropertyName("tools")]
     public ICollection<Tool>? Tools { get; set; }
 
-    [JsonPropertyName("max_tokens")]
-    public required int MaxTokens { get; set; }
-
-    [JsonPropertyName("system")]
-    public string? System { get; set; }
-
+    /// <summary>
+    /// 0.0 to 1.0
+    /// </summary>
     [JsonPropertyName("temperature")]
     public double? Temperature { get; set; }
 
+    /// <summary>
+    /// 0 to 100
+    /// </summary>
     [JsonPropertyName("top_k")]
     public int? TopK { get; set; }
 
+    /// <summary>
+    /// 0.0 to 1.0
+    /// </summary>
     [JsonPropertyName("top_p")]
     public double? TopP { get; set; }
 

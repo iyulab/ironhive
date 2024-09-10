@@ -8,9 +8,11 @@ public class EmbeddingResponse
     public int Index { get; set; }
 
     [JsonPropertyName("embedding")]
-    public float[] Embedding { get; set; } = [];
+    public required ICollection<float> Embedding { get; set; }
 
-    // always "embedding"
+    /// <summary>
+    /// "embedding" only
+    /// </summary>
     [JsonPropertyName("object")]
-    public string Object { get; set; } = string.Empty;
+    public string Object { get; } = "embedding";
 }

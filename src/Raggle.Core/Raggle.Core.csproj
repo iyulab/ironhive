@@ -8,10 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.KernelMemory.Core" Version="0.70.240803.1" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\Raggle.Abstractions\Raggle.Abstractions.csproj" />
   </ItemGroup>
 

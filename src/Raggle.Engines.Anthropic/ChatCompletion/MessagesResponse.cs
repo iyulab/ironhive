@@ -7,21 +7,30 @@ public class MessagesResponse
     [JsonPropertyName("id")]
     public required string ID { get; set; }
 
-    // always "message"
+    /// <summary>
+    /// "message" only
+    /// </summary>
     [JsonPropertyName("type")]
-    public required string Type { get; set; }
+    public string Type { get; } = "message";
 
-    // always "assistant"
+    /// <summary>
+    /// "assistant" only
+    /// </summary>
     [JsonPropertyName("role")]
-    public required string Role { get; set; }
-
-    [JsonPropertyName("content")]
-    public required ICollection<Message> Content { get; set; }
+    public string Role { get; } = "assistant";
 
     [JsonPropertyName("model")]
     public required string Model { get; set; }
 
-    // "end_turn", "max_tokens", "stop_sequence", "tool_use"
+    /// <summary>
+    /// <see cref="MessageTextContent"/> or <see cref="MessageToolUseContent"/>
+    /// </summary>
+    [JsonPropertyName("content")]
+    public required ICollection<MessageContent> Content { get; set; }
+
+    /// <summary>
+    /// "end_turn", "max_tokens", "stop_sequence", "tool_use"
+    /// </summary>
     [JsonPropertyName("stop_reason")]
     public string? StopReason { get; set; }
 

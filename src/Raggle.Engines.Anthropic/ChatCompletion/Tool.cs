@@ -1,23 +1,6 @@
 ﻿using System.Text.Json.Serialization;
-using System.Text.Json.Serialization.Metadata;
 
 namespace Raggle.Engines.Anthropic.ChatCompletion;
-
-[JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
-[JsonDerivedType(typeof(AutoToolChoice), "auto")]
-[JsonDerivedType(typeof(AnyToolChoice), "any")]
-[JsonDerivedType(typeof(ManualToolChoice), "tool")]
-public abstract class ToolChoice { }
-
-public class AutoToolChoice : ToolChoice { }
-
-public class AnyToolChoice : ToolChoice { }
-
-public class ManualToolChoice : ToolChoice
-{
-    [JsonPropertyName("name")]
-    public required string Name { get; set; }
-}
 
 public class Tool
 {
@@ -31,14 +14,20 @@ public class Tool
     public required InputSchema InputSchema { get; set; }
 
     [JsonPropertyName("cache_control")]
-    public object? CacheControl { get; set; }
+    public CacheControl? CacheControl { get; set; }
 }
 
 public class InputSchema
 {
+    /// <summary>
+    /// "object" only
+    /// </summary>
     [JsonPropertyName("type")]
-    public required string Type { get; set; }
+    public string Type { get; } = "object";
 
     [JsonPropertyName("properties")]
     public object? Properties { get; set; }
+
+    [JsonPropertyName("required")]
+    public ICollection<string>? Required { get; set; }
 }

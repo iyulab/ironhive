@@ -10,11 +10,16 @@ public class EmbeddingRequest
     [JsonPropertyName("model")]
     public required string Model { get; set; }
 
-    // "float" or "base64"
+    /// <summary>
+    /// openai support "base64" format,
+    /// but not used in this library, "float" only
+    /// </summary>
     [JsonPropertyName("encoding_format")]
-    public string? EncodingFormat { get; set; }
+    public string? EncodingFormat { get; } = "float";
 
-    // Only the 'text-embedding-3' later model works correctly
+    /// <summary>
+    /// Only 'text-embedding-3' later model works correctly 
+    /// </summary>
     [JsonPropertyName("dimensions")]
     public int? Dimensions { get; set; }
 

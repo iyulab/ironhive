@@ -12,4 +12,7 @@ internal class OpenAIConstants
     internal const string ProjectHeaderName = "OpenAI-Project";
 
     internal const string GetModelsPath = "/v1/models";
+    internal const string PostChatCompletionPath = "/v1/chat/completions";
+    internal const string PostEmbeddingPath = "/v1/embeddings";
+
 }

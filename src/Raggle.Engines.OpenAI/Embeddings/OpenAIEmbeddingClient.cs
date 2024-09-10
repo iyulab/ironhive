@@ -1,4 +1,8 @@
-﻿using Raggle.Engines.OpenAI.Configurations;
+﻿using Raggle.Engines.OpenAI.Abstractions;
+using Raggle.Engines.OpenAI.Configurations;
+using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
 
 namespace Raggle.Engines.OpenAI.Embeddings;
 
@@ -8,29 +12,39 @@ public class OpenAIEmbeddingClient : OpenAIClientBase
 
     public OpenAIEmbeddingClient(OpenAIConfig config) : base(config) { }
 
-    public async Task<IEnumerable<OpenAIModel>> GetEmbeddingModelsAsync() =>
-        await GetModelsAsync([OpenAIModelType.Embeddings]);
-
-    public async Task<string> PostEmbeddingAsync(string text, string modelId, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<OpenAIEmbeddingModel>> GetEmbeddingModelsAsync()
     {
-        //var requestUri = new UriBuilder
-        //{
-        //    Scheme = "https",
-        //    Host = OpenAIConstants.Host,
-        //    Path = OpenAIConstants.EmbedPath
-        //}.ToString();
+        var models = await GetModelsAsync();
+        return models.Where(OpenAIModel.IsEmbeddingModel)
+                     .Select(m => new OpenAIEmbeddingModel
+                     {
+                         ID = m.ID,
+                         Created = m.Created,
+                         OwnedBy = m.OwnedBy
+                     });
+    }
 
-        //var request = new OpenAIRequest
-        //{
-        //    Model = modelId,
-        //    Prompt = text
-        //};
+    public async Task<IEnumerable<EmbeddingResponse>> PostEmbeddingAsync(EmbeddingRequest request)
+    {
+        var requestUri = new UriBuilder
+        {
+            Scheme = "https",
+            Host = OpenAIConstants.Host,
+            Path = OpenAIConstants.PostEmbeddingPath
+        }.ToString();
 
-        //var response = await _client.PostAsJsonAsync(requestUri, request, cancellationToken);
-        //response.EnsureSuccessStatusCode();
+        var content = new StringContent(JsonSerializer.Serialize(request, _jsonOptions), Encoding.UTF8, "application/json");
+        var response = await _client.PostAsync(requestUri, content);
+        response.EnsureSuccessStatusCode();
 
-        //var jsonDocument = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(), cancellationToken: cancellationToken);
-        //return jsonDocument.RootElement.GetProperty("choices")[0].GetProperty("text").GetString();
-        return "";
+        var jsonDocument = await response.Content.ReadFromJsonAsync<JsonDocument>() 
+            ?? throw new InvalidOperationException("Failed to deserialize response.");
+
+        var embeddings = jsonDocument.RootElement.GetProperty("data").EnumerateArray().Select(e =>
+        {
+            return JsonSerializer.Deserialize<EmbeddingResponse>(e, _jsonOptions)!;
+        });
+
+        return embeddings;
     }
 }
