@@ -1,14 +1,11 @@
 ﻿using System.Text;
 using LLama;
 using LLama.Common;
-using LLamaSharp.SemanticKernel;
-using LLamaSharp.SemanticKernel.ChatCompletion;
-using Microsoft.SemanticKernel;
-using ChatHistory = Microsoft.SemanticKernel.ChatCompletion.ChatHistory;
+using Raggle.Abstractions.Engines;
 
 namespace Raggle.Engines.LLamaSharp;
 
-public class LLamaSharpChatEngine : IDisposable
+public class LLamaSharpChatEngine : IChatCompletionEngine, IDisposable
 {
     private readonly ModelParams _params;
     public LLamaWeights? Model { get; private set; }
@@ -41,25 +38,6 @@ public class LLamaSharpChatEngine : IDisposable
         return tokens.Length;
     }
 
-    public async IAsyncEnumerable<StreamingChatMessageContent> StreamingChatAsync(ChatHistory history, LLamaSharpPromptExecutionSettings? options)
-    {
-        if (Model == null)
-        {
-            throw new InvalidOperationException("Model is not loaded.");
-        }
-
-        //var tramsform = new HistoryTransform();
-        //var text = tramsform.HistoryToText(history.ToLLamaSharpChatHistory());
-        //Console.WriteLine($"[Original]\n{text}\n[End]\n");
-
-        var executer = new StatelessExecutor(Model, _params);
-        var chat = new LLamaSharpChatCompletion(executer);
-        await foreach (var response in chat.GetStreamingChatMessageContentsAsync(history, options))
-        {
-            yield return response;
-        }
-    }
-
     private static ModelParams GetParams(string modelPath)
     {
         return new ModelParams(modelPath)
@@ -70,5 +48,20 @@ public class LLamaSharpChatEngine : IDisposable
             Encoding = Encoding.UTF8,                    // 텍스트 데이터를 인코딩할 방식
             Seed = 0,                                    // 랜덤 시드
         };
+    }
+
+    public Task<IEnumerable<ChatCompletionModel>> GetChatCompletionModelsAsync()
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<IEnumerable<ChatCompletionResponse>> ChatCompletionAsync()
+    {
+        throw new NotImplementedException();
+    }
+
+    public IAsyncEnumerable<StreamingChatCompletionResponse> StreamingChatCompletionAsync()
+    {
+        throw new NotImplementedException();
     }
 }

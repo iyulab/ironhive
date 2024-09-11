@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
+using System.Linq.Expressions;
 using System.Reflection;
 
 namespace Raggle.Abstractions.Tools;
@@ -16,39 +17,41 @@ public static class FunctionToolFactory
     public static ICollection<FunctionTool> CreateFromInstance<T>(T instance)
         where T : class
     {
-        ArgumentNullException.ThrowIfNull(instance);
         var tools = new List<FunctionTool>();
-
         var methods = instance.GetType().GetMethods(
             BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+
         foreach (var method in methods)
         {
-            if (method.GetCustomAttribute<FunctionToolAttribute>() is not null)
+            var functionAttribute = method.GetCustomAttribute<FunctionToolAttribute>();
+            if (functionAttribute is not null)
             {
-                tools.Add(CreateFromMethod(method, instance));
+                var name = functionAttribute.Name 
+                    ?? method.Name;
+                var description = functionAttribute.Description 
+                    ?? method.GetCustomAttribute<DescriptionAttribute>()?.Description;
+                
+                var parameterTypes = method.GetParameters().Select(p => p.ParameterType).ToArray();
+                var returnType = method.ReturnType;
+                var functionType = returnType == typeof(void) 
+                    ? Expression.GetActionType(parameterTypes)
+                    : Expression.GetFuncType([.. parameterTypes, returnType]);
+                
+                var function = method.CreateDelegate(functionType, instance);
+                var tool = CreateFromFunction(name, description, function);
+                tools.Add(tool);
             }
         }
+
         return tools;
     }
 
-    public static FunctionTool CreateFromMethod(MethodInfo methodInfo, object instance)
+    public static FunctionTool CreateFromFunction(string name, string? description, Delegate function)
     {
-        ArgumentNullException.ThrowIfNull(methodInfo);
-        ArgumentNullException.ThrowIfNull(instance);
-
-        var attribute = methodInfo.GetCustomAttribute<FunctionToolAttribute>();
-        if (attribute is null)
+        return new FunctionTool(function)
         {
-            throw new ArgumentException("Method is not a function tool.");
-        }
-
-        var tool = new FunctionTool
-        {
-            Method = methodInfo,
-            Name = attribute.Name ?? methodInfo.Name,
-            Description = attribute.Description,
-            Parameters = FunctionToolConverter.Convert(methodInfo),
+            Name = name,
+            Description = description,
         };
-        return tool;
     }
 }

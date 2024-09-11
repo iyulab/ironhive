@@ -14,7 +14,10 @@
     <PackageReference Include="LLamaSharp.Backend.MacMetal" Version="0.7.0" />
     <PackageReference Include="LLamaSharp.Backend.OpenCL" Version="0.13.0" />
     <PackageReference Include="LLamaSharp.Backend.Vulkan" Version="0.15.0" />
-    <PackageReference Include="LLamaSharp.semantic-kernel" Version="0.15.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Raggle.Abstractions\Raggle.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

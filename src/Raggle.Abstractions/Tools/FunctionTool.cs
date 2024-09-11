@@ -4,31 +4,44 @@ namespace Raggle.Abstractions.Tools;
 
 public class FunctionTool
 {
-    public required MethodInfo Method { get; set; }
-    public required string Name { get; set; }
-    public required string Description { get; set; }
-    public ParametersSchema? Parameters { get; set; }
+    private readonly Delegate _function;
+
+    public string? Name { get; set; }
+    public string? Description { get; set; }
+    public TypeSchema? Parameters { get; set; }
+
+    public FunctionTool(Delegate function)
+    {
+        _function = function;
+    }
 
     public async Task<object?> InvokeAsync(params object[] parameters)
     {
-        try
+        var result = _function.DynamicInvoke(parameters);
+        if (result is Task task)
         {
-            var result = Method.Invoke(null, parameters);
-            if (result is Task task)
+            await task;
+            var property = task.GetType().GetProperty("Result", BindingFlags.Public | BindingFlags.Instance);
+            return property?.GetValue(task);
+        }
+        else if (result is ValueTask valueTask)
+        {
+            await valueTask;
+            var property = valueTask.GetType().GetProperty("Result", BindingFlags.Public | BindingFlags.Instance);
+            return property?.GetValue(valueTask);
+        }
+        else if (result is IAsyncEnumerable<object?> asyncEnumerable)
+        {
+            var items = new List<object?>();
+            await foreach (var item in asyncEnumerable)
             {
-                await task.ConfigureAwait(false);
-                var resultProperty = task.GetType().GetProperty("Result");
-                return resultProperty?.GetValue(task);
+                items.Add(item);
             }
+            return items;
+        }
+        else
+        {
             return result;
-        }
-        catch (TargetInvocationException ex)
-        {
-            throw new Exception("Method invocation failed.", ex.InnerException);
-        }
-        catch (Exception ex)
-        {
-            throw new Exception("Error during method execution.", ex);
         }
     }
 }

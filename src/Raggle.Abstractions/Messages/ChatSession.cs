@@ -2,7 +2,35 @@
 
 public class ChatSession
 {
-    public string SystemMessage { get; set; } = string.Empty;
-    public ChatHistory ChatHistory { get; set; } = new();
-    public TokenUsage TokenUsage { get; set; } = new();
+    public string? SystemMessage { get; set; }
+    public ICollection<IMessage> Messages { get; set; } = [];
+    public int TotalToken { get; set; }
+
+    public void AddMessage(IMessage message)
+    {
+        Messages.Add(message);
+    }
+
+    public void AddSystemMessage(string message)
+    {
+        SystemMessage = message;
+    }
+
+    public void AddUserMessage(string text, ICollection<ImageContent> images)
+    {
+        Messages.Add(new UserMessage
+        {
+            Text = text,
+            Images = images
+        });
+    }
+
+    public void AddAssistantMessage(string text, ICollection<ToolContent> tools)
+    {
+        Messages.Add(new AssistantMessage
+        {
+            Text = text,
+            Tools = tools
+        });
+    }
 }

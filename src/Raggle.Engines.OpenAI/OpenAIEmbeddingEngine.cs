@@ -1,6 +1,16 @@
-﻿namespace Raggle.Engines.OpenAI;
+﻿using Raggle.Abstractions.Engines;
 
-public class OpenAIEmbeddingEngine
+namespace Raggle.Engines.OpenAI;
+
+public class OpenAIEmbeddingEngine : IEmbeddingEngine
 {
+    public Task<IEnumerable<float>> EmbeddingAsync(ICollection<string> inputs)
+    {
+        throw new NotImplementedException();
+    }
 
+    public Task<IEnumerable<EmbeddingModel>> GetEmbeddingModelsAsync()
+    {
+        throw new NotImplementedException();
+    }
 }

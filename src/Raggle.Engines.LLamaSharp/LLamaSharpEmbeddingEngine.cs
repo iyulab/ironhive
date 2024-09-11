@@ -1,9 +1,10 @@
 ﻿using LLama.Common;
 using LLama;
+using Raggle.Abstractions.Engines;
 
 namespace Raggle.Engines.LLamaSharp;
 
-public class LLamaSharpEmbeddingEngine
+public class LLamaSharpEmbeddingEngine : IEmbeddingEngine, IDisposable
 {
     private readonly ModelParams _params;
     public LLamaWeights? Model { get; private set; }
@@ -42,5 +43,15 @@ public class LLamaSharpEmbeddingEngine
         {
             Embeddings = true
         };
+    }
+
+    public Task<IEnumerable<EmbeddingModel>> GetEmbeddingModelsAsync()
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<IEnumerable<float>> EmbeddingAsync(ICollection<string> inputs)
+    {
+        throw new NotImplementedException();
     }
 }
