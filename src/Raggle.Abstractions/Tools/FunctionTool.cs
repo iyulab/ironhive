@@ -5,43 +5,68 @@ namespace Raggle.Abstractions.Tools;
 public class FunctionTool
 {
     private readonly Delegate _function;
+    public object? Target => _function.Target;
+    public MethodInfo Method => _function.Method;
+    public ParameterInfo[] Parameters => _function.Method.GetParameters();
+    public Type ReturnType => _function.Method.ReturnType;
 
-    public string? Name { get; set; }
+    public required string Name { get; set; }
     public string? Description { get; set; }
-    public TypeSchema? Parameters { get; set; }
+    public record FunctionResult(bool IsSuccess, object? Result, string? ErrorMessage);
 
     public FunctionTool(Delegate function)
     {
         _function = function;
     }
 
-    public async Task<object?> InvokeAsync(params object[] parameters)
+    public async Task<FunctionResult> InvokeAsync(IDictionary<string, object?>? args)
     {
-        var result = _function.DynamicInvoke(parameters);
-        if (result is Task task)
+        try
         {
-            await task;
-            var property = task.GetType().GetProperty("Result", BindingFlags.Public | BindingFlags.Instance);
-            return property?.GetValue(task);
-        }
-        else if (result is ValueTask valueTask)
-        {
-            await valueTask;
-            var property = valueTask.GetType().GetProperty("Result", BindingFlags.Public | BindingFlags.Instance);
-            return property?.GetValue(valueTask);
-        }
-        else if (result is IAsyncEnumerable<object?> asyncEnumerable)
-        {
-            var items = new List<object?>();
-            await foreach (var item in asyncEnumerable)
+            var arguments = GetArguments(args);
+            var result = _function.DynamicInvoke(arguments);
+            if (result is Task task)
             {
-                items.Add(item);
+                await task;
+                var resultProperty = task.GetType().GetProperty("Result");
+                return new FunctionResult(true, resultProperty?.GetValue(task), null);
             }
-            return items;
+            return new FunctionResult(true, result, null);
         }
-        else
+        catch (Exception ex)
         {
-            return result;
+            return new FunctionResult(false, null, ex.Message);
         }
     }
+
+    private object?[] GetArguments(IDictionary<string, object?>? args)
+    {
+        var arguments = new object?[Parameters.Length];
+        if (args == null || args.Count == 0)
+        {
+            return arguments;
+        }
+
+        for (int i = 0; i < Parameters.Length; i++)
+        {
+            var param = Parameters[i];
+            var paramName = param.Name!;
+            var paramType = param.ParameterType;
+            var isRequired = !param.IsOptional;
+
+            if (args.TryGetValue(paramName, out var value))
+            {
+                arguments[i] = value;
+                continue;
+            }
+            if (isRequired)
+            {
+                throw new ArgumentException($"Required parameter '{param.Name}' is missing.");
+            }
+        }
+        return arguments;
+    }
+
 }
+
+

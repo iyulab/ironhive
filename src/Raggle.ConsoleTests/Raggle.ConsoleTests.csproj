@@ -8,6 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="NJsonSchema" Version="11.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Raggle.Engines.Anthropic\Raggle.Engines.Anthropic.csproj" />
     <ProjectReference Include="..\Raggle.Engines.LLamaSharp\Raggle.Engines.LLamaSharp.csproj" />
     <ProjectReference Include="..\Raggle.Engines.OpenAI\Raggle.Engines.OpenAI.csproj" />

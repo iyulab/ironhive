@@ -25,6 +25,9 @@ public class Function
     [JsonPropertyName("parameters")]
     public object? Parameters { get; set; }
 
+    [JsonPropertyName("required")]
+    public ICollection<string>? Required { get; set; }
+
     /// <summary>
     /// "true" is not working, "false" is default
     /// </summary>

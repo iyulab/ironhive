@@ -1,6 +1,7 @@
 ﻿using ClosedXML;
 using LLama;
 using LLama.Common;
+using LLama.Native;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Raggle.Abstractions.Tools;
@@ -12,41 +13,144 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using ChatHistory = Microsoft.SemanticKernel.ChatCompletion.ChatHistory;
+using JsonSchema = NJsonSchema.JsonSchema;
 
 //var text = await File.ReadAllTextAsync(@"C:\data\Raggle\src\Raggle.ConsoleTests\Secrets.json");
 //var secrets = JsonSerializer.Deserialize<Dictionary<string, string>>(text);
 //var key = secrets?.GetValueOrDefault("OpenAI") ?? string.Empty;
 
-var services = new ServiceCollection();
-services.AddSingleton<DepenDency>();
-var provider = services.BuildServiceProvider();
-var tools = FunctionToolFactory.CreateFromType<Example>(provider, "PP");
-
-foreach (var tool in tools)
-{
-    if (tool.Name == "Print")
-    {
-        Console.WriteLine("Print Method");
-        await tool.InvokeAsync();
-        Console.WriteLine("Print Method End");
-    }
-    if (tool.Name == "PrintDependency")
-    {
-        Console.WriteLine("PrintDependency Method");
-        await tool.InvokeAsync("Hello", "World");
-        Console.WriteLine("PrintDependency Method End");
-    }
-    if (tool.Name == "PrintDependencyAsync")
-    {
-        Console.WriteLine("PrintDependencyAsync Method");
-        await tool.InvokeAsync("Hello", "World");
-        Console.WriteLine("PrintDependencyAsync Method End");
-    }
-}
-
+var schema = JsonSchema.FromType<Tool>();
+var json = schema.ToJson();
 return;
+//var client = new OpenAIChatCompletionClient(key);
+//var response = await client.PostChatCompletionAsync(new ChatCompletionRequest
+//{
+//    Model = "gpt-4o-mini",
+//    Messages = [
+//        new UserMessage
+//        {
+//            Content = "Please run the tool",
+//        }
+//    ],
+//    Tools = [
+//        new Tool
+//        {
+//            Function = new Function
+//            {
+//                Name = "ExampleTool",
+//                Description = "A tool that takes various types of parameters",
+//                Parameters = new
+//                {
+//                    type = "object",
+//                    description = "A set of parameters",
+//                    properties = new
+//                    {
+//                        dateValue = new
+//                        {
+//                            type = "string",
+//                            format = "date-time",
+//                            description = "A date-time string in ISO 8601 format",
+//                        },
+//                        enumValue = new
+//                        {
+//                            type = "string",
+//                            @enum = new[] { "email", "phone", "fax" },
+//                            description = "A string value",
+//                        },
+//                        IntegerValue = new
+//                        {
+//                            type = "integer",
+//                            format = "int32",
+//                            description = "An integer that can also be null",
+//                        },
+//                        numberValue = new
+//                        {
+//                            type = "number",
+//                            format = "double",
+//                            description = "A number that can also be null",
+//                        },
+//                        stringArray = new
+//                        {
+//                            type = "array",
+//                            items = new {
+//                                type = "string",
+//                            },
+//                            description = "An array of string types",
+//                        },
+//                        booleanValue = new
+//                        {
+//                            type = "boolean",
+//                            description = "A boolean value",
+//                        },
+//                        nullValue = new
+//                        {
+//                            type = "null",
+//                            description = "A null value",
+//                        },
+//                    },
+//                    required = new[] { "dateValue", "enumValue", "stringArray" },
+//                },
+//            }
+//        },
+//    ]
+//});
+
+
+//var c = response.Choices.First();
+//Console.WriteLine(c.Message.ToolCalls.First().Function);
+
+//var services = new ServiceCollection();
+//services.AddSingleton<DepenDency>();
+//var provider = services.BuildServiceProvider();
+//var tools = FunctionToolFactory.CreateFromType<Example>(provider, "PP");
+
+//foreach (var tool in tools)
+//{
+//    if (tool.Name == "Print")
+//    {
+//        Console.WriteLine("Print Method");
+//        await tool.InvokeAsync(null);
+//        Console.WriteLine("Print Method End");
+//    }
+//    if (tool.Name == "PrintDependency")
+//    {
+//        Console.WriteLine("PrintDependency Method");
+//        await tool.InvokeAsync(new Dictionary<string, object?>
+//        {
+//            ["args"] = new string[] { "Hello", "World" }
+//        });
+//        Console.WriteLine("PrintDependency Method End");
+//    }
+//    if (tool.Name == "묘")
+//    {
+//        Console.WriteLine("PrintDependencyAsync Method");
+//        await tool.InvokeAsync(new Dictionary<string, object?>
+//        {
+//            ["arg"] = "Hello",
+//            ["the"] = new
+//            {
+//                Name = "째 째"
+//            }
+//        });
+//        Console.WriteLine("PrintDependencyAsync Method End");
+//    }
+//}
 
 //NativeLibraryConfig.All.WithLogCallback((level, message) => { });
+
+//var systemPrompt = """
+
+//    Environment: ipython
+//    Tools: brave_search, wolfram_alpha
+//    Cutting Knowledge Date: December 2023
+//    Today Date: 23 July 2024
+
+//    You are a helpful assistant
+//    """;
+//var userPrompt = """
+
+//    Can you help me solve this equation: x^3 - 4x^2 + 6x - 24 = 0
+//    """;
 
 //await Infer();
 //return;
@@ -97,82 +201,68 @@ return;
 //    Console.WriteLine();
 //}
 
-var systemPrompt = """
+//async Task Infer()
+//{
+//    var prompt = new ChatPromptBuilder()
+//        .AddSystemMessage(systemPrompt)
+//        .AddUserMessage(userPrompt)
+//        .Build();
 
-    Environment: ipython
-    Tools: brave_search, wolfram_alpha
-    Cutting Knowledge Date: December 2023
-    Today Date: 23 July 2024
+//    var modelPath = @"C:\Models\Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf";
+//    var parameters = new ModelParams(modelPath)
+//    {
+//        ContextSize = 1024,
+//        Seed = 0,
+//    };
 
-    You are a helpful assistant
-    """;
-var userPrompt = """
+//    using var model = LLamaWeights.LoadFromFile(parameters);
+//    //using var context = model.CreateContext(parameters);
+//    //var inferParams = new InferenceParams();
+//    //var decoder = new StreamingTokenDecoder(context);
+//    //var antiprocessor = new AntipromptProcessor(inferParams.AntiPrompts);
 
-    Can you help me solve this equation: x^3 - 4x^2 + 6x - 24 = 0
-    """;
+//    //// Keep track of the last N tokens emitted
+//    //var repeat_last_n = Math.Max(0, inferParams.RepeatLastTokensCount < 0 ? model.ContextSize : inferParams.RepeatLastTokensCount);
+//    //var lastTokens = new List<LLamaToken>(repeat_last_n);
+//    //for (var i = 0; i < repeat_last_n; i++)
+//    //    lastTokens.Add(0);
 
-async Task Infer()
-{
-    var prompt = new ChatPromptBuilder()
-        .AddSystemMessage(systemPrompt)
-        .AddUserMessage(userPrompt)
-        .Build();
+//    //// Tokenize the prompt
+//    //var tokens = context.Tokenize(prompt, special: true).ToList();
+//    //lastTokens.AddRange(tokens);
 
-    var modelPath = @"C:\Models\Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf";
-    var parameters = new ModelParams(modelPath)
-    {
-        ContextSize = 1024,
-        Seed = 0,
-    };
-    
-    using var model = LLamaWeights.LoadFromFile(parameters);
-    //using var context = model.CreateContext(parameters);
-    //var inferParams = new InferenceParams();
-    //var decoder = new StreamingTokenDecoder(context);
-    //var antiprocessor = new AntipromptProcessor(inferParams.AntiPrompts);
+//    //// Evaluate the prompt, in chunks smaller than the max batch size
+//    //var n_past = 0;
+//    //var batch = new LLamaBatch();
+//    //var (r, _, past) = await context.DecodeAsync(tokens, LLamaSeqId.Zero, batch, n_past);
+//    //n_past = past;
 
-    //// Keep track of the last N tokens emitted
-    //var repeat_last_n = Math.Max(0, inferParams.RepeatLastTokensCount < 0 ? model.ContextSize : inferParams.RepeatLastTokensCount);
-    //var lastTokens = new List<LLamaToken>(repeat_last_n);
-    //for (var i = 0; i < repeat_last_n; i++)
-    //    lastTokens.Add(0);
+//    //if (r != DecodeResult.Ok)
+//    //    throw new LLamaDecodeError(r);
 
-    //// Tokenize the prompt
-    //var tokens = context.Tokenize(prompt, special: true).ToList();
-    //lastTokens.AddRange(tokens);
+//    //// use the explicitly supplied pipeline, if there is one. Otherwise construct a suitable one.
+//    //var pipeline = inferParams.SamplingPipeline;
 
-    //// Evaluate the prompt, in chunks smaller than the max batch size
-    //var n_past = 0;
-    //var batch = new LLamaBatch();
-    //var (r, _, past) = await context.DecodeAsync(tokens, LLamaSeqId.Zero, batch, n_past);
-    //n_past = past;
+//    //var context = model.CreateContext(parameters);
+//    //Console.WriteLine(context.Tokens.EOS);
 
-    //if (r != DecodeResult.Ok)
-    //    throw new LLamaDecodeError(r);
+//    prompt = "<|begin_of_text|><|start_header_id|>system<|end_header_id|>" +
+//         systemPrompt +
+//         "<|eot_id|><|start_header_id|>user<|end_header_id|>" +
+//         userPrompt +
+//         "<|eot_id|><|start_header_id|>assistant<|end_header_id|>";
 
-    //// use the explicitly supplied pipeline, if there is one. Otherwise construct a suitable one.
-    //var pipeline = inferParams.SamplingPipeline;
-
-    //var context = model.CreateContext(parameters);
-    //Console.WriteLine(context.Tokens.EOS);
-    
-    //prompt = "<|begin_of_text|><|start_header_id|>system<|end_header_id|>" +
-    //     systemPrompt +
-    //     "<|eot_id|><|start_header_id|>user<|end_header_id|>" +
-    //     userPrompt +
-    //     "<|eot_id|><|start_header_id|>assistant<|end_header_id|>";
-
-    Console.WriteLine("\n =============== Prompt ================= \n");
-    Console.WriteLine($"{prompt}");
-    Console.WriteLine("\n =============== Answer ================= \n");
-    //context.Dispose();
-    var executor = new StatelessExecutor(model, parameters);
-    //var executor = new InteractiveExecutor(context);
-    await foreach (var result in executor.InferAsync(prompt))
-    {
-        Console.Write(result);
-    }
-}
+//    Console.WriteLine("\n =============== Prompt ================= \n");
+//    Console.WriteLine($"{prompt}");
+//    Console.WriteLine("\n =============== Answer ================= \n");
+//    //context.Dispose();
+//    var executor = new StatelessExecutor(model, parameters);
+//    //var executor = new InteractiveExecutor(context);
+//    await foreach (var result in executor.InferAsync(prompt))
+//    {
+//        Console.Write(result);
+//    }
+//}
 
 class ChatPromptBuilder
 {

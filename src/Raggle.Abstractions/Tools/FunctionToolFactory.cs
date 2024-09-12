@@ -23,31 +23,32 @@ public static class FunctionToolFactory
 
         foreach (var method in methods)
         {
-            var functionAttribute = method.GetCustomAttribute<FunctionToolAttribute>();
-            if (functionAttribute is not null)
-            {
-                var name = functionAttribute.Name 
-                    ?? method.Name;
-                var description = functionAttribute.Description 
-                    ?? method.GetCustomAttribute<DescriptionAttribute>()?.Description;
-                
-                var parameterTypes = method.GetParameters().Select(p => p.ParameterType).ToArray();
-                var returnType = method.ReturnType;
-                var functionType = returnType == typeof(void) 
-                    ? Expression.GetActionType(parameterTypes)
-                    : Expression.GetFuncType([.. parameterTypes, returnType]);
-                
-                var function = method.CreateDelegate(functionType, instance);
-                var tool = CreateFromFunction(name, description, function);
-                tools.Add(tool);
-            }
+            var funcAttr = method.GetCustomAttribute<FunctionToolAttribute>();
+            if (funcAttr is null) continue;
+
+            var tool = CreateFromMethod(
+                method: method,
+                instance: instance,
+                name: funcAttr.Name,
+                description: funcAttr.Description);
+            tools.Add(tool);
         }
 
         return tools;
     }
 
-    public static FunctionTool CreateFromFunction(string name, string? description, Delegate function)
+    public static FunctionTool CreateFromMethod(MethodInfo method, object instance, string? name = null, string? description = null)
     {
+        name ??= method.Name;
+        description ??= method.GetCustomAttribute<DescriptionAttribute>()?.Description;
+
+        var parameterTypes = method.GetParameters().Select(p => p.ParameterType).ToArray();
+        var returnType = method.ReturnType;
+        var functionType = returnType == typeof(void)
+            ? Expression.GetActionType(parameterTypes)
+            : Expression.GetFuncType([.. parameterTypes, returnType]);
+        var function = method.CreateDelegate(functionType, instance);
+        
         return new FunctionTool(function)
         {
             Name = name,

@@ -22,19 +22,19 @@ internal class Example
     }
 
     [FunctionTool("PrintDependency")]
-    public DepenDency PrintDependency(string arg, string arg2)
+    public DepenDency PrintDependency(params string[] args)
     {
         _dency.Print();
-        Console.WriteLine($"Arg: {arg}, Arg2: {arg2}");
+        Console.WriteLine($"Arg: {args[0]}, Arg2: {args[1]}");
         return _dency;
     }
 
-    [FunctionTool("PrintDependencyAsync")]
-    public async Task<DepenDency> PrintDependencyAsync(string arg, string arg2)
+    [FunctionTool("묘")]
+    public async Task<DepenDency> PrintDependencyAsync(string arg, TheClass the)
     {
         _dency.Print();
         await Task.Delay(5_000);
-        Console.WriteLine($"Arg: {arg}, Arg2: {arg2}");
+        Console.WriteLine($"Arg: {arg}, Arg2: {the.Name}");
         return _dency;
     }
 }
@@ -48,4 +48,9 @@ public class DepenDency
         Console.WriteLine("Dependency Print");
         Console.WriteLine($"Name: {Name}");
     }
+}
+
+public class TheClass
+{
+    public string Name { get; set; } = "더 클래스";
 }
