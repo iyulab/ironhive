@@ -12,6 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Raggle.Abstractions\Raggle.Abstractions.csproj" />
     <ProjectReference Include="..\Raggle.Engines.Anthropic\Raggle.Engines.Anthropic.csproj" />
     <ProjectReference Include="..\Raggle.Engines.LLamaSharp\Raggle.Engines.LLamaSharp.csproj" />
     <ProjectReference Include="..\Raggle.Engines.OpenAI\Raggle.Engines.OpenAI.csproj" />

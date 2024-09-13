@@ -4,14 +4,16 @@ using LLama.Common;
 using LLama.Native;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Raggle.Abstractions.Tools;
+using Raggle.Abstractions.JsonSchema;
 using Raggle.ConsoleTests;
 using Raggle.Engines.OpenAI.ChatCompletion;
 using Raggle.Engines.OpenAI.Embeddings;
 using Raggle.Services;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using ChatHistory = Microsoft.SemanticKernel.ChatCompletion.ChatHistory;
 using JsonSchema = NJsonSchema.JsonSchema;
 
@@ -19,9 +21,51 @@ using JsonSchema = NJsonSchema.JsonSchema;
 //var secrets = JsonSerializer.Deserialize<Dictionary<string, string>>(text);
 //var key = secrets?.GetValueOrDefault("OpenAI") ?? string.Empty;
 
-var schema = JsonSchema.FromType<Tool>();
-var json = schema.ToJson();
+var schema = ParameterConverter.ConvertToJsonSchema<IEnumerable<string>>();
+var json = JsonSerializer.Serialize(schema, new JsonSerializerOptions { 
+    WriteIndented = true,
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+});
+
+Console.WriteLine(json);
+
 return;
+
+[Description("A tool that takes various types of parameters")]
+public enum TheEnum
+{
+    ww,
+    tt,
+    Oll_aa,
+    GETET
+}
+
+public interface TheInterface
+{
+    [Description("this is my name")]
+    public string Name { get; set; }
+}
+
+public abstract class TheAbstractClass
+{
+    [Description("this is my name")]
+    public string Name { get; set; }
+}
+
+public class TheClass
+{
+    [Description("this is my name")]
+    public required string Name { get; set; }
+}
+
+public struct TheStruct
+{
+    [Description("this is my name")]
+    public string Name { get; set; }
+}
+
+public record TheRecord([Description("this is my name")] string name);
+
 //var client = new OpenAIChatCompletionClient(key);
 //var response = await client.PostChatCompletionAsync(new ChatCompletionRequest
 //{

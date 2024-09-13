@@ -7,10 +7,29 @@ namespace Raggle.Abstractions.Tools;
 
 public static class FunctionToolFactory
 {
-    public static ICollection<FunctionTool> CreateFromType<T>(IServiceProvider serviceProvider, params object[] parameters)
+    public static ICollection<FunctionTool> CreateFromType<T>(IServiceProvider? serviceProvider = null, params object[] parameters)
         where T : class
     {
-        var instance = ActivatorUtilities.CreateInstance<T>(serviceProvider, parameters);
+        T instance;
+
+        if (serviceProvider is not null)
+        {
+            instance = ActivatorUtilities.CreateInstance<T>(serviceProvider, parameters);
+        }
+        else if (parameters.Length > 0)
+        {
+            var constructor = typeof(T).GetConstructors()
+                                       .FirstOrDefault(c => c.GetParameters()
+                                                             .Select(p => p.ParameterType)
+                                                             .SequenceEqual(parameters.Select(p => p.GetType())))
+                               ?? throw new InvalidOperationException("Not found matching constructor.");
+            instance = (T)constructor.Invoke(parameters);
+        }
+        else
+        {
+            instance = Activator.CreateInstance<T>();
+        }
+
         return CreateFromInstance(instance);
     }
 
