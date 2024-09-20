@@ -4,8 +4,11 @@ using LLama.Common;
 using LLama.Native;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Raggle.Abstractions.JsonSchema;
+using Raggle.Abstractions.Engines;
+using Raggle.Abstractions.Models;
+using Raggle.Abstractions.Tools;
 using Raggle.ConsoleTests;
+using Raggle.Engines.OpenAI;
 using Raggle.Engines.OpenAI.ChatCompletion;
 using Raggle.Engines.OpenAI.Embeddings;
 using Raggle.Services;
@@ -14,24 +17,112 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using ChatHistory = Microsoft.SemanticKernel.ChatCompletion.ChatHistory;
+using ChatSession = Raggle.Abstractions.Models.ChatSession;
 using JsonSchema = NJsonSchema.JsonSchema;
 
-//var text = await File.ReadAllTextAsync(@"C:\data\Raggle\src\Raggle.ConsoleTests\Secrets.json");
-//var secrets = JsonSerializer.Deserialize<Dictionary<string, string>>(text);
-//var key = secrets?.GetValueOrDefault("OpenAI") ?? string.Empty;
+var text = await File.ReadAllTextAsync(@"C:\data\Raggle\src\Raggle.ConsoleTests\Secrets.json");
+var secrets = JsonSerializer.Deserialize<Dictionary<string, string>>(text);
+var key = secrets?.GetValueOrDefault("OpenAI") ?? string.Empty;
 
-var schema = ParameterConverter.ConvertToJsonSchema<IEnumerable<string>>();
-var json = JsonSerializer.Serialize(schema, new JsonSerializerOptions { 
-    WriteIndented = true,
-    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-});
+//var schema = JsonSchemaConverter.ConvertFromType<IEnumerable<string>>();
+//var json = JsonSerializer.Serialize(schema, new JsonSerializerOptions { 
+//    WriteIndented = true,
+//    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+//});
 
-Console.WriteLine(json);
+var tools = FunctionToolFactory.CreateFromType<MathPlugin>();
+var session = new ChatSession();
+var message = new ChatMessage
+{
+    Role = ChatRole.User,
+    Contents = [ new TextContentBlock {
+        Text = "what is (2 + 2) * 50?"
+    }]
+};
+session.Add(message);
+
+var chat = new OpenAIChatCompletionEngine(key);
+var options = new ChatCompletionOptions
+{
+    ModelId = "gpt-4o-mini",
+    MaxTokens = 1024,
+    System = "Please run the tool",
+    Tools = tools.ToArray()
+};
+
+await foreach (var response in chat.StreamingChatCompletionAsync(session, options))
+{
+    //Console.WriteLine(response.ToString());
+}
 
 return;
 
-[Description("A tool that takes various types of parameters")]
+public class MathPlugin
+{
+    [FunctionTool(Name = "Add", Description = "Adds two numbers together")]
+    public int  AddAsync(
+        [Description("The first number to add")] int a,
+        [Description("The second number to add")] int b)
+    {
+        return a + b;
+    }
+
+    [FunctionTool(Name = "Subtract", Description = "Subtracts the second number from the first number")]
+    public int SubtractAsync(
+        [Description("The number to subtract from")] int a,
+        [Description("The number to subtract")] int b)
+    {
+        return a - b;
+    }
+
+    [FunctionTool(Name = "Multiply", Description = "Multiplies two numbers together")]
+    public int MultiplyAsync(
+        [Description("The first number to multiply")] int a,
+        [Description("The second number to multiply")] int b)
+    {
+        return a * b;
+    }
+
+    [FunctionTool(Name = "Divide", Description = "Divides the first number by the second number")]
+    public double DivideAsync(
+        [Description("The dividend")] double a,
+        [Description("The divisor")] double b)
+    {
+        if (b == 0)
+            throw new DivideByZeroException("Error: Division by zero is not allowed.");
+        
+        return a / b;
+    }
+
+    [FunctionTool(Name = "Power", Description = "Raises a number to the power of another number")]
+    public double PowerAsync(
+        [Description("The base number")] double baseNumber,
+        [Description("The exponent")] double exponent)
+    {
+        double result = Math.Pow(baseNumber, exponent);
+        return result;
+    }
+
+    [FunctionTool(Name = "SquareRoot", Description = "Calculates the square root of a number")]
+    public double SquareRootAsync(
+        [Description("The number to find the square root of")] double number)
+    {
+        if (number < 0)
+            throw new InvalidOperationException("Error: Square root is not defined for negative numbers.");
+
+        double result = Math.Sqrt(number);
+        return result;  
+    }
+
+    [FunctionTool(Name = "Absolute", Description = "Returns the absolute value of a number")]
+    public double AbsoluteAsync(
+        [Description("The number to find the absolute value of")] double number)
+    {
+        double result = Math.Abs(number);
+        return result;
+    }
+}
+
 public enum TheEnum
 {
     ww,

@@ -1,6 +1,5 @@
-﻿using Raggle.Engines.OpenAI.Converters;
+﻿using Raggle.Abstractions.Converters;
 using System.Text.Json.Serialization;
-using System.Text.RegularExpressions;
 
 namespace Raggle.Engines.OpenAI.Abstractions;
 

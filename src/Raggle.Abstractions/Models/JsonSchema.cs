@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Raggle.Abstractions.JsonSchema;
+namespace Raggle.Abstractions.Models;
 
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(StringJsonSchema), "string")]
@@ -24,10 +24,10 @@ public class StringJsonSchema : JsonSchema
 {
     [JsonPropertyName("format")]
     public string? Format { get; set; }
-    
+
     [JsonPropertyName("minLength")]
     public int? MinLength { get; set; }
-    
+
     [JsonPropertyName("maxLength")]
     public int? MaxLength { get; set; }
 
@@ -63,7 +63,7 @@ public class ArrayJsonSchema : JsonSchema
     private object? _items;
 
     [JsonPropertyName("items")]
-    public object? Items 
+    public object? Items
     {
         get
         {
@@ -71,7 +71,7 @@ public class ArrayJsonSchema : JsonSchema
         }
         set
         {
-            _items = (value is JsonSchema || value is JsonSchema[])
+            _items = value is JsonSchema || value is JsonSchema[]
                 ? value
                 : throw new ArgumentException("Items must be a JsonSchema or Array of JsonSchema");
         }

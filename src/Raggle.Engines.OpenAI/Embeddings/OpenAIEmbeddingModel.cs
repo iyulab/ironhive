@@ -2,9 +2,9 @@
 
 namespace Raggle.Engines.OpenAI.Embeddings;
 
-public class OpenAIEmbeddingModel : OpenAIModel
+internal class OpenAIEmbeddingModel : OpenAIModel
 {
-    public bool IsSupportDynamicDimension
+    internal bool IsSupportDynamicDimension
     {
         get
         {

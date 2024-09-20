@@ -2,13 +2,18 @@
 
 namespace Raggle.Engines.OpenAI.ChatCompletion;
 
+public enum FinishReason
+{
+    Stop,
+    Length,
+    ContentFilter,
+    ToolCalls
+}
+
 public class Choice
 {
-    /// <summary>
-    /// "stop", "length", "content_filter", "tool_calls" 
-    /// </summary>
     [JsonPropertyName("finish_reason")]
-    public string? FinishReason { get; set; }
+    public FinishReason? FinishReason { get; set; }
 
     [JsonPropertyName("index")]
     public int Index { get; set; }
@@ -22,11 +27,8 @@ public class Choice
 
 public class ChoiceDelta
 {
-    /// <summary>
-    /// "stop", "length", "content_filter", "tool_calls" 
-    /// </summary>
     [JsonPropertyName("finish_reason")]
-    public string? FinishReason { get; set; }
+    public FinishReason? FinishReason { get; set; }
 
     [JsonPropertyName("index")]
     public int Index { get; set; }

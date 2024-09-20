@@ -1,7 +1,7 @@
 ﻿using System.Text.Json.Serialization;
 using System.Text.Json;
 
-namespace Raggle.Engines.OpenAI.Converters;
+namespace Raggle.Abstractions.Converters;
 
 /// <summary>
 /// Converts Unix time (seconds since epoch) to DateTime.

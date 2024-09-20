@@ -1,4 +1,6 @@
-﻿using System.Reflection;
+﻿using Raggle.Abstractions.Converters;
+using System.ComponentModel;
+using System.Reflection;
 
 namespace Raggle.Abstractions.Tools;
 
@@ -7,16 +9,20 @@ public class FunctionTool
     private readonly Delegate _function;
     public object? Target => _function.Target;
     public MethodInfo Method => _function.Method;
-    public ParameterInfo[] Parameters => _function.Method.GetParameters();
-    public Type ReturnType => _function.Method.ReturnType;
+    public ParameterInfo[] Parameters => Method.GetParameters();
+    public Type ReturnType => Method.ReturnType;
 
     public required string Name { get; set; }
     public string? Description { get; set; }
-    public record FunctionResult(bool IsSuccess, object? Result, string? ErrorMessage);
+    public IDictionary<string, object> Properties { get; set; }
+    public string[] Required { get; set; }
 
     public FunctionTool(Delegate function)
     {
         _function = function;
+        var jsonSchema = GetSchemaInfo(Parameters);
+        Properties = jsonSchema.Item1;
+        Required = jsonSchema.Item2;
     }
 
     public async Task<FunctionResult> InvokeAsync(IDictionary<string, object?>? args)
@@ -25,46 +31,77 @@ public class FunctionTool
         {
             var arguments = GetArguments(args);
             var result = _function.DynamicInvoke(arguments);
+
             if (result is Task task)
             {
                 await task;
-                var resultProperty = task.GetType().GetProperty("Result");
-                return new FunctionResult(true, resultProperty?.GetValue(task), null);
+                result = task.GetType().GetProperty("Result")?.GetValue(task);
             }
-            return new FunctionResult(true, result, null);
+            return FunctionResult.Success(result);
         }
         catch (Exception ex)
         {
-            return new FunctionResult(false, null, ex.Message);
+            return FunctionResult.Failed(ex.Message);
         }
     }
 
-    private object?[] GetArguments(IDictionary<string, object?>? args)
+    private object?[]? GetArguments(IDictionary<string, object?>? args)
     {
-        var arguments = new object?[Parameters.Length];
-        if (args == null || args.Count == 0)
+        if (Parameters.Length == 0)
         {
-            return arguments;
+            return null;
         }
+
+        var arguments = new object?[Parameters.Length];
+        var hasArgs = args != null && args.Count > 0;
 
         for (int i = 0; i < Parameters.Length; i++)
         {
             var param = Parameters[i];
-            var paramName = param.Name!;
-            var paramType = param.ParameterType;
+            var paramName = param.Name;
+            //var paramType = param.ParameterType;
             var isRequired = !param.IsOptional;
-
-            if (args.TryGetValue(paramName, out var value))
+            
+            if (hasArgs && args!.TryGetValue(paramName!, out var value))
             {
                 arguments[i] = value;
-                continue;
             }
-            if (isRequired)
+            else if (param.HasDefaultValue)
             {
-                throw new ArgumentException($"Required parameter '{param.Name}' is missing.");
+                arguments[i] = param.DefaultValue;
+            }
+            else if (isRequired)
+            {
+                throw new ArgumentException($"Required parameter '{paramName}' is missing.");
+            }
+            else
+            {
+                arguments[i] = null;
             }
         }
+
         return arguments;
+    }
+
+    private static (IDictionary<string, object>, string[]) GetSchemaInfo(ParameterInfo[] parameters)
+    {
+        var properties = new Dictionary<string, object>();
+        var required = new List<string>();
+        foreach (var prop in parameters)
+        {
+            if (string.IsNullOrEmpty(prop.Name))
+                continue;
+
+            var propType = prop.ParameterType;
+            var propDescription = prop.GetCustomAttribute<DescriptionAttribute>()?.Description;
+            var propSchema = JsonSchemaConverter.ConvertFromType(propType, propDescription);
+            properties.Add(prop.Name, propSchema);
+
+            if (!prop.IsOptional)
+                required.Add(prop.Name);
+        }
+
+        return (properties, required.ToArray());
     }
 
 }

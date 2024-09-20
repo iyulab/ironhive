@@ -2,65 +2,71 @@
 using LLama;
 using LLama.Common;
 using Raggle.Abstractions.Engines;
+using ChatSession = Raggle.Abstractions.Models.ChatSession;
 
 namespace Raggle.Engines.LLamaSharp;
 
 public class LLamaSharpChatEngine : IChatCompletionEngine, IDisposable
 {
-    private readonly ModelParams _params;
-    public LLamaWeights? Model { get; private set; }
+    private readonly IDictionary<string, LLamaContext> _models;
 
-    public LLamaSharpChatEngine(string modelPath)
+    public LLamaSharpChatEngine(LLamaSharpConfig config)
     {
-        _params = GetParams(modelPath);
-        LoadModel();
+        _models = LoadModels(config);
     }
 
     public void Dispose()
     {
-        Model?.Dispose();
+        foreach(var model in _models)
+        {
+            model.Value.Dispose();
+        }
+        _models.Clear();
         GC.SuppressFinalize(this);
     }
 
-    public void LoadModel()
+    public Dictionary<string, LLamaContext> LoadModels(LLamaSharpConfig config)
     {
-        Model = LLamaWeights.LoadFromFile(_params);
-    }
-
-    public long CountTokens(string text)
-    {
-        if (Model == null)
+        var models = new Dictionary<string, LLamaContext>();
+        var modelPaths = config.ModelPaths;
+        foreach (var modelPath in modelPaths)
         {
-            throw new InvalidOperationException("Model is not loaded.");
+            var parameters = new ModelParams(modelPath)
+            {
+                ContextSize = 2048,                          // 모델이 한 번에 처리할 수 있는 최대 토큰 수
+                MainGpu = 0,                                 // 주로 사용할 GPU의 ID
+                GpuLayerCount = 1,                           // 모델이 GPU에서 처리할 레이어의 수
+                Encoding = Encoding.UTF8,                    // 텍스트 데이터를 인코딩할 방식
+                Seed = 0,                                    // 랜덤 시드
+            };
+            var model = LLamaWeights.LoadFromFile(parameters);
+            var context = new LLamaContext(model, parameters);
+            models.Add(modelPath, context);
         }
-
-        var tokens = Model.Tokenize(text, false, false, Encoding.UTF8);
-        return tokens.Length;
-    }
-
-    private static ModelParams GetParams(string modelPath)
-    {
-        return new ModelParams(modelPath)
-        {
-            ContextSize = 2500,                          // 모델이 한 번에 처리할 수 있는 최대 토큰 수
-            MainGpu = 0,                                 // 주로 사용할 GPU의 ID
-            GpuLayerCount = 1,                           // 모델이 GPU에서 처리할 레이어의 수
-            Encoding = Encoding.UTF8,                    // 텍스트 데이터를 인코딩할 방식
-            Seed = 0,                                    // 랜덤 시드
-        };
+        return models;
     }
 
     public Task<IEnumerable<ChatCompletionModel>> GetChatCompletionModelsAsync()
     {
-        throw new NotImplementedException();
+        var models = new List<ChatCompletionModel>();
+        foreach (var model in _models)
+        {
+            models.Add(new ChatCompletionModel
+            {
+                ModelId = model.Key,
+                CreatedAt = null,
+                Owner = "LLamaSharp"
+            });
+        }
+        return Task.FromResult(models.AsEnumerable());
     }
 
-    public Task<IEnumerable<ChatCompletionResponse>> ChatCompletionAsync()
+    public Task<ChatCompletionResponse> ChatCompletionAsync(ChatSession session, ChatCompletionOptions options)
     {
         throw new NotImplementedException();
     }
 
-    public IAsyncEnumerable<StreamingChatCompletionResponse> StreamingChatCompletionAsync()
+    public IAsyncEnumerable<StreamingChatCompletionResponse> StreamingChatCompletionAsync(ChatSession session, ChatCompletionOptions options)
     {
         throw new NotImplementedException();
     }

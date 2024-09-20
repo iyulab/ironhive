@@ -1,10 +1,18 @@
-﻿namespace Raggle.Abstractions.Engines;
+﻿using Raggle.Abstractions.Tools;
+
+namespace Raggle.Abstractions.Engines;
 
 public class ChatCompletionOptions
 {
-    public int MaxTokens { get; set; }
+    public required string ModelId { get; set; }
 
-    public string? ToolChoice { get; set; }
+    public int MaxTokens { get; set; } = 2048;
+
+    public string? System { get; set; }
+
+    public FunctionTool[]? Tools { get; set; }
+
+    //public string? ToolChoice { get; set; }
 
     /// <summary>
     /// 0.0 to 1.0
@@ -21,5 +29,5 @@ public class ChatCompletionOptions
     /// </summary>
     public double? TopP { get; set; }
 
-    public ICollection<string>? StopSequences { get; set; }
+    public string[]? StopSequences { get; set; }
 }

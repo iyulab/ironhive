@@ -26,8 +26,8 @@ public class InputSchema
     public string Type { get; } = "object";
 
     [JsonPropertyName("properties")]
-    public object? Properties { get; set; }
+    public IDictionary<string, object>? Properties { get; set; }
 
     [JsonPropertyName("required")]
-    public ICollection<string>? Required { get; set; }
+    public string[]? Required { get; set; }
 }

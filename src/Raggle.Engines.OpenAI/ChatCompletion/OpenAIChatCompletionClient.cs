@@ -34,6 +34,7 @@ public class OpenAIChatCompletionClient : OpenAIClientBase
         }.ToString();
 
         request.Stream = false;
+        var json = JsonSerializer.Serialize(request, _jsonOptions);
         var content = new StringContent(JsonSerializer.Serialize(request, _jsonOptions), Encoding.UTF8, "application/json");
         var response = await _client.PostAsync(requestUri, content);
         response.EnsureSuccessStatusCode();

@@ -49,7 +49,7 @@ public class AssistantMessage : Message
     /// the tools that the assistant calls.
     /// </summary>
     [JsonPropertyName("tool_calls")]
-    public ICollection<ToolCall>? ToolCalls { get; set; }
+    public ToolCall[]? ToolCalls { get; set; }
 }
 
 /// <summary>

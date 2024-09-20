@@ -6,13 +6,13 @@ using System.Text.Json;
 
 namespace Raggle.Engines.OpenAI.Embeddings;
 
-public class OpenAIEmbeddingClient : OpenAIClientBase
+internal class OpenAIEmbeddingClient : OpenAIClientBase
 {
-    public OpenAIEmbeddingClient(string apiKey) : base(apiKey) { }
+    internal OpenAIEmbeddingClient(string apiKey) : base(apiKey) { }
 
-    public OpenAIEmbeddingClient(OpenAIConfig config) : base(config) { }
+    internal OpenAIEmbeddingClient(OpenAIConfig config) : base(config) { }
 
-    public async Task<IEnumerable<OpenAIEmbeddingModel>> GetEmbeddingModelsAsync()
+    internal async Task<IEnumerable<OpenAIEmbeddingModel>> GetEmbeddingModelsAsync()
     {
         var models = await GetModelsAsync();
         return models.Where(OpenAIModel.IsEmbeddingModel)
@@ -24,7 +24,7 @@ public class OpenAIEmbeddingClient : OpenAIClientBase
                      });
     }
 
-    public async Task<IEnumerable<EmbeddingResponse>> PostEmbeddingAsync(EmbeddingRequest request)
+    internal async Task<IEnumerable<EmbeddingResponse>> PostEmbeddingAsync(EmbeddingRequest request)
     {
         var requestUri = new UriBuilder
         {

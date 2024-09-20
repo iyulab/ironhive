@@ -2,17 +2,18 @@
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using Raggle.Abstractions.Models;
 
-namespace Raggle.Abstractions.JsonSchema;
+namespace Raggle.Abstractions.Converters;
 
-public static class ParameterConverter
+public static class JsonSchemaConverter
 {
-    public static JsonSchema ConvertToJsonSchema<T>(string? description = null)
+    public static JsonSchema ConvertFromType<T>(string? description = null)
     {
-        return ConvertToJsonSchema(typeof(T), description);
+        return ConvertFromType(typeof(T), description);
     }
 
-    public static JsonSchema ConvertToJsonSchema(Type type, string? description = null)
+    public static JsonSchema ConvertFromType(Type type, string? description = null)
     {
         // boolean type
         if (type == typeof(bool))
@@ -60,41 +61,38 @@ public static class ParameterConverter
         if (type.IsEnum)
             return new StringJsonSchema(description) { Enum = Enum.GetNames(type) };
 
-        var interfaces = type.GetInterfaces();
-
         // array type (Tuple, IEnumerable, ICollection, IList, List, Array)
         if (type.IsArray)
         {
             var genericType = type.GetElementType()
                 ?? throw new ArgumentException("Array type must have an element type.", nameof(type));
-            var items = ConvertToJsonSchema(genericType);
+            var items = ConvertFromType(genericType);
             return new ArrayJsonSchema(description) { Items = items };
         }
-        if (type.IsInterface && (type == typeof(IEnumerable<>) || type == typeof(ICollection<>)))
+        if (IsGenericArray(type))
         {
             var genericType = type.GetGenericArguments()[0];
-            var items = ConvertToJsonSchema(genericType);
+            var items = ConvertFromType(genericType);
             return new ArrayJsonSchema(description) { Items = items };
         }
-        if (interfaces.Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ITuple)))
+        if (IsTuple(type))
         {
             var genericTypes = type.GetGenericArguments();
-            var items = genericTypes.Select(t => ConvertToJsonSchema(t)).ToArray();
+            var items = genericTypes.Select(t => ConvertFromType(t)).ToArray();
             return new ArrayJsonSchema(description) { Items = items };
         }
 
         // object type (IDictionary, class, struct, record)
-        if (interfaces.Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IDictionary<,>)))
+        if (IsDictionary(type))
         {
             var valueType = type.GetGenericArguments()[1];
-            var additionalProperties = ConvertToJsonSchema(valueType);
+            var additionalProperties = ConvertFromType(valueType);
             return new ObjectJsonSchema
             {
                 AdditionalProperties = additionalProperties
             };
         }
-        if ((type.IsClass && !type.IsAbstract && !type.IsInterface) ||          // class
-            (type.IsValueType && !type.IsPrimitive && !type.IsEnum))            // struct, record
+        if (IsComplexObject(type))
         {
             var properties = new Dictionary<string, JsonSchema>();
             var required = new List<string>();
@@ -103,7 +101,7 @@ public static class ParameterConverter
             {
                 var propType = prop.PropertyType;
                 var propDescription = prop.GetCustomAttribute<DescriptionAttribute>()?.Description;
-                var propSchema = ConvertToJsonSchema(propType, propDescription);
+                var propSchema = ConvertFromType(propType, propDescription);
                 properties.Add(prop.Name, propSchema);
 
                 if (IsRequiredProperty(prop))
@@ -120,12 +118,51 @@ public static class ParameterConverter
         throw new ArgumentException("Type not supported.", nameof(type));
     }
 
+    private static bool IsGenericArray(Type type)
+    {
+        if (!type.IsGenericType)
+            return false;
+
+        var gType = type.GetGenericTypeDefinition();
+        return gType == typeof(IEnumerable<>) || gType == typeof(ICollection<>)
+            || gType == typeof(IList<>) || gType == typeof(List<>);
+    }
+
+    private static bool IsTuple(Type type)
+    {
+        var interfaces = type.GetInterfaces();
+        return interfaces.Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ITuple));
+    }
+
+    private static bool IsDictionary(Type type)
+    {
+        return type.GetInterfaces().Any(i =>
+            i.IsGenericType &&
+            i.GetGenericTypeDefinition() == typeof(IDictionary<,>));
+    }
+
+    private static bool IsComplexObject(Type type)
+    {
+        // Class
+        if (type.IsClass && !type.IsAbstract && !type.IsInterface)
+            return true;
+
+        // Struct, Record
+        if (type.IsValueType && !type.IsPrimitive && !type.IsEnum)
+            return true;
+
+        return false;
+    }
+
     private static bool IsRequiredProperty(PropertyInfo prop)
     {
         if (prop.PropertyType.IsValueType && Nullable.GetUnderlyingType(prop.PropertyType) == null)
             return true;
 
         if (prop.GetCustomAttribute<RequiredAttribute>() != null)
+            return true;
+
+        if (prop.GetCustomAttribute<RequiredMemberAttribute>() != null)
             return true;
 
         return false;

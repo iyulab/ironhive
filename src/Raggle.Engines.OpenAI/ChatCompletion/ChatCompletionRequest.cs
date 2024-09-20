@@ -5,7 +5,7 @@ namespace Raggle.Engines.OpenAI.ChatCompletion;
 public class ChatCompletionRequest
 {
     [JsonPropertyName("messages")]
-    public required ICollection<Message> Messages { get; set; }
+    public required Message[] Messages { get; set; }
 
     [JsonPropertyName("model")]
     public required string Model { get; set; }
@@ -62,7 +62,7 @@ public class ChatCompletionRequest
     /// Up to 4 sequences is available
     /// </summary>
     [JsonPropertyName("stop")]
-    public ICollection<string>? Stop { get; set; }
+    public string[]? Stop { get; set; }
 
     /// <summary>
     /// 0.0 to 1.0
@@ -77,7 +77,7 @@ public class ChatCompletionRequest
     public double? TopP { get; set; }
 
     [JsonPropertyName("tools")]
-    public ICollection<Tool>? Tools { get; set; }
+    public Tool[]? Tools { get; set; }
 
     /// <summary>
     /// "none", "auto", <see cref="Tool"/>

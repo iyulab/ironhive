@@ -6,52 +6,76 @@ namespace Raggle.Engines.LLamaSharp;
 
 public class LLamaSharpEmbeddingEngine : IEmbeddingEngine, IDisposable
 {
-    private readonly ModelParams _params;
-    public LLamaWeights? Model { get; private set; }
+    private readonly IDictionary<string, LLamaEmbedder> _models;
 
-    public LLamaSharpEmbeddingEngine(string modelPath)
+    public LLamaSharpEmbeddingEngine(LLamaSharpConfig config)
     {
-        _params = GetParameters(modelPath);
-        LoadModel();
+        _models = LoadModels(config);
     }
 
     public void Dispose()
     {
-        throw new NotImplementedException();
-    }
-
-    public void LoadModel()
-    {
-        Model = LLamaWeights.LoadFromFile(_params);
-    }
-
-    public async Task<float[]> GetEmbeddingsAsync(string text, CancellationToken cancellationToken = default)
-    {
-        if (Model == null)
+        foreach (var model in _models)
         {
-            throw new InvalidOperationException("Model is not loaded.");
+            model.Value.Dispose();
         }
-
-        var embedder = new LLamaEmbedder(Model, _params);
-        var embeddings = await embedder.GetEmbeddings(text, cancellationToken);
-        return embeddings;
+        _models.Clear();
+        GC.SuppressFinalize(this);
     }
 
-    private static ModelParams GetParameters(string modelPath)
+    public IDictionary<string, LLamaEmbedder> LoadModels(LLamaSharpConfig config)
     {
-        return new ModelParams(modelPath)
+        var models = new Dictionary<string, LLamaEmbedder>();
+        var modelPaths = config.ModelPaths;
+        foreach (var modelPath in modelPaths)
         {
-            Embeddings = true
-        };
+            var parameters = new ModelParams(modelPath)
+            {
+                Embeddings = true
+            };
+            var model = LLamaWeights.LoadFromFile(parameters);
+            var embedder = new LLamaEmbedder(model, parameters);
+            models.Add(modelPath, embedder);
+        }
+        return models;
     }
 
-    public Task<IEnumerable<EmbeddingModel>> GetEmbeddingModelsAsync()
+    public Task<EmbeddingModel[]> GetEmbeddingModelsAsync()
     {
+        var models = new List<EmbeddingModel>();
+        foreach (var model in _models)
+        {
+            models.Add(new EmbeddingModel
+            {
+                ModelID = model.Key,
+                MaxTokens = (int)model.Value.Context.ContextSize,
+            });
+        }
+        return Task.FromResult(models.ToArray());
+    }
+
+    public async Task<float[]> EmbeddingAsync(string input, EmbeddingOptions options)
+    {
+        if (_models.TryGetValue(options.ModelId, out var model))
+        {
+            var embedding = await model.GetEmbeddings(input);
+            return embedding;
+        }
         throw new NotImplementedException();
     }
 
-    public Task<IEnumerable<float>> EmbeddingAsync(ICollection<string> inputs)
+    public async Task<float[][]> EmbeddingsAsync(ICollection<string> inputs, EmbeddingOptions options)
     {
+        var embeddings = new List<float[]>();
+        if (_models.TryGetValue(options.ModelId, out var model))
+        {
+            foreach (var input in inputs)
+            {
+                var embedding = await model.GetEmbeddings(input);
+                embeddings.Add(embedding);
+            }
+            return embeddings.ToArray();
+        }
         throw new NotImplementedException();
     }
 }

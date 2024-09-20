@@ -11,7 +11,7 @@ public class MessagesRequest
     public required int MaxTokens { get; set; }
 
     [JsonPropertyName("messages")]
-    public required ICollection<Message> Messages { get; set; }
+    public required Message[] Messages { get; set; }
 
     [JsonPropertyName("system")]
     public string? System { get; set; }
@@ -20,7 +20,7 @@ public class MessagesRequest
     public ToolChoice? ToolChoice { get; set; }
 
     [JsonPropertyName("tools")]
-    public ICollection<Tool>? Tools { get; set; }
+    public Tool[]? Tools { get; set; }
 
     /// <summary>
     /// 0.0 to 1.0
@@ -41,7 +41,7 @@ public class MessagesRequest
     public double? TopP { get; set; }
 
     [JsonPropertyName("stop_sequences")]
-    public ICollection<string>? StopSequences { get; set; }
+    public string[]? StopSequences { get; set; }
 
     [JsonPropertyName("metadata")]
     public object? Metadata { get; set; }

@@ -84,5 +84,5 @@ public class ToolResultMessageContent : MessageContent
     /// <see cref="MessageTextContent"/> or <see cref="MessageImageContent"/>
     /// </summary>
     [JsonPropertyName("content")]
-    public ICollection<MessageContent> Content { get; set; } = [];
+    public MessageContent[] Content { get; set; } = [];
 }
