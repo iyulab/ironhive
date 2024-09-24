@@ -2,34 +2,29 @@
 using Raggle.Abstractions.Models;
 using Raggle.Engines.OpenAI.ChatCompletion;
 using Raggle.Engines.OpenAI.Configurations;
-using ChatCompletionResponse = Raggle.Abstractions.Engines.ChatCompletionResponse;
-using StreamingChatCompletionResponse = Raggle.Abstractions.Engines.StreamingChatCompletionResponse;
-using System.Reflection;
-using System.ComponentModel;
 using System.Text.Json;
-using Raggle.Abstractions.Converters;
 using Raggle.Abstractions.Tools;
 
 namespace Raggle.Engines.OpenAI;
 
-public class OpenAIChatCompletionEngine : IChatCompletionEngine
+public class OpenAIChatEngine : IChatEngine
 {
     private readonly OpenAIChatCompletionClient _client;
 
-    public OpenAIChatCompletionEngine(OpenAIConfig config)
+    public OpenAIChatEngine(OpenAIConfig config)
     {
         _client = new OpenAIChatCompletionClient(config);
     }
 
-    public OpenAIChatCompletionEngine(string apiKey)
+    public OpenAIChatEngine(string apiKey)
     {
         _client = new OpenAIChatCompletionClient(apiKey);
     }
 
-    public async Task<IEnumerable<ChatCompletionModel>> GetChatCompletionModelsAsync()
+    public async Task<IEnumerable<ChatModel>> GetChatCompletionModelsAsync()
     {
         var models = await _client.GetChatCompletionModelsAsync();
-        return models.Select(m => new ChatCompletionModel
+        return models.Select(m => new ChatModel
         {
             ModelId = m.ID,
             CreatedAt = m.Created,
@@ -37,7 +32,7 @@ public class OpenAIChatCompletionEngine : IChatCompletionEngine
         });
     }
 
-    public async Task<ChatCompletionResponse> ChatCompletionAsync(ChatSession session, ChatCompletionOptions options)
+    public async Task<ChatResponse> ChatCompletionAsync(ChatSession session, ChatOptions options)
     {
         var request = BuildChatCompletionRequest(session, options);
         var response = await _client.PostChatCompletionAsync(request);
@@ -98,15 +93,15 @@ public class OpenAIChatCompletionEngine : IChatCompletionEngine
         }
         else if (choice?.FinishReason == FinishReason.Stop && choice.Message?.Content != null)
         {
-            return new ChatCompletionResponse();
+            return new ChatResponse();
         }
         else
         {
-            return new ChatCompletionResponse();
+            return new ChatResponse();
         }
     }
     
-    public async IAsyncEnumerable<StreamingChatCompletionResponse> StreamingChatCompletionAsync(ChatSession session, ChatCompletionOptions options)
+    public async IAsyncEnumerable<StreamingChatResponse> StreamingChatCompletionAsync(ChatSession session, ChatOptions options)
     {
         var request = BuildChatCompletionRequest(session, options);
         int index = 0;
@@ -135,11 +130,11 @@ public class OpenAIChatCompletionEngine : IChatCompletionEngine
                 }
             }
 
-            yield return new StreamingChatCompletionResponse();
+            yield return new StreamingChatResponse();
         }
     }
 
-    private ChatCompletionRequest BuildChatCompletionRequest(ChatSession session, ChatCompletionOptions options)
+    private ChatCompletionRequest BuildChatCompletionRequest(ChatSession session, ChatOptions options)
     {
         var request = new ChatCompletionRequest
         {

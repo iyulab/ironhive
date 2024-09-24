@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace Raggle.Helpers.HuggingFace;
 
@@ -61,16 +62,18 @@ public class HuggingFaceModel
     /// <summary>
     /// Get the file paths for the model with the specified format.
     /// </summary>
-    /// <param name="format">The file extension name.</param>
+    /// <param name="format">The regular expression pattern to match filenames.</param>
     /// <returns>An array of file paths.</returns>
-    public string[] GetFilePaths(string? format = null)
+    public string[] GetFilePaths(Regex? pattern = null)
     {
-        var extension = !string.IsNullOrEmpty(format) ? $".{format}" : string.Empty;
-        return Siblings
+        var files = Siblings
             .Where(sibling => sibling.ValueKind == JsonValueKind.Object
-                              && sibling.TryGetProperty("rfilename", out var filename)
-                              && filename.GetString()?.EndsWith(extension) == true)
+                              && sibling.TryGetProperty("rfilename", out var _))
             .Select(sibling => sibling.GetProperty("rfilename").GetString()!)
             .ToArray();
+
+        return pattern is null
+            ? files 
+            : files.Where(file => pattern.IsMatch(file)).ToArray();
     }
 }

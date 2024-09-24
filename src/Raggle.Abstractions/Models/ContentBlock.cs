@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Serialization;
+﻿using Raggle.Abstractions.Tools;
+using System.Text.Json.Serialization;
 
 namespace Raggle.Abstractions.Models;
 
@@ -36,8 +37,5 @@ public class ToolContentBlock : ContentBlock
     public object? Arguments { get; set; }
 
     [JsonPropertyName("result")]
-    public object? Result { get; set; }
-
-    [JsonPropertyName("error")]
-    public string? Error { get; set; }
+    public FunctionResult? Result { get; set; }
 }

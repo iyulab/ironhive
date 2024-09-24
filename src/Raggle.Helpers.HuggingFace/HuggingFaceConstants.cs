@@ -10,7 +10,7 @@ internal class HuggingFaceConstants
     internal const string AuthHeaderValue = $"Bearer {{0}}";
 
     internal const string GetModelsPath = "/api/models";
-    internal const string GetModelsDefaultQuery = "sort=downloads&direction=-1&full=true&config=false";
+    internal const string GetModelsDefaultQuery = "full=true&config=false";
     internal const string GetModelPath = $"/api/models/{{0}}";
 
     internal const string GetFilePath = $"/{{0}}/resolve/main/{{1}}";

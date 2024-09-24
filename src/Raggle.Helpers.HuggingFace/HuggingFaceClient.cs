@@ -47,15 +47,20 @@ public class HuggingFaceClient
         string? search = null,
         string[]? filters = null,
         int limit = 5,
+        string sort = "downloads",
+        bool descending = true,
         CancellationToken cancellationToken = default)
     {
         var query = HttpUtility.ParseQueryString(HuggingFaceConstants.GetModelsDefaultQuery);
-        if (!string.IsNullOrWhiteSpace(search))        
+        if (!string.IsNullOrWhiteSpace(search))
             query["search"] = search;
         if (filters != null && filters.Length > 0)
             query["filter"] = string.Join(",", filters.Select(filter => filter.Trim()));
         if (limit > 0)
             query["limit"] = limit.ToString();
+        if (!string.IsNullOrWhiteSpace(sort))
+            query["sort"] = sort;
+        query["direction"] = descending ? "-1" : "1";
 
         var requestUri = new UriBuilder
         {

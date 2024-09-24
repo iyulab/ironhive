@@ -2,11 +2,12 @@
 using LLama;
 using LLama.Common;
 using Raggle.Abstractions.Engines;
+using Raggle.Abstractions.Models;
 using ChatSession = Raggle.Abstractions.Models.ChatSession;
 
 namespace Raggle.Engines.LLamaSharp;
 
-public class LLamaSharpChatEngine : IChatCompletionEngine, IDisposable
+public class LLamaSharpChatEngine : IChatEngine, IDisposable
 {
     private readonly IDictionary<string, LLamaContext> _models;
 
@@ -46,27 +47,35 @@ public class LLamaSharpChatEngine : IChatCompletionEngine, IDisposable
         return models;
     }
 
-    public Task<IEnumerable<ChatCompletionModel>> GetChatCompletionModelsAsync()
+    public Task<IEnumerable<ChatModel>> GetChatCompletionModelsAsync()
     {
-        var models = new List<ChatCompletionModel>();
+        var models = new List<ChatModel>();
         foreach (var model in _models)
         {
-            models.Add(new ChatCompletionModel
+            models.Add(new ChatModel
             {
                 ModelId = model.Key,
                 CreatedAt = null,
-                Owner = "LLamaSharp"
+                Owner = null,
             });
         }
         return Task.FromResult(models.AsEnumerable());
     }
 
-    public Task<ChatCompletionResponse> ChatCompletionAsync(ChatSession session, ChatCompletionOptions options)
+    public Task<ChatResponse> ChatCompletionAsync(ChatSession session, ChatOptions options)
     {
+        if (!_models.ContainsKey(options.ModelId))
+        {
+            throw new ArgumentException("Model not found.");
+        }
+        else
+        {
+            
+        }
         throw new NotImplementedException();
     }
 
-    public IAsyncEnumerable<StreamingChatCompletionResponse> StreamingChatCompletionAsync(ChatSession session, ChatCompletionOptions options)
+    public IAsyncEnumerable<StreamingChatResponse> StreamingChatCompletionAsync(ChatSession session, ChatOptions options)
     {
         throw new NotImplementedException();
     }

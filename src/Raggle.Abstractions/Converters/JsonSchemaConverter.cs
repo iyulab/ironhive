@@ -8,11 +8,6 @@ namespace Raggle.Abstractions.Converters;
 
 public static class JsonSchemaConverter
 {
-    public static JsonSchema ConvertFromType<T>(string? description = null)
-    {
-        return ConvertFromType(typeof(T), description);
-    }
-
     public static JsonSchema ConvertFromType(Type type, string? description = null)
     {
         // boolean type

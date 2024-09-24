@@ -3,28 +3,27 @@ using Raggle.Abstractions.Models;
 using Raggle.Abstractions.Tools;
 using Raggle.Engines.Anthropic.ChatCompletion;
 using Raggle.Engines.Anthropic.Configurations;
-using System.Text.Json;
 
 namespace Raggle.Engines.Anthropic;
 
-public class AnthropicChatCompletionEngine : IChatCompletionEngine
+public class AnthropicChatEngine : IChatEngine
 {
     private readonly AnthropicChatCompletionClient _client;
 
-    public AnthropicChatCompletionEngine(AnthropicConfig config)
+    public AnthropicChatEngine(AnthropicConfig config)
     {
         _client = new AnthropicChatCompletionClient(config);
     }
 
-    public AnthropicChatCompletionEngine(string apiKey)
+    public AnthropicChatEngine(string apiKey)
     {
         _client = new AnthropicChatCompletionClient(apiKey);
     }
 
-    public Task<IEnumerable<ChatCompletionModel>> GetChatCompletionModelsAsync()
+    public Task<IEnumerable<ChatModel>> GetChatCompletionModelsAsync()
     {
         var models = _client.GetChatCompletionModels();
-        var chatCompletionModels = models.Select(m => new ChatCompletionModel
+        var chatCompletionModels = models.Select(m => new ChatModel
         {
             ModelId = m.ModelId,
             Owner = "Anthropic"
@@ -32,19 +31,19 @@ public class AnthropicChatCompletionEngine : IChatCompletionEngine
         return Task.FromResult(chatCompletionModels);
     }
 
-    public async Task<ChatCompletionResponse> ChatCompletionAsync(ChatSession session, ChatCompletionOptions options)
+    public async Task<ChatCompletionResponse> ChatCompletionAsync(ChatSession session, ChatOptions options)
     {
         var request = BuildMessagesRequest(session, options);
         var response = await _client.PostMessagesAsync(request);
         return new ChatCompletionResponse();
     }
 
-    public IAsyncEnumerable<StreamingChatCompletionResponse> StreamingChatCompletionAsync(ChatSession session, ChatCompletionOptions options)
+    public IAsyncEnumerable<StreamingChatCompletionResponse> StreamingChatCompletionAsync(ChatSession session, ChatOptions options)
     {
         throw new NotImplementedException();
     }
 
-    private MessagesRequest BuildMessagesRequest(ChatSession session, ChatCompletionOptions options)
+    private MessagesRequest BuildMessagesRequest(ChatSession session, ChatOptions options)
     {
         var request = new MessagesRequest
         {

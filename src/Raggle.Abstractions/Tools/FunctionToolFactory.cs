@@ -7,7 +7,9 @@ namespace Raggle.Abstractions.Tools;
 
 public static class FunctionToolFactory
 {
-    public static ICollection<FunctionTool> CreateFromType<T>(IServiceProvider? serviceProvider = null, params object[] parameters)
+    public static ICollection<FunctionTool> CreateFromType<T>(
+        IServiceProvider? serviceProvider = null, 
+        params object[] parameters)
         where T : class
     {
         T instance;
@@ -56,7 +58,11 @@ public static class FunctionToolFactory
         return tools;
     }
 
-    public static FunctionTool CreateFromMethod(MethodInfo method, object instance, string? name = null, string? description = null)
+    public static FunctionTool CreateFromMethod(
+        MethodInfo method, 
+        object instance, 
+        string? name = null, 
+        string? description = null)
     {
         name ??= method.Name;
         description ??= method.GetCustomAttribute<DescriptionAttribute>()?.Description;

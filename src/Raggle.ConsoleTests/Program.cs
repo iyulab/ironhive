@@ -41,8 +41,8 @@ var message = new ChatMessage
 };
 session.Add(message);
 
-var chat = new OpenAIChatCompletionEngine(key);
-var options = new ChatCompletionOptions
+var chat = new OpenAIChatEngine(key);
+var options = new ChatOptions
 {
     ModelId = "gpt-4o-mini",
     MaxTokens = 1024,
