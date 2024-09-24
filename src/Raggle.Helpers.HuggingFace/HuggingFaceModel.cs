@@ -1,5 +1,4 @@
-﻿using System.Text.Json;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace Raggle.Helpers.HuggingFace;
@@ -7,7 +6,7 @@ namespace Raggle.Helpers.HuggingFace;
 /// <summary>
 /// Represents a HuggingFace model.
 /// </summary>
-public class HuggingFaceModel
+public partial class HuggingFaceModel
 {
     /// <summary>
     /// the Repository ID
@@ -57,23 +56,31 @@ public class HuggingFaceModel
     /// that are stored in the HuggingFace repository.
     /// </summary>
     [JsonPropertyName("siblings")]
-    public IEnumerable<JsonElement> Siblings { get; set; } = [];
+    public ModelResource[] Siblings { get; set; } = [];
 
     /// <summary>
-    /// Get the file paths for the model with the specified format.
+    /// Get the file paths for the model with the specified pattern.
     /// </summary>
-    /// <param name="format">The regular expression pattern to match filenames.</param>
+    /// <param name="pattern">The regular expression pattern to match file path.</param>
     /// <returns>An array of file paths.</returns>
     public string[] GetFilePaths(Regex? pattern = null)
     {
         var files = Siblings
-            .Where(sibling => sibling.ValueKind == JsonValueKind.Object
-                              && sibling.TryGetProperty("rfilename", out var _))
-            .Select(sibling => sibling.GetProperty("rfilename").GetString()!)
+            .Where(sibling => !string.IsNullOrWhiteSpace(sibling.Rfilename))
+            .Select(sibling => sibling.Rfilename)
             .ToArray();
 
         return pattern is null
             ? files 
             : files.Where(file => pattern.IsMatch(file)).ToArray();
     }
+}
+
+public class ModelResource
+{
+    /// <summary>
+    /// the file path in the repository.
+    /// </summary>
+    [JsonPropertyName("rfilename")]
+    public string Rfilename { get; set; } = string.Empty;
 }

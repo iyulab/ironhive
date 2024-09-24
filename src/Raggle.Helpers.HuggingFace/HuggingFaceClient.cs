@@ -43,7 +43,7 @@ public class HuggingFaceClient
     /// <returns>
     /// The task result contains an array of <see cref="HuggingFaceModel"/> objects
     /// </returns>
-    public async Task<IEnumerable<HuggingFaceModel>> SearchModelsAsync(
+    public async Task<HuggingFaceModel[]> SearchModelsAsync(
         string? search = null,
         string[]? filters = null,
         int limit = 5,
