@@ -8,7 +8,7 @@ namespace Raggle.Helpers.HuggingFace;
 /// <summary>
 /// a search and download client for interacting with the Hugging Face API.
 /// </summary>
-public class HuggingFaceClient
+public class HuggingFaceClient : IDisposable
 {
     private readonly HttpClient _client;
 
@@ -80,11 +80,13 @@ public class HuggingFaceClient
     /// <param name="repoId">The ID of the repository.</param>
     /// <param name="filePath">The path of the file in the repository.</param>
     /// <param name="outputPath">The path to save the downloaded file.</param>
+    /// <param name="startFrom">The byte offset to start downloading the file from. The default value is 0.</param>
     /// <returns>An asynchronous enumerable of <see cref="FileDownloadProgress"/> objects.</returns>
     public async IAsyncEnumerable<FileDownloadProgress> DownloadFileAsync(
         string repoId,
         string filePath,
         string outputPath,
+        long startFrom = 0,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var requestUri = new UriBuilder
@@ -95,11 +97,19 @@ public class HuggingFaceClient
             Query = HuggingFaceConstants.GetFileDefaultQuery
         }.ToString();
 
-        using var response = await _client.GetAsync(requestUri, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
+
+        if (startFrom > 0)
+        {
+            request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(startFrom, null);
+        }
+
+        using var response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var totalBytes = response.Content.Headers.ContentLength;
-        var hasTotalBytes = totalBytes != null;
+        var totalBytes = response.Content.Headers.ContentLength.HasValue
+            ? response.Content.Headers.ContentLength.Value + startFrom
+            : (long?)null;
 
         if (!Path.HasExtension(outputPath))
         {
@@ -108,10 +118,16 @@ public class HuggingFaceClient
         EnsureDirectory(outputPath);
 
         using var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        await using var fileStream = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
+        await using var fileStream = new FileStream(
+            outputPath,
+            startFrom > 0 ? FileMode.Append : FileMode.Create,
+            FileAccess.Write,
+            FileShare.None,
+            8192,
+            true);
 
         var buffer = new byte[8192];
-        long totalBytesRead = 0;
+        long totalBytesRead = startFrom;
         int bytesRead;
 
         var progress = new FileDownloadProgress
@@ -129,14 +145,14 @@ public class HuggingFaceClient
             totalBytesRead += bytesRead;
 
             var elapsedTime = DateTime.UtcNow - startTime;
-            var downloadSpeed = totalBytesRead / elapsedTime.TotalSeconds;
+            var downloadSpeed = elapsedTime.TotalSeconds > 0 ? totalBytesRead / elapsedTime.TotalSeconds : 0;
 
             progress.CurrentBytes = totalBytesRead;
             progress.DownloadSpeed = downloadSpeed;
-            if (hasTotalBytes && downloadSpeed > 0)
+            if (totalBytes.HasValue && downloadSpeed > 0)
             {
-                progress.DownloadProgress = (double?)totalBytesRead / totalBytes;
-                progress.RemainingTime = TimeSpan.FromSeconds((totalBytes!.Value - totalBytesRead) / downloadSpeed);
+                progress.DownloadProgress = (double)totalBytesRead / totalBytes.Value;
+                progress.RemainingTime = TimeSpan.FromSeconds((totalBytes.Value - totalBytesRead) / downloadSpeed);
             }
             yield return progress;
         }
@@ -199,7 +215,7 @@ public class HuggingFaceClient
             try
             {
                 var outputPath = Path.Combine(outputDir, file);
-                await foreach (var fileProgress in DownloadFileAsync(repoId, file, outputPath, cancellationToken))
+                await foreach (var fileProgress in DownloadFileAsync(repoId, file, outputPath, cancellationToken: cancellationToken))
                 {
                     downloadProgresses[file] = fileProgress;
                 }
@@ -252,5 +268,11 @@ public class HuggingFaceClient
         {
             Directory.CreateDirectory(directory);
         }
+    }
+
+    public void Dispose()
+    {
+        _client.Dispose();
+        GC.SuppressFinalize(this);
     }
 }
