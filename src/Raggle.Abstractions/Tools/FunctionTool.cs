@@ -1,6 +1,7 @@
 ﻿using Raggle.Abstractions.Converters;
 using System.ComponentModel;
 using System.Reflection;
+using System.Text.Json;
 
 namespace Raggle.Abstractions.Tools;
 
@@ -59,12 +60,19 @@ public class FunctionTool
         {
             var param = Parameters[i];
             var paramName = param.Name;
-            //var paramType = param.ParameterType;
+            var paramType = param.ParameterType;
             var isRequired = !param.IsOptional;
             
             if (hasArgs && args!.TryGetValue(paramName!, out var value))
             {
-                arguments[i] = value;
+                if (value is JsonElement el)
+                {
+                    arguments[i] = JsonSerializer.Deserialize(el.GetRawText(), paramType);
+                }
+                else
+                {
+                    arguments[i] = value;
+                }
             }
             else if (param.HasDefaultValue)
             {
@@ -105,5 +113,3 @@ public class FunctionTool
     }
 
 }
-
-

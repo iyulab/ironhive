@@ -1,9 +1,6 @@
-﻿using System.Text.Json.Serialization;
+﻿namespace Raggle.Abstractions.Models;
 
-namespace Raggle.Abstractions.Models;
-
-[JsonConverter(typeof(JsonStringEnumConverter))]
-public enum ChatRole
+public enum MessageRole
 {
     User,
     Assistant
@@ -11,9 +8,9 @@ public enum ChatRole
 
 public class ChatMessage
 {
-    [JsonPropertyName("role")]
-    public required ChatRole Role { get; set; }
+    public required MessageRole Role { get; set; }
 
-    [JsonPropertyName("contents")]
-    public required ICollection<ContentBlock> Contents { get; set; } = [];
+    public ICollection<ContentBlock> Contents { get; set; } = [];
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

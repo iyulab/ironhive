@@ -1,6 +1,6 @@
 ﻿using Raggle.Abstractions.Tools;
 
-namespace Raggle.Abstractions.Engines;
+namespace Raggle.Abstractions.Models;
 
 public class ChatOptions
 {

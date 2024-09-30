@@ -1,78 +1,20 @@
-﻿using System.Collections;
+﻿namespace Raggle.Abstractions.Models;
 
-namespace Raggle.Abstractions.Models;
-
-public class ChatSession : ICollection<ChatMessage>
+public class ChatSession
 {
-    private readonly List<ChatMessage> _messages = [];
+    public string? System { get; set; }
 
-    public int Count => _messages.Count;
+    public ChatHistory History { get; set; } = new ChatHistory();
 
-    public bool IsReadOnly => false;
+    public string[] ToolKits { get; set; } = [];
 
-    public void Add(ChatMessage item)
-    {
-        _messages.Add(item);
-    }
+    public int MaxTokens { get; set; } = 2048;
 
-    public void AddUserMessage(string text, string[] images)
-    {
-        var contents = new List<ContentBlock>();
-        foreach (var image in images)
-        {
-            contents.Add(new ImageContentBlock { Data = image });
-        }
-        contents.Add(new TextContentBlock { Text = text });
-        Add(new ChatMessage { Role = ChatRole.User, Contents = contents });
-    }
+    public double? Temperature { get; set; }
 
-    public void AppendAssistantMessage(ToolContentBlock tool)
-    {
+    public int? TopK { get; set; }
 
-    }
+    public double? TopP { get; set; }
 
-    public void AppendAssistantMessage(TextContentBlock text)
-    {
-
-    }
-
-    public bool Remove(ChatMessage item)
-    {
-        return _messages.Remove(item);
-    }
-
-    public bool Contains(ChatMessage item)
-    {
-        return _messages.Contains(item);
-    }
-
-    public void CopyTo(ChatMessage[] array, int index)
-    {
-        _messages.CopyTo(array, index);
-    }
-
-    public ChatSession Clone()
-    {
-        var clone = new ChatSession();
-        foreach (var message in _messages)
-        {
-            clone.Add(message);
-        }
-        return clone;
-    }
-
-    public void Clear()
-    {
-        _messages.Clear();
-    }
-
-    public IEnumerator<ChatMessage> GetEnumerator()
-    {
-        return _messages.GetEnumerator();
-    }
-
-    IEnumerator IEnumerable.GetEnumerator()
-    {
-        return _messages.GetEnumerator();
-    }
+    public string[]? StopSequences { get; set; }
 }

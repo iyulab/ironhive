@@ -1,4 +1,4 @@
-﻿namespace Raggle.Abstractions.Engines;
+﻿namespace Raggle.Abstractions.Models;
 
 public class EmbeddingOptions
 {

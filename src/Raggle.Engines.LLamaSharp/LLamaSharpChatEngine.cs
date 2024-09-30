@@ -3,7 +3,7 @@ using LLama;
 using LLama.Common;
 using Raggle.Abstractions.Engines;
 using Raggle.Abstractions.Models;
-using ChatSession = Raggle.Abstractions.Models.ChatSession;
+using ChatHistory = Raggle.Abstractions.Models.ChatHistory;
 
 namespace Raggle.Engines.LLamaSharp;
 
@@ -62,7 +62,7 @@ public class LLamaSharpChatEngine : IChatEngine, IDisposable
         return Task.FromResult(models.AsEnumerable());
     }
 
-    public Task<ChatResponse> ChatCompletionAsync(ChatSession session, ChatOptions options)
+    public Task<ChatResponse> ChatCompletionAsync(ChatHistory history, ChatOptions options)
     {
         if (!_models.ContainsKey(options.ModelId))
         {
@@ -75,7 +75,7 @@ public class LLamaSharpChatEngine : IChatEngine, IDisposable
         throw new NotImplementedException();
     }
 
-    public IAsyncEnumerable<StreamingChatResponse> StreamingChatCompletionAsync(ChatSession session, ChatOptions options)
+    public IAsyncEnumerable<StreamingChatResponse> StreamingChatCompletionAsync(ChatHistory history, ChatOptions options)
     {
         throw new NotImplementedException();
     }

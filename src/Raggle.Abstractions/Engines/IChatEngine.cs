@@ -6,7 +6,7 @@ public interface IChatEngine
 {
     Task<IEnumerable<ChatModel>> GetChatCompletionModelsAsync();
 
-    Task<ChatResponse> ChatCompletionAsync(ChatSession session, ChatOptions options);
+    Task<ChatResponse> ChatCompletionAsync(ChatHistory history, ChatOptions options);
 
-    IAsyncEnumerable<StreamingChatResponse> StreamingChatCompletionAsync(ChatSession session, ChatOptions options);
+    IAsyncEnumerable<StreamingChatResponse> StreamingChatCompletionAsync(ChatHistory history, ChatOptions options);
 }

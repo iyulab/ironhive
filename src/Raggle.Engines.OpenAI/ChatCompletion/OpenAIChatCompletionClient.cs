@@ -70,7 +70,7 @@ public class OpenAIChatCompletionClient : OpenAIClientBase
             if (!data.StartsWith('{') || !data.EndsWith('}'))
                 continue;
 
-            var message = JsonSerializer.Deserialize<StreamingChatCompletionResponse>(data);
+            var message = JsonSerializer.Deserialize<StreamingChatCompletionResponse>(data, _jsonOptions);
             if (message != null)
             {
                 yield return message;

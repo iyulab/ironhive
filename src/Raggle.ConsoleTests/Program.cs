@@ -17,6 +17,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using ChatHistory = Raggle.Abstractions.Models.ChatHistory;
 using ChatSession = Raggle.Abstractions.Models.ChatSession;
 using JsonSchema = NJsonSchema.JsonSchema;
 
@@ -30,16 +31,16 @@ var key = secrets?.GetValueOrDefault("OpenAI") ?? string.Empty;
 //    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
 //});
 
-var tools = FunctionToolFactory.CreateFromType<MathPlugin>();
-var session = new ChatSession();
+var tools = FunctionToolFactory.CreateFromType<MathTools>();
+var history = new ChatHistory();
 var message = new ChatMessage
 {
-    Role = ChatRole.User,
+    Role = MessageRole.User,
     Contents = [ new TextContentBlock {
         Text = "what is (2 + 2) * 50?"
     }]
 };
-session.Add(message);
+history.Add(message);
 
 var chat = new OpenAIChatEngine(key);
 var options = new ChatOptions
@@ -50,14 +51,14 @@ var options = new ChatOptions
     Tools = tools.ToArray()
 };
 
-await foreach (var response in chat.StreamingChatCompletionAsync(session, options))
+await foreach (var response in chat.StreamingChatCompletionAsync(history, options))
 {
     //Console.WriteLine(response.ToString());
 }
 
 return;
 
-public class MathPlugin
+public class MathTools
 {
     [FunctionTool(Name = "Add", Description = "Adds two numbers together")]
     public int  AddAsync(

@@ -31,26 +31,26 @@ public class AnthropicChatEngine : IChatEngine
         return Task.FromResult(chatCompletionModels);
     }
 
-    public async Task<ChatCompletionResponse> ChatCompletionAsync(ChatSession session, ChatOptions options)
+    public async Task<ChatResponse> ChatCompletionAsync(ChatHistory history, ChatOptions options)
     {
-        var request = BuildMessagesRequest(session, options);
+        var request = BuildMessagesRequest(history, options);
         var response = await _client.PostMessagesAsync(request);
-        return new ChatCompletionResponse();
+        return new ChatResponse();
     }
 
-    public IAsyncEnumerable<StreamingChatCompletionResponse> StreamingChatCompletionAsync(ChatSession session, ChatOptions options)
+    public IAsyncEnumerable<StreamingChatResponse> StreamingChatCompletionAsync(ChatHistory history, ChatOptions options)
     {
         throw new NotImplementedException();
     }
 
-    private MessagesRequest BuildMessagesRequest(ChatSession session, ChatOptions options)
+    private MessagesRequest BuildMessagesRequest(ChatHistory history, ChatOptions options)
     {
         var request = new MessagesRequest
         {
             Model = options.ModelId,
             MaxTokens = options.MaxTokens,
             System = options.System,
-            Messages = SessionToMessages(session),
+            Messages = ConvertChatHistory(history),
             Temperature = options.Temperature,
             TopK = options.TopK,
             TopP = options.TopP,
@@ -65,15 +65,15 @@ public class AnthropicChatEngine : IChatEngine
         return request;
     }
 
-    private static Message[] SessionToMessages(ChatSession session)
+    private static Message[] ConvertChatHistory(ChatHistory history)
     {
         var messages = new List<Message>();
-        foreach (var message in session)
+        foreach (var message in history)
         {
             if (message.Contents == null || message.Contents.Count == 0)
                 continue;
 
-            if (message.Role == ChatRole.User)
+            if (message.Role == MessageRole.User)
             {
                 var contents = new List<MessageContent>();
                 foreach (var content in message.Contents)
@@ -89,7 +89,7 @@ public class AnthropicChatEngine : IChatEngine
                 }
                 messages.Add(new Message { Role = "user", Content = contents.ToArray() });
             }
-            else if (message.Role == ChatRole.Assistant)
+            else if (message.Role == MessageRole.Assistant)
             {
                 var contents = new List<MessageContent>();
                 foreach (var content in message.Contents)
@@ -101,7 +101,6 @@ public class AnthropicChatEngine : IChatEngine
                     }
                     else if (content is ToolContentBlock tool)
                     {
-                        contents.Add(new ToolMessageContent { Tool = tool.Tool });
                         messages.Add(new Message { Role = "assistant", Content = contents.ToArray() });
                         messages.Add(new Message { Role = "user", Content = contents.ToArray() });
                     }
