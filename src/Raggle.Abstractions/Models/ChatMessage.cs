@@ -6,11 +6,30 @@ public enum MessageRole
     Assistant
 }
 
-public class ChatMessage
+public interface IMessage
 {
-    public required MessageRole Role { get; set; }
+    MessageRole Role { get; }
 
-    public ICollection<ContentBlock> Contents { get; set; } = [];
+    DateTime CreatedAt { get; set; }
+}
+
+public abstract class MessageBase : IMessage
+{
+    public abstract MessageRole Role { get; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public class UserMessage : MessageBase
+{
+    public override MessageRole Role => MessageRole.User;
+
+    public ICollection<IUserContent> Contents { get; set; } = [];
+}
+
+public class AssistantMessage : MessageBase
+{
+    public override MessageRole Role => MessageRole.Assistant;
+
+    public ICollection<IAssistantContent> Contents { get; set; } = [];
 }

@@ -86,15 +86,11 @@ public class OpenAIChatEngine : IChatEngine
     {
         var request = BuildChatCompletionRequest(history, options);
         var tools = options.Tools?.ToDictionary(t => t.Name, t => t);
-        int index = 0;
-        TextContentBlock? textContent = null;
-        ToolContentBlock? toolContent = null;
-
-        var contents = new List<MessageContent>();
+        var contents = new List<ContentBlock>();
 
         await foreach (var response in _client.PostStreamingChatCompletionAsync(request))
         {
-            Console.WriteLine($"Current Index: {index}");
+            Console.WriteLine($"Current Index: {contents.Count}");
             Console.WriteLine(JsonSerializer.Serialize(response, new JsonSerializerOptions
             {
                 WriteIndented = true,
@@ -102,18 +98,59 @@ public class OpenAIChatEngine : IChatEngine
             var choice = response.Choices?.First();
             if (choice == null) continue;
 
-            if (choice.FinishReason == FinishReason.Stop)
-            {
-                yield return StreamingChatResponse.Text(textContent);
-                break;
-            }
             if (choice.Delta?.Content != null)
             {
-                textContent ??= new TextContentBlock();
-                textContent.Text += choice.Delta.Content;
-                yield return StreamingChatResponse.Text(textContent);
+                if (contents.Last() is TextContentBlock textContent)
+                {
+                    textContent.Text += choice.Delta.Content ?? string.Empty;
+                    yield return StreamingChatResponse.Text(textContent);
+                }
+                else
+                {
+                    var content = new TextContentBlock { Text = choice.Delta.Content };
+                    contents.Add(content);
+                }
+            }
+            if (choice.FinishReason == FinishReason.Stop)
+            {
+                if (contents.Last() is TextContentBlock textContent)
+                {
+                    textContent.Text += choice.Delta?.Content ?? string.Empty;
+                    yield return StreamingChatResponse.Text(textContent);
+                }
             }
 
+            if (choice.Delta?.ToolCalls != null)
+            {
+                var toolCall = choice.Delta.ToolCalls.First();
+                if (toolCall == null) continue;
+
+                if (contents.Last() is ToolContentBlock toolContent)
+                {
+                    toolContent.ID ??= toolCall.ID;
+                    toolContent.Name ??= toolCall.Function?.Name;
+                    toolContent.Arguments ??= toolCall.Function?.Arguments;
+                }
+                else
+                {
+                    var content = new ToolContentBlock
+                    {
+                        ID = toolCall.ID,
+                        Name = toolCall.Function?.Name,
+                        Arguments = toolCall.Function?.Arguments
+                    };
+                    if (tools.TryGetValue(content.Name, out var function))
+                    {
+                        if (content.Arguments is string strArgs)
+                        {
+                            var args = JsonSerializer.Deserialize<Dictionary<string, object>>(strArgs);
+                            var result = await function.InvokeAsync(args);
+                            content.Result = result;
+                        }
+                    }
+                    contents.Add(content);
+                }
+            }
             if (choice.FinishReason == FinishReason.ToolCalls)
             {
                 if (tools.TryGetValue(toolContent.Name, out var function))
@@ -132,27 +169,19 @@ public class OpenAIChatEngine : IChatEngine
                     }
                 }
             }
-            if (choice.Delta?.ToolCalls != null)
-            {
-                toolContent ??= new ToolContentBlock();
-                toolContent.ID ??= choice.Delta.ToolCalls[0].ID;
-                toolContent.Name ??= choice.Delta.ToolCalls[0].Function?.Name;
-                toolContent.Arguments += choice.Delta.ToolCalls[0].Function?.Arguments ?? string.Empty;
-                yield return StreamingChatResponse.Tool(toolContent);
-            }
         }
 
-        yield return StreamingChatResponse.Stop();
+        yield return new StreamingSystemResponse { Status = StreamingSystemStatus.Stop };
     }
 
     private async IAsyncEnumerable<StreamingChatResponse> StreamingTextAsync(ChoiceDelta delta)
     {
-        yield return StreamingChatResponse.Stop();
+        throw new NotImplementedException();
     }
 
     private async IAsyncEnumerable<StreamingChatResponse> StreamingToolAsync(ChoiceDelta delta)
     {
-        yield return StreamingChatResponse.Stop();
+        throw new NotImplementedException();
     }
 
     private ChatCompletionRequest BuildChatCompletionRequest(ChatHistory history, ChatOptions options)

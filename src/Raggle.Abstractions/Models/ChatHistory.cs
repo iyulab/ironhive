@@ -2,9 +2,9 @@
 
 namespace Raggle.Abstractions.Models;
 
-public class ChatHistory : ICollection<ChatMessage>
+public class ChatHistory : ICollection<IMessage>
 {
-    private readonly List<ChatMessage> _messages = [];
+    private readonly List<IMessage> _messages = [];
 
     public int Count => _messages.Count;
 
@@ -20,22 +20,22 @@ public class ChatHistory : ICollection<ChatMessage>
         return clone;
     }
 
-    public void Add(ChatMessage message)
+    public void Add(IMessage message)
     {
         _messages.Add(message);
     }
 
-    public bool Remove(ChatMessage message)
+    public bool Remove(IMessage message)
     {
         return _messages.Remove(message);
     }
 
-    public bool Contains(ChatMessage message)
+    public bool Contains(IMessage message)
     {
         return _messages.Contains(message);
     }
 
-    public void CopyTo(ChatMessage[] array, int index)
+    public void CopyTo(IMessage[] array, int index)
     {
         _messages.CopyTo(array, index);
     }
@@ -45,7 +45,7 @@ public class ChatHistory : ICollection<ChatMessage>
         _messages.Clear();
     }
 
-    public IEnumerator<ChatMessage> GetEnumerator()
+    public IEnumerator<IMessage> GetEnumerator()
     {
         return _messages.GetEnumerator();
     }

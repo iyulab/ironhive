@@ -1,51 +1,64 @@
 ﻿namespace Raggle.Abstractions.Models;
 
-public enum StreamingStatus
+public enum StreamingSystemStatus
 {
-    TextGeneration,
-    ToolCall,
+    Limit,
     Stop,
     Error,
 }
 
-public class StreamingChatResponse
+public enum StreamingTextStatus
 {
-    public StreamingStatus Status { get; set; }
-    public ContentBlock? ChunkBlock { get; set; }
-    public string? ErrorMessage { get; set; }
+    TextBegin,
+    TextEnd,
+}
 
-    public static StreamingChatResponse Stop()
-    {
-        return new StreamingChatResponse
-        {
-            Status = StreamingStatus.Stop
-        };
-    }
+public enum StreamingToolStatus
+{
+    ToolCall,
+    ToolUse,
+    ToolResult,
+}
 
-    public static StreamingChatResponse Error(string? errorMessage)
-    {
-        return new StreamingChatResponse
-        {
-            Status = StreamingStatus.Error,
-            ErrorMessage = errorMessage
-        };
-    }
+public enum StreamingMemoryStatus
+{
+    MemorySearch,
+    MemoryResult,
+}
 
-    public static StreamingChatResponse Text(TextContentBlock textBlock)
-    {
-        return new StreamingChatResponse
-        {
-            Status = StreamingStatus.TextGeneration,
-            ChunkBlock = textBlock
-        };
-    }
+public interface IStreamingChatResponse
+{
+    DateTime TimeStamp { get; set; }
+}
 
-    public static StreamingChatResponse Tool(ToolContentBlock toolBlock)
-    {
-        return new StreamingChatResponse
-        {
-            Status = StreamingStatus.ToolCall,
-            ChunkBlock = toolBlock
-        };
-    }
+public abstract class StreamingChatResponseBase : IStreamingChatResponse
+{
+    public DateTime TimeStamp { get; set; } = DateTime.UtcNow;
+}
+
+public class StreamingSystemResponse : StreamingChatResponseBase
+{
+    public StreamingSystemStatus Status { get; set; }
+    public string? Message { get; set; }
+}
+
+public class StreamingMemoryResponse : StreamingChatResponseBase
+{
+    public StreamingMemoryStatus Status { get; set; }
+    public string? Query { get; set; }
+    public string? Files { get; set; }
+}
+
+public class StreamingTextResponse : StreamingChatResponseBase
+{
+    public StreamingTextStatus Status { get; set; }
+    public string? Text { get; set; }
+}
+
+public class StreamingToolResponse : StreamingChatResponseBase
+{
+    public StreamingToolStatus Status { get; set; }
+    public string? Name { get; set; }
+    public string? Arguments { get; set; }
+    public string? Result { get; set; }
 }

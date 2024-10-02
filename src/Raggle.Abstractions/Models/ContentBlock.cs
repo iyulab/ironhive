@@ -1,82 +1,88 @@
 ﻿using Raggle.Abstractions.Tools;
-using System.Text.Json.Serialization;
 
 namespace Raggle.Abstractions.Models;
 
-[JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
-[JsonDerivedType(typeof(TextContentBlock), "text")]
-[JsonDerivedType(typeof(ImageContentBlock), "image")]
-[JsonDerivedType(typeof(ToolContentBlock), "tool")]
-[JsonDerivedType(typeof(FileContentBlock), "file")]
-[JsonDerivedType(typeof(DocumentContentBlock), "document")]
-public abstract class ContentBlock { }
-
-public class TextContentBlock : ContentBlock
+public enum ContentType
 {
-    [JsonPropertyName("text")]
+    Text,
+    Image,
+    Tool,
+    File,
+    Memory
+}
+
+public interface IUserContent
+{
+    ContentType Type { get; }
+}
+
+public interface IAssistantContent
+{
+    ContentType Type { get; }
+}
+
+// For User, Assistant
+public class TextContent : IUserContent, IAssistantContent
+{
+    public ContentType Type => ContentType.Text;
+
     public string? Text { get; set; }
 }
 
-public class ImageContentBlock : ContentBlock
+// For User
+public class FileContent : IUserContent
 {
-    [JsonPropertyName("mimeType")]
+    public ContentType Type => ContentType.File;
+
+    public string? FileName { get; set; }
+
+    public string? Extension { get; set; }
+
     public string? MimeType { get; set; }
 
-    [JsonPropertyName("data")]
+    public long? Size { get; set; }
+
     public string? Data { get; set; }
 
-    [JsonPropertyName("url")]
     public string? Url { get; set; }
 }
 
-public class ToolContentBlock : ContentBlock
+// For Assistant
+public class ImageContent : IAssistantContent
 {
-    [JsonPropertyName("id")]
+    public ContentType Type => ContentType.Image;
+
+    public string? Data { get; set; }
+
+    public string? Url { get; set; }
+}
+
+// For Assistant
+public class ToolContent : IAssistantContent
+{
+    public ContentType Type => ContentType.Tool;
+
     public string? ID { get; set; }
 
-    [JsonPropertyName("name")]
     public string? Name { get; set; }
 
-    [JsonPropertyName("arguments")]
     public object? Arguments { get; set; }
 
-    [JsonPropertyName("result")]
     public FunctionResult? Result { get; set; }
 }
 
-public class FileContentBlock : ContentBlock
+// For Assistant
+public class MemoryContent : IAssistantContent
 {
-    [JsonPropertyName("name")]
-    public string? Name { get; set; }
+    public ContentType Type => ContentType.Memory;
 
-    [JsonPropertyName("mimeType")]
-    public string? MimeType { get; set; }
-
-    [JsonPropertyName("size")]
-    public long? Size { get; set; }
-
-    [JsonPropertyName("data")]
-    public string? Data { get; set; }
-
-    [JsonPropertyName("url")]
-    public string? Url { get; set; }
-}
-
-
-public class DocumentContentBlock : ContentBlock
-{
-    [JsonPropertyName("id")]
     public string? Index { get; set; }
 
-    [JsonPropertyName("mimeType")]
-    public string? MimeType { get; set; }
+    public string? FileName { get; set; }
 
-    [JsonPropertyName("name")]
-    public string? Name { get; set; }
-
-    [JsonPropertyName("partition")]
     public string? Partition { get; set; }
 
-    [JsonPropertyName("segment")]
     public string? Segment { get; set; }
+
+    public object? MetaData { get; set; }
 }
