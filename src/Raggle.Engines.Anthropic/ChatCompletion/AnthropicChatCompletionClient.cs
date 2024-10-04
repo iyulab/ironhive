@@ -63,6 +63,7 @@ public class AnthropicChatCompletionClient : AnthropicClientBase
         while (!reader.EndOfStream)
         {
             var line = await reader.ReadLineAsync();
+            Console.WriteLine(line);
             if (string.IsNullOrWhiteSpace(line) || !line.StartsWith("data"))
                 continue;
             
@@ -70,7 +71,7 @@ public class AnthropicChatCompletionClient : AnthropicClientBase
             if (!data.StartsWith('{') || !data.EndsWith('}'))
                 continue;
 
-            var message = JsonSerializer.Deserialize<StreamingMessagesResponse>(data);
+            var message = JsonSerializer.Deserialize<StreamingMessagesResponse>(data, _jsonOptions);
             if (message != null)
             {
                 yield return message;

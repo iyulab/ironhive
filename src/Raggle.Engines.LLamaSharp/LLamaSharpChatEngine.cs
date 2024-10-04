@@ -75,7 +75,7 @@ public class LLamaSharpChatEngine : IChatEngine, IDisposable
         throw new NotImplementedException();
     }
 
-    public IAsyncEnumerable<StreamingChatResponse> StreamingChatCompletionAsync(ChatHistory history, ChatOptions options)
+    public IAsyncEnumerable<IStreamingChatResponse> StreamingChatCompletionAsync(ChatHistory history, ChatOptions options)
     {
         throw new NotImplementedException();
     }

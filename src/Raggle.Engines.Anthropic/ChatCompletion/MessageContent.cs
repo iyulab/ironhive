@@ -57,13 +57,13 @@ public class ImageSource
 public class ToolUseMessageContent : MessageContent
 {
     [JsonPropertyName("id")]
-    public required string ID { get; set; }
+    public string? ID { get; set; }
 
     [JsonPropertyName("name")]
-    public required string Name { get; set; }
+    public string? Name { get; set; }
 
     [JsonPropertyName("input")]
-    public required object Input { get; set; }
+    public object? Input { get; set; }
 }
 
 public class ToolUseDeltaMessageContent : MessageContent
@@ -75,7 +75,7 @@ public class ToolUseDeltaMessageContent : MessageContent
 public class ToolResultMessageContent : MessageContent
 {
     [JsonPropertyName("tool_use_id")]
-    public required string ToolUseID { get; set; }
+    public string? ToolUseID { get; set; }
 
     [JsonPropertyName("is_error")]
     public bool IsError { get; set; } = false;

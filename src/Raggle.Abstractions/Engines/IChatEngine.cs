@@ -8,5 +8,5 @@ public interface IChatEngine
 
     Task<ChatResponse> ChatCompletionAsync(ChatHistory history, ChatOptions options);
 
-    IAsyncEnumerable<StreamingChatResponse> StreamingChatCompletionAsync(ChatHistory history, ChatOptions options);
+    IAsyncEnumerable<IStreamingChatResponse> StreamingChatCompletionAsync(ChatHistory history, ChatOptions options);
 }

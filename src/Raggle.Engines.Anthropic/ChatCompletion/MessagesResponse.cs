@@ -2,6 +2,14 @@
 
 namespace Raggle.Engines.Anthropic.ChatCompletion;
 
+public enum StopReason
+{
+    EndTurn,
+    MaxTokens,
+    StopSequence,
+    ToolUse
+}
+
 public class MessagesResponse
 {
     [JsonPropertyName("id")]
@@ -32,7 +40,7 @@ public class MessagesResponse
     /// "end_turn", "max_tokens", "stop_sequence", "tool_use"
     /// </summary>
     [JsonPropertyName("stop_reason")]
-    public string? StopReason { get; set; }
+    public StopReason? StopReason { get; set; }
 
     [JsonPropertyName("stop_sequence")]
     public string? StopSequence { get; set; }

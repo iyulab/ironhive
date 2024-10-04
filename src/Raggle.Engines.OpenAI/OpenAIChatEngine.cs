@@ -4,8 +4,6 @@ using Raggle.Engines.OpenAI.ChatCompletion;
 using Raggle.Engines.OpenAI.Configurations;
 using System.Text.Json;
 using Raggle.Abstractions.Tools;
-using System.Runtime.ExceptionServices;
-using System.ComponentModel.DataAnnotations;
 
 namespace Raggle.Engines.OpenAI;
 
@@ -42,174 +40,138 @@ public class OpenAIChatEngine : IChatEngine
         var choice = response.Choices?.First();
         if (choice?.FinishReason == FinishReason.ToolCalls && choice.Message?.ToolCalls?.Length > 0)
         {
-            var message = new ChatMessage { Role = MessageRole.Assistant, Contents = [] };
+            var cloneHistory = history.Clone();
             foreach (var toolCall in choice.Message.ToolCalls)
             {
                 var content = new ToolContentBlock 
                 { 
                     ID = toolCall.ID,
-                    Name = toolCall.Function?.Name
+                    Name = toolCall.Function?.Name,
+                    Arguments = toolCall.Function?.Arguments,
                 };
 
                 var function = options.Tools?.FirstOrDefault(t => t.Name == content.Name);
-                var stringArgs = toolCall.Function?.Arguments;
                 if (function == null)
                 {
                     content.Result = FunctionResult.Failed($"Function '{content.Name}' not exist.");
                 }
-                else if (string.IsNullOrWhiteSpace(stringArgs))
-                {
-                    content.Result = await function.InvokeAsync(null);
-                }
                 else
                 {
-                    var arguments = JsonSerializer.Deserialize<Dictionary<string, object>>(stringArgs);
-                    var result = await function.InvokeAsync(arguments);
+                    var result = await function.InvokeAsync(content.Arguments);
                     content.Result = result;
                 }
-                message.Contents.Add(content);
+                cloneHistory.AddAssistantMessage(content);
             }
-            history.Add(message);
-            return await ChatCompletionAsync(history, options);
-        }
-        else if (choice?.FinishReason == FinishReason.Stop && choice.Message?.Content != null)
-        {
-            return new ChatResponse();
+            return await ChatCompletionAsync(cloneHistory, options);
         }
         else
         {
-            return new ChatResponse();
+            var textContent = new TextContentBlock { Text = choice?.Message?.Content ?? string.Empty };
+            var totalTokens = response.Usage?.TotalTokens;
+            var contents = history.TryGetLastAssistantMessage(out var lastMessage)
+                ? lastMessage.Contents.Append(textContent)
+                : [ textContent ];
+
+            if (choice?.FinishReason == FinishReason.Length)
+                return ChatResponse.Limit(contents.ToArray(), totalTokens);
+            else
+                return ChatResponse.Stop(contents.ToArray(), totalTokens);
         }
     }
 
-    public async IAsyncEnumerable<StreamingChatResponse> StreamingChatCompletionAsync(ChatHistory history, ChatOptions options)
+    public async IAsyncEnumerable<IStreamingChatResponse> StreamingChatCompletionAsync(ChatHistory history, ChatOptions options)
     {
         var request = BuildChatCompletionRequest(history, options);
-        var tools = options.Tools?.ToDictionary(t => t.Name, t => t);
-        var contents = new List<ContentBlock>();
+        var tools = options.Tools?.ToDictionary(t => t.Name, t => t) ?? new Dictionary<string, FunctionTool>();
+        var toolContents = new Dictionary<int, ToolContentBlock>();
 
         await foreach (var response in _client.PostStreamingChatCompletionAsync(request))
         {
-            Console.WriteLine($"Current Index: {contents.Count}");
-            Console.WriteLine(JsonSerializer.Serialize(response, new JsonSerializerOptions
-            {
-                WriteIndented = true,
-            }));
             var choice = response.Choices?.First();
             if (choice == null) continue;
 
-            if (choice.Delta?.Content != null)
-            {
-                if (contents.Last() is TextContentBlock textContent)
-                {
-                    textContent.Text += choice.Delta.Content ?? string.Empty;
-                    yield return StreamingChatResponse.Text(textContent);
-                }
-                else
-                {
-                    var content = new TextContentBlock { Text = choice.Delta.Content };
-                    contents.Add(content);
-                }
-            }
             if (choice.FinishReason == FinishReason.Stop)
             {
-                if (contents.Last() is TextContentBlock textContent)
-                {
-                    textContent.Text += choice.Delta?.Content ?? string.Empty;
-                    yield return StreamingChatResponse.Text(textContent);
-                }
+                // Text Stream Stop
+                yield return new StreamingStopResponse();
             }
-
-            if (choice.Delta?.ToolCalls != null)
+            else if (choice.FinishReason == FinishReason.ContentFilter)
             {
-                var toolCall = choice.Delta.ToolCalls.First();
-                if (toolCall == null) continue;
-
-                if (contents.Last() is ToolContentBlock toolContent)
+                // Text Invalid Content Filter
+                yield return new StreamingFilterResponse();
+            }
+            else if (choice.FinishReason == FinishReason.Length)
+            {
+                // Token Limit
+                yield return new StreamingLimitResponse();
+            }
+            else if (choice.FinishReason == FinishReason.ToolCalls)
+            {
+                // Tool Callings
+                var cloneHistory = history.Clone();
+                foreach (var (_, content) in toolContents)
                 {
-                    toolContent.ID ??= toolCall.ID;
-                    toolContent.Name ??= toolCall.Function?.Name;
-                    toolContent.Arguments ??= toolCall.Function?.Arguments;
+                    yield return new StreamingToolUseResponse { Name = content.Name, Argument = content.Arguments };
+                    if (string.IsNullOrWhiteSpace(content.Name))
+                    {
+                        content.Result = FunctionResult.Failed("Function name is required.");
+                    }
+                    else if (tools.TryGetValue(content.Name, out var tool))
+                    {
+                        var result = await tool.InvokeAsync(content.Arguments);
+                        content.Result = result;
+                    }
+                    else
+                    {
+                        content.Result = FunctionResult.Failed($"Function '{content.Name}' not exist.");
+                    }
+                    cloneHistory.AddAssistantMessage(content);
+                    yield return new StreamingToolResultResponse { Name = content.Name, Result = content.Result };
+                }
+
+                await foreach (var stream in StreamingChatCompletionAsync(cloneHistory, options))
+                {
+                    yield return stream;
+                };
+            }
+            else if (choice.Delta?.Content != null)
+            {
+                // Text Generation
+                var text = choice.Delta.Content ?? string.Empty;
+                yield return new StreamingTextResponse { Text = text };
+            }
+            else if (choice.Delta?.ToolCalls != null)
+            {
+                // Tool Call Generation
+                var toolCall = choice.Delta.ToolCalls.First();
+                if (toolCall == null || toolCall.Index == null) 
+                    throw new InvalidOperationException("Not Expected Tool Call Object.");
+
+                if (toolContents.TryGetValue((int)toolCall.Index, out var content))
+                {
+                    content.Arguments += toolCall.Function?.Arguments ?? string.Empty;
                 }
                 else
                 {
-                    var content = new ToolContentBlock
+                    content = new ToolContentBlock
                     {
                         ID = toolCall.ID,
                         Name = toolCall.Function?.Name,
-                        Arguments = toolCall.Function?.Arguments
+                        Arguments = toolCall.Function?.Arguments ?? string.Empty
                     };
-                    if (tools.TryGetValue(content.Name, out var function))
-                    {
-                        if (content.Arguments is string strArgs)
-                        {
-                            var args = JsonSerializer.Deserialize<Dictionary<string, object>>(strArgs);
-                            var result = await function.InvokeAsync(args);
-                            content.Result = result;
-                        }
-                    }
-                    contents.Add(content);
+                    toolContents.Add((int)toolCall.Index, content);
                 }
-            }
-            if (choice.FinishReason == FinishReason.ToolCalls)
-            {
-                if (tools.TryGetValue(toolContent.Name, out var function))
-                {
-                    if (toolContent.Arguments is string strArgs)
-                    {
-                        var args = JsonSerializer.Deserialize<Dictionary<string, object>>(strArgs);
-                        var result = await function.InvokeAsync(args);
-                        toolContent.Result = result;
-                        history.Add(new ChatMessage { Role = MessageRole.Assistant, Contents = [toolContent] });
-                        StreamingChatResponse.Tool(toolContent);
-                        await foreach (var res2 in StreamingChatCompletionAsync(history, options))
-                        {
-                            yield return res2;
-                        }
-                    }
-                }
+                yield return new StreamingToolCallResponse { Name = content.Name, Argument = content.Arguments };
             }
         }
-
-        yield return new StreamingSystemResponse { Status = StreamingSystemStatus.Stop };
     }
 
-    private async IAsyncEnumerable<StreamingChatResponse> StreamingTextAsync(ChoiceDelta delta)
-    {
-        throw new NotImplementedException();
-    }
-
-    private async IAsyncEnumerable<StreamingChatResponse> StreamingToolAsync(ChoiceDelta delta)
-    {
-        throw new NotImplementedException();
-    }
-
-    private ChatCompletionRequest BuildChatCompletionRequest(ChatHistory history, ChatOptions options)
-    {
-        var request = new ChatCompletionRequest
-        {
-            Model = options.ModelId,
-            MaxTokens = options.MaxTokens,
-            Messages = ConvertChatSession(history, options.System),
-            Temperature = options.Temperature,
-            TopP = options.TopP,
-            Stop = options.StopSequences,
-        };
-
-        if (options.Tools != null && options.Tools.Length > 0)
-        {
-            request.Tools = ConvertFunctionTools(options.Tools);
-        }
-
-        return request;
-    }
-
-    private static Message[] ConvertChatSession(ChatHistory history, string? system)
+    private static ChatCompletionRequest BuildChatCompletionRequest(ChatHistory history, ChatOptions options)
     {
         var messages = new List<Message>();
-        if (!string.IsNullOrWhiteSpace(system))
+        if (!string.IsNullOrWhiteSpace(options.System))
         {
-            messages.Add(new SystemMessage { Content = system });
+            messages.Add(new SystemMessage { Content = options.System });
         }
 
         foreach (var message in history)
@@ -235,7 +197,6 @@ public class OpenAIChatEngine : IChatEngine
             }
             else if (message.Role == MessageRole.Assistant)
             {
-                var index = 0;
                 foreach (var content in message.Contents)
                 {
                     if (content is TextContentBlock text)
@@ -245,11 +206,10 @@ public class OpenAIChatEngine : IChatEngine
                     else if (content is ToolContentBlock tool)
                     {
                         messages.Add(new AssistantMessage
-                        { 
-                            ToolCalls = [ 
-                                new ToolCall 
-                                { 
-                                    Index = index,
+                        {
+                            ToolCalls = [
+                                new ToolCall
+                                {
                                     ID = tool.ID,
                                     Function = new FunctionCall
                                     {
@@ -259,34 +219,49 @@ public class OpenAIChatEngine : IChatEngine
                                 }
                             ]
                         });
-                        messages.Add(new ToolMessage { ID = tool.ID ?? string.Empty, Content = JsonSerializer.Serialize(tool.Result) });
+                        messages.Add(new ToolMessage 
+                        { 
+                            ID = tool.ID ?? string.Empty, 
+                            Content = JsonSerializer.Serialize(tool.Result)
+                        });
                     }
-                    index++;
                 }
             }
         }
-        return messages.ToArray();
-    }
 
-    private Tool[] ConvertFunctionTools(FunctionTool[] functionTools)
-    {
-        var tools = new List<Tool>();
-        foreach (var tool in functionTools)
+        var request = new ChatCompletionRequest
         {
-            tools.Add(new Tool
+            Model = options.ModelId,
+            MaxTokens = options.MaxTokens,
+            Temperature = options.Temperature,
+            TopP = options.TopP,
+            Stop = options.StopSequences,
+            Messages = messages.ToArray()
+        };
+
+        if (options.Tools != null && options.Tools.Length > 0)
+        {
+            var tools = new List<Tool>();
+            foreach (var tool in options.Tools)
             {
-                Function = new Function
+                var schema = tool.GetParametersJsonSchema();
+                tools.Add(new Tool
                 {
-                    Name = tool.Name,
-                    Description = tool.Description,
-                    Parameters = new InputSchema
+                    Function = new Function
                     {
-                        Properties = tool.Properties,
-                        Required = tool.Required
+                        Name = tool.Name,
+                        Description = tool.Description,
+                        Parameters = new InputSchema
+                        {
+                            Properties = schema.Properties,
+                            Required = schema.Required,
+                        }
                     }
-                }
-            });
+                });
+            }
+            request.Tools = tools.ToArray();
         }
-        return tools.ToArray();
+
+        return request;
     }
 }

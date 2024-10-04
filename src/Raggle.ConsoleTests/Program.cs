@@ -8,6 +8,7 @@ using Raggle.Abstractions.Engines;
 using Raggle.Abstractions.Models;
 using Raggle.Abstractions.Tools;
 using Raggle.ConsoleTests;
+using Raggle.Engines.Anthropic;
 using Raggle.Engines.OpenAI;
 using Raggle.Engines.OpenAI.ChatCompletion;
 using Raggle.Engines.OpenAI.Embeddings;
@@ -23,7 +24,7 @@ using JsonSchema = NJsonSchema.JsonSchema;
 
 var text = await File.ReadAllTextAsync(@"C:\data\Raggle\src\Raggle.ConsoleTests\Secrets.json");
 var secrets = JsonSerializer.Deserialize<Dictionary<string, string>>(text);
-var key = secrets?.GetValueOrDefault("OpenAI") ?? string.Empty;
+var key = secrets?.GetValueOrDefault("Anthropic") ?? string.Empty;
 
 //var schema = JsonSchemaConverter.ConvertFromType<IEnumerable<string>>();
 //var json = JsonSerializer.Serialize(schema, new JsonSerializerOptions { 
@@ -42,10 +43,10 @@ var message = new ChatMessage
 };
 history.Add(message);
 
-var chat = new OpenAIChatEngine(key);
+var chat = new AnthropicChatEngine(key);
 var options = new ChatOptions
 {
-    ModelId = "gpt-4o-mini",
+    ModelId = "claude-3-5-sonnet-20240620",
     MaxTokens = 1024,
     System = "Please run the tool",
     Tools = tools.ToArray()
@@ -53,7 +54,7 @@ var options = new ChatOptions
 
 await foreach (var response in chat.StreamingChatCompletionAsync(history, options))
 {
-    //Console.WriteLine(response.ToString());
+    Console.WriteLine(JsonSerializer.Serialize(response, new JsonSerializerOptions { WriteIndented = true }));
 }
 
 return;

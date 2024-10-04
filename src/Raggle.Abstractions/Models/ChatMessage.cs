@@ -1,35 +1,31 @@
 ﻿namespace Raggle.Abstractions.Models;
 
+/// <summary>
+/// 메시지의 역할을 정의합니다.
+/// </summary>
 public enum MessageRole
 {
     User,
     Assistant
 }
 
-public interface IMessage
+/// <summary>
+/// 채팅 메시지를 나타냅니다.
+/// </summary>
+public class ChatMessage
 {
-    MessageRole Role { get; }
+    /// <summary>
+    /// 메시지의 역할을 나타냅니다.
+    /// </summary>
+    public MessageRole Role { get; set; }
 
-    DateTime CreatedAt { get; set; }
-}
+    /// <summary>
+    /// 메시지의 내용을 담는 컬렉션입니다.
+    /// </summary>
+    public ICollection<IContentBlock> Contents { get; set; } = [];
 
-public abstract class MessageBase : IMessage
-{
-    public abstract MessageRole Role { get; }
-
+    /// <summary>
+    /// 메시지가 생성된 시간을 나타냅니다.
+    /// </summary>
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-}
-
-public class UserMessage : MessageBase
-{
-    public override MessageRole Role => MessageRole.User;
-
-    public ICollection<IUserContent> Contents { get; set; } = [];
-}
-
-public class AssistantMessage : MessageBase
-{
-    public override MessageRole Role => MessageRole.Assistant;
-
-    public ICollection<IAssistantContent> Contents { get; set; } = [];
 }

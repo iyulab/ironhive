@@ -1,4 +1,5 @@
 ﻿using Raggle.Abstractions.Converters;
+using Raggle.Abstractions.Models;
 using System.ComponentModel;
 using System.Reflection;
 using System.Text.Json;
@@ -15,21 +16,20 @@ public class FunctionTool
 
     public required string Name { get; set; }
     public string? Description { get; set; }
-    public IDictionary<string, object> Properties { get; set; }
-    public string[] Required { get; set; }
 
     public FunctionTool(Delegate function)
     {
         _function = function;
-        var jsonSchema = GetSchemaInfo(Parameters);
-        Properties = jsonSchema.Item1;
-        Required = jsonSchema.Item2;
     }
 
-    public async Task<FunctionResult> InvokeAsync(IDictionary<string, object?>? args)
+    public async Task<FunctionResult> InvokeAsync(string? json)
     {
         try
         {
+            var args = json != null
+                ? JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)
+                : null;
+
             var arguments = GetArguments(args);
             var result = _function.DynamicInvoke(arguments);
 
@@ -38,7 +38,21 @@ public class FunctionTool
                 await task;
                 result = task.GetType().GetProperty("Result")?.GetValue(task);
             }
+            else if (result is ValueTask valueTask)
+            {
+                await valueTask;
+                result = valueTask.GetType().GetProperty("Result")?.GetValue(valueTask);
+            }
+
             return FunctionResult.Success(result);
+        }
+        catch (JsonException)
+        {
+            return FunctionResult.Failed($"Invalid JSON Format: {json}");
+        }
+        catch (TargetInvocationException ex) when (ex.InnerException != null)
+        {
+            return FunctionResult.Failed(ex.InnerException.Message);
         }
         catch (Exception ex)
         {
@@ -46,33 +60,47 @@ public class FunctionTool
         }
     }
 
-    private object?[]? GetArguments(IDictionary<string, object?>? args)
+    public ObjectJsonSchema GetParametersJsonSchema()
     {
-        if (Parameters.Length == 0)
+        var properties = new Dictionary<string, JsonSchema>();
+        var required = new List<string>();
+        foreach (var prop in Parameters)
         {
-            return null;
+            if (string.IsNullOrEmpty(prop.Name))
+                continue;
+
+            var propType = prop.ParameterType;
+            var propDescription = prop.GetCustomAttribute<DescriptionAttribute>()?.Description;
+            var propSchema = JsonSchemaConverter.ConvertFromType(propType, propDescription);
+            properties.Add(prop.Name, propSchema);
+
+            if (!prop.IsOptional)
+                required.Add(prop.Name);
         }
 
+        return new ObjectJsonSchema
+        {
+            Properties = properties,
+            Description = Description,
+            Required = required.ToArray(),
+        };
+    }
+
+    private object?[]? GetArguments(Dictionary<string, JsonElement>? args)
+    {
+        if (Parameters.Length == 0) return null;
         var arguments = new object?[Parameters.Length];
-        var hasArgs = args != null && args.Count > 0;
 
         for (int i = 0; i < Parameters.Length; i++)
         {
             var param = Parameters[i];
-            var paramName = param.Name;
+            var paramName = param.Name ?? string.Empty;
             var paramType = param.ParameterType;
             var isRequired = !param.IsOptional;
             
-            if (hasArgs && args!.TryGetValue(paramName!, out var value))
+            if (args != null && args.TryGetValue(paramName, out var value))
             {
-                if (value is JsonElement el)
-                {
-                    arguments[i] = JsonSerializer.Deserialize(el.GetRawText(), paramType);
-                }
-                else
-                {
-                    arguments[i] = value;
-                }
+                arguments[i] = JsonSerializer.Deserialize(value.GetRawText(), paramType);
             }
             else if (param.HasDefaultValue)
             {
@@ -89,27 +117,6 @@ public class FunctionTool
         }
 
         return arguments;
-    }
-
-    private static (IDictionary<string, object>, string[]) GetSchemaInfo(ParameterInfo[] parameters)
-    {
-        var properties = new Dictionary<string, object>();
-        var required = new List<string>();
-        foreach (var prop in parameters)
-        {
-            if (string.IsNullOrEmpty(prop.Name))
-                continue;
-
-            var propType = prop.ParameterType;
-            var propDescription = prop.GetCustomAttribute<DescriptionAttribute>()?.Description;
-            var propSchema = JsonSchemaConverter.ConvertFromType(propType, propDescription);
-            properties.Add(prop.Name, propSchema);
-
-            if (!prop.IsOptional)
-                required.Add(prop.Name);
-        }
-
-        return (properties, required.ToArray());
     }
 
 }

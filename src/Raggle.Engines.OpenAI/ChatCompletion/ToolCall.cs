@@ -5,7 +5,7 @@ namespace Raggle.Engines.OpenAI.ChatCompletion;
 public class ToolCall
 {
     [JsonPropertyName("index")]
-    public int Index { get; set; }
+    public int? Index { get; set; }
 
     [JsonPropertyName("id")]
     public string? ID { get; set; }

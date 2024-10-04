@@ -3,6 +3,8 @@ using Raggle.Abstractions.Models;
 using Raggle.Abstractions.Tools;
 using Raggle.Engines.Anthropic.ChatCompletion;
 using Raggle.Engines.Anthropic.Configurations;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace Raggle.Engines.Anthropic;
 
@@ -38,9 +40,112 @@ public class AnthropicChatEngine : IChatEngine
         return new ChatResponse();
     }
 
-    public IAsyncEnumerable<StreamingChatResponse> StreamingChatCompletionAsync(ChatHistory history, ChatOptions options)
+    public async IAsyncEnumerable<IStreamingChatResponse> StreamingChatCompletionAsync(ChatHistory history, ChatOptions options)
     {
-        throw new NotImplementedException();
+        var request = BuildMessagesRequest(history, options);
+        var tools = options.Tools?.ToDictionary(t => t.Name, t => t) ?? new Dictionary<string, FunctionTool>();
+        var contents = new List<IContentBlock>();
+
+        await foreach (var response in _client.PostStreamingMessagesAsync(request))
+        {
+            if (response is PingEvent)
+            {
+                // nothing to do
+            }
+            else if (response is MessageStartEvent)
+            {
+                // nothing to do
+            }
+            else if (response is ErrorEvent error)
+            {
+                yield return new StreamingErrorResponse { Message = error.ToString() };
+            }
+            else if (response is MessageStopEvent)
+            {
+                // nothing to do
+            }
+            else if (response is MessageDeltaEvent messageDelta)
+            {
+                if (messageDelta.StopReason == "end_turn" || messageDelta.StopReason == "stop_sequnces")
+                {
+                    yield return new StreamingStopResponse();
+                }
+                else if (messageDelta.StopReason == "max_tokens")
+                {
+                    yield return new StreamingLimitResponse();
+                }
+                else if (messageDelta.StopReason == "tool_use")
+                {
+                    var cloneHistory = history.Clone();
+                    foreach (var content in contents)
+                    {
+                        if (content is ToolContentBlock toolContent)
+                        {
+                            if (string.IsNullOrWhiteSpace(toolContent.Name))
+                            {
+                                toolContent.Result = FunctionResult.Failed("Tool name is missing");
+                            }
+                            else if (tools.TryGetValue(toolContent.Name, out var tool))
+                            {
+                                yield return new StreamingToolUseResponse { Name = toolContent.Name, Argument = toolContent.Arguments };
+                                var result = await tool.InvokeAsync(toolContent.Arguments);
+                                toolContent.Result = result;
+                            }
+                            else
+                            {
+                                toolContent.Result = FunctionResult.Failed("Tool not found");
+                            }
+                            yield return new StreamingToolResultResponse { Name = toolContent.Name, Result = toolContent.Result };
+                        }
+                        cloneHistory.AddAssistantMessage(content);
+                    }
+
+                    await foreach (var stream in StreamingChatCompletionAsync(cloneHistory, options))
+                    {
+                        yield return stream;
+                    }
+                }
+            }
+            else if (response is ContentStartEvent contentStart)
+            {
+                if (contentStart.ContentBlock is TextMessageContent textContent)
+                {
+                    contents.Add(new TextContentBlock { Text = textContent.Text });
+                }
+                else if (contentStart.ContentBlock is ToolUseMessageContent toolContent)
+                {
+                    contents.Add(new ToolContentBlock { ID = toolContent.ID, Name = toolContent.Name, Arguments = JsonSerializer.Serialize(toolContent.Input) });
+                }
+            }
+            else if (response is ContentDeltaEvent contentDelta)
+            {
+                var content = contents[contentDelta.Index];
+                if (content is TextContentBlock textContent)
+                {
+                    if (contentDelta.ContentBlock is TextDeltaMessageContent textDelta)
+                    {
+                        textContent.Text = textDelta.Text;
+                    }
+                    yield return new StreamingTextResponse { Text = textContent.Text };
+                }
+                else if (content is ToolContentBlock toolContent)
+                {
+                    if (contentDelta.ContentBlock is ToolUseDeltaMessageContent toolDelta)
+                    {
+                        toolContent.Arguments += toolDelta.PartialJson;
+                    }
+                    yield return new StreamingToolCallResponse { Name = toolContent.Name, Argument = toolContent.Arguments };
+                }
+            }
+            else if (response is ContentStopEvent)
+            {
+                // nothing to do
+            }
+            else
+            {
+                yield return new StreamingErrorResponse { Message = "Unknown anthropic stream response message" };
+            }
+        }
     }
 
     private MessagesRequest BuildMessagesRequest(ChatHistory history, ChatOptions options)
@@ -50,23 +155,13 @@ public class AnthropicChatEngine : IChatEngine
             Model = options.ModelId,
             MaxTokens = options.MaxTokens,
             System = options.System,
-            Messages = ConvertChatHistory(history),
             Temperature = options.Temperature,
             TopK = options.TopK,
             TopP = options.TopP,
             StopSequences = options.StopSequences,
+            Messages = []
         };
 
-        if (options.Tools != null && options.Tools.Length > 0)
-        {
-            request.Tools = ConvertFunctionTools(options.Tools);
-        }
-
-        return request;
-    }
-
-    private static Message[] ConvertChatHistory(ChatHistory history)
-    {
         var messages = new List<Message>();
         foreach (var message in history)
         {
@@ -91,41 +186,60 @@ public class AnthropicChatEngine : IChatEngine
             }
             else if (message.Role == MessageRole.Assistant)
             {
-                var contents = new List<MessageContent>();
+                var assistantContents = new List<MessageContent>();
+                var userContents = new List<MessageContent>();
                 foreach (var content in message.Contents)
                 {
                     if (content is TextContentBlock text)
                     {
-                        contents.Add(new TextMessageContent { Text = text.Text ?? string.Empty });
-                        messages.Add(new Message { Role = "assistant", Content = contents.ToArray() });
+                        assistantContents.Add(new TextMessageContent { Text = text.Text ?? string.Empty });
                     }
                     else if (content is ToolContentBlock tool)
                     {
-                        messages.Add(new Message { Role = "assistant", Content = contents.ToArray() });
-                        messages.Add(new Message { Role = "user", Content = contents.ToArray() });
+                        assistantContents.Add(new ToolUseMessageContent
+                        {
+                            ID = tool.ID,
+                            Name = tool.Name,
+                            Input = JsonSerializer.Deserialize<JsonObject>(tool.Arguments)
+                        });
+                        userContents.Add(new ToolResultMessageContent
+                        {
+                            IsError = tool.Result?.IsSuccess != true,
+                            ToolUseID = tool.ID,
+                            Content = [ new TextMessageContent { Text = JsonSerializer.Serialize(tool.Result) } ]
+                        });
                     }
+                }
+                messages.Add(new Message { Role = "assistant", Content = assistantContents.ToArray() });
+
+                if (userContents.Count > 0)
+                {
+                    messages.Add(new Message { Role = "user", Content = userContents.ToArray() });
                 }
             }
         }
-        return messages.ToArray();
-    }
+        request.Messages = messages.ToArray();
 
-    private Tool[] ConvertFunctionTools(FunctionTool[] functionTools)
-    {
-        var tools = new List<Tool>();
-        foreach (var tool in functionTools)
+        if (options.Tools != null && options.Tools.Length > 0)
         {
-            tools.Add(new Tool
+            var tools = new List<Tool>();
+            foreach (var tool in options.Tools)
             {
-                Name = tool.Name,
-                Description = tool.Description,
-                InputSchema = new InputSchema
+                var schema = tool.GetParametersJsonSchema();
+                tools.Add(new Tool
                 {
-                    Properties = tool.Properties,
-                    Required = tool.Required
-                }
-            });
+                    Name = tool.Name,
+                    Description = tool.Description,
+                    InputSchema = new InputSchema
+                    {
+                        Properties = schema.Properties,
+                        Required = schema.Required
+                    }
+                });
+            }
+            request.Tools = tools.ToArray();
         }
-        return tools.ToArray();
+
+        return request;
     }
 }

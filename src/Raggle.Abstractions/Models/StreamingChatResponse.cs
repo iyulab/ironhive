@@ -1,31 +1,18 @@
-﻿namespace Raggle.Abstractions.Models;
+﻿using System.Text.Json.Serialization;
 
-public enum StreamingSystemStatus
-{
-    Limit,
-    Stop,
-    Error,
-}
+namespace Raggle.Abstractions.Models;
 
-public enum StreamingTextStatus
-{
-    TextBegin,
-    TextEnd,
-}
-
-public enum StreamingToolStatus
-{
-    ToolCall,
-    ToolUse,
-    ToolResult,
-}
-
-public enum StreamingMemoryStatus
-{
-    MemorySearch,
-    MemoryResult,
-}
-
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "status")]
+[JsonDerivedType(typeof(StreamingStopResponse), "stop")]
+[JsonDerivedType(typeof(StreamingFilterResponse), "filter")]
+[JsonDerivedType(typeof(StreamingLimitResponse), "limit")]
+[JsonDerivedType(typeof(StreamingErrorResponse), "error")]
+[JsonDerivedType(typeof(StreamingTextResponse), "text_gen")]
+[JsonDerivedType(typeof(StreamingToolCallResponse), "tool_call")]
+[JsonDerivedType(typeof(StreamingToolUseResponse), "tool_use")]
+[JsonDerivedType(typeof(StreamingToolResultResponse), "tool_result")]
+[JsonDerivedType(typeof(StreamingMemorySearchResponse), "memory_search")]
+[JsonDerivedType(typeof(StreamingMemoryResultResponse), "memory_result")]
 public interface IStreamingChatResponse
 {
     DateTime TimeStamp { get; set; }
@@ -36,29 +23,47 @@ public abstract class StreamingChatResponseBase : IStreamingChatResponse
     public DateTime TimeStamp { get; set; } = DateTime.UtcNow;
 }
 
-public class StreamingSystemResponse : StreamingChatResponseBase
-{
-    public StreamingSystemStatus Status { get; set; }
-    public string? Message { get; set; }
-}
+public class StreamingStopResponse : StreamingChatResponseBase { }
 
-public class StreamingMemoryResponse : StreamingChatResponseBase
+public class StreamingFilterResponse : StreamingChatResponseBase { }
+
+public class StreamingLimitResponse : StreamingChatResponseBase { }
+
+public class StreamingErrorResponse : StreamingChatResponseBase
 {
-    public StreamingMemoryStatus Status { get; set; }
-    public string? Query { get; set; }
-    public string? Files { get; set; }
+    public string? Message { get; set; }
 }
 
 public class StreamingTextResponse : StreamingChatResponseBase
 {
-    public StreamingTextStatus Status { get; set; }
     public string? Text { get; set; }
 }
 
-public class StreamingToolResponse : StreamingChatResponseBase
+public class StreamingToolCallResponse : StreamingChatResponseBase
 {
-    public StreamingToolStatus Status { get; set; }
     public string? Name { get; set; }
-    public string? Arguments { get; set; }
-    public string? Result { get; set; }
+    public string? Argument { get; set; }
+}
+
+public class StreamingToolUseResponse : StreamingChatResponseBase
+{
+    public string? Name { get; set; }
+    public string? Argument { get; set; }
+}
+
+public class StreamingToolResultResponse : StreamingChatResponseBase
+{
+    public string? Name { get; set; }
+    public object? Result { get; set; }
+}
+
+public class StreamingMemorySearchResponse : StreamingChatResponseBase
+{
+    public string? Query { get; set; }
+}
+
+public class StreamingMemoryResultResponse : StreamingChatResponseBase
+{
+    public string? Query { get; set; }
+    public object? Result { get; set; }
 }
