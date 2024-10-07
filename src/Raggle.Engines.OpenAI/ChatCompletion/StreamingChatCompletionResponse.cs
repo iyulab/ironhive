@@ -1,4 +1,4 @@
-﻿using Raggle.Abstractions.Converters;
+﻿using Raggle.Engines.OpenAI.Converters;
 using System.Text.Json.Serialization;
 
 namespace Raggle.Engines.OpenAI.ChatCompletion;

@@ -1,5 +1,4 @@
-﻿using Raggle.Abstractions.Converters;
-using Raggle.Abstractions.Models;
+﻿using Raggle.Abstractions.Schema;
 using System.ComponentModel;
 using System.Reflection;
 using System.Text.Json;
@@ -20,44 +19,6 @@ public class FunctionTool
     public FunctionTool(Delegate function)
     {
         _function = function;
-    }
-
-    public async Task<FunctionResult> InvokeAsync(string? json)
-    {
-        try
-        {
-            var args = json != null
-                ? JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)
-                : null;
-
-            var arguments = GetArguments(args);
-            var result = _function.DynamicInvoke(arguments);
-
-            if (result is Task task)
-            {
-                await task;
-                result = task.GetType().GetProperty("Result")?.GetValue(task);
-            }
-            else if (result is ValueTask valueTask)
-            {
-                await valueTask;
-                result = valueTask.GetType().GetProperty("Result")?.GetValue(valueTask);
-            }
-
-            return FunctionResult.Success(result);
-        }
-        catch (JsonException)
-        {
-            return FunctionResult.Failed($"Invalid JSON Format: {json}");
-        }
-        catch (TargetInvocationException ex) when (ex.InnerException != null)
-        {
-            return FunctionResult.Failed(ex.InnerException.Message);
-        }
-        catch (Exception ex)
-        {
-            return FunctionResult.Failed(ex.Message);
-        }
     }
 
     public ObjectJsonSchema GetParametersJsonSchema()
@@ -86,6 +47,55 @@ public class FunctionTool
         };
     }
 
+    public async Task<FunctionResult> InvokeAsync(string? jsonArgs)
+    {
+        try
+        {
+            var args = jsonArgs != null
+                ? JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(jsonArgs)
+                : null;
+
+            var arguments = GetArguments(args);
+            var result = _function.DynamicInvoke(arguments);
+
+            if (result is Task task)
+            {
+                await task;
+                result = task.GetType().GetProperty("Result")?.GetValue(task);
+            }
+            else if (result is ValueTask valueTask)
+            {
+                await valueTask;
+                result = valueTask.GetType().GetProperty("Result")?.GetValue(valueTask);
+            }
+            else if (ReturnType == typeof(IAsyncEnumerable<>))
+            {
+                var enumerable = result as IAsyncEnumerable<object?>
+                    ?? throw new InvalidOperationException("Expected IAsyncEnumerable but got null.");
+                var list = new List<object?>();
+                await foreach (var item in enumerable)
+                {
+                    list.Add(item);
+                }
+                result = list;
+            }
+
+            return FunctionResult.Success(result);
+        }
+        catch (JsonException)
+        {
+            return FunctionResult.Failed($"Invalid JSON format for arguments: {jsonArgs}");
+        }
+        catch (TargetInvocationException ex) when (ex.InnerException != null)
+        {
+            return FunctionResult.Failed(ex.InnerException.Message);
+        }
+        catch (Exception ex)
+        {
+            return FunctionResult.Failed(ex.Message);
+        }
+    }
+
     private object?[]? GetArguments(Dictionary<string, JsonElement>? args)
     {
         if (Parameters.Length == 0) return null;
@@ -94,7 +104,7 @@ public class FunctionTool
         for (int i = 0; i < Parameters.Length; i++)
         {
             var param = Parameters[i];
-            var paramName = param.Name ?? string.Empty;
+            var paramName = param.Name ?? throw new InvalidOperationException("Parameter name cannot be null.");
             var paramType = param.ParameterType;
             var isRequired = !param.IsOptional;
             

@@ -38,7 +38,7 @@ public class AnthropicChatCompletionClient : AnthropicClientBase
         var content = new StringContent(JsonSerializer.Serialize(request, _jsonOptions), Encoding.UTF8, "application/json");
         var response = await _client.PostAsync(requestUri, content);
         response.EnsureSuccessStatusCode();
-        var message = await response.Content.ReadFromJsonAsync<MessagesResponse>()
+        var message = await response.Content.ReadFromJsonAsync<MessagesResponse>(_jsonOptions)
             ?? throw new InvalidOperationException("Failed to deserialize response.");
         return message;
     }
@@ -63,7 +63,6 @@ public class AnthropicChatCompletionClient : AnthropicClientBase
         while (!reader.EndOfStream)
         {
             var line = await reader.ReadLineAsync();
-            Console.WriteLine(line);
             if (string.IsNullOrWhiteSpace(line) || !line.StartsWith("data"))
                 continue;
             

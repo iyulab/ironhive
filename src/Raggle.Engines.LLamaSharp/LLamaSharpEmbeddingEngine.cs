@@ -1,7 +1,6 @@
 ﻿using LLama.Common;
 using LLama;
 using Raggle.Abstractions.Engines;
-using Raggle.Abstractions.Models;
 
 namespace Raggle.Engines.LLamaSharp;
 

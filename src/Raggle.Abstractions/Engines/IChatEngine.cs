@@ -1,6 +1,4 @@
-﻿using Raggle.Abstractions.Models;
-
-namespace Raggle.Abstractions.Engines;
+﻿namespace Raggle.Abstractions.Engines;
 
 public interface IChatEngine
 {

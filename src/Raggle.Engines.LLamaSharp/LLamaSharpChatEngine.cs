@@ -2,8 +2,7 @@
 using LLama;
 using LLama.Common;
 using Raggle.Abstractions.Engines;
-using Raggle.Abstractions.Models;
-using ChatHistory = Raggle.Abstractions.Models.ChatHistory;
+using ChatHistory = Raggle.Abstractions.Engines.ChatHistory;
 
 namespace Raggle.Engines.LLamaSharp;
 

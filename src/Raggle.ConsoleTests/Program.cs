@@ -18,7 +18,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using ChatHistory = Raggle.Abstractions.Models.ChatHistory;
+using ChatHistory = Raggle.Abstractions.Engines.ChatHistory;
 using ChatSession = Raggle.Abstractions.Models.ChatSession;
 using JsonSchema = NJsonSchema.JsonSchema;
 
@@ -52,10 +52,28 @@ var options = new ChatOptions
     Tools = tools.ToArray()
 };
 
-await foreach (var response in chat.StreamingChatCompletionAsync(history, options))
-{
-    Console.WriteLine(JsonSerializer.Serialize(response, new JsonSerializerOptions { WriteIndented = true }));
-}
+var response = await chat.ChatCompletionAsync(history, options);
+Console.WriteLine(JsonSerializer.Serialize(response, new JsonSerializerOptions { WriteIndented = true }));
+
+//await foreach (var response in chat.StreamingChatCompletionAsync(history, options))
+//{
+//    if (response is StreamingTextResponse textResponse)
+//    {
+//        Console.Write(textResponse.Text);
+//    }
+//    else if (response is StreamingToolCallResponse toolResponse)
+//    {
+//        Console.WriteLine($"Tool Call: {toolResponse.Name}");
+//    }
+//    else if (response is StreamingToolUseResponse toolUseResponse)
+//    {
+//        Console.WriteLine($"Tool Use: {toolUseResponse.Name}");
+//    }
+//    else if (response is StreamingToolResultResponse toolResultResponse)
+//    {
+//        Console.WriteLine($"Tool Result: {JsonSerializer.Serialize(toolResultResponse, new JsonSerializerOptions { WriteIndented = true })}");
+//    }
+//}
 
 return;
 

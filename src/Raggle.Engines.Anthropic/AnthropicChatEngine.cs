@@ -1,5 +1,4 @@
 ﻿using Raggle.Abstractions.Engines;
-using Raggle.Abstractions.Models;
 using Raggle.Abstractions.Tools;
 using Raggle.Engines.Anthropic.ChatCompletion;
 using Raggle.Engines.Anthropic.Configurations;
@@ -37,7 +36,72 @@ public class AnthropicChatEngine : IChatEngine
     {
         var request = BuildMessagesRequest(history, options);
         var response = await _client.PostMessagesAsync(request);
-        return new ChatResponse();
+        var tools = options.Tools?.ToDictionary(t => t.Name, t => t) ?? new Dictionary<string, FunctionTool>();
+        var contents = new List<IContentBlock>();
+
+        if (response.StopReason == StopReason.ToolUse)
+        {
+            foreach (var content in response.Content)
+            {
+                if (content is TextMessageContent textContent)
+                {
+                    contents.Add(new TextContentBlock { Text = textContent.Text });
+                }
+                else if (content is ToolUseMessageContent toolUseContent)
+                {
+                    var toolContent = new ToolContentBlock
+                    { 
+                        ID = toolUseContent.ID, 
+                        Name = toolUseContent.Name, 
+                        Arguments =  toolUseContent.Input?.ToString() ?? string.Empty
+                    };
+
+                    if (string.IsNullOrWhiteSpace(toolUseContent.Name))
+                    {
+                        toolContent.Result = FunctionResult.Failed("Tool name is missing");
+                    }
+                    else if (tools.TryGetValue(toolUseContent.Name, out var tool))
+                    {
+                        var result = await tool.InvokeAsync(toolContent.Arguments);
+                        toolContent.Result = result;
+                    }
+                    else
+                    {
+                        toolContent.Result = FunctionResult.Failed("Tool not found");
+                    }
+                    contents.Add(toolContent);
+                }
+            }
+
+            var cloneHistory = history.Clone();
+            cloneHistory.AddAssistantMessages(contents);
+            return await ChatCompletionAsync(cloneHistory, options);
+        }
+        else
+        {
+            if (history.TryGetLastAssistantMessage(out var lastAssistantMessage))
+            {
+                contents.AddRange(lastAssistantMessage.Contents);
+            }
+
+            foreach (var content in response.Content)
+            {
+                if (content is TextMessageContent textContent)
+                {
+                    contents.Add(new TextContentBlock { Text = textContent.Text });
+                }
+                else if (content is ToolUseMessageContent toolContent)
+                {
+                    contents.Add(new ToolContentBlock { ID = toolContent.ID, Name = toolContent.Name });
+                }
+            }
+            var totalTokens = response.Usage.InputTokens + response.Usage.OutputTokens;
+
+            if (response.StopReason == StopReason.MaxTokens)
+                return ChatResponse.Limit(contents.ToArray(), totalTokens);
+            else
+                return ChatResponse.Stop(contents.ToArray(), totalTokens);
+        }
     }
 
     public async IAsyncEnumerable<IStreamingChatResponse> StreamingChatCompletionAsync(ChatHistory history, ChatOptions options)
@@ -52,7 +116,7 @@ public class AnthropicChatEngine : IChatEngine
             {
                 // nothing to do
             }
-            else if (response is MessageStartEvent)
+            else if (response is MessageStartEvent messageStart)
             {
                 // nothing to do
             }
@@ -66,17 +130,17 @@ public class AnthropicChatEngine : IChatEngine
             }
             else if (response is MessageDeltaEvent messageDelta)
             {
-                if (messageDelta.StopReason == "end_turn" || messageDelta.StopReason == "stop_sequnces")
+                var reason = messageDelta.Delta?.StopReason;
+                if (reason == StopReason.EndTurn || reason == StopReason.StopSequence)
                 {
                     yield return new StreamingStopResponse();
                 }
-                else if (messageDelta.StopReason == "max_tokens")
+                else if (reason == StopReason.MaxTokens)
                 {
                     yield return new StreamingLimitResponse();
                 }
-                else if (messageDelta.StopReason == "tool_use")
+                else if (reason == StopReason.ToolUse)
                 {
-                    var cloneHistory = history.Clone();
                     foreach (var content in contents)
                     {
                         if (content is ToolContentBlock toolContent)
@@ -97,8 +161,9 @@ public class AnthropicChatEngine : IChatEngine
                             }
                             yield return new StreamingToolResultResponse { Name = toolContent.Name, Result = toolContent.Result };
                         }
-                        cloneHistory.AddAssistantMessage(content);
                     }
+                    var cloneHistory = history.Clone();
+                    cloneHistory.AddAssistantMessages(contents);
 
                     await foreach (var stream in StreamingChatCompletionAsync(cloneHistory, options))
                     {
@@ -110,11 +175,10 @@ public class AnthropicChatEngine : IChatEngine
             {
                 if (contentStart.ContentBlock is TextMessageContent textContent)
                 {
-                    contents.Add(new TextContentBlock { Text = textContent.Text });
-                }
+                    contents.Add(new TextContentBlock { Text = textContent.Text });                }
                 else if (contentStart.ContentBlock is ToolUseMessageContent toolContent)
                 {
-                    contents.Add(new ToolContentBlock { ID = toolContent.ID, Name = toolContent.Name, Arguments = JsonSerializer.Serialize(toolContent.Input) });
+                    contents.Add(new ToolContentBlock { ID = toolContent.ID, Name = toolContent.Name });
                 }
             }
             else if (response is ContentDeltaEvent contentDelta)
@@ -200,7 +264,7 @@ public class AnthropicChatEngine : IChatEngine
                         {
                             ID = tool.ID,
                             Name = tool.Name,
-                            Input = JsonSerializer.Deserialize<JsonObject>(tool.Arguments)
+                            Input = JsonSerializer.Deserialize<JsonObject>(tool.Arguments ?? string.Empty)
                         });
                         userContents.Add(new ToolResultMessageContent
                         {

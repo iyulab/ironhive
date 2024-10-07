@@ -31,14 +31,20 @@ public class MessageStopEvent : StreamingMessagesResponse { }
 
 public class MessageDeltaEvent : StreamingMessagesResponse
 {
-    [JsonPropertyName("stop_reason")]
-    public string? StopReason { get; set; }
-
-    [JsonPropertyName("stop_sequence")]
-    public string? StopSequence { get; set; }
+    [JsonPropertyName("delta")]
+    public MessageDeltaContent? Delta { get; set; }
 
     [JsonPropertyName("usage")]
     public TokenUsage? Usage { get; set; }
+}
+
+public class MessageDeltaContent
+{
+    [JsonPropertyName("stop_reason")]
+    public StopReason? StopReason { get; set; }
+
+    [JsonPropertyName("stop_sequence")]
+    public string? StopSequence { get; set; }
 }
 
 public class ContentStartEvent : StreamingMessagesResponse

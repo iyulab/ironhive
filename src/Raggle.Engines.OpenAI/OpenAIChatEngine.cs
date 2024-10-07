@@ -1,5 +1,4 @@
 ﻿using Raggle.Abstractions.Engines;
-using Raggle.Abstractions.Models;
 using Raggle.Engines.OpenAI.ChatCompletion;
 using Raggle.Engines.OpenAI.Configurations;
 using System.Text.Json;
