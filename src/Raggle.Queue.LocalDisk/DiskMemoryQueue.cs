@@ -6,16 +6,16 @@ namespace Raggle.Queue.LocalDisk;
 public class DiskMemoryQueue : IMemoryQueue
 {
     private readonly string _queueDirectory;
-    private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
+    private readonly SemaphoreSlim _semaphore = new(1, 1);
     private bool _disposed = false;
 
-    public DiskMemoryQueue(string queueDirectory)
+    public DiskMemoryQueue(string dirPath)
     {
-        if (string.IsNullOrWhiteSpace(queueDirectory))
-            throw new ArgumentException("Queue directory path cannot be null or whitespace.", nameof(queueDirectory));
+        if (string.IsNullOrWhiteSpace(dirPath))
+            throw new ArgumentNullException(nameof(dirPath));
 
-        _queueDirectory = queueDirectory;
-        Directory.CreateDirectory(_queueDirectory);
+        _queueDirectory = dirPath;
+        Directory.CreateDirectory(dirPath);
     }
 
     /// <summary>
@@ -25,13 +25,13 @@ public class DiskMemoryQueue : IMemoryQueue
     /// <returns>A task that represents the asynchronous enqueue operation.</returns>
     public async Task EnqueueAsync(string message)
     {
-        if (message == null)
+        if (string.IsNullOrWhiteSpace(message))
             throw new ArgumentNullException(nameof(message));
 
-        string fileName = $"{DateTime.UtcNow:yyyyMMddHHmmssfff}_{Guid.NewGuid()}.msg";
-        string filePath = Path.Combine(_queueDirectory, fileName);
+        var fileName = $"{DateTime.UtcNow:yyyyMMddHHmmssfff}_{Guid.NewGuid()}.msg";
+        var filePath = Path.Combine(_queueDirectory, fileName);
 
-        byte[] data = Encoding.UTF8.GetBytes(message);
+        var data = Encoding.UTF8.GetBytes(message);
 
         // Ensure exclusive access during file write
         await _semaphore.WaitAsync();
@@ -59,12 +59,12 @@ public class DiskMemoryQueue : IMemoryQueue
                                  .OrderBy(f => f)
                                  .ToList();
 
-            if (!files.Any())
+            if (files.Count == 0)
                 return null;
 
-            string oldestFile = files.First();
-            byte[] data = await File.ReadAllBytesAsync(oldestFile);
-            string message = Encoding.UTF8.GetString(data);
+            var oldestFile = files.First();
+            var data = await File.ReadAllBytesAsync(oldestFile);
+            var message = Encoding.UTF8.GetString(data);
 
             File.Delete(oldestFile);
 

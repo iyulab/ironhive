@@ -75,13 +75,67 @@ public class HuggingFaceClient : IDisposable
     }
 
     /// <summary>
+    /// Retrieves metadata information about a specific file in a Hugging Face repository
+    /// </summary>
+    /// <param name="repoId">
+    /// The ID of the repository (e.g., "username/repo-name").
+    /// </param>
+    /// <param name="filePath">
+    /// The path of the file within the repository (e.g., "models/model.bin").
+    /// </param>
+    /// <returns>
+    /// A task that represents the asynchronous operation. The task result contains a <see cref="HuggingFaceFile"/> object
+    /// with metadata information about the specified file.
+    /// </returns>
+    public async Task<HuggingFaceFile> GetFileInfoAsync(
+        string repoId,
+        string filePath,
+        CancellationToken cancellationToken = default)
+    {
+        var requestUri = new UriBuilder
+        {
+            Scheme = "https",
+            Host = HuggingFaceConstants.Host,
+            Path = string.Format(HuggingFaceConstants.GetFilePath, repoId, filePath),
+            Query = HuggingFaceConstants.GetFileDefaultQuery
+        }.ToString();
+
+        // Attempt to use HEAD request to get headers without downloading the body
+        var request = new HttpRequestMessage(HttpMethod.Head, requestUri);
+
+        using var response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var fileInfo = new HuggingFaceFile
+        {
+            Name = Path.GetFileName(filePath),
+            Path = filePath,
+            Size = response.Content.Headers.ContentLength,
+            MimeType = response.Content.Headers.ContentType?.MediaType,
+            LastModified = response.Content.Headers.LastModified?.UtcDateTime
+        };
+
+        return fileInfo;
+    }
+
+    /// <summary>
     /// Downloads a file from the Hugging Face API.
     /// </summary>
-    /// <param name="repoId">The ID of the repository.</param>
-    /// <param name="filePath">The path of the file in the repository.</param>
-    /// <param name="outputPath">The path to save the downloaded file.</param>
-    /// <param name="startFrom">The byte offset to start downloading the file from. The default value is 0.</param>
-    /// <returns>An asynchronous enumerable of <see cref="FileDownloadProgress"/> objects.</returns>
+    /// <param name="repoId">
+    /// The ID of the repository.
+    /// </param>
+    /// <param name="filePath">
+    /// The path of the file in the repository.
+    /// </param>
+    /// <param name="outputPath">
+    /// The path to save the downloaded file.
+    /// </param>
+    /// <param name="startFrom">
+    /// The byte offset to start downloading the file from. The default value is 0.
+    /// </param>
+    /// <returns>
+    /// An asynchronous enumerable of <see cref="FileDownloadProgress"/> objects.
+    /// </returns>
     public async IAsyncEnumerable<FileDownloadProgress> DownloadFileAsync(
         string repoId,
         string filePath,
@@ -164,19 +218,65 @@ public class HuggingFaceClient : IDisposable
         yield return progress;
     }
 
+    private static HttpClient CreateHttpClient(string? token)
+    {
+        var client = new HttpClient();
+        if (!string.IsNullOrWhiteSpace(token) && token.StartsWith("hf_"))
+        {
+            client.DefaultRequestHeaders.Add(HuggingFaceConstants.AuthHeaderName, 
+                string.Format(HuggingFaceConstants.AuthHeaderValue, token));
+        }
+        return client;
+    }
+
+    private static void EnsureDirectory(string path)
+    {
+        var directory = Path.GetDirectoryName(path);
+        if (string.IsNullOrEmpty(directory))
+        {
+            throw new InvalidOperationException($"Invalid directory path: {path}");
+        }
+        if (!Directory.Exists(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+    }
+
+    public void Dispose()
+    {
+        _client.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
+    #region Temporal Methods
+
     /// <summary>
     /// Downloads a repository from the Hugging Face API.
     /// </summary>
-    /// <param name="repoId">The ID of the repository.</param>
-    /// <param name="outputDir">The directory to save the downloaded files.</param>
+    /// <remarks>
+    /// ** 현재 객체에 적합하지 않은 메서드로 판단됩니다. **
+    /// </remarks>
+    /// <param name="repoId">
+    /// The ID of the repository.
+    /// </param>
+    /// <param name="outputDir">
+    /// The directory to save the downloaded files.
+    /// </param>
     /// <param name="useSubDir">
     /// A flag indicating whether to create a subdirectory within the output directory 
     /// for the repository files. If set to <c>true</c>, a new subdirectory named after the repository 
     /// will be created under the specified output directory.
     /// </param>
-    /// <param name="maxConcurrent">download tasks to run concurrently. The default value is 5.</param>
-    /// <param name="updateInterval">interval in milliseconds to update the download progress. The default value is 100 milliseconds.</param>
-    /// <returns>An asynchronous enumerable of <see cref="RepoDownloadProgress"/> objects.</returns>
+    /// <param name="maxConcurrent">
+    /// download tasks to run concurrently. The default value is 5.
+    /// </param>
+    /// <param name="updateInterval">
+    /// interval in milliseconds to update the download progress. The default value is 100 milliseconds.
+    /// </param>
+    /// <returns>
+    /// An asynchronous enumerable of <see cref="RepoDownloadProgress"/> objects.
+    /// </returns>
+    [Obsolete("DownloadRepoAsync is experimental and may change or be removed in future")]
     public async IAsyncEnumerable<RepoDownloadProgress> DownloadRepoAsync(
         string repoId,
         string outputDir,
@@ -246,33 +346,5 @@ public class HuggingFaceClient : IDisposable
         yield return progress;
     }
 
-    private static HttpClient CreateHttpClient(string? token)
-    {
-        var client = new HttpClient();
-        if (!string.IsNullOrWhiteSpace(token) && token.StartsWith("hf_"))
-        {
-            client.DefaultRequestHeaders.Add(HuggingFaceConstants.AuthHeaderName, 
-                string.Format(HuggingFaceConstants.AuthHeaderValue, token));
-        }
-        return client;
-    }
-
-    private static void EnsureDirectory(string path)
-    {
-        var directory = Path.GetDirectoryName(path);
-        if (string.IsNullOrEmpty(directory))
-        {
-            throw new InvalidOperationException($"Invalid directory path: {path}");
-        }
-        if (!Directory.Exists(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-    }
-
-    public void Dispose()
-    {
-        _client.Dispose();
-        GC.SuppressFinalize(this);
-    }
+    #endregion
 }

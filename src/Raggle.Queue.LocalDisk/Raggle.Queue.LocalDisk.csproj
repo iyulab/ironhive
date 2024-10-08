@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Raggle.Abstractions\Raggle.Abstractions.csproj" />
+  </ItemGroup>
+
 </Project>

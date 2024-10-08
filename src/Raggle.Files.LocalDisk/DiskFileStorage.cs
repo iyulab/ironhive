@@ -11,31 +11,29 @@ public class DiskFileStorage : IFileStorage
     /// <summary>
     /// DiskFileStorage 생성자.
     /// </summary>
-    /// <param name="storageDirectory">파일을 저장할 디렉토리 경로.</param>
-    public DiskFileStorage(string storageDirectory)
+    public DiskFileStorage(string dirPath)
     {
-        if (string.IsNullOrWhiteSpace(storageDirectory))
-            throw new ArgumentException("Storage directory path cannot be null or whitespace.", nameof(storageDirectory));
-
-        _storageDirectory = storageDirectory;
+        if (string.IsNullOrWhiteSpace(dirPath))
+            throw new ArgumentException("Storage directory path cannot be null or whitespace.", nameof(dirPath));
+        _storageDirectory = dirPath;
         Directory.CreateDirectory(_storageDirectory);
     }
 
     /// <summary>
     /// 파일을 비동기적으로 저장합니다.
     /// </summary>
-    /// <param name="fileName">저장할 파일의 이름.</param>
+    /// <param name="filePath">저장할 파일의 경로</param>
     /// <param name="content">파일의 내용.</param>
     /// <returns>비동기 작업.</returns>
-    public async Task SaveFileAsync(string fileName, byte[] content)
+    public async Task SaveFileAsync(string filePath, byte[] content)
     {
-        if (string.IsNullOrWhiteSpace(fileName))
-            throw new ArgumentException("File name cannot be null or whitespace.", nameof(fileName));
+        if (string.IsNullOrWhiteSpace(filePath))
+            throw new ArgumentNullException(nameof(filePath));
         if (content == null)
             throw new ArgumentNullException(nameof(content));
 
-        string filePath = Path.Combine(_storageDirectory, SanitizeFileName(fileName));
-
+        filePath = Path.Combine(_storageDirectory, filePath);
+        
         await _semaphore.WaitAsync();
         try
         {
@@ -50,14 +48,14 @@ public class DiskFileStorage : IFileStorage
     /// <summary>
     /// 파일을 비동기적으로 읽습니다.
     /// </summary>
-    /// <param name="fileName">읽을 파일의 이름.</param>
+    /// <param name="filePath">읽을 파일의 경로</param>
     /// <returns>파일의 내용.</returns>
-    public async Task<byte[]?> ReadFileAsync(string fileName)
+    public async Task<byte[]?> ReadFileAsync(string filePath)
     {
-        if (string.IsNullOrWhiteSpace(fileName))
-            throw new ArgumentException("File name cannot be null or whitespace.", nameof(fileName));
+        if (string.IsNullOrWhiteSpace(filePath))
+            throw new ArgumentNullException(nameof(filePath));
 
-        string filePath = Path.Combine(_storageDirectory, SanitizeFileName(fileName));
+        filePath = Path.Combine(_storageDirectory, filePath);
 
         if (!File.Exists(filePath))
             return null;
@@ -76,14 +74,14 @@ public class DiskFileStorage : IFileStorage
     /// <summary>
     /// 파일을 비동기적으로 삭제합니다.
     /// </summary>
-    /// <param name="fileName">삭제할 파일의 이름.</param>
+    /// <param name="filePath">삭제할 파일의 이름.</param>
     /// <returns>비동기 작업.</returns>
-    public async Task DeleteFileAsync(string fileName)
+    public async Task DeleteFileAsync(string filePath)
     {
-        if (string.IsNullOrWhiteSpace(fileName))
-            throw new ArgumentException("File name cannot be null or whitespace.", nameof(fileName));
+        if (string.IsNullOrWhiteSpace(filePath))
+            throw new ArgumentNullException(nameof(filePath));
 
-        string filePath = Path.Combine(_storageDirectory, SanitizeFileName(fileName));
+        filePath = Path.Combine(_storageDirectory, filePath);
 
         await _semaphore.WaitAsync();
         try
@@ -100,16 +98,14 @@ public class DiskFileStorage : IFileStorage
     }
 
     /// <summary>
-    /// 저장소에 있는 모든 파일의 이름 목록을 비동기적으로 가져옵니다.
+    /// 저장소에 있는 모든 파일의 목록을 비동기적으로 가져옵니다.
     /// </summary>
-    /// <returns>파일 이름의 목록.</returns>
     public async Task<IEnumerable<string>> ListFilesAsync()
     {
         await _semaphore.WaitAsync();
         try
         {
             var files = Directory.GetFiles(_storageDirectory)
-                                 .Select(f => Path.GetFileName(f))
                                  .ToList();
             return files;
         }

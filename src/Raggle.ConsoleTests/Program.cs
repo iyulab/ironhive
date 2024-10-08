@@ -1,26 +1,32 @@
-﻿using ClosedXML;
-using LLama;
+﻿using LLama;
 using LLama.Common;
 using LLama.Native;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Raggle.Abstractions.Engines;
-using Raggle.Abstractions.Models;
 using Raggle.Abstractions.Tools;
 using Raggle.ConsoleTests;
 using Raggle.Engines.Anthropic;
 using Raggle.Engines.OpenAI;
 using Raggle.Engines.OpenAI.ChatCompletion;
 using Raggle.Engines.OpenAI.Embeddings;
-using Raggle.Services;
+using Raggle.Helpers.HuggingFace;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ChatHistory = Raggle.Abstractions.Engines.ChatHistory;
-using ChatSession = Raggle.Abstractions.Models.ChatSession;
 using JsonSchema = NJsonSchema.JsonSchema;
+
+var hf = new HuggingFaceClient();
+
+var repoId = "SanctumAI/Meta-Llama-3.1-8B-Instruct-GGUF";
+var file = "meta-llama-3.1-8b-instruct.Q4_K.gguf";
+var file2 = "README.md";
+
+var models = await hf.GetFileInfoAsync(repoId, file2);
+
+return;
 
 var text = await File.ReadAllTextAsync(@"C:\data\Raggle\src\Raggle.ConsoleTests\Secrets.json");
 var secrets = JsonSerializer.Deserialize<Dictionary<string, string>>(text);
@@ -52,28 +58,30 @@ var options = new ChatOptions
     Tools = tools.ToArray()
 };
 
-var response = await chat.ChatCompletionAsync(history, options);
-Console.WriteLine(JsonSerializer.Serialize(response, new JsonSerializerOptions { WriteIndented = true }));
+//var response = await chat.ChatCompletionAsync(history, options);
+//Console.WriteLine(JsonSerializer.Serialize(response, new JsonSerializerOptions { WriteIndented = true }));
 
-//await foreach (var response in chat.StreamingChatCompletionAsync(history, options))
-//{
-//    if (response is StreamingTextResponse textResponse)
-//    {
-//        Console.Write(textResponse.Text);
-//    }
-//    else if (response is StreamingToolCallResponse toolResponse)
-//    {
-//        Console.WriteLine($"Tool Call: {toolResponse.Name}");
-//    }
-//    else if (response is StreamingToolUseResponse toolUseResponse)
-//    {
-//        Console.WriteLine($"Tool Use: {toolUseResponse.Name}");
-//    }
-//    else if (response is StreamingToolResultResponse toolResultResponse)
-//    {
-//        Console.WriteLine($"Tool Result: {JsonSerializer.Serialize(toolResultResponse, new JsonSerializerOptions { WriteIndented = true })}");
-//    }
-//}
+await foreach (var response in chat.StreamingChatCompletionAsync(history, options))
+{
+    Console.WriteLine(JsonSerializer.Serialize(response, new JsonSerializerOptions { WriteIndented = true }));
+
+    if (response is StreamingTextResponse textResponse)
+    {
+        Console.Write(textResponse.Text);
+    }
+    else if (response is StreamingToolCallResponse toolResponse)
+    {
+        Console.WriteLine($"Tool Call: {toolResponse.Name}");
+    }
+    else if (response is StreamingToolUseResponse toolUseResponse)
+    {
+        Console.WriteLine($"Tool Use: {toolUseResponse.Name}");
+    }
+    else if (response is StreamingToolResultResponse toolResultResponse)
+    {
+        Console.WriteLine($"Tool Result: {JsonSerializer.Serialize(toolResultResponse, new JsonSerializerOptions { WriteIndented = true })}");
+    }
+}
 
 return;
 
