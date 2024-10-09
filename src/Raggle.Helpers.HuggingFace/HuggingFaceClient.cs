@@ -114,7 +114,6 @@ public class HuggingFaceClient : IDisposable
             MimeType = response.Content.Headers.ContentType?.MediaType,
             LastModified = response.Content.Headers.LastModified?.UtcDateTime
         };
-
         return fileInfo;
     }
 
