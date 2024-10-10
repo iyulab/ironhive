@@ -35,5 +35,8 @@ public class HuggingFaceFile
     /// </summary>
     public DateTime? LastModified { get; set; }
 
-    //public IDictionary<string, object>? Metadata { get; set; }
+    /// <summary>
+    /// Text Content if the file is a text file.
+    /// </summary>
+    public string? Content { get; set; }
 }

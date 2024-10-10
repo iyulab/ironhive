@@ -22,7 +22,7 @@ var hf = new HuggingFaceClient();
 
 var repoId = "SanctumAI/Meta-Llama-3.1-8B-Instruct-GGUF";
 var file = "meta-llama-3.1-8b-instruct.Q4_K.gguf";
-var file2 = "README.md";
+var file2 = "config.json";
 
 var models = await hf.GetFileInfoAsync(repoId, file2);
 

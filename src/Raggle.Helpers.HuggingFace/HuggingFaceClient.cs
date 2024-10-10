@@ -114,6 +114,17 @@ public class HuggingFaceClient : IDisposable
             MimeType = response.Content.Headers.ContentType?.MediaType,
             LastModified = response.Content.Headers.LastModified?.UtcDateTime
         };
+
+        if (IsTextMimeType(fileInfo.MimeType))
+        {
+            var getRequest = new HttpRequestMessage(HttpMethod.Get, requestUri);
+
+            using var getResponse = await _client.SendAsync(getRequest, HttpCompletionOption.ResponseContentRead, cancellationToken);
+            getResponse.EnsureSuccessStatusCode();
+
+            fileInfo.Content = await getResponse.Content.ReadAsStringAsync(cancellationToken);
+        }
+
         return fileInfo;
     }
 
@@ -128,6 +139,8 @@ public class HuggingFaceClient : IDisposable
     /// </param>
     /// <param name="outputPath">
     /// The path to save the downloaded file.
+    /// if the output path is a directory, the file will be saved with the same name as the original file in the directory.
+    /// else, the file will be saved with the specified output path.
     /// </param>
     /// <param name="startFrom">
     /// The byte offset to start downloading the file from. The default value is 0.
@@ -217,6 +230,14 @@ public class HuggingFaceClient : IDisposable
         yield return progress;
     }
 
+    public void Dispose()
+    {
+        _client.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
+    #region Private Methods
+
     private static HttpClient CreateHttpClient(string? token)
     {
         var client = new HttpClient();
@@ -241,11 +262,18 @@ public class HuggingFaceClient : IDisposable
         }
     }
 
-    public void Dispose()
+    private bool IsTextMimeType(string? mimeType)
     {
-        _client.Dispose();
-        GC.SuppressFinalize(this);
+        if (string.IsNullOrEmpty(mimeType))
+            return false;
+
+        return mimeType.StartsWith("text/", StringComparison.OrdinalIgnoreCase) ||
+               mimeType.Equals("application/json", StringComparison.OrdinalIgnoreCase) ||
+               mimeType.Equals("application/xml", StringComparison.OrdinalIgnoreCase) ||
+               mimeType.Equals("application/javascript", StringComparison.OrdinalIgnoreCase);
     }
+
+    #endregion
 
     #region Temporal Methods
 
