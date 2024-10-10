@@ -71,7 +71,7 @@ public partial class HuggingFaceModel
             .ToArray();
 
         return pattern is null
-            ? files 
+            ? files
             : files.Where(file => pattern.IsMatch(file)).ToArray();
     }
 }

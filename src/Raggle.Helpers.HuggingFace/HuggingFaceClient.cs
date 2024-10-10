@@ -74,6 +74,39 @@ public class HuggingFaceClient : IDisposable
         return models ?? [];
     }
 
+    public async Task<HuggingFaceModel> FindModelByRepoIdAsync(
+        string repoId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(repoId))
+            throw new ArgumentException("Repository ID cannot be null or whitespace.", nameof(repoId));
+
+        // Construct the request URI for the specific model
+        var requestUri = new UriBuilder
+        {
+            Scheme = "https",
+            Host = HuggingFaceConstants.Host,
+            Path = $"{HuggingFaceConstants.GetModelsPath}/{Uri.EscapeDataString(repoId)}"
+        }.ToString();
+
+        try
+        {
+            // Attempt to retrieve the model
+            var model = await _client.GetFromJsonAsync<HuggingFaceModel>(requestUri, cancellationToken);
+
+            if (model == null)
+            {
+                throw new InvalidOperationException($"Model with repoId '{repoId}' was not found.");
+            }
+
+            return model;
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            throw new InvalidOperationException($"Model with repoId '{repoId}' does not exist.", ex);
+        }
+    }
+
     /// <summary>
     /// Retrieves metadata information about a specific file in a Hugging Face repository
     /// </summary>
