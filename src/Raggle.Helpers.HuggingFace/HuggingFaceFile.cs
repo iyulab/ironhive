@@ -23,7 +23,7 @@ public class HuggingFaceFile
     /// <summary>
     /// Gets the formatted size of the file.
     /// </summary>
-    public string FormattedSize => Size.HasValue ? StringFormatter.FormatSize(Size.Value) : "Unknown";
+    public string FormattedSize => Size.HasValue ? StringFormatter.FormatSize(Size.Value, 2) : "Unknown";
 
     /// <summary>
     /// Gets or sets the type of the file.

@@ -20,11 +20,22 @@ using JsonSchema = NJsonSchema.JsonSchema;
 
 var hf = new HuggingFaceClient();
 
-var repoId = "SanctumAI/Meta-Llama-3.1-8B-Instruct-GGUF";
-var file = "meta-llama-3.1-8b-instruct.Q4_K.gguf";
-var file2 = "config.json";
+var repoId = "google/gemma-2b";
+var file = "gemma-2b.gguf";
+var file2 = "README.md";
 
-var models = await hf.GetFileInfoAsync(repoId, file2);
+try
+{
+    var models = await hf.GetFileInfoAsync(repoId, file2);
+}
+catch(HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+{
+    Console.WriteLine("Unauthorized");
+}
+catch
+{
+    throw;
+}
 
 return;
 

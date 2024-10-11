@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Net;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Web;
@@ -74,6 +75,15 @@ public class HuggingFaceClient : IDisposable
         return models ?? [];
     }
 
+    /// <summary>
+    /// Retrieves a Hugging Face model based on the repository ID.
+    /// </summary>
+    /// <param name="repoId">
+    /// The ID of the repository.
+    /// </param>
+    /// <returns>The <see cref="HuggingFaceModel"/> 
+    /// object representing the model.
+    /// </returns>
     public async Task<HuggingFaceModel> FindModelByRepoIdAsync(
         string repoId,
         CancellationToken cancellationToken = default)
@@ -81,7 +91,6 @@ public class HuggingFaceClient : IDisposable
         if (string.IsNullOrWhiteSpace(repoId))
             throw new ArgumentException("Repository ID cannot be null or whitespace.", nameof(repoId));
 
-        // Construct the request URI for the specific model
         var requestUri = new UriBuilder
         {
             Scheme = "https",
@@ -92,16 +101,10 @@ public class HuggingFaceClient : IDisposable
         try
         {
             // Attempt to retrieve the model
-            var model = await _client.GetFromJsonAsync<HuggingFaceModel>(requestUri, cancellationToken);
-
-            if (model == null)
-            {
-                throw new InvalidOperationException($"Model with repoId '{repoId}' was not found.");
-            }
-
-            return model;
+            return await _client.GetFromJsonAsync<HuggingFaceModel>(requestUri, cancellationToken)
+                ?? throw new InvalidOperationException($"Model with repoId '{repoId}' was not found.");
         }
-        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
             throw new InvalidOperationException($"Model with repoId '{repoId}' does not exist.", ex);
         }

@@ -130,15 +130,6 @@ public class DiskFileStorage : IFileStorage
     }
 
     /// <summary>
-    /// 세마포어를 동기적으로 기다립니다.
-    /// </summary>
-    /// <returns>비동기 작업.</returns>
-    private void WaitSemaphore()
-    {
-        _semaphore.Wait();
-    }
-
-    /// <summary>
     /// 자원을 해제합니다.
     /// </summary>
     public void Dispose()
