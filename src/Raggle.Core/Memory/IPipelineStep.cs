@@ -1,6 +1,6 @@
 ﻿namespace Raggle.Core.Memory;
 
-public class PipeMemory
+public interface IPipelineStep<TInput, TOutput>
 {
-
+    Task<TOutput> ProcessAsync(TInput input);
 }

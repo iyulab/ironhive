@@ -1,6 +1,4 @@
-﻿using Raggle.Abstractions.Memory;
-
-namespace Raggle.Core.Memory;
+﻿namespace Raggle.Core.Memory;
 
 public class MemoryPipeline
 {
