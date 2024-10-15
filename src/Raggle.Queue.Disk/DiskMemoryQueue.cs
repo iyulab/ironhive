@@ -1,9 +1,10 @@
-﻿using Raggle.Abstractions.Memories;
+﻿using Raggle.Abstractions.Queue;
 using System.Text;
+using System.Text.Json;
 
 namespace Raggle.Queue.LocalDisk;
 
-public class DiskMemoryQueue : IMemoryQueue
+public class DiskMemoryQueue : IQueueClient
 {
     private readonly string _queueDirectory;
     private readonly SemaphoreSlim _semaphore = new(1, 1);
@@ -23,21 +24,19 @@ public class DiskMemoryQueue : IMemoryQueue
     /// </summary>
     /// <param name="message">The message to enqueue.</param>
     /// <returns>A task that represents the asynchronous enqueue operation.</returns>
-    public async Task EnqueueAsync(string message)
+    public async Task EnqueueAsync(IQueueMessage message, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(message))
-            throw new ArgumentNullException(nameof(message));
-
-        var fileName = $"{DateTime.UtcNow:yyyyMMddHHmmssfff}_{Guid.NewGuid()}.msg";
+        var fileName = $"{DateTime.UtcNow:yyyyMMddHHmmssfff}_{message.ID}.msg";
         var filePath = Path.Combine(_queueDirectory, fileName);
 
-        var data = Encoding.UTF8.GetBytes(message);
+        var json = JsonSerializer.Serialize(message);
+        var data = Encoding.UTF8.GetBytes(json);
 
         // Ensure exclusive access during file write
         await _semaphore.WaitAsync();
         try
         {
-            await File.WriteAllBytesAsync(filePath, data);
+            await File.WriteAllBytesAsync(filePath, data, cancellationToken);
         }
         finally
         {
@@ -49,7 +48,7 @@ public class DiskMemoryQueue : IMemoryQueue
     /// Dequeues a message from the disk-based queue.
     /// </summary>
     /// <returns>A task that represents the asynchronous dequeue operation. The task result contains the dequeued message, or null if the queue is empty.</returns>
-    public async Task<string?> DequeueAsync()
+    public async Task<IQueueMessage?> DequeueAsync(CancellationToken cancellationToken)
     {
         // Ensure exclusive access during dequeue operation
         await _semaphore.WaitAsync();
@@ -63,8 +62,9 @@ public class DiskMemoryQueue : IMemoryQueue
                 return null;
 
             var oldestFile = files.First();
-            var data = await File.ReadAllBytesAsync(oldestFile);
-            var message = Encoding.UTF8.GetString(data);
+            var data = await File.ReadAllBytesAsync(oldestFile, cancellationToken);
+            var json = Encoding.UTF8.GetString(data);
+            var message = JsonSerializer.Deserialize<IQueueMessage>(json);
 
             File.Delete(oldestFile);
 
@@ -80,15 +80,16 @@ public class DiskMemoryQueue : IMemoryQueue
     /// Gets the approximate number of messages in the queue.
     /// </summary>
     /// <returns>The count of message files in the queue directory.</returns>
-    public int Count()
+    public Task<int> CountAsync()
     {
-        return Directory.GetFiles(_queueDirectory, "*.msg").Length;
+        var files = Directory.GetFiles(_queueDirectory, "*.msg");
+        return Task.FromResult(files.Length);
     }
 
     /// <summary>
     /// Clears all messages from the queue.
     /// </summary>
-    public void Clear()
+    public Task ClearAsync()
     {
         _semaphore.Wait();
         try
@@ -98,6 +99,7 @@ public class DiskMemoryQueue : IMemoryQueue
             {
                 File.Delete(file);
             }
+            return Task.CompletedTask;
         }
         finally
         {

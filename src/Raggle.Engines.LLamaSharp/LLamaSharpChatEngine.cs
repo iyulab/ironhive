@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using LLama;
 using LLama.Common;
+using LLama.Native;
 using Raggle.Abstractions.Engines;
 using ChatHistory = Raggle.Abstractions.Engines.ChatHistory;
 
