@@ -7,10 +7,10 @@ public class PipelineOrchestrator
 {
     private readonly Dictionary<string, IPipelineHandler> _handlers = [];
 
-    private readonly IFileStorage[] _fileStorages;
+    private readonly IDocumentStorage[] _fileStorages;
     private readonly IVectorStorage _vectorStorage;
 
-    public PipelineOrchestrator(IVectorStorage vectorStorage, IFileStorage[] fileStorages)
+    public PipelineOrchestrator(IVectorStorage vectorStorage, IDocumentStorage[] fileStorages)
     {
 
     }

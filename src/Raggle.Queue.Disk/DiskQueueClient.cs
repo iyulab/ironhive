@@ -4,13 +4,13 @@ using System.Text.Json;
 
 namespace Raggle.Queue.LocalDisk;
 
-public class DiskMemoryQueue : IQueueClient
+public class DiskQueueClient : IQueueClient
 {
     private readonly string _queueDirectory;
     private readonly SemaphoreSlim _semaphore = new(1, 1);
     private bool _disposed = false;
 
-    public DiskMemoryQueue(string dirPath)
+    public DiskQueueClient(string dirPath)
     {
         if (string.IsNullOrWhiteSpace(dirPath))
             throw new ArgumentNullException(nameof(dirPath));

@@ -1,6 +1,6 @@
-﻿namespace Raggle.FileStorage.Azure;
+﻿namespace Raggle.Document.Azure;
 
-public class AzureFilesStorage
+public class AzureBlobDocumentStorage
 {
     public Task<Stream> DownloadAsync()
     {
