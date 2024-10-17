@@ -2,19 +2,23 @@
 
 namespace Raggle.Core.Handlers;
 
-public class DecodingHandler : IPipelineHandler
+public class DecodingFileHandler : IPipelineHandler
 {
-    public IContentDecoder[] Decoders { get; }
+    private readonly IDocumentStorage _documentStorage;
+    private readonly IContentDecoder[] _decoders;
 
-    public DecodingHandler(IContentDecoder[] decoders)
+    public DecodingFileHandler(
+        IDocumentStorage documentStorage,
+        IContentDecoder[] decoders)
     {
-        Decoders = decoders;
+        _documentStorage = documentStorage;
+        _decoders = decoders;
     }
 
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
         var mimeType = "";
-        var decoder = Decoders.FirstOrDefault(d => d.IsSupportMimeType(mimeType))
+        var decoder = _decoders.FirstOrDefault(d => d.IsSupportMimeType(mimeType))
             ?? throw new InvalidOperationException($"No decoder found for MIME type '{mimeType}'.");
 
         var decodedStream = await decoder.DecodeAsync(new MemoryStream());

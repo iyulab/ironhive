@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.StaticFiles;
 
-namespace Raggle.Core.Utils;
+namespace Raggle.Abstractions.Utils;
 
-public class FileTypeDetector
+public class MimeTypeDetector
 {
     private readonly FileExtensionContentTypeProvider _provider = new();
 

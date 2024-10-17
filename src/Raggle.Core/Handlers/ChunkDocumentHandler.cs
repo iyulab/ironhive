@@ -2,9 +2,15 @@
 
 namespace Raggle.Core.Handlers;
 
-public class ChunkingHandler : IPipelineHandler
+public class ChunkDocumentHandler : IPipelineHandler
 {
     private const int ChunkSize = 500;
+    private readonly IDocumentStorage _documentStorage;
+
+    public ChunkDocumentHandler(IDocumentStorage documentStorage)
+    {
+        _documentStorage = documentStorage;
+    }
 
     public Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {

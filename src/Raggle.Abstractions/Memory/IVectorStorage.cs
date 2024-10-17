@@ -14,9 +14,9 @@ public interface IVectorStorage
         string collection,
         CancellationToken cancellationToken = default);
 
-    Task UpsertRecordsAsync(
+    Task UpsertRecordAsync(
         string collection,
-        IEnumerable<VectorRecord> records,
+        VectorRecord records,
         CancellationToken cancellationToken = default);
 
     Task DeleteRecordsAsync(

@@ -34,14 +34,6 @@ public interface IDocumentStorage : IDisposable
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Get a document detail information by document ID
-    /// </summary>
-    Task<DocumentDetail> GetDocumentDetailAsync(
-        string collection,
-        string documentId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Insert or update a document record
     /// </summary>
     Task UpsertDocumentRecordAsync(
@@ -58,6 +50,14 @@ public interface IDocumentStorage : IDisposable
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Get all document file paths by document ID
+    /// </summary>
+    Task<IEnumerable<string>> GetDocumentFilesAsync(
+        string collection,
+        string documentId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Create/Overwrite a file by document ID
     /// </summary>
     /// <param name="collection">collection name</param>
@@ -65,7 +65,7 @@ public interface IDocumentStorage : IDisposable
     /// <param name="filePath">Full path of the file</param>
     /// <param name="Content">File content</param>
     /// <param name="overwrite">Overwrite if file already exists</param>
-    Task UploadFileAsync(
+    Task WriteDocumentFileAsync(
         string collection,
         string documentId,
         string filePath,
@@ -80,7 +80,7 @@ public interface IDocumentStorage : IDisposable
     /// <param name="documentId">Document ID</param>
     /// <param name="filePath">Full path of the file</param>
     /// <returns>File content</returns>
-    Task<Stream> DownloadFileAsync(
+    Task<Stream> ReadDocumentFileAsync(
         string collection,
         string documentId,
         string filePath,
@@ -93,7 +93,7 @@ public interface IDocumentStorage : IDisposable
     /// <param name="documentId">Document ID</param>
     /// <param name="filePath">Full path of the file</param>
     /// <returns>File content</returns>
-    Task DeleteFileAsync(
+    Task DeleteDocumentFileAsync(
         string collection,
         string documentId,
         string filePath,

@@ -6,14 +6,6 @@ public class PipelineOrchestrator
 {
     private readonly Dictionary<string, IPipelineHandler> _handlers = [];
 
-    private readonly IDocumentStorage[] _fileStorages;
-    private readonly IVectorStorage _vectorStorage;
-
-    public PipelineOrchestrator(IVectorStorage vectorStorage, IDocumentStorage[] fileStorages)
-    {
-
-    }
-
     // 핸들러를 딕셔너리에 추가
     public bool TryAddHandler(string stepName, IPipelineHandler handler)
     {

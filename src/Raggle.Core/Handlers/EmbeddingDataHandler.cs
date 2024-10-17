@@ -3,13 +3,20 @@ using Raggle.Abstractions.Memory;
 
 namespace Raggle.Core.Handlers;
 
-public class EmbeddingHandler : IPipelineHandler
+public class EmbeddingDataHandler : IPipelineHandler
 {
-    public IEmbeddingEngine EmbeddingEngine { get; }
+    private readonly IDocumentStorage _documentStorage;
+    private readonly IVectorStorage _vectorStorage;
+    private readonly IEmbeddingEngine _embeddingEngine;
 
-    public EmbeddingHandler(IEmbeddingEngine embeddingEngine)
+    public EmbeddingDataHandler(
+        IDocumentStorage documentStorage,
+        IVectorStorage vectorStorage,
+        IEmbeddingEngine embeddingEngine)
     {
-        EmbeddingEngine = embeddingEngine;
+        _documentStorage = documentStorage;
+        _vectorStorage = vectorStorage;
+        _embeddingEngine = embeddingEngine;
     }
 
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
@@ -19,7 +26,7 @@ public class EmbeddingHandler : IPipelineHandler
             var embeddings = new List<float[]>();
             foreach (var chunk in chunks)
             {
-                var embedding = await EmbeddingEngine.EmbeddingAsync(chunk, new EmbeddingOptions
+                var embedding = await _embeddingEngine.EmbeddingAsync(chunk, new EmbeddingOptions
                 {
                     ModelId = "bert-base-uncased",
                 });
