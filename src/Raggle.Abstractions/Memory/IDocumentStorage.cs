@@ -1,9 +1,15 @@
-﻿namespace Raggle.Abstractions.Memories;
+﻿namespace Raggle.Abstractions.Memory;
 
 public interface IDocumentStorage : IDisposable
 {
     /// <summary>
-    /// Create a new container, if it doesn't exist already
+    /// Get all collection names in the storage
+    /// </summary>
+    Task<IEnumerable<string>> GetAllCollectionsAsync(
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Create a new collection, if it doesn't exist already
     /// </summary>
     /// <param name="collection">collection name</param>
     Task CreateCollectionAsync(
@@ -11,7 +17,7 @@ public interface IDocumentStorage : IDisposable
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Delete a container
+    /// Delete a collection, if it exists
     /// </summary>
     /// <param name="collection">collection name</param>
     Task DeleteCollectionAsync(
@@ -19,44 +25,77 @@ public interface IDocumentStorage : IDisposable
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Create/Overwrite a file
+    /// Find document records in a collection
+    /// </summary>
+    /// <param name="collection"></param>
+    Task<IEnumerable<DocumentRecord>> FindDocumentRecordsAsync(
+        string collection,
+        MemoryFilter? filter = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get a document detail information by document ID
+    /// </summary>
+    Task<DocumentDetail> GetDocumentDetailAsync(
+        string collection,
+        string documentId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Insert or update a document record
+    /// </summary>
+    Task UpsertDocumentRecordAsync(
+        string collection,
+        DocumentRecord document,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Delete a document record by document ID
+    /// </summary>
+    Task DeleteDocumentRecordAsync(
+        string collection,
+        string documentId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Create/Overwrite a file by document ID
     /// </summary>
     /// <param name="collection">collection name</param>
     /// <param name="documentId">Document ID</param>
-    /// <param name="fileName">Name of the file</param>
+    /// <param name="filePath">Full path of the file</param>
     /// <param name="Content">File content</param>
     /// <param name="overwrite">Overwrite if file already exists</param>
-    Task WriteFileAsync(
+    Task UploadFileAsync(
         string collection,
         string documentId,
-        string fileName,
+        string filePath,
         Stream Content,
         bool overwrite = true,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Fetch a file from storage
+    /// Fetch a file by document ID
     /// </summary>
     /// <param name="collection">collection name</param>
     /// <param name="documentId">Document ID</param>
-    /// <param name="fileName"></param>
+    /// <param name="filePath">Full path of the file</param>
     /// <returns>File content</returns>
-    Task<Stream> ReadFileAsync(
+    Task<Stream> DownloadFileAsync(
         string collection,
         string documentId,
-        string fileName,
+        string filePath,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Delete a file from storage
+    /// Delete a file by document ID
     /// </summary>
     /// <param name="collection">collection name</param>
     /// <param name="documentId">Document ID</param>
-    /// <param name="fileName"></param>
+    /// <param name="filePath">Full path of the file</param>
     /// <returns>File content</returns>
     Task DeleteFileAsync(
         string collection,
         string documentId,
-        string fileName,
+        string filePath,
         CancellationToken cancellationToken = default);
 }

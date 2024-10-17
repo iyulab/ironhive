@@ -15,10 +15,14 @@
   <ItemGroup>
     <ProjectReference Include="..\Raggle.Abstractions\Raggle.Abstractions.csproj" />
     <ProjectReference Include="..\Raggle.Core\Raggle.Core.csproj" />
+    <ProjectReference Include="..\Raggle.Document.Azure\Raggle.Document.Azure.csproj" />
+    <ProjectReference Include="..\Raggle.Document.Disk\Raggle.Document.Disk.csproj" />
     <ProjectReference Include="..\Raggle.Engines.Anthropic\Raggle.Engines.Anthropic.csproj" />
     <ProjectReference Include="..\Raggle.Engines.LLamaSharp\Raggle.Engines.LLamaSharp.csproj" />
     <ProjectReference Include="..\Raggle.Engines.OpenAI\Raggle.Engines.OpenAI.csproj" />
     <ProjectReference Include="..\Raggle.Helpers.HuggingFace\Raggle.Helpers.HuggingFace.csproj" />
+    <ProjectReference Include="..\Raggle.Queue.Disk\Raggle.Queue.Disk.csproj" />
+    <ProjectReference Include="..\Raggle.Vector.LiteDB\Raggle.Vector.LiteDB.csproj" />
   </ItemGroup>
 
 </Project>

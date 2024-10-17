@@ -1,4 +1,4 @@
-﻿using Raggle.Abstractions.Memories;
+﻿using Raggle.Abstractions.Memory;
 
 namespace Raggle.Document.Disk;
 
@@ -11,6 +11,16 @@ public class DiskDocumentStorage : IDocumentStorage
         RootPath = rootPath;
     }
 
+    public void Dispose()
+    {
+        GC.SuppressFinalize(this);
+    }
+
+    public Task<IEnumerable<string>> GetAllCollectionsAsync(CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
     public Task CreateCollectionAsync(string collection, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
@@ -21,22 +31,37 @@ public class DiskDocumentStorage : IDocumentStorage
         throw new NotImplementedException();
     }
 
-    public Task DeleteFileAsync(string collection, string documentId, string fileName, CancellationToken cancellationToken = default)
+    public Task<IEnumerable<DocumentRecord>> FindDocumentRecordsAsync(string collection, MemoryFilter? filter = null, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }
 
-    public Task<Stream> ReadFileAsync(string collection, string documentId, string fileName, CancellationToken cancellationToken = default)
+    public Task<DocumentDetail> GetDocumentDetailAsync(string collection, string documentId, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }
 
-    public Task WriteFileAsync(string collection, string documentId, string fileName, Stream Content, bool overwrite = true, CancellationToken cancellationToken = default)
+    public Task UpsertDocumentRecordAsync(string collection, DocumentRecord document, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }
 
-    public void Dispose()
+    public Task DeleteDocumentRecordAsync(string collection, string documentId, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task UploadFileAsync(string collection, string documentId, string filePath, Stream Content, bool overwrite = true, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<Stream> DownloadFileAsync(string collection, string documentId, string filePath, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task DeleteFileAsync(string collection, string documentId, string filePath, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }

@@ -2,9 +2,13 @@
 
 public class UploadRequest
 {
-    public string FileName { get; set; }
+    public required string CollectionName { get; set; }
 
-    public long Size { get; set; }
+    public required string DocumentId { get; set; }
 
-    public Stream Stream { get; set; }
+    public required string FilePath { get; set; }
+
+    public required Stream Content { get; set; }
+
+    public string[] Tags { get; set; } = [];
 }

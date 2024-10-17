@@ -1,4 +1,4 @@
-﻿namespace Raggle.Abstractions.Json;
+﻿namespace Raggle.Abstractions.Utils;
 
 /// <summary>
 /// 상위 객체의 판별자 이름을 지정합니다.

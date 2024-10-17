@@ -1,26 +1,26 @@
-﻿namespace Raggle.Abstractions.Memories;
+﻿namespace Raggle.Abstractions.Memory;
 
 public interface IVectorStorage
 {
-    string IndexCollectionName { get; set; }
+    Task CreateCollectionAsync(
+        string collection,
+        CancellationToken cancellationToken = default);
 
-    Task CreateDocumentCollection(string collectionName);
+    Task DeleteCollectionAsync(
+        string collection,
+        CancellationToken cancellationToken = default);
 
-    Task FindDocument();
+    Task FindRecordsAsync(
+        string collection,
+        CancellationToken cancellationToken = default);
 
-    Task FindDocuments();
+    Task UpsertRecordsAsync(
+        string collection,
+        IEnumerable<VectorRecord> records,
+        CancellationToken cancellationToken = default);
 
-    Task UpsertDocument();
-
-    Task DeleteDocument();
-
-    Task CreateMemoryCollection(string collectionName);
-
-    Task UpsertRecord();
-    
-    Task UpsertRecords();
-    
-    Task DeleteRecord();
-    
-    Task FindRecord();
+    Task DeleteRecordsAsync(
+        string collection,
+        string documentId,
+        CancellationToken cancellationToken = default);
 }

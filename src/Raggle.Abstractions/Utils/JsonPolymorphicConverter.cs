@@ -3,7 +3,7 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Raggle.Abstractions.Json;
+namespace Raggle.Abstractions.Utils;
 
 /// <summary>
 /// JSON String의 다형성을 지원하는 컨버터입니다.
@@ -11,7 +11,10 @@ namespace Raggle.Abstractions.Json;
 public class JsonPolymorphicConverter<T> : JsonConverter<T> where T : class
 {
     private const string DefaultDiscriminatorName = "type";
+    private const StringComparison DefaultDiscriminatorComparison = StringComparison.OrdinalIgnoreCase;
+
     private readonly string _discriminatorName;
+    private readonly StringComparison _discriminatorComparison;
 
     private static readonly Lazy<Dictionary<string, Type>> _cachedTypeMapping = new(() => GetTypeMapping());
     private readonly Dictionary<string, Type> _typeMapping;
@@ -25,6 +28,7 @@ public class JsonPolymorphicConverter<T> : JsonConverter<T> where T : class
     {
         var discriminatorNameAttr = typeof(T).GetCustomAttribute<JsonDiscriminatorNameAttribute>();
         _discriminatorName = discriminatorNameAttr?.PropertyName ?? DefaultDiscriminatorName;
+        _discriminatorComparison = DefaultDiscriminatorComparison;
         _typeMapping = _cachedTypeMapping.Value;
     }
 
@@ -32,24 +36,31 @@ public class JsonPolymorphicConverter<T> : JsonConverter<T> where T : class
     /// 사용자 지정 판별자 이름 및 타입 매핑을 사용하는 생성자입니다.
     /// </summary>
     /// <param name="discriminatorName">JSON 타입 판별자 속성 이름</param>
+    /// <param name="discriminatorComparison">판별자 이름의 비교 방법</param>
     /// <param name="typeMapping">파생 클래스와 판별자 값의 매핑</param>
     public JsonPolymorphicConverter(
         string? discriminatorName = null,
+        StringComparison? discriminatorComparison = null,
         Dictionary<string, Type>? typeMapping = null)
     {
         _discriminatorName = discriminatorName ?? DefaultDiscriminatorName;
+        _discriminatorComparison = discriminatorComparison ?? DefaultDiscriminatorComparison;
         _typeMapping = typeMapping ?? _cachedTypeMapping.Value;
     }
 
+    // Deserialize Method
     public override T Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         // Load the JSON document
         using (var jsonDoc = JsonDocument.ParseValue(ref reader))
         {
-            if (!jsonDoc.RootElement.TryGetProperty(_discriminatorName, out var discriminatorProperty))
+            var discriminatorProperty = jsonDoc.RootElement.EnumerateObject()
+                .FirstOrDefault(prop => prop.Name.Equals(_discriminatorName, _discriminatorComparison));
+
+            if (discriminatorProperty.Equals(default))
                 throw new JsonException($"Missing discriminator property '{_discriminatorName}'.");
 
-            var discriminatorValue = discriminatorProperty.GetString();
+            var discriminatorValue = discriminatorProperty.Value.GetString();
             if (string.IsNullOrEmpty(discriminatorValue) || !_typeMapping.ContainsKey(discriminatorValue))
                 throw new JsonException($"Unknown discriminator value '{discriminatorValue}', Are you missing a type mapping?");
 
@@ -62,6 +73,7 @@ public class JsonPolymorphicConverter<T> : JsonConverter<T> where T : class
         }
     }
 
+    // Serialize Method
     public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
     {
         var type = value.GetType();
@@ -82,11 +94,10 @@ public class JsonPolymorphicConverter<T> : JsonConverter<T> where T : class
         writer.WriteEndObject();
     }
 
+    // Collect all types that are derived from T and have a JsonDiscriminatorValueAttribute
     private static Dictionary<string, Type> GetTypeMapping()
     {
-        // 대소문자 구분 없이 딕셔너리를 만듭니다.
         var typeMapping = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
-
         var derivedTypes = AppDomain.CurrentDomain.GetAssemblies()
             .SelectMany(assembly =>
             {

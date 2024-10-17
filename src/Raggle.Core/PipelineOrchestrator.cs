@@ -1,5 +1,4 @@
-﻿using Raggle.Abstractions.Memories;
-using Raggle.Abstractions.Memory;
+﻿using Raggle.Abstractions.Memory;
 
 namespace Raggle.Core;
 
