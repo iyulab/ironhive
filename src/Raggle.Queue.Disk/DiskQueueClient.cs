@@ -26,7 +26,7 @@ public class DiskQueueClient : IQueueClient
     /// <returns>A task that represents the asynchronous enqueue operation.</returns>
     public async Task EnqueueAsync(IQueueMessage message, CancellationToken cancellationToken)
     {
-        var fileName = $"{DateTime.UtcNow:yyyyMMddHHmmssfff}_{message.ID}.msg";
+        var fileName = $"{DateTime.UtcNow:yyyyMMddHHmmssfff}_{message.QueueId}.msg";
         var filePath = Path.Combine(_queueDirectory, fileName);
 
         var json = JsonSerializer.Serialize(message);
@@ -64,7 +64,8 @@ public class DiskQueueClient : IQueueClient
             var oldestFile = files.First();
             var data = await File.ReadAllBytesAsync(oldestFile, cancellationToken);
             var json = Encoding.UTF8.GetString(data);
-            var message = JsonSerializer.Deserialize<IQueueMessage>(json);
+            var message = JsonSerializer.Deserialize<IQueueMessage>(json)
+                ?? throw new Exception("Failed to deserialize message.");
 
             File.Delete(oldestFile);
 

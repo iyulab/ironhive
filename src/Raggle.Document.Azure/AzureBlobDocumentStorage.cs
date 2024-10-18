@@ -80,7 +80,7 @@ public class AzureBlobDocumentStorage : IDocumentStorage
             index.Add(document);
 
             var data = MessagePackSerializer.Serialize(index);
-            var container = _client.GetBlobContainerClient(collection);
+            var container = GetBlobContainerClient(collection);
             var blob = container.GetBlobClient(DocumentIndexFileName);
 
             try
@@ -123,7 +123,7 @@ public class AzureBlobDocumentStorage : IDocumentStorage
             }
 
             var data = MessagePackSerializer.Serialize(index);
-            var container = _client.GetBlobContainerClient(collection);
+            var container = GetBlobContainerClient(collection);
             var blob = container.GetBlobClient(DocumentIndexFileName);
 
             try
@@ -153,7 +153,7 @@ public class AzureBlobDocumentStorage : IDocumentStorage
     /// <inheritdoc />
     public async Task<IEnumerable<string>> GetDocumentFilesAsync(string collection, string documentId, CancellationToken cancellationToken = default)
     {
-        var container = _client.GetBlobContainerClient(collection);
+        var container = GetBlobContainerClient(collection);
         var prefix = $"{documentId}/";
         var files = new List<string>();
         await foreach (var blob in container.GetBlobsAsync(prefix: prefix, cancellationToken: cancellationToken))
@@ -164,20 +164,16 @@ public class AzureBlobDocumentStorage : IDocumentStorage
     }
 
     /// <inheritdoc />
-    public async Task WriteDocumentFileAsync(string collection, string documentId, string filePath, Stream Content, bool overwrite = true, CancellationToken cancellationToken = default)
+    public async Task WriteDocumentFileAsync(string collection, string documentId, string filePath, Stream content, bool overwrite = true, CancellationToken cancellationToken = default)
     {
-        var container = _client.GetBlobContainerClient(collection);
-        var blobName = CombinePath(documentId, filePath);
-        var blob = container.GetBlobClient(blobName);
-        await blob.UploadAsync(Content, overwrite, cancellationToken);
+        var blob = GetBlobClient(collection, documentId, filePath);
+        await blob.UploadAsync(content, overwrite, cancellationToken);
     }
 
     /// <inheritdoc />
     public async Task<Stream> ReadDocumentFileAsync(string collection, string documentId, string filePath, CancellationToken cancellationToken = default)
     {
-        var container = _client.GetBlobContainerClient(collection);
-        var blobName = CombinePath(documentId, filePath);
-        var blob = container.GetBlobClient(blobName);
+        var blob = GetBlobClient(collection, documentId, filePath);
         var stream = await blob.OpenReadAsync(cancellationToken: cancellationToken);
         return stream;
     }
@@ -185,16 +181,14 @@ public class AzureBlobDocumentStorage : IDocumentStorage
     /// <inheritdoc />
     public async Task DeleteDocumentFileAsync(string collection, string documentId, string filePath, CancellationToken cancellationToken = default)
     {
-        var container = _client.GetBlobContainerClient(collection);
-        var blobName = CombinePath(documentId, filePath);
-        var blob = container.GetBlobClient(blobName);
+        var blob = GetBlobClient(collection, documentId, filePath);
         await blob.DeleteIfExistsAsync(cancellationToken: cancellationToken);
     }
 
     #region Private Methods
 
     // 경로 조합: 두 경로 사이에 '/'가 하나만 있도록 함
-    private string CombinePath(string path1, string path2)
+    private static string CombinePath(string path1, string path2)
     {
         return $"{path1.TrimEnd('/')}/{path2.TrimStart('/')}";
     }
@@ -202,7 +196,7 @@ public class AzureBlobDocumentStorage : IDocumentStorage
     // ETag와 함께 문서 인덱스를 가져옴
     private async Task<(List<DocumentRecord>, ETag?)> GetDocumentIndexWithETagAsync(string collection, CancellationToken cancellationToken)
     {
-        var container = _client.GetBlobContainerClient(collection);
+        var container = GetBlobContainerClient(collection);
         var blob = container.GetBlobClient(DocumentIndexFileName);
         if (!await blob.ExistsAsync(cancellationToken))
         {
@@ -214,6 +208,22 @@ public class AzureBlobDocumentStorage : IDocumentStorage
         var index = MessagePackSerializer.Deserialize<List<DocumentRecord>>(data);
         var etag = downloadInfo.Value.Details.ETag;
         return (index, etag);
+    }
+
+    // BlobClient 생성
+    private BlobClient GetBlobClient(string collection, string documentId, string filePath)
+    {
+        var container = GetBlobContainerClient(collection);
+        var blobName = CombinePath(documentId, filePath);
+        return container.GetBlobClient(blobName);
+    }
+
+    // BlobContainerClient 생성
+    private BlobContainerClient GetBlobContainerClient(string collection)
+    {
+        var container = _client.GetBlobContainerClient(collection);
+        container.CreateIfNotExists();
+        return container;
     }
 
     // BlobServiceClient 생성
@@ -233,31 +243,25 @@ public class AzureBlobDocumentStorage : IDocumentStorage
     // AccountName를 이용한 Uri 생성
     private Uri GetBlobStorageUri(AzureBlobConfig config)
     {
-        ThrowIfNullOrWhiteSpace(config.AccountName, nameof(config.AccountName));
+        if (string.IsNullOrWhiteSpace(config.AccountName))
+            throw new ArgumentException("The AccountName cannot be null or whitespace.", nameof(config.AccountName));
         return new Uri($"https://{config.AccountName}.blob.core.windows.net");
     }
 
     // AccountKey를 이용한 인증 방식
     private StorageSharedKeyCredential GetSharedKeyCredential(AzureBlobConfig config)
     {
-        ThrowIfNullOrWhiteSpace(config.AccountKey, nameof(config.AccountKey));
+        if (string.IsNullOrWhiteSpace(config.AccountName))
+            throw new ArgumentException("The AccountName cannot be null or whitespace.", nameof(config.AccountName));
         return new StorageSharedKeyCredential(config.AccountName, config.AccountKey);
     }
 
     // SAS Token을 이용한 인증 방식
     private AzureSasCredential GetSasTokenCredential(AzureBlobConfig config)
     {
-        ThrowIfNullOrWhiteSpace(config.SASToken, nameof(config.SASToken));
+        if (string.IsNullOrWhiteSpace(config.SASToken))
+            throw new ArgumentException("The SASToken cannot be null or whitespace.", nameof(config.SASToken));
         return new AzureSasCredential(config.SASToken);
-    }
-
-    // Null 또는 공백 문자열 검사
-    private void ThrowIfNullOrWhiteSpace(string value, string paramName)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            throw new ArgumentException($"The {paramName} cannot be null or whitespace.", paramName);
-        }
     }
 
     #endregion

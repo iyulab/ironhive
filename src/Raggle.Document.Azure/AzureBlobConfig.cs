@@ -43,7 +43,7 @@ public class AzureBlobConfig
     /// Determines which fields are required for authentication.
     /// Default is <see cref="AzureBlobAuthTypes.AzureIdentity"/>.
     /// </summary>
-    public AzureBlobAuthTypes AuthType { get; set; } = AzureBlobAuthTypes.AzureIdentity;
+    public required AzureBlobAuthTypes AuthType { get; set; }
 
     /// <summary>
     /// Required if <see cref="AuthType"/> is set to <see cref="AzureBlobAuthTypes.ConnectionString"/>.

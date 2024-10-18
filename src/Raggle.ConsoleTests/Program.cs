@@ -1,7 +1,9 @@
 ﻿using MessagePack;
 using Raggle.Abstractions.Memory;
 using Raggle.Document.Azure;
+using Raggle.Document.Disk;
 using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
 
 async Task<string> GetKey()
@@ -12,11 +14,17 @@ async Task<string> GetKey()
     return key;
 }
 
-//var client = new AzureBlobDocumentStorage(new AzureBlobConfig
-//{
-//    AuthType = AzureBlobAuthTypes.AzureIdentity,
-//    AccountName = "iyustorage",
-//});
+var pipe = new DataPipeline
+{
+    CollectionName = "Test",
+    DocumentId = "Test",
+    Steps = ["1","2","3","4","5"],
+};
+pipe.InitializeSteps();
+pipe.AdjustSteps(3);
 
+var json = JsonSerializer.Serialize(pipe);
+
+var pipe2 = JsonSerializer.Deserialize<DataPipeline>(json);
 
 return;

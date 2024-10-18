@@ -1,10 +1,19 @@
 ﻿using Raggle.Abstractions.Memory;
+using System.Text;
+using System.Text.Json;
 
 namespace Raggle.Core;
 
-public class PipelineOrchestrator
+public class PipelineOrchestrator : IPipelineOrchestrator
 {
+    private const string DefaultPipelineFileName = "__pipeline_status.json";
+    private readonly IDocumentStorage _documentStorage;
     private readonly Dictionary<string, IPipelineHandler> _handlers = [];
+
+    public PipelineOrchestrator(IDocumentStorage documentStorage)
+    {
+        _documentStorage = documentStorage;
+    }
 
     // 핸들러를 딕셔너리에 추가
     public bool TryAddHandler(string stepName, IPipelineHandler handler)
@@ -19,39 +28,48 @@ public class PipelineOrchestrator
     }
 
     // 파이프라인을 실행
-    public async Task<DataPipeline> ExecuteAsync(DataPipeline pipeline, CancellationToken cancellationToken = default)
+    public async Task ExecuteAsync(DataPipeline pipeline, CancellationToken cancellationToken = default)
     {
-        pipeline.Validate();
-
-        while (true)
+        pipeline.InitializeSteps();
+        pipeline.Status = DataPipelineStatus.Processing;
+        while (pipeline.Status == DataPipelineStatus.Processing)
         {
-            var stepName = pipeline.GetNextStep();
+            var stepName = pipeline.GetNextStepName();
             if (string.IsNullOrWhiteSpace(stepName))
             {
-                if (pipeline.RemainingSteps.Count > 0)
+                if (pipeline.Steps.Count == pipeline.CompletedSteps.Count)
                 {
-                    throw new InvalidOperationException("Pipeline has remaining steps but no step to execute.");
+                    pipeline.Status = DataPipelineStatus.Completed;
                 }
                 else
                 {
-                    pipeline.Status = DataPipelineStatus.Completed;
-                    pipeline.LastUpdatedAt = DateTime.UtcNow;
-                    break;
+                    pipeline.Status = DataPipelineStatus.Failed;
+                    pipeline.Message = "The pipeline has steps that are not completed";
                 }
             }
             else if (_handlers.TryGetValue(stepName, out var handler))
             {
                 pipeline = await handler.ProcessAsync(pipeline, cancellationToken);
-                pipeline.RemainingSteps.Remove(stepName);
-                pipeline.CompletedSteps.Add(stepName);
-                pipeline.LastUpdatedAt = DateTime.UtcNow;
+                pipeline.CompleteStep(stepName);
+                await UpsertPipelineAsync(pipeline, cancellationToken);
             }
             else
             {
-                throw new InvalidOperationException($"Handler for step '{stepName}' is not registered in Orchestra.");
+                pipeline.Status = DataPipelineStatus.Failed;
+                pipeline.Message = $"Handler not found for step '{stepName}'";
             }
         }
+    }
 
-        return pipeline;
+    private async Task UpsertPipelineAsync(DataPipeline pipeline, CancellationToken cancellationToken)
+    {
+        var json = JsonSerializer.Serialize(pipeline);
+        var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        await _documentStorage.WriteDocumentFileAsync(
+            collection: pipeline.CollectionName,
+            documentId: pipeline.DocumentId,
+            filePath: DefaultPipelineFileName,
+            content: stream,
+            cancellationToken: cancellationToken);
     }
 }

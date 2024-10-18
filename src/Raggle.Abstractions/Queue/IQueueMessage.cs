@@ -2,8 +2,9 @@
 
 public interface IQueueMessage
 {
-    Guid ID { get; set; }
-    string QueueName { get; set; }
+    string QueueId { get; set; }
+
+    string? QueueName { get; set; }
 
     DateTime CreatedAt { get; set; }
 }

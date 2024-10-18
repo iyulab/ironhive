@@ -5,19 +5,19 @@ namespace Raggle.Abstractions.Memory;
 [JsonDiscriminatorName("type")]
 public interface IDocumentContent { }
 
-[JsonDiscriminatorName("text")]
+[JsonDiscriminatorValue("text")]
 public class TextDocumentContent : IDocumentContent
 {
     public string Text { get; set; } = string.Empty;
 }
 
-[JsonDiscriminatorName("image")]
+[JsonDiscriminatorValue("image")]
 public class ImageDocumentContent : IDocumentContent
 {
     public string ImagePath { get; set; } = string.Empty;
 }
 
-[JsonDiscriminatorName("table")]
+[JsonDiscriminatorValue("table")]
 public class TableDocumentContent : IDocumentContent
 {
     public List<string> Columns { get; set; } = [];

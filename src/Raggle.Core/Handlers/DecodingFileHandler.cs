@@ -1,4 +1,6 @@
 ﻿using Raggle.Abstractions.Memory;
+using System.Text;
+using System.Text.Json;
 
 namespace Raggle.Core.Handlers;
 
@@ -17,12 +19,71 @@ public class DecodingFileHandler : IPipelineHandler
 
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
-        var mimeType = "";
-        var decoder = _decoders.FirstOrDefault(d => d.IsSupportMimeType(mimeType))
-            ?? throw new InvalidOperationException($"No decoder found for MIME type '{mimeType}'.");
+        if (pipeline.UploadFile != null)
+        {
+            await ParseDocumentAndSaveAsync(
+                collection: pipeline.CollectionName,
+                documentId: pipeline.DocumentId,
+                file: pipeline.UploadFile,
+                cancellationToken: cancellationToken);
+        }
+        else
+        {
+            var filter = new MemoryFilterBuilder().AddDocumentId(pipeline.DocumentId).Build();
+            var records = await _documentStorage.FindDocumentRecordsAsync(
+                collection: pipeline.CollectionName,
+                filter: filter,
+                cancellationToken: cancellationToken);
+            var record = records.FirstOrDefault()
+                ?? throw new InvalidOperationException($"Document '{pipeline.DocumentId}' not found.");
 
-        var decodedStream = await decoder.DecodeAsync(new MemoryStream());
+            var content = await _documentStorage.ReadDocumentFileAsync(
+                collection: pipeline.CollectionName,
+                documentId: pipeline.DocumentId,
+                filePath: record.FileName,
+                cancellationToken: cancellationToken);
 
+            var file = new UploadFile
+            {
+                FileName = record.FileName,
+                ContentType = record.ContentType,
+                Content = content,
+            };
+
+            await ParseDocumentAndSaveAsync(
+                collection: pipeline.CollectionName,
+                documentId: pipeline.DocumentId,
+                file: file,
+                cancellationToken: cancellationToken);
+        }
         return pipeline;
+    }
+
+    private async Task ParseDocumentAndSaveAsync(
+        string collection,
+        string documentId,
+        UploadFile file,
+        CancellationToken cancellationToken)
+    {
+        var decoder = _decoders.FirstOrDefault(d => d.SupportTypes.Contains(file.ContentType))
+            ?? throw new InvalidOperationException($"No decoder found for MIME type '{file.ContentType}'.");
+
+        var contents = await decoder.DecodeAsync(file.Content, cancellationToken);
+        var jsonString = JsonSerializer.Serialize(new StructuredDocument
+        {
+            DocumentId = documentId,
+            FileName = file.FileName,
+            ContentType = file.ContentType,
+            Size = file.Content.Length,
+            Contents = contents,
+        });
+        var uploadStream = new MemoryStream(Encoding.UTF8.GetBytes(jsonString));
+
+        await _documentStorage.WriteDocumentFileAsync(
+            collection: collection,
+            documentId: documentId,
+            filePath: $"{file.FileName}.structured.json",
+            content: uploadStream,
+            cancellationToken: cancellationToken);
     }
 }

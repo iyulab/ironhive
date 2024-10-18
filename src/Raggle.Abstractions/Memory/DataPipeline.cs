@@ -1,4 +1,6 @@
-﻿namespace Raggle.Abstractions.Memory;
+﻿using System.Text.Json.Serialization;
+
+namespace Raggle.Abstractions.Memory;
 
 public enum DataPipelineStatus
 {
@@ -12,63 +14,89 @@ public class DataPipeline
 {
     public DataPipelineStatus Status { get; set; } = DataPipelineStatus.Pending;
 
-    public Guid ID { get; set; } = Guid.NewGuid();
+    public required string CollectionName { get; set; }
 
-    public List<string> Steps { get; set; } = [];
+    public required string DocumentId { get; set; }
+
+    public required List<string> Steps { get; set; }
 
     public List<string> RemainingSteps { get; set; } = [];
 
     public List<string> CompletedSteps { get; set; } = [];
 
-    public List<string> Tags { get; set; } = [];
-
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    public DateTime LastUpdatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? LastUpdatedAt { get; set; }
 
-    public IDictionary<string, object?> Metadata { get; set; } = new Dictionary<string, object?>();
+    public string[]? Tags { get; set; }
+
+    public IDictionary<string, object>? Metadata { get; set; }
 
     public string? Message { get; set; }
 
-    public string? GetNextStep()
+    public string[]? Files { get; set; }
+
+    [JsonIgnore]
+    public UploadFile? UploadFile { get; set; }
+
+    public string? GetPreviousStepName()
+    {
+        return CompletedSteps.LastOrDefault();
+    }
+
+    public string? GetNextStepName()
     {
         return RemainingSteps.FirstOrDefault();
     }
 
-    public void RollBackStep()
+    public void InitializeSteps()
     {
-        if (CompletedSteps.Count > 0)
-        {
-            RemainingSteps.Insert(0, CompletedSteps.Last());
-            CompletedSteps.Remove(CompletedSteps.Last());
-        }
+        RemainingSteps = Steps.ToList();
+        CompletedSteps.Clear();
+        LastUpdatedAt = DateTime.UtcNow;
     }
 
-    public void AddMetadata(string key, object? value)
+    public void AdjustSteps(int count)
     {
-        if (Metadata.ContainsKey(key))
+        if (count == 0)
         {
-            Metadata[key] = value;
+            return; // 조절할 단계가 없음
+        }
+        else if (count > 0)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                var step = RemainingSteps.FirstOrDefault();
+                if (step == null) break;
+                RemainingSteps.RemoveAt(0);
+                CompletedSteps.Add(step);
+            }
+        }
+        else if (count < 0)
+        {
+            count = Math.Abs(count);
+            for (int i = 0; i < count; i++)
+            {
+                var step = CompletedSteps.LastOrDefault();
+                if (step == null) break;
+                CompletedSteps.RemoveAt(CompletedSteps.Count - 1);
+                RemainingSteps.Insert(0, step);
+            }
+        }
+        LastUpdatedAt = DateTime.UtcNow;
+    }
+
+    public void CompleteStep(string stepName)
+    {
+        if (RemainingSteps.FirstOrDefault() != stepName)
+        {
+            throw new InvalidOperationException($"완료할 수 없는 단계입니다: {stepName}");
         }
         else
         {
-            Metadata.Add(key, value);
+            RemainingSteps.Remove(stepName);
+            CompletedSteps.Add(stepName);
+            LastUpdatedAt = DateTime.UtcNow;
         }
-    }
-
-    public void AddTag(string tag)
-    {
-        if (!Tags.Contains(tag))
-        {
-            Tags.Add(tag);
-        }
-    }
-
-    public void Validate()
-    {
-        //if (FileRequest == null)
-        //    throw new InvalidOperationException("FileRequest is required.");
-        if (RemainingSteps.Count < 1)
-            throw new InvalidOperationException("Steps are required.");
     }
 }

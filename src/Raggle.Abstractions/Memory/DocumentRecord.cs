@@ -32,7 +32,7 @@ public class DocumentRecord
     /// 벡터화 상태
     /// </summary>
     [Key(0)]
-    public required EmbeddingStatus EmbeddingStatus { get; set; } = EmbeddingStatus.NotEmbedded;
+    public EmbeddingStatus EmbeddingStatus { get; set; } = EmbeddingStatus.NotEmbedded;
 
     /// <summary>
     /// 문서의 식별자
@@ -56,7 +56,7 @@ public class DocumentRecord
     /// 파일 크기 (byte)
     /// </summary>
     [Key(4)]
-    public long Size { get; set; }
+    public long? Size { get; set; }
 
     /// <summary>
     /// 문서의 태그들
@@ -68,11 +68,11 @@ public class DocumentRecord
     /// 문서 생성 시각
     /// </summary>
     [Key(6)]
-    public DateTime CreatedAt { get; set; }
+    public DateTime? CreatedAt { get; set; }
 
     /// <summary>
     /// 문서 업데이트 시각
     /// </summary>
     [Key(7)]
-    public DateTime LastUpdatedAt { get; set; }
+    public DateTime? LastUpdatedAt { get; set; }
 }

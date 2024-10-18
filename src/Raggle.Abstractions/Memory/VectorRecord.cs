@@ -21,6 +21,11 @@ public class VectorRecord
     public float[] Embedding { get; set; } = [];
 
     /// <summary>
+    /// Text Content
+    /// </summary>
+    public string? Content { get; set; }
+
+    /// <summary>
     /// Gets or sets the tags.
     /// </summary>
     public string[] Tags { get; set; } = [];

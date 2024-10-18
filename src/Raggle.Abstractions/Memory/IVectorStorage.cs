@@ -10,8 +10,9 @@ public interface IVectorStorage
         string collection,
         CancellationToken cancellationToken = default);
 
-    Task FindRecordsAsync(
+    Task<IEnumerable<VectorRecord>> FindRecordsAsync(
         string collection,
+        MemoryFilter? filter = null,
         CancellationToken cancellationToken = default);
 
     Task UpsertRecordAsync(
@@ -19,8 +20,19 @@ public interface IVectorStorage
         VectorRecord records,
         CancellationToken cancellationToken = default);
 
+    Task UpsertRecordsAsync(
+        string collection,
+        IEnumerable<VectorRecord> records,
+        CancellationToken cancellationToken = default);
+
     Task DeleteRecordsAsync(
         string collection,
         string documentId,
+        CancellationToken cancellationToken = default);
+
+    Task SearchRecordsAsync(
+        string collection,
+        float[] input,
+        int limit = 5,
         CancellationToken cancellationToken = default);
 }

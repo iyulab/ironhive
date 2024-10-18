@@ -3,12 +3,12 @@
 public interface IContentDecoder
 {
     /// <summary>
-    /// Returns true if the decoder supports the given MIME type
+    /// Supported MIME types in this decoder.
     /// </summary>
-    bool IsSupportMimeType(string mimeType);
+    public string[] SupportTypes { get; }
 
     /// <summary>
     /// Extract content from the given file.
     /// </summary>
-    Task<StructuredDocument> DecodeAsync(Stream data, CancellationToken cancellationToken = default);
+    Task<IDocumentContent[]> DecodeAsync(Stream data, CancellationToken cancellationToken = default);
 }

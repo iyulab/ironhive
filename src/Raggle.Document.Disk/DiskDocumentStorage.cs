@@ -6,11 +6,12 @@ namespace Raggle.Document.Disk;
 
 public class DiskDocumentStorage : IDocumentStorage
 {
-    private readonly string _rootPath;
-    private readonly ConcurrentDictionary<string, SemaphoreSlim> _collectionLocks = new ConcurrentDictionary<string, SemaphoreSlim>();
     private const string DocumentIndexFileName = "document_index.msgpack";
     private const int MaxRetryAttempts = 3;
     private const int DelayBetweenRetriesMs = 200;
+
+    private readonly string _rootPath;
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _collectionLocks = new ConcurrentDictionary<string, SemaphoreSlim>();
 
     public DiskDocumentStorage(string rootPath)
     {
@@ -34,34 +35,20 @@ public class DiskDocumentStorage : IDocumentStorage
     public Task<IEnumerable<string>> GetAllCollectionsAsync(CancellationToken cancellationToken = default)
     {
         var directories = Directory.EnumerateDirectories(_rootPath);
-        var collections = directories.Select(path => Path.GetFileName(path)) ?? Enumerable.Empty<string>();
+        var collections = directories.Select(path => Path.GetFileName(path)) ?? [];
         return Task.FromResult(collections);
     }
 
     /// <inheritdoc />
-    public async Task CreateCollectionAsync(string collection, CancellationToken cancellationToken = default)
+    public Task CreateCollectionAsync(string collection, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(collection))
-            throw new ArgumentException("Collection name cannot be null or whitespace.", nameof(collection));
-
-        var collectionPath = GetCollectionPath(collection);
-        Directory.CreateDirectory(collectionPath);
-
-        // 초기 인덱스 파일 생성
-        var indexPath = GetIndexFilePath(collection);
-        if (!File.Exists(indexPath))
-        {
-            var emptyList = new List<DocumentRecord>();
-            await SaveIndexAsync(collection, emptyList, cancellationToken);
-        }
+        GetCollectionPath(collection);
+        return Task.CompletedTask;
     }
 
     /// <inheritdoc />
     public Task DeleteCollectionAsync(string collection, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(collection))
-            throw new ArgumentException("Collection name cannot be null or whitespace.", nameof(collection));
-
         var collectionPath = GetCollectionPath(collection);
         if (Directory.Exists(collectionPath))
         {
@@ -77,12 +64,8 @@ public class DiskDocumentStorage : IDocumentStorage
     /// <inheritdoc />
     public async Task<IEnumerable<DocumentRecord>> FindDocumentRecordsAsync(string collection, MemoryFilter? filter = null, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(collection))
-            throw new ArgumentException("Collection name cannot be null or whitespace.", nameof(collection));
-
         var index = await LoadIndexAsync(collection, cancellationToken);
-        if (filter == null)
-            return index;
+        if (filter == null) return index;
 
         var query = index.AsQueryable();
         if (filter.DocumentIds != null && filter.DocumentIds.Count != 0)
@@ -99,8 +82,7 @@ public class DiskDocumentStorage : IDocumentStorage
     /// <inheritdoc />
     public async Task UpsertDocumentRecordAsync(string collection, DocumentRecord document, CancellationToken cancellationToken = default)
     {
-        if (document == null)
-            throw new ArgumentNullException(nameof(document));
+        ArgumentNullException.ThrowIfNull(document);
 
         int retryCount = 0;
         while (retryCount < MaxRetryAttempts)
@@ -190,24 +172,23 @@ public class DiskDocumentStorage : IDocumentStorage
     }
 
     /// <inheritdoc />
-    public async Task WriteDocumentFileAsync(string collection, string documentId, string filePath, Stream Content, bool overwrite = true, CancellationToken cancellationToken = default)
+    public async Task WriteDocumentFileAsync(string collection, string documentId, string filePath, Stream content, bool overwrite = true, CancellationToken cancellationToken = default)
     {
-        if (Content == null)
-            throw new ArgumentNullException(nameof(Content));
+        ArgumentNullException.ThrowIfNull(content);
 
-        var documentPath = Path.Combine(GetCollectionPath(collection), documentId);
-        Directory.CreateDirectory(documentPath);
+        var fullPath = Path.Combine(GetCollectionPath(collection), documentId, filePath);
 
-        var fullPath = Path.Combine(documentPath, filePath);
+        if (!overwrite && File.Exists(fullPath))
+            throw new IOException($"The file already exist: {fullPath}");
+
         var directory = Path.GetDirectoryName(fullPath);
-        if (!string.IsNullOrEmpty(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
+        if (string.IsNullOrEmpty(directory))
+            throw new ArgumentException("Invalid file path.", nameof(filePath));
+        Directory.CreateDirectory(directory);
+        
         using (var fileStream = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None))
         {
-            await Content.CopyToAsync(fileStream, cancellationToken);
+            await content.CopyToAsync(fileStream, cancellationToken);
         }
     }
 
@@ -228,22 +209,26 @@ public class DiskDocumentStorage : IDocumentStorage
     }
 
     /// <inheritdoc />
-    public async Task DeleteDocumentFileAsync(string collection, string documentId, string filePath, CancellationToken cancellationToken = default)
+    public Task DeleteDocumentFileAsync(string collection, string documentId, string filePath, CancellationToken cancellationToken = default)
     {
         var fullPath = Path.Combine(GetCollectionPath(collection), documentId, filePath);
         if (File.Exists(fullPath))
         {
             File.Delete(fullPath);
         }
-        await Task.CompletedTask;
+        return Task.CompletedTask;
     }
 
     #region Private Methods
 
-    // 컬렉션의 전체 경로를 반환
+    // 컬렉션의 전체 경로를 반환 (없으면 생성)
     private string GetCollectionPath(string collection)
     {
-        return Path.Combine(_rootPath, collection);
+        if (string.IsNullOrEmpty(collection))
+            throw new ArgumentException("Collection name cannot be null or whitespace.", nameof(collection));
+        var collectionPath = Path.Combine(_rootPath, collection);
+        Directory.CreateDirectory(collectionPath);
+        return collectionPath;
     }
 
     // 인덱스 파일의 전체 경로를 반환
@@ -264,7 +249,7 @@ public class DiskDocumentStorage : IDocumentStorage
         var indexPath = GetIndexFilePath(collection);
         if (!File.Exists(indexPath))
         {
-            return new List<DocumentRecord>();
+            return [];
         }
 
         using (var stream = new FileStream(indexPath, FileMode.Open, FileAccess.Read, FileShare.Read))
@@ -274,7 +259,7 @@ public class DiskDocumentStorage : IDocumentStorage
     }
 
     // 인덱스 파일을 저장
-    private async Task SaveIndexAsync(string collection, List<DocumentRecord> index, CancellationToken cancellationToken)
+    private async Task SaveIndexAsync(string collection, IEnumerable<DocumentRecord> index, CancellationToken cancellationToken)
     {
         var indexPath = GetIndexFilePath(collection);
         var tempPath = indexPath + ".tmp";
@@ -284,8 +269,16 @@ public class DiskDocumentStorage : IDocumentStorage
             await MessagePackSerializer.SerializeAsync(stream, index, cancellationToken: cancellationToken);
         }
 
-        // 원자적 파일 교체
-        File.Replace(tempPath, indexPath, null);
+        if (File.Exists(indexPath))
+        {
+            // 파일이 있으면 교체
+            File.Replace(tempPath, indexPath, null);
+        }
+        else
+        {
+            // 파일이 없으면 이동
+            File.Move(tempPath, indexPath);
+        }
     }
 
     #endregion
