@@ -1,117 +1,122 @@
 ﻿using Raggle.Abstractions.Memory;
-using Raggle.Abstractions.Queue;
+using Raggle.Abstractions.Utils;
 
 namespace Raggle.Core;
 
 public class MemoryService : IMemoryService
 {
-    private bool isBusy = false;
+    private readonly MimeTypeDetector _detecter = new();
 
     private readonly IDocumentStorage _documentStorage;
     private readonly IVectorStorage _vectorStorage;
     private readonly IPipelineOrchestrator _orchestrator;
-    private readonly IQueueClient? _queueClient;
-
+    
     public MemoryService(
         IDocumentStorage documentStorage,
         IVectorStorage vectorStorage,
-        IPipelineOrchestrator orchestrator,
-        IQueueClient? queueClient = null)
+        IPipelineOrchestrator orchestrator)
     {
         _documentStorage = documentStorage;
         _vectorStorage = vectorStorage;
         _orchestrator = orchestrator;
-        _queueClient = queueClient;
     }
 
-    public async Task<IEnumerable<string>> GetAllCollections(CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<string>> GetCollectionListAsync(CancellationToken cancellationToken = default)
     {
-        return await _documentStorage.GetAllCollectionsAsync(cancellationToken);
+        return await _documentStorage.GetCollectionListAsync(cancellationToken);
     }
 
-    // ============ Transaction 필요 ============
-    public async Task CreateCollectionAsync(string collection, CancellationToken cancellationToken = default)
-    {
-        await _documentStorage.CreateCollectionAsync(collection, cancellationToken);
-
+    public async Task CreateCollectionAsync(string collectionName, ulong vectorSize, CancellationToken cancellationToken = default)
+    {   
         try
         {
-            await _vectorStorage.CreateCollectionAsync(collection, cancellationToken);
+            await _documentStorage.CreateCollectionAsync(collectionName, cancellationToken);
+            await _vectorStorage.CreateCollectionAsync(collectionName, vectorSize, cancellationToken);
         }
         catch
         {
-            await _documentStorage.DeleteCollectionAsync(collection);
+            await DeleteCollectionAsync(collectionName, cancellationToken);
             throw;
         }
     }
 
-    // ============ Transaction 필요 ============
-    public async Task DeleteCollectionAsync(string collection, CancellationToken cancellationToken = default)
+    public async Task DeleteCollectionAsync(string collectionName, CancellationToken cancellationToken = default)
     {
-        await _documentStorage.DeleteCollectionAsync(collection, cancellationToken);
-        await _vectorStorage.DeleteCollectionAsync(collection, cancellationToken);
+        if (await _documentStorage.ExistCollectionAsync(collectionName, cancellationToken))
+            await _documentStorage.DeleteCollectionAsync(collectionName, cancellationToken);
+
+        if (await _vectorStorage.ExistCollectionAsync(collectionName, cancellationToken))
+            await _vectorStorage.DeleteCollectionAsync(collectionName, cancellationToken);
     }
 
-    public async Task<IEnumerable<DocumentRecord>> GetMemoriesAsync(
-        string collection,
+    public async Task<IEnumerable<DocumentProfile>> FindDocumentsAsync(
+        string collectionName,
         MemoryFilter? filter = null,
         CancellationToken cancellationToken = default)
     {
-        return await _documentStorage.FindDocumentRecordsAsync(collection, filter, cancellationToken);
+        return await _documentStorage.FindDocumentsAsync(collectionName, filter, cancellationToken);
     }
 
-    public async Task<DocumentRecord?> GetMemoryAsync(
-        string collection,
+    public async Task<DataPipeline> MemorizeDocumentAsync(
+        string collectionName,
         string documentId,
+        string[] steps,
+        string[]? tags = null,
+        UploadRequest? uploadRequest = null,
         CancellationToken cancellationToken = default)
     {
-        var filter = new MemoryFilterBuilder().AddDocumentId(documentId).Build();
-        var records = await _documentStorage.FindDocumentRecordsAsync(collection, filter, cancellationToken);
-        return records.FirstOrDefault();
-    }
+        if (uploadRequest != null)
+        {
+            if (!_detecter.TryGetContentType(uploadRequest.FileName, out var contentType))
+                throw new InvalidOperationException($"{uploadRequest.FileName} is dont know content type");
 
-    // ============ Transaction 필요없음 Fail 응답 ============
-    public async Task MemorizeAsync(
-        MemorizeRequest request,
-        CancellationToken cancellationToken = default)
-    {
+            var document = new DocumentProfile
+            {
+                Status = MemorizationStatus.NotMemorized,
+                DocumentId = documentId,
+                FileName = uploadRequest.FileName,
+                ContentLength = uploadRequest.Content.Length,
+                ContentType = contentType,
+                Tags = tags ?? [],
+                CreatedAt = DateTime.UtcNow,
+            };
+            await _documentStorage.UpsertDocumentAsync(collectionName, document, uploadRequest.Content, cancellationToken);
+        }
+
         var pipeline = new DataPipeline
         {
-            CollectionName = request.CollectionName,
-            DocumentId = request.DocumentId,
-            Steps = request.Steps.ToList(),
-            Tags = request.Tags,
-            UploadFile = request.File
+            CollectionName = collectionName,
+            DocumentId = documentId,
+            Steps = steps.ToList(),
+            StartedAt = DateTime.UtcNow,
         };
-
-        if (isBusy)
-        {
-            throw new NotImplementedException();
-        }
-        else
-        {
-            await _orchestrator.ExecuteAsync(pipeline, cancellationToken);
-        }
+        _ = _orchestrator.ExecuteAsync(pipeline, cancellationToken);
+        return pipeline;
     }
 
-    // ============ Transaction 필요 ============
-    public async Task UnMemorizeAsync(
-        string collection,
+    public async Task UnMemorizeDocumentAsync(
+        string collectionName,
         string documentId,
         CancellationToken cancellationToken = default)
     {
-        await _documentStorage.DeleteDocumentRecordAsync(collection, documentId, cancellationToken);
-        await _vectorStorage.DeleteRecordsAsync(collection, documentId, cancellationToken);
+        await _vectorStorage.DeleteVectorsAsync(collectionName, documentId, cancellationToken);
+        await _documentStorage.DeleteDocumentAsync(collectionName, documentId, cancellationToken);
     }
 
-    public async Task SearchMemoriesAsync(
-        string collection,
+    public async Task SearchDocumentMemoryAsync(
+        string collectionName,
         string query,
+        float minScore = 0.0f,
+        ulong limit = 5,
         MemoryFilter? filter = null,
         CancellationToken cancellationToken = default)
     {
-        //await _vectorStorage.FindRecordsAsync(collection, cancellationToken);
-        throw new NotImplementedException();
+        float[] input = [];
+        await _vectorStorage.SearchVectorsAsync(collectionName, input, minScore, limit, filter, cancellationToken);
     }
+
+    #region Private Methods
+
+    #endregion
 
 }

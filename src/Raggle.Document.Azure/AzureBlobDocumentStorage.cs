@@ -4,20 +4,25 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using MessagePack;
 using Raggle.Abstractions.Memory;
+using System.Text.RegularExpressions;
 
 namespace Raggle.Document.Azure;
 
 public class AzureBlobDocumentStorage : IDocumentStorage
 {
     private const string DocumentIndexFileName = "document_index.msgpack";
-    private const int MaxRetryAttempts = 3;
-    private const int DelayBetweenRetriesMs = 200;
+    private static readonly Regex _collectionNameRegex = new(@"^[a-z0-9]+(-[a-z0-9]+)*$", RegexOptions.Compiled);
+    private readonly Random _random = new();
 
     private readonly BlobServiceClient _client;
+    private readonly int _maxRetryAttempts;
+    private readonly int _baseDelayMilliseconds;
 
     public AzureBlobDocumentStorage(AzureBlobConfig config, BlobClientOptions? options = null)
     {
         _client = GetBlobServiceClient(config, options);
+        _maxRetryAttempts = config.BlobMaxRetryAttempts;
+        _baseDelayMilliseconds = config.BlobDelayMilliseconds;
     }
 
     public void Dispose()
@@ -26,33 +31,56 @@ public class AzureBlobDocumentStorage : IDocumentStorage
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<string>> GetAllCollectionsAsync(CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<string>> GetCollectionListAsync(CancellationToken cancellationToken = default)
     {
         var collections = new List<string>();
-        await foreach (var container in _client.GetBlobContainersAsync(cancellationToken: cancellationToken))
+        await foreach (BlobContainerItem container in _client.GetBlobContainersAsync(cancellationToken: cancellationToken))
         {
-            if (container.IsDeleted == true) continue;
             collections.Add(container.Name);
         }
         return collections;
     }
 
     /// <inheritdoc />
-    public async Task CreateCollectionAsync(string collection, CancellationToken cancellationToken = default)
+    public async Task<bool> ExistCollectionAsync(string collectionName, CancellationToken cancellationToken = default)
     {
-        await _client.CreateBlobContainerAsync(collection, cancellationToken: cancellationToken); 
+        var container = _client.GetBlobContainerClient(collectionName);
+        return await container.ExistsAsync(cancellationToken);
     }
 
     /// <inheritdoc />
-    public async Task DeleteCollectionAsync(string collection, CancellationToken cancellationToken = default)
+    public async Task CreateCollectionAsync(string collectionName, CancellationToken cancellationToken = default)
     {
-        await _client.DeleteBlobContainerAsync(collection, cancellationToken: cancellationToken);
+        if (!_collectionNameRegex.IsMatch(collectionName))
+            throw new ArgumentException("유효하지 않은 컬렉션 이름입니다. 소문자, 숫자, 하이픈(-)만 사용할 수 있습니다.", nameof(collectionName));
+
+        var container = _client.GetBlobContainerClient(collectionName);
+        await container.CreateIfNotExistsAsync(cancellationToken: cancellationToken);
+
+        // 인덱스 파일 초기화
+        var indexBlob = container.GetBlobClient(DocumentIndexFileName);
+        var emptyIndex = new List<DocumentProfile>();
+        var serializedIndex = MessagePackSerializer.Serialize(emptyIndex);
+        using (var stream = new MemoryStream(serializedIndex))
+        {
+            await indexBlob.UploadAsync(stream, overwrite: true, cancellationToken);
+        }
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<DocumentRecord>> FindDocumentRecordsAsync(string collection, MemoryFilter? filter = null, CancellationToken cancellationToken = default)
+    public async Task DeleteCollectionAsync(string collectionName, CancellationToken cancellationToken = default)
     {
-        var (index, _) = await GetDocumentIndexWithETagAsync(collection, cancellationToken);
+        var container = _client.GetBlobContainerClient(collectionName);
+        await container.DeleteIfExistsAsync(cancellationToken: cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<IEnumerable<DocumentProfile>> FindDocumentsAsync(string collectionName, MemoryFilter? filter = null, CancellationToken cancellationToken = default)
+    {
+        var container = _client.GetBlobContainerClient(collectionName);
+        var indexBlob = container.GetBlobClient(DocumentIndexFileName);
+
+        var (index, _) = await LoadDocumentIndexWithETagAsync(indexBlob, cancellationToken);
         if (filter == null) return index;
 
         var query = index.AsQueryable();
@@ -64,167 +92,169 @@ public class AzureBlobDocumentStorage : IDocumentStorage
         {
             query = query.Where(x => x.Tags.Intersect(filter.Tags).Any());
         }
-        return query ?? Enumerable.Empty<DocumentRecord>();
+        return query.ToList();
     }
 
     /// <inheritdoc />
-    public async Task UpsertDocumentRecordAsync(string collection, DocumentRecord document, CancellationToken cancellationToken = default)
+    public async Task<bool> ExistDocumentAsync(string collectionName, string documentId, CancellationToken cancellationToken = default)
     {
-        int retryCount = 0;
-        while (retryCount < MaxRetryAttempts)
+        var container = _client.GetBlobContainerClient(collectionName);
+        var indexBlob = container.GetBlobClient(DocumentIndexFileName);
+
+        var (index, _) = await LoadDocumentIndexWithETagAsync(indexBlob, cancellationToken);
+        return index.Any(x => x.DocumentId == documentId);
+    }
+
+    /// <inheritdoc />
+    public async Task<DocumentProfile> UpsertDocumentAsync(string collectionName, DocumentProfile document, Stream? content = null, CancellationToken cancellationToken = default)
+    {
+        int retryAttempts = 0;
+        while (retryAttempts < _maxRetryAttempts)
         {
-            var (index, etag) = await GetDocumentIndexWithETagAsync(collection, cancellationToken);
-
-            // 기존 문서 제거 후 새 문서 추가
-            index.RemoveAll(x => x.DocumentId == document.DocumentId);
-            index.Add(document);
-
-            var data = MessagePackSerializer.Serialize(index);
-            var container = GetBlobContainerClient(collection);
-            var blob = container.GetBlobClient(DocumentIndexFileName);
-
             try
             {
-                using var stream = new MemoryStream(data);
-                var uploadOptions = new BlobUploadOptions
+                var container = _client.GetBlobContainerClient(collectionName);
+                var indexBlob = container.GetBlobClient(DocumentIndexFileName);
+
+                // 인덱스 로드
+                var (index, currentETag) = await LoadDocumentIndexWithETagAsync(indexBlob, cancellationToken);
+
+                // 문서 찾기
+                var profile = index.FirstOrDefault(x => x.DocumentId == document.DocumentId);
+                if (profile == null && content == null)
+                    throw new InvalidOperationException($"'{document.DocumentId}' 문서를 찾을 수 없습니다.");
+
+                if (content != null)
                 {
-                    Conditions = new BlobRequestConditions
-                    {
-                        IfMatch = etag
-                    }
-                };
-                await blob.UploadAsync(stream, uploadOptions, cancellationToken);
-                return; // Success
+                    await WriteDocumentFileAsync(collectionName, document.DocumentId, document.FileName, content, true, cancellationToken);
+                }
+
+                // 문서 추가 또는 업데이트
+                index.RemoveAll(x => x.DocumentId == document.DocumentId);
+                document.LastUpdatedAt = DateTime.UtcNow;
+                index.Add(document);
+                await SaveDocumentIndexAsync(indexBlob, index, currentETag, cancellationToken);
+
+                return document;
             }
-            catch (RequestFailedException ex) when (ex.Status == 412)
+            catch (RequestFailedException ex) when (ex.Status == 412) // Precondition Failed
             {
-                // ETag 불일치, 다른 프로세스가 blob을 수정함. 재시도.
-                retryCount++;
-                await Task.Delay(DelayBetweenRetriesMs, cancellationToken);
+                retryAttempts++;
+                int delay = CalculateBackoffDelay(retryAttempts);
+                await Task.Delay(delay, cancellationToken);
             }
         }
-
-        throw new InvalidOperationException("Failed to upsert document record due to concurrent modifications.");
+        throw new InvalidOperationException("최대 재시도 횟수를 초과했습니다. 작업을 완료할 수 없습니다.");
     }
 
     /// <inheritdoc />
-    public async Task DeleteDocumentRecordAsync(string collection, string documentId, CancellationToken cancellationToken = default)
+    public async Task DeleteDocumentAsync(string collectionName, string documentId, CancellationToken cancellationToken = default)
     {
-        int retryCount = 0;
-        while (retryCount < MaxRetryAttempts)
+        int retryAttempts = 0;
+        while (retryAttempts < _maxRetryAttempts)
         {
-            var (index, etag) = await GetDocumentIndexWithETagAsync(collection, cancellationToken);
-            int removedCount = index.RemoveAll(x => x.DocumentId == documentId);
-
-            if (removedCount == 0)
+            try
             {
-                // 문서를 찾을 수 없음; 삭제할 필요 없음
+                var container = _client.GetBlobContainerClient(collectionName);
+                var indexBlob = container.GetBlobClient(DocumentIndexFileName);
+
+                // 인덱스 로드
+                var (index, currentETag) = await LoadDocumentIndexWithETagAsync(indexBlob, cancellationToken);
+
+                // 문서 존재 여부 확인
+                var document = index.FirstOrDefault(x => x.DocumentId == documentId);
+                if (document == null)
+                    throw new InvalidOperationException($"'{documentId}' 문서는 존재하지 않습니다.");
+
+                // 문서 파일 삭제
+                string prefix = $"{documentId}/";
+                await foreach (BlobItem blob in container.GetBlobsAsync(prefix: prefix, cancellationToken: cancellationToken))
+                {
+                    var blobClient = container.GetBlobClient(blob.Name);
+                    await blobClient.DeleteIfExistsAsync(cancellationToken: cancellationToken);
+                }
+
+                // 인덱스 업데이트
+                index.RemoveAll(x => x.DocumentId == documentId);
+                await SaveDocumentIndexAsync(indexBlob, index, currentETag, cancellationToken);
+
                 return;
             }
-
-            var data = MessagePackSerializer.Serialize(index);
-            var container = GetBlobContainerClient(collection);
-            var blob = container.GetBlobClient(DocumentIndexFileName);
-
-            try
+            catch (RequestFailedException ex) when (ex.Status == 412) // Precondition Failed
             {
-                using var stream = new MemoryStream(data);
-                var uploadOptions = new BlobUploadOptions
-                {
-                    Conditions = new BlobRequestConditions
-                    {
-                        IfMatch = etag,
-                    }
-                };
-                await blob.UploadAsync(stream, uploadOptions, cancellationToken);
-                return; // Success
-            }
-            catch (RequestFailedException ex) when (ex.Status == 412)
-            {
-                // ETag 불일치, 다른 프로세스가 blob을 수정함. 재시도.
-                retryCount++;
-                await Task.Delay(DelayBetweenRetriesMs, cancellationToken);
+                retryAttempts++;
+                int delay = CalculateBackoffDelay(retryAttempts);
+                await Task.Delay(delay, cancellationToken);
             }
         }
-
-        throw new InvalidOperationException("Failed to delete document record due to concurrent modifications.");
+        throw new InvalidOperationException("최대 재시도 횟수를 초과했습니다. 작업을 완료할 수 없습니다.");
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<string>> GetDocumentFilesAsync(string collection, string documentId, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<string>> GetDocumentFilesAsync(string collectionName, string documentId, CancellationToken cancellationToken = default)
     {
-        var container = GetBlobContainerClient(collection);
-        var prefix = $"{documentId}/";
+        var container = _client.GetBlobContainerClient(collectionName);
+        string prefix = $"{documentId}/";
         var files = new List<string>();
-        await foreach (var blob in container.GetBlobsAsync(prefix: prefix, cancellationToken: cancellationToken))
+
+        await foreach (BlobItem blob in container.GetBlobsAsync(prefix: prefix, cancellationToken: cancellationToken))
         {
-            files.Add(blob.Name);
+            var relativePath = blob.Name.Substring(prefix.Length);
+            files.Add(relativePath);
         }
+
         return files;
     }
 
     /// <inheritdoc />
-    public async Task WriteDocumentFileAsync(string collection, string documentId, string filePath, Stream content, bool overwrite = true, CancellationToken cancellationToken = default)
+    public async Task<bool> ExistDocumentFileAsync(string collectionName, string documentId, string filePath, CancellationToken cancellationToken = default)
     {
-        var blob = GetBlobClient(collection, documentId, filePath);
-        await blob.UploadAsync(content, overwrite, cancellationToken);
+        var container = _client.GetBlobContainerClient(collectionName);
+        var blobName = Path.Combine(documentId, filePath).Replace("\\", "/");
+        var blobClient = container.GetBlobClient(blobName);
+        return await blobClient.ExistsAsync(cancellationToken);
     }
 
     /// <inheritdoc />
-    public async Task<Stream> ReadDocumentFileAsync(string collection, string documentId, string filePath, CancellationToken cancellationToken = default)
+    public async Task WriteDocumentFileAsync(string collectionName, string documentId, string filePath, Stream content, bool overwrite = false, CancellationToken cancellationToken = default)
     {
-        var blob = GetBlobClient(collection, documentId, filePath);
-        var stream = await blob.OpenReadAsync(cancellationToken: cancellationToken);
-        return stream;
+        var container = _client.GetBlobContainerClient(collectionName);
+        var blobName = Path.Combine(documentId, filePath).Replace("\\", "/");
+        var blobClient = container.GetBlobClient(blobName);
+
+        if (!overwrite && await blobClient.ExistsAsync(cancellationToken))
+            throw new IOException($"파일이 이미 존재합니다: {blobName}");
+
+        // 파일 업로드 또는 덮어쓰기
+        await blobClient.UploadAsync(content, overwrite, cancellationToken);
     }
 
     /// <inheritdoc />
-    public async Task DeleteDocumentFileAsync(string collection, string documentId, string filePath, CancellationToken cancellationToken = default)
+    public async Task<Stream> ReadDocumentFileAsync(string collectionName, string documentId, string filePath, CancellationToken cancellationToken = default)
     {
-        var blob = GetBlobClient(collection, documentId, filePath);
-        await blob.DeleteIfExistsAsync(cancellationToken: cancellationToken);
+        var container = _client.GetBlobContainerClient(collectionName);
+        var blobName = Path.Combine(documentId, filePath).Replace("\\", "/");
+        var blobClient = container.GetBlobClient(blobName);
+
+        if (!await blobClient.ExistsAsync(cancellationToken))
+            throw new FileNotFoundException($"파일을 찾을 수 없습니다: {filePath}");
+
+        var memoryStream = new MemoryStream();
+        await blobClient.DownloadToAsync(memoryStream, cancellationToken);
+        memoryStream.Position = 0;
+        return memoryStream;
+    }
+
+    /// <inheritdoc />
+    public async Task DeleteDocumentFileAsync(string collectionName, string documentId, string filePath, CancellationToken cancellationToken = default)
+    {
+        var container = _client.GetBlobContainerClient(collectionName);
+        var blobName = Path.Combine(documentId, filePath).Replace("\\", "/");
+        var blobClient = container.GetBlobClient(blobName);
+        await blobClient.DeleteIfExistsAsync(cancellationToken: cancellationToken);
     }
 
     #region Private Methods
-
-    // 경로 조합: 두 경로 사이에 '/'가 하나만 있도록 함
-    private static string CombinePath(string path1, string path2)
-    {
-        return $"{path1.TrimEnd('/')}/{path2.TrimStart('/')}";
-    }
-
-    // ETag와 함께 문서 인덱스를 가져옴
-    private async Task<(List<DocumentRecord>, ETag?)> GetDocumentIndexWithETagAsync(string collection, CancellationToken cancellationToken)
-    {
-        var container = GetBlobContainerClient(collection);
-        var blob = container.GetBlobClient(DocumentIndexFileName);
-        if (!await blob.ExistsAsync(cancellationToken))
-        {
-            return ([], null);
-        }
-
-        var downloadInfo = await blob.DownloadAsync(cancellationToken);
-        var data = downloadInfo.Value.Content;
-        var index = MessagePackSerializer.Deserialize<List<DocumentRecord>>(data);
-        var etag = downloadInfo.Value.Details.ETag;
-        return (index, etag);
-    }
-
-    // BlobClient 생성
-    private BlobClient GetBlobClient(string collection, string documentId, string filePath)
-    {
-        var container = GetBlobContainerClient(collection);
-        var blobName = CombinePath(documentId, filePath);
-        return container.GetBlobClient(blobName);
-    }
-
-    // BlobContainerClient 생성
-    private BlobContainerClient GetBlobContainerClient(string collection)
-    {
-        var container = _client.GetBlobContainerClient(collection);
-        container.CreateIfNotExists();
-        return container;
-    }
 
     // BlobServiceClient 생성
     private BlobServiceClient GetBlobServiceClient(AzureBlobConfig config, BlobClientOptions? options)
@@ -235,33 +265,68 @@ public class AzureBlobDocumentStorage : IDocumentStorage
             AzureBlobAuthTypes.AccountKey => new BlobServiceClient(GetBlobStorageUri(config), GetSharedKeyCredential(config), options),
             AzureBlobAuthTypes.SASToken => new BlobServiceClient(GetBlobStorageUri(config), GetSasTokenCredential(config), options),
             AzureBlobAuthTypes.AzureIdentity => new BlobServiceClient(GetBlobStorageUri(config), config.TokenCredential, options),
-            _ => throw new ArgumentOutOfRangeException(nameof(config.AuthType), "Unknown Azure Blob authentication type")
+            _ => throw new ArgumentOutOfRangeException(nameof(config.AuthType), "알 수 없는 Azure Blob 인증 유형입니다.")
         };
         return client;
     }
 
-    // AccountName를 이용한 Uri 생성
-    private Uri GetBlobStorageUri(AzureBlobConfig config)
+    // AccountName을 이용한 Uri 생성
+    private static Uri GetBlobStorageUri(AzureBlobConfig config)
     {
         if (string.IsNullOrWhiteSpace(config.AccountName))
-            throw new ArgumentException("The AccountName cannot be null or whitespace.", nameof(config.AccountName));
+            throw new ArgumentException("AccountName은 비어 있을 수 없습니다.", nameof(config.AccountName));
         return new Uri($"https://{config.AccountName}.blob.core.windows.net");
     }
 
     // AccountKey를 이용한 인증 방식
-    private StorageSharedKeyCredential GetSharedKeyCredential(AzureBlobConfig config)
+    private static StorageSharedKeyCredential GetSharedKeyCredential(AzureBlobConfig config)
     {
         if (string.IsNullOrWhiteSpace(config.AccountName))
-            throw new ArgumentException("The AccountName cannot be null or whitespace.", nameof(config.AccountName));
+            throw new ArgumentException("AccountName은 비어 있을 수 없습니다.", nameof(config.AccountName));
         return new StorageSharedKeyCredential(config.AccountName, config.AccountKey);
     }
 
     // SAS Token을 이용한 인증 방식
-    private AzureSasCredential GetSasTokenCredential(AzureBlobConfig config)
+    private static AzureSasCredential GetSasTokenCredential(AzureBlobConfig config)
     {
         if (string.IsNullOrWhiteSpace(config.SASToken))
-            throw new ArgumentException("The SASToken cannot be null or whitespace.", nameof(config.SASToken));
+            throw new ArgumentException("SASToken은 비어 있을 수 없습니다.", nameof(config.SASToken));
         return new AzureSasCredential(config.SASToken);
+    }
+
+    // 인덱스 파일 로드 with ETag
+    private async Task<(List<DocumentProfile>, ETag?)> LoadDocumentIndexWithETagAsync(BlobClient indexBlob, CancellationToken cancellationToken)
+    {
+        if (!await indexBlob.ExistsAsync(cancellationToken))
+            throw new InvalidOperationException($"'{indexBlob.Name}' 인덱스 파일이 존재하지 않습니다.");
+
+        using var stream = new MemoryStream();
+        await indexBlob.DownloadToAsync(stream, cancellationToken);
+        stream.Position = 0;
+        var index = await MessagePackSerializer.DeserializeAsync<List<DocumentProfile>>(stream, cancellationToken: cancellationToken);
+        var eTag = indexBlob.GetProperties().Value.ETag;
+        return (index, eTag);
+    }
+
+    // 인덱스 파일 저장 with ETag
+    private async Task SaveDocumentIndexAsync(BlobClient indexBlob, List<DocumentProfile> index, ETag? eTag, CancellationToken cancellationToken)
+    {
+        var serializedIndex = MessagePackSerializer.Serialize(index);
+        using var stream = new MemoryStream(serializedIndex);
+        var uploadOptions = new BlobUploadOptions
+        {
+            HttpHeaders = new BlobHttpHeaders { ContentType = "application/x-msgpack" },
+            Conditions = new BlobRequestConditions { IfMatch = eTag }
+        };
+        await indexBlob.UploadAsync(stream, uploadOptions, cancellationToken);
+    }
+
+    // 재시도 지연 계산 지수 방식
+    private int CalculateBackoffDelay(int retryAttempts)
+    {
+        int maxDelay = 60_000; // 최대 지연 시간 1분
+        int delay = _baseDelayMilliseconds * (int)Math.Pow(2, retryAttempts - 1);
+        return Math.Min(delay, maxDelay) + _random.Next(0, 100); // 지터 추가
     }
 
     #endregion

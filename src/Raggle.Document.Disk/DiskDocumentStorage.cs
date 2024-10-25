@@ -4,22 +4,25 @@ using MessagePack;
 
 namespace Raggle.Document.Disk;
 
-public class DiskDocumentStorage : IDocumentStorage
+public class DiskDocumentStorage : IDocumentStorage, IDisposable
 {
     private const string DocumentIndexFileName = "document_index.msgpack";
-    private const int MaxRetryAttempts = 3;
-    private const int DelayBetweenRetriesMs = 200;
+    private readonly Random _random = new();
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _collectionLocks = new();
 
     private readonly string _rootPath;
-    private readonly ConcurrentDictionary<string, SemaphoreSlim> _collectionLocks = new ConcurrentDictionary<string, SemaphoreSlim>();
+    private readonly int _maxRetryAttempts;
+    private readonly int _baseDelayMilliseconds;
 
-    public DiskDocumentStorage(string rootPath)
+    public DiskDocumentStorage(DiskStorageConfig config)
     {
-        if (string.IsNullOrWhiteSpace(rootPath))
-            throw new ArgumentNullException(nameof(rootPath));
+        if (string.IsNullOrWhiteSpace(config.DirectoryPath))
+            throw new ArgumentException("DirectoryPath는 비어 있을 수 없습니다.", nameof(config.DirectoryPath));
 
-        _rootPath = rootPath;
-        Directory.CreateDirectory(rootPath);
+        _rootPath = config.DirectoryPath;
+        Directory.CreateDirectory(_rootPath);
+        _maxRetryAttempts = config.BlobMaxRetryAttempts > 0 ? config.BlobMaxRetryAttempts : 5; // 기본값 5
+        _baseDelayMilliseconds = config.BlobDelayMilliseconds > 0 ? config.BlobDelayMilliseconds : 200; // 기본값 200ms
     }
 
     public void Dispose()
@@ -32,39 +35,70 @@ public class DiskDocumentStorage : IDocumentStorage
     }
 
     /// <inheritdoc />
-    public Task<IEnumerable<string>> GetAllCollectionsAsync(CancellationToken cancellationToken = default)
+    public Task<IEnumerable<string>> GetCollectionListAsync(CancellationToken cancellationToken = default)
     {
         var directories = Directory.EnumerateDirectories(_rootPath);
-        var collections = directories.Select(path => Path.GetFileName(path)) ?? [];
+        var collections = directories.Select(path => Path.GetFileName(path)) ?? Enumerable.Empty<string>();
         return Task.FromResult(collections);
     }
 
     /// <inheritdoc />
-    public Task CreateCollectionAsync(string collection, CancellationToken cancellationToken = default)
+    public Task<bool> ExistCollectionAsync(string collectionName, CancellationToken cancellationToken = default)
     {
-        GetCollectionPath(collection);
-        return Task.CompletedTask;
+        var collectionPath = GetFullPath(collectionName);
+        var isExist = Directory.Exists(collectionPath);
+        return Task.FromResult(isExist);
     }
 
     /// <inheritdoc />
-    public Task DeleteCollectionAsync(string collection, CancellationToken cancellationToken = default)
+    public async Task CreateCollectionAsync(string collectionName, CancellationToken cancellationToken = default)
     {
-        var collectionPath = GetCollectionPath(collection);
-        if (Directory.Exists(collectionPath))
+        var semaphore = GetLockForCollection(collectionName);
+        await semaphore.WaitAsync(cancellationToken);
+        try
         {
-            Directory.Delete(collectionPath, true);
+            var collectionPath = GetFullPath(collectionName);
+            if (!Directory.Exists(collectionPath))
+            {
+                Directory.CreateDirectory(collectionPath);
+                var indexPath = GetFullPath(collectionName, DocumentIndexFileName);
+                var emptyIndex = new List<DocumentProfile>();
+                var serializedIndex = MessagePackSerializer.Serialize(emptyIndex);
+                await File.WriteAllBytesAsync(indexPath, serializedIndex, cancellationToken);
+            }
         }
-
-        // Semaphore 제거
-        _collectionLocks.TryRemove(collection, out var semaphore);
-        semaphore?.Dispose();
-        return Task.CompletedTask;
+        finally
+        {
+            semaphore.Release();
+        }
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<DocumentRecord>> FindDocumentRecordsAsync(string collection, MemoryFilter? filter = null, CancellationToken cancellationToken = default)
+    public async Task DeleteCollectionAsync(string collectionName, CancellationToken cancellationToken = default)
     {
-        var index = await LoadIndexAsync(collection, cancellationToken);
+        var semaphore = GetLockForCollection(collectionName);
+        await semaphore.WaitAsync(cancellationToken);
+        try
+        {
+            var collectionPath = GetFullPath(collectionName);
+            if (Directory.Exists(collectionPath))
+            {
+                Directory.Delete(collectionPath, true);
+            }
+            _collectionLocks.TryRemove(collectionName, out var removedSemaphore);
+            removedSemaphore?.Dispose();
+        }
+        finally
+        {
+            semaphore.Release();
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<IEnumerable<DocumentProfile>> FindDocumentsAsync(string collectionName, MemoryFilter? filter = null, CancellationToken cancellationToken = default)
+    {
+        // 읽기 작업은 잠금 없이 진행
+        var (index, _) = await LoadDocumentIndexWithTimeStampAsync(collectionName, cancellationToken);
         if (filter == null) return index;
 
         var query = index.AsQueryable();
@@ -80,91 +114,100 @@ public class DiskDocumentStorage : IDocumentStorage
     }
 
     /// <inheritdoc />
-    public async Task UpsertDocumentRecordAsync(string collection, DocumentRecord document, CancellationToken cancellationToken = default)
+    public async Task<bool> ExistDocumentAsync(string collectionName, string documentId, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(document);
-
-        int retryCount = 0;
-        while (retryCount < MaxRetryAttempts)
-        {
-            var semaphore = GetSemaphore(collection);
-            await semaphore.WaitAsync(cancellationToken);
-            try
-            {
-                var index = await LoadIndexAsync(collection, cancellationToken);
-
-                // 기존 문서 제거 후 새 문서 추가
-                index.RemoveAll(x => x.DocumentId == document.DocumentId);
-                index.Add(document);
-
-                await SaveIndexAsync(collection, index, cancellationToken);
-                return; // 성공
-            }
-            catch (IOException)
-            {
-                // 파일 접근 중 문제 발생 시 재시도
-                retryCount++;
-                await Task.Delay(DelayBetweenRetriesMs, cancellationToken);
-            }
-            finally
-            {
-                semaphore.Release();
-            }
-        }
-
-        throw new InvalidOperationException("동시 수정으로 인해 문서 레코드를 업서트할 수 없습니다.");
+        // 읽기 작업은 잠금 없이 진행
+        var (index, _) = await LoadDocumentIndexWithTimeStampAsync(collectionName, cancellationToken);
+        return index.Any(x => x.DocumentId == documentId);
     }
 
     /// <inheritdoc />
-    public async Task DeleteDocumentRecordAsync(string collection, string documentId, CancellationToken cancellationToken = default)
+    public async Task<DocumentProfile> UpsertDocumentAsync(string collectionName, DocumentProfile document, Stream? content = null, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(documentId))
-            throw new ArgumentException("DocumentId cannot be null or whitespace.", nameof(documentId));
-
-        int retryCount = 0;
-        while (retryCount < MaxRetryAttempts)
+        var semaphore = GetLockForCollection(collectionName);
+        await semaphore.WaitAsync(cancellationToken);
+        try
         {
-            var semaphore = GetSemaphore(collection);
-            await semaphore.WaitAsync(cancellationToken);
-            try
-            {
-                var index = await LoadIndexAsync(collection, cancellationToken);
+            var isExist = await ExistDocumentAsync(collectionName, document.DocumentId, cancellationToken);
+            if (!isExist && content == null)
+                throw new InvalidOperationException($"'{document.DocumentId}' 문서를 찾을 수 없습니다.");
 
-                // 문서 삭제
-                int removedCount = index.RemoveAll(x => x.DocumentId == documentId);
-                if (removedCount == 0)
+            if (content != null)
+            {
+                await WriteDocumentFileAsync(collectionName, document.DocumentId, document.FileName, content, overwrite: true, cancellationToken: cancellationToken);
+            }
+
+            int retryAttempt = 0;
+            while (retryAttempt < _maxRetryAttempts)
+            {
+                try
                 {
-                    // 문서를 찾을 수 없음; 삭제할 필요 없음
-                    return;
+                    var (index, timeStamp) = await LoadDocumentIndexWithTimeStampAsync(collectionName, cancellationToken);
+                    index.RemoveAll(x => x.DocumentId == document.DocumentId);
+                    document.LastUpdatedAt = DateTime.UtcNow;
+                    index.Add(document);
+                    await SaveDocumentIndexAsync(collectionName, index, timeStamp, cancellationToken);
+                    return document; // 성공 시 반환
                 }
-
-                await SaveIndexAsync(collection, index, cancellationToken);
-                return; // 성공
+                catch (IOException)
+                {
+                    retryAttempt++;
+                    var delay = CalculateBackoffDelay(retryAttempt);
+                    await Task.Delay(delay, cancellationToken);
+                }
             }
-            catch (IOException)
-            {
-                // 파일 접근 중 문제 발생 시 재시도
-                retryCount++;
-                await Task.Delay(DelayBetweenRetriesMs, cancellationToken);
-            }
-            finally
-            {
-                semaphore.Release();
-            }
+            throw new InvalidOperationException($"문서 인덱스를 업데이트하는 데 실패했습니다. 최대 재시도 횟수 {_maxRetryAttempts}를 초과했습니다.");
         }
-
-        throw new InvalidOperationException("동시 수정으로 인해 문서 레코드를 삭제할 수 없습니다.");
+        finally
+        {
+            semaphore.Release();
+        }
     }
 
     /// <inheritdoc />
-    public Task<IEnumerable<string>> GetDocumentFilesAsync(string collection, string documentId, CancellationToken cancellationToken = default)
+    public async Task DeleteDocumentAsync(string collectionName, string documentId, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(documentId))
-            throw new ArgumentException("DocumentId cannot be null or whitespace.", nameof(documentId));
+        var semaphore = GetLockForCollection(collectionName);
+        await semaphore.WaitAsync(cancellationToken);
+        try
+        {
+            var documentPath = GetFullPath(collectionName, documentId);
+            if (Directory.Exists(documentPath))
+            {
+                Directory.Delete(documentPath, true);
+            }
 
-        var documentPath = Path.Combine(GetCollectionPath(collection), documentId);
+            int retryAttempt = 0;
+            while (retryAttempt < _maxRetryAttempts)
+            {
+                try
+                {
+                    var (index, timeStamp) = await LoadDocumentIndexWithTimeStampAsync(collectionName, cancellationToken);
+                    index.RemoveAll(x => x.DocumentId == documentId);
+                    await SaveDocumentIndexAsync(collectionName, index, timeStamp, cancellationToken);
+                    return; // 성공 시 반환
+                }
+                catch (IOException)
+                {
+                    retryAttempt++;
+                    var delay = CalculateBackoffDelay(retryAttempt);
+                    await Task.Delay(delay, cancellationToken);
+                }
+            }
+            throw new InvalidOperationException($"문서 인덱스를 업데이트하는 데 실패했습니다. 최대 재시도 횟수 {_maxRetryAttempts}를 초과했습니다.");
+        }
+        finally
+        {
+            semaphore.Release();
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<IEnumerable<string>> GetDocumentFilesAsync(string collectionName, string documentId, CancellationToken cancellationToken = default)
+    {
+        var documentPath = GetFullPath(collectionName, documentId);
         if (!Directory.Exists(documentPath))
-            return Task.FromResult(Enumerable.Empty<string>());
+            throw new InvalidOperationException($"'{documentId}' 문서는 존재하지 않습니다.");
 
         var files = Directory.EnumerateFiles(documentPath, "*", SearchOption.AllDirectories)
                              .Select(path => Path.GetRelativePath(documentPath, path));
@@ -172,113 +215,114 @@ public class DiskDocumentStorage : IDocumentStorage
     }
 
     /// <inheritdoc />
-    public async Task WriteDocumentFileAsync(string collection, string documentId, string filePath, Stream content, bool overwrite = true, CancellationToken cancellationToken = default)
+    public Task<bool> ExistDocumentFileAsync(string collectionName, string documentId, string filePath, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(content);
+        var fullPath = GetFullPath(collectionName, documentId, filePath);
+        var isExist = File.Exists(fullPath);
+        return Task.FromResult(isExist);
+    }
 
-        var fullPath = Path.Combine(GetCollectionPath(collection), documentId, filePath);
-
+    /// <inheritdoc />
+    public async Task WriteDocumentFileAsync(string collectionName, string documentId, string filePath, Stream content, bool overwrite = false, CancellationToken cancellationToken = default)
+    {
+        var fullPath = GetFullPath(collectionName, documentId, filePath);
         if (!overwrite && File.Exists(fullPath))
-            throw new IOException($"The file already exist: {fullPath}");
+            throw new IOException($"파일이 이미 존재합니다: {fullPath}");
 
         var directory = Path.GetDirectoryName(fullPath);
         if (string.IsNullOrEmpty(directory))
-            throw new ArgumentException("Invalid file path.", nameof(filePath));
+            throw new ArgumentException("잘못된 파일 경로입니다.", nameof(filePath));
         Directory.CreateDirectory(directory);
-        
-        using (var fileStream = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None))
+
+        using (var fileStream = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, useAsync: true))
         {
-            await content.CopyToAsync(fileStream, cancellationToken);
+            await content.CopyToAsync(fileStream, 81920, cancellationToken); // 버퍼 사이즈 조정 가능
         }
     }
 
     /// <inheritdoc />
-    public async Task<Stream> ReadDocumentFileAsync(string collection, string documentId, string filePath, CancellationToken cancellationToken = default)
+    public async Task<Stream> ReadDocumentFileAsync(string collectionName, string documentId, string filePath, CancellationToken cancellationToken = default)
     {
-        var fullPath = Path.Combine(GetCollectionPath(collection), documentId, filePath);
+        var fullPath = GetFullPath(collectionName, documentId, filePath);
         if (!File.Exists(fullPath))
-            throw new FileNotFoundException($"파일을 찾을 수 없습니다: {fullPath}");
+            throw new FileNotFoundException($"파일을 찾을 수 없습니다: {filePath}", fullPath);
 
         var memoryStream = new MemoryStream();
-        using (var fileStream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+        using (var fileStream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 4096, useAsync: true))
         {
-            await fileStream.CopyToAsync(memoryStream, cancellationToken);
+            await fileStream.CopyToAsync(memoryStream, 81920, cancellationToken);
         }
         memoryStream.Position = 0;
         return memoryStream;
     }
 
     /// <inheritdoc />
-    public Task DeleteDocumentFileAsync(string collection, string documentId, string filePath, CancellationToken cancellationToken = default)
+    public async Task DeleteDocumentFileAsync(string collectionName, string documentId, string filePath, CancellationToken cancellationToken = default)
     {
-        var fullPath = Path.Combine(GetCollectionPath(collection), documentId, filePath);
+        var fullPath = GetFullPath(collectionName, documentId, filePath);
         if (File.Exists(fullPath))
         {
             File.Delete(fullPath);
         }
-        return Task.CompletedTask;
+        await Task.CompletedTask;
     }
 
     #region Private Methods
 
-    // 컬렉션의 전체 경로를 반환 (없으면 생성)
-    private string GetCollectionPath(string collection)
+    // 컬렉션별 SemaphoreSlim을 반환 (쓰기 전용)
+    private SemaphoreSlim GetLockForCollection(string collectionName)
     {
-        if (string.IsNullOrEmpty(collection))
-            throw new ArgumentException("Collection name cannot be null or whitespace.", nameof(collection));
-        var collectionPath = Path.Combine(_rootPath, collection);
-        Directory.CreateDirectory(collectionPath);
-        return collectionPath;
+        return _collectionLocks.GetOrAdd(collectionName, _ => new SemaphoreSlim(1, 1));
     }
 
-    // 인덱스 파일의 전체 경로를 반환
-    private string GetIndexFilePath(string collection)
+    // 실제 디스크의 전체 경로를 반환
+    private string GetFullPath(params string[] paths)
     {
-        return Path.Combine(GetCollectionPath(collection), DocumentIndexFileName);
-    }
-
-    // SemaphoreSlim을 반환 (없으면 생성)
-    private SemaphoreSlim GetSemaphore(string collection)
-    {
-        return _collectionLocks.GetOrAdd(collection, _ => new SemaphoreSlim(1, 1));
+        var allPaths = new List<string> { _rootPath };
+        allPaths.AddRange(paths);
+        return Path.Combine(allPaths.ToArray());
     }
 
     // 인덱스 파일을 로드
-    private async Task<List<DocumentRecord>> LoadIndexAsync(string collection, CancellationToken cancellationToken)
+    private async Task<(List<DocumentProfile>, DateTime)> LoadDocumentIndexWithTimeStampAsync(string collectionName, CancellationToken cancellationToken)
     {
-        var indexPath = GetIndexFilePath(collection);
+        var indexPath = GetFullPath(collectionName, DocumentIndexFileName);
         if (!File.Exists(indexPath))
-        {
-            return [];
-        }
+            throw new InvalidOperationException($"'{collectionName}' 컬렉션에 인덱스 파일이 존재하지 않습니다.");
 
-        using (var stream = new FileStream(indexPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+        var lastModified = File.GetLastWriteTimeUtc(indexPath);
+        using (var stream = new FileStream(indexPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 4096, useAsync: true))
         {
-            return await MessagePackSerializer.DeserializeAsync<List<DocumentRecord>>(stream, cancellationToken: cancellationToken);
+            var index = await MessagePackSerializer.DeserializeAsync<List<DocumentProfile>>(stream, cancellationToken: cancellationToken);
+            return (index, lastModified);
         }
     }
 
     // 인덱스 파일을 저장
-    private async Task SaveIndexAsync(string collection, IEnumerable<DocumentRecord> index, CancellationToken cancellationToken)
+    private async Task SaveDocumentIndexAsync(string collectionName, IEnumerable<DocumentProfile> index, DateTime timeStamp, CancellationToken cancellationToken)
     {
-        var indexPath = GetIndexFilePath(collection);
-        var tempPath = indexPath + ".tmp";
+        var indexPath = GetFullPath(collectionName, DocumentIndexFileName);
+        if (!File.Exists(indexPath))
+            throw new InvalidOperationException($"'{collectionName}' 컬렉션에 인덱스 파일이 존재하지 않습니다.");
 
-        using (var stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
+        if (File.GetLastWriteTimeUtc(indexPath) != timeStamp)
+            throw new IOException("인덱스 파일이 다른 프로세스에 의해 변경되었습니다.");
+
+        var tempPath = indexPath + ".tmp";
+        using (var stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, useAsync: true))
         {
             await MessagePackSerializer.SerializeAsync(stream, index, cancellationToken: cancellationToken);
         }
 
-        if (File.Exists(indexPath))
-        {
-            // 파일이 있으면 교체
-            File.Replace(tempPath, indexPath, null);
-        }
-        else
-        {
-            // 파일이 없으면 이동
-            File.Move(tempPath, indexPath);
-        }
+        File.Replace(tempPath, indexPath, null);
+    }
+
+    // 재시도 지연 계산 지수 방식 + 지터
+    private int CalculateBackoffDelay(int retryAttempts)
+    {
+        int maxDelay = 60_000; // 최대 지연 시간 1분
+        int delay = _baseDelayMilliseconds * (int)Math.Pow(2, retryAttempts - 1);
+        return Math.Min(delay, maxDelay) + _random.Next(0, 100); // 지터 추가
     }
 
     #endregion

@@ -1,8 +1,9 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Raggle.Abstractions.Memory;
 
-public enum DataPipelineStatus
+public enum PipelineStatus
 {
     Pending,
     Processing,
@@ -12,7 +13,7 @@ public enum DataPipelineStatus
 
 public class DataPipeline
 {
-    public DataPipelineStatus Status { get; set; } = DataPipelineStatus.Pending;
+    public PipelineStatus Status { get; set; } = PipelineStatus.Pending;
 
     public required string CollectionName { get; set; }
 
@@ -24,20 +25,13 @@ public class DataPipeline
 
     public List<string> CompletedSteps { get; set; } = [];
 
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public required DateTime StartedAt { get; set; }
 
     public DateTime? LastUpdatedAt { get; set; }
-
-    public string[]? Tags { get; set; }
 
     public IDictionary<string, object>? Metadata { get; set; }
 
     public string? Message { get; set; }
-
-    public string[]? Files { get; set; }
-
-    [JsonIgnore]
-    public UploadFile? UploadFile { get; set; }
 
     public string? GetPreviousStepName()
     {

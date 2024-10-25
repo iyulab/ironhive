@@ -41,14 +41,14 @@ public class ChunkDocumentHandler : IPipelineHandler
     private async Task<StructuredDocument> GetStructuredDocumentAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
         var files = await _documentStorage.GetDocumentFilesAsync(
-            collection: pipeline.CollectionName,
+            collectionName: pipeline.CollectionName,
             documentId: pipeline.DocumentId);
 
         var filepath = files.Where(f => f.EndsWith("structured.json")).FirstOrDefault()
             ?? throw new InvalidOperationException("Structured document not found.");
 
         var stream = await _documentStorage.ReadDocumentFileAsync(
-            collection: pipeline.CollectionName,
+            collectionName: pipeline.CollectionName,
             documentId: pipeline.DocumentId,
             filePath: filepath,
             cancellationToken: cancellationToken);
@@ -63,7 +63,7 @@ public class ChunkDocumentHandler : IPipelineHandler
         var chunkId = $"{pipeline.DocumentId}_{index:D4}";
         var chunkPath = Path.Combine("chunks", chunkId);
         await _documentStorage.WriteDocumentFileAsync(
-            collection: pipeline.CollectionName,
+            collectionName: pipeline.CollectionName,
             documentId: pipeline.DocumentId,
             filePath: chunkPath,
             content: new MemoryStream(Encoding.UTF8.GetBytes(content)),

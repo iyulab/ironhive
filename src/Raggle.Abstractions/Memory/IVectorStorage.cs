@@ -1,38 +1,38 @@
 ﻿namespace Raggle.Abstractions.Memory;
 
-public interface IVectorStorage
+public interface IVectorStorage : IDisposable
 {
+    Task<IEnumerable<string>> GetCollectionListAsync(
+        CancellationToken cancellationToken = default);
+
+    Task<bool> ExistCollectionAsync(
+        string collectionName,
+        CancellationToken cancellationToken = default);
+
     Task CreateCollectionAsync(
-        string collection,
+        string collectionName,
+        ulong vectorSize,
         CancellationToken cancellationToken = default);
 
     Task DeleteCollectionAsync(
-        string collection,
+        string collectionName,
         CancellationToken cancellationToken = default);
 
-    Task<IEnumerable<VectorRecord>> FindRecordsAsync(
-        string collection,
+    Task<IEnumerable<RankedPoint>> SearchVectorsAsync(
+        string collectionName,
+        float[] input,
+        float minScore = 0.0f,
+        ulong limit = 5,
         MemoryFilter? filter = null,
         CancellationToken cancellationToken = default);
 
-    Task UpsertRecordAsync(
-        string collection,
-        VectorRecord records,
+    Task UpsertVectorsAsync(
+        string collectionName,
+        IEnumerable<VectorPoint> points,
         CancellationToken cancellationToken = default);
 
-    Task UpsertRecordsAsync(
-        string collection,
-        IEnumerable<VectorRecord> records,
-        CancellationToken cancellationToken = default);
-
-    Task DeleteRecordsAsync(
-        string collection,
+    Task DeleteVectorsAsync(
+        string collectionName,
         string documentId,
-        CancellationToken cancellationToken = default);
-
-    Task SearchRecordsAsync(
-        string collection,
-        float[] input,
-        int limit = 5,
         CancellationToken cancellationToken = default);
 }

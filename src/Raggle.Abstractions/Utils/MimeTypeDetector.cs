@@ -6,9 +6,13 @@ public class MimeTypeDetector
 {
     private readonly FileExtensionContentTypeProvider _provider = new();
 
-    public bool TryGetContentType(string filePath, out string contentType)
+    public MimeTypeDetector()
     {
-        return _provider.TryGetContentType(filePath, out contentType);
+    }
+
+    public bool TryGetContentType(string fileName, out string contentType)
+    {
+        return _provider.TryGetContentType(fileName, out contentType);
     }
 
     public void SetContentType(string extension, string contentType)

@@ -8,8 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MessagePack" Version="2.5.187" />
-    <PackageReference Include="Microsoft.AspNetCore.StaticFiles" Version="2.1.1" />
     <PackageReference Include="NJsonSchema" Version="11.0.2" />
   </ItemGroup>
 
@@ -19,7 +17,6 @@
     <ProjectReference Include="..\Raggle.Document.Azure\Raggle.Document.Azure.csproj" />
     <ProjectReference Include="..\Raggle.Document.Disk\Raggle.Document.Disk.csproj" />
     <ProjectReference Include="..\Raggle.Engines.Anthropic\Raggle.Engines.Anthropic.csproj" />
-    <ProjectReference Include="..\Raggle.Engines.LLamaSharp\Raggle.Engines.LLamaSharp.csproj" />
     <ProjectReference Include="..\Raggle.Engines.OpenAI\Raggle.Engines.OpenAI.csproj" />
     <ProjectReference Include="..\Raggle.Helpers.HuggingFace\Raggle.Helpers.HuggingFace.csproj" />
     <ProjectReference Include="..\Raggle.Queue.Disk\Raggle.Queue.Disk.csproj" />

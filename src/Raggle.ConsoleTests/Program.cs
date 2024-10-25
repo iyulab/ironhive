@@ -14,17 +14,6 @@ async Task<string> GetKey()
     return key;
 }
 
-var pipe = new DataPipeline
-{
-    CollectionName = "Test",
-    DocumentId = "Test",
-    Steps = ["1","2","3","4","5"],
-};
-pipe.InitializeSteps();
-pipe.AdjustSteps(3);
 
-var json = JsonSerializer.Serialize(pipe);
-
-var pipe2 = JsonSerializer.Deserialize<DataPipeline>(json);
 
 return;

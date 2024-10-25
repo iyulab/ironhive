@@ -2,37 +2,42 @@
 
 namespace Raggle.Abstractions.Memory;
 
-public enum EmbeddingStatus
+public enum MemorizationStatus
 {
     /// <summary>
     /// 임베딩 되지 않은 상태
     /// </summary>
-    NotEmbedded,
+    NotMemorized,
 
     /// <summary>
-    /// 임베딩 작업이 대기 중인 상태
+    /// 임베딩 작업이 대기중인 상태
     /// </summary>
-    Pending,
+    Queued,
 
     /// <summary>
     /// 임베딩 중인 상태
     /// </summary>
-    Embedding,
+    Memorizing,
 
     /// <summary>
     /// 임베딩 된 상태
     /// </summary>
-    Embedded,
+    Memorized,
+
+    /// <summary>
+    /// 임베딩이 실패한 상태
+    /// </summary>
+    FailedMemorization,
 }
 
 [MessagePackObject]
-public class DocumentRecord
+public class DocumentProfile
 {
     /// <summary>
     /// 벡터화 상태
     /// </summary>
     [Key(0)]
-    public EmbeddingStatus EmbeddingStatus { get; set; } = EmbeddingStatus.NotEmbedded;
+    public required MemorizationStatus Status { get; set; }
 
     /// <summary>
     /// 문서의 식별자
@@ -56,7 +61,7 @@ public class DocumentRecord
     /// 파일 크기 (byte)
     /// </summary>
     [Key(4)]
-    public long? Size { get; set; }
+    public long? ContentLength { get; set; }
 
     /// <summary>
     /// 문서의 태그들
@@ -68,7 +73,7 @@ public class DocumentRecord
     /// 문서 생성 시각
     /// </summary>
     [Key(6)]
-    public DateTime? CreatedAt { get; set; }
+    public required DateTime CreatedAt { get; set; } 
 
     /// <summary>
     /// 문서 업데이트 시각
