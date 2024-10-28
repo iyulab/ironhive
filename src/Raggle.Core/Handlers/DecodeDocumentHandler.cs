@@ -2,12 +2,12 @@
 
 namespace Raggle.Core.Handlers;
 
-public class DecodeDocumenteHandler : IPipelineHandler
+public class DecodeDocumentHandler : IPipelineHandler
 {
     private readonly IDocumentStorage _documentStorage;
     private readonly IContentDecoder[] _decoders;
 
-    public DecodeDocumenteHandler(
+    public DecodeDocumentHandler(
         IDocumentStorage documentStorage,
         IContentDecoder[] decoders)
     {

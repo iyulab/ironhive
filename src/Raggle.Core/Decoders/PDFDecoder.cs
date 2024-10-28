@@ -1,6 +1,7 @@
 ﻿using Raggle.Abstractions.Memory;
+using System.Collections.Concurrent;
 using UglyToad.PdfPig;
-using UglyToad.PdfPig.Content;
+using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 
 namespace Raggle.Core.Extractors;
 
@@ -9,28 +10,28 @@ public class PDFDecoder : IContentDecoder
     /// <inheritdoc />
     public string[] SupportTypes => 
     [
-        "application/pdf",
-        "application/x-pdf",
-        "application/acrobat",
-        "applications/vnd.pdf",
-        "text/pdf",
-        "text/x-pdf"
+        "application/pdf"
     ];
 
     /// <inheritdoc />
-    public Task<IDocumentContent[]> DecodeAsync(Stream stream, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<DocumentSection>> DecodeAsync(Stream stream, CancellationToken cancellationToken = default)
     {
-        using var pdfDocument = PdfDocument.Open(stream) ?? throw new Exception("Failed to open PDF document.");
+        using var pdf = PdfDocument.Open(stream);
+        var pages = pdf.GetPages();
 
-        var results = new List<IDocumentContent>();
-        foreach (var page in pdfDocument.GetPages())
+        var results = new ConcurrentBag<DocumentSection>();
+        await Parallel.ForEachAsync(pages, cancellationToken, (page, ct) =>
         {
-            var text = page.Text;
-            var images = page.GetImages();
-            results.Add(new TextDocumentContent { Text = text });
-        }
+            ct.ThrowIfCancellationRequested();
 
-        return Task.FromResult(results.ToArray());
+            // Get text from page
+            var text = ContentOrderTextExtractor.GetText(page, true);
+            var section = new DocumentSection(page.Number, text);
+
+            results.Add(section);
+            return ValueTask.CompletedTask;
+        });
+
+        return results.OrderBy(x => x.Number);
     }
-
 }

@@ -18,7 +18,7 @@ public interface IVectorStorage : IDisposable
         string collectionName,
         CancellationToken cancellationToken = default);
 
-    Task<IEnumerable<RankedPoint>> SearchVectorsAsync(
+    Task<IEnumerable<ScoredVectorPoint>> SearchVectorsAsync(
         string collectionName,
         float[] input,
         float minScore = 0.0f,

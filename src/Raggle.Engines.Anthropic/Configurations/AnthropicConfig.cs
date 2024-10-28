@@ -9,15 +9,21 @@ namespace Raggle.Engines.Anthropic.Configurations;
 public class AnthropicConfig
 {
     /// <summary>
+    /// Gets or sets the endpoint URL for the OpenAI API.
+    /// Default value is <see cref="AnthropicConstants.DefaultEndPoint"/>.
+    /// </summary>
+    public string EndPoint { get; set; } = string.Empty;
+
+    /// <summary>
     /// Gets or sets the API key used for authenticating requests to the Anthropic API.
     /// </summary>
     public string ApiKey { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the version of the Anthropic API being used.
-    /// This value is typically set to a default version to 2023-06-01 currently.
+    /// This value is typically set to a <see cref="AnthropicConstants.VersionHeaderValue"/>
     /// </summary>
-    public string Version { get; set; } = AnthropicConstants.VersionHeaderValue;
+    public string Version { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the JSON serialization options used for Anthropic API

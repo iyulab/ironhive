@@ -29,8 +29,6 @@ public abstract class OpenAIClientBase
     {
         var requestUri = new UriBuilder
         {
-            Scheme = "https",
-            Host = OpenAIConstants.Host,
             Path = OpenAIConstants.GetModelsPath
         }.ToString();
 
@@ -45,13 +43,22 @@ public abstract class OpenAIClientBase
         if (string.IsNullOrWhiteSpace(config.ApiKey))
             throw new ArgumentException("OpenAI API key is required.");
 
-        var client = new HttpClient();
-        client.DefaultRequestHeaders.Add(OpenAIConstants.AuthHeaderName,
-            string.Format(OpenAIConstants.AuthHeaderValue, config.ApiKey));
+        var client = new HttpClient
+        {
+            BaseAddress = string.IsNullOrWhiteSpace(config.EndPoint)
+                ? new Uri(OpenAIConstants.DefaultEndPoint)
+                : new Uri(config.EndPoint.EndsWith('/') ? config.EndPoint : $"{config.EndPoint}/")
+        };
+
+        if (!string.IsNullOrWhiteSpace(config.ApiKey))
+            client.DefaultRequestHeaders.Add(OpenAIConstants.ApiKeyHeaderName, string.Format(OpenAIConstants.ApiKeyHeaderValue, config.ApiKey));
+        
         if (!string.IsNullOrWhiteSpace(config.Organization))
-            client.DefaultRequestHeaders.Add(OpenAIConstants.OrgHeaderName, config.Organization);
+            client.DefaultRequestHeaders.Add(OpenAIConstants.OrganizationHeaderName, config.Organization);
+        
         if (!string.IsNullOrWhiteSpace(config.Project))
             client.DefaultRequestHeaders.Add(OpenAIConstants.ProjectHeaderName, config.Project);
+        
         return client;
     }
 }

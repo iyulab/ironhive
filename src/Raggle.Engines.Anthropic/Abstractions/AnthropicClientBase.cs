@@ -16,9 +16,9 @@ public abstract class AnthropicClientBase
 
     protected AnthropicClientBase(string apiKey)
     {
-        var defaultConfig = new AnthropicConfig { ApiKey = apiKey };
-        _client = CreateHttpClient(defaultConfig);
-        _jsonOptions = defaultConfig.JsonOptions;
+        var config = new AnthropicConfig { ApiKey = apiKey };
+        _client = CreateHttpClient(config);
+        _jsonOptions = config.JsonOptions;
     }
 
     protected IEnumerable<AnthropicModel> GetModels()
@@ -28,14 +28,20 @@ public abstract class AnthropicClientBase
 
     private static HttpClient CreateHttpClient(AnthropicConfig config)
     {
-        if (string.IsNullOrEmpty(config.ApiKey))
-            throw new ArgumentException("API key is required.");
-        if (string.IsNullOrEmpty(config.Version))
-            throw new ArgumentException("Version is required.");
+        var client = new HttpClient
+        {
+            BaseAddress = string.IsNullOrEmpty(config.EndPoint) 
+                ? new Uri(AnthropicConstants.DefaultEndPoint) 
+                : new Uri(config.EndPoint.EndsWith('/') ? config.EndPoint : $"{config.EndPoint}/"),
+        };
 
-        var client = new HttpClient();
-        client.DefaultRequestHeaders.Add(AnthropicConstants.AuthHeaderName, config.ApiKey);
-        client.DefaultRequestHeaders.Add(AnthropicConstants.VersionHeaderName, config.Version);
+        client.DefaultRequestHeaders.Add(
+            AnthropicConstants.VersionHeaderName,
+            string.IsNullOrEmpty(config.Version) ? AnthropicConstants.VersionHeaderValue : config.Version);
+
+        if (!string.IsNullOrEmpty(config.ApiKey))
+            client.DefaultRequestHeaders.Add(AnthropicConstants.ApiKeyHeaderName, config.ApiKey);
+
         return client;
     }
 }

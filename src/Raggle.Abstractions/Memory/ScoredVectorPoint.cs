@@ -1,6 +1,6 @@
 ﻿namespace Raggle.Abstractions.Memory;
 
-public class RankedPoint
+public class ScoredVectorPoint
 {
     public required string DocumentId { get; set; }
 

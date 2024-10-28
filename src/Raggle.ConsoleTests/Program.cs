@@ -1,9 +1,4 @@
-﻿using MessagePack;
-using Raggle.Abstractions.Memory;
-using Raggle.Document.Azure;
-using Raggle.Document.Disk;
-using System.Diagnostics;
-using System.Text;
+﻿using Raggle.Core.Decoders;
 using System.Text.Json;
 
 async Task<string> GetKey()
@@ -14,6 +9,10 @@ async Task<string> GetKey()
     return key;
 }
 
+var filePath = @"C:\temp\sample\ppt_sample.pptx";
+using var stream = File.OpenRead(filePath);
 
+var decoder = new SlideDecoder();
+await decoder.DecodeAsync(stream);
 
 return;

@@ -1,6 +1,6 @@
-﻿using DocumentFormat.OpenXml.Drawing;
-using DocumentFormat.OpenXml.Packaging;
+﻿using DocumentFormat.OpenXml.Packaging;
 using Raggle.Abstractions.Memory;
+using System.Collections.Concurrent;
 
 namespace Raggle.Core.Decoders;
 
@@ -8,39 +8,28 @@ public class SlideDecoder : IContentDecoder
 {
     public string[] SupportTypes =>
     [
-        "application/vnd.ms-powerpoint",
         "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        "application/vnd.openxmlformats-officedocument.presentationml.slideshow",
-        "application/vnd.ms-powerpoint.presentation.macroenabled.12",
-        "application/vnd.ms-powerpoint.slideshow.macroenabled.12",
-        "application/vnd.openxmlformats-officedocument.presentationml.template",
-        "application/vnd.ms-powerpoint.template.macroenabled.12",
     ];
 
-    public async Task<IDocumentContent[]> DecodeAsync(Stream data, CancellationToken cancellationToken = default)
+    public Task<IEnumerable<DocumentSection>> DecodeAsync(Stream data, CancellationToken cancellationToken = default)
     {
-        using var presentation = PresentationDocument.Open(data, false);
-        if (presentation == null)
-            throw new Exception("Failed to open presentation document.");
+        using var presentation = PresentationDocument.Open(data, false)        
+            ?? throw new Exception("Failed to open presentation document.");
 
-        var presentationPart = presentation.PresentationPart;
-        if (presentationPart?.Presentation == null)
-            throw new Exception("Invalid presentation document.");
+        var slides = presentation.PresentationPart?.SlideParts.Select(p => p.Slide)
+            ?? throw new Exception("Failed to get slide parts.");
 
-        var slideParts = presentationPart.SlideParts.ToList();
-        var results = new List<IDocumentContent>();
-
-        int slideIndex = 1;
-        foreach (var slidePart in slideParts)
+        var results = new ConcurrentBag<DocumentSection>(); // Thread-safe collection
+        for (var i = 0; i < slides.Count(); i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            
-            var text = slidePart.Slide.Descendants<Text>().Select(t => t.Text).ToList();
-            var images = slidePart.ImageParts.ToList();
-            results.Add(new TextDocumentContent { Text = string.Join(Environment.NewLine, text) });
-            slideIndex++;
+
+            var texts = slides.ElementAt(i).Descendants<DocumentFormat.OpenXml.Drawing.Text>().Select(t => t.Text).ToList();
+            var text = string.Join(Environment.NewLine, texts);
+
+            results.Add(new DocumentSection(i + 1, text));
         }
 
-        return results.ToArray();
+        return Task.FromResult<IEnumerable<DocumentSection>>(results);
     }
 }

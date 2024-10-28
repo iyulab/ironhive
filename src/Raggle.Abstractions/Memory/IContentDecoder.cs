@@ -10,5 +10,5 @@ public interface IContentDecoder
     /// <summary>
     /// Extract content from the given file.
     /// </summary>
-    Task<IDocumentContent[]> DecodeAsync(Stream data, CancellationToken cancellationToken = default);
+    Task<IEnumerable<DocumentSection>> DecodeAsync(Stream data, CancellationToken cancellationToken = default);
 }

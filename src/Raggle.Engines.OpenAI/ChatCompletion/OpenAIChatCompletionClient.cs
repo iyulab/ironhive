@@ -26,17 +26,10 @@ public class OpenAIChatCompletionClient : OpenAIClientBase
 
     public async Task<ChatCompletionResponse> PostChatCompletionAsync(ChatCompletionRequest request)
     {
-        var requestUri = new UriBuilder
-        {
-            Scheme = "https",
-            Host = OpenAIConstants.Host,
-            Path = OpenAIConstants.PostChatCompletionPath
-        }.ToString();
-
         request.Stream = false;
         var json = JsonSerializer.Serialize(request, _jsonOptions);
-        var content = new StringContent(JsonSerializer.Serialize(request, _jsonOptions), Encoding.UTF8, "application/json");
-        var response = await _client.PostAsync(requestUri, content);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        var response = await _client.PostAsync(OpenAIConstants.PostChatCompletionPath, content);
         response.EnsureSuccessStatusCode();
         var message = await response.Content.ReadFromJsonAsync<ChatCompletionResponse>()
             ?? throw new InvalidOperationException("Failed to deserialize response.");
@@ -45,16 +38,10 @@ public class OpenAIChatCompletionClient : OpenAIClientBase
 
     public async IAsyncEnumerable<StreamingChatCompletionResponse> PostStreamingChatCompletionAsync(ChatCompletionRequest request)
     {
-        var requestUri = new UriBuilder
-        {
-            Scheme = "https",
-            Host = OpenAIConstants.Host,
-            Path = OpenAIConstants.PostChatCompletionPath,
-        }.ToString();
-
         request.Stream = true;
-        var content = new StringContent(JsonSerializer.Serialize(request, _jsonOptions), Encoding.UTF8, "application/json");
-        var response = await _client.PostAsync(requestUri, content);
+        var json = JsonSerializer.Serialize(request, _jsonOptions);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        var response = await _client.PostAsync(OpenAIConstants.PostChatCompletionPath, content);
         response.EnsureSuccessStatusCode();
 
         using var stream = await response.Content.ReadAsStreamAsync();

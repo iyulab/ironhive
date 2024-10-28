@@ -26,15 +26,9 @@ internal class OpenAIEmbeddingClient : OpenAIClientBase
 
     internal async Task<IEnumerable<EmbeddingResponse>> PostEmbeddingAsync(EmbeddingRequest request)
     {
-        var requestUri = new UriBuilder
-        {
-            Scheme = "https",
-            Host = OpenAIConstants.Host,
-            Path = OpenAIConstants.PostEmbeddingPath
-        }.ToString();
-
-        var content = new StringContent(JsonSerializer.Serialize(request, _jsonOptions), Encoding.UTF8, "application/json");
-        var response = await _client.PostAsync(requestUri, content);
+        var json = JsonSerializer.Serialize(request, _jsonOptions);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        var response = await _client.PostAsync(OpenAIConstants.PostEmbeddingPath, content);
         response.EnsureSuccessStatusCode();
 
         var jsonDocument = await response.Content.ReadFromJsonAsync<JsonDocument>() 

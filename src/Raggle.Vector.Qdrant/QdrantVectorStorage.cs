@@ -97,7 +97,7 @@ public class QdrantVectorStorage : IVectorStorage
             cancellationToken: cancellationToken);
     }
 
-    public async Task<IEnumerable<RankedPoint>> SearchVectorsAsync(string collectionName, float[] input, float minScore = 0.0f, ulong limit = 5, MemoryFilter? filter = null, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<ScoredVectorPoint>> SearchVectorsAsync(string collectionName, float[] input, float minScore = 0.0f, ulong limit = 5, MemoryFilter? filter = null, CancellationToken cancellationToken = default)
     {
         Filter? condition = null;
         if (filter != null)
@@ -130,7 +130,7 @@ public class QdrantVectorStorage : IVectorStorage
             vectorName: DefaultVectorsName,
             cancellationToken: cancellationToken);
 
-        var rankedPoints = new List<RankedPoint>();
+        var rankedPoints = new List<ScoredVectorPoint>();
         foreach (var result in results)
         {
             var documentId = result.Payload.GetValueOrDefault("documentId")?.StringValue;
@@ -138,7 +138,7 @@ public class QdrantVectorStorage : IVectorStorage
             if (documentId == null || text == null)
                 continue;
 
-            rankedPoints.Add(new RankedPoint
+            rankedPoints.Add(new ScoredVectorPoint
             {
                 DocumentId = documentId,
                 Score = result.Score,

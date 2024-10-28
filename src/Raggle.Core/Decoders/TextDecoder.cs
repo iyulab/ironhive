@@ -9,19 +9,16 @@ public class TextDecoder : IContentDecoder
         "text/plain"
     ];
 
-    public Task<IDocumentContent[]> DecodeAsync(Stream data, CancellationToken cancellationToken)
+    public Task<IEnumerable<DocumentSection>> DecodeAsync(Stream data, CancellationToken cancellationToken)
     {
         using var reader = new StreamReader(data);
         var text = reader.ReadToEnd();
-        var lines = text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-        var results = new List<IDocumentContent>();
-        foreach (var line in lines)
+        //var lines = text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+
+        var results = new List<DocumentSection>
         {
-            results.Add(new TextDocumentContent
-            {
-                Text = line
-            });
-        }
-        return Task.FromResult(results.ToArray());
+            new DocumentSection(1, text)
+        };
+        return Task.FromResult(results.AsEnumerable());
     }
 }

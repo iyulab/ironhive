@@ -9,6 +9,12 @@ namespace Raggle.Engines.OpenAI.Configurations;
 public class OpenAIConfig
 {
     /// <summary>
+    /// Gets or sets the endpoint URL for the OpenAI API.
+    /// Default value is <see cref="OpenAIConstants.DefaultEndPoint"/>.
+    /// </summary>
+    public string EndPoint { get; set; } = string.Empty;
+
+    /// <summary>
     /// Gets or sets the API key used for authenticating requests to the OpenAI API.
     /// </summary>
     public string ApiKey { get; set; } = string.Empty;

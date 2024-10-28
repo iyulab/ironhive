@@ -61,7 +61,7 @@ public class LiteDBVectorStorage : IVectorStorage
         return Task.CompletedTask;
     }
 
-    public Task<IEnumerable<RankedPoint>> SearchVectorsAsync(string collectionName, float[] input, float minScore = 0, ulong limit = 5, MemoryFilter? filter = null, CancellationToken cancellationToken = default)
+    public Task<IEnumerable<ScoredVectorPoint>> SearchVectorsAsync(string collectionName, float[] input, float minScore = 0, ulong limit = 5, MemoryFilter? filter = null, CancellationToken cancellationToken = default)
     {
         var collection = _db.GetCollection<VectorPoint>(collectionName);
         var query = collection.Query();
@@ -76,7 +76,7 @@ public class LiteDBVectorStorage : IVectorStorage
 
         var results = query
             .ToList()
-            .Select(p => new RankedPoint
+            .Select(p => new ScoredVectorPoint
             {
                 DocumentId = p.DocumentId,
                 Score = TensorPrimitives.CosineSimilarity(input, p.Vectors),
