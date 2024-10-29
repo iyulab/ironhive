@@ -1,4 +1,6 @@
-﻿namespace Raggle.Abstractions.Memory;
+﻿using Raggle.Abstractions.Memory.Vector;
+
+namespace Raggle.Abstractions.Memory.Document;
 
 public interface IDocumentStorage : IDisposable
 {
@@ -17,7 +19,7 @@ public interface IDocumentStorage : IDisposable
         string collectionName,
         CancellationToken cancellationToken = default);
 
-    Task<IEnumerable<DocumentProfile>> FindDocumentsAsync(
+    Task<IEnumerable<DocumentSummary>> FindDocumentsAsync(
         string collectionName,
         MemoryFilter? filter = null,
         CancellationToken cancellationToken = default);
@@ -27,9 +29,8 @@ public interface IDocumentStorage : IDisposable
         string documentId,
         CancellationToken cancellationToken = default);
 
-    Task<DocumentProfile> UpsertDocumentAsync(
-        string collectionName,
-        DocumentProfile document,
+    Task<DocumentSummary> UpsertDocumentAsync(
+        DocumentSummary document,
         Stream? content = null,
         CancellationToken cancellationToken = default);
 
@@ -60,7 +61,7 @@ public interface IDocumentStorage : IDisposable
         string documentId,
         string filePath,
         Stream content,
-        bool overwrite = false,
+        bool overwrite = true,
         CancellationToken cancellationToken = default);
 
     Task DeleteDocumentFileAsync(

@@ -1,4 +1,4 @@
-﻿namespace Raggle.Abstractions.Memory;
+﻿namespace Raggle.Abstractions.Memory.Vector;
 
 public class ScoredVectorPoint
 {

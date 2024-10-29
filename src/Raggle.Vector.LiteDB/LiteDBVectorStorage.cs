@@ -1,5 +1,5 @@
 ﻿using LiteDB;
-using Raggle.Abstractions.Memory;
+using Raggle.Abstractions.Memory.Vector;
 using System.Numerics.Tensors;
 
 namespace Raggle.Vector.LiteDB;

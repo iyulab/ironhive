@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Raggle.Abstractions.Schema;
+namespace Raggle.Abstractions.Tools.Schema;
 
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(StringJsonSchema), "string")]

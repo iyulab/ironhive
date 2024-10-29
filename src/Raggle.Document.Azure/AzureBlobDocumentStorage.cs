@@ -3,7 +3,8 @@ using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using MessagePack;
-using Raggle.Abstractions.Memory;
+using Raggle.Abstractions.Memory.Document;
+using Raggle.Abstractions.Memory.Vector;
 using System.Text.RegularExpressions;
 
 namespace Raggle.Document.Azure;
@@ -59,7 +60,7 @@ public class AzureBlobDocumentStorage : IDocumentStorage
 
         // 인덱스 파일 초기화
         var indexBlob = container.GetBlobClient(DocumentIndexFileName);
-        var emptyIndex = new List<DocumentProfile>();
+        var emptyIndex = new List<DocumentSummary>();
         var serializedIndex = MessagePackSerializer.Serialize(emptyIndex);
         using (var stream = new MemoryStream(serializedIndex))
         {
@@ -75,7 +76,7 @@ public class AzureBlobDocumentStorage : IDocumentStorage
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<DocumentProfile>> FindDocumentsAsync(string collectionName, MemoryFilter? filter = null, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<DocumentSummary>> FindDocumentsAsync(string collectionName, MemoryFilter? filter = null, CancellationToken cancellationToken = default)
     {
         var container = _client.GetBlobContainerClient(collectionName);
         var indexBlob = container.GetBlobClient(DocumentIndexFileName);
@@ -106,14 +107,14 @@ public class AzureBlobDocumentStorage : IDocumentStorage
     }
 
     /// <inheritdoc />
-    public async Task<DocumentProfile> UpsertDocumentAsync(string collectionName, DocumentProfile document, Stream? content = null, CancellationToken cancellationToken = default)
+    public async Task<DocumentSummary> UpsertDocumentAsync(DocumentSummary document, Stream? content = null, CancellationToken cancellationToken = default)
     {
         int retryAttempts = 0;
         while (retryAttempts < _maxRetryAttempts)
         {
             try
             {
-                var container = _client.GetBlobContainerClient(collectionName);
+                var container = _client.GetBlobContainerClient(document.CollectionName);
                 var indexBlob = container.GetBlobClient(DocumentIndexFileName);
 
                 // 인덱스 로드
@@ -126,7 +127,7 @@ public class AzureBlobDocumentStorage : IDocumentStorage
 
                 if (content != null)
                 {
-                    await WriteDocumentFileAsync(collectionName, document.DocumentId, document.FileName, content, true, cancellationToken);
+                    await WriteDocumentFileAsync(document.CollectionName, document.DocumentId, document.FileName, content, true, cancellationToken);
                 }
 
                 // 문서 추가 또는 업데이트
@@ -216,7 +217,7 @@ public class AzureBlobDocumentStorage : IDocumentStorage
     }
 
     /// <inheritdoc />
-    public async Task WriteDocumentFileAsync(string collectionName, string documentId, string filePath, Stream content, bool overwrite = false, CancellationToken cancellationToken = default)
+    public async Task WriteDocumentFileAsync(string collectionName, string documentId, string filePath, Stream content, bool overwrite = true, CancellationToken cancellationToken = default)
     {
         var container = _client.GetBlobContainerClient(collectionName);
         var blobName = Path.Combine(documentId, filePath).Replace("\\", "/");
@@ -295,7 +296,7 @@ public class AzureBlobDocumentStorage : IDocumentStorage
     }
 
     // 인덱스 파일 로드 with ETag
-    private async Task<(List<DocumentProfile>, ETag?)> LoadDocumentIndexWithETagAsync(BlobClient indexBlob, CancellationToken cancellationToken)
+    private async Task<(List<DocumentSummary>, ETag?)> LoadDocumentIndexWithETagAsync(BlobClient indexBlob, CancellationToken cancellationToken)
     {
         if (!await indexBlob.ExistsAsync(cancellationToken))
             throw new InvalidOperationException($"'{indexBlob.Name}' 인덱스 파일이 존재하지 않습니다.");
@@ -303,13 +304,13 @@ public class AzureBlobDocumentStorage : IDocumentStorage
         using var stream = new MemoryStream();
         await indexBlob.DownloadToAsync(stream, cancellationToken);
         stream.Position = 0;
-        var index = await MessagePackSerializer.DeserializeAsync<List<DocumentProfile>>(stream, cancellationToken: cancellationToken);
+        var index = await MessagePackSerializer.DeserializeAsync<List<DocumentSummary>>(stream, cancellationToken: cancellationToken);
         var eTag = indexBlob.GetProperties().Value.ETag;
         return (index, eTag);
     }
 
     // 인덱스 파일 저장 with ETag
-    private async Task SaveDocumentIndexAsync(BlobClient indexBlob, List<DocumentProfile> index, ETag? eTag, CancellationToken cancellationToken)
+    private async Task SaveDocumentIndexAsync(BlobClient indexBlob, List<DocumentSummary> index, ETag? eTag, CancellationToken cancellationToken)
     {
         var serializedIndex = MessagePackSerializer.Serialize(index);
         using var stream = new MemoryStream(serializedIndex);

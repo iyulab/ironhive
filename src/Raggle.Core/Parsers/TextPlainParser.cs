@@ -1,19 +1,20 @@
-﻿using Raggle.Abstractions.Memory;
+﻿using Raggle.Core.Document;
+using Raggle.Core.Utils;
 
-namespace Raggle.Core.Extractors;
+namespace Raggle.Core.Parsers;
 
-public class TextDecoder : IContentDecoder
+public class TextPlainParser : IDocumentParser
 {
     public string[] SupportTypes =>
     [
         "text/plain"
     ];
 
-    public Task<IEnumerable<DocumentSection>> DecodeAsync(Stream data, CancellationToken cancellationToken)
+    public Task<IEnumerable<DocumentSection>> ParseAsync(Stream data, CancellationToken cancellationToken)
     {
         using var reader = new StreamReader(data);
         var text = reader.ReadToEnd();
-        //var lines = text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        text = TextCleaner.Clean(text);
 
         var results = new List<DocumentSection>
         {

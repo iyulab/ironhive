@@ -1,4 +1,4 @@
-﻿namespace Raggle.Abstractions.Memory;
+﻿namespace Raggle.Abstractions.Memory.Vector;
 
 /// <summary>
 /// Document Or Vector Storage에서 사용할 필터링 조건을 나타냅니다.

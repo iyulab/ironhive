@@ -1,4 +1,4 @@
-﻿using Raggle.Abstractions.Schema;
+﻿using Raggle.Abstractions.Tools.Schema;
 using System.ComponentModel;
 using System.Reflection;
 using System.Text.Json;

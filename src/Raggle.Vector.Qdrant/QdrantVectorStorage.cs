@@ -2,8 +2,8 @@
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
 using static Qdrant.Client.Grpc.Conditions;
-using Raggle.Abstractions.Memory;
 using System.Net.Http.Headers;
+using Raggle.Abstractions.Memory.Vector;
 
 namespace Raggle.Vector.Qdrant;
 

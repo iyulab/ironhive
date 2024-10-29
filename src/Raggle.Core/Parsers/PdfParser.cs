@@ -1,11 +1,12 @@
-﻿using Raggle.Abstractions.Memory;
+﻿using Raggle.Core.Document;
+using Raggle.Core.Utils;
 using System.Collections.Concurrent;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 
-namespace Raggle.Core.Extractors;
+namespace Raggle.Core.Parsers;
 
-public class PDFDecoder : IContentDecoder
+public class PdfParser : IDocumentParser
 {
     /// <inheritdoc />
     public string[] SupportTypes => 
@@ -14,7 +15,7 @@ public class PDFDecoder : IContentDecoder
     ];
 
     /// <inheritdoc />
-    public async Task<IEnumerable<DocumentSection>> DecodeAsync(Stream stream, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<DocumentSection>> ParseAsync(Stream stream, CancellationToken cancellationToken = default)
     {
         using var pdf = PdfDocument.Open(stream);
         var pages = pdf.GetPages();
@@ -26,9 +27,8 @@ public class PDFDecoder : IContentDecoder
 
             // Get text from page
             var text = ContentOrderTextExtractor.GetText(page, true);
-            var section = new DocumentSection(page.Number, text);
-
-            results.Add(section);
+            text = TextCleaner.Clean(text);
+            results.Add(new DocumentSection(page.Number, text));
             return ValueTask.CompletedTask;
         });
 

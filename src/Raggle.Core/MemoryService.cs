@@ -1,4 +1,6 @@
 ﻿using Raggle.Abstractions.Memory;
+using Raggle.Abstractions.Memory.Document;
+using Raggle.Abstractions.Memory.Vector;
 using Raggle.Abstractions.Utils;
 
 namespace Raggle.Core;
@@ -10,7 +12,7 @@ public class MemoryService : IMemoryService
     private readonly IDocumentStorage _documentStorage;
     private readonly IVectorStorage _vectorStorage;
     private readonly IPipelineOrchestrator _orchestrator;
-    
+
     public MemoryService(
         IDocumentStorage documentStorage,
         IVectorStorage vectorStorage,
@@ -21,13 +23,19 @@ public class MemoryService : IMemoryService
         _orchestrator = orchestrator;
     }
 
-    public async Task<IEnumerable<string>> GetCollectionListAsync(CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    public async Task<IEnumerable<string>> GetCollectionListAsync(
+        CancellationToken cancellationToken = default)
     {
         return await _documentStorage.GetCollectionListAsync(cancellationToken);
     }
 
-    public async Task CreateCollectionAsync(string collectionName, ulong vectorSize, CancellationToken cancellationToken = default)
-    {   
+    /// <inheritdoc />
+    public async Task CreateCollectionAsync(
+        string collectionName,
+        ulong vectorSize,
+        CancellationToken cancellationToken = default)
+    {
         try
         {
             await _documentStorage.CreateCollectionAsync(collectionName, cancellationToken);
@@ -40,7 +48,10 @@ public class MemoryService : IMemoryService
         }
     }
 
-    public async Task DeleteCollectionAsync(string collectionName, CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    public async Task DeleteCollectionAsync(
+        string collectionName,
+        CancellationToken cancellationToken = default)
     {
         if (await _documentStorage.ExistCollectionAsync(collectionName, cancellationToken))
             await _documentStorage.DeleteCollectionAsync(collectionName, cancellationToken);
@@ -49,7 +60,8 @@ public class MemoryService : IMemoryService
             await _vectorStorage.DeleteCollectionAsync(collectionName, cancellationToken);
     }
 
-    public async Task<IEnumerable<DocumentProfile>> FindDocumentsAsync(
+    /// <inheritdoc />
+    public async Task<IEnumerable<DocumentSummary>> FindDocumentsAsync(
         string collectionName,
         MemoryFilter? filter = null,
         CancellationToken cancellationToken = default)
@@ -57,43 +69,67 @@ public class MemoryService : IMemoryService
         return await _documentStorage.FindDocumentsAsync(collectionName, filter, cancellationToken);
     }
 
+    /// <inheritdoc />
+    public async Task<DocumentSummary> UploadDocumentAsync(
+        string collectionName,
+        string documentId,
+        string fileName,
+        Stream content,
+        string[]? tags = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_detecter.TryGetContentType(fileName, out var contentType))
+            throw new InvalidOperationException($"{fileName} is dont know content type");
+
+        var document = new DocumentSummary
+        {
+            Status = MemorizationStatus.NotMemorized,
+            CollectionName = collectionName,
+            DocumentId = documentId,
+            FileName = fileName,
+            ContentType = contentType,
+            ContentLength = content.Length,
+            CreatedAt = DateTime.UtcNow,
+            Tags = tags ?? [],
+        };
+
+        return await _documentStorage.UpsertDocumentAsync(
+            document: document,
+            content: content,
+            cancellationToken: cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task<DataPipeline> MemorizeDocumentAsync(
         string collectionName,
         string documentId,
         string[] steps,
-        string[]? tags = null,
         UploadRequest? uploadRequest = null,
         CancellationToken cancellationToken = default)
     {
+        DocumentSummary document = null!;
         if (uploadRequest != null)
         {
-            if (!_detecter.TryGetContentType(uploadRequest.FileName, out var contentType))
-                throw new InvalidOperationException($"{uploadRequest.FileName} is dont know content type");
-
-            var document = new DocumentProfile
-            {
-                Status = MemorizationStatus.NotMemorized,
-                DocumentId = documentId,
-                FileName = uploadRequest.FileName,
-                ContentLength = uploadRequest.Content.Length,
-                ContentType = contentType,
-                Tags = tags ?? [],
-                CreatedAt = DateTime.UtcNow,
-            };
-            await _documentStorage.UpsertDocumentAsync(collectionName, document, uploadRequest.Content, cancellationToken);
+            document = await UploadDocumentAsync(collectionName, documentId, uploadRequest.FileName, uploadRequest.Content, uploadRequest.Tags, cancellationToken);
+        }
+        else
+        {
+            var filter = new MemoryFilter([documentId]);
+            document = (await FindDocumentsAsync(collectionName, filter, cancellationToken)).FirstOrDefault()
+                ?? throw new InvalidOperationException($"{documentId} is not found in {collectionName}");
         }
 
         var pipeline = new DataPipeline
         {
-            CollectionName = collectionName,
-            DocumentId = documentId,
+            Document = document,
             Steps = steps.ToList(),
             StartedAt = DateTime.UtcNow,
         };
-        _ = _orchestrator.ExecuteAsync(pipeline, cancellationToken);
+        await _orchestrator.ExecuteAsync(pipeline, cancellationToken);
         return pipeline;
     }
 
+    /// <inheritdoc />
     public async Task UnMemorizeDocumentAsync(
         string collectionName,
         string documentId,
@@ -103,6 +139,7 @@ public class MemoryService : IMemoryService
         await _documentStorage.DeleteDocumentAsync(collectionName, documentId, cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task SearchDocumentMemoryAsync(
         string collectionName,
         string query,
@@ -114,9 +151,5 @@ public class MemoryService : IMemoryService
         float[] input = [];
         await _vectorStorage.SearchVectorsAsync(collectionName, input, minScore, limit, filter, cancellationToken);
     }
-
-    #region Private Methods
-
-    #endregion
 
 }

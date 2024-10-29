@@ -1,4 +1,4 @@
-﻿namespace Raggle.Abstractions.Memory;
+﻿namespace Raggle.Abstractions.Memory.Vector;
 
 /// <summary>
 /// Represents a vector record.

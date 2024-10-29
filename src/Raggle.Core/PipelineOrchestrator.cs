@@ -1,16 +1,16 @@
 ﻿using Raggle.Abstractions.Memory;
+using Raggle.Abstractions.Memory.Document;
+using Raggle.Core.Document;
+using Raggle.Core.Utils;
 using System.Collections.Concurrent;
-using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace Raggle.Core;
 
 public class PipelineOrchestrator : IPipelineOrchestrator
 {
-    private const string DefaultPipelineFileName = "__pipeline_status.json";
     private readonly ConcurrentDictionary<string, IPipelineHandler> _handlers = [];
     private readonly IDocumentStorage _documentStorage;
+    private readonly SemaphoreSlim _semaphore = new(1, 1);
 
     public PipelineOrchestrator(IDocumentStorage documentStorage)
     {
@@ -43,51 +43,121 @@ public class PipelineOrchestrator : IPipelineOrchestrator
     }
 
     /// <inheritdoc />
+    public bool IsLocked()
+    {
+        return _semaphore.CurrentCount == 0;
+    }
+
+    /// <inheritdoc />
     public async Task ExecuteAsync(DataPipeline pipeline, CancellationToken cancellationToken = default)
     {
-        pipeline.InitializeSteps();
-        pipeline.Status = PipelineStatus.Processing;
-        await UpsertPipelineAsync(pipeline, cancellationToken);
-
-        while (pipeline.Status == PipelineStatus.Processing)
+        try
         {
-            var stepName = pipeline.GetNextStepName();
-            if (string.IsNullOrWhiteSpace(stepName))
+            await _semaphore.WaitAsync(cancellationToken);
+
+            pipeline.InitializeSteps();
+            pipeline.Status = PipelineStatus.Processing;
+            await UpsertPipelineAsync(pipeline, cancellationToken);
+            await UpsertDocumentStatusAsync(MemorizationStatus.Memorizing, pipeline.Document, cancellationToken);
+
+            while (pipeline.Status == PipelineStatus.Processing)
             {
-                if (pipeline.Steps.Count == pipeline.CompletedSteps.Count)
+                var stepName = pipeline.GetNextStepName();
+                if (string.IsNullOrWhiteSpace(stepName))
                 {
-                    pipeline.Status = PipelineStatus.Completed;
+                    if (pipeline.Steps.Count == pipeline.CompletedSteps.Count)
+                    {
+                        pipeline.Status = PipelineStatus.Completed;
+                        pipeline.CompletedAt = DateTime.UtcNow;
+                        pipeline.Message = "All steps are completed";
+                        await UpsertPipelineAsync(pipeline, cancellationToken);
+                        await UpsertDocumentStatusAsync(MemorizationStatus.Memorized, pipeline.Document, cancellationToken);
+                    }
+                    else
+                    {
+                        var message = "Something went wrong when processing the pipeline, steps are not completed";
+                        await UpsertFaildPipelineAsync(pipeline, message, cancellationToken);
+                        await UpsertDocumentStatusAsync(MemorizationStatus.FailedMemorization, pipeline.Document, cancellationToken);
+                    }
+                    break;
+                }
+                else if (_handlers.TryGetValue(stepName, out var handler))
+                {
+                    pipeline = await handler.ProcessAsync(pipeline, cancellationToken);
+                    pipeline.CompleteStep(stepName);
+                    await UpsertPipelineAsync(pipeline, cancellationToken);
                 }
                 else
                 {
-                    pipeline.Status = PipelineStatus.Failed;
-                    pipeline.Message = "The pipeline has steps that are not completed";
+                    var message = $"Handler not found for step '{stepName}'";
+                    await UpsertFaildPipelineAsync(pipeline, message, cancellationToken);
+                    await UpsertDocumentStatusAsync(MemorizationStatus.FailedMemorization, pipeline.Document, cancellationToken);
+                    break;
                 }
-                await UpsertPipelineAsync(pipeline, cancellationToken);
             }
-            else if (_handlers.TryGetValue(stepName, out var handler))
-            {
-                pipeline = await handler.ProcessAsync(pipeline, cancellationToken);
-                pipeline.CompleteStep(stepName);
-            }
-            else
-            {
-                pipeline.Status = PipelineStatus.Failed;
-                pipeline.Message = $"Handler not found for step '{stepName}'";
-                await UpsertPipelineAsync(pipeline, cancellationToken);
-            }
+        }
+        catch(Exception ex)
+        {
+            await UpsertFaildPipelineAsync(pipeline, ex.Message, cancellationToken);
+            await UpsertDocumentStatusAsync(MemorizationStatus.FailedMemorization, pipeline.Document, cancellationToken);
+        }
+        finally 
+        { 
+            _semaphore.Release();
         }
     }
 
+    /// <inheritdoc />
+    public async Task<DataPipeline> GetPipelineAsync(string collectionName, string documentId, CancellationToken cancellationToken = default)
+    {
+        var files = await _documentStorage.GetDocumentFilesAsync(collectionName, documentId, cancellationToken);
+        var filename = files.Where(f => f.EndsWith(DocumentFiles.PipelineFileExtension)).FirstOrDefault()
+            ?? throw new InvalidOperationException($"Pipeline file not found for {documentId}");
+
+        var stream = await _documentStorage.ReadDocumentFileAsync(
+            collectionName: collectionName,
+            documentId: documentId,
+            filePath: filename,
+            cancellationToken: cancellationToken);
+        var pipeline = JsonDocumentSerializer.Deserialize<DataPipeline>(stream);
+        return pipeline;
+    }
+
+    #region Private Methods
+
     private async Task UpsertPipelineAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
-        var json = JsonSerializer.Serialize(pipeline);
-        var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        var filename = DocumentFiles.GetPipelineFileName(pipeline.Document.FileName);
+        var stream = JsonDocumentSerializer.SerializeToStream(pipeline);
         await _documentStorage.WriteDocumentFileAsync(
-            collectionName: pipeline.CollectionName,
-            documentId: pipeline.DocumentId,
-            filePath: DefaultPipelineFileName,
+            collectionName: pipeline.Document.CollectionName,
+            documentId: pipeline.Document.DocumentId,
+            filePath: filename,
             content: stream,
             cancellationToken: cancellationToken);
     }
+
+    private async Task UpsertFaildPipelineAsync(DataPipeline pipeline, string message, CancellationToken cancellationToken)
+    {
+        pipeline.Status = PipelineStatus.Failed;
+        pipeline.FailedAt = DateTime.UtcNow;
+        pipeline.Message = message;
+        await UpsertPipelineAsync(pipeline, cancellationToken);
+    }
+
+    private async Task UpsertDocumentAsync(DocumentSummary document, CancellationToken cancellationToken)
+    {
+        await _documentStorage.UpsertDocumentAsync(
+            document: document, 
+            cancellationToken: cancellationToken);
+    }
+
+    private async Task UpsertDocumentStatusAsync(MemorizationStatus status, DocumentSummary document, CancellationToken cancellationToken)
+    {
+        document.Status = status;
+        document.LastUpdatedAt = DateTime.UtcNow;
+        await UpsertDocumentAsync(document, cancellationToken);
+    }
+
+    #endregion
 }

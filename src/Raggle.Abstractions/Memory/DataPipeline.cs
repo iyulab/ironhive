@@ -1,5 +1,5 @@
-﻿using System.Text.Json;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
+using Raggle.Abstractions.Memory.Document;
 
 namespace Raggle.Abstractions.Memory;
 
@@ -15,9 +15,7 @@ public class DataPipeline
 {
     public PipelineStatus Status { get; set; } = PipelineStatus.Pending;
 
-    public required string CollectionName { get; set; }
-
-    public required string DocumentId { get; set; }
+    public required DocumentSummary Document { get; set; }
 
     public required List<string> Steps { get; set; }
 
@@ -27,11 +25,20 @@ public class DataPipeline
 
     public required DateTime StartedAt { get; set; }
 
-    public DateTime? LastUpdatedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
 
-    public IDictionary<string, object>? Metadata { get; set; }
+    public DateTime? FailedAt { get; set; }
 
     public string? Message { get; set; }
+
+    [JsonIgnore]
+    public object? Context { get; set; }
+
+    public void InitializeSteps()
+    {
+        RemainingSteps = [.. Steps];
+        CompletedSteps.Clear();
+    }
 
     public string? GetPreviousStepName()
     {
@@ -43,11 +50,20 @@ public class DataPipeline
         return RemainingSteps.FirstOrDefault();
     }
 
-    public void InitializeSteps()
+    public void CompleteStep(string stepName)
     {
-        RemainingSteps = Steps.ToList();
-        CompletedSteps.Clear();
-        LastUpdatedAt = DateTime.UtcNow;
+        if (RemainingSteps.FirstOrDefault() != stepName)
+        {
+            throw new InvalidOperationException($"완료할 수 없는 단계입니다: {stepName}");
+        }
+        else if (RemainingSteps.Remove(stepName))
+        {
+            CompletedSteps.Add(stepName);
+        }
+        else
+        {
+            throw new InvalidOperationException($"단계를 완료할 수 없습니다: {stepName}");
+        }
     }
 
     public void AdjustSteps(int count)
@@ -77,20 +93,19 @@ public class DataPipeline
                 RemainingSteps.Insert(0, step);
             }
         }
-        LastUpdatedAt = DateTime.UtcNow;
     }
 
-    public void CompleteStep(string stepName)
+    public bool TryGetContext<T>(out T value)
     {
-        if (RemainingSteps.FirstOrDefault() != stepName)
+        if (Context is T result)
         {
-            throw new InvalidOperationException($"완료할 수 없는 단계입니다: {stepName}");
+            value = result;
+            return true;
         }
         else
         {
-            RemainingSteps.Remove(stepName);
-            CompletedSteps.Add(stepName);
-            LastUpdatedAt = DateTime.UtcNow;
+            value = default!;
+            return false;
         }
     }
 }

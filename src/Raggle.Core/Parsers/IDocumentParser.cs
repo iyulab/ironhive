@@ -1,6 +1,8 @@
-﻿namespace Raggle.Abstractions.Memory;
+﻿using Raggle.Core.Document;
 
-public interface IContentDecoder
+namespace Raggle.Core.Parsers;
+
+public interface IDocumentParser
 {
     /// <summary>
     /// Supported MIME types in this decoder.
@@ -10,5 +12,5 @@ public interface IContentDecoder
     /// <summary>
     /// Extract content from the given file.
     /// </summary>
-    Task<IEnumerable<DocumentSection>> DecodeAsync(Stream data, CancellationToken cancellationToken = default);
+    Task<IEnumerable<DocumentSection>> ParseAsync(Stream data, CancellationToken cancellationToken = default);
 }

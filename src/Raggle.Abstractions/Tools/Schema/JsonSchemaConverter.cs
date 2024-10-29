@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
-namespace Raggle.Abstractions.Schema;
+namespace Raggle.Abstractions.Tools.Schema;
 
 public static class JsonSchemaConverter
 {
