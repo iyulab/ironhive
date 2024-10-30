@@ -6,7 +6,11 @@ public interface IChatCompletionService
 {
     Task<IEnumerable<ChatCompletionModel>> GetChatCompletionModelsAsync();
 
-    Task<ChatCompletionResponse> ChatCompletionAsync(ChatHistory history, ChatCompletionOptions options);
+    Task<ChatCompletionResponse> ChatCompletionAsync(
+        ChatHistory history, 
+        ChatCompletionOptions options);
 
-    IAsyncEnumerable<IStreamingChatCompletionResponse> StreamingChatCompletionAsync(ChatHistory history, ChatCompletionOptions options);
+    IAsyncEnumerable<IStreamingChatCompletionResponse> StreamingChatCompletionAsync(
+        ChatHistory history, 
+        ChatCompletionOptions options);
 }

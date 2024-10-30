@@ -86,12 +86,12 @@ public class DiskDocumentStorage : IDocumentStorage
             {
                 Directory.Delete(collectionPath, true);
             }
-            _collectionLocks.TryRemove(collectionName, out var removedSemaphore);
-            removedSemaphore?.Dispose();
         }
         finally
-        {
+        {            
             semaphore.Release();
+            _collectionLocks.TryRemove(collectionName, out var removedSemaphore);
+            removedSemaphore?.Dispose();
         }
     }
 

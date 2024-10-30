@@ -8,8 +8,8 @@ internal class Message
     /// "user" or "assistant"
     /// </summary>
     [JsonPropertyName("role")]
-    internal required string Role { get; set; }
+    public required string Role { get; set; }
 
     [JsonPropertyName("content")]
-    internal required MessageContent[] Content { get; set; }
+    public required MessageContent[] Content { get; set; }
 }

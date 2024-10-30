@@ -15,20 +15,20 @@ internal class JsonObjectResponseFormat : ResponseFormat { }
 internal class JsonSchemaResponseFormat : ResponseFormat
 {
     [JsonPropertyName("json_schema")]
-    internal required JsonSchema JsonSchema { get; set; }
+    public required JsonSchema JsonSchema { get; set; }
 }
 
 internal class JsonSchema
 {
     [JsonPropertyName("name")]
-    internal required string Name { get; set; }
+    public required string Name { get; set; }
 
     [JsonPropertyName("description")]
-    internal string? Description { get; set; }
+    public string? Description { get; set; }
 
     [JsonPropertyName("schema")]
-    internal object? Schema { get; set; }
+    public object? Schema { get; set; }
 
     [JsonPropertyName("strict")]
-    internal bool? Strict { get; set; }
+    public bool? Strict { get; set; }
 }

@@ -32,7 +32,8 @@ internal class OpenAIChatCompletionClient : OpenAIClientBase
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         var response = await _client.PostAsync(OpenAIConstants.PostChatCompletionPath, content);
         response.EnsureSuccessStatusCode();
-        var message = await response.Content.ReadFromJsonAsync<ChatCompletionResponse>()
+        var str = await response.Content.ReadAsStringAsync();
+        var message = await response.Content.ReadFromJsonAsync<ChatCompletionResponse>(_jsonOptions)
             ?? throw new InvalidOperationException("Failed to deserialize response.");
         return message;
     }

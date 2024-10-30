@@ -12,20 +12,20 @@ internal class OpenAIModel
     /// The model ID. <br/>
     /// </summary>
     [JsonPropertyName("id")]
-    internal string ID { get; set; } = string.Empty;
+    public string ID { get; set; } = string.Empty;
 
     /// <summary>
     /// The model owner.
     /// </summary>
     [JsonPropertyName("owned_by")]
-    internal string OwnedBy { get; set; } = string.Empty;
+    public string OwnedBy { get; set; } = string.Empty;
 
     /// <summary>
     /// The creation date and time of the model.
     /// </summary>
     [JsonPropertyName("created")]
     [JsonConverter(typeof(UnixTimeJsonConverter))]
-    internal DateTime Created { get; set; }
+    public DateTime Created { get; set; }
 
     internal static bool IsChatCompletionModel(OpenAIModel model)
     {

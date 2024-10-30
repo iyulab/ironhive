@@ -13,29 +13,29 @@ internal enum FinishReason
 internal class Choice
 {
     [JsonPropertyName("finish_reason")]
-    internal FinishReason? FinishReason { get; set; }
+    public FinishReason? FinishReason { get; set; }
 
     [JsonPropertyName("index")]
-    internal int Index { get; set; }
+    public int Index { get; set; }
 
     [JsonPropertyName("message")]
-    internal AssistantMessage? Message { get; set; }
+    public AssistantMessage? Message { get; set; }
 
     [JsonPropertyName("logprobs")]
-    internal LogProbs? LogProbs { get; set; }
+    public LogProbs? LogProbs { get; set; }
 }
 
 internal class ChoiceDelta
 {
     [JsonPropertyName("finish_reason")]
-    internal FinishReason? FinishReason { get; set; }
+    public FinishReason? FinishReason { get; set; }
 
     [JsonPropertyName("index")]
-    internal int Index { get; set; }
+    public int Index { get; set; }
 
     [JsonPropertyName("delta")]
-    internal AssistantMessage? Delta { get; set; }
+    public AssistantMessage? Delta { get; set; }
 
     [JsonPropertyName("logprobs")]
-    internal LogProbs? LogProbs { get; set; }
+    public LogProbs? LogProbs { get; set; }
 }

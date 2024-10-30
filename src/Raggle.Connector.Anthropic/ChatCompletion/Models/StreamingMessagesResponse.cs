@@ -18,13 +18,13 @@ internal class PingEvent : StreamingMessagesResponse { }
 internal class ErrorEvent : StreamingMessagesResponse
 {
     [JsonPropertyName("error")]
-    internal required object Error { get; set; }
+    public required object Error { get; set; }
 }
 
 internal class MessageStartEvent : StreamingMessagesResponse
 {
     [JsonPropertyName("message")]
-    internal MessagesResponse? Message { get; set; }
+    public MessagesResponse? Message { get; set; }
 }
 
 internal class MessageStopEvent : StreamingMessagesResponse { }
@@ -32,47 +32,47 @@ internal class MessageStopEvent : StreamingMessagesResponse { }
 internal class MessageDeltaEvent : StreamingMessagesResponse
 {
     [JsonPropertyName("delta")]
-    internal MessageDeltaContent? Delta { get; set; }
+    public MessageDeltaContent? Delta { get; set; }
 
     [JsonPropertyName("usage")]
-    internal TokenUsage? Usage { get; set; }
+    public TokenUsage? Usage { get; set; }
 }
 
 internal class MessageDeltaContent
 {
     [JsonPropertyName("stop_reason")]
-    internal StopReason? StopReason { get; set; }
+    public StopReason? StopReason { get; set; }
 
     [JsonPropertyName("stop_sequence")]
-    internal string? StopSequence { get; set; }
+    public string? StopSequence { get; set; }
 }
 
 internal class ContentStartEvent : StreamingMessagesResponse
 {
     [JsonPropertyName("index")]
-    internal int Index { get; set; }
+    public int Index { get; set; }
 
     /// <summary>
     /// <see cref="MessageTextContent"/> or <see cref="MessageToolUseContent"/>
     /// </summary>
     [JsonPropertyName("content_block")]
-    internal MessageContent? ContentBlock { get; set; }
+    public MessageContent? ContentBlock { get; set; }
 }
 
 internal class ContentDeltaEvent : StreamingMessagesResponse
 {
     [JsonPropertyName("index")]
-    internal int Index { get; set; }
+    public int Index { get; set; }
 
     /// <summary>
     /// <see cref="MessageTextDeltaContent"/> or <see cref="MessageToolUseDeltaContent"/>
     /// </summary>
     [JsonPropertyName("delta")]
-    internal MessageContent? ContentBlock { get; set; }
+    public MessageContent? ContentBlock { get; set; }
 }
 
 internal class ContentStopEvent : StreamingMessagesResponse
 {
     [JsonPropertyName("index")]
-    internal int Index { get; set; }
+    public int Index { get; set; }
 }

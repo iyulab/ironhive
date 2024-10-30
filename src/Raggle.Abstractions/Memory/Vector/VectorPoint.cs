@@ -11,19 +11,19 @@ public class VectorPoint
     public required Guid VectorId { get; set; }
 
     /// <summary>
+    /// Gets or sets the vector values.
+    /// </summary>
+    public float[] Vectors { get; set; } = [];
+
+    /// <summary>
     /// Gets or sets the document ID.
     /// </summary>
     public required string DocumentId { get; set; }
 
     /// <summary>
-    /// Text Content
+    /// Gets or sets the document chunk index
     /// </summary>
-    public required string Text { get; set; }
-
-    /// <summary>
-    /// Gets or sets the vector values.
-    /// </summary>
-    public float[] Vectors { get; set; } = [];
+    public required int ChunkIndex { get; set; }
 
     /// <summary>
     /// Gets or sets the tags.

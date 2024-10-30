@@ -2,38 +2,6 @@
 .vs/
 .vscode/
 
-# Build output
-bin/
-obj/
-
-# NuGet packages
-*.nuget.props
-*.nuget.targets
-# packages/
-
-# User-specific files
-*.suo
-*.user
-*.userprefs
-*.sln.docstates
-
-# Build results
-[Dd]ebug/
-[Rr]elease/
-x64/
-x86/
-[Aa][Rr][Mm]/
-[Aa][Rr][Mm]64/
-bld/
-[Bb]in/
-[Oo]bj/
-
-# .NET Core
-project.lock.json
-project.fragment.lock.json
-artifacts/
-# **/Properties/launchSettings.json
-
 # Files built by Visual Studio
 *_i.c
 *_p.c
@@ -60,10 +28,40 @@ artifacts/
 *.svclog
 *.scc
 
-# test-directory
-test-dir/
-test-doc/
+# User-specific files
+*.suo
+*.user
+*.userprefs
+*.sln.docstates
 
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+**/Properties/launchSettings.json
+
+# Build output
+bin/
+obj/
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+
+# NuGet packages
+*.nuget.props
+*.nuget.targets
+packages/
+
+# Node.js
 node_modules/
-src/services/Raggle.Server.Web/appsettings.Development.json
-src/services/Raggle.AutoTask
+
+# test-directory
+example/ConsoleTest/

@@ -9,7 +9,7 @@ namespace Raggle.Vector.Qdrant;
 
 public class QdrantVectorStorage : IVectorStorage
 {
-    private const string DefaultVectorsName = "default_vector";
+    private const string DefaultVectorsName = "text_vector";
     private readonly QdrantClient _client;
 
     public QdrantVectorStorage(QdrantConfig config)
@@ -76,8 +76,8 @@ public class QdrantVectorStorage : IVectorStorage
                 },
                 Payload =
                 {
-                    ["text"] = point.Text,
                     ["documentId"] = point.DocumentId,
+                    ["chunkIndex"] = point.ChunkIndex,
                     ["tags"] = point.Tags ?? [],
                 }
             });
@@ -134,15 +134,16 @@ public class QdrantVectorStorage : IVectorStorage
         foreach (var result in results)
         {
             var documentId = result.Payload.GetValueOrDefault("documentId")?.StringValue;
-            var text = result.Payload.GetValueOrDefault("text")?.StringValue;
-            if (documentId == null || text == null)
+            var chunkIndex = result.Payload.GetValueOrDefault("chunkIndex")?.IntegerValue;
+            if (documentId == null || chunkIndex == null)
                 continue;
 
             rankedPoints.Add(new ScoredVectorPoint
             {
+                VectorId = Guid.Parse(result.Id.Uuid),
                 DocumentId = documentId,
                 Score = result.Score,
-                Text = text,
+                ChunkIndex = (int)chunkIndex
             });
         }
         return rankedPoints.OrderByDescending(p => p.Score);

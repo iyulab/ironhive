@@ -8,28 +8,28 @@ internal class Tool
     /// "function" only
     /// </summary>
     [JsonPropertyName("type")]
-    internal string Type { get; } = "function";
+    public string Type { get; } = "function";
 
     [JsonPropertyName("function")]
-    internal required Function Function { get; set; }
+    public required Function Function { get; set; }
 }
 
 internal class Function
 {
     [JsonPropertyName("name")]
-    internal required string Name { get; set; }
+    public required string Name { get; set; }
 
     [JsonPropertyName("description")]
-    internal string? Description { get; set; }
+    public string? Description { get; set; }
 
     [JsonPropertyName("parameters")]
-    internal InputSchema? Parameters { get; set; }
+    public InputSchema? Parameters { get; set; }
 
     /// <summary>
     /// "true" is not working, "false" is default
     /// </summary>
     [JsonPropertyName("strict")]
-    internal bool Strict { get; } = false;
+    public bool Strict { get; } = false;
 }
 
 internal class InputSchema
@@ -38,11 +38,11 @@ internal class InputSchema
     /// "object" only
     /// </summary>
     [JsonPropertyName("type")]
-    internal string Type { get; } = "object";
+    public string Type { get; } = "object";
 
     [JsonPropertyName("properties")]
-    internal object? Properties { get; set; }
+    public object? Properties { get; set; }
 
     [JsonPropertyName("required")]
-    internal string[]? Required { get; set; }
+    public string[]? Required { get; set; }
 }

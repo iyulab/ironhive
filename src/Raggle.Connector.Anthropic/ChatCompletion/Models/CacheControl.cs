@@ -1,9 +1,12 @@
-﻿namespace Raggle.Connector.Anthropic.ChatCompletion.Models;
+﻿using System.Text.Json.Serialization;
+
+namespace Raggle.Connector.Anthropic.ChatCompletion.Models;
 
 internal class CacheControl
 {
     /// <summary>
     /// "ephemeral" only
     /// </summary>
-    internal string Type { get; } = "ephemeral";
+    [JsonPropertyName("type")]
+    public string Type { get; } = "ephemeral";
 }

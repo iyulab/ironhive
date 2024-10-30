@@ -5,19 +5,16 @@ using Raggle.Abstractions.Messages;
 using Raggle.Core.Document;
 using Raggle.Core.Utils;
 using System.Text;
-using System.Text.RegularExpressions;
 
 namespace Raggle.Core.Handlers;
 
-public class GenerateQuestionHandler : IPipelineHandler
+public class GenerateSummarizedTextHandler : IPipelineHandler
 {
-    private static readonly Regex QuestionRegex = new Regex(@"<question>\s*(.*?)\s*</question>", RegexOptions.Singleline | RegexOptions.Compiled);
-
     private readonly IDocumentStorage _documentStorage;
     private readonly IChatCompletionService _chatService;
     private readonly ChatCompletionOptions _chatOptions;
 
-    public GenerateQuestionHandler(
+    public GenerateSummarizedTextHandler(
         IDocumentStorage documentStorage,
         IChatCompletionService chatService,
         ChatCompletionOptions chatOptions)
@@ -33,16 +30,11 @@ public class GenerateQuestionHandler : IPipelineHandler
 
         foreach (var chunk in chunks)
         {
-            string fullText;
-            if (!string.IsNullOrWhiteSpace(chunk.SummarizedText))
-                fullText = chunk.SummarizedText;
-            else if (!string.IsNullOrWhiteSpace(chunk.RawText))
-                fullText = chunk.RawText;
-            else
+            if (string.IsNullOrWhiteSpace(chunk.RawText))
                 throw new InvalidOperationException("No text content found in the document chunk.");
 
-            var questions = await GenerateQuestionsAsync(fullText, cancellationToken);
-            chunk.ExtractedQuestions = questions;
+            var answer = await GenerateSummarizedTextAsync(chunk.RawText, cancellationToken);
+            chunk.SummarizedText = answer;
             await UpdateDocumentChunkAsync(pipeline, chunk, cancellationToken);
         }
 
@@ -87,19 +79,19 @@ public class GenerateQuestionHandler : IPipelineHandler
             cancellationToken);
     }
 
-    private async Task<IEnumerable<string>> GenerateQuestionsAsync(string text, CancellationToken cancellationToken)
+    private async Task<string> GenerateSummarizedTextAsync(string text, CancellationToken cancellationToken)
     {
         var history = new ChatHistory();
         history.AddUserMessage(new TextContentBlock
         {
-            Text = $"Generate questions for this information: \n\n{text}",
+            Text = $"Summarize This:\n\n{text}",
         });
-        _chatOptions.System = GetSystemInstruction();
+        _chatOptions.System = GetSystemInstructionPrompt();
         var response = await _chatService.ChatCompletionAsync(history, _chatOptions);
         if (response.State == ChatResponseState.Stop)
         {
             var textAnswer = new StringBuilder();
-            foreach(var content in response.Contents)
+            foreach (var content in response.Contents)
             {
                 if (content is TextContentBlock textContent)
                 {
@@ -111,7 +103,7 @@ public class GenerateQuestionHandler : IPipelineHandler
             {
                 throw new InvalidOperationException("Failed to generate questions.");
             }
-            return ParseQuestionsFromTags(answer);
+            return answer;
         }
         else
         {
@@ -119,48 +111,12 @@ public class GenerateQuestionHandler : IPipelineHandler
         }
     }
 
-    private IEnumerable<string> ParseQuestionsFromTags(string text)
-    {
-        var questions = new List<string>();
-        var matches = QuestionRegex.Matches(text);
-
-        foreach (Match match in matches)
-        {
-            if (match.Groups.Count > 1)
-            {
-                var question = match.Groups[1].Value.Trim();
-                if (!string.IsNullOrEmpty(question))
-                {
-                    questions.Add(question);
-                }
-            }
-        }
-
-        if (!questions.Any())
-        {
-            throw new FormatException("No questions found within <question> tags.");
-        }
-
-        return questions;
-    }
-
-    private string GetSystemInstruction()
+    private static string? GetSystemInstructionPrompt()
     {
         return """
-        You are an expert assistant specialized in generating insightful and objective questions based on the provided information.
-        Please analyze the given text and generate a series of relevant questions that can be used for further analysis or discussion. 
-        Each question should be enclosed within <question> and </question> tags.
-        Ensure that the questions are clear, concise, and directly related to the information provided. Avoid ambiguous or overly broad questions.
-        
-        ### Example Information
-        [information]
-        On July 20, 1969, Apollo 11 successfully landed the first humans on the Moon, marking a significant achievement in space exploration.
-
-        ### Example Response:
-        
-        <question>When did Apollo 11 land on the Moon?</question>
-        <question>What was the significance of Apollo 11's Moon landing?</question>
-        <question>Who were the first humans to walk on the Moon?</question>
+        You are an advanced language model designed to extract and present the most relevant and useful information from a given text. 
+        Your task is to read the provided text and generate a concise, clear, and informative summary that highlights key points, important details, and actionable insights. 
+        Ensure that the summary is well-structured, easy to understand, and free of unnecessary jargon.
         """;
     }
 
