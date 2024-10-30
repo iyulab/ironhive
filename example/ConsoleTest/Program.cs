@@ -20,7 +20,7 @@ var documentStorage = new DiskDocumentStorage(new DiskStorageConfig
     DirectoryPath = @"C:\temp\document",
 });
 var vectorStorage = new LiteDBVectorStorage(new LiteDBConfig
-{ 
+{
     DatabasePath = @"C:\temp\vector.db"
 });
 
