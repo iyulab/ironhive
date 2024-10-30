@@ -1,4 +1,4 @@
-﻿using Raggle.Abstractions.Engines;
+﻿using Raggle.Abstractions.AI;
 using Tiktoken;
 
 namespace Raggle.Core.Tokenizers;

@@ -1,6 +1,5 @@
 ﻿using Raggle.Abstractions.Memory;
 using Raggle.Abstractions.Memory.Document;
-using Raggle.Core.Document;
 using Raggle.Core.Utils;
 using System.Collections.Concurrent;
 
@@ -111,7 +110,7 @@ public class PipelineOrchestrator : IPipelineOrchestrator
     public async Task<DataPipeline> GetPipelineAsync(string collectionName, string documentId, CancellationToken cancellationToken = default)
     {
         var files = await _documentStorage.GetDocumentFilesAsync(collectionName, documentId, cancellationToken);
-        var filename = files.Where(f => f.EndsWith(DocumentFiles.PipelineFileExtension)).FirstOrDefault()
+        var filename = files.Where(f => f.EndsWith(DocumentFileHelper.PipelineFileExtension)).FirstOrDefault()
             ?? throw new InvalidOperationException($"Pipeline file not found for {documentId}");
 
         var stream = await _documentStorage.ReadDocumentFileAsync(
@@ -127,7 +126,7 @@ public class PipelineOrchestrator : IPipelineOrchestrator
 
     private async Task UpsertPipelineAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
-        var filename = DocumentFiles.GetPipelineFileName(pipeline.Document.FileName);
+        var filename = DocumentFileHelper.GetPipelineFileName(pipeline.Document.FileName);
         var stream = JsonDocumentSerializer.SerializeToStream(pipeline);
         await _documentStorage.WriteDocumentFileAsync(
             collectionName: pipeline.Document.CollectionName,
@@ -145,14 +144,14 @@ public class PipelineOrchestrator : IPipelineOrchestrator
         await UpsertPipelineAsync(pipeline, cancellationToken);
     }
 
-    private async Task UpsertDocumentAsync(DocumentSummary document, CancellationToken cancellationToken)
+    private async Task UpsertDocumentAsync(DocumentRecord document, CancellationToken cancellationToken)
     {
         await _documentStorage.UpsertDocumentAsync(
             document: document, 
             cancellationToken: cancellationToken);
     }
 
-    private async Task UpsertDocumentStatusAsync(MemorizationStatus status, DocumentSummary document, CancellationToken cancellationToken)
+    private async Task UpsertDocumentStatusAsync(MemorizationStatus status, DocumentRecord document, CancellationToken cancellationToken)
     {
         document.Status = status;
         document.LastUpdatedAt = DateTime.UtcNow;

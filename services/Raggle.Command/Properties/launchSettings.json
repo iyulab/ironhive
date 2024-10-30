@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "Raggle.Console": {
-      "commandName": "Project",
-      "commandLineArgs": "-i -p C:\\data\\Raggle\\test-doc"
-    }
-  }
-}

@@ -39,7 +39,7 @@ public interface IMemoryService
     /// <param name="filter">적용할 필터 조건</param>
     /// <param name="cancellationToken">작업 취소를 위한 토큰</param>
     /// <returns>검색된 문서 요약들의 IEnumerable 컬렉션</returns>
-    Task<IEnumerable<DocumentSummary>> FindDocumentsAsync(string collectionName, MemoryFilter? filter = null, CancellationToken cancellationToken = default);
+    Task<IEnumerable<DocumentRecord>> FindDocumentsAsync(string collectionName, MemoryFilter? filter = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 지정된 컬렉션에 문서를 업로드하고, 파일 이름 및 내용, 태그 정보를 처리합니다.
@@ -51,7 +51,7 @@ public interface IMemoryService
     /// <param name="tags">문서에 부착할 태그 배열</param>
     /// <param name="cancellationToken">작업 취소를 위한 토큰</param>
     /// <returns>업로드된 문서 요약 객체</returns>
-    Task<DocumentSummary> UploadDocumentAsync(string collectionName, string documentId, string fileName, Stream content, string[]? tags = null, CancellationToken cancellationToken = default);
+    Task<DocumentRecord> UploadDocumentAsync(string collectionName, string documentId, string fileName, Stream content, string[]? tags = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 문서를 기억하게 하여, 데이터 파이프라인 처리를 위한 단계를 추가하고 업로드 요청을 처리합니다.

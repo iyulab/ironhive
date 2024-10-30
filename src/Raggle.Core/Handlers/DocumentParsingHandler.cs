@@ -31,7 +31,7 @@ public class DocumentParsingHandler : IPipelineHandler
                 cancellationToken: cancellationToken);
         var sections = await parser.ParseAsync(content, cancellationToken);
 
-        var parsedDocument = new DocumentStructure
+        var parsedDocument = new ParsedDocument
         {
             FileName = pipeline.Document.FileName,
             ContentType = pipeline.Document.ContentType,
@@ -39,7 +39,7 @@ public class DocumentParsingHandler : IPipelineHandler
             Sections = sections,
         };
 
-        var filename = DocumentFiles.GetParsedFileName(pipeline.Document.FileName);
+        var filename = DocumentFileHelper.GetParsedFileName(pipeline.Document.FileName);
         var stream = JsonDocumentSerializer.SerializeToStream(parsedDocument);
         await _documentStorage.WriteDocumentFileAsync(
             collectionName: pipeline.Document.CollectionName,
@@ -49,15 +49,5 @@ public class DocumentParsingHandler : IPipelineHandler
             cancellationToken: cancellationToken);
 
         return pipeline;
-    }
-
-    public IEnumerable<string> GetSupportedContentTypes()
-    {
-        var contentTypes = new List<string>();
-        foreach (var p in _parsers)
-        {
-            contentTypes.AddRange(p.SupportTypes);
-        }
-        return contentTypes;
     }
 }

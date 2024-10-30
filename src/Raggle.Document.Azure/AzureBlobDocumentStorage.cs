@@ -60,7 +60,7 @@ public class AzureBlobDocumentStorage : IDocumentStorage
 
         // 인덱스 파일 초기화
         var indexBlob = container.GetBlobClient(DocumentIndexFileName);
-        var emptyIndex = new List<DocumentSummary>();
+        var emptyIndex = new List<DocumentRecord>();
         var serializedIndex = MessagePackSerializer.Serialize(emptyIndex);
         using (var stream = new MemoryStream(serializedIndex))
         {
@@ -76,7 +76,7 @@ public class AzureBlobDocumentStorage : IDocumentStorage
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<DocumentSummary>> FindDocumentsAsync(string collectionName, MemoryFilter? filter = null, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<DocumentRecord>> FindDocumentsAsync(string collectionName, MemoryFilter? filter = null, CancellationToken cancellationToken = default)
     {
         var container = _client.GetBlobContainerClient(collectionName);
         var indexBlob = container.GetBlobClient(DocumentIndexFileName);
@@ -107,7 +107,7 @@ public class AzureBlobDocumentStorage : IDocumentStorage
     }
 
     /// <inheritdoc />
-    public async Task<DocumentSummary> UpsertDocumentAsync(DocumentSummary document, Stream? content = null, CancellationToken cancellationToken = default)
+    public async Task<DocumentRecord> UpsertDocumentAsync(DocumentRecord document, Stream? content = null, CancellationToken cancellationToken = default)
     {
         int retryAttempts = 0;
         while (retryAttempts < _maxRetryAttempts)
@@ -296,7 +296,7 @@ public class AzureBlobDocumentStorage : IDocumentStorage
     }
 
     // 인덱스 파일 로드 with ETag
-    private async Task<(List<DocumentSummary>, ETag?)> LoadDocumentIndexWithETagAsync(BlobClient indexBlob, CancellationToken cancellationToken)
+    private async Task<(List<DocumentRecord>, ETag?)> LoadDocumentIndexWithETagAsync(BlobClient indexBlob, CancellationToken cancellationToken)
     {
         if (!await indexBlob.ExistsAsync(cancellationToken))
             throw new InvalidOperationException($"'{indexBlob.Name}' 인덱스 파일이 존재하지 않습니다.");
@@ -304,13 +304,13 @@ public class AzureBlobDocumentStorage : IDocumentStorage
         using var stream = new MemoryStream();
         await indexBlob.DownloadToAsync(stream, cancellationToken);
         stream.Position = 0;
-        var index = await MessagePackSerializer.DeserializeAsync<List<DocumentSummary>>(stream, cancellationToken: cancellationToken);
+        var index = await MessagePackSerializer.DeserializeAsync<List<DocumentRecord>>(stream, cancellationToken: cancellationToken);
         var eTag = indexBlob.GetProperties().Value.ETag;
         return (index, eTag);
     }
 
     // 인덱스 파일 저장 with ETag
-    private async Task SaveDocumentIndexAsync(BlobClient indexBlob, List<DocumentSummary> index, ETag? eTag, CancellationToken cancellationToken)
+    private async Task SaveDocumentIndexAsync(BlobClient indexBlob, List<DocumentRecord> index, ETag? eTag, CancellationToken cancellationToken)
     {
         var serializedIndex = MessagePackSerializer.Serialize(index);
         using var stream = new MemoryStream(serializedIndex);

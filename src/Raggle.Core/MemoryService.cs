@@ -61,7 +61,7 @@ public class MemoryService : IMemoryService
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<DocumentSummary>> FindDocumentsAsync(
+    public async Task<IEnumerable<DocumentRecord>> FindDocumentsAsync(
         string collectionName,
         MemoryFilter? filter = null,
         CancellationToken cancellationToken = default)
@@ -70,7 +70,7 @@ public class MemoryService : IMemoryService
     }
 
     /// <inheritdoc />
-    public async Task<DocumentSummary> UploadDocumentAsync(
+    public async Task<DocumentRecord> UploadDocumentAsync(
         string collectionName,
         string documentId,
         string fileName,
@@ -81,7 +81,7 @@ public class MemoryService : IMemoryService
         if (!_detecter.TryGetContentType(fileName, out var contentType))
             throw new InvalidOperationException($"{fileName} is dont know content type");
 
-        var document = new DocumentSummary
+        var document = new DocumentRecord
         {
             Status = MemorizationStatus.NotMemorized,
             CollectionName = collectionName,
@@ -107,7 +107,7 @@ public class MemoryService : IMemoryService
         UploadRequest? uploadRequest = null,
         CancellationToken cancellationToken = default)
     {
-        DocumentSummary document = null!;
+        DocumentRecord document;
         if (uploadRequest != null)
         {
             document = await UploadDocumentAsync(collectionName, documentId, uploadRequest.FileName, uploadRequest.Content, uploadRequest.Tags, cancellationToken);

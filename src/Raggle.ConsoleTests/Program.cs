@@ -31,12 +31,12 @@ orchestrator.TryAddHandler("parse", new DocumentParsingHandler(
     documentStorage: documentStorage,
     [
         new PdfParser(),
-        new MSWordParser(),
-        new TextPlainParser(),
-        new MSPresentationParser(),
+        new WordParser(),
+        new TextParser(),
+        new PresentationParser(),
     ]));
 
-orchestrator.TryAddHandler("chunk", new DocumentChunkingHandler(
+orchestrator.TryAddHandler("chunk", new TextChunkingHandler(
     documentStorage: documentStorage,
     maxTokensPerChunk: 1024));
 

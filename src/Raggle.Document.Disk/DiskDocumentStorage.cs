@@ -63,7 +63,7 @@ public class DiskDocumentStorage : IDocumentStorage
             {
                 Directory.CreateDirectory(collectionPath);
                 var indexPath = GetFullPath(collectionName, DocumentIndexFileName);
-                var emptyIndex = new List<DocumentSummary>();
+                var emptyIndex = new List<DocumentRecord>();
                 var serializedIndex = MessagePackSerializer.Serialize(emptyIndex);
                 await File.WriteAllBytesAsync(indexPath, serializedIndex, cancellationToken);
             }
@@ -96,7 +96,7 @@ public class DiskDocumentStorage : IDocumentStorage
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<DocumentSummary>> FindDocumentsAsync(string collectionName, MemoryFilter? filter = null, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<DocumentRecord>> FindDocumentsAsync(string collectionName, MemoryFilter? filter = null, CancellationToken cancellationToken = default)
     {
         // 읽기 작업은 잠금 없이 진행
         var (index, _) = await LoadDocumentIndexWithTimeStampAsync(collectionName, cancellationToken);
@@ -123,7 +123,7 @@ public class DiskDocumentStorage : IDocumentStorage
     }
 
     /// <inheritdoc />
-    public async Task<DocumentSummary> UpsertDocumentAsync(DocumentSummary document, Stream? content = null, CancellationToken cancellationToken = default)
+    public async Task<DocumentRecord> UpsertDocumentAsync(DocumentRecord document, Stream? content = null, CancellationToken cancellationToken = default)
     {
         var collectionName = document.CollectionName;
         var semaphore = GetLockForCollection(collectionName);
@@ -286,7 +286,7 @@ public class DiskDocumentStorage : IDocumentStorage
     }
 
     // 인덱스 파일을 로드
-    private async Task<(List<DocumentSummary>, DateTime)> LoadDocumentIndexWithTimeStampAsync(string collectionName, CancellationToken cancellationToken)
+    private async Task<(List<DocumentRecord>, DateTime)> LoadDocumentIndexWithTimeStampAsync(string collectionName, CancellationToken cancellationToken)
     {
         var indexPath = GetFullPath(collectionName, DocumentIndexFileName);
         if (!File.Exists(indexPath))
@@ -295,13 +295,13 @@ public class DiskDocumentStorage : IDocumentStorage
         var lastModified = File.GetLastWriteTimeUtc(indexPath);
         using (var stream = new FileStream(indexPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 4096, useAsync: true))
         {
-            var index = await MessagePackSerializer.DeserializeAsync<List<DocumentSummary>>(stream, cancellationToken: cancellationToken);
+            var index = await MessagePackSerializer.DeserializeAsync<List<DocumentRecord>>(stream, cancellationToken: cancellationToken);
             return (index, lastModified);
         }
     }
 
     // 인덱스 파일을 저장
-    private async Task SaveDocumentIndexAsync(string collectionName, IEnumerable<DocumentSummary> index, DateTime timeStamp, CancellationToken cancellationToken)
+    private async Task SaveDocumentIndexAsync(string collectionName, IEnumerable<DocumentRecord> index, DateTime timeStamp, CancellationToken cancellationToken)
     {
         var indexPath = GetFullPath(collectionName, DocumentIndexFileName);
         if (!File.Exists(indexPath))

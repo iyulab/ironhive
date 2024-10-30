@@ -1,3 +1,0 @@
-[submodule "externels/llama.cpp"]
-	path = externels/llama.cpp
-	url = https://github.com/ggerganov/llama.cpp.git

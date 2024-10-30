@@ -22,15 +22,15 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Raggle.ConsoleTests", "Ragg
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Helpers", "Helpers", "{CE6D91EF-6D07-4885-8095-E252FB856CA2}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Engines", "Engines", "{BA247DA3-3956-469A-BE72-2F201561404B}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AI", "AI", "{BA247DA3-3956-469A-BE72-2F201561404B}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Raggle.Command", "..\services\Raggle.Command\Raggle.Command.csproj", "{2703126E-0081-4B33-AFF3-E60BEC927AE3}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Raggle.Helpers.HuggingFace", "Raggle.Helpers.HuggingFace\Raggle.Helpers.HuggingFace.csproj", "{85F37D6B-ED28-409A-8207-35B9BB6CD3DE}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Raggle.Engines.OpenAI", "Raggle.Engines.OpenAI\Raggle.Engines.OpenAI.csproj", "{20B84C5A-F316-4876-8AD2-ACF24A703078}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Raggle.Connector.OpenAI", "Raggle.Engines.OpenAI\Raggle.Connector.OpenAI.csproj", "{20B84C5A-F316-4876-8AD2-ACF24A703078}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Raggle.Engines.Anthropic", "Raggle.Engines.Anthropic\Raggle.Engines.Anthropic.csproj", "{C043A36D-C6EE-40C9-8470-90F05E670239}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Raggle.Connector.Anthropic", "Raggle.Engines.Anthropic\Raggle.Connector.Anthropic.csproj", "{C043A36D-C6EE-40C9-8470-90F05E670239}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Memory", "Memory", "{0E0B40CA-1316-4A75-89E7-41DF7B8D2BE0}"
 EndProject

@@ -19,7 +19,7 @@ public interface IDocumentStorage : IDisposable
         string collectionName,
         CancellationToken cancellationToken = default);
 
-    Task<IEnumerable<DocumentSummary>> FindDocumentsAsync(
+    Task<IEnumerable<DocumentRecord>> FindDocumentsAsync(
         string collectionName,
         MemoryFilter? filter = null,
         CancellationToken cancellationToken = default);
@@ -29,8 +29,8 @@ public interface IDocumentStorage : IDisposable
         string documentId,
         CancellationToken cancellationToken = default);
 
-    Task<DocumentSummary> UpsertDocumentAsync(
-        DocumentSummary document,
+    Task<DocumentRecord> UpsertDocumentAsync(
+        DocumentRecord document,
         Stream? content = null,
         CancellationToken cancellationToken = default);
 

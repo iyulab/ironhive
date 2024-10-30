@@ -15,7 +15,7 @@ public class DataPipeline
 {
     public PipelineStatus Status { get; set; } = PipelineStatus.Pending;
 
-    public required DocumentSummary Document { get; set; }
+    public required DocumentRecord Document { get; set; }
 
     public required List<string> Steps { get; set; }
 
