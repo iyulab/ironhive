@@ -25,7 +25,7 @@ public class TextChunkingHandler : IPipelineHandler
 
         if (_maxTokensPerChunk <= 0)
         {
-            _maxTokensPerChunk = 100;
+            _maxTokensPerChunk = 128;
         }
     }
 
@@ -33,7 +33,7 @@ public class TextChunkingHandler : IPipelineHandler
     {
         var parsedDocument = await GetParsedDocumentAsync(pipeline, cancellationToken);
 
-        int chunkNumber = 0;
+        int chunkIndex = 0;
         foreach (var section in parsedDocument.Sections)
         {
             // 라인 단위로 텍스트 분할
@@ -56,13 +56,13 @@ public class TextChunkingHandler : IPipelineHandler
                         // 현재 청크 저장
                         var chunk = new DocumentChunk
                         {
+                            Index = chunkIndex++,
                             SourceFileName = pipeline.Document.FileName,
-                            SectionNumber = section.Number,
-                            ChunkIndex = chunkNumber++,
+                            SourceSection = section.Identifier,
                             RawText = currentChunkText.ToString().Trim()
                         };
 
-                        await SaveChunkDocumentAsync(pipeline, chunk, cancellationToken);
+                        await UpsertChunkDocumentAsync(pipeline, chunk, cancellationToken);
 
                         // 새로운 청크 시작
                         currentChunkText.Clear();
@@ -80,13 +80,13 @@ public class TextChunkingHandler : IPipelineHandler
             {
                 var finalChunk = new DocumentChunk
                 {
+                    Index = chunkIndex++,
                     SourceFileName = pipeline.Document.FileName,
-                    SectionNumber = section.Number,
-                    ChunkIndex = chunkNumber++,
+                    SourceSection = section.Identifier,
                     RawText = currentChunkText.ToString().Trim()
                 };
 
-                await SaveChunkDocumentAsync(pipeline, finalChunk, cancellationToken);
+                await UpsertChunkDocumentAsync(pipeline, finalChunk, cancellationToken);
             }
         }
 
@@ -95,12 +95,25 @@ public class TextChunkingHandler : IPipelineHandler
 
     #region Private Methods
 
-    private async Task SaveChunkDocumentAsync(
+    private async Task<ParsedDocument> GetParsedDocumentAsync(DataPipeline pipeline, CancellationToken cancellationToken)
+    {
+        var filename = DocumentFileHelper.GetParsedFileName(pipeline.Document.FileName);
+        var fileStream = await _documentStorage.ReadDocumentFileAsync(
+            collectionName: pipeline.Document.CollectionName,
+            documentId: pipeline.Document.DocumentId,
+            filePath: filename,
+            cancellationToken: cancellationToken);
+
+        var parsedDocument = JsonDocumentSerializer.Deserialize<ParsedDocument>(fileStream);
+        return parsedDocument;
+    }
+
+    private async Task UpsertChunkDocumentAsync(
         DataPipeline pipeline,
         DocumentChunk chunk,
         CancellationToken cancellationToken)
     {
-        var filename = DocumentFileHelper.GetChunkedFileName(pipeline.Document.FileName, chunk.ChunkIndex);
+        var filename = DocumentFileHelper.GetChunkedFileName(pipeline.Document.FileName, chunk.Index);
         var fileStream = JsonDocumentSerializer.SerializeToStream(chunk);
         await _documentStorage.WriteDocumentFileAsync(
             collectionName: pipeline.Document.CollectionName,
@@ -108,26 +121,6 @@ public class TextChunkingHandler : IPipelineHandler
             filePath: filename,
             content: fileStream,
             cancellationToken: cancellationToken);
-    }
-
-    private async Task<ParsedDocument> GetParsedDocumentAsync(DataPipeline pipeline, CancellationToken cancellationToken)
-    {
-        if (pipeline.TryGetContext<ParsedDocument>(out var context))
-        {
-            return context;
-        }
-        else
-        {
-            var filename = DocumentFileHelper.GetParsedFileName(pipeline.Document.FileName);
-            var fileStream = await _documentStorage.ReadDocumentFileAsync(
-                collectionName: pipeline.Document.CollectionName,
-                documentId: pipeline.Document.DocumentId,
-                filePath: filename,
-                cancellationToken: cancellationToken);
-
-            var parsedDocument = JsonDocumentSerializer.Deserialize<ParsedDocument>(fileStream);
-            return parsedDocument;
-        }
     }
 
     #endregion

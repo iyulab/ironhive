@@ -24,7 +24,7 @@ public class ParsedDocument
     /// 문서를 분리한 섹션들의 컬렉션을 저장합니다.
     /// 페이지, 슬라이드, 섹션 등으로 나뉠 수 있습니다.
     /// </summary>
-    public IEnumerable<DocumentSection> Sections { get; set; } = new List<DocumentSection>();
+    public IEnumerable<DocumentSection> Sections { get; set; } = [];
 }
 
 /// <summary>
@@ -34,28 +34,12 @@ public class ParsedDocument
 public class DocumentSection
 {
     /// <summary>
-    /// 섹션의 번호를 저장합니다. 보통 순서나 식별에 사용됩니다.
+    /// 섹션의 식별자를 저장합니다. 예: "1 slide", "2 page"
     /// </summary>
-    public int Number { get; set; }
+    public string Identifier { get; set; } = string.Empty;
 
     /// <summary>
     /// 섹션의 텍스트 내용을 저장합니다.
     /// </summary>
     public string Text { get; set; } = string.Empty;
-
-    /// <summary>
-    /// 기본 생성자입니다.
-    /// </summary>
-    public DocumentSection() { }
-
-    /// <summary>
-    /// 섹션 번호와 텍스트를 초기화하는 생성자입니다.
-    /// </summary>
-    /// <param name="number">섹션의 번호</param>
-    /// <param name="text">섹션의 텍스트 내용</param>
-    public DocumentSection(int number, string text)
-    {
-        Number = number;
-        Text = text;
-    }
 }

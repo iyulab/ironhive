@@ -7,7 +7,7 @@ public interface IDocumentParser
     /// <summary>
     /// Supported MIME types in this decoder.
     /// </summary>
-    public string[] SupportTypes { get; }
+    public string[] SupportContentTypes { get; }
 
     /// <summary>
     /// Extract content from the given file.

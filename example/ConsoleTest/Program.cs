@@ -43,10 +43,10 @@ var orchestrator = new PipelineOrchestrator(documentStorage: documentStorage);
 orchestrator.TryAddHandler("parse", new DocumentParsingHandler(
     documentStorage: documentStorage,
     [
-        new PdfParser(),
+        new PDFParser(),
         new WordParser(),
         new TextParser(),
-        new PresentationParser(),
+        new PPTParser(),
     ]));
 
 orchestrator.TryAddHandler("chunk", new TextChunkingHandler(
@@ -58,7 +58,7 @@ orchestrator.TryAddHandler("summarize", new GenerateSummarizedTextHandler(
     chatService: chatService,
     chatOptions: chatOption));
 
-orchestrator.TryAddHandler("question", new GenerateQuestionHandler(
+orchestrator.TryAddHandler("question", new GenerateQAPairsHandler(
     documentStorage: documentStorage,
     chatService: chatService,
     chatOptions: chatOption));
@@ -75,14 +75,14 @@ var memory = new MemoryService(
    orchestrator: orchestrator);
 
 var collection = "test";
-var file = @"C:\temp\sample\pdf_sample.pdf";
+var file = @"C:\temp\sample\word_sample.docx";
 var upload = new UploadRequest
 {
     FileName = Path.GetFileName(file),
     Content = File.OpenRead(file),
 };
 
-await memory.CreateCollectionAsync(collection, 3072);
+//await memory.CreateCollectionAsync(collection, 3072);
 await memory.MemorizeDocumentAsync(
     collectionName: collection,
     documentId: GetDocumentId(file),

@@ -5,21 +5,78 @@ namespace Raggle.Core.Parsers;
 
 public class TextParser : IDocumentParser
 {
-    public string[] SupportTypes =>
+    private readonly int _maxSplitLine;
+
+    public string[] SupportContentTypes =>
     [
         "text/plain"
     ];
 
-    public Task<IEnumerable<DocumentSection>> ParseAsync(Stream data, CancellationToken cancellationToken)
+    public TextParser(int maxSplitLine = 10)
     {
-        using var reader = new StreamReader(data);
-        var text = reader.ReadToEnd();
-        text = TextCleaner.Clean(text);
+        _maxSplitLine = maxSplitLine;
+    }
 
-        var results = new List<DocumentSection>
+    public async Task<IEnumerable<DocumentSection>> ParseAsync(Stream data, CancellationToken cancellationToken = default)
+    {
+        var results = new List<DocumentSection>();
+
+        using var reader = new StreamReader(data);
+        if (_maxSplitLine <= 0)
         {
-            new DocumentSection(1, text)
-        };
-        return Task.FromResult(results.AsEnumerable());
+            var fullText = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            var cleanText = TextCleaner.Clean(fullText);
+            results.Add(new DocumentSection
+            {
+                Identifier = "Entire Document",
+                Text = cleanText,
+            });
+        }
+        else
+        {
+            var lines = new List<string>();
+            int currentLineNumber = 0;
+            int startLineNumber = 1;
+
+            string? line;
+            while ((line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false)) != null)
+            {
+                // 라인 추가
+                lines.Add(line);
+                currentLineNumber++;
+
+                if (lines.Count == _maxSplitLine)
+                {
+                    var sectionText = string.Join(Environment.NewLine, lines).TrimEnd();
+                    var cleanText = TextCleaner.Clean(sectionText);
+                    results.Add(new DocumentSection
+                    {
+                        Identifier = $"{startLineNumber} line ~ {currentLineNumber} line",
+                        Text = cleanText,
+                    });
+
+                    // 다음 섹션을 위해 초기화
+                    lines.Clear();
+                    startLineNumber = currentLineNumber + 1;
+                }
+            }
+
+            // 남아있는 라인들을 마지막 섹션으로 추가
+            if (lines.Count > 0)
+            {
+                var sectionText = string.Join(Environment.NewLine, lines).TrimEnd();
+                var cleanText = TextCleaner.Clean(sectionText);
+                results.Add(new DocumentSection
+                {
+                    Identifier = $"{startLineNumber} line ~ {currentLineNumber} line",
+                    Text = cleanText,
+                });
+            }
+        }
+
+        // 취소 요청 확인
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return results;
     }
 }

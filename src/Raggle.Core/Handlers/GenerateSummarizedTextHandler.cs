@@ -26,16 +26,16 @@ public class GenerateSummarizedTextHandler : IPipelineHandler
 
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
-        var chunks = await GetDocumentChunksAsync(pipeline, cancellationToken);
-
-        foreach (var chunk in chunks)
+        var chunkFiles = await GetDocumentChunkFilesAsync(pipeline, cancellationToken);
+        foreach (var chunkFile in chunkFiles)
         {
+            var chunk = await GetDocumentChunkAsync(pipeline, chunkFile, cancellationToken);
             if (string.IsNullOrWhiteSpace(chunk.RawText))
                 throw new InvalidOperationException("No text content found in the document chunk.");
 
             var answer = await GenerateSummarizedTextAsync(chunk.RawText, cancellationToken);
             chunk.SummarizedText = answer;
-            await UpdateDocumentChunkAsync(pipeline, chunk, cancellationToken);
+            await UpsertDocumentChunkAsync(pipeline, chunk, cancellationToken);
         }
 
         return pipeline;
@@ -43,32 +43,28 @@ public class GenerateSummarizedTextHandler : IPipelineHandler
 
     #region Private Methods
 
-    private async Task<IEnumerable<DocumentChunk>> GetDocumentChunksAsync(DataPipeline pipeline, CancellationToken cancellationToken)
+    private async Task<IEnumerable<string>> GetDocumentChunkFilesAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
         var filePaths = await _documentStorage.GetDocumentFilesAsync(
-            pipeline.Document.CollectionName,
-            pipeline.Document.DocumentId,
-            cancellationToken);
-        var chunkFilePaths = filePaths.Where(x => x.EndsWith(DocumentFileHelper.ChunkedFileExtension));
-
-        var chunks = new List<DocumentChunk>();
-        foreach (var chunkFilePath in chunkFilePaths)
-        {
-            var chunkStream = await _documentStorage.ReadDocumentFileAsync(
-                pipeline.Document.CollectionName,
-                pipeline.Document.DocumentId,
-                chunkFilePath,
-                cancellationToken);
-
-            var chunk = JsonDocumentSerializer.Deserialize<DocumentChunk>(chunkStream);
-            chunks.Add(chunk);
-        }
-        return chunks;
+            collectionName: pipeline.Document.CollectionName,
+            documentId: pipeline.Document.DocumentId,
+            cancellationToken: cancellationToken);
+        return filePaths.Where(x => x.EndsWith(DocumentFileHelper.ChunkedFileExtension));
     }
 
-    private async Task UpdateDocumentChunkAsync(DataPipeline pipeline, DocumentChunk chunk, CancellationToken cancellationToken)
+    private async Task<DocumentChunk> GetDocumentChunkAsync(DataPipeline pipeline, string chunkFilePath, CancellationToken cancellationToken)
     {
-        var filename = DocumentFileHelper.GetChunkedFileName(pipeline.Document.FileName, chunk.ChunkIndex);
+        var chunkStream = await _documentStorage.ReadDocumentFileAsync(
+            pipeline.Document.CollectionName,
+            pipeline.Document.DocumentId,
+            chunkFilePath,
+            cancellationToken);
+        return JsonDocumentSerializer.Deserialize<DocumentChunk>(chunkStream);
+    }
+
+    private async Task UpsertDocumentChunkAsync(DataPipeline pipeline, DocumentChunk chunk, CancellationToken cancellationToken)
+    {
+        var filename = DocumentFileHelper.GetChunkedFileName(pipeline.Document.FileName, chunk.Index);
         var chunkStream = JsonDocumentSerializer.SerializeToStream(chunk);
         await _documentStorage.WriteDocumentFileAsync(
             pipeline.Document.CollectionName,
@@ -114,9 +110,24 @@ public class GenerateSummarizedTextHandler : IPipelineHandler
     private static string? GetSystemInstructionPrompt()
     {
         return """
-        You are an advanced language model designed to extract and present the most relevant and useful information from a given text. 
-        Your task is to read the provided text and generate a concise, clear, and informative summary that highlights key points, important details, and actionable insights. 
-        Ensure that the summary is well-structured, easy to understand, and free of unnecessary jargon.
+        You are an AI designed to accurately summarize text without adding or inferring information.
+
+        [SUMMARIZATION RULES]
+        - Summarize only the provided text without adding or inferring information.
+        - Use short, clear, complete sentences.
+        - Eliminate redundancy and repetition.
+        - Do not include these phrases:
+            - This article
+            - This document
+            - This page
+
+        [EXAMPLES]
+        Original: "Hello, how are you?"
+        Summary: "Hello."
+
+        Original: "The quick brown fox jumps over the lazy dog."
+        Summary: "A fox jumps over a dog."
+        [END EXAMPLES]
         """;
     }
 

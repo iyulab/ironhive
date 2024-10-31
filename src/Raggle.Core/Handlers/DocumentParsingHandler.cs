@@ -21,16 +21,19 @@ public class DocumentParsingHandler : IPipelineHandler
 
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
-        var parser = _parsers.FirstOrDefault(d => d.SupportTypes.Contains(pipeline.Document.ContentType))
+        // 문서 파서 선택
+        var parser = _parsers.FirstOrDefault(d => d.SupportContentTypes.Contains(pipeline.Document.ContentType))
             ?? throw new InvalidOperationException($"No decoder found for MIME type '{pipeline.Document.ContentType}'.");
 
+        // 문서 내용 읽기
         var content = await _documentStorage.ReadDocumentFileAsync(
                 collectionName: pipeline.Document.CollectionName,
                 documentId: pipeline.Document.DocumentId,
                 filePath: pipeline.Document.FileName,
                 cancellationToken: cancellationToken);
-        var sections = await parser.ParseAsync(content, cancellationToken);
 
+        // 문서 파싱
+        var sections = await parser.ParseAsync(content, cancellationToken);
         var parsedDocument = new ParsedDocument
         {
             FileName = pipeline.Document.FileName,
@@ -39,6 +42,7 @@ public class DocumentParsingHandler : IPipelineHandler
             Sections = sections,
         };
 
+        // 파싱 결과 저장
         var filename = DocumentFileHelper.GetParsedFileName(pipeline.Document.FileName);
         var stream = JsonDocumentSerializer.SerializeToStream(parsedDocument);
         await _documentStorage.WriteDocumentFileAsync(

@@ -1,6 +1,6 @@
 ﻿namespace Raggle.Core.Utils;
 
-public static class DocumentFileHelper
+public static partial class DocumentFileHelper
 {
     public static string PipelineFileExtension { get; private set; } = ".pipeline.json";
     public static string ParsedFileExtension { get; private set; } = ".parsed.json";

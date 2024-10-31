@@ -2,15 +2,24 @@
 
 public class DocumentChunk
 {
+    public int Index { get; set; }
+
     public string SourceFileName { get; set; } = string.Empty;
 
-    public int SectionNumber { get; set; }
-
-    public int ChunkIndex { get; set; }
+    public string SourceSection { get; set; } = string.Empty;
 
     public string RawText { get; set; } = string.Empty;
 
     public string? SummarizedText { get; set; } = string.Empty;
 
-    public IEnumerable<string>? ExtractedQuestions { get; set; }
+    public IEnumerable<QAPair>? ExtractedQAPairs { get; set; }
+}
+
+public class QAPair
+{
+    public int Index { get; set; }
+
+    public string Question { get; set; } = string.Empty;
+
+    public string Answer { get; set; } = string.Empty;
 }

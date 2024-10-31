@@ -17,7 +17,7 @@ public class TiktokenTokenizer : ITextTokenizer
     /// <inheritdoc />
     public IReadOnlyList<int> Encode(string text)
     {
-        return (IReadOnlyList<int>)_tokenizer.Encode(text);
+        return _tokenizer.Encode(text).ToList();
     }
 
     /// <inheritdoc />

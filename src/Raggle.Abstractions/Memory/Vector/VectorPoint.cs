@@ -26,6 +26,11 @@ public class VectorPoint
     public required int ChunkIndex { get; set; }
 
     /// <summary>
+    /// Gets or sets the QA pair index.
+    /// </summary>
+    public int? QAPairIndex { get; set; }
+
+    /// <summary>
     /// Gets or sets the tags.
     /// </summary>
     public string[]? Tags { get; set; }

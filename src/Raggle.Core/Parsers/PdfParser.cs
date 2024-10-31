@@ -6,10 +6,10 @@ using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 
 namespace Raggle.Core.Parsers;
 
-public class PdfParser : IDocumentParser
+public class PDFParser : IDocumentParser
 {
     /// <inheritdoc />
-    public string[] SupportTypes => 
+    public string[] SupportContentTypes => 
     [
         "application/pdf"
     ];
@@ -17,21 +17,33 @@ public class PdfParser : IDocumentParser
     /// <inheritdoc />
     public async Task<IEnumerable<DocumentSection>> ParseAsync(Stream stream, CancellationToken cancellationToken = default)
     {
+        var results = new ConcurrentBag<DocumentSection>();
+
         using var pdf = PdfDocument.Open(stream);
         var pages = pdf.GetPages();
 
-        var results = new ConcurrentBag<DocumentSection>();
-        await Parallel.ForEachAsync(pages, cancellationToken, (page, ct) =>
+        // 페이지 별로 병렬 처리
+        await Parallel.ForEachAsync(pages, new ParallelOptions
         {
+            CancellationToken = cancellationToken,
+            MaxDegreeOfParallelism = Environment.ProcessorCount
+        }, async (page, ct) =>
+        {
+            // 각 슬라이드를 처리하기 전에 취소 요청을 확인
             ct.ThrowIfCancellationRequested();
 
-            // Get text from page
-            var text = ContentOrderTextExtractor.GetText(page, true);
-            text = TextCleaner.Clean(text);
-            results.Add(new DocumentSection(page.Number, text));
-            return ValueTask.CompletedTask;
+            // 페이지의 텍스트 추출
+            var sectionText = ContentOrderTextExtractor.GetText(page);
+            var cleanText = TextCleaner.Clean(sectionText);
+            results.Add(new DocumentSection
+            {
+                Identifier = $"Page {page.Number}",
+                Text = cleanText,
+            });
+
+            await Task.CompletedTask;
         });
 
-        return results.OrderBy(x => x.Number);
+        return results;
     }
 }
