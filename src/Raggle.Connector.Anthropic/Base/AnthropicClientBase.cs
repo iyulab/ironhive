@@ -35,9 +35,10 @@ internal abstract class AnthropicClientBase
                 : new Uri(config.EndPoint.EndsWith('/') ? config.EndPoint : $"{config.EndPoint}/"),
         };
 
-        client.DefaultRequestHeaders.Add(
-            AnthropicConstants.VersionHeaderName,
-            string.IsNullOrEmpty(config.Version) ? AnthropicConstants.VersionHeaderValue : config.Version);
+        if (string.IsNullOrEmpty(config.Version))
+            client.DefaultRequestHeaders.Add(AnthropicConstants.VersionHeaderName, AnthropicConstants.VersionHeaderValue);
+        else
+            client.DefaultRequestHeaders.Add(AnthropicConstants.VersionHeaderName, config.Version);
 
         if (!string.IsNullOrEmpty(config.ApiKey))
             client.DefaultRequestHeaders.Add(AnthropicConstants.ApiKeyHeaderName, config.ApiKey);

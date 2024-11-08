@@ -25,14 +25,9 @@ internal abstract class OpenAIClientBase
     /// <summary>
     /// Gets the list of OpenAI models.
     /// </summary>
-    protected async Task<IEnumerable<OpenAIModel>> GetModelsAsync(CancellationToken cancellationToken = default)
+    protected async Task<IEnumerable<OpenAIModel>> GetModelsAsync(CancellationToken cancellationToken)
     {
-        var requestUri = new UriBuilder
-        {
-            Path = OpenAIConstants.GetModelsPath
-        }.ToString();
-
-        var jsonDocument = await _client.GetFromJsonAsync<JsonDocument>(requestUri, cancellationToken);
+        var jsonDocument = await _client.GetFromJsonAsync<JsonDocument>(OpenAIConstants.GetModelsPath, cancellationToken);
         var models = jsonDocument?.RootElement.GetProperty("data").Deserialize<IEnumerable<OpenAIModel>>();
 
         return models?.OrderByDescending(m => m.Created).ToArray() ?? [];

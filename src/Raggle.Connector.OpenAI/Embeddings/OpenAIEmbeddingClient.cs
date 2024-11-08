@@ -13,9 +13,10 @@ internal class OpenAIEmbeddingClient : OpenAIClientBase
 
     internal OpenAIEmbeddingClient(OpenAIConfig config) : base(config) { }
 
-    internal async Task<IEnumerable<OpenAIEmbeddingModel>> GetEmbeddingModelsAsync()
+    internal async Task<IEnumerable<OpenAIEmbeddingModel>> GetEmbeddingModelsAsync(
+        CancellationToken cancellationToken)
     {
-        var models = await GetModelsAsync();
+        var models = await GetModelsAsync(cancellationToken);
         return models.Where(OpenAIModel.IsEmbeddingModel)
                      .Select(m => new OpenAIEmbeddingModel
                      {
@@ -25,14 +26,16 @@ internal class OpenAIEmbeddingClient : OpenAIClientBase
                      });
     }
 
-    internal async Task<IEnumerable<EmbeddingResponse>> PostEmbeddingAsync(EmbeddingRequest request)
+    internal async Task<IEnumerable<EmbeddingResponse>> PostEmbeddingAsync(
+        EmbeddingRequest request,
+        CancellationToken cancellationToken)
     {
         var json = JsonSerializer.Serialize(request, _jsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        var response = await _client.PostAsync(OpenAIConstants.PostEmbeddingPath, content);
+        var response = await _client.PostAsync(OpenAIConstants.PostEmbeddingPath, content, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var jsonDocument = await response.Content.ReadFromJsonAsync<JsonDocument>() 
+        var jsonDocument = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken) 
             ?? throw new InvalidOperationException("Failed to deserialize response.");
 
         var embeddings = jsonDocument.RootElement.GetProperty("data").EnumerateArray().Select(e =>

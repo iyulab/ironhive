@@ -1,6 +1,5 @@
 ﻿using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Memory;
-using Raggle.Abstractions.Memory.Document;
 using Raggle.Core.Document;
 using Raggle.Core.Tokenizers;
 using Raggle.Core.Utils;

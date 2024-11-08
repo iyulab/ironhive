@@ -1,7 +1,4 @@
-﻿using Raggle.Abstractions.Memory.Document;
-using Raggle.Abstractions.Memory.Vector;
-
-namespace Raggle.Abstractions.Memory;
+﻿namespace Raggle.Abstractions.Memory;
 
 /// <summary>
 /// IMemoryService 인터페이스는 메모리 컬렉션과 문서의 관리 및 검색 기능을 제공하는 서비스의 인터페이스입니다.
@@ -62,7 +59,7 @@ public interface IMemoryService
     /// <param name="uploadRequest">업로드 요청 세부사항</param>
     /// <param name="cancellationToken">작업 취소를 위한 토큰</param>
     /// <returns>데이터 파이프라인 객체</returns>
-    Task<DataPipeline> MemorizeDocumentAsync(string collectionName, string documentId, string[] steps, UploadRequest? uploadRequest = null, CancellationToken cancellationToken = default);
+    Task<DataPipeline> MemorizeDocumentAsync(string collectionName, string documentId, string[] steps, DocumentUploadRequest? uploadRequest = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 지정된 컬렉션에서 문서를 기억 해제합니다.

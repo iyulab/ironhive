@@ -5,7 +5,7 @@ namespace Raggle.Connector.OpenAI.Embeddings.Models;
 internal class EmbeddingRequest
 {
     [JsonPropertyName("input")]
-    public required ICollection<string> Input { get; set; }
+    public required string[] Input { get; set; }
 
     [JsonPropertyName("model")]
     public required string Model { get; set; }

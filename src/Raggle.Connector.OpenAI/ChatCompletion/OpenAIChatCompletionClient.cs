@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text;
 using Raggle.Connector.OpenAI.Base;
 using Raggle.Connector.OpenAI.ChatCompletion.Models;
+using System.Runtime.CompilerServices;
 
 namespace Raggle.Connector.OpenAI.ChatCompletion;
 
@@ -13,9 +14,10 @@ internal class OpenAIChatCompletionClient : OpenAIClientBase
 
     internal OpenAIChatCompletionClient(OpenAIConfig config) : base(config) { }
 
-    internal async Task<IEnumerable<OpenAIChatCompletionModel>> GetChatCompletionModelsAsync()
+    internal async Task<IEnumerable<OpenAIChatCompletionModel>> GetChatCompletionModelsAsync(
+        CancellationToken cancellationToken)
     {
-        var models = await GetModelsAsync();
+        var models = await GetModelsAsync(cancellationToken);
         return models.Where(OpenAIModel.IsChatCompletionModel)
                      .Select(m => new OpenAIChatCompletionModel
                      {
@@ -25,33 +27,38 @@ internal class OpenAIChatCompletionClient : OpenAIClientBase
                      });
     }
 
-    internal async Task<ChatCompletionResponse> PostChatCompletionAsync(ChatCompletionRequest request)
+    internal async Task<ChatCompletionResponse> PostChatCompletionAsync(
+        ChatCompletionRequest request,
+        CancellationToken cancellationToken)
     {
         request.Stream = false;
         var json = JsonSerializer.Serialize(request, _jsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        var response = await _client.PostAsync(OpenAIConstants.PostChatCompletionPath, content);
+        var response = await _client.PostAsync(OpenAIConstants.PostChatCompletionPath, content, cancellationToken);
         response.EnsureSuccessStatusCode();
-        var str = await response.Content.ReadAsStringAsync();
-        var message = await response.Content.ReadFromJsonAsync<ChatCompletionResponse>(_jsonOptions)
+        var message = await response.Content.ReadFromJsonAsync<ChatCompletionResponse>(_jsonOptions, cancellationToken)
             ?? throw new InvalidOperationException("Failed to deserialize response.");
         return message;
     }
 
-    internal async IAsyncEnumerable<StreamingChatCompletionResponse> PostStreamingChatCompletionAsync(ChatCompletionRequest request)
+    internal async IAsyncEnumerable<StreamingChatCompletionResponse> PostStreamingChatCompletionAsync(
+        ChatCompletionRequest request,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         request.Stream = true;
         var json = JsonSerializer.Serialize(request, _jsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        var response = await _client.PostAsync(OpenAIConstants.PostChatCompletionPath, content);
+        var response = await _client.PostAsync(OpenAIConstants.PostChatCompletionPath, content, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        using var stream = await response.Content.ReadAsStreamAsync();
+        using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var reader = new StreamReader(stream);
 
         while (!reader.EndOfStream)
         {
-            var line = await reader.ReadLineAsync();
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var line = await reader.ReadLineAsync(cancellationToken);
             if (string.IsNullOrWhiteSpace(line) || !line.StartsWith("data"))
                 continue;
 

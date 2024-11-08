@@ -4,6 +4,7 @@ using Raggle.Abstractions.Tools;
 using Raggle.Connector.Anthropic.ChatCompletion;
 using Raggle.Connector.Anthropic.ChatCompletion.Models;
 using Raggle.Connector.Anthropic.Configurations;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -23,22 +24,32 @@ public class AnthropicChatCompletionService : IChatCompletionService
         _client = new AnthropicChatCompletionClient(apiKey);
     }
 
-    public Task<IEnumerable<ChatCompletionModel>> GetChatCompletionModelsAsync()
+    /// <inheritdoc />
+    public Task<IEnumerable<ChatCompletionModel>> GetChatCompletionModelsAsync(
+        CancellationToken cancellationToken = default)
     {
-        var models = _client.GetChatCompletionModels();
-        var chatCompletionModels = models.Select(m => new ChatCompletionModel
+        var anthropicModels = _client.GetChatCompletionModels();
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var models = anthropicModels.Select(m => new ChatCompletionModel
         {
-            ModelId = m.ModelId,
+            Model = m.ModelId,
+            CreatedAt = null,
+            ModifiedAt = null,
             Owner = "Anthropic"
         });
-        return Task.FromResult(chatCompletionModels);
+        return Task.FromResult(models);
     }
 
-    public async Task<ChatCompletionResponse> ChatCompletionAsync(ChatHistory history, ChatCompletionOptions options)
+    /// <inheritdoc />
+    public async Task<ChatCompletionResponse> ChatCompletionAsync(
+        ChatCompletionRequest request, 
+        CancellationToken cancellationToken = default)
     {
-        var request = BuildMessagesRequest(history, options);
-        var response = await _client.PostMessagesAsync(request);
-        var tools = options.Tools?.ToDictionary(t => t.Name, t => t) ?? new Dictionary<string, FunctionTool>();
+        var anthropicRequest = ConvertToAnthropicRequest(request);
+        var response = await _client.PostMessagesAsync(anthropicRequest, cancellationToken);
+
+        var tools = request.Tools?.ToDictionary(t => t.Name, t => t) ?? new Dictionary<string, FunctionTool>();
         var contents = new List<IContentBlock>();
 
         if (response.StopReason == StopReason.ToolUse)
@@ -52,10 +63,10 @@ public class AnthropicChatCompletionService : IChatCompletionService
                 else if (content is ToolUseMessageContent toolUseContent)
                 {
                     var toolContent = new ToolContentBlock
-                    { 
-                        ID = toolUseContent.ID, 
-                        Name = toolUseContent.Name, 
-                        Arguments =  toolUseContent.Input?.ToString() ?? string.Empty
+                    {
+                        ID = toolUseContent.ID,
+                        Name = toolUseContent.Name,
+                        Arguments = toolUseContent.Input?.ToString() ?? string.Empty
                     };
 
                     if (string.IsNullOrWhiteSpace(toolUseContent.Name))
@@ -75,13 +86,14 @@ public class AnthropicChatCompletionService : IChatCompletionService
                 }
             }
 
-            var cloneHistory = history.Clone();
+            var cloneHistory = request.Messages.Clone();
             cloneHistory.AddAssistantMessages(contents);
-            return await ChatCompletionAsync(cloneHistory, options);
+            request.Messages = cloneHistory;
+            return await ChatCompletionAsync(request, cancellationToken);
         }
         else
         {
-            if (history.TryGetLastAssistantMessage(out var lastAssistantMessage))
+            if (request.Messages.TryGetLastAssistantMessage(out var lastAssistantMessage))
             {
                 contents.AddRange(lastAssistantMessage.Contents);
             }
@@ -97,22 +109,45 @@ public class AnthropicChatCompletionService : IChatCompletionService
                     contents.Add(new ToolContentBlock { ID = toolContent.ID, Name = toolContent.Name });
                 }
             }
-            var totalTokens = response.Usage.InputTokens + response.Usage.OutputTokens;
+            var tokenUsage = new Abstractions.AI.TokenUsage
+            {
+                TotalTokens = response.Usage.InputTokens + response.Usage.OutputTokens,
+                InputTokens = response.Usage.InputTokens,
+                OutputTokens = response.Usage.OutputTokens
+            };
 
             if (response.StopReason == StopReason.MaxTokens)
-                return ChatCompletionResponse.Limit(contents.ToArray(), totalTokens);
+            {
+                return new ChatCompletionResponse
+                {
+                    Completed = false,
+                    Contents = contents.ToArray(),
+                    TokenUsage = tokenUsage,
+                    ErrorMessage = "You have reached the maximum tokens limit",
+                };
+            }
             else
-                return ChatCompletionResponse.Stop(contents.ToArray(), totalTokens);
+            {
+                return new ChatCompletionResponse
+                {
+                    Completed = true,
+                    Contents = contents.ToArray(),
+                    TokenUsage = tokenUsage,
+                };
+            }
         }
     }
 
-    public async IAsyncEnumerable<IStreamingChatCompletionResponse> StreamingChatCompletionAsync(ChatHistory history, ChatCompletionOptions options)
+    /// <inheritdoc />
+    public async IAsyncEnumerable<IStreamingChatCompletionResponse> StreamingChatCompletionAsync(
+        ChatCompletionRequest request, 
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var request = BuildMessagesRequest(history, options);
-        var tools = options.Tools?.ToDictionary(t => t.Name, t => t) ?? new Dictionary<string, FunctionTool>();
+        var anthropicRequest = ConvertToAnthropicRequest(request);
+        var tools = request.Tools?.ToDictionary(t => t.Name, t => t) ?? new Dictionary<string, FunctionTool>();
         var contents = new List<IContentBlock>();
 
-        await foreach (var response in _client.PostStreamingMessagesAsync(request))
+        await foreach (var response in _client.PostStreamingMessagesAsync(anthropicRequest, cancellationToken))
         {
             if (response is PingEvent)
             {
@@ -164,10 +199,11 @@ public class AnthropicChatCompletionService : IChatCompletionService
                             yield return new StreamingToolResultResponse { Name = toolContent.Name, Result = toolContent.Result };
                         }
                     }
-                    var cloneHistory = history.Clone();
+                    var cloneHistory = request.Messages.Clone();
                     cloneHistory.AddAssistantMessages(contents);
+                    request.Messages = cloneHistory;
 
-                    await foreach (var stream in StreamingChatCompletionAsync(cloneHistory, options))
+                    await foreach (var stream in StreamingChatCompletionAsync(request, cancellationToken))
                     {
                         yield return stream;
                     }
@@ -177,7 +213,8 @@ public class AnthropicChatCompletionService : IChatCompletionService
             {
                 if (contentStart.ContentBlock is TextMessageContent textContent)
                 {
-                    contents.Add(new TextContentBlock { Text = textContent.Text });                }
+                    contents.Add(new TextContentBlock { Text = textContent.Text });
+                }
                 else if (contentStart.ContentBlock is ToolUseMessageContent toolContent)
                 {
                     contents.Add(new ToolContentBlock { ID = toolContent.ID, Name = toolContent.Name });
@@ -214,22 +251,24 @@ public class AnthropicChatCompletionService : IChatCompletionService
         }
     }
 
-    private MessagesRequest BuildMessagesRequest(ChatHistory history, ChatCompletionOptions options)
+    #region Private Methods
+
+    private MessagesRequest ConvertToAnthropicRequest(ChatCompletionRequest request)
     {
-        var request = new MessagesRequest
+        var anthropicRequest = new MessagesRequest
         {
-            Model = options.ModelId,
-            MaxTokens = options.MaxTokens,
-            System = options.System,
-            Temperature = options.Temperature,
-            TopK = options.TopK,
-            TopP = options.TopP,
-            StopSequences = options.StopSequences,
+            Model = request.Model,
+            MaxTokens = request.MaxTokens ?? 2048,
+            System = request.System,
+            Temperature = request.Temperature,
+            TopK = request.TopK,
+            TopP = request.TopP,
+            StopSequences = request.StopSequences,
             Messages = []
         };
 
         var messages = new List<Message>();
-        foreach (var message in history)
+        foreach (var message in request.Messages)
         {
             if (message.Contents == null || message.Contents.Count == 0)
                 continue;
@@ -284,12 +323,12 @@ public class AnthropicChatCompletionService : IChatCompletionService
                 }
             }
         }
-        request.Messages = messages.ToArray();
+        anthropicRequest.Messages = messages.ToArray();
 
-        if (options.Tools != null && options.Tools.Length > 0)
+        if (request.Tools != null && request.Tools.Length > 0)
         {
             var tools = new List<Tool>();
-            foreach (var tool in options.Tools)
+            foreach (var tool in request.Tools)
             {
                 var schema = tool.GetParametersJsonSchema();
                 tools.Add(new Tool
@@ -303,9 +342,11 @@ public class AnthropicChatCompletionService : IChatCompletionService
                     }
                 });
             }
-            request.Tools = tools.ToArray();
+            anthropicRequest.Tools = tools.ToArray();
         }
 
-        return request;
+        return anthropicRequest;
     }
+
+    #endregion
 }

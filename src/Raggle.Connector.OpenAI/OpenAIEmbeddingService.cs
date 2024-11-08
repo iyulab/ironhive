@@ -1,7 +1,6 @@
 ﻿using Raggle.Abstractions.AI;
 using Raggle.Connector.OpenAI.Configurations;
 using Raggle.Connector.OpenAI.Embeddings;
-using Raggle.Connector.OpenAI.Embeddings.Models;
 
 namespace Raggle.Connector.OpenAI;
 
@@ -19,36 +18,57 @@ public class OpenAIEmbeddingService : IEmbeddingService
         _client = new OpenAIEmbeddingClient(apiKey);
     }
 
-    public async Task<EmbeddingModel[]> GetEmbeddingModelsAsync()
+    /// <inheritdoc />
+    public async Task<IEnumerable<EmbeddingModel>> GetEmbeddingModelsAsync(
+        CancellationToken cancellationToken = default)
     {
-        var models = await _client.GetEmbeddingModelsAsync();
+        var models = await _client.GetEmbeddingModelsAsync(cancellationToken);
         return models.Select(m => new EmbeddingModel
         {
-            ModelID = m.ID,
+            Model = m.ID,
             CreatedAt = m.Created,
-            Owner = "OpenAI"
+            Owner = m.OwnedBy,
         }).ToArray();
     }
 
-    public async Task<float[]> EmbeddingAsync(string input, EmbeddingOptions options)
+    /// <inheritdoc />
+    public async Task<Abstractions.AI.EmbeddingResponse> EmbeddingAsync(
+        string model,
+        string input,
+        CancellationToken cancellationToken = default)
     {
-        var request = new EmbeddingRequest
+        var request = new Abstractions.AI.EmbeddingRequest
         {
-            Model = options.ModelId,
-            Input = [input]
+            Model = model,
+            Input = [input],
         };
-        var response = await _client.PostEmbeddingAsync(request);
-        return response.First().Embedding.ToArray();
+        var embedding = (await EmbeddingsAsync(request, cancellationToken).ConfigureAwait(false))
+                        .FirstOrDefault()
+                        ?? throw new InvalidOperationException("Failed to get embedding.");
+        return embedding;
     }
 
-    public async Task<float[][]> EmbeddingsAsync(ICollection<string> inputs, EmbeddingOptions options)
+    /// <inheritdoc />
+    public async Task<IEnumerable<Abstractions.AI.EmbeddingResponse>> EmbeddingsAsync(
+        Abstractions.AI.EmbeddingRequest request, 
+        CancellationToken cancellationToken = default)
     {
-        var request = new EmbeddingRequest
+        var openaiRequest = new Embeddings.Models.EmbeddingRequest
         {
-            Model = options.ModelId,
-            Input = inputs.ToArray(),
+            Model = request.Model,
+            Input = request.Input,
         };
-        var response = await _client.PostEmbeddingAsync(request);
-        return response.Select(r => r.Embedding.ToArray()).ToArray();
+
+        var response = await _client.PostEmbeddingAsync(openaiRequest, cancellationToken);
+
+        return response
+                .Where(r => r.Embedding != null)
+                .OrderBy(r => r.Index)
+                .Select(r => new Abstractions.AI.EmbeddingResponse
+                {
+                    Index = r.Index,
+                    Embedding = r.Embedding!,
+                })
+                .ToList();
     }
 }

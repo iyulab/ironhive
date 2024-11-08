@@ -9,10 +9,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Raggle.Abstractions\Raggle.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Connector.Anthropic\Raggle.Connector.Anthropic.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Connector.Ollama\Raggle.Connector.Ollama.csproj" />
     <ProjectReference Include="..\..\src\Raggle.Connector.OpenAI\Raggle.Connector.OpenAI.csproj" />
     <ProjectReference Include="..\..\src\Raggle.Core\Raggle.Core.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.Document.Disk\Raggle.Document.Disk.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.Vector.LiteDB\Raggle.Vector.LiteDB.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.DocumentStorage.AzureBlob\Raggle.DocumentStorage.AzureBlob.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.DocumentStorage.LocalDisk\Raggle.DocumentStorage.LocalDisk.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.VectorDB.LiteDB\Raggle.VectorDB.LiteDB.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.VectorDB.Qdrant\Raggle.VectorDB.Qdrant.csproj" />
   </ItemGroup>
 
 </Project>

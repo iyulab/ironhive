@@ -5,6 +5,7 @@ using Raggle.Abstractions.Tools;
 using Raggle.Connector.OpenAI.ChatCompletion.Models;
 using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Messages;
+using System.Runtime.CompilerServices;
 
 namespace Raggle.Connector.OpenAI;
 
@@ -22,36 +23,41 @@ public class OpenAIChatCompletionService : IChatCompletionService
         _client = new OpenAIChatCompletionClient(apiKey);
     }
 
-    public async Task<IEnumerable<ChatCompletionModel>> GetChatCompletionModelsAsync()
+    /// <inheritdoc />
+    public async Task<IEnumerable<ChatCompletionModel>> GetChatCompletionModelsAsync(
+        CancellationToken cancellationToken = default)
     {
-        var models = await _client.GetChatCompletionModelsAsync();
+        var models = await _client.GetChatCompletionModelsAsync(cancellationToken);
         return models.Select(m => new ChatCompletionModel
         {
-            ModelId = m.ID,
+            Model = m.ID,
             CreatedAt = m.Created,
-            Owner = "OpenAI"
+            Owner = m.OwnedBy,
         });
     }
 
-    public async Task<Abstractions.AI.ChatCompletionResponse> ChatCompletionAsync(ChatHistory history, ChatCompletionOptions options)
+    /// <inheritdoc />
+    public async Task<Abstractions.AI.ChatCompletionResponse> ChatCompletionAsync(
+        Abstractions.AI.ChatCompletionRequest request, 
+        CancellationToken cancellationToken = default)
     {
-        var request = BuildChatCompletionRequest(history, options);
-        var response = await _client.PostChatCompletionAsync(request);
+        var openaiRequest = ConvertToOpenAIRequest(request);
+        var response = await _client.PostChatCompletionAsync(openaiRequest, cancellationToken);
 
         var choice = response.Choices?.First();
         if (choice?.FinishReason == FinishReason.ToolCalls && choice.Message?.ToolCalls?.Length > 0)
         {
-            var cloneHistory = history.Clone();
+            var cloneHistory = request.Messages.Clone();
             foreach (var toolCall in choice.Message.ToolCalls)
             {
-                var content = new ToolContentBlock 
-                { 
+                var content = new ToolContentBlock
+                {
                     ID = toolCall.ID,
                     Name = toolCall.Function?.Name,
                     Arguments = toolCall.Function?.Arguments,
                 };
 
-                var function = options.Tools?.FirstOrDefault(t => t.Name == content.Name);
+                var function = request.Tools?.FirstOrDefault(t => t.Name == content.Name);
                 if (function == null)
                 {
                     content.Result = FunctionResult.Failed($"Function '{content.Name}' not exist.");
@@ -63,30 +69,54 @@ public class OpenAIChatCompletionService : IChatCompletionService
                 }
                 cloneHistory.AddAssistantMessage(content);
             }
-            return await ChatCompletionAsync(cloneHistory, options);
+            request.Messages = cloneHistory;
+            return await ChatCompletionAsync(request, cancellationToken);
         }
         else
         {
             var textContent = new TextContentBlock { Text = choice?.Message?.Content ?? string.Empty };
-            var totalTokens = response.Usage?.TotalTokens;
-            var contents = history.TryGetLastAssistantMessage(out var lastMessage)
+            var contents = request.Messages.TryGetLastAssistantMessage(out var lastMessage)
                 ? lastMessage.Contents.Append(textContent)
-                : [ textContent ];
+                : [textContent];
+            var tokenUsage = new Abstractions.AI.TokenUsage
+            {
+                TotalTokens = response.Usage?.TotalTokens,
+                InputTokens = response.Usage?.PromptTokens,
+                OutputTokens = response.Usage?.CompletionTokens
+            };
 
             if (choice?.FinishReason == FinishReason.Length)
-                return Abstractions.AI.ChatCompletionResponse.Limit((IContentBlock[])contents.ToArray(), totalTokens);
+            {
+                return new Abstractions.AI.ChatCompletionResponse
+                { 
+                    Completed = false,
+                    Contents = contents.ToArray(),
+                    TokenUsage = tokenUsage,
+                    ErrorMessage = "You have reached the token limit.",
+                };
+            }
             else
-                return Abstractions.AI.ChatCompletionResponse.Stop((IContentBlock[])contents.ToArray(), totalTokens);
+            {
+                return new Abstractions.AI.ChatCompletionResponse
+                {
+                    Completed = true,
+                    Contents = contents.ToArray(),
+                    TokenUsage = tokenUsage,
+                };
+            }
         }
     }
 
-    public async IAsyncEnumerable<IStreamingChatCompletionResponse> StreamingChatCompletionAsync(ChatHistory history, ChatCompletionOptions options)
+    /// <inheritdoc />
+    public async IAsyncEnumerable<IStreamingChatCompletionResponse> StreamingChatCompletionAsync(
+        Abstractions.AI.ChatCompletionRequest request, 
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var request = BuildChatCompletionRequest(history, options);
-        var tools = options.Tools?.ToDictionary(t => t.Name, t => t) ?? new Dictionary<string, FunctionTool>();
+        var openaiRequest = ConvertToOpenAIRequest(request);
+        var tools = request.Tools?.ToDictionary(t => t.Name, t => t) ?? new Dictionary<string, FunctionTool>();
         var toolContents = new Dictionary<int, ToolContentBlock>();
 
-        await foreach (var response in _client.PostStreamingChatCompletionAsync(request))
+        await foreach (var response in _client.PostStreamingChatCompletionAsync(openaiRequest, cancellationToken))
         {
             var choice = response.Choices?.First();
             if (choice == null) continue;
@@ -109,7 +139,7 @@ public class OpenAIChatCompletionService : IChatCompletionService
             else if (choice.FinishReason == FinishReason.ToolCalls)
             {
                 // Tool Callings
-                var cloneHistory = history.Clone();
+                var cloneHistory = request.Messages.Clone();
                 foreach (var (_, content) in toolContents)
                 {
                     yield return new StreamingToolUseResponse { Name = content.Name, Argument = content.Arguments };
@@ -130,7 +160,8 @@ public class OpenAIChatCompletionService : IChatCompletionService
                     yield return new StreamingToolResultResponse { Name = content.Name, Result = content.Result };
                 }
 
-                await foreach (var stream in StreamingChatCompletionAsync(cloneHistory, options))
+                request.Messages = cloneHistory;
+                await foreach (var stream in StreamingChatCompletionAsync(request, cancellationToken))
                 {
                     yield return stream;
                 };
@@ -145,7 +176,7 @@ public class OpenAIChatCompletionService : IChatCompletionService
             {
                 // Tool Call Generation
                 var toolCall = choice.Delta.ToolCalls.First();
-                if (toolCall == null || toolCall.Index == null) 
+                if (toolCall == null || toolCall.Index == null)
                     throw new InvalidOperationException("Not Expected Tool Call Object.");
 
                 if (toolContents.TryGetValue((int)toolCall.Index, out var content))
@@ -167,15 +198,17 @@ public class OpenAIChatCompletionService : IChatCompletionService
         }
     }
 
-    private static ChatCompletionRequest BuildChatCompletionRequest(ChatHistory history, ChatCompletionOptions options)
+    #region Private Methods
+
+    private static ChatCompletion.Models.ChatCompletionRequest ConvertToOpenAIRequest(Abstractions.AI.ChatCompletionRequest request)
     {
         var messages = new List<Message>();
-        if (!string.IsNullOrWhiteSpace(options.System))
+        if (!string.IsNullOrWhiteSpace(request.System))
         {
-            messages.Add(new SystemMessage { Content = options.System });
+            messages.Add(new SystemMessage { Content = request.System });
         }
 
-        foreach (var message in history)
+        foreach (var message in request.Messages)
         {
             if (message.Contents == null || message.Contents.Count == 0)
                 continue;
@@ -230,20 +263,20 @@ public class OpenAIChatCompletionService : IChatCompletionService
             }
         }
 
-        var request = new ChatCompletionRequest
+        var openaiRequest = new ChatCompletion.Models.ChatCompletionRequest
         {
-            Model = options.ModelId,
-            MaxTokens = options.MaxTokens,
-            Temperature = options.Temperature,
-            TopP = options.TopP,
-            Stop = options.StopSequences,
-            Messages = messages.ToArray()
+            Model = request.Model,
+            Messages = messages.ToArray(),
+            MaxTokens = request.MaxTokens,
+            Temperature = request.Temperature,
+            TopP = request.TopP,
+            Stop = request.StopSequences,
         };
 
-        if (options.Tools != null && options.Tools.Length > 0)
+        if (request.Tools != null && request.Tools.Length > 0)
         {
             var tools = new List<Tool>();
-            foreach (var tool in options.Tools)
+            foreach (var tool in request.Tools)
             {
                 var schema = tool.GetParametersJsonSchema();
                 tools.Add(new Tool
@@ -260,9 +293,11 @@ public class OpenAIChatCompletionService : IChatCompletionService
                     }
                 });
             }
-            request.Tools = tools.ToArray();
+            openaiRequest.Tools = tools.ToArray();
         }
 
-        return request;
+        return openaiRequest;
     }
+
+    #endregion
 }

@@ -1,6 +1,5 @@
 ﻿using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Memory;
-using Raggle.Abstractions.Memory.Document;
 using Raggle.Abstractions.Messages;
 using Raggle.Core.Document;
 using Raggle.Core.Utils;
@@ -12,16 +11,16 @@ public class GenerateSummarizedTextHandler : IPipelineHandler
 {
     private readonly IDocumentStorage _documentStorage;
     private readonly IChatCompletionService _chatService;
-    private readonly ChatCompletionOptions _chatOptions;
+    private readonly ChatCompletionRequest _chatRequest;
 
     public GenerateSummarizedTextHandler(
         IDocumentStorage documentStorage,
         IChatCompletionService chatService,
-        ChatCompletionOptions chatOptions)
+        ChatCompletionRequest chatRequest)
     {
         _documentStorage = documentStorage;
         _chatService = chatService;
-        _chatOptions = chatOptions;
+        _chatRequest = chatRequest;
     }
 
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
@@ -77,14 +76,15 @@ public class GenerateSummarizedTextHandler : IPipelineHandler
 
     private async Task<string> GenerateSummarizedTextAsync(string text, CancellationToken cancellationToken)
     {
-        var history = new ChatHistory();
-        history.AddUserMessage(new TextContentBlock
+        var messages = new ChatHistory();
+        messages.AddUserMessage(new TextContentBlock
         {
             Text = $"Summarize This:\n\n{text}",
         });
-        _chatOptions.System = GetSystemInstructionPrompt();
-        var response = await _chatService.ChatCompletionAsync(history, _chatOptions);
-        if (response.State == ChatResponseState.Stop)
+        _chatRequest.System = GetSystemInstructionPrompt();
+        _chatRequest.Messages = messages;
+        var response = await _chatService.ChatCompletionAsync(_chatRequest, cancellationToken);
+        if (response.Completed)
         {
             var textAnswer = new StringBuilder();
             foreach (var content in response.Contents)

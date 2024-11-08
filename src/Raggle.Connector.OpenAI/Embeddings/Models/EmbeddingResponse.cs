@@ -5,10 +5,10 @@ namespace Raggle.Connector.OpenAI.Embeddings.Models;
 internal class EmbeddingResponse
 {
     [JsonPropertyName("index")]
-    public int Index { get; set; }
+    public int? Index { get; set; }
 
     [JsonPropertyName("embedding")]
-    public required ICollection<float> Embedding { get; set; }
+    public float[]? Embedding { get; set; }
 
     /// <summary>
     /// "embedding" only

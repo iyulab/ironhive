@@ -1,5 +1,4 @@
 ﻿using System.Text.Json.Serialization;
-using Raggle.Abstractions.Memory.Document;
 
 namespace Raggle.Abstractions.Memory;
 

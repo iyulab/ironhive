@@ -2,9 +2,15 @@
 
 public interface IEmbeddingService
 {
-    Task<EmbeddingModel[]> GetEmbeddingModelsAsync();
+    Task<IEnumerable<EmbeddingModel>> GetEmbeddingModelsAsync(
+        CancellationToken cancellationToken = default);
 
-    Task<float[]> EmbeddingAsync(string input, EmbeddingOptions options);
+    Task<EmbeddingResponse> EmbeddingAsync(
+        string model,
+        string input,
+        CancellationToken cancellationToken = default);
 
-    Task<float[][]> EmbeddingsAsync(ICollection<string> inputs, EmbeddingOptions options);
+    Task<IEnumerable<EmbeddingResponse>> EmbeddingsAsync(
+        EmbeddingRequest request,
+        CancellationToken cancellationToken = default);
 }

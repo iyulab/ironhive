@@ -1,7 +1,5 @@
 ﻿using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Memory;
-using Raggle.Abstractions.Memory.Document;
-using Raggle.Abstractions.Memory.Vector;
 using Raggle.Core.Document;
 using Raggle.Core.Utils;
 
@@ -12,18 +10,18 @@ public class TextEmbeddingHandler : IPipelineHandler
     private readonly IDocumentStorage _documentStorage;
     private readonly IVectorStorage _vectorStorage;
     private readonly IEmbeddingService _embeddingService;
-    private readonly EmbeddingOptions _embeddingOptions;
+    private readonly string _embeddingModel;
 
     public TextEmbeddingHandler(
         IDocumentStorage documentStorage,
         IVectorStorage vectorStorage,
         IEmbeddingService embeddingService,
-        EmbeddingOptions embeddingOptions)
+        string embeddingModel)
     {
         _documentStorage = documentStorage;
         _vectorStorage = vectorStorage;
         _embeddingService = embeddingService;
-        _embeddingOptions = embeddingOptions;
+        _embeddingModel = embeddingModel;
     }
 
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
@@ -37,14 +35,18 @@ public class TextEmbeddingHandler : IPipelineHandler
 
             if (chunk.ExtractedQAPairs != null && chunk.ExtractedQAPairs.Any())
             {
-                var questions = chunk.ExtractedQAPairs.Select(x => x.Question).ToList();
-                var embeddings = await _embeddingService.EmbeddingsAsync(questions, _embeddingOptions);
-                for (var i = 0; i < embeddings.Length; i++)
+                var questions = chunk.ExtractedQAPairs.Select(x => x.Question).ToArray();
+                var response = await _embeddingService.EmbeddingsAsync(new EmbeddingRequest
+                {
+                    Model = _embeddingModel,
+                    Input = questions
+                }, cancellationToken);
+                for (var i = 0; i < response.Count(); i++)
                 {
                     points.Add(new VectorPoint
                     {
                         VectorId = Guid.NewGuid(),
-                        Vectors = embeddings[i],
+                        Vectors = response.ElementAt(i).Embedding,
                         DocumentId = pipeline.Document.DocumentId,
                         ChunkIndex = chunk.Index,
                         QAPairIndex = i,
@@ -54,11 +56,11 @@ public class TextEmbeddingHandler : IPipelineHandler
             }
             else if (!string.IsNullOrWhiteSpace(chunk.SummarizedText))
             {
-                var embedding = await _embeddingService.EmbeddingAsync(chunk.SummarizedText, _embeddingOptions);
+                var response = await _embeddingService.EmbeddingAsync(_embeddingModel, chunk.SummarizedText, cancellationToken);
                 points.Add(new VectorPoint
                 {
                     VectorId = Guid.NewGuid(),
-                    Vectors = embedding,
+                    Vectors = response.Embedding,
                     DocumentId = pipeline.Document.DocumentId,
                     ChunkIndex = chunk.Index,
                     Tags = pipeline.Document.Tags
@@ -66,11 +68,11 @@ public class TextEmbeddingHandler : IPipelineHandler
             }
             else if (!string.IsNullOrEmpty(chunk.RawText))
             {
-                var embedding = await _embeddingService.EmbeddingAsync(chunk.RawText, _embeddingOptions);
+                var response = await _embeddingService.EmbeddingAsync(_embeddingModel, chunk.SummarizedText, cancellationToken);
                 points.Add(new VectorPoint
                 {
                     VectorId = Guid.NewGuid(),
-                    Vectors = embedding,
+                    Vectors = response.Embedding,
                     DocumentId = pipeline.Document.DocumentId,
                     ChunkIndex = chunk.Index,
                     Tags = pipeline.Document.Tags

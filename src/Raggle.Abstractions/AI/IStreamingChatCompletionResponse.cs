@@ -11,8 +11,6 @@ namespace Raggle.Abstractions.AI;
 [JsonDerivedType(typeof(StreamingToolCallResponse), "tool_call")]
 [JsonDerivedType(typeof(StreamingToolUseResponse), "tool_use")]
 [JsonDerivedType(typeof(StreamingToolResultResponse), "tool_result")]
-[JsonDerivedType(typeof(StreamingMemorySearchResponse), "memory_search")]
-[JsonDerivedType(typeof(StreamingMemoryResultResponse), "memory_result")]
 public interface IStreamingChatCompletionResponse
 {
     DateTime TimeStamp { get; set; }
@@ -54,16 +52,5 @@ public class StreamingToolUseResponse : StreamingChatResponseBase
 public class StreamingToolResultResponse : StreamingChatResponseBase
 {
     public string? Name { get; set; }
-    public object? Result { get; set; }
-}
-
-public class StreamingMemorySearchResponse : StreamingChatResponseBase
-{
-    public string? Query { get; set; }
-}
-
-public class StreamingMemoryResultResponse : StreamingChatResponseBase
-{
-    public string? Query { get; set; }
     public object? Result { get; set; }
 }

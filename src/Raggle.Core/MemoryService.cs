@@ -1,26 +1,31 @@
-﻿using Raggle.Abstractions.Memory;
-using Raggle.Abstractions.Memory.Document;
-using Raggle.Abstractions.Memory.Vector;
+﻿using Raggle.Abstractions.AI;
+using Raggle.Abstractions.Memory;
 using Raggle.Abstractions.Utils;
 
 namespace Raggle.Core;
 
 public class MemoryService : IMemoryService
 {
-    private readonly MimeTypeDetector _detecter = new();
+    private readonly ContentTypeDetector _detecter = new();
 
     private readonly IDocumentStorage _documentStorage;
     private readonly IVectorStorage _vectorStorage;
+    private readonly IEmbeddingService _embeddingService;
+    private readonly string _embeddgingModel;
     private readonly IPipelineOrchestrator _orchestrator;
 
     public MemoryService(
         IDocumentStorage documentStorage,
         IVectorStorage vectorStorage,
+        IEmbeddingService embeddingService,
+        string embeddingModel,
         IPipelineOrchestrator orchestrator)
     {
         _documentStorage = documentStorage;
         _vectorStorage = vectorStorage;
         _orchestrator = orchestrator;
+        _embeddingService = embeddingService;
+        _embeddgingModel = embeddingModel;
     }
 
     /// <inheritdoc />
@@ -53,10 +58,10 @@ public class MemoryService : IMemoryService
         string collectionName,
         CancellationToken cancellationToken = default)
     {
-        if (await _documentStorage.ExistCollectionAsync(collectionName, cancellationToken))
+        if (await _documentStorage.CollectionExistsAsync(collectionName, cancellationToken))
             await _documentStorage.DeleteCollectionAsync(collectionName, cancellationToken);
 
-        if (await _vectorStorage.ExistCollectionAsync(collectionName, cancellationToken))
+        if (await _vectorStorage.CollectionExistsAsync(collectionName, cancellationToken))
             await _vectorStorage.DeleteCollectionAsync(collectionName, cancellationToken);
     }
 
@@ -104,7 +109,7 @@ public class MemoryService : IMemoryService
         string collectionName,
         string documentId,
         string[] steps,
-        UploadRequest? uploadRequest = null,
+        DocumentUploadRequest? uploadRequest = null,
         CancellationToken cancellationToken = default)
     {
         DocumentRecord document;
@@ -148,8 +153,10 @@ public class MemoryService : IMemoryService
         MemoryFilter? filter = null,
         CancellationToken cancellationToken = default)
     {
-        float[] input = [];
-        await _vectorStorage.SearchVectorsAsync(collectionName, input, minScore, limit, filter, cancellationToken);
+        var response = await _embeddingService.EmbeddingAsync(_embeddgingModel, query, cancellationToken);
+        var results = await _vectorStorage.SearchVectorsAsync(collectionName, response.Embedding, minScore, limit, filter, cancellationToken);
+
+        return;
     }
 
 }

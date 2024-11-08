@@ -2,9 +2,23 @@
 
 public class ChatCompletionModel
 {
-    public required string ModelId { get; set; }
+    /// <summary>
+    /// Gets or sets the name of the model.
+    /// </summary>
+    public required string Model { get; set; }
 
+    /// <summary>
+    /// Gets or sets the date and time when the model was created.
+    /// </summary>
     public DateTime? CreatedAt { get; set; }
 
+    /// <summary>
+    /// Gets or sets the date and time when the model was last modified.
+    /// </summary>
+    public DateTime? ModifiedAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets the owner of the model.
+    /// </summary>
     public string? Owner { get; set; }
 }

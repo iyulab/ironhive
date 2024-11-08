@@ -2,8 +2,23 @@
 
 public class EmbeddingModel
 {
-    public required string ModelID { get; set; }
-    public int? MaxTokens { get; set; }
+    /// <summary>
+    /// The Embedding Model Name.
+    /// </summary>
+    public required string Model { get; set; }
+
+    /// <summary>
+    /// The Embedding Model Created At.
+    /// </summary>
     public DateTime? CreatedAt { get; set; }
+
+    /// <summary>
+    /// The Embedding Model Modified At.
+    /// </summary>
+    public DateTime? ModifiedAt { get; set; }
+
+    /// <summary>
+    /// The Embedding Model Owner.
+    /// </summary>
     public string? Owner { get; set; }
 }

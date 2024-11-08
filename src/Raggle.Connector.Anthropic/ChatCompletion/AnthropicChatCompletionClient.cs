@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using Raggle.Connector.Anthropic.ChatCompletion.Models;
 using Raggle.Connector.Anthropic.Configurations;
 using Raggle.Connector.Anthropic.Base;
+using System.Runtime.CompilerServices;
 
 namespace Raggle.Connector.Anthropic.ChatCompletion;
 
@@ -26,32 +27,38 @@ internal class AnthropicChatCompletionClient : AnthropicClientBase
         });
     }
 
-    internal async Task<MessagesResponse> PostMessagesAsync(MessagesRequest request)
+    internal async Task<MessagesResponse> PostMessagesAsync(
+        MessagesRequest request, 
+        CancellationToken cancellationToken)
     {
         request.Stream = false;
         var json = JsonSerializer.Serialize(request, _jsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        var response = await _client.PostAsync(AnthropicConstants.PostMessagesPath, content);
+        var response = await _client.PostAsync(AnthropicConstants.PostMessagesPath, content, cancellationToken);
         response.EnsureSuccessStatusCode();
-        var message = await response.Content.ReadFromJsonAsync<MessagesResponse>(_jsonOptions)
+        var message = await response.Content.ReadFromJsonAsync<MessagesResponse>(_jsonOptions, cancellationToken)
             ?? throw new InvalidOperationException("Failed to deserialize response.");
         return message;
     }
 
-    internal async IAsyncEnumerable<StreamingMessagesResponse> PostStreamingMessagesAsync(MessagesRequest request)
+    internal async IAsyncEnumerable<StreamingMessagesResponse> PostStreamingMessagesAsync(
+        MessagesRequest request, 
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         request.Stream = true;
         var json = JsonSerializer.Serialize(request, _jsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        var response = await _client.PostAsync(AnthropicConstants.PostMessagesPath, content);
+        var response = await _client.PostAsync(AnthropicConstants.PostMessagesPath, content, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        using var stream = await response.Content.ReadAsStreamAsync();
+        using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var reader = new StreamReader(stream);
 
         while (!reader.EndOfStream)
         {
-            var line = await reader.ReadLineAsync();
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var line = await reader.ReadLineAsync(cancellationToken);
             if (string.IsNullOrWhiteSpace(line) || !line.StartsWith("data"))
                 continue;
 
