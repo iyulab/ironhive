@@ -3,8 +3,8 @@
     // 기본 컴파일러 옵션
     "target": "ESNext",
     "module": "ESNext",
-    "lib": ["ESNext","ES2020","DOM","DOM.Iterable"],
-    "moduleResolution": "Bundler",
+    "lib": ["ESNext","DOM","DOM.Iterable"],
+    "moduleResolution": "node",
     "types": ["vite/client"],
 
     // 엄격한 타입 체킹
@@ -43,6 +43,12 @@
   "include": [
     "vite.config.ts",
     "vite-env.d.ts",
-    "src/**/*",
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "server/**/*.ts",
+    "server/**/*.d.ts"
+  ],
+  "exclude": [
+    "node_modules"
   ]
 }
