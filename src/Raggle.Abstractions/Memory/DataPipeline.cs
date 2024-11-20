@@ -28,7 +28,7 @@ public class DataPipeline
 
     public DateTime? FailedAt { get; set; }
 
-    public string? Message { get; set; }
+    public string? ErrorMessage { get; set; }
 
     [JsonIgnore]
     public object? Context { get; set; }

@@ -1,34 +1,22 @@
-﻿using Raggle.Abstractions.AI;
-using Raggle.Abstractions.Messages;
-using Raggle.Abstractions.Tools;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Raggle.Abstractions.Tools;
 
 namespace Raggle.Abstractions.Assistant;
 
 public class RaggleAssistant
 {
-    public string? Id { get; set; }
+    public required Guid Id { get; set; } = Guid.NewGuid();
 
-    public string? Name { get; set; }
+    public required string Name { get; set; }
+
+    public string? Description { get; set; }
+
+    public required string Provider { get; set; }
+
+    public required string Model { get; set; }
 
     public string? Instructions { get; set; }
 
-    public FunctionTool[]? Tools { get; set; }
-
-    public ExecuteSettings? ExecuteSettings { get; set; }
-
-    public IChatCompletionService ChatCompletionService { get; set; }
-
-
-}
-
-public class ExecuteSettings
-{
-    public required string Model { get; set; }
+    public ToolKit[]? ToolKitList { get; set; }
 
     public int? MaxTokens { get; set; }
 

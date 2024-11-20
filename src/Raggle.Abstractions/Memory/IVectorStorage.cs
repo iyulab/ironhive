@@ -11,7 +11,7 @@ public interface IVectorStorage : IDisposable
 
     Task CreateCollectionAsync(
         string collectionName,
-        ulong vectorSize,
+        int vectorSize,
         CancellationToken cancellationToken = default);
 
     Task DeleteCollectionAsync(
@@ -22,7 +22,7 @@ public interface IVectorStorage : IDisposable
         string collectionName,
         float[] input,
         float minScore = 0.0f,
-        ulong limit = 5,
+        int limit = 5,
         MemoryFilter? filter = null,
         CancellationToken cancellationToken = default);
 

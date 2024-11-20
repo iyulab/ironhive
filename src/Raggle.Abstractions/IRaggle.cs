@@ -1,17 +1,10 @@
-﻿using Raggle.Abstractions.Assistant;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Raggle.Abstractions.Memory;
 
 namespace Raggle.Abstractions;
 
 public interface IRaggle
 {
-    IServiceProvider Services { get; set; }
+    IServiceProvider Services { get; }
 
-    RaggleAssistant CreateAssistant();
-
-
+    IRaggleMemory? Memory { get; }
 }

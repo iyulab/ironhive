@@ -46,7 +46,9 @@ public interface IPipelineOrchestrator
     /// </summary>
     /// <param name="pipeline">실행할 데이터 파이프라인</param>
     /// <param name="cancellationToken">작업 취소를 위한 토큰</param>
-    Task ExecuteAsync(DataPipeline pipeline, CancellationToken cancellationToken = default);
+    Task ExecuteAsync(
+        DataPipeline pipeline,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 지정된 컬렉션과 문서 ID에 대한 데이터 파이프라인을 비동기적으로 가져옵니다.
@@ -55,5 +57,8 @@ public interface IPipelineOrchestrator
     /// <param name="documentId">문서 ID</param>
     /// <param name="cancellationToken">작업 취소를 위한 토큰</param>
     /// <returns>찾은 데이터 파이프라인을 반환하는 Task</returns>
-    Task<DataPipeline> GetPipelineAsync(string collectionName, string documentId, CancellationToken cancellationToken = default);
+    Task<DataPipeline> GetPipelineAsync(
+        string collectionName, 
+        string documentId, 
+        CancellationToken cancellationToken = default);
 }

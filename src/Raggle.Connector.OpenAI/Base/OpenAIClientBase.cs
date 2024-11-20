@@ -35,9 +35,6 @@ internal abstract class OpenAIClientBase
 
     private static HttpClient CreateHttpClient(OpenAIConfig config)
     {
-        if (string.IsNullOrWhiteSpace(config.ApiKey))
-            throw new ArgumentException("OpenAI API key is required.");
-
         var client = new HttpClient
         {
             BaseAddress = string.IsNullOrWhiteSpace(config.EndPoint)

@@ -21,17 +21,23 @@ public class QdrantVectorStorage : IVectorStorage
         GC.SuppressFinalize(this);
     }
 
-    public async Task<IEnumerable<string>> GetCollectionListAsync(CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<string>> GetCollectionListAsync(
+        CancellationToken cancellationToken = default)
     {
         return await _client.ListCollectionsAsync(cancellationToken);
     }
 
-    public async Task<bool> CollectionExistsAsync(string collectionName, CancellationToken cancellationToken = default)
+    public async Task<bool> CollectionExistsAsync(
+        string collectionName, 
+        CancellationToken cancellationToken = default)
     {
         return await _client.CollectionExistsAsync(collectionName, cancellationToken);
     }
 
-    public async Task CreateCollectionAsync(string collectionName, ulong vectorSize, CancellationToken cancellationToken = default)
+    public async Task CreateCollectionAsync(
+        string collectionName, 
+        int vectorSize, 
+        CancellationToken cancellationToken = default)
     {
         if (await CollectionExistsAsync(collectionName, cancellationToken))
             throw new InvalidOperationException($"collection {collectionName} already exist");
@@ -41,7 +47,7 @@ public class QdrantVectorStorage : IVectorStorage
             Datatype = Datatype.Float32,
             Distance = Distance.Cosine,
             OnDisk = true,
-            Size = vectorSize
+            Size = (ulong)vectorSize
         };
         var vectorConfig = new VectorParamsMap { Map = { [DefaultVectorsName] = vectorParams } };
         await _client.CreateCollectionAsync(
@@ -50,7 +56,9 @@ public class QdrantVectorStorage : IVectorStorage
             cancellationToken: cancellationToken);
     }
 
-    public async Task DeleteCollectionAsync(string collectionName, CancellationToken cancellationToken = default)
+    public async Task DeleteCollectionAsync(
+        string collectionName, 
+        CancellationToken cancellationToken = default)
     {
         if (!await CollectionExistsAsync(collectionName, cancellationToken))
             throw new InvalidOperationException($"collection {collectionName} is not exist");
@@ -60,7 +68,10 @@ public class QdrantVectorStorage : IVectorStorage
             cancellationToken: cancellationToken);
     }
 
-    public async Task UpsertVectorsAsync(string collectionName, IEnumerable<VectorPoint> points, CancellationToken cancellationToken = default)
+    public async Task UpsertVectorsAsync(
+        string collectionName, 
+        IEnumerable<VectorPoint> points, 
+        CancellationToken cancellationToken = default)
     {
         var pointStructs = new List<PointStruct>();
         foreach(var point in points)
@@ -95,7 +106,13 @@ public class QdrantVectorStorage : IVectorStorage
             cancellationToken: cancellationToken);
     }
 
-    public async Task<IEnumerable<ScoredVectorPoint>> SearchVectorsAsync(string collectionName, float[] input, float minScore = 0.0f, ulong limit = 5, MemoryFilter? filter = null, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<ScoredVectorPoint>> SearchVectorsAsync(
+        string collectionName, 
+        float[] input, 
+        float minScore = 0.0f, 
+        int limit = 5, 
+        MemoryFilter? filter = null, 
+        CancellationToken cancellationToken = default)
     {
         Filter? condition = null;
         if (filter != null)
@@ -121,7 +138,7 @@ public class QdrantVectorStorage : IVectorStorage
             collectionName: collectionName,
             vector: input,
             filter: condition,
-            limit: limit,
+            limit: (ulong)limit,
             payloadSelector: true,
             vectorsSelector: false,
             scoreThreshold: minScore,

@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
+	<Version>0.1.0.0</Version>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -10,6 +11,15 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Raggle.Connector.Anthropic\Raggle.Connector.Anthropic.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Connector.Ollama\Raggle.Connector.Ollama.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Connector.OpenAI\Raggle.Connector.OpenAI.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Core\Raggle.Core.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.DocumentStorage.LocalDisk\Raggle.DocumentStorage.LocalDisk.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.VectorDB.LiteDB\Raggle.VectorDB.LiteDB.csproj" />
   </ItemGroup>
 
 </Project>

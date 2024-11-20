@@ -8,6 +8,11 @@ public class FunctionToolAttribute : Attribute
 
     public FunctionToolAttribute() { }
 
-    public FunctionToolAttribute(string? name) => Name = name;
-
+    public FunctionToolAttribute(
+        string? name = null,
+        string? description = null)
+    {
+        Name = name;
+        Description = description;
+    }
 }

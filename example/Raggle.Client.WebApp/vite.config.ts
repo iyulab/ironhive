@@ -4,6 +4,7 @@ import { resolve } from 'path';
 
 export default defineConfig({
   root: resolve(__dirname, 'src'),
+  envDir: resolve(__dirname),
   publicDir: resolve(__dirname, 'public'),
   build: {
     copyPublicDir: true,

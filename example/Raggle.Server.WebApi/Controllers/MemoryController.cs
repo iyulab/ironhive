@@ -1,27 +1,86 @@
 using Microsoft.AspNetCore.Mvc;
-using Raggle.Server.WebApi.DB;
 using Raggle.Server.WebApi.Models;
+using Raggle.Server.WebApi.Services;
 
 namespace Raggle.Server.WebApi.Controllers;
 
 [ApiController]
-[Route("/api/memory")]
+[Route("/v1/memory")]
 public class MemoryController : ControllerBase
 {
-    private readonly AppDbContext _db;
     private readonly ILogger<MemoryController> _logger;
+    private readonly MemoryService _service;
 
     public MemoryController(
         ILogger<MemoryController> logger,
-        AppDbContext context)
+        MemoryService service)
     {
         _logger = logger;
-        _db = context;
+        _service = service;
     }
 
-    [HttpGet("")]
-    public ActionResult<IEnumerable<Collection>> Get()
+    [HttpGet]
+    public async Task<ActionResult> FindCollectionsAsync(
+        [FromQuery(Name = "name")] string? name = null,
+        [FromQuery(Name = "limit")] int limit = 10,
+        [FromQuery(Name = "skip")] int skip = 0,
+        [FromQuery(Name = "order")] string order = "desc")
     {
-        return _db.Collections;
+        var collections = await _service.FindCollectionsAsync(name, limit, skip, order);
+        return Ok(collections);
+    }
+
+    [HttpGet("{collectionId:guid}/documents")]
+    public async Task<ActionResult> FindDocumentsAsync(
+        [FromRoute] Guid collectionId,
+        [FromQuery(Name = "name")] string? name = null,
+        [FromQuery(Name = "limit")] int limit = 10,
+        [FromQuery(Name = "order")] string order = "desc")
+    {
+        await Task.CompletedTask;
+        return Ok();
+    }
+
+    [HttpGet("{collectionId:guid}/documents/{documentId:guid}")]
+    public async Task<ActionResult> FindDocumentFilesAsync(
+        [FromRoute] Guid collectionId,
+        [FromRoute] Guid documentId)
+    {
+        await Task.CompletedTask;
+        return Ok();
+    }
+
+    [HttpPost]
+    public async Task<ActionResult> UpsertCollectionAsync(
+        [FromBody] CollectionModel collection)
+    {
+        var result = await _service.UpsertCollectionAsync(collection);
+        return Ok(result);
+    }
+
+    [HttpPost("{collectionId:guid}/documents")]
+    public async Task<ActionResult> UploadDocumentAsync(
+        [FromRoute] Guid collectionId,
+        [FromForm] FormFile file)
+    {
+        await Task.CompletedTask;
+        return Ok();
+    }
+
+    [HttpDelete("{collectionId:guid}")]
+    public async Task<ActionResult> DeleteCollectionAsync(
+        [FromRoute] Guid collectionId)
+    {
+        await Task.CompletedTask;
+        return Ok();
+    }
+
+    [HttpDelete("{collectionId:guid}/documents/{documentId:guid}")]
+    public async Task<ActionResult> DeleteDocumentAsync(
+        [FromRoute] Guid collectionId,
+        [FromRoute] Guid documentId)
+    {
+        await Task.CompletedTask;
+        return Ok();
     }
 }

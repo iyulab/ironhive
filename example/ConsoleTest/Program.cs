@@ -2,9 +2,8 @@
 using Raggle.Abstractions.Memory;
 using Raggle.Abstractions.Tools;
 using Raggle.Connector.OpenAI;
-using Raggle.Core;
-using Raggle.Core.Handlers;
-using Raggle.Core.Parsers;
+using Raggle.Core.Memory.Handlers;
+using Raggle.Core.Memory.Decoders;
 using Raggle.DocumentStorage.LocalDisk;
 using Raggle.VectorDB.LiteDB;
 using System.ComponentModel;
@@ -12,6 +11,7 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Raggle.Core.Memory;
 
 async Task<string> GetKey()
 {
@@ -41,41 +41,41 @@ var embeddingModel = "text-embedding-3-large";
 
 var orchestrator = new PipelineOrchestrator(documentStorage: documentStorage);
 
-orchestrator.TryAddHandler("parse", new DocumentParsingHandler(
-    documentStorage: documentStorage,
-    [
-        new PDFParser(),
-        new WordParser(),
-        new TextParser(),
-        new PPTParser(),
-    ]));
+//orchestrator.TryAddHandler("parse", new DocumentDecodingHandler(
+//    documentStorage: documentStorage,
+//    [
+//        new PDFParser(),
+//        new WordParser(),
+//        new TextParser(),
+//        new PPTParser(),
+//    ]));
 
-orchestrator.TryAddHandler("chunk", new TextChunkingHandler(
-    documentStorage: documentStorage,
-    maxTokensPerChunk: 1024));
+//orchestrator.TryAddHandler("chunk", new TextChunkingHandler(
+//    documentStorage: documentStorage,
+//    maxTokensPerChunk: 1024));
 
-orchestrator.TryAddHandler("summarize", new GenerateSummarizedTextHandler(
-    documentStorage: documentStorage,
-    chatService: chatService,
-    chatRequest: chatRequest));
+//orchestrator.TryAddHandler("summarize", new GenerateSummarizedTextHandler(
+//    documentStorage: documentStorage,
+//    chatService: chatService,
+//    chatRequest: chatRequest));
 
-orchestrator.TryAddHandler("question", new GenerateQAPairsHandler(
-    documentStorage: documentStorage,
-    chatService: chatService,
-    chatRequest: chatRequest));
+//orchestrator.TryAddHandler("question", new GenerateQAPairsHandler(
+//    documentStorage: documentStorage,
+//    chatService: chatService,
+//    chatRequest: chatRequest));
 
-orchestrator.TryAddHandler("embed", new TextEmbeddingHandler(
-    documentStorage: documentStorage,
-    vectorStorage: vectorStorage,
-    embeddingService: embeddingService,
-    embeddingModel: embeddingModel));
+//orchestrator.TryAddHandler("embed", new TextEmbeddingHandler(
+//    documentStorage: documentStorage,
+//    vectorStorage: vectorStorage,
+//    embeddingService: embeddingService,
+//    embeddingModel: embeddingModel));
 
-var memory = new MemoryService(
-   documentStorage: documentStorage,
-   vectorStorage: vectorStorage,
-   embeddingService: embeddingService,
-   embeddingModel: embeddingModel,
-   orchestrator: orchestrator);
+//var memory = new RaggleMemory(
+//   documentStorage: documentStorage,
+//   vectorStorage: vectorStorage,
+//   embeddingService: embeddingService,
+//   embeddingModel: embeddingModel,
+//   orchestrator: orchestrator);
 
 var collection = "test";
 var file = @"C:\temp\sample\word_sample.docx";
@@ -86,24 +86,22 @@ var upload = new DocumentUploadRequest
     Content = File.OpenRead(file),
 };
 
-await memory.CreateCollectionAsync(collection, 3072);
-await memory.MemorizeDocumentAsync(
-    collectionName: collection,
-    documentId: documentId,
-    steps: ["parse", "chunk", "summarize", "question", "embed"],
-    uploadRequest: upload);
+//await memory.CreateCollectionAsync(collection, 3072);
+//await memory.MemorizeDocumentAsync(
+//    collectionName: collection,
+//    documentId: documentId,
+//    steps: ["parse", "chunk", "summarize", "question", "embed"],
+//    uploadRequest: upload);
 
-var timer = new Stopwatch();
-timer.Start();
-await memory.SearchDocumentMemoryAsync(
-    collectionName: collection,
-    query: "What is somatosensory system?",
-    minScore: 0.5f,
-    limit: 5);
-timer.Stop();
-Console.WriteLine($"Elapsed time: {timer.ElapsedMilliseconds} ms");
-
-var provider = new RaggleServiceProvider();
+//var timer = new Stopwatch();
+//timer.Start();
+//await memory.SearchDocumentMemoryAsync(
+//    collectionName: collection,
+//    query: "What is somatosensory system?",
+//    minScore: 0.5f,
+//    limit: 5);
+//timer.Stop();
+//Console.WriteLine($"Elapsed time: {timer.ElapsedMilliseconds} ms");
 
 
 return;
