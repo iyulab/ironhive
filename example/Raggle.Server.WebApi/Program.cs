@@ -1,23 +1,21 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Raggle.Server.WebApi;
 using Raggle.Server.WebApi.Data;
 using Raggle.Server.WebApi.Models;
 using Raggle.Server.WebApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
-var config = builder.Configuration.GetSection("Raggle");
-builder.Services.Configure<RaggleConfig>(config);
 
-builder.Services.AddDbContext<AppDbContext>((service, options) =>
+var config = builder.Configuration.GetSection("Raggle").Get<RaggleServiceConfig>()
+    ?? throw new ArgumentException("Raggle configuration is missing.");
+builder.Services.AddDbContext<AppDbContext>((options) =>
 {
-    var config = service.GetRequiredService<IOptions<RaggleConfig>>().Value;
     options.UseSqlite(config.DbConnectionString);
     options.AddInterceptors(new AppDbIntercepter());
 });
+builder.Services.AddRaggle(config);
 
 builder.Services.AddControllers();
-builder.Services.AddRaggle();
 builder.Services.AddScoped<AssistantService>();
 builder.Services.AddScoped<MemoryService>();
 

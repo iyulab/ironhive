@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Raggle.Abstractions;
 using System.Reflection;
 
 namespace Raggle.Server.WebApi.Controllers;
@@ -32,14 +33,5 @@ public class SystemController : ControllerBase
     {
         var serverTimeUtc = DateTime.UtcNow;
         return Ok(serverTimeUtc);
-    }
-
-    [HttpGet("models")]
-    public async Task<ActionResult> GetModelsAsync()
-    {
-        await Task.Delay(1000);
-        return Ok("");
-    }
-
-    
+    }   
 }

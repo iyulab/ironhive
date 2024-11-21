@@ -9,7 +9,7 @@ namespace Raggle.Server.WebApi.Models;
 public class CollectionModel
 {
     [Key]
-    public required Guid Id { get; set; } = Guid.NewGuid();
+    public Guid Id { get; set; } = Guid.NewGuid();
 
     [Required]
     public required string Name { get; set; }
@@ -17,10 +17,13 @@ public class CollectionModel
     public string? Description { get; set; }
 
     [Required]
-    public required string EmbeddingModel { get; set; }
+    public required RaggleServiceKeys EmbedProvider { get; set; }
 
     [Required]
-    public required DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public required string EmbedModel { get; set; }
+
+    [Required]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime? LastUpdatedAt { get; set; }
 }

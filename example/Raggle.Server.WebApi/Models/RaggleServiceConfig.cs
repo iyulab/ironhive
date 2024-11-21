@@ -1,6 +1,6 @@
 ﻿namespace Raggle.Server.WebApi.Models;
 
-public class RaggleConfig
+public class RaggleServiceConfig
 {
     public string DbConnectionString { get; set; } = string.Empty;
 

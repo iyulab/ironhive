@@ -7,16 +7,20 @@ export interface Assistant {
   lastUpdatedAt?: string;
 }
 
-export interface Collection {
-  id: string;
-  name: string;
-  description: string;
+export interface Models {
+  [provider: string]: string[];
+}
 
-  embeddingProvider: string;
-  embeddingModel: string;
+export interface Collection {
+  id?: string;
+  name?: string;
+  description?: string;
+
+  embedProvider?: string;
+  embedModel?: string;
   
-  createdAt: string;
-  lastUpdatedAt: string;
+  createdAt?: string;
+  lastUpdatedAt?: string;
 }
 
 export interface Document {

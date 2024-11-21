@@ -19,6 +19,25 @@ public class MemoryController : ControllerBase
         _service = service;
     }
 
+    [HttpPost("{collectionId:guid}/upload")]
+    public async Task<ActionResult> UploadedDocumentAsync(
+        [FromRoute] Guid collectionId,
+        [FromForm] List<IFormFile> files)
+    {
+        if (files == null || files.Count == 0)
+            return BadRequest("No file uploaded.");
+
+        var file = files.FirstOrDefault();
+        var filePath = $@"C:\temp\{file.FileName}";
+
+        using (var stream = new FileStream(filePath, FileMode.Create))
+        {
+            await file.CopyToAsync(stream);
+        }
+
+        return Ok(new { message = "File uploaded successfully." });
+    }
+
     [HttpGet]
     public async Task<ActionResult> FindCollectionsAsync(
         [FromQuery(Name = "name")] string? name = null,
@@ -71,7 +90,7 @@ public class MemoryController : ControllerBase
     public async Task<ActionResult> DeleteCollectionAsync(
         [FromRoute] Guid collectionId)
     {
-        await Task.CompletedTask;
+        await _service.DeleteCollectionAsync(collectionId);
         return Ok();
     }
 

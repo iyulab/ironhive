@@ -4,13 +4,16 @@ import { customElement, property } from "lit/decorators.js";
 @customElement('main-list')
 export class MainList extends LitElement {
 
+  @property({ type: String, attribute: 'create-label' }) createLabel: string = 'Create New +';
   @property({ type: String }) key: string = 'id';
   @property({ type: Array }) items: any[] = [];
   
   render() {
+    console.log('MainList.render()');
+
     return html`
       <div class="new-button" @click=${this.onCreate}>
-        Create New +
+        ${this.createLabel}
       </div>
       <div class="list">
         ${this.items.map(item => html`

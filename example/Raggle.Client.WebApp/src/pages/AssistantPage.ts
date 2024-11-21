@@ -18,6 +18,7 @@ export class AssistantPage extends LitElement {
     return html`
       <main-layout ratio="1:2:2">
         <main-list
+          create-label="Create Assistant"
           slot="left"
           key="id"
           .items=${this.assistants || []}

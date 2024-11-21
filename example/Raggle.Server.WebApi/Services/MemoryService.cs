@@ -49,6 +49,11 @@ public class MemoryService
             if (existing == null)
             {
                 _db.Collections.Add(collection);
+                await _memory.CreateCollectionAsync(
+                    collection.Id.ToString(),
+                    collection.EmbedProvider,
+                    collection.EmbedModel);
+
                 await _db.SaveChangesAsync();
                 await transaction.CommitAsync();
                 return collection;
@@ -80,7 +85,7 @@ public class MemoryService
             try
             {
                 _db.Collections.Remove(collection);
-                await _memory.DeleteCollectionAsync(collection.Name);
+                await _memory.DeleteCollectionAsync(collection.Id.ToString());
 
                 await _db.SaveChangesAsync();
                 await transaction.CommitAsync();

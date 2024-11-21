@@ -8,7 +8,7 @@ import "./pages";
 @customElement('main-app')
 export class MainApp extends LitElement {
   private _routes = new Router(this, [
-    {path: '/', render: () => html`<chatting-page></chatting-page>`},
+    {path: '/', render: () => html`<session-page></session-page>`},
     {path: '/memory', render: () => html`<memory-page></memory-page>`},
     {path: '/assistant', render: () => html`<assistant-page></assistant-page>`},
   ]);
