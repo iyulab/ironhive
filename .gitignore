@@ -63,8 +63,6 @@ packages/
 # Node.js
 node_modules/
 
-# test-directory
-example/ConsoleTest/
-
-# others
-appsettings.Development.json
+# for secret
+example/ConsoleTest/Secrets.json
+example/Raggle.Server.WebApi/appsettings.Development.json
