@@ -8,49 +8,20 @@ namespace Raggle.Core;
 
 public class RaggleBuilder : IRaggleBuilder
 {
-    private readonly IServiceCollection _innerServices = new ServiceCollection();
-    private readonly IServiceCollection? _externalServices;
+    public IServiceCollection Services { get; }
 
     public RaggleBuilder(IServiceCollection? services = null)
     {
-        _externalServices = services;
-    }
-
-    public IRaggleBuilder AddChatCompletionService<T>(object key, T service)
-        where T : class, IChatCompletionService
-    {
-        _innerServices.AddKeyedSingleton<IChatCompletionService>(key, service);
-        _externalServices?.AddKeyedSingleton<IChatCompletionService>(key, service);
-        return this;
-    }
-
-    public IRaggleBuilder AddEmbeddingService<T>(object key, T service)
-        where T : class, IEmbeddingService
-    {
-        _innerServices.AddKeyedSingleton<IEmbeddingService>(key, service);
-        _externalServices?.AddKeyedSingleton<IEmbeddingService>(key, service);
-        return this;
-    }
-
-    public IRaggleBuilder AddDocumentStorage<T>(object key, T service)
-        where T : class, IDocumentStorage
-    {
-        _innerServices.AddKeyedSingleton<IDocumentStorage>(key, service);
-        _externalServices?.AddKeyedSingleton<IDocumentStorage>(key, service);
-        return this;
-    }
-
-    public IRaggleBuilder AddVectorStorage<T>(object key, T service)
-        where T : class, IVectorStorage
-    {
-        _innerServices.AddKeyedSingleton<IVectorStorage>(key, service);
-        _externalServices?.AddKeyedSingleton<IVectorStorage>(key, service);
-        return this;
+        Services = new ServiceCollection();
+        if (services != null)
+        {
+            CopyRaggleServices(services);
+        }
     }
 
     public IRaggle Build(RaggleMemoryConfig? config = null)
     {
-        var provider = _innerServices.BuildServiceProvider();
+        var provider = Services.BuildServiceProvider();
         if (config == null)
         {
             return new Raggle()
@@ -67,4 +38,29 @@ public class RaggleBuilder : IRaggleBuilder
             };
         }
     }
+
+    #region Private Methods
+
+    private void CopyRaggleServices(IServiceCollection source)
+    {
+        foreach (var service in source)
+        {
+            if (IsMemoryService(service) && !Services.Contains(service))
+            {
+                Services.Add(service);
+            }
+        }
+    }
+
+    private bool IsMemoryService(ServiceDescriptor service)
+    {
+        if (!service.IsKeyedService) return false;
+
+        return service.ServiceType == typeof(IDocumentStorage)
+            || service.ServiceType == typeof(IVectorStorage)
+            || service.ServiceType == typeof(IChatCompletionService)
+            || service.ServiceType == typeof(IEmbeddingService);
+    }
+
+    #endregion
 }

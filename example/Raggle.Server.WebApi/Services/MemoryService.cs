@@ -49,8 +49,6 @@ public class MemoryService
             if (existing == null)
             {
                 _db.Collections.Add(collection);
-                await _memory.CreateCollectionAsync(collection.Name);
-
                 await _db.SaveChangesAsync();
                 await transaction.CommitAsync();
                 return collection;

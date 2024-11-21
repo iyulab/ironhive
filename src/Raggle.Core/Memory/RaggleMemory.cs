@@ -3,53 +3,39 @@ using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Memory;
 using Raggle.Abstractions.Utils;
 using Raggle.Core.Utils;
-using System.Collections.Concurrent;
-using System.Threading;
 
 namespace Raggle.Core.Memory;
 
 public class RaggleMemory : IRaggleMemory
 {
-    private readonly MemoryEmbeddingService _embedding;
-    private readonly ContentTypeDetector _detecter = new();
-    private readonly ConcurrentDictionary<string, IPipelineHandler> _handlers = new();
-    private readonly SemaphoreSlim _semaphore = new(1, 1);
-
+    private readonly IServiceProvider _services;
     private readonly IDocumentStorage _document;
     private readonly IVectorStorage _vector;
-    private readonly IPipelineOrchestrator _orchestrator;
 
-    public RaggleMemory(IServiceProvider provider, RaggleMemoryConfig config)
+    private readonly ContentTypeDetector _detecter = new();
+    private readonly Dictionary<string, IPipelineHandler> _handlers = new();
+    private readonly SemaphoreSlim _semaphore = new(1, 1);
+
+    public RaggleMemory(IServiceProvider services, RaggleMemoryConfig config)
     {
-        _document = provider.GetRequiredKeyedService<IDocumentStorage>(config.DocumentStorageServiceKey);
-        _vector = provider.GetRequiredKeyedService<IVectorStorage>(config.VectorDBServiceKey);
-        _orchestrator = new PipelineOrchestrator(_document);
-        _embedding = new MemoryEmbeddingService(config.EmbeddingModel, provider.GetRequiredKeyedService<IEmbeddingService>(config.EmbeddingServiceKey));
-    }
-
-
-
-    // =============== 삭제?? ===============
-    /// <inheritdoc />
-    public async Task<IEnumerable<string>> GetCollectionListAsync(
-        CancellationToken cancellationToken = default)
-    {
-        return await _document.GetCollectionListAsync(cancellationToken);
+        _services = services;
+        _document = services.GetRequiredKeyedService<IDocumentStorage>(config.DocumentStorageServiceKey);
+        _vector = services.GetRequiredKeyedService<IVectorStorage>(config.VectorStorageServiceKey);
     }
 
     /// <inheritdoc />
     public async Task CreateCollectionAsync(
         string collectionName,
+        object embedServiceKey,
+        string embedModel,
         CancellationToken cancellationToken = default)
     {
         try
         {
             var sampleText = "Sample text to determine vector size";
-            var embeddingResponse = await _embedding.EmbeddingsAsync([sampleText], cancellationToken);
-            var vectorEmbedding = embeddingResponse.FirstOrDefault()?.Embedding
-                ?? throw new InvalidOperationException("Failed to retrieve the embedding vector from the response.");
+            var embedding = await GetEmbeddingAsync(embedServiceKey, embedModel, sampleText, cancellationToken);
 
-            await _vector.CreateCollectionAsync(collectionName, vectorEmbedding.Length, cancellationToken);
+            await _vector.CreateCollectionAsync(collectionName, embedding.Length, cancellationToken);
             await _document.CreateCollectionAsync(collectionName, cancellationToken);
         }
         catch
@@ -71,140 +57,42 @@ public class RaggleMemory : IRaggleMemory
             await _document.DeleteCollectionAsync(collectionName, cancellationToken);
     }
 
-    // =============== 삭제?? ===============
-    public async Task<IEnumerable<DocumentRecord>> FindDocumentsAsync(
-        string collectionName,
-        MemoryFilter? filter = null,
-        CancellationToken cancellationToken = default)
-    {
-        return await _document.FindDocumentsAsync(collectionName, filter, cancellationToken);
-    }
-
-    // =============== 삭제?? ===============
-    public async Task<DocumentRecord> UploadDocumentAsync(
-        string collectionName,
-        string documentId,
-        string fileName,
-        Stream content,
-        string[]? tags = null,
-        CancellationToken cancellationToken = default)
-    {
-        if (!_detecter.TryGetContentType(fileName, out var contentType))
-            throw new InvalidOperationException($"{fileName} is dont know content type");
-
-        var document = new DocumentRecord
-        {
-            Status = MemorizationStatus.NotMemorized,
-            CollectionName = collectionName,
-            DocumentId = documentId,
-            FileName = fileName,
-            ContentType = contentType,
-            ContentLength = content.Length,
-            CreatedAt = DateTime.UtcNow,
-            Tags = tags ?? [],
-        };
-
-        return await _document.UpsertDocumentAsync(
-            document: document,
-            content: content,
-            cancellationToken: cancellationToken);
-    }
-
     /// <inheritdoc />
     public async Task<DataPipeline> MemorizeDocumentAsync(
         string collectionName,
         string documentId,
+        string fileName,
+        Stream content,
         string[] steps,
-        DocumentUploadRequest? uploadRequest = null,
+        string[]? tags = null,
         CancellationToken cancellationToken = default)
     {
-        DocumentRecord document;
-        if (uploadRequest != null)
-        {
-            document = await UploadDocumentAsync(collectionName, documentId, uploadRequest.FileName, uploadRequest.Content, uploadRequest.Tags, cancellationToken);
-        }
-        else
-        {
-            var filter = new MemoryFilter([documentId]);
-            document = (await FindDocumentsAsync(collectionName, filter, cancellationToken)).FirstOrDefault()
-                ?? throw new InvalidOperationException($"{documentId} is not found in {collectionName}");
-        }
+        await _document.WriteDocumentFileAsync(
+            collectionName,
+            documentId,
+            fileName,
+            content,
+            overwrite: true,
+            cancellationToken);
 
+        _detecter.TryGetContentType(fileName, out var contentType);
         var pipeline = new DataPipeline
         {
-            Document = document,
+            Document = new DocumentRecord
+            {
+                CollectionName = collectionName,
+                ContentType = contentType,
+                DocumentId = documentId,
+                FileName = fileName,
+                Tags = tags ?? [],
+                Status = MemorizationStatus.Memorizing,
+                CreatedAt = DateTime.UtcNow,
+                LastUpdatedAt = DateTime.UtcNow,
+            },
             Steps = steps.ToList(),
             StartedAt = DateTime.UtcNow,
         };
-        await _orchestrator.ExecuteAsync(pipeline, cancellationToken);
-        return pipeline;
-    }
 
-    /// <inheritdoc />
-    public async Task UnMemorizeDocumentAsync(
-        string collectionName,
-        string documentId,
-        CancellationToken cancellationToken = default)
-    {
-        await _vector.DeleteVectorsAsync(collectionName, documentId, cancellationToken);
-        await _document.DeleteDocumentAsync(collectionName, documentId, cancellationToken);
-    }
-
-    /// <inheritdoc />
-    public async Task SearchDocumentMemoryAsync(
-        string collectionName,
-        string query,
-        float minScore = 0.0f,
-        int limit = 5,
-        MemoryFilter? filter = null,
-        CancellationToken cancellationToken = default)
-    {
-        var response = await _embedding.EmbeddingsAsync([query], cancellationToken);
-        var embedding = response.FirstOrDefault()?.Embedding
-            ?? throw new InvalidOperationException("Failed to retrieve the embedding vector from the response.");
-        
-        var results = await _vector.SearchVectorsAsync(collectionName, embedding, minScore, limit, filter, cancellationToken)
-        return;
-    }
-
-
-    // =============== 추가?? ===============
-
-
-    ///// <inheritdoc />
-    //public bool TryGetHandler<T>(out T handler) where T : IPipelineHandler
-    //{
-    //    handler = _handlers.Values.OfType<T>().FirstOrDefault()!;
-    //    return handler != null;
-    //}
-
-    ///// <inheritdoc />
-    //public bool TryGetHandler(string name, out IPipelineHandler handler)
-    //{
-    //    return _handlers.TryGetValue(name, out handler!);
-    //}
-
-    /// <inheritdoc />
-    public bool TryAddHandler(string stepName, IPipelineHandler handler)
-    {
-        return _handlers.TryAdd(stepName, handler);
-    }
-
-    /// <inheritdoc />
-    public bool TryRemoveHandler(string stepName)
-    {
-        return _handlers.TryRemove(stepName, out _);
-    }
-
-    /// <inheritdoc />
-    public bool IsLocked()
-    {
-        return _semaphore.CurrentCount == 0;
-    }
-
-    /// <inheritdoc />
-    public async Task ExecuteAsync(DataPipeline pipeline, CancellationToken cancellationToken = default)
-    {
         try
         {
             await _semaphore.WaitAsync(cancellationToken);
@@ -259,6 +147,58 @@ public class RaggleMemory : IRaggleMemory
         {
             _semaphore.Release();
         }
+
+        return pipeline;
+    }
+
+    /// <inheritdoc />
+    public async Task UnMemorizeDocumentAsync(
+        string collectionName,
+        string documentId,
+        CancellationToken cancellationToken = default)
+    {
+        await _vector.DeleteVectorsAsync(collectionName, documentId, cancellationToken);
+        await _document.DeleteDocumentAsync(collectionName, documentId, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task GetNearestMemorySourceAsync(
+        string collectionName,
+        object embedServiceKey,
+        string embedModel,
+        string query,
+        float minScore = 0,
+        int limit = 5,
+        MemoryFilter? filter = null,
+        CancellationToken cancellationToken = default)
+    {
+        var embedding = await GetEmbeddingAsync(embedServiceKey, embedModel, query, cancellationToken);
+        var results = await _vector.SearchVectorsAsync(collectionName,embedding, minScore, limit, filter, cancellationToken);
+        return;
+    }
+
+    /// <inheritdoc />
+    public void SetHandler<T>(string stepName) 
+        where T : class, IPipelineHandler
+    {
+        var handler = ActivatorUtilities.CreateInstance<T>(_services);
+        if (_handlers.ContainsKey(stepName))
+            _handlers[stepName] = handler;
+        else
+            _handlers.Add(stepName, handler);
+    }
+
+    /// <inheritdoc />
+    public void RemoveHandler(string stepName)
+    {
+        if (_handlers.ContainsKey(stepName))
+            _handlers.Remove(stepName);
+    }
+
+    /// <inheritdoc />
+    public bool IsLocked()
+    {
+        return _semaphore.CurrentCount == 0;
     }
 
     /// <inheritdoc />
@@ -311,6 +251,17 @@ public class RaggleMemory : IRaggleMemory
         document.Status = status;
         document.LastUpdatedAt = DateTime.UtcNow;
         await UpsertDocumentAsync(document, cancellationToken);
+    }
+
+    private async Task<float[]> GetEmbeddingAsync(
+        object embedServiceKey,
+        string embedModel,
+        string text,
+        CancellationToken cancellationToken)
+    {
+        var embedService = _services.GetRequiredKeyedService<IEmbeddingService>(embedServiceKey);
+        var response = await embedService.EmbeddingAsync(embedModel, text, cancellationToken);
+        return response.Embedding;
     }
 
     #endregion

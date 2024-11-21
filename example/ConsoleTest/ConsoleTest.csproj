@@ -9,14 +9,15 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Raggle.Abstractions\Raggle.Abstractions.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.Connector.Anthropic\Raggle.Connector.Anthropic.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.Connector.Ollama\Raggle.Connector.Ollama.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.Connector.OpenAI\Raggle.Connector.OpenAI.csproj" />
     <ProjectReference Include="..\..\src\Raggle.Core\Raggle.Core.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.DocumentStorage.AzureBlob\Raggle.DocumentStorage.AzureBlob.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.DocumentStorage.LocalDisk\Raggle.DocumentStorage.LocalDisk.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.VectorDB.LiteDB\Raggle.VectorDB.LiteDB.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.VectorDB.Qdrant\Raggle.VectorDB.Qdrant.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Driver.Anthropic\Raggle.Driver.Anthropic.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Driver.AzureBlob\Raggle.Driver.AzureBlob.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Driver.LiteDB\Raggle.Driver.LiteDB.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Driver.LocalDisk\Raggle.Driver.LocalDisk.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Driver.Ollama\Raggle.Driver.Ollama.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Driver.OpenAI\Raggle.Driver.OpenAI.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Driver.Qdrant\Raggle.Driver.Qdrant.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Helpers.HuggingFace\Raggle.Helpers.HuggingFace.csproj" />
   </ItemGroup>
 
 </Project>

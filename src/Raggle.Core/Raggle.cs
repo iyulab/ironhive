@@ -9,8 +9,8 @@ namespace Raggle.Core;
 public class Raggle : IRaggle
 {
     public required IServiceProvider Services { get; init; }
-    public ToolKitCollection ToolKits { get; init; } = new();
     public IRaggleMemory? Memory { get; init; }
+    public ToolKitCollection ToolKits { get; init; } = new();
 
     public IChatCompletionService GetChatCompletionService(object key)
         => Services.GetRequiredKeyedService<IChatCompletionService>(key);

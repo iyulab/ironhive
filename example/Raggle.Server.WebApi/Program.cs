@@ -1,13 +1,18 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Raggle.Server.WebApi;
 using Raggle.Server.WebApi.Data;
+using Raggle.Server.WebApi.Models;
 using Raggle.Server.WebApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+var config = builder.Configuration.GetSection("Raggle");
+builder.Services.Configure<RaggleConfig>(config);
 
-builder.Services.AddDbContext<AppDbContext>(options =>
+builder.Services.AddDbContext<AppDbContext>((service, options) =>
 {
-    options.UseSqlite(builder.Configuration.GetConnectionString("Sqlite"));
+    var config = service.GetRequiredService<IOptions<RaggleConfig>>().Value;
+    options.UseSqlite(config.DbConnectionString);
     options.AddInterceptors(new AppDbIntercepter());
 });
 
@@ -24,7 +29,10 @@ if (builder.Environment.IsDevelopment())
     {
         options.AddPolicy("AllowAll", builder =>
         {
-            builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+            builder.AllowAnyOrigin()
+                .AllowAnyMethod()
+                .AllowAnyHeader();
+                //.AllowCredentials();
         });
     });
 }

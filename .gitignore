@@ -65,3 +65,6 @@ node_modules/
 
 # test-directory
 example/ConsoleTest/
+
+# others
+appsettings.Development.json
