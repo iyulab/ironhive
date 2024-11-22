@@ -1,4 +1,4 @@
-﻿namespace Raggle.Core.Memory.Document;
+﻿namespace Raggle.Abstractions.Memory;
 
 /// <summary>
 /// 문서의 개별 섹션을 나타내는 클래스입니다.

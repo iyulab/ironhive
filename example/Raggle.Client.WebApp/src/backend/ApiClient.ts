@@ -71,11 +71,11 @@ export class API {
 
   // 업로드
 
-  public static async uploadFile(collectionId: string, files: File[]): Promise<void> {
+  public static async uploadFile(collectionId: string, file: File): Promise<void> {
     const formData = new FormData();
-    for(const file in files) {
-      formData.append(file.name, file);
-    }
+    formData.append("fileName", "file");
+    formData.append("file", file);
+    console.log('Uploading file:', file);
     try {
       await this._client.post(`/memory/${collectionId}/upload`, formData, {
         headers: {
@@ -90,6 +90,8 @@ export class API {
       console.error('File upload failed:', error);
       throw error;
     }
+
+    
   }
   
 }

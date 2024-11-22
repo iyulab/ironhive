@@ -16,11 +16,11 @@ public class DataPipeline
 
     public required DocumentRecord Document { get; set; }
 
-    public required List<string> Steps { get; set; }
+    public required List<object> Steps { get; set; }
 
-    public List<string> RemainingSteps { get; set; } = [];
+    public List<object> RemainingSteps { get; set; } = [];
 
-    public List<string> CompletedSteps { get; set; } = [];
+    public List<object> CompletedSteps { get; set; } = [];
 
     public required DateTime StartedAt { get; set; }
 
@@ -39,29 +39,29 @@ public class DataPipeline
         CompletedSteps.Clear();
     }
 
-    public string? GetPreviousStepName()
+    public object? GetPreviousStepKey()
     {
         return CompletedSteps.LastOrDefault();
     }
 
-    public string? GetNextStepName()
+    public object? GetNextStepKey()
     {
         return RemainingSteps.FirstOrDefault();
     }
 
-    public void CompleteStep(string stepName)
+    public void CompleteStep(object stepKey)
     {
-        if (RemainingSteps.FirstOrDefault() != stepName)
+        if (RemainingSteps.FirstOrDefault() != stepKey)
         {
-            throw new InvalidOperationException($"완료할 수 없는 단계입니다: {stepName}");
+            throw new InvalidOperationException($"완료할 수 없는 단계입니다: {stepKey}");
         }
-        else if (RemainingSteps.Remove(stepName))
+        else if (RemainingSteps.Remove(stepKey))
         {
-            CompletedSteps.Add(stepName);
+            CompletedSteps.Add(stepKey);
         }
         else
         {
-            throw new InvalidOperationException($"단계를 완료할 수 없습니다: {stepName}");
+            throw new InvalidOperationException($"단계를 완료할 수 없습니다: {stepKey}");
         }
     }
 

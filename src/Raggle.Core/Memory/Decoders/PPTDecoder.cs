@@ -1,5 +1,6 @@
 ﻿using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Presentation;
+using Raggle.Abstractions.Memory;
 using Raggle.Core.Memory.Document;
 using Raggle.Core.Utils;
 

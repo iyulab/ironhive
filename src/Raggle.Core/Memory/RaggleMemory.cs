@@ -13,14 +13,16 @@ public class RaggleMemory : IRaggleMemory
     private readonly IVectorStorage _vector;
 
     private readonly ContentTypeDetector _detecter = new();
-    private readonly Dictionary<string, IPipelineHandler> _handlers = new();
+    //private readonly IEnumerable<IDocumentDecoder> _decoders;
+    //private readonly IDictionary<string, IPipelineHandler> _handlers;
+
     private readonly SemaphoreSlim _semaphore = new(1, 1);
 
-    public RaggleMemory(IServiceProvider services, RaggleMemoryConfig config)
+    public RaggleMemory(IServiceProvider services)
     {
         _services = services;
-        _document = services.GetRequiredKeyedService<IDocumentStorage>(config.DocumentStorageServiceKey);
-        _vector = services.GetRequiredKeyedService<IVectorStorage>(config.VectorStorageServiceKey);
+        _document = services.GetRequiredService<IDocumentStorage>();
+        _vector = services.GetRequiredService<IVectorStorage>();
     }
 
     /// <inheritdoc />
@@ -63,7 +65,7 @@ public class RaggleMemory : IRaggleMemory
         string documentId,
         string fileName,
         Stream content,
-        string[] steps,
+        object[] steps,
         string[]? tags = null,
         CancellationToken cancellationToken = default)
     {
@@ -104,8 +106,8 @@ public class RaggleMemory : IRaggleMemory
 
             while (pipeline.Status == PipelineStatus.Processing)
             {
-                var stepName = pipeline.GetNextStepName();
-                if (string.IsNullOrWhiteSpace(stepName))
+                var stepKey = pipeline.GetNextStepKey();
+                if (stepKey == null)
                 {
                     if (pipeline.Steps.Count == pipeline.CompletedSteps.Count)
                     {
@@ -123,15 +125,18 @@ public class RaggleMemory : IRaggleMemory
                     }
                     break;
                 }
-                else if (_handlers.TryGetValue(stepName, out var handler))
+
+                var handler = _services.GetKeyedService<IPipelineHandler>(stepKey);
+
+                if (handler != null)
                 {
                     pipeline = await handler.ProcessAsync(pipeline, cancellationToken);
-                    pipeline.CompleteStep(stepName);
+                    pipeline.CompleteStep(stepKey);
                     await UpsertPipelineAsync(pipeline, cancellationToken);
                 }
                 else
                 {
-                    var message = $"Handler not found for step '{stepName}'";
+                    var message = $"Handler not found for step '{stepKey.ToString()}'";
                     await UpsertFaildPipelineAsync(pipeline, message, cancellationToken);
                     await UpsertDocumentStatusAsync(MemorizationStatus.FailedMemorization, pipeline.Document, cancellationToken);
                     break;
@@ -175,24 +180,6 @@ public class RaggleMemory : IRaggleMemory
         var embedding = await GetEmbeddingAsync(embedServiceKey, embedModel, query, cancellationToken);
         var results = await _vector.SearchVectorsAsync(collectionName,embedding, minScore, limit, filter, cancellationToken);
         return;
-    }
-
-    /// <inheritdoc />
-    public void SetHandler<T>(string stepName) 
-        where T : class, IPipelineHandler
-    {
-        var handler = ActivatorUtilities.CreateInstance<T>(_services);
-        if (_handlers.ContainsKey(stepName))
-            _handlers[stepName] = handler;
-        else
-            _handlers.Add(stepName, handler);
-    }
-
-    /// <inheritdoc />
-    public void RemoveHandler(string stepName)
-    {
-        if (_handlers.ContainsKey(stepName))
-            _handlers.Remove(stepName);
     }
 
     /// <inheritdoc />

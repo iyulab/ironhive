@@ -1,4 +1,5 @@
-﻿using Raggle.Core.Memory.Decoders;
+﻿using Raggle.Abstractions.Memory;
+using Raggle.Core.Memory.Decoders;
 using Raggle.Core.Memory.Document;
 using Raggle.Core.Utils;
 using System.Collections.Concurrent;

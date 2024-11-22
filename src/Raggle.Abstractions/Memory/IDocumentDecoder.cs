@@ -1,6 +1,6 @@
-﻿using Raggle.Core.Memory.Document;
+﻿using Raggle.Abstractions.Memory;
 
-namespace Raggle.Core.Memory.Decoders;
+namespace Raggle.Abstractions.Memory;
 
 public interface IDocumentDecoder
 {

@@ -1,4 +1,5 @@
-﻿using Raggle.Core.Memory.Decoders;
+﻿using Raggle.Abstractions.Memory;
+using Raggle.Core.Memory.Decoders;
 using Raggle.Core.Memory.Document;
 using Raggle.Core.Utils;
 
@@ -13,6 +14,11 @@ public class TextDecoder : IDocumentDecoder
     [
         "text/plain"
     ];
+
+    public TextDecoder()
+    {
+        _maxSplitLine = 10;
+    }
 
     public TextDecoder(int maxSplitLine = 10)
     {

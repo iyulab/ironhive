@@ -1,4 +1,6 @@
-﻿namespace Raggle.Core.Memory.Document;
+﻿using Raggle.Abstractions.Memory;
+
+namespace Raggle.Core.Memory.Document;
 
 /// <summary>
 /// 문서의 전체 정보를 나타내는 클래스입니다.

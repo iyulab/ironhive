@@ -4,6 +4,12 @@ using Raggle.Server.WebApi.Services;
 
 namespace Raggle.Server.WebApi.Controllers;
 
+public class UploadForm
+{
+    public string FileName { get; set; }
+    public IFormFile File { get; set; }
+}
+
 [ApiController]
 [Route("/v1/memory")]
 public class MemoryController : ControllerBase
@@ -19,21 +25,20 @@ public class MemoryController : ControllerBase
         _service = service;
     }
 
+    [RequestSizeLimit(10_737_418_240)]
     [HttpPost("{collectionId:guid}/upload")]
     public async Task<ActionResult> UploadedDocumentAsync(
         [FromRoute] Guid collectionId,
-        [FromForm] List<IFormFile> files)
+        [FromForm] UploadForm file)
     {
-        if (files == null || files.Count == 0)
-            return BadRequest("No file uploaded.");
+        //if (file == null || file.Length == 0)
+        //    return BadRequest("No file uploaded.");
+        
+        //var filePath = $@"C:\temp\{file.FileName}";
 
-        var file = files.FirstOrDefault();
-        var filePath = $@"C:\temp\{file.FileName}";
-
-        using (var stream = new FileStream(filePath, FileMode.Create))
-        {
-            await file.CopyToAsync(stream);
-        }
+        //using var stream = new MemoryStream();
+        //await file.CopyToAsync(stream);
+        //System.IO.File.WriteAllBytes(filePath, stream.ToArray());
 
         return Ok(new { message = "File uploaded successfully." });
     }
@@ -80,7 +85,7 @@ public class MemoryController : ControllerBase
     [HttpPost("{collectionId:guid}/documents")]
     public async Task<ActionResult> UploadDocumentAsync(
         [FromRoute] Guid collectionId,
-        [FromForm] FormFile file)
+        IFormFile file)
     {
         await Task.CompletedTask;
         return Ok();

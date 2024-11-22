@@ -3,6 +3,7 @@ using Raggle.Abstractions;
 using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Memory;
 using Raggle.Core.Memory;
+using Raggle.Core.Memory.Decoders;
 
 namespace Raggle.Core;
 
@@ -19,6 +20,18 @@ public class RaggleBuilder : IRaggleBuilder
         }
     }
 
+    public IRaggleBuilder AddContentDecoder(object key, IDocumentDecoder decoder)
+    {
+        Services.AddKeyedSingleton(key, decoder);
+        return this;
+    }
+
+    public IRaggleBuilder AddEmbeddingService(object key, IEmbeddingService service)
+    {
+        Services.AddKeyedSingleton(key, service);
+        return this;
+    }
+
     public IRaggle Build(RaggleMemoryConfig? config = null)
     {
         var provider = Services.BuildServiceProvider();
@@ -33,8 +46,7 @@ public class RaggleBuilder : IRaggleBuilder
         {
             return new Raggle()
             {
-                Services = provider,
-                Memory = new RaggleMemory(provider, config)
+                Services = provider
             };
         }
     }

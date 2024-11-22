@@ -49,60 +49,61 @@ public class PipelineOrchestrator : IPipelineOrchestrator
     /// <inheritdoc />
     public async Task ExecuteAsync(DataPipeline pipeline, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            await _semaphore.WaitAsync(cancellationToken);
+        throw new NotImplementedException();
+        //try
+        //{
+        //    await _semaphore.WaitAsync(cancellationToken);
 
-            pipeline.InitializeSteps();
-            pipeline.Status = PipelineStatus.Processing;
-            await UpsertPipelineAsync(pipeline, cancellationToken);
-            await UpsertDocumentStatusAsync(MemorizationStatus.Memorizing, pipeline.Document, cancellationToken);
+        //    pipeline.InitializeSteps();
+        //    pipeline.Status = PipelineStatus.Processing;
+        //    await UpsertPipelineAsync(pipeline, cancellationToken);
+        //    await UpsertDocumentStatusAsync(MemorizationStatus.Memorizing, pipeline.Document, cancellationToken);
 
-            while (pipeline.Status == PipelineStatus.Processing)
-            {
-                var stepName = pipeline.GetNextStepName();
-                if (string.IsNullOrWhiteSpace(stepName))
-                {
-                    if (pipeline.Steps.Count == pipeline.CompletedSteps.Count)
-                    {
-                        pipeline.Status = PipelineStatus.Completed;
-                        pipeline.CompletedAt = DateTime.UtcNow;
-                        pipeline.ErrorMessage = "All steps are completed";
-                        await UpsertPipelineAsync(pipeline, cancellationToken);
-                        await UpsertDocumentStatusAsync(MemorizationStatus.Memorized, pipeline.Document, cancellationToken);
-                    }
-                    else
-                    {
-                        var message = "Something went wrong when processing the pipeline, steps are not completed";
-                        await UpsertFaildPipelineAsync(pipeline, message, cancellationToken);
-                        await UpsertDocumentStatusAsync(MemorizationStatus.FailedMemorization, pipeline.Document, cancellationToken);
-                    }
-                    break;
-                }
-                else if (_handlers.TryGetValue(stepName, out var handler))
-                {
-                    pipeline = await handler.ProcessAsync(pipeline, cancellationToken);
-                    pipeline.CompleteStep(stepName);
-                    await UpsertPipelineAsync(pipeline, cancellationToken);
-                }
-                else
-                {
-                    var message = $"Handler not found for step '{stepName}'";
-                    await UpsertFaildPipelineAsync(pipeline, message, cancellationToken);
-                    await UpsertDocumentStatusAsync(MemorizationStatus.FailedMemorization, pipeline.Document, cancellationToken);
-                    break;
-                }
-            }
-        }
-        catch(Exception ex)
-        {
-            await UpsertFaildPipelineAsync(pipeline, ex.Message, cancellationToken);
-            await UpsertDocumentStatusAsync(MemorizationStatus.FailedMemorization, pipeline.Document, cancellationToken);
-        }
-        finally 
-        { 
-            _semaphore.Release();
-        }
+        //    while (pipeline.Status == PipelineStatus.Processing)
+        //    {
+        //        var stepName = pipeline.GetNextStepKey();
+        //        if (string.IsNullOrWhiteSpace(stepName))
+        //        {
+        //            if (pipeline.Steps.Count == pipeline.CompletedSteps.Count)
+        //            {
+        //                pipeline.Status = PipelineStatus.Completed;
+        //                pipeline.CompletedAt = DateTime.UtcNow;
+        //                pipeline.ErrorMessage = "All steps are completed";
+        //                await UpsertPipelineAsync(pipeline, cancellationToken);
+        //                await UpsertDocumentStatusAsync(MemorizationStatus.Memorized, pipeline.Document, cancellationToken);
+        //            }
+        //            else
+        //            {
+        //                var message = "Something went wrong when processing the pipeline, steps are not completed";
+        //                await UpsertFaildPipelineAsync(pipeline, message, cancellationToken);
+        //                await UpsertDocumentStatusAsync(MemorizationStatus.FailedMemorization, pipeline.Document, cancellationToken);
+        //            }
+        //            break;
+        //        }
+        //        else if (_handlers.TryGetValue(stepName, out var handler))
+        //        {
+        //            pipeline = await handler.ProcessAsync(pipeline, cancellationToken);
+        //            pipeline.CompleteStep(stepName);
+        //            await UpsertPipelineAsync(pipeline, cancellationToken);
+        //        }
+        //        else
+        //        {
+        //            var message = $"Handler not found for step '{stepName}'";
+        //            await UpsertFaildPipelineAsync(pipeline, message, cancellationToken);
+        //            await UpsertDocumentStatusAsync(MemorizationStatus.FailedMemorization, pipeline.Document, cancellationToken);
+        //            break;
+        //        }
+        //    }
+        //}
+        //catch(Exception ex)
+        //{
+        //    await UpsertFaildPipelineAsync(pipeline, ex.Message, cancellationToken);
+        //    await UpsertDocumentStatusAsync(MemorizationStatus.FailedMemorization, pipeline.Document, cancellationToken);
+        //}
+        //finally 
+        //{ 
+        //    _semaphore.Release();
+        //}
     }
 
     /// <inheritdoc />

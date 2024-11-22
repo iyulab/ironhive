@@ -11,7 +11,7 @@ public class MemoryService
     private readonly AppDbContext _db;
     private readonly IRaggle _raggle;
 
-    private IRaggleMemory? _memory => _raggle.Memory;
+    private IRaggleMemory? _memory => _raggle.Services.GetService<IRaggleMemory>();
 
     public MemoryService(AppDbContext dbContext, IRaggle raggle)
     {

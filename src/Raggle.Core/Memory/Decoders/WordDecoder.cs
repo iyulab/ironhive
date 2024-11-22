@@ -1,5 +1,6 @@
 ﻿using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
+using Raggle.Abstractions.Memory;
 using Raggle.Core.Memory.Document;
 using Raggle.Core.Utils;
 using System.Text;
@@ -15,6 +16,11 @@ public class WordDecoder : IDocumentDecoder
     [
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ];
+
+    public WordDecoder()
+    {
+        _maxSplitParagraphs = 10;
+    }
 
     public WordDecoder(int maxSplitParagraphs = 10)
     {

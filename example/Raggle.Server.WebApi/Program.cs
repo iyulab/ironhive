@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using Raggle.Server.WebApi;
 using Raggle.Server.WebApi.Data;
@@ -32,6 +33,10 @@ if (builder.Environment.IsDevelopment())
                 .AllowAnyHeader();
                 //.AllowCredentials();
         });
+    });
+    builder.Services.Configure<FormOptions>(options =>
+    {
+        options.MultipartBodyLengthLimit = 10_737_418_240; // 10GB
     });
 }
 else

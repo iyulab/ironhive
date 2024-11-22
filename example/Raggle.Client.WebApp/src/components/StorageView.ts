@@ -50,9 +50,10 @@ export class StorageView extends LitElement {
     this.fileInput.click();
     this.fileInput.onchange = async () => {
       const files = this.fileInput.files;
+      const file = files?.[0];
       if (files) {
         // Upload the file
-        await API.uploadFile(this.collection?.id, files);
+        await API.uploadFile(this.collection?.id, file);
         this.loadFiles();
       }
     };

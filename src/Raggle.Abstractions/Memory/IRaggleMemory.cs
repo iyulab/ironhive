@@ -23,7 +23,7 @@ public interface IRaggleMemory
         string documentId,
         string fileName,
         Stream content,
-        string[] steps,
+        object[] steps,
         string[]? tags = null,
         CancellationToken cancellationToken = default);
 

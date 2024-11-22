@@ -1,4 +1,5 @@
-﻿using Raggle.Abstractions.Memory;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Raggle.Abstractions.Memory;
 using Raggle.Core.Memory.Decoders;
 using Raggle.Core.Memory.Document;
 using Raggle.Core.Utils;
@@ -11,7 +12,7 @@ public class DocumentDecodingHandler : IPipelineHandler
     private readonly IDocumentDecoder[] _decoders;
 
     public DocumentDecodingHandler(
-        IDocumentStorage documentStorage,
+        [FromKeyedServices("")] IDocumentStorage documentStorage,
         IDocumentDecoder[] decoders)
     {
         _documentStorage = documentStorage;
