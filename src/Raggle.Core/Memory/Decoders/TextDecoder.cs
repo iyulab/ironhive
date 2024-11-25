@@ -15,18 +15,14 @@ public class TextDecoder : IDocumentDecoder
         "text/plain"
     ];
 
+    // ===================== 제거 대상 =====================
     public TextDecoder()
     {
         _maxSplitLine = 10;
     }
 
-    public TextDecoder(int maxSplitLine = 10)
-    {
-        _maxSplitLine = maxSplitLine;
-    }
-
     /// <inheritdoc />
-    public async Task<IEnumerable<DocumentSection>> DecodeAsync(
+    public async Task<object> DecodeAsync(
         Stream data, 
         CancellationToken cancellationToken = default)
     {

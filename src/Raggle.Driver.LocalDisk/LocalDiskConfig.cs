@@ -5,7 +5,7 @@ public class LocalDiskConfig
     /// <summary>
     /// 스토리지의 디렉토리 경로입니다.
     /// </summary>
-    public required string DirectoryPath { get; set; }
+    public string DirectoryPath { get; set; } = string.Empty;
 
     /// <summary>
     /// Azure Blob 작업 실패 시 최대 재시도 횟수입니다.

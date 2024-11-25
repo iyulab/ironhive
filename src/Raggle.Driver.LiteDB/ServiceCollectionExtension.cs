@@ -5,11 +5,10 @@ namespace Raggle.Driver.LiteDB;
 
 public static partial class ServiceCollectionExtension
 {
-    public static IServiceCollection AddLiteDBServices(
+    public static IServiceCollection SetLiteDBVectorStorage(
         this IServiceCollection services,
-        object key,
         LiteDBConfig config)
     {
-        return services.AddVectorStorage(key, new LiteDBVectorStorage(config));
+        return services.SetVectorStorage(new LiteDBVectorStorage(config));
     }
 }

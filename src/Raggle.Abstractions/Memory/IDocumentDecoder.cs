@@ -1,6 +1,4 @@
-﻿using Raggle.Abstractions.Memory;
-
-namespace Raggle.Abstractions.Memory;
+﻿namespace Raggle.Abstractions.Memory;
 
 public interface IDocumentDecoder
 {
@@ -12,7 +10,7 @@ public interface IDocumentDecoder
     /// <summary>
     /// Extract text content from the given file.
     /// </summary>
-    Task<IEnumerable<DocumentSection>> DecodeAsync(
+    Task<object> DecodeAsync(
         Stream data,
         CancellationToken cancellationToken = default);
 }

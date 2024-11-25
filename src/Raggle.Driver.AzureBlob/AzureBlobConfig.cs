@@ -1,5 +1,6 @@
 ﻿using Azure.Core;
 using Azure.Identity;
+using System.Text.Json.Serialization;
 
 namespace Raggle.Driver.AzureBlob;
 
@@ -41,9 +42,9 @@ public class AzureBlobConfig
 {
     /// <summary>
     /// Determines which fields are required for authentication.
-    /// Default is <see cref="AzureBlobAuthTypes.AzureIdentity"/>.
+    /// Default is <see cref="AzureBlobAuthTypes.ConnectionString"/>.
     /// </summary>
-    public required AzureBlobAuthTypes AuthType { get; set; }
+    public AzureBlobAuthTypes AuthType { get; set; } = AzureBlobAuthTypes.ConnectionString;
 
     /// <summary>
     /// Required if <see cref="AuthType"/> is set to <see cref="AzureBlobAuthTypes.ConnectionString"/>.
@@ -73,6 +74,7 @@ public class AzureBlobConfig
     /// Required if <see cref="AuthType"/> is set to <see cref="AzureBlobAuthTypes.AzureIdentity"/>.
     /// By default, this is set to <see cref="DefaultAzureCredential"/>, which uses managed identity or other Azure AD credentials.
     /// </summary>
+    [JsonIgnore]
     public TokenCredential TokenCredential { get; set; } = new DefaultAzureCredential();
 
     /// <summary>

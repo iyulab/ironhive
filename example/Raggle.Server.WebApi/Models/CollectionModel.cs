@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Raggle.Server.WebApi.Configuration;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -17,7 +18,7 @@ public class CollectionModel
     public string? Description { get; set; }
 
     [Required]
-    public required RaggleServiceKeys EmbedProvider { get; set; }
+    public required AIServiceKeys EmbedProvider { get; set; }
 
     [Required]
     public required string EmbedModel { get; set; }

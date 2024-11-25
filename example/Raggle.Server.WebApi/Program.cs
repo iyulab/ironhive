@@ -1,19 +1,10 @@
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.EntityFrameworkCore;
 using Raggle.Server.WebApi;
-using Raggle.Server.WebApi.Data;
-using Raggle.Server.WebApi.Models;
 using Raggle.Server.WebApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var config = builder.Configuration.GetSection("Raggle").Get<RaggleServiceConfig>()
-    ?? throw new ArgumentException("Raggle configuration is missing.");
-builder.Services.AddDbContext<AppDbContext>((options) =>
-{
-    options.UseSqlite(config.DbConnectionString);
-    options.AddInterceptors(new AppDbIntercepter());
-});
+var config = ConfigTester.Config(false);
 builder.Services.AddRaggle(config);
 
 builder.Services.AddControllers();
@@ -47,12 +38,7 @@ else
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    context.Database.EnsureCreated();
-}
-
+app.Services.EnsureRaggleDB();
 app.MapControllers();
 app.UseCors("AllowAll");
 

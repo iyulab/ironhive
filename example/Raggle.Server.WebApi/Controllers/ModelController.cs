@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Raggle.Abstractions;
 using Raggle.Abstractions.AI;
+using Raggle.Server.WebApi.Configuration;
 using Raggle.Server.WebApi.Models;
 
 namespace Raggle.Server.WebApi.Controllers;
@@ -10,11 +11,11 @@ namespace Raggle.Server.WebApi.Controllers;
 public class ModelController : ControllerBase
 {
     private readonly IRaggle _raggle;
-    private readonly RaggleServiceKeys[] modelServiceKeys =
+    private readonly AIServiceKeys[] modelServiceKeys =
     [
-        RaggleServiceKeys.OpenAI,
-        RaggleServiceKeys.Anthropic,
-        RaggleServiceKeys.Ollama
+        AIServiceKeys.OpenAI,
+        AIServiceKeys.Anthropic,
+        AIServiceKeys.Ollama
     ];
 
     public ModelController(IRaggle raggle)

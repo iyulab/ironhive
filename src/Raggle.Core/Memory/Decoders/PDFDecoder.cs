@@ -1,5 +1,4 @@
 ﻿using Raggle.Abstractions.Memory;
-using Raggle.Core.Memory.Decoders;
 using Raggle.Core.Memory.Document;
 using Raggle.Core.Utils;
 using System.Collections.Concurrent;
@@ -17,7 +16,7 @@ public class PDFDecoder : IDocumentDecoder
     ];
 
     /// <inheritdoc />
-    public async Task<IEnumerable<DocumentSection>> DecodeAsync(
+    public async Task<object> DecodeAsync(
         Stream data, 
         CancellationToken cancellationToken = default)
     {

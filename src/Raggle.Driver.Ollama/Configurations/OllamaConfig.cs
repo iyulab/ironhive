@@ -10,18 +10,19 @@ public class OllamaConfig
 {
     /// <summary>  
     /// Gets or sets the endpoint URL for the Ollama API.
-    /// Default endpoint is <see cref="OllamaConstants.DefaultEndPoint"/>
+    /// Default endpoint is "http://localhost:11434/".
     /// </summary>  
-    public string EndPoint { get; set; } = string.Empty;
+    public string EndPoint { get; set; } = OllamaConstants.DefaultEndPoint;
 
     /// <summary>  
     /// Gets or sets the default request headers for the Ollama API requests.  
     /// </summary>  
-    public Dictionary<string, string>? DefaultRequestHeaders { get; set; }
+    public IDictionary<string, string> DefaultRequestHeaders { get; set; } = new Dictionary<string, string>();
 
     /// <summary>  
     /// Gets or sets the JSON serializer options for the Ollama API requests.  
     /// </summary>  
+    [JsonIgnore]
     public JsonSerializerOptions JsonOptions { get; set; } = new JsonSerializerOptions
     {
         PropertyNameCaseInsensitive = true,

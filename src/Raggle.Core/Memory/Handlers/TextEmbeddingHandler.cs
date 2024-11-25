@@ -1,4 +1,5 @@
-﻿using Raggle.Abstractions.AI;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Memory;
 using Raggle.Core.Memory.Document;
 using Raggle.Core.Utils;
@@ -7,21 +8,21 @@ namespace Raggle.Core.Memory.Handlers;
 
 public class TextEmbeddingHandler : IPipelineHandler
 {
+    private readonly IServiceProvider _serviceProvider;
     private readonly IDocumentStorage _documentStorage;
     private readonly IVectorStorage _vectorStorage;
-    private readonly IEmbeddingService _embeddingService;
-    private readonly string _embeddingModel;
 
-    public TextEmbeddingHandler(
-        IDocumentStorage documentStorage,
-        IVectorStorage vectorStorage,
-        IEmbeddingService embeddingService,
-        string embeddingModel)
+    public TextEmbeddingHandler(IServiceProvider service)
     {
-        _documentStorage = documentStorage;
-        _vectorStorage = vectorStorage;
-        _embeddingService = embeddingService;
-        _embeddingModel = embeddingModel;
+        _serviceProvider = service;
+        _documentStorage = service.GetRequiredService<IDocumentStorage>();
+        _vectorStorage = service.GetRequiredService<IVectorStorage>();
+    }
+
+    public class TextEmbeddingHandlerOptions
+    {
+        public object ServiceKey { get; set; }
+        public string ModelName { get; set; }
     }
 
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
@@ -36,11 +37,15 @@ public class TextEmbeddingHandler : IPipelineHandler
             if (chunk.ExtractedQAPairs != null && chunk.ExtractedQAPairs.Any())
             {
                 var questions = chunk.ExtractedQAPairs.Select(x => x.Question).ToArray();
-                var response = await _embeddingService.EmbeddingsAsync(new EmbeddingRequest
-                {
-                    Model = _embeddingModel,
-                    Input = questions
-                }, cancellationToken);
+                var options = pipeline.Get<TextEmbeddingHandlerOptions>();
+                var embedder = _serviceProvider.GetRequiredKeyedService<IEmbeddingService>(options.ServiceKey);
+                var request = new EmbeddingRequest
+                { 
+                    Model = options.ModelName, 
+                    Input = questions 
+                };
+                var response = await embedder.EmbeddingsAsync(request, cancellationToken);
+
                 for (var i = 0; i < response.Count(); i++)
                 {
                     points.Add(new VectorPoint
@@ -56,7 +61,9 @@ public class TextEmbeddingHandler : IPipelineHandler
             }
             else if (!string.IsNullOrWhiteSpace(chunk.SummarizedText))
             {
-                var response = await _embeddingService.EmbeddingAsync(_embeddingModel, chunk.SummarizedText, cancellationToken);
+                var options = pipeline.Get<TextEmbeddingHandlerOptions>();
+                var embedder = _serviceProvider.GetRequiredKeyedService<IEmbeddingService>(options.ServiceKey);
+                var response = await embedder.EmbeddingAsync(options.ModelName, chunk.SummarizedText, cancellationToken);
                 points.Add(new VectorPoint
                 {
                     VectorId = Guid.NewGuid(),
@@ -68,10 +75,10 @@ public class TextEmbeddingHandler : IPipelineHandler
             }
             else if (!string.IsNullOrEmpty(chunk.RawText))
             {
-                var response = await _embeddingService.EmbeddingAsync(
-                    _embeddingModel, 
-                    chunk.RawText, 
-                    cancellationToken);
+                var options = pipeline.Get<TextEmbeddingHandlerOptions>();
+                var embedder = _serviceProvider.GetRequiredKeyedService<IEmbeddingService>(options.ServiceKey);
+                var response = await embedder.EmbeddingAsync(options.ModelName, chunk.RawText, cancellationToken);
+
                 points.Add(new VectorPoint
                 {
                     VectorId = Guid.NewGuid(),

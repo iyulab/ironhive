@@ -15,7 +15,7 @@ public class PPTDecoder : IDocumentDecoder
     ];
 
     /// <inheritdoc />
-    public async Task<IEnumerable<DocumentSection>> DecodeAsync(
+    public async Task<object> DecodeAsync(
         Stream data, 
         CancellationToken cancellationToken = default)
     {

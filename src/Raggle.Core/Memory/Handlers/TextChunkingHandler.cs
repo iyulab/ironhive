@@ -1,4 +1,5 @@
-﻿using Raggle.Abstractions.AI;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Memory;
 using Raggle.Core.Memory.Document;
 using Raggle.Core.Tokenizers;
@@ -9,23 +10,17 @@ namespace Raggle.Core.Memory.Handlers;
 
 public class TextChunkingHandler : IPipelineHandler
 {
+    private readonly IServiceProvider _serviceProvider;
     private readonly IDocumentStorage _documentStorage;
     private readonly ITextTokenizer _textTokenizer;
     private readonly int _maxTokensPerChunk;
 
-    public TextChunkingHandler(
-        IDocumentStorage documentStorage,
-        ITextTokenizer? textTokenizer = null,
-        int? maxTokensPerChunk = null)
+    public TextChunkingHandler(IServiceProvider service)
     {
-        _documentStorage = documentStorage;
-        _textTokenizer = textTokenizer ?? new TiktokenTokenizer();
-        _maxTokensPerChunk = maxTokensPerChunk ?? 1024;
-
-        if (_maxTokensPerChunk <= 0)
-        {
-            _maxTokensPerChunk = 128;
-        }
+        _serviceProvider = service;
+        _documentStorage = service.GetRequiredService<IDocumentStorage>();
+        _textTokenizer = new TiktokenTokenizer();
+        _maxTokensPerChunk = 1024;
     }
 
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)

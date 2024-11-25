@@ -1,4 +1,5 @@
-﻿using Raggle.Abstractions.AI;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Memory;
 using Raggle.Abstractions.Messages;
 using Raggle.Core.Memory.Document;
@@ -8,11 +9,7 @@ using System.Text.RegularExpressions;
 
 namespace Raggle.Core.Memory.Handlers;
 
-public class GenerateQAPairsHandlerOptions
-{
-    public string Provider { get; set; } = string.Empty;
-    public string Model { get; set; } = string.Empty;
-}
+
 
 public class GenerateQAPairsHandler : IPipelineHandler
 {
@@ -21,17 +18,18 @@ public class GenerateQAPairsHandler : IPipelineHandler
         RegexOptions.Singleline | RegexOptions.Compiled);
 
     private readonly IDocumentStorage _documentStorage;
-    private readonly IChatCompletionService _chatService;
-    private readonly GenerateQAPairsHandlerOptions _options;
+    private readonly IServiceProvider _serviceProvider;
 
-    public GenerateQAPairsHandler(
-        IDocumentStorage documentStorage,
-        IChatCompletionService chatService,
-        GenerateQAPairsHandlerOptions options)
+    public GenerateQAPairsHandler(IServiceProvider service)
     {
-        _documentStorage = documentStorage;
-        _chatService = chatService;
-        _options = options;
+        _serviceProvider = service;
+        _documentStorage = service.GetRequiredService<IDocumentStorage>();
+    }
+
+    public class GenerateQAPairsHandlerOptions
+    {
+        public string ServiceKey { get; set; } = string.Empty;
+        public string ModelName { get; set; } = string.Empty;
     }
 
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
@@ -50,7 +48,8 @@ public class GenerateQAPairsHandler : IPipelineHandler
             else
                 throw new InvalidOperationException("No text content found in the document chunk.");
 
-            var qaPairs = await GenerateQAPairsAsync(information, cancellationToken);
+            var options = pipeline.Get<GenerateQAPairsHandlerOptions>();
+            var qaPairs = await GenerateQAPairsAsync(information, options, cancellationToken);
             chunk.ExtractedQAPairs = qaPairs.Select((qa, index) => new QAPair
             {
                 Index = index,
@@ -97,7 +96,10 @@ public class GenerateQAPairsHandler : IPipelineHandler
             cancellationToken: cancellationToken);
     }
 
-    private async Task<IEnumerable<(string Question, string Answer)>> GenerateQAPairsAsync(string text, CancellationToken cancellationToken)
+    private async Task<IEnumerable<(string Question, string Answer)>> GenerateQAPairsAsync(
+        string text,
+        GenerateQAPairsHandlerOptions options,
+        CancellationToken cancellationToken)
     {
         var messages = new ChatHistory();
         messages.AddUserMessage(new TextContentBlock
@@ -106,10 +108,11 @@ public class GenerateQAPairsHandler : IPipelineHandler
         });
         var request = new ChatCompletionRequest
         {
-            Model = _options.Model,
+            Model = options.ModelName,
             Messages = messages,
         };
-        var response = await _chatService.ChatCompletionAsync(request);
+        var chat = _serviceProvider.GetRequiredKeyedService<IChatCompletionService>(options.ServiceKey);
+        var response = await chat.ChatCompletionAsync(request);
 
         if (response.Completed)
         {

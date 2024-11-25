@@ -1,0 +1,53 @@
+{
+  "Raggle": {
+    "ConnectionString": "Data Source=C:\\temp\\index.db",
+    "AIService": {
+      "OpenAI": {
+        "EndPoint": "https://api.openai.com/v1/",
+        "ApiKey": "",
+        "Organization": "",
+        "Project": ""
+      },
+      "Anthropic": {
+        "EndPoint": "https://api.anthropic.com/v1/",
+        "ApiKey": "",
+        "Version": ""
+      },
+      "Ollama": {
+        "EndPoint": "http://localhost:11434/",
+        "DefaultRequestHeaders": {}
+      }
+    },
+    "VectorStorage": {
+      "Type": "lite_db",
+      "LiteDB": {
+        "DatabasePath": "C:\\temp\\vector.db",
+        "Password": ""
+      },
+      "Qdrant": {
+        "Host": "http://localhost",
+        "Port": 6333,
+        "ApiKey": "",
+        "Https": false,
+        "GrpcTimeout": "00:01:40"
+      }
+    },
+    "DocumentStorage": {
+      "Type": "local_disk",
+      "LocalDisk": {
+        "DirectoryPath": "C:\\temp\\documents",
+        "BlobMaxRetryAttempts": 10,
+        "BlobDelayMilliseconds": 200
+      },
+      "AzureBlob": {
+        "AuthType": "connection_string",
+        "ConnectionString": "",
+        "AccountName": "",
+        "AccountKey": "",
+        "SASToken": "",
+        "BlobMaxRetryAttempts": 10,
+        "BlobDelayMilliseconds": 200
+      }
+    }
+  }
+}

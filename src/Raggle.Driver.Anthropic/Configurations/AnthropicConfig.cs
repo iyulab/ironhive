@@ -10,9 +10,9 @@ public class AnthropicConfig
 {
     /// <summary>
     /// Gets or sets the endpoint URL for the OpenAI API.
-    /// Default value is <see cref="AnthropicConstants.DefaultEndPoint"/>.
+    /// Default value is "https://api.anthropic.com/v1/".
     /// </summary>
-    public string EndPoint { get; set; } = string.Empty;
+    public string EndPoint { get; set; } = AnthropicConstants.DefaultEndPoint;
 
     /// <summary>
     /// Gets or sets the API key used for authenticating requests to the Anthropic API.
@@ -28,6 +28,7 @@ public class AnthropicConfig
     /// <summary>
     /// Gets or sets the JSON serialization options used for Anthropic API
     /// </summary>
+    [JsonIgnore]
     public JsonSerializerOptions JsonOptions { get; set; } = new JsonSerializerOptions
     {
         PropertyNameCaseInsensitive = true,

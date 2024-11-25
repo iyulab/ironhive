@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Raggle.Abstractions.Memory;
-using Raggle.Core.Memory.Decoders;
 using Raggle.Core.Memory.Document;
 using Raggle.Core.Utils;
 
@@ -9,14 +8,12 @@ namespace Raggle.Core.Memory.Handlers;
 public class DocumentDecodingHandler : IPipelineHandler
 {
     private readonly IDocumentStorage _documentStorage;
-    private readonly IDocumentDecoder[] _decoders;
+    private readonly IEnumerable<IDocumentDecoder> _decoders;
 
-    public DocumentDecodingHandler(
-        [FromKeyedServices("")] IDocumentStorage documentStorage,
-        IDocumentDecoder[] decoders)
+    public DocumentDecodingHandler(IServiceProvider service)
     {
-        _documentStorage = documentStorage;
-        _decoders = decoders;
+        _documentStorage = service.GetRequiredService<IDocumentStorage>();
+        _decoders = service.GetServices<IDocumentDecoder>();
     }
 
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
@@ -33,13 +30,14 @@ public class DocumentDecodingHandler : IPipelineHandler
                 cancellationToken: cancellationToken);
 
         // 문서 파싱
-        var sections = await decoder.DecodeAsync(content, cancellationToken);
+        var sections = await decoder.DecodeAsync(content, cancellationToken) as IEnumerable<DocumentSection>
+            ?? throw new InvalidOperationException("Invalid document sections.");
         var parsedDocument = new DecodedDocument
         {
             FileName = pipeline.Document.FileName,
             ContentType = pipeline.Document.ContentType,
             ContentLength = content.Length,
-            Sections = sections,
+            Sections = sections
         };
 
         // 파싱 결과 저장

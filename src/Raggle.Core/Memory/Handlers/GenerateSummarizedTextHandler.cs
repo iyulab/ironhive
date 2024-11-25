@@ -1,4 +1,5 @@
-﻿using Raggle.Abstractions.AI;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Memory;
 using Raggle.Abstractions.Messages;
 using Raggle.Core.Memory.Document;
@@ -9,18 +10,20 @@ namespace Raggle.Core.Memory.Handlers;
 
 public class GenerateSummarizedTextHandler : IPipelineHandler
 {
+    private readonly IServiceProvider _serviceProvider;
     private readonly IDocumentStorage _documentStorage;
-    private readonly IChatCompletionService _chatService;
-    private readonly ChatCompletionRequest _chatRequest;
 
-    public GenerateSummarizedTextHandler(
-        IDocumentStorage documentStorage,
-        IChatCompletionService chatService,
-        ChatCompletionRequest chatRequest)
+    // ===================== 제거 대상 =====================
+    public GenerateSummarizedTextHandler(IServiceProvider service)
     {
-        _documentStorage = documentStorage;
-        _chatService = chatService;
-        _chatRequest = chatRequest;
+        _serviceProvider = service;
+        _documentStorage = service.GetRequiredService<IDocumentStorage>();
+    }
+
+    public class GenerateSummarizedTextHandlerOptions
+    {
+        public string ServiceKey { get; set; } = string.Empty;
+        public string ModelName { get; set; } = string.Empty;
     }
 
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
@@ -81,9 +84,14 @@ public class GenerateSummarizedTextHandler : IPipelineHandler
         {
             Text = $"Summarize This:\n\n{text}",
         });
-        _chatRequest.System = GetSystemInstructionPrompt();
-        _chatRequest.Messages = messages;
-        var response = await _chatService.ChatCompletionAsync(_chatRequest, cancellationToken);
+        var request = new ChatCompletionRequest
+        {
+            Model = "gpt-4o-mini",
+            System = GetSystemInstructionPrompt(),
+            Messages = messages,
+        };
+        var chat = _serviceProvider.GetRequiredService<IChatCompletionService>();
+        var response = await chat.ChatCompletionAsync(request, cancellationToken);
         if (response.Completed)
         {
             var textAnswer = new StringBuilder();

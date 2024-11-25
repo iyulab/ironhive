@@ -5,11 +5,10 @@ namespace Raggle.Driver.LocalDisk;
 
 public static partial class ServiceCollectionExtension
 {
-    public static IServiceCollection AddLocalDiskServices(
+    public static IServiceCollection SetLocalDiskDocumentStorage(
         this IServiceCollection services,
-        object key,
         LocalDiskConfig config)
     {
-        return services.AddDocumentStorage(key, new LocalDiskDocumentStorage(config));
+        return services.SetDocumentStorage(new LocalDiskDocumentStorage(config));
     }
 }

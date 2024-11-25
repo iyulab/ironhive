@@ -5,11 +5,10 @@ namespace Raggle.Driver.AzureBlob;
 
 public static partial class ServiceCollectionExtension
 {
-    public static IServiceCollection AddAzureBlobServices(
+    public static IServiceCollection SetAzureBlobDocumentStorage(
         this IServiceCollection services,
-        object key,
         AzureBlobConfig config)
     {
-        return services.AddDocumentStorage(key, new AzureBlobDocumentStorage(config));
+        return services.SetDocumentStorage(new AzureBlobDocumentStorage(config));
     }
 }

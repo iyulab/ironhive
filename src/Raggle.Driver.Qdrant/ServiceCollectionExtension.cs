@@ -5,11 +5,10 @@ namespace Raggle.Driver.Qdrant;
 
 public static partial class ServiceCollectionExtension
 {
-    public static IServiceCollection AddQdrantServices(
+    public static IServiceCollection SetQdrantVectorStorage(
         this IServiceCollection services,
-        object key,
         QdrantConfig config)
     {
-        return services.AddVectorStorage(key, new QdrantVectorStorage(config));
+        return services.SetVectorStorage(new QdrantVectorStorage(config));
     }
 }

@@ -8,21 +8,20 @@ namespace Raggle.Core.Memory;
 
 public class RaggleMemory : IRaggleMemory
 {
-    private readonly IServiceProvider _services;
-    private readonly IDocumentStorage _document;
-    private readonly IVectorStorage _vector;
-
-    private readonly ContentTypeDetector _detecter = new();
-    //private readonly IEnumerable<IDocumentDecoder> _decoders;
-    //private readonly IDictionary<string, IPipelineHandler> _handlers;
+    private readonly IServiceProvider _serviceProvider;
+    private readonly IDocumentStorage _documentStorage;
+    private readonly IVectorStorage _vectorStorage;
 
     private readonly SemaphoreSlim _semaphore = new(1, 1);
 
+    // 제거??
+    private readonly ContentTypeDetector _detector = new();
+
     public RaggleMemory(IServiceProvider services)
     {
-        _services = services;
-        _document = services.GetRequiredService<IDocumentStorage>();
-        _vector = services.GetRequiredService<IVectorStorage>();
+        _serviceProvider = services;
+        _documentStorage = services.GetRequiredService<IDocumentStorage>();
+        _vectorStorage = services.GetRequiredService<IVectorStorage>();
     }
 
     /// <inheritdoc />
@@ -37,8 +36,8 @@ public class RaggleMemory : IRaggleMemory
             var sampleText = "Sample text to determine vector size";
             var embedding = await GetEmbeddingAsync(embedServiceKey, embedModel, sampleText, cancellationToken);
 
-            await _vector.CreateCollectionAsync(collectionName, embedding.Length, cancellationToken);
-            await _document.CreateCollectionAsync(collectionName, cancellationToken);
+            await _vectorStorage.CreateCollectionAsync(collectionName, embedding.Length, cancellationToken);
+            await _documentStorage.CreateCollectionAsync(collectionName, cancellationToken);
         }
         catch
         {
@@ -52,11 +51,11 @@ public class RaggleMemory : IRaggleMemory
         string collectionName,
         CancellationToken cancellationToken = default)
     {
-        if (await _vector.CollectionExistsAsync(collectionName, cancellationToken))
-            await _vector.DeleteCollectionAsync(collectionName, cancellationToken);
+        if (await _vectorStorage.CollectionExistsAsync(collectionName, cancellationToken))
+            await _vectorStorage.DeleteCollectionAsync(collectionName, cancellationToken);
 
-        if (await _document.CollectionExistsAsync(collectionName, cancellationToken))
-            await _document.DeleteCollectionAsync(collectionName, cancellationToken);
+        if (await _documentStorage.CollectionExistsAsync(collectionName, cancellationToken))
+            await _documentStorage.DeleteCollectionAsync(collectionName, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -69,7 +68,7 @@ public class RaggleMemory : IRaggleMemory
         string[]? tags = null,
         CancellationToken cancellationToken = default)
     {
-        await _document.WriteDocumentFileAsync(
+        await _documentStorage.WriteDocumentFileAsync(
             collectionName,
             documentId,
             fileName,
@@ -77,7 +76,7 @@ public class RaggleMemory : IRaggleMemory
             overwrite: true,
             cancellationToken);
 
-        _detecter.TryGetContentType(fileName, out var contentType);
+        _detector.TryGetContentType(fileName, out var contentType);
         var pipeline = new DataPipeline
         {
             Document = new DocumentRecord
@@ -126,7 +125,7 @@ public class RaggleMemory : IRaggleMemory
                     break;
                 }
 
-                var handler = _services.GetKeyedService<IPipelineHandler>(stepKey);
+                var handler = _serviceProvider.GetKeyedService<IPipelineHandler>(stepKey);
 
                 if (handler != null)
                 {
@@ -162,8 +161,8 @@ public class RaggleMemory : IRaggleMemory
         string documentId,
         CancellationToken cancellationToken = default)
     {
-        await _vector.DeleteVectorsAsync(collectionName, documentId, cancellationToken);
-        await _document.DeleteDocumentAsync(collectionName, documentId, cancellationToken);
+        await _vectorStorage.DeleteVectorsAsync(collectionName, documentId, cancellationToken);
+        await _documentStorage.DeleteDocumentAsync(collectionName, documentId, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -178,7 +177,7 @@ public class RaggleMemory : IRaggleMemory
         CancellationToken cancellationToken = default)
     {
         var embedding = await GetEmbeddingAsync(embedServiceKey, embedModel, query, cancellationToken);
-        var results = await _vector.SearchVectorsAsync(collectionName,embedding, minScore, limit, filter, cancellationToken);
+        var results = await _vectorStorage.SearchVectorsAsync(collectionName,embedding, minScore, limit, filter, cancellationToken);
         return;
     }
 
@@ -191,11 +190,11 @@ public class RaggleMemory : IRaggleMemory
     /// <inheritdoc />
     public async Task<DataPipeline> GetPipelineAsync(string collectionName, string documentId, CancellationToken cancellationToken = default)
     {
-        var files = await _document.GetDocumentFilesAsync(collectionName, documentId, cancellationToken);
+        var files = await _documentStorage.GetDocumentFilesAsync(collectionName, documentId, cancellationToken);
         var filename = files.Where(f => f.EndsWith(DocumentFileHelper.PipelineFileExtension)).FirstOrDefault()
             ?? throw new InvalidOperationException($"Pipeline file not found for {documentId}");
 
-        var stream = await _document.ReadDocumentFileAsync(
+        var stream = await _documentStorage.ReadDocumentFileAsync(
             collectionName: collectionName,
             documentId: documentId,
             filePath: filename,
@@ -210,7 +209,7 @@ public class RaggleMemory : IRaggleMemory
     {
         var filename = DocumentFileHelper.GetPipelineFileName(pipeline.Document.FileName);
         var stream = JsonDocumentSerializer.SerializeToStream(pipeline);
-        await _document.WriteDocumentFileAsync(
+        await _documentStorage.WriteDocumentFileAsync(
             collectionName: pipeline.Document.CollectionName,
             documentId: pipeline.Document.DocumentId,
             filePath: filename,
@@ -228,7 +227,7 @@ public class RaggleMemory : IRaggleMemory
 
     private async Task UpsertDocumentAsync(DocumentRecord document, CancellationToken cancellationToken)
     {
-        await _document.UpsertDocumentAsync(
+        await _documentStorage.UpsertDocumentAsync(
             document: document,
             cancellationToken: cancellationToken);
     }
@@ -246,7 +245,7 @@ public class RaggleMemory : IRaggleMemory
         string text,
         CancellationToken cancellationToken)
     {
-        var embedService = _services.GetRequiredKeyedService<IEmbeddingService>(embedServiceKey);
+        var embedService = _serviceProvider.GetRequiredKeyedService<IEmbeddingService>(embedServiceKey);
         var response = await embedService.EmbeddingAsync(embedModel, text, cancellationToken);
         return response.Embedding;
     }

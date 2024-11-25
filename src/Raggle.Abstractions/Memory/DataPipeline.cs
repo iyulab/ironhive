@@ -30,8 +30,37 @@ public class DataPipeline
 
     public string? ErrorMessage { get; set; }
 
+    #region Key값 타입? string, object?
+
+    public IDictionary<object, object> Metadata { get; set; } = new Dictionary<object, object>();
+
+    #endregion
+
+    #region Context 임시, 다른 방법 찾아 보기, Metadata로 대체?
+
     [JsonIgnore]
-    public object? Context { get; set; }
+    public List<object?> Context { get; set; } = [];
+
+    public void Add<T>(object implementation)
+    {
+        if (Get<T>() != null)
+            Context.Remove(implementation);
+        Context.Add(implementation);
+    }
+
+    public void Remove<T>()
+    {
+        var context = Get<T>();
+        if (context != null)
+            Context.Remove(context);
+    }
+
+    public T? Get<T>()
+    {
+        return Context.OfType<T>().FirstOrDefault();
+    }
+
+    #endregion
 
     public void InitializeSteps()
     {

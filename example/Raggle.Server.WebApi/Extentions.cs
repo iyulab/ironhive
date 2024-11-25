@@ -1,76 +1,163 @@
 ﻿using Raggle.Driver.Anthropic;
-using Raggle.Driver.Anthropic.Configurations;
 using Raggle.Driver.Ollama;
-using Raggle.Driver.Ollama.Configurations;
 using Raggle.Driver.OpenAI;
-using Raggle.Driver.OpenAI.Configurations;
-using Raggle.Driver.LocalDisk;
-using Raggle.Driver.LiteDB;
-using Raggle.Abstractions.Memory;
 using Raggle.Core;
-using Raggle.Server.WebApi.Models;
-using Raggle.Abstractions;
+using Raggle.Server.WebApi.Configuration;
 using Raggle.Abstractions.Extensions;
-using Raggle.Core.Memory.Decoders;
 using Raggle.Core.Memory.Handlers;
+using Raggle.Driver.LiteDB;
+using Raggle.Driver.Qdrant;
+using Raggle.Driver.LocalDisk;
+using Raggle.Driver.AzureBlob;
+using Raggle.Core.Memory.Decoders;
+using Raggle.Server.WebApi.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace Raggle.Server.WebApi;
 
 public static partial class ServiceCollectionExtention
 {
-    public static IServiceCollection AddRaggle(this IServiceCollection services, RaggleServiceConfig config)
+    public static IServiceCollection AddRaggle(this IServiceCollection services, RaggleConfig config)
     {
         services.AddRaggleServices(config);
-
-        //services.AddDocumentDecoder<WordDecoder>("word");
-        //services.AddDocumentDecoder<TextDecoder>("text");
-        //services.AddDocumentDecoder<PPTDecoder>("ppt");
-        //services.AddDocumentDecoder<PDFDecoder>("pdf");
-
-        //services.AddPipelineHandler<DocumentDecodingHandler>("decoding");
-        //services.AddPipelineHandler<TextChunkingHandler>("chunk");
-        //services.AddPipelineHandler<GenerateSummarizedTextHandler>("summarize");
-        //services.AddPipelineHandler<GenerateQAPairsHandler>("qa");
-        //services.AddPipelineHandler<TextEmbeddingHandler>("embed");
-
-        var memory_config = new RaggleMemoryConfig
-        {
-            DocumentStorageServiceKey = RaggleServiceKeys.LocalDisk,
-            VectorStorageServiceKey = RaggleServiceKeys.LiteDB,
-        };
         var builder = new RaggleBuilder(services);
 
-        var raggle = builder.Build(memory_config);
-        return services.AddSingleton(raggle);
+        var raggle = builder.Build();
+        services.AddSingleton(raggle);
+        return services;
     }
 
-    public static IServiceCollection AddRaggleServices(this IServiceCollection services, RaggleServiceConfig config)
+    public static IServiceCollection AddRaggleBuilder(this IServiceCollection services, RaggleConfig config)
     {
-        var openai_config = new OpenAIConfig
-        {
-            ApiKey = config.OpenAIKey,
-        };
-        var anthropic_config = new AnthropicConfig
-        {
-            ApiKey = config.AnthropicKey,
-        };
-        var ollama_config = new OllamaConfig
-        {
-            EndPoint = config.OllamaEndpoint,
-        };
-        var localDisk_config = new LocalDiskConfig
-        {
-            DirectoryPath = config.DocumentStoragePath,
-        };
-        var liteDb_config = new LiteDBConfig
-        {
-            DatabasePath = config.VectorStoragePath,
-        };
+        services.AddRaggleServices(config);
+        var builder = new RaggleBuilder(services);
 
-        return services.AddOpenAIServices(RaggleServiceKeys.OpenAI, openai_config)
-                       .AddAnthropicServices(RaggleServiceKeys.Anthropic, anthropic_config)
-                       .AddOllamaServices(RaggleServiceKeys.Ollama, ollama_config)
-                       .AddLocalDiskServices(RaggleServiceKeys.LocalDisk, localDisk_config)
-                       .AddLiteDBServices(RaggleServiceKeys.LiteDB, liteDb_config);
+        services.AddSingleton(builder);
+        return services;
+    }
+
+    public static IServiceCollection AddRaggleServices(this IServiceCollection services, RaggleConfig config)
+    {
+        return services.SetRaggleDB(config)
+                       .AddAIServices(config)
+                       .SetVectorStorage(config)
+                       .SetDocumentStorage(config)
+                       .AddDocumentDecoders()
+                       .AddPipelineHandlers();
+    }
+
+    public static IServiceCollection SetRaggleDB(this IServiceCollection services, RaggleConfig config)
+    {
+        services.AddDbContext<AppDbContext>((options) =>
+        {
+            options.UseSqlite(config.ConnectionString);
+            options.AddInterceptors(new AppDbIntercepter());
+        });
+        return services;
+    }
+
+    public static IServiceCollection AddAIServices(this IServiceCollection services, RaggleConfig config)
+    {
+        return services.AddOpenAIServices(AIServiceKeys.OpenAI, config.AIService.OpenAI)
+                       .AddAnthropicServices(AIServiceKeys.Anthropic, config.AIService.Anthropic)
+                       .AddOllamaServices(AIServiceKeys.Ollama, config.AIService.Ollama);
+    }
+
+    public static IServiceCollection SetVectorStorage(this IServiceCollection services, RaggleConfig config)
+    {
+        switch (config.VectorStorage.Type)
+        {
+            case VectorStorageTypes.LiteDB:
+                services.SetLiteDBVectorStorage(config.VectorStorage.LiteDB);
+                break;
+            case VectorStorageTypes.Qdrant:
+                services.SetQdrantVectorStorage(config.VectorStorage.Qdrant);
+                break;
+            default:
+                throw new ArgumentException($"Invalid vector storage type: {config.VectorStorage.Type}");
+        }
+
+        return services;
+    }
+
+    public static IServiceCollection SetDocumentStorage(this IServiceCollection services, RaggleConfig config)
+    {
+        switch (config.DocumentStorage.Type)
+        {
+            case DocumentStorageTypes.LocalDisk:
+                services.SetLocalDiskDocumentStorage(config.DocumentStorage.LocalDisk);
+                break;
+            case DocumentStorageTypes.AzureBlob:
+                services.SetAzureBlobDocumentStorage(config.DocumentStorage.AzureBlob);
+                break;
+            default:
+                throw new ArgumentException($"Invalid vector storage type: {config.VectorStorage.Type}");
+        }
+
+        return services;
+    }
+
+    public static IServiceCollection AddDocumentDecoders(this IServiceCollection services)
+    {
+        return services.AddDocumentDecoder<WordDecoder>()
+                       .AddDocumentDecoder<TextDecoder>()
+                       .AddDocumentDecoder<PPTDecoder>()
+                       .AddDocumentDecoder<PDFDecoder>();
+    }
+
+    public static IServiceCollection AddPipelineHandlers(this IServiceCollection services)
+    {
+        return services.AddPipelineHandler<DocumentDecodingHandler>("decoding")
+                       .AddPipelineHandler<TextChunkingHandler>("chunk")
+                       .AddPipelineHandler<GenerateSummarizedTextHandler>("summarize")
+                       .AddPipelineHandler<GenerateQAPairsHandler>("qa")
+                       .AddPipelineHandler<TextEmbeddingHandler>("embed");
+    }
+}
+
+public static partial class ConfigurantionBuilderExtension
+{
+    public static IConfigurationBuilder AddRaggleConfigFile(this IConfigurationBuilder configBuilder, string? filePath = null)
+    {
+        //filePath ??= Path.Combine(Directory.GetCurrentDirectory(), "ragglesettings.json");
+
+        //if (!File.Exists(filePath))
+        //{
+        //    CreateNew();
+        //}
+        //else
+        //{
+        //    var jsonConfig = File.ReadAllText(filePath);
+        //    var config = JsonSerializer.Deserialize<JsonDocument?>(jsonConfig, RaggleConfig.DefaultJsonOptions);
+        //    config?.RootElement.TryGetProperty("Raggle", out var content);
+        //    var raggleConfig = content.Deserialize<RaggleConfig>();
+        //    if (raggleConfig != null)
+        //    {
+        //        CreateNew();
+        //    }
+        //}
+
+        //configBuilder.AddJsonFile(filePath, optional: false, reloadOnChange: true);
+
+        //void CreateNew()
+        //{
+        //    var config = new { Raggle = new RaggleConfig() };
+        //    var jsonConfig = JsonSerializer.Serialize(config, RaggleConfig.DefaultJsonOptions);
+        //    File.WriteAllText(filePath, jsonConfig);
+        //}
+
+        return configBuilder;
+    }
+}
+
+public static partial class ServiceProviderExtension
+{
+    public static bool EnsureRaggleDB(this IServiceProvider provider)
+    {
+        using (var scope = provider.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            return context.Database.EnsureCreated();
+        }
     }
 }

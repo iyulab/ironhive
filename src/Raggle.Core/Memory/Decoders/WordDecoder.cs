@@ -17,18 +17,14 @@ public class WordDecoder : IDocumentDecoder
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ];
 
+    // ===================== 제거 대상 =====================
     public WordDecoder()
     {
         _maxSplitParagraphs = 10;
     }
 
-    public WordDecoder(int maxSplitParagraphs = 10)
-    {
-        _maxSplitParagraphs = maxSplitParagraphs;
-    }
-
     /// <inheritdoc />
-    public async Task<IEnumerable<DocumentSection>> DecodeAsync(
+    public async Task<object> DecodeAsync(
         Stream data, 
         CancellationToken cancellationToken = default)
     {
