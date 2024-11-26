@@ -7,8 +7,8 @@ public interface IRaggleMemory
 {
     Task CreateCollectionAsync(
         string collectionName,
-        object embedServiceKey,
-        string embedModel,
+        string embedServiceKey,
+        string embedModelName,
         CancellationToken cancellationToken = default);
 
     Task DeleteCollectionAsync(
@@ -23,8 +23,9 @@ public interface IRaggleMemory
         string documentId,
         string fileName,
         Stream content,
-        object[] steps,
+        string[] steps,
         string[]? tags = null,
+        IDictionary<string, object>? metadata = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -40,8 +41,8 @@ public interface IRaggleMemory
     /// </summary>
     Task GetNearestMemorySourceAsync(
         string collectionName,
-        object embedServiceKey,
-        string embedModel,
+        string embedServiceKey,
+        string embedModelName,
         string query,
         float minScore = 0,
         int limit = 5,

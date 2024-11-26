@@ -5,7 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Raggle.Server.WebApi.Models;
 
-[Table("collections")]
+[Table("Collections")]
 [Index(nameof(Id), IsUnique = true)]
 public class CollectionModel
 {
@@ -13,15 +13,15 @@ public class CollectionModel
     public Guid Id { get; set; } = Guid.NewGuid();
 
     [Required]
-    public required string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
 
     public string? Description { get; set; }
 
     [Required]
-    public required AIServiceKeys EmbedProvider { get; set; }
+    public AIServiceKeys EmbedProvider { get; set; }
 
     [Required]
-    public required string EmbedModel { get; set; }
+    public string EmbedModel { get; set; } = string.Empty;
 
     [Required]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

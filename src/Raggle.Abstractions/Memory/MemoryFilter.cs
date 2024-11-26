@@ -19,7 +19,6 @@ public class MemoryFilter
     /// <summary>
     /// 필터에 Document ID를 추가합니다.
     /// </summary>
-    /// <param name="documentId">필터링할 Document ID</param>
     public MemoryFilter AddDocumentId(string documentId)
     {
         if (string.IsNullOrWhiteSpace(documentId))
@@ -34,7 +33,6 @@ public class MemoryFilter
     /// <summary>
     /// 필터에 Tag를 추가합니다.
     /// </summary>
-    /// <param name="tag">필터링할 Tag</param>
     public MemoryFilter AddTag(string tag)
     {
         if (string.IsNullOrWhiteSpace(tag))

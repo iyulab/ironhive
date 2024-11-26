@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Raggle.Abstractions.AI;
+using Raggle.Abstractions.Extensions;
 using Raggle.Abstractions.Memory;
 using Raggle.Abstractions.Messages;
 using Raggle.Core.Memory.Document;
@@ -9,9 +10,13 @@ using System.Text.RegularExpressions;
 
 namespace Raggle.Core.Memory.Handlers;
 
+public class GenerateQAHandlerOptions
+{
+    public string ServiceKey { get; set; } = string.Empty;
+    public string ModelName { get; set; } = string.Empty;
+}
 
-
-public class GenerateQAPairsHandler : IPipelineHandler
+public class GenerateQAHandler : IPipelineHandler
 {
     private static readonly Regex QAPairRegex = new Regex(
         @"<qa>\s*<q>\s*(.*?)\s*</q>\s*<a>\s*(.*?)\s*</a>\s*</qa>",
@@ -20,20 +25,16 @@ public class GenerateQAPairsHandler : IPipelineHandler
     private readonly IDocumentStorage _documentStorage;
     private readonly IServiceProvider _serviceProvider;
 
-    public GenerateQAPairsHandler(IServiceProvider service)
+    public GenerateQAHandler(IServiceProvider service)
     {
         _serviceProvider = service;
         _documentStorage = service.GetRequiredService<IDocumentStorage>();
     }
 
-    public class GenerateQAPairsHandlerOptions
-    {
-        public string ServiceKey { get; set; } = string.Empty;
-        public string ModelName { get; set; } = string.Empty;
-    }
-
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
+        var options = pipeline.GetCurrentMetadata<GenerateQAHandlerOptions>()
+            ?? throw new InvalidOperationException("No options found for GenerateQAPairsHandler.");
         var chunkFiles = await GetChunkedDocumentFilesAsync(pipeline, cancellationToken);
 
         foreach (var chunkFile in chunkFiles)
@@ -48,7 +49,6 @@ public class GenerateQAPairsHandler : IPipelineHandler
             else
                 throw new InvalidOperationException("No text content found in the document chunk.");
 
-            var options = pipeline.Get<GenerateQAPairsHandlerOptions>();
             var qaPairs = await GenerateQAPairsAsync(information, options, cancellationToken);
             chunk.ExtractedQAPairs = qaPairs.Select((qa, index) => new QAPair
             {
@@ -67,8 +67,8 @@ public class GenerateQAPairsHandler : IPipelineHandler
     private async Task<IEnumerable<string>> GetChunkedDocumentFilesAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
         var filePaths = await _documentStorage.GetDocumentFilesAsync(
-            collectionName: pipeline.Document.CollectionName,
-            documentId: pipeline.Document.DocumentId,
+            collectionName: pipeline.CollectionName,
+            documentId: pipeline.DocumentId,
             cancellationToken: cancellationToken);
         return filePaths.Where(x => x.EndsWith(DocumentFileHelper.ChunkedFileExtension));
     }
@@ -76,8 +76,8 @@ public class GenerateQAPairsHandler : IPipelineHandler
     private async Task<ChunkedDocument> GetChunkedDocumentAsync(DataPipeline pipeline, string chunkFilePath, CancellationToken cancellationToken)
     {
         var chunkStream = await _documentStorage.ReadDocumentFileAsync(
-            collectionName: pipeline.Document.CollectionName,
-            documentId: pipeline.Document.DocumentId,
+            collectionName: pipeline.CollectionName,
+            documentId: pipeline.DocumentId,
             filePath: chunkFilePath,
             cancellationToken: cancellationToken);
         return JsonDocumentSerializer.Deserialize<ChunkedDocument>(chunkStream);
@@ -85,11 +85,11 @@ public class GenerateQAPairsHandler : IPipelineHandler
 
     private async Task UpsertChunkedDocumentAsync(DataPipeline pipeline, ChunkedDocument chunk, CancellationToken cancellationToken)
     {
-        var filename = DocumentFileHelper.GetChunkedFileName(pipeline.Document.FileName, chunk.Index);
+        var filename = DocumentFileHelper.GetChunkedFileName(pipeline.FileName, chunk.Index);
         var chunkStream = JsonDocumentSerializer.SerializeToStream(chunk);
         await _documentStorage.WriteDocumentFileAsync(
-            collectionName: pipeline.Document.CollectionName,
-            documentId: pipeline.Document.DocumentId,
+            collectionName: pipeline.CollectionName,
+            documentId: pipeline.DocumentId,
             filePath: filename,
             content: chunkStream,
             overwrite: true,
@@ -98,7 +98,7 @@ public class GenerateQAPairsHandler : IPipelineHandler
 
     private async Task<IEnumerable<(string Question, string Answer)>> GenerateQAPairsAsync(
         string text,
-        GenerateQAPairsHandlerOptions options,
+        GenerateQAHandlerOptions options,
         CancellationToken cancellationToken)
     {
         var messages = new ChatHistory();

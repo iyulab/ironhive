@@ -1,5 +1,4 @@
 ﻿using Raggle.Abstractions.Memory;
-using Raggle.Core.Memory.Decoders;
 using Raggle.Core.Memory.Document;
 using Raggle.Core.Utils;
 
@@ -7,19 +6,13 @@ namespace Raggle.Core.Memory.Decoders;
 
 public class TextDecoder : IDocumentDecoder
 {
-    private readonly int _maxSplitLine;
+    private readonly int _maxSplitLine = 10;
 
     /// <inheritdoc />
     public IEnumerable<string> SupportContentTypes =>
     [
         "text/plain"
     ];
-
-    // ===================== 제거 대상 =====================
-    public TextDecoder()
-    {
-        _maxSplitLine = 10;
-    }
 
     /// <inheritdoc />
     public async Task<object> DecodeAsync(

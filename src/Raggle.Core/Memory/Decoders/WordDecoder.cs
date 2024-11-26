@@ -9,7 +9,7 @@ namespace Raggle.Core.Memory.Decoders;
 
 public class WordDecoder : IDocumentDecoder
 {
-    private readonly int _maxSplitParagraphs;
+    private readonly int _maxSplitParagraphs = 10;
 
     /// <inheritdoc />
     public IEnumerable<string> SupportContentTypes =>
@@ -17,15 +17,9 @@ public class WordDecoder : IDocumentDecoder
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ];
 
-    // ===================== 제거 대상 =====================
-    public WordDecoder()
-    {
-        _maxSplitParagraphs = 10;
-    }
-
     /// <inheritdoc />
     public async Task<object> DecodeAsync(
-        Stream data, 
+        Stream data,
         CancellationToken cancellationToken = default)
     {
         return await Task.Run(() =>

@@ -3,12 +3,13 @@ using Raggle.Abstractions.Extensions;
 
 namespace Raggle.Driver.AzureBlob;
 
-public static partial class ServiceCollectionExtension
+public static partial class IServiceCollectionExtensions
 {
     public static IServiceCollection SetAzureBlobDocumentStorage(
         this IServiceCollection services,
         AzureBlobConfig config)
     {
-        return services.SetDocumentStorage(new AzureBlobDocumentStorage(config));
+        var documentStorage = new AzureBlobDocumentStorage(config);
+        return services.SetDocumentStorage(documentStorage);
     }
 }

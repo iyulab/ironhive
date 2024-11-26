@@ -17,30 +17,6 @@ public interface IDocumentStorage : IDisposable
         string collectionName,
         CancellationToken cancellationToken = default);
 
-    #region 애매함
-
-    Task<IEnumerable<DocumentRecord>> FindDocumentsAsync(
-        string collectionName,
-        MemoryFilter? filter = null,
-        CancellationToken cancellationToken = default);
-
-    Task<bool> ExistDocumentAsync(
-        string collectionName,
-        string documentId,
-        CancellationToken cancellationToken = default);
-
-    Task<DocumentRecord> UpsertDocumentAsync(
-        DocumentRecord document,
-        Stream? content = null,
-        CancellationToken cancellationToken = default);
-
-    Task DeleteDocumentAsync(
-        string collectionName,
-        string documentId,
-        CancellationToken cancellationToken = default);
-
-    #endregion
-
     Task<IEnumerable<string>> GetDocumentFilesAsync(
         string collectionName,
         string documentId,

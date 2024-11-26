@@ -8,27 +8,33 @@ using System.Text;
 
 namespace Raggle.Core.Memory.Handlers;
 
-public class TextChunkingHandler : IPipelineHandler
+public class ChunkingHandlerOptions
 {
-    private readonly IServiceProvider _serviceProvider;
+    public int MaxTokensPerChunk { get; set; } = 1024;
+}
+
+public class ChunkingHandler : IPipelineHandler
+{
     private readonly IDocumentStorage _documentStorage;
     private readonly ITextTokenizer _textTokenizer;
-    private readonly int _maxTokensPerChunk;
 
-    public TextChunkingHandler(IServiceProvider service)
+    public ChunkingHandler(IServiceProvider service)
     {
-        _serviceProvider = service;
         _documentStorage = service.GetRequiredService<IDocumentStorage>();
+
+        // AI 마다 다른 토크나이저 사용해야함
         _textTokenizer = new TiktokenTokenizer();
-        _maxTokensPerChunk = 1024;
     }
 
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
+        var options = pipeline.GetCurrentMetadata<ChunkingHandlerOptions>()
+            ?? new ChunkingHandlerOptions();
         var decodedDocument = await GetDecodedDocumentAsync(pipeline, cancellationToken);
+        var decodedSections = decodedDocument.Sections;
 
         int chunkIndex = 0;
-        foreach (var section in decodedDocument.Sections)
+        foreach (var section in decodedSections)
         {
             // 라인 단위로 텍스트 분할
             var lines = section.Text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
@@ -43,7 +49,7 @@ public class TextChunkingHandler : IPipelineHandler
                 var lineTokenCount = lineTokens.Count;
 
                 // 현재 청크에 라인을 추가했을 때 토큰 수가 초과하지 않는지 확인
-                if (currentTokenCount + lineTokenCount > _maxTokensPerChunk)
+                if (currentTokenCount + lineTokenCount > options.MaxTokensPerChunk)
                 {
                     if (currentChunkText.Length > 0)
                     {
@@ -51,7 +57,7 @@ public class TextChunkingHandler : IPipelineHandler
                         var chunk = new ChunkedDocument
                         {
                             Index = chunkIndex++,
-                            SourceFileName = pipeline.Document.FileName,
+                            SourceFileName = pipeline.FileName,
                             SourceSection = section.Identifier,
                             RawText = currentChunkText.ToString().Trim()
                         };
@@ -75,7 +81,7 @@ public class TextChunkingHandler : IPipelineHandler
                 var finalChunk = new ChunkedDocument
                 {
                     Index = chunkIndex++,
-                    SourceFileName = pipeline.Document.FileName,
+                    SourceFileName = pipeline.FileName,
                     SourceSection = section.Identifier,
                     RawText = currentChunkText.ToString().Trim()
                 };
@@ -91,10 +97,10 @@ public class TextChunkingHandler : IPipelineHandler
 
     private async Task<DecodedDocument> GetDecodedDocumentAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
-        var filename = DocumentFileHelper.GetParsedFileName(pipeline.Document.FileName);
+        var filename = DocumentFileHelper.GetParsedFileName(pipeline.FileName);
         var fileStream = await _documentStorage.ReadDocumentFileAsync(
-            collectionName: pipeline.Document.CollectionName,
-            documentId: pipeline.Document.DocumentId,
+            collectionName: pipeline.CollectionName,
+            documentId: pipeline.DocumentId,
             filePath: filename,
             cancellationToken: cancellationToken);
 
@@ -107,11 +113,11 @@ public class TextChunkingHandler : IPipelineHandler
         ChunkedDocument chunk,
         CancellationToken cancellationToken)
     {
-        var filename = DocumentFileHelper.GetChunkedFileName(pipeline.Document.FileName, chunk.Index);
+        var filename = DocumentFileHelper.GetChunkedFileName(pipeline.FileName, chunk.Index);
         var fileStream = JsonDocumentSerializer.SerializeToStream(chunk);
         await _documentStorage.WriteDocumentFileAsync(
-            collectionName: pipeline.Document.CollectionName,
-            documentId: pipeline.Document.DocumentId,
+            collectionName: pipeline.CollectionName,
+            documentId: pipeline.DocumentId,
             filePath: filename,
             content: fileStream,
             cancellationToken: cancellationToken);

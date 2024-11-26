@@ -1,139 +1,131 @@
-﻿using System.Text.Json.Serialization;
+﻿using Raggle.Abstractions.Extensions;
+using System.Text.Json.Serialization;
 
 namespace Raggle.Abstractions.Memory;
 
 public enum PipelineStatus
 {
-    Pending,
+    // 준비
+    Queued,
+    // 처리 중
     Processing,
+    // 완료
     Completed,
+    // 실패
     Failed
 }
 
 public class DataPipeline
 {
-    public PipelineStatus Status { get; set; } = PipelineStatus.Pending;
+    [JsonInclude]
+    public PipelineStatus Status { get; private set; } = PipelineStatus.Queued;
 
-    public required DocumentRecord Document { get; set; }
+    [JsonInclude]
+    public string? CurrentStep { get; private set; }
 
-    public required List<object> Steps { get; set; }
+    [JsonInclude]
+    public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
 
-    public List<object> RemainingSteps { get; set; } = [];
+    [JsonInclude]
+    public DateTime? StartedAt { get; private set; }
 
-    public List<object> CompletedSteps { get; set; } = [];
+    [JsonInclude]
+    public DateTime? CompletedAt { get; private set; }
 
-    public required DateTime StartedAt { get; set; }
+    [JsonInclude]
+    public DateTime? FailedAt { get; private set; }
 
-    public DateTime? CompletedAt { get; set; }
+    [JsonInclude]
+    public string? ErrorMessage { get; private set; }
 
-    public DateTime? FailedAt { get; set; }
+    #region 임시
 
-    public string? ErrorMessage { get; set; }
+    public string CollectionName { get; set; } = string.Empty;
 
-    #region Key값 타입? string, object?
+    public string DocumentId { get; set; } = string.Empty;
 
-    public IDictionary<object, object> Metadata { get; set; } = new Dictionary<object, object>();
+    public string FileName { get; set; } = string.Empty;
 
-    #endregion
-
-    #region Context 임시, 다른 방법 찾아 보기, Metadata로 대체?
-
-    [JsonIgnore]
-    public List<object?> Context { get; set; } = [];
-
-    public void Add<T>(object implementation)
-    {
-        if (Get<T>() != null)
-            Context.Remove(implementation);
-        Context.Add(implementation);
-    }
-
-    public void Remove<T>()
-    {
-        var context = Get<T>();
-        if (context != null)
-            Context.Remove(context);
-    }
-
-    public T? Get<T>()
-    {
-        return Context.OfType<T>().FirstOrDefault();
-    }
+    public string ContentType { get; set; } = string.Empty;
 
     #endregion
 
-    public void InitializeSteps()
+    public List<string> Steps { get; set; } = [];
+
+    public IEnumerable<string>? Tags { get; set; }
+
+    public IDictionary<string, object>? Metadata { get; set; }
+
+    public DataPipeline Start()
     {
-        RemainingSteps = [.. Steps];
-        CompletedSteps.Clear();
+        if (Steps.Count == 0)
+            throw new InvalidOperationException("파이프라인을 시작할 단계가 없습니다.");
+
+        Status = PipelineStatus.Processing;
+        CurrentStep ??= Steps.First();
+        StartedAt = DateTime.UtcNow;
+        return this;
     }
 
-    public object? GetPreviousStepKey()
+    public DataPipeline Next()
     {
-        return CompletedSteps.LastOrDefault();
+        var nextStep = GetNextStep();
+        if (nextStep == null)
+            return Complete();
+
+        CurrentStep = nextStep;
+        return this;
     }
 
-    public object? GetNextStepKey()
+    public DataPipeline Complete()
     {
-        return RemainingSteps.FirstOrDefault();
+        Status = PipelineStatus.Completed;
+        CurrentStep = null;
+        CompletedAt = DateTime.UtcNow;
+        return this;
     }
 
-    public void CompleteStep(object stepKey)
+    public DataPipeline Failed(string message)
     {
-        if (RemainingSteps.FirstOrDefault() != stepKey)
-        {
-            throw new InvalidOperationException($"완료할 수 없는 단계입니다: {stepKey}");
-        }
-        else if (RemainingSteps.Remove(stepKey))
-        {
-            CompletedSteps.Add(stepKey);
-        }
-        else
-        {
-            throw new InvalidOperationException($"단계를 완료할 수 없습니다: {stepKey}");
-        }
+        Status = PipelineStatus.Failed;
+        FailedAt = DateTime.UtcNow;
+        ErrorMessage = message;
+        return this;
     }
 
-    public void AdjustSteps(int count)
+    public string? GetPreviousStep()
     {
-        if (count == 0)
-        {
-            return; // 조절할 단계가 없음
-        }
-        else if (count > 0)
-        {
-            for (int i = 0; i < count; i++)
-            {
-                var step = RemainingSteps.FirstOrDefault();
-                if (step == null) break;
-                RemainingSteps.RemoveAt(0);
-                CompletedSteps.Add(step);
-            }
-        }
-        else if (count < 0)
-        {
-            count = Math.Abs(count);
-            for (int i = 0; i < count; i++)
-            {
-                var step = CompletedSteps.LastOrDefault();
-                if (step == null) break;
-                CompletedSteps.RemoveAt(CompletedSteps.Count - 1);
-                RemainingSteps.Insert(0, step);
-            }
-        }
+        if (CurrentStep == null)
+            return null;
+
+        var index = Steps.IndexOf(CurrentStep);
+        if (index <= 0)
+            return null;
+
+        return Steps[index - 1];
     }
 
-    public bool TryGetContext<T>(out T value)
+    public string? GetNextStep()
     {
-        if (Context is T result)
+        if (CurrentStep == null)
+            return null;
+
+        var index = Steps.IndexOf(CurrentStep);
+        if (index == -1 || index >= Steps.Count - 1)
+           return null;
+
+        return Steps[index + 1];
+    }
+
+    public T? GetCurrentMetadata<T>()
+    {
+        if (Metadata == null || CurrentStep == null)
+            return default;
+
+        if (Metadata.TryGetValue<T>(CurrentStep, out var value))
         {
-            value = result;
-            return true;
+            return value;
         }
-        else
-        {
-            value = default!;
-            return false;
-        }
+        return default;
     }
 }

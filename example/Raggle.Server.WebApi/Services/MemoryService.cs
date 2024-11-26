@@ -51,7 +51,7 @@ public class MemoryService
                 _db.Collections.Add(collection);
                 await _memory.CreateCollectionAsync(
                     collection.Id.ToString(),
-                    collection.EmbedProvider,
+                    collection.EmbedProvider.ToString(),
                     collection.EmbedModel);
 
                 await _db.SaveChangesAsync();

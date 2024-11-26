@@ -27,14 +27,14 @@ public class RaggleMemory : IRaggleMemory
     /// <inheritdoc />
     public async Task CreateCollectionAsync(
         string collectionName,
-        object embedServiceKey,
-        string embedModel,
+        string embedServiceKey,
+        string embedModelName,
         CancellationToken cancellationToken = default)
     {
         try
         {
             var sampleText = "Sample text to determine vector size";
-            var embedding = await GetEmbeddingAsync(embedServiceKey, embedModel, sampleText, cancellationToken);
+            var embedding = await GetEmbeddingAsync(embedServiceKey, embedModelName, sampleText, cancellationToken);
 
             await _vectorStorage.CreateCollectionAsync(collectionName, embedding.Length, cancellationToken);
             await _documentStorage.CreateCollectionAsync(collectionName, cancellationToken);
@@ -63,89 +63,65 @@ public class RaggleMemory : IRaggleMemory
         string collectionName,
         string documentId,
         string fileName,
-        Stream content,
-        object[] steps,
+        Stream? content,
+        string[] steps,
         string[]? tags = null,
+        IDictionary<string, object>? metadata = null,
         CancellationToken cancellationToken = default)
     {
-        await _documentStorage.WriteDocumentFileAsync(
-            collectionName,
-            documentId,
-            fileName,
-            content,
-            overwrite: true,
-            cancellationToken);
+        if (content != null)
+        {
+            await _documentStorage.WriteDocumentFileAsync(
+                collectionName,
+                documentId,
+                fileName,
+                content,
+                overwrite: true,
+                cancellationToken);
+        }
 
         _detector.TryGetContentType(fileName, out var contentType);
         var pipeline = new DataPipeline
         {
-            Document = new DocumentRecord
-            {
-                CollectionName = collectionName,
-                ContentType = contentType,
-                DocumentId = documentId,
-                FileName = fileName,
-                Tags = tags ?? [],
-                Status = MemorizationStatus.Memorizing,
-                CreatedAt = DateTime.UtcNow,
-                LastUpdatedAt = DateTime.UtcNow,
-            },
+            CollectionName = collectionName,
+            DocumentId = documentId,
+            ContentType = contentType,
+            FileName = fileName,
             Steps = steps.ToList(),
-            StartedAt = DateTime.UtcNow,
+            Metadata = metadata,
+            Tags = tags
         };
 
         try
         {
             await _semaphore.WaitAsync(cancellationToken);
 
-            pipeline.InitializeSteps();
-            pipeline.Status = PipelineStatus.Processing;
+            // 초기화
+            pipeline = pipeline.Start();
             await UpsertPipelineAsync(pipeline, cancellationToken);
-            await UpsertDocumentStatusAsync(MemorizationStatus.Memorizing, pipeline.Document, cancellationToken);
 
             while (pipeline.Status == PipelineStatus.Processing)
             {
-                var stepKey = pipeline.GetNextStepKey();
-                if (stepKey == null)
+                var currentStep = pipeline.CurrentStep;
+                if (currentStep == null)
                 {
-                    if (pipeline.Steps.Count == pipeline.CompletedSteps.Count)
-                    {
-                        pipeline.Status = PipelineStatus.Completed;
-                        pipeline.CompletedAt = DateTime.UtcNow;
-                        pipeline.ErrorMessage = "All steps are completed";
-                        await UpsertPipelineAsync(pipeline, cancellationToken);
-                        await UpsertDocumentStatusAsync(MemorizationStatus.Memorized, pipeline.Document, cancellationToken);
-                    }
-                    else
-                    {
-                        var message = "Something went wrong when processing the pipeline, steps are not completed";
-                        await UpsertFaildPipelineAsync(pipeline, message, cancellationToken);
-                        await UpsertDocumentStatusAsync(MemorizationStatus.FailedMemorization, pipeline.Document, cancellationToken);
-                    }
-                    break;
-                }
-
-                var handler = _serviceProvider.GetKeyedService<IPipelineHandler>(stepKey);
-
-                if (handler != null)
-                {
-                    pipeline = await handler.ProcessAsync(pipeline, cancellationToken);
-                    pipeline.CompleteStep(stepKey);
+                    pipeline = pipeline.Complete();
                     await UpsertPipelineAsync(pipeline, cancellationToken);
+                    break;
                 }
                 else
                 {
-                    var message = $"Handler not found for step '{stepKey.ToString()}'";
-                    await UpsertFaildPipelineAsync(pipeline, message, cancellationToken);
-                    await UpsertDocumentStatusAsync(MemorizationStatus.FailedMemorization, pipeline.Document, cancellationToken);
-                    break;
+                    var handler = _serviceProvider.GetRequiredKeyedService<IPipelineHandler>(currentStep);
+                    pipeline = await handler.ProcessAsync(pipeline, cancellationToken);
+                    pipeline = pipeline.Next();
+                    await UpsertPipelineAsync(pipeline, cancellationToken);
                 }
             }
         }
         catch (Exception ex)
         {
-            await UpsertFaildPipelineAsync(pipeline, ex.Message, cancellationToken);
-            await UpsertDocumentStatusAsync(MemorizationStatus.FailedMemorization, pipeline.Document, cancellationToken);
+            pipeline = pipeline.Failed(ex.Message);
+            await UpsertPipelineAsync(pipeline, cancellationToken);
         }
         finally
         {
@@ -162,21 +138,20 @@ public class RaggleMemory : IRaggleMemory
         CancellationToken cancellationToken = default)
     {
         await _vectorStorage.DeleteVectorsAsync(collectionName, documentId, cancellationToken);
-        await _documentStorage.DeleteDocumentAsync(collectionName, documentId, cancellationToken);
     }
 
     /// <inheritdoc />
     public async Task GetNearestMemorySourceAsync(
         string collectionName,
-        object embedServiceKey,
-        string embedModel,
+        string embedServiceKey,
+        string embedModelName,
         string query,
         float minScore = 0,
         int limit = 5,
         MemoryFilter? filter = null,
         CancellationToken cancellationToken = default)
     {
-        var embedding = await GetEmbeddingAsync(embedServiceKey, embedModel, query, cancellationToken);
+        var embedding = await GetEmbeddingAsync(embedServiceKey, embedModelName, query, cancellationToken);
         var results = await _vectorStorage.SearchVectorsAsync(collectionName,embedding, minScore, limit, filter, cancellationToken);
         return;
     }
@@ -205,48 +180,28 @@ public class RaggleMemory : IRaggleMemory
 
     #region Private Methods
 
-    private async Task UpsertPipelineAsync(DataPipeline pipeline, CancellationToken cancellationToken)
+    private async Task UpsertPipelineAsync(
+        DataPipeline pipeline, 
+        CancellationToken cancellationToken = default)
     {
-        var filename = DocumentFileHelper.GetPipelineFileName(pipeline.Document.FileName);
+        var filename = DocumentFileHelper.GetPipelineFileName(pipeline.FileName);
         var stream = JsonDocumentSerializer.SerializeToStream(pipeline);
         await _documentStorage.WriteDocumentFileAsync(
-            collectionName: pipeline.Document.CollectionName,
-            documentId: pipeline.Document.DocumentId,
+            collectionName: pipeline.CollectionName,
+            documentId: pipeline.DocumentId,
             filePath: filename,
             content: stream,
             cancellationToken: cancellationToken);
     }
 
-    private async Task UpsertFaildPipelineAsync(DataPipeline pipeline, string message, CancellationToken cancellationToken)
-    {
-        pipeline.Status = PipelineStatus.Failed;
-        pipeline.FailedAt = DateTime.UtcNow;
-        pipeline.ErrorMessage = message;
-        await UpsertPipelineAsync(pipeline, cancellationToken);
-    }
-
-    private async Task UpsertDocumentAsync(DocumentRecord document, CancellationToken cancellationToken)
-    {
-        await _documentStorage.UpsertDocumentAsync(
-            document: document,
-            cancellationToken: cancellationToken);
-    }
-
-    private async Task UpsertDocumentStatusAsync(MemorizationStatus status, DocumentRecord document, CancellationToken cancellationToken)
-    {
-        document.Status = status;
-        document.LastUpdatedAt = DateTime.UtcNow;
-        await UpsertDocumentAsync(document, cancellationToken);
-    }
-
     private async Task<float[]> GetEmbeddingAsync(
-        object embedServiceKey,
-        string embedModel,
+        string embedServiceKey,
+        string embedModelName,
         string text,
         CancellationToken cancellationToken)
     {
         var embedService = _serviceProvider.GetRequiredKeyedService<IEmbeddingService>(embedServiceKey);
-        var response = await embedService.EmbeddingAsync(embedModel, text, cancellationToken);
+        var response = await embedService.EmbeddingAsync(embedModelName, text, cancellationToken);
         return response.Embedding;
     }
 

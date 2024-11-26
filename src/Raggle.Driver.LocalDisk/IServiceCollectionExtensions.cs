@@ -3,12 +3,13 @@ using Raggle.Abstractions.Extensions;
 
 namespace Raggle.Driver.LocalDisk;
 
-public static partial class ServiceCollectionExtension
+public static partial class IServiceCollectionExtensions
 {
     public static IServiceCollection SetLocalDiskDocumentStorage(
         this IServiceCollection services,
         LocalDiskConfig config)
     {
-        return services.SetDocumentStorage(new LocalDiskDocumentStorage(config));
+        var documentStorage = new LocalDiskDocumentStorage(config);
+        return services.SetDocumentStorage(documentStorage);
     }
 }

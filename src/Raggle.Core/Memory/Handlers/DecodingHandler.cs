@@ -5,12 +5,12 @@ using Raggle.Core.Utils;
 
 namespace Raggle.Core.Memory.Handlers;
 
-public class DocumentDecodingHandler : IPipelineHandler
+public class DecodingHandler : IPipelineHandler
 {
     private readonly IDocumentStorage _documentStorage;
     private readonly IEnumerable<IDocumentDecoder> _decoders;
 
-    public DocumentDecodingHandler(IServiceProvider service)
+    public DecodingHandler(IServiceProvider service)
     {
         _documentStorage = service.GetRequiredService<IDocumentStorage>();
         _decoders = service.GetServices<IDocumentDecoder>();
@@ -19,14 +19,14 @@ public class DocumentDecodingHandler : IPipelineHandler
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
         // 문서 파서 선택
-        var decoder = _decoders.FirstOrDefault(d => d.SupportContentTypes.Contains(pipeline.Document.ContentType))
-            ?? throw new InvalidOperationException($"No decoder found for MIME type '{pipeline.Document.ContentType}'.");
+        var decoder = _decoders.FirstOrDefault(d => d.SupportContentTypes.Contains(pipeline.ContentType))
+            ?? throw new InvalidOperationException($"No decoder found for MIME type '{pipeline.ContentType}'.");
 
         // 문서 내용 읽기
         var content = await _documentStorage.ReadDocumentFileAsync(
-                collectionName: pipeline.Document.CollectionName,
-                documentId: pipeline.Document.DocumentId,
-                filePath: pipeline.Document.FileName,
+                collectionName: pipeline.CollectionName,
+                documentId: pipeline.DocumentId,
+                filePath: pipeline.FileName,
                 cancellationToken: cancellationToken);
 
         // 문서 파싱
@@ -34,18 +34,18 @@ public class DocumentDecodingHandler : IPipelineHandler
             ?? throw new InvalidOperationException("Invalid document sections.");
         var parsedDocument = new DecodedDocument
         {
-            FileName = pipeline.Document.FileName,
-            ContentType = pipeline.Document.ContentType,
+            FileName = pipeline.FileName,
+            ContentType = pipeline.ContentType,
             ContentLength = content.Length,
             Sections = sections
         };
 
         // 파싱 결과 저장
-        var filename = DocumentFileHelper.GetParsedFileName(pipeline.Document.FileName);
+        var filename = DocumentFileHelper.GetParsedFileName(pipeline.FileName);
         var stream = JsonDocumentSerializer.SerializeToStream(parsedDocument);
         await _documentStorage.WriteDocumentFileAsync(
-            collectionName: pipeline.Document.CollectionName,
-            documentId: pipeline.Document.DocumentId,
+            collectionName: pipeline.CollectionName,
+            documentId: pipeline.DocumentId,
             filePath: filename,
             content: stream,
             cancellationToken: cancellationToken);

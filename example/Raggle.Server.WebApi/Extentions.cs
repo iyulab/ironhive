@@ -58,9 +58,9 @@ public static partial class ServiceCollectionExtention
 
     public static IServiceCollection AddAIServices(this IServiceCollection services, RaggleConfig config)
     {
-        return services.AddOpenAIServices(AIServiceKeys.OpenAI, config.AIService.OpenAI)
-                       .AddAnthropicServices(AIServiceKeys.Anthropic, config.AIService.Anthropic)
-                       .AddOllamaServices(AIServiceKeys.Ollama, config.AIService.Ollama);
+        return services.AddOpenAIServices(AIServiceKeys.OpenAI.ToString(), config.AIService.OpenAI)
+                       .AddAnthropicServices(AIServiceKeys.Anthropic.ToString(), config.AIService.Anthropic)
+                       .AddOllamaServices(AIServiceKeys.Ollama.ToString(), config.AIService.Ollama);
     }
 
     public static IServiceCollection SetVectorStorage(this IServiceCollection services, RaggleConfig config)
@@ -107,11 +107,11 @@ public static partial class ServiceCollectionExtention
 
     public static IServiceCollection AddPipelineHandlers(this IServiceCollection services)
     {
-        return services.AddPipelineHandler<DocumentDecodingHandler>("decoding")
-                       .AddPipelineHandler<TextChunkingHandler>("chunk")
-                       .AddPipelineHandler<GenerateSummarizedTextHandler>("summarize")
-                       .AddPipelineHandler<GenerateQAPairsHandler>("qa")
-                       .AddPipelineHandler<TextEmbeddingHandler>("embed");
+        return services.AddPipelineHandler<DecodingHandler>("decoding")
+                       .AddPipelineHandler<ChunkingHandler>("chunk")
+                       .AddPipelineHandler<SummarizationHandler>("summarize")
+                       .AddPipelineHandler<GenerateQAHandler>("qa")
+                       .AddPipelineHandler<EmbeddingsHandler>("embed");
     }
 }
 
