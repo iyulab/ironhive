@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Raggle.Abstractions.Memory;
+using Raggle.Core.Memory.Decoders;
 using Raggle.Core.Memory.Document;
 using Raggle.Core.Utils;
 
@@ -19,7 +20,7 @@ public class DecodingHandler : IPipelineHandler
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
         // 문서 파서 선택
-        var decoder = _decoders.FirstOrDefault(d => d.SupportContentTypes.Contains(pipeline.ContentType))
+        var decoder = _decoders.FirstOrDefault(d => d.IsSupportContentType(pipeline.ContentType))
             ?? throw new InvalidOperationException($"No decoder found for MIME type '{pipeline.ContentType}'.");
 
         // 문서 내용 읽기

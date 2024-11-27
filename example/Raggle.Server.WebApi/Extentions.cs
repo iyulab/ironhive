@@ -9,13 +9,13 @@ using Raggle.Driver.LiteDB;
 using Raggle.Driver.Qdrant;
 using Raggle.Driver.LocalDisk;
 using Raggle.Driver.AzureBlob;
-using Raggle.Core.Memory.Decoders;
 using Raggle.Server.WebApi.Data;
 using Microsoft.EntityFrameworkCore;
+using Raggle.Core.Memory.Decoders;
 
 namespace Raggle.Server.WebApi;
 
-public static partial class ServiceCollectionExtention
+public static partial class IServiceCollectionExtention
 {
     public static IServiceCollection AddRaggle(this IServiceCollection services, RaggleConfig config)
     {
@@ -107,15 +107,15 @@ public static partial class ServiceCollectionExtention
 
     public static IServiceCollection AddPipelineHandlers(this IServiceCollection services)
     {
-        return services.AddPipelineHandler<DecodingHandler>("decoding")
-                       .AddPipelineHandler<ChunkingHandler>("chunk")
-                       .AddPipelineHandler<SummarizationHandler>("summarize")
-                       .AddPipelineHandler<GenerateQAHandler>("qa")
-                       .AddPipelineHandler<EmbeddingsHandler>("embed");
+        return services.AddPipelineHandler<DecodingHandler>(HandlerServiceKeys.Decoding.ToString())
+                       .AddPipelineHandler<ChunkingHandler>(HandlerServiceKeys.Chunking.ToString())
+                       .AddPipelineHandler<SummarizationHandler>(HandlerServiceKeys.Summarization.ToString())
+                       .AddPipelineHandler<GenerateQAHandler>(HandlerServiceKeys.GenerateQA.ToString())
+                       .AddPipelineHandler<EmbeddingsHandler>(HandlerServiceKeys.Embeddings.ToString());
     }
 }
 
-public static partial class ConfigurantionBuilderExtension
+public static partial class IConfigurantionBuilderExtension
 {
     public static IConfigurationBuilder AddRaggleConfigFile(this IConfigurationBuilder configBuilder, string? filePath = null)
     {
@@ -150,7 +150,7 @@ public static partial class ConfigurantionBuilderExtension
     }
 }
 
-public static partial class ServiceProviderExtension
+public static partial class IServiceProviderExtension
 {
     public static bool EnsureRaggleDB(this IServiceProvider provider)
     {

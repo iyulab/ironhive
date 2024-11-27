@@ -12,12 +12,6 @@ public class WordDecoder : IDocumentDecoder
     private readonly int _maxSplitParagraphs = 10;
 
     /// <inheritdoc />
-    public IEnumerable<string> SupportContentTypes =>
-    [
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ];
-
-    /// <inheritdoc />
     public async Task<object> DecodeAsync(
         Stream data,
         CancellationToken cancellationToken = default)
@@ -58,7 +52,7 @@ public class WordDecoder : IDocumentDecoder
                     sb.AppendLine(p.InnerText);
 
                     // 최대 문단 수에 도달하면 섹션으로 분할
-                    if ((currentParagraphNumber - startParagraphNumber + 1) == _maxSplitParagraphs)
+                    if (currentParagraphNumber - startParagraphNumber + 1 == _maxSplitParagraphs)
                     {
                         var endParagraphNumber = currentParagraphNumber;
                         var sectiontext = sb.ToString().TrimEnd();
@@ -100,5 +94,11 @@ public class WordDecoder : IDocumentDecoder
 
             return results;
         }, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public bool IsSupportContentType(string contentType)
+    {
+        return contentType == "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     }
 }

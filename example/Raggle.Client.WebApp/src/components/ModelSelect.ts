@@ -100,9 +100,9 @@ export class ModelSelect extends LitElement {
       this.setLoading(true);
       try {
         if (this.type === 'chat') {
-          ModelSelect.chatModels = await API.getChatModels();
+          ModelSelect.chatModels = await API.getChatModelsAsync();
         } else {
-          ModelSelect.embedModels = await API.getEmbeddingModels();
+          ModelSelect.embedModels = await API.getEmbeddingModelsAsync();
         }
         this.models = this.getCachedModels();
       } catch (error) {

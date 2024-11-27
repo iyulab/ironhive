@@ -9,14 +9,8 @@ namespace Raggle.Core.Memory.Decoders;
 public class PPTDecoder : IDocumentDecoder
 {
     /// <inheritdoc />
-    public IEnumerable<string> SupportContentTypes =>
-    [
-        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    ];
-
-    /// <inheritdoc />
     public async Task<object> DecodeAsync(
-        Stream data, 
+        Stream data,
         CancellationToken cancellationToken = default)
     {
         return await Task.Run(() =>
@@ -73,5 +67,11 @@ public class PPTDecoder : IDocumentDecoder
 
             return results;
         }, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public bool IsSupportContentType(string contentType)
+    {
+        return contentType == "application/vnd.openxmlformats-officedocument.presentationml.presentation";
     }
 }

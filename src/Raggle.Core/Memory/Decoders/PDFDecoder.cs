@@ -10,14 +10,8 @@ namespace Raggle.Core.Memory.Decoders;
 public class PDFDecoder : IDocumentDecoder
 {
     /// <inheritdoc />
-    public IEnumerable<string> SupportContentTypes =>
-    [
-        "application/pdf"
-    ];
-
-    /// <inheritdoc />
     public async Task<object> DecodeAsync(
-        Stream data, 
+        Stream data,
         CancellationToken cancellationToken = default)
     {
         var results = new ConcurrentBag<DocumentSection>();
@@ -48,5 +42,11 @@ public class PDFDecoder : IDocumentDecoder
         });
 
         return results;
+    }
+
+    /// <inheritdoc />
+    public bool IsSupportContentType(string mimeType)
+    {
+        return mimeType == "application/pdf";
     }
 }

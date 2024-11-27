@@ -10,8 +10,18 @@ export class CollectionForm extends LitElement {
   collection: Collection = {
     name: '',
     description: '',
-    embedProvider: '',
-    embedModel: ''
+    embedServiceKey: '',
+    embedModelName: '',
+    handlerOptions: {
+      "GenerateQA": {
+        "ServiceKey": "OpenAI",
+        "ModelName": "gpt-4o-mini",
+      },
+      "Embeddings": {
+        "ServiceKey": "OpenAI",
+        "ModelName": "text-embedding-ada-002",
+      }
+    },
   };
 
   render() {
@@ -19,7 +29,7 @@ export class CollectionForm extends LitElement {
       <form @submit=${this.handleSubmit}>
         <div class="input-group">
           <label for="name">Name</label>
-          <input 
+          <input
             type="text" 
             id="name" 
             .value=${this.collection.name || ''} 
@@ -42,7 +52,7 @@ export class CollectionForm extends LitElement {
         ></model-select>
 
         <!-- 숨겨진 필드 -->
-        <input type="hidden" name="id" .value=${this.collection.id || ''} />
+        <input type="hidden" name="id" .value=${this.collection.collectionId || ''} />
         <input type="hidden" name="createdAt" .value=${this.collection.createdAt || ''} />
         <input type="hidden" name="lastUpdatedAt" .value=${this.collection.lastUpdatedAt || ''} />
 
@@ -64,14 +74,14 @@ export class CollectionForm extends LitElement {
   private updateModelField(event: CustomEvent) {    
     this.collection = {
       ...this.collection,
-      embedProvider: event.detail.provider,
-      embedModel: event.detail.model
+      embedServiceKey: event.detail.provider,
+      embedModelName: event.detail.model
     };
   }
 
   private async handleSubmit(event: Event) {
     event.preventDefault();
-    await API.upsertCollection(this.collection);
+    await API.upsertCollectionAsync(this.collection);
     this.dispatchEvent(new CustomEvent('submit'));
   }
 

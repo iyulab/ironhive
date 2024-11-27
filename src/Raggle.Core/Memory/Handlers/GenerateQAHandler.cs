@@ -108,6 +108,7 @@ public class GenerateQAHandler : IPipelineHandler
         });
         var request = new ChatCompletionRequest
         {
+            System = GetSystemInstruction(),
             Model = options.ModelName,
             Messages = messages,
         };

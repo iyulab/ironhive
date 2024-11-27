@@ -48,7 +48,7 @@ public class ModelController : ControllerBase
 
         foreach (var key in modelServiceKeys)
         {
-            var service = _raggle.Services.GetKeyedService<IEmbeddingService>(key);
+            var service = _raggle.Services.GetKeyedService<IEmbeddingService>(key.ToString());
             if (service != null)
             {
                 var embeddingModels = await service.GetEmbeddingModelsAsync();

@@ -9,12 +9,10 @@ export class MainList extends LitElement {
   @property({ type: Array }) items: any[] = [];
   
   render() {
-    console.log('MainList.render()');
-
     return html`
-      <div class="new-button" @click=${this.onCreate}>
+      <sl-button class="new-button" @click=${this.onCreate}>
         ${this.createLabel}
-      </div>
+      </sl-button>
       <div class="list">
         ${this.items.map(item => html`
           <div class="list-item">

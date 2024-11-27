@@ -1,31 +1,39 @@
-export interface Assistant {
-  id?: string;
-  name: string;
-  instruction?: string;
-  description?: string;
-  createdAt?: string;
-  lastUpdatedAt?: string;
-}
-
 export interface Models {
   [provider: string]: string[];
 }
 
 export interface Collection {
-  id?: string;
+  collectionId?: string;
   name?: string;
   description?: string;
-
-  embedProvider?: string;
-  embedModel?: string;
-  
+  embedServiceKey?: string;
+  embedModelName?: string;
   createdAt?: string;
   lastUpdatedAt?: string;
+  handlerOptions?: Record<string, any>;
+  documents?: Document[];
 }
 
 export interface Document {
-  id: string;
-  name: string;
-  description: string;
-  collectionId: string;
+  documentId?: string;
+  fileName?: string;
+  fileSize?: number;
+  contentType?: string;
+  createdAt?: string;
+  lastUpdatedAt?: string;
+  tags?: string[];
+  collectionId?: string;
+  collection?: Collection;
+}
+
+export interface Assistant {
+  assistantId?: string;
+  name?: string;
+  description?: string;
+  instruction?: string;
+  createdAt?: string;
+  lastUpdatedAt?: string;
+  memories?: string[];
+  toolKits?: string[];
+  toolkitOptions?: Record<string, any>;
 }

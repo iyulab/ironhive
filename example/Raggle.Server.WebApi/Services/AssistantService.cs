@@ -31,7 +31,7 @@ public class AssistantService
     public async Task<AssistantModel> UpsertAssistantAsync(AssistantModel assistant)
     {
         var existingAssistant = await _db.Assistants.AsTracking()
-            .FirstOrDefaultAsync(a => a.Id == assistant.Id);
+            .FirstOrDefaultAsync(a => a.AssistantId == assistant.AssistantId);
 
         if (existingAssistant != null)
         {

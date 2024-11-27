@@ -9,14 +9,8 @@ public class TextDecoder : IDocumentDecoder
     private readonly int _maxSplitLine = 10;
 
     /// <inheritdoc />
-    public IEnumerable<string> SupportContentTypes =>
-    [
-        "text/plain"
-    ];
-
-    /// <inheritdoc />
     public async Task<object> DecodeAsync(
-        Stream data, 
+        Stream data,
         CancellationToken cancellationToken = default)
     {
         var results = new List<DocumentSection>();
@@ -78,5 +72,11 @@ public class TextDecoder : IDocumentDecoder
         cancellationToken.ThrowIfCancellationRequested();
 
         return results;
+    }
+
+    /// <inheritdoc />
+    public bool IsSupportContentType(string contentType)
+    {
+        return contentType.StartsWith("text/");
     }
 }

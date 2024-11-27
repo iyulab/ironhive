@@ -2,6 +2,7 @@ import { LitElement, css, html } from "lit";
 import { customElement } from "lit/decorators.js";
 import { Router } from '@lit-labs/router';
 
+import '@shoelace-style/shoelace';
 import "./components";
 import "./pages";
 

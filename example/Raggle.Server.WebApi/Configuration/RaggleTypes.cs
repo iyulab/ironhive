@@ -15,9 +15,9 @@ public enum HandlerServiceKeys
 {
     Decoding,
     Chunking,
-    SummarizeGen,
-    QAGen,
-    Embedding,
+    Summarization,
+    GenerateQA,
+    Embeddings,
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter))]

@@ -22,7 +22,7 @@ export class MemoryPage extends LitElement {
         <main-list
           create-label="New Collection +"
           slot="left"
-          key="id"
+          key="collectionId"
           .items=${this.collections || []}
           @create=${this.createCollection}
           @delete=${this.deleteCollection}
@@ -49,8 +49,7 @@ export class MemoryPage extends LitElement {
   }
 
   private async loadCollections() {
-    this.collections = await API.findCollections();
-    
+    this.collections = await API.findCollectionsAsync();
   }
 
   private createCollection() {
@@ -59,13 +58,13 @@ export class MemoryPage extends LitElement {
 
   private selectedCollection(event: CustomEvent) {
     const key = event.detail;
-    this.collection = this.collections?.find(c => c.id === key);
+    this.collection = this.collections?.find(c => c.collectionId === key);
     this.mode = 'view';
   }
 
   private async deleteCollection(event: CustomEvent) {
     console.log(event.detail);
-    await API.deleteCollection(event.detail);
+    await API.deleteCollectionAsync(event.detail);
     await this.loadCollections();
   }
 

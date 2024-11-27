@@ -1,6 +1,6 @@
 import { LitElement, css, html } from "lit";
 import { customElement, property, state, query } from "lit/decorators.js";
-import type { Collection } from "../backend/Models";
+import type { Collection, Document } from "../backend/Models";
 import { API } from "../backend/ApiClient";
 
 @customElement('storage-view')
@@ -8,12 +8,11 @@ export class StorageView extends LitElement {
 
   @query('#file-input') fileInput!: HTMLInputElement;
   @property({ type: Object }) collection?: Collection;
-  @state() files: any[] = [];
+  @state() documents: Document[] = [];
 
   connectedCallback(): void {
     super.connectedCallback();
-    this.loadCollection();
-    this.loadFiles();
+    this.loadDocuments();
   }
 
   render() {
@@ -26,9 +25,13 @@ export class StorageView extends LitElement {
           <button @click=${this.uploadFile} class="upload-button">Upload</button>
         </div>
         <div class="file-list">
-          ${this.files.map(file => html`
+          ${this.documents.map(document => html`
             <div class="file-item">
-              <span>${file.name}</span>
+              <span>${document.fileName}</span>
+              <span>${document.fileSize} bytes</span>
+              <sl-button
+                @click=${() => this.deleteDocument(document)}
+              >Delete</sl-button>
             </div>
           `)}
         </div>
@@ -36,27 +39,25 @@ export class StorageView extends LitElement {
     `;
   }
 
-  private async loadCollection() {
-    // Load the collection details
-    // this.collection = await API.getCollection();
-  }
-
-  private async loadFiles() {
-    // Load the files in the collection
-    // this.files = await API.getFiles();
+  private async loadDocuments() {
+    console.log(this.collection?.collectionId);
+    this.documents = await API.findDocumentsAsync(this.collection?.collectionId);
   }
 
   private uploadFile() {
     this.fileInput.click();
     this.fileInput.onchange = async () => {
-      const files = this.fileInput.files;
-      const file = files?.[0];
-      if (files) {
-        // Upload the file
-        await API.uploadFile(this.collection?.id, file);
-        this.loadFiles();
+      const file = this.fileInput.files?.[0];
+      if (file && this.collection?.collectionId) {
+        await API.uploadDocumentAsync(this.collection.collectionId, file);
+        this.loadDocuments();
       }
     };
+  }
+
+  private async deleteDocument(document: Document) {
+    await API.deleteDocumentAsync(this.collection?.collectionId, document.documentId);
+    this.loadDocuments();
   }
 
   static styles = css`

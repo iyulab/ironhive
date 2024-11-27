@@ -1,10 +1,35 @@
-﻿namespace Raggle.Server.WebApi.Models;
+﻿using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
+namespace Raggle.Server.WebApi.Models;
+
+[Table("Document")]
 public class DocumentModel
 {
-    public Guid Id { get; set; } = Guid.NewGuid();
+    // Primary Key
+    public Guid DocumentId { get; set; } = Guid.NewGuid();
 
-    public string Name { get; set; } = string.Empty;
+    [Required]
+    public string FileName { get; set; } = string.Empty;
 
-    public string Description { get; set; } = string.Empty;
+    [Required]
+    public long FileSize { get; set; } = 0;
+
+    [Required]
+    public string ContentType { get; set; } = string.Empty;
+
+    [Required]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public DateTime? LastUpdatedAt { get; set; }
+
+    public IEnumerable<string>? Tags { get; set; }
+
+    // Foreign Key
+    public Guid CollectionId { get; set; }
+
+    // 네비게이션 속성
+    [ForeignKey(nameof(CollectionId))]
+    public CollectionModel? Collection { get; set; }
 }
