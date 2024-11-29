@@ -3,6 +3,7 @@ using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Raggle.Abstractions.Memory;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 
 namespace Raggle.Driver.AzureBlob;
@@ -65,22 +66,19 @@ public class AzureBlobDocumentStorage : IDocumentStorage
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<string>> GetDocumentFilesAsync(
+    public async IAsyncEnumerable<string> GetDocumentFilesAsync(
         string collectionName, 
         string documentId, 
-        CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var container = _client.GetBlobContainerClient(collectionName);
         string prefix = $"{documentId}/";
-        var files = new List<string>();
 
         await foreach (BlobItem blob in container.GetBlobsAsync(prefix: prefix, cancellationToken: cancellationToken))
         {
             var relativePath = blob.Name.Substring(prefix.Length);
-            files.Add(relativePath);
+            yield return relativePath;
         }
-
-        return files;
     }
 
     /// <inheritdoc />

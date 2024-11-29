@@ -3,8 +3,8 @@
 public static partial class DocumentFileHelper
 {
     public static string PipelineFileExtension { get; private set; } = ".pipeline.json";
-    public static string ParsedFileExtension { get; private set; } = ".parsed.json";
-    public static string ChunkedFileExtension { get; private set; } = ".chunked.json";
+    public static string DecodedFileExtension { get; private set; } = ".decode.json";
+    public static string ChunkedFileExtension { get; private set; } = ".chunk.json";
 
     public static string GetPipelineFileName(string fileName)
     {
@@ -16,14 +16,14 @@ public static partial class DocumentFileHelper
         PipelineFileExtension = extension;
     }
 
-    public static string GetParsedFileName(string fileName)
+    public static string GetDecodedFileName(string fileName)
     {
-        return $"{Path.GetFileNameWithoutExtension(fileName)}{ParsedFileExtension}";
+        return $"{Path.GetFileNameWithoutExtension(fileName)}{DecodedFileExtension}";
     }
 
-    public static void SetParsedFileExtension(string extension)
+    public static void SetDecodedFileExtension(string extension)
     {
-        ParsedFileExtension = extension;
+        DecodedFileExtension = extension;
     }
 
     public static string GetChunkedFileName(string fileName, int number)

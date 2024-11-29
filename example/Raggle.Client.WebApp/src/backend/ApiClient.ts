@@ -14,36 +14,66 @@ export class API {
   // Model API
 
   public static async getChatModelsAsync(): Promise<Models> {
-    const res = await this._client.get<Models>('/models/chat');
-    return res.data;
+    try {
+      const res = await this._client.get<Models>('/models/chat');
+      return res.data;
+    } catch (error) {
+      console.error('Error fetching chat models:', error);
+      throw error;
+    }
   }
 
   public static async getEmbeddingModelsAsync(): Promise<Models> {
-    const res = await this._client.get<Models>('/models/embedding');
-    return res.data;
+    try {
+      const res = await this._client.get<Models>('/models/embedding');
+      return res.data;
+    } catch (error) {
+      console.error('Error fetching embedding models:', error);
+      throw error;
+    }
   }
 
   // Assistant API
 
   public static async getAssistantsAsync(skip: number = 0, limit: number = 20): Promise<Assistant[]> {
-    const res = await this._client.get<Assistant[]>('/assistants', {
-      params: { skip, limit },
-    });
-    return res.data;
+    try {
+      const res = await this._client.get<Assistant[]>('/assistants', {
+        params: { skip, limit },
+      });
+      return res.data;
+    } catch (error) {
+      console.error('Error fetching assistants:', error);
+      throw error;
+    }
   }
 
   public static async getAssistantAsync(assistantId: string): Promise<Assistant> {
-    const res = await this._client.get<Assistant>(`/assistants/${assistantId}`);
-    return res.data;
+    try {
+      const res = await this._client.get<Assistant>(`/assistants/${assistantId}`);
+      return res.data;
+    } catch (error) {
+      console.error('Error fetching assistant:', error);
+      throw error;
+    }
   }
 
   public static async upsertAssistantAsync(assistant: Assistant): Promise<Assistant> {
-    const res = await this._client.post<Assistant>('/assistants', assistant);
-    return res.data;
+    try {
+      const res = await this._client.post<Assistant>('/assistants', assistant);
+      return res.data;
+    } catch (error) {
+      console.error('Error upserting assistant:', error);
+      throw error;
+    }
   }
 
   public static async deleteAssistantAsync(assistantId: string): Promise<void> {
-    await this._client.delete(`/assistants/${assistantId}`);
+    try {
+      await this._client.delete(`/assistants/${assistantId}`);
+    } catch (error) {
+      console.error('Error deleting assistant:', error);
+      throw error;
+    }
   }
 
   // Memory API
@@ -54,19 +84,46 @@ export class API {
     skip: number = 0,
     order: string = 'desc'
   ): Promise<Collection[]> {
-    const response = await this._client.get<Collection[]>('/memory', { 
-      params: { limit, skip, order, name }
-    });
-    return response.data;
+    try {
+      const response = await this._client.get<Collection[]>('/memory', { 
+        params: { limit, skip, order, name }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error finding collections:', error);
+      throw error;
+    }
   }
 
   public static async upsertCollectionAsync(collection: Collection): Promise<Collection> {
-    const response = await this._client.post<Collection>('/memory', collection);
-    return response.data;
+    try {
+      const response = await this._client.post<Collection>('/memory', collection);
+      return response.data;
+    } catch (error) {
+      console.error('Error upserting collection:', error);
+      throw error;
+    }
   }
 
   public static async deleteCollectionAsync(collectionId: string): Promise<void> {
-    await this._client.delete(`/memory/${collectionId}`);
+    try {
+      await this._client.delete(`/memory/${collectionId}`);
+    } catch (error) {
+      console.error('Error deleting collection:', error);
+      throw error;
+    }
+  }
+
+  public static async searchCollectionAsync(collectionId: string, query: string): Promise<any> {
+    try {
+      const response = await this._client.post(`/memory/${collectionId}/search`, {
+        query,
+      });
+      return response;
+    } catch (error) {
+      console.error('Error searching document:', error);
+      throw error;
+    }
   }
 
   public static async findDocumentsAsync(

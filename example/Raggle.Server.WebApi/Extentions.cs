@@ -1,7 +1,6 @@
 ﻿using Raggle.Driver.Anthropic;
 using Raggle.Driver.Ollama;
 using Raggle.Driver.OpenAI;
-using Raggle.Core;
 using Raggle.Server.WebApi.Configuration;
 using Raggle.Abstractions.Extensions;
 using Raggle.Core.Memory.Handlers;
@@ -12,38 +11,22 @@ using Raggle.Driver.AzureBlob;
 using Raggle.Server.WebApi.Data;
 using Microsoft.EntityFrameworkCore;
 using Raggle.Core.Memory.Decoders;
+using Raggle.Abstractions;
 
 namespace Raggle.Server.WebApi;
 
 public static partial class IServiceCollectionExtention
 {
-    public static IServiceCollection AddRaggle(this IServiceCollection services, RaggleConfig config)
-    {
-        services.AddRaggleServices(config);
-        var builder = new RaggleBuilder(services);
-
-        var raggle = builder.Build();
-        services.AddSingleton(raggle);
-        return services;
-    }
-
-    public static IServiceCollection AddRaggleBuilder(this IServiceCollection services, RaggleConfig config)
-    {
-        services.AddRaggleServices(config);
-        var builder = new RaggleBuilder(services);
-
-        services.AddSingleton(builder);
-        return services;
-    }
-
     public static IServiceCollection AddRaggleServices(this IServiceCollection services, RaggleConfig config)
     {
-        return services.SetRaggleDB(config)
-                       .AddAIServices(config)
-                       .SetVectorStorage(config)
-                       .SetDocumentStorage(config)
-                       .AddDocumentDecoders()
-                       .AddPipelineHandlers();
+        services.SetRaggleDB(config)
+                .AddAIServices(config)
+                .SetVectorStorage(config)
+                .SetDocumentStorage(config)
+                .AddDocumentDecoders()
+                .AddPipelineHandlers();
+        services.AddSingleton<IRaggle, Core.Raggle>();
+        return services;
     }
 
     public static IServiceCollection SetRaggleDB(this IServiceCollection services, RaggleConfig config)
@@ -112,41 +95,6 @@ public static partial class IServiceCollectionExtention
                        .AddPipelineHandler<SummarizationHandler>(HandlerServiceKeys.Summarization.ToString())
                        .AddPipelineHandler<GenerateQAHandler>(HandlerServiceKeys.GenerateQA.ToString())
                        .AddPipelineHandler<EmbeddingsHandler>(HandlerServiceKeys.Embeddings.ToString());
-    }
-}
-
-public static partial class IConfigurantionBuilderExtension
-{
-    public static IConfigurationBuilder AddRaggleConfigFile(this IConfigurationBuilder configBuilder, string? filePath = null)
-    {
-        //filePath ??= Path.Combine(Directory.GetCurrentDirectory(), "ragglesettings.json");
-
-        //if (!File.Exists(filePath))
-        //{
-        //    CreateNew();
-        //}
-        //else
-        //{
-        //    var jsonConfig = File.ReadAllText(filePath);
-        //    var config = JsonSerializer.Deserialize<JsonDocument?>(jsonConfig, RaggleConfig.DefaultJsonOptions);
-        //    config?.RootElement.TryGetProperty("Raggle", out var content);
-        //    var raggleConfig = content.Deserialize<RaggleConfig>();
-        //    if (raggleConfig != null)
-        //    {
-        //        CreateNew();
-        //    }
-        //}
-
-        //configBuilder.AddJsonFile(filePath, optional: false, reloadOnChange: true);
-
-        //void CreateNew()
-        //{
-        //    var config = new { Raggle = new RaggleConfig() };
-        //    var jsonConfig = JsonSerializer.Serialize(config, RaggleConfig.DefaultJsonOptions);
-        //    File.WriteAllText(filePath, jsonConfig);
-        //}
-
-        return configBuilder;
     }
 }
 

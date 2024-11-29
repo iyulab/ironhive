@@ -1,11 +1,12 @@
 using Microsoft.AspNetCore.Http.Features;
 using Raggle.Server.WebApi;
 using Raggle.Server.WebApi.Services;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var config = ConfigTester.Config(false);
-builder.Services.AddRaggle(config);
+var config = TempConfigManager.Make(false);
+builder.Services.AddRaggleServices(config);
 
 builder.Services.AddControllers();
 builder.Services.AddScoped<AssistantService>();

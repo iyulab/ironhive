@@ -59,7 +59,7 @@ public class RaggleMemory : IRaggleMemory
     }
 
     /// <inheritdoc />
-    public async Task<DataPipeline> MemorizeDocumentAsync(
+    public async Task MemorizeDocumentAsync(
         string collectionName,
         string documentId,
         string fileName,
@@ -85,8 +85,11 @@ public class RaggleMemory : IRaggleMemory
         {
             CollectionName = collectionName,
             DocumentId = documentId,
-            ContentType = contentType,
-            FileName = fileName,
+            FileInfo = new Abstractions.Memory.FileInfo
+            {
+                FileName = fileName,
+                ContentType = contentType
+            },
             Steps = steps.ToList(),
             Metadata = metadata,
             Tags = tags
@@ -100,7 +103,7 @@ public class RaggleMemory : IRaggleMemory
             pipeline = pipeline.Start();
             await UpsertPipelineAsync(pipeline, cancellationToken);
 
-            while (pipeline.Status == PipelineStatus.Processing)
+            while (pipeline.StatusInfo.Status == PipelineStatus.Processing)
             {
                 var currentStep = pipeline.CurrentStep;
                 if (currentStep == null)
@@ -127,8 +130,6 @@ public class RaggleMemory : IRaggleMemory
         {
             _semaphore.Release();
         }
-
-        return pipeline;
     }
 
     /// <inheritdoc />
@@ -138,10 +139,14 @@ public class RaggleMemory : IRaggleMemory
         CancellationToken cancellationToken = default)
     {
         await _vectorStorage.DeleteVectorsAsync(collectionName, documentId, cancellationToken);
+        await foreach(var file in _documentStorage.GetDocumentFilesAsync(collectionName, documentId, cancellationToken))
+        {
+            await _documentStorage.DeleteDocumentFileAsync(collectionName, documentId, file, cancellationToken);
+        }
     }
 
     /// <inheritdoc />
-    public async Task GetNearestMemorySourceAsync(
+    public async Task<object> GetNearestMemorySourceAsync(
         string collectionName,
         string embedServiceKey,
         string embedModelName,
@@ -153,7 +158,7 @@ public class RaggleMemory : IRaggleMemory
     {
         var embedding = await GetEmbeddingAsync(embedServiceKey, embedModelName, query, cancellationToken);
         var results = await _vectorStorage.SearchVectorsAsync(collectionName,embedding, minScore, limit, filter, cancellationToken);
-        return;
+        return results;
     }
 
     /// <inheritdoc />
@@ -163,19 +168,18 @@ public class RaggleMemory : IRaggleMemory
     }
 
     /// <inheritdoc />
-    public async Task<DataPipeline> GetPipelineAsync(string collectionName, string documentId, CancellationToken cancellationToken = default)
+    public async Task<DataPipeline?> GetPipelineAsync(string collectionName, string documentId, CancellationToken cancellationToken = default)
     {
-        var files = await _documentStorage.GetDocumentFilesAsync(collectionName, documentId, cancellationToken);
-        var filename = files.Where(f => f.EndsWith(DocumentFileHelper.PipelineFileExtension)).FirstOrDefault()
-            ?? throw new InvalidOperationException($"Pipeline file not found for {documentId}");
+        await foreach (var file in _documentStorage.GetDocumentFilesAsync(collectionName, documentId, cancellationToken))
+        {
+            if (!file.EndsWith(DocumentFileHelper.PipelineFileExtension))
+                continue;
 
-        var stream = await _documentStorage.ReadDocumentFileAsync(
-            collectionName: collectionName,
-            documentId: documentId,
-            filePath: filename,
-            cancellationToken: cancellationToken);
-        var pipeline = JsonDocumentSerializer.Deserialize<DataPipeline>(stream);
-        return pipeline;
+            var stream = await _documentStorage.ReadDocumentFileAsync(collectionName, documentId, file, cancellationToken);
+            var pipeline = JsonDocumentSerializer.Deserialize<DataPipeline>(stream);
+            return pipeline;
+        }
+        return null;
     }
 
     #region Private Methods
@@ -184,7 +188,7 @@ public class RaggleMemory : IRaggleMemory
         DataPipeline pipeline, 
         CancellationToken cancellationToken = default)
     {
-        var filename = DocumentFileHelper.GetPipelineFileName(pipeline.FileName);
+        var filename = DocumentFileHelper.GetPipelineFileName(pipeline.FileInfo.FileName);
         var stream = JsonDocumentSerializer.SerializeToStream(pipeline);
         await _documentStorage.WriteDocumentFileAsync(
             collectionName: pipeline.CollectionName,

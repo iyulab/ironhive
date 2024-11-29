@@ -29,16 +29,32 @@ public class SummarizationHandler : IPipelineHandler
     {
         var options = pipeline.GetCurrentMetadata<SummarizationHandlerOptions>()
             ?? throw new InvalidOperationException("No options found for summarization handler.");
-        var chunkFiles = await GetChunkedDocumentFilesAsync(pipeline, cancellationToken);
-        foreach (var chunkFile in chunkFiles)
+        var collectionName = pipeline.CollectionName;
+        var documentId = pipeline.DocumentId;
+
+        await foreach (var file in _documentStorage.GetDocumentFilesAsync(collectionName, documentId, cancellationToken))
         {
-            var chunk = await GetChunkedDocumentAsync(pipeline, chunkFile, cancellationToken);
+            if (!file.EndsWith(DocumentFileHelper.ChunkedFileExtension))
+                continue;
+
+            var stream = await _documentStorage.ReadDocumentFileAsync(collectionName, documentId, file, cancellationToken);
+            var chunk = JsonDocumentSerializer.Deserialize<ChunkedDocument>(stream);
+
             if (string.IsNullOrWhiteSpace(chunk.RawText))
                 throw new InvalidOperationException("No text content found in the document chunk.");
 
             var answer = await GenerateSummarizedTextAsync(chunk.RawText, options, cancellationToken);
             chunk.SummarizedText = answer;
-            await UpsertChunkedDocumentAsync(pipeline, chunk, cancellationToken);
+
+            var fileName = DocumentFileHelper.GetChunkedFileName(pipeline.FileInfo.FileName, chunk.Index);
+            var chunkStream = JsonDocumentSerializer.SerializeToStream(chunk);
+            await _documentStorage.WriteDocumentFileAsync(
+                pipeline.CollectionName,
+                pipeline.DocumentId,
+                fileName,
+                chunkStream,
+                overwrite: true,
+                cancellationToken);
         }
 
         return pipeline;
@@ -46,43 +62,11 @@ public class SummarizationHandler : IPipelineHandler
 
     #region Private Methods
 
-    private async Task<IEnumerable<string>> GetChunkedDocumentFilesAsync(DataPipeline pipeline, CancellationToken cancellationToken)
-    {
-        var filePaths = await _documentStorage.GetDocumentFilesAsync(
-            collectionName: pipeline.CollectionName,
-            documentId: pipeline.DocumentId,
-            cancellationToken: cancellationToken);
-        return filePaths.Where(x => x.EndsWith(DocumentFileHelper.ChunkedFileExtension));
-    }
-
-    private async Task<ChunkedDocument> GetChunkedDocumentAsync(DataPipeline pipeline, string chunkFilePath, CancellationToken cancellationToken)
-    {
-        var chunkStream = await _documentStorage.ReadDocumentFileAsync(
-            pipeline.CollectionName,
-            pipeline.DocumentId,
-            chunkFilePath,
-            cancellationToken);
-        return JsonDocumentSerializer.Deserialize<ChunkedDocument>(chunkStream);
-    }
-
-    private async Task UpsertChunkedDocumentAsync(DataPipeline pipeline, ChunkedDocument chunk, CancellationToken cancellationToken)
-    {
-        var filename = DocumentFileHelper.GetChunkedFileName(pipeline.FileName, chunk.Index);
-        var chunkStream = JsonDocumentSerializer.SerializeToStream(chunk);
-        await _documentStorage.WriteDocumentFileAsync(
-            pipeline.CollectionName,
-            pipeline.DocumentId,
-            filename,
-            chunkStream,
-            overwrite: true,
-            cancellationToken);
-    }
-
     private async Task<string> GenerateSummarizedTextAsync(string text, SummarizationHandlerOptions options, CancellationToken cancellationToken)
     {
         var request = new ChatCompletionRequest
         {
-            Model = "gpt-4o-mini",
+            Model = options.ModelName,
             System = GetSystemInstructionPrompt(),
             Messages = new ChatHistory(),
         };

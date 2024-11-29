@@ -20,14 +20,14 @@ public class DecodingHandler : IPipelineHandler
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
         // 문서 파서 선택
-        var decoder = _decoders.FirstOrDefault(d => d.IsSupportContentType(pipeline.ContentType))
-            ?? throw new InvalidOperationException($"No decoder found for MIME type '{pipeline.ContentType}'.");
+        var decoder = _decoders.FirstOrDefault(d => d.IsSupportContentType(pipeline.FileInfo.ContentType))
+            ?? throw new InvalidOperationException($"No decoder found for MIME type '{pipeline.FileInfo.ContentType}'.");
 
         // 문서 내용 읽기
         var content = await _documentStorage.ReadDocumentFileAsync(
                 collectionName: pipeline.CollectionName,
                 documentId: pipeline.DocumentId,
-                filePath: pipeline.FileName,
+                filePath: pipeline.FileInfo.FileName,
                 cancellationToken: cancellationToken);
 
         // 문서 파싱
@@ -35,14 +35,14 @@ public class DecodingHandler : IPipelineHandler
             ?? throw new InvalidOperationException("Invalid document sections.");
         var parsedDocument = new DecodedDocument
         {
-            FileName = pipeline.FileName,
-            ContentType = pipeline.ContentType,
+            FileName = pipeline.FileInfo.FileName,
+            ContentType = pipeline.FileInfo.ContentType,
             ContentLength = content.Length,
             Sections = sections
         };
 
         // 파싱 결과 저장
-        var filename = DocumentFileHelper.GetParsedFileName(pipeline.FileName);
+        var filename = DocumentFileHelper.GetDecodedFileName(pipeline.FileInfo.FileName);
         var stream = JsonDocumentSerializer.SerializeToStream(parsedDocument);
         await _documentStorage.WriteDocumentFileAsync(
             collectionName: pipeline.CollectionName,

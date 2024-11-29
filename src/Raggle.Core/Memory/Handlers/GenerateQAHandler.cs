@@ -22,8 +22,8 @@ public class GenerateQAHandler : IPipelineHandler
         @"<qa>\s*<q>\s*(.*?)\s*</q>\s*<a>\s*(.*?)\s*</a>\s*</qa>",
         RegexOptions.Singleline | RegexOptions.Compiled);
 
-    private readonly IDocumentStorage _documentStorage;
     private readonly IServiceProvider _serviceProvider;
+    private readonly IDocumentStorage _documentStorage;
 
     public GenerateQAHandler(IServiceProvider service)
     {
@@ -35,11 +35,16 @@ public class GenerateQAHandler : IPipelineHandler
     {
         var options = pipeline.GetCurrentMetadata<GenerateQAHandlerOptions>()
             ?? throw new InvalidOperationException("No options found for GenerateQAPairsHandler.");
-        var chunkFiles = await GetChunkedDocumentFilesAsync(pipeline, cancellationToken);
+        var collectionName = pipeline.CollectionName;
+        var documentId = pipeline.DocumentId;
 
-        foreach (var chunkFile in chunkFiles)
+        await foreach (var file in _documentStorage.GetDocumentFilesAsync(collectionName, documentId, cancellationToken))
         {
-            var chunk = await GetChunkedDocumentAsync(pipeline, chunkFile, cancellationToken);
+            if (!file.EndsWith(DocumentFileHelper.ChunkedFileExtension))
+                continue;
+
+            var steam = await _documentStorage.ReadDocumentFileAsync(collectionName, documentId, file, cancellationToken);
+            var chunk = JsonDocumentSerializer.Deserialize<ChunkedDocument>(steam);
 
             string information;
             if (!string.IsNullOrWhiteSpace(chunk.SummarizedText))
@@ -56,45 +61,22 @@ public class GenerateQAHandler : IPipelineHandler
                 Question = qa.Question,
                 Answer = qa.Answer
             }).ToList();
-            await UpsertChunkedDocumentAsync(pipeline, chunk, cancellationToken);
+
+            var fileName = DocumentFileHelper.GetChunkedFileName(pipeline.FileInfo.FileName, chunk.Index);
+            var chunkStream = JsonDocumentSerializer.SerializeToStream(chunk);
+            await _documentStorage.WriteDocumentFileAsync(
+                collectionName: pipeline.CollectionName,
+                documentId: pipeline.DocumentId,
+                filePath: fileName,
+                content: chunkStream,
+                overwrite: true,
+                cancellationToken: cancellationToken);
         }
 
         return pipeline;
     }
 
     #region Private Methods
-
-    private async Task<IEnumerable<string>> GetChunkedDocumentFilesAsync(DataPipeline pipeline, CancellationToken cancellationToken)
-    {
-        var filePaths = await _documentStorage.GetDocumentFilesAsync(
-            collectionName: pipeline.CollectionName,
-            documentId: pipeline.DocumentId,
-            cancellationToken: cancellationToken);
-        return filePaths.Where(x => x.EndsWith(DocumentFileHelper.ChunkedFileExtension));
-    }
-
-    private async Task<ChunkedDocument> GetChunkedDocumentAsync(DataPipeline pipeline, string chunkFilePath, CancellationToken cancellationToken)
-    {
-        var chunkStream = await _documentStorage.ReadDocumentFileAsync(
-            collectionName: pipeline.CollectionName,
-            documentId: pipeline.DocumentId,
-            filePath: chunkFilePath,
-            cancellationToken: cancellationToken);
-        return JsonDocumentSerializer.Deserialize<ChunkedDocument>(chunkStream);
-    }
-
-    private async Task UpsertChunkedDocumentAsync(DataPipeline pipeline, ChunkedDocument chunk, CancellationToken cancellationToken)
-    {
-        var filename = DocumentFileHelper.GetChunkedFileName(pipeline.FileName, chunk.Index);
-        var chunkStream = JsonDocumentSerializer.SerializeToStream(chunk);
-        await _documentStorage.WriteDocumentFileAsync(
-            collectionName: pipeline.CollectionName,
-            documentId: pipeline.DocumentId,
-            filePath: filename,
-            content: chunkStream,
-            overwrite: true,
-            cancellationToken: cancellationToken);
-    }
 
     private async Task<IEnumerable<(string Question, string Answer)>> GenerateQAPairsAsync(
         string text,

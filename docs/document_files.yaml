@@ -1,0 +1,20 @@
+전략:
+  - 파일 => extract => chunk => 임베딩
+  - 파일 => extract => chunk => summirize => 임베딩
+  - 파일 => extract => chunk => qa => 임베딩
+
+추출파일: {filename}.extract.json
+  - Text/plain => line
+  - Word => paragraph
+  - PPT => slide
+  - PDF => page
+
+분할파일: {filename}.{index}.chunk.json
+  - Text
+
+요약파일: {filename}.{index}.summirize.json
+  - Text
+
+QA파일: {filename}.{index}.qapair.json
+  - QAPair
+

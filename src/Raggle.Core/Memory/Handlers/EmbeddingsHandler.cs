@@ -29,18 +29,22 @@ public class EmbeddingsHandler : IPipelineHandler
     {
         var options = pipeline.GetCurrentMetadata<EmbeddingsHandlerOptions>()
             ?? throw new InvalidOperationException("No options found for embeddings handler.");
+        var embedder = _serviceProvider.GetRequiredKeyedService<IEmbeddingService>(options.ServiceKey);
+        var collectionName = pipeline.CollectionName;
+        var documentId = pipeline.DocumentId;
+        
         var points = new List<VectorPoint>();
-
-        var chunkFiles = await GetChunkedDocumentFilesAsync(pipeline, cancellationToken);
-        foreach (var chunkFile in chunkFiles)
+        await foreach (var file in _documentStorage.GetDocumentFilesAsync(collectionName, documentId, cancellationToken))
         {
-            var chunk = await GetChunkedDocumentAsync(pipeline, chunkFile, cancellationToken);
+            if (!file.EndsWith(DocumentFileHelper.ChunkedFileExtension))
+                continue;
+
+            var stream = await _documentStorage.ReadDocumentFileAsync(collectionName, documentId, file, cancellationToken);
+            var chunk = JsonDocumentSerializer.Deserialize<ChunkedDocument>(stream);
 
             if (chunk.ExtractedQAPairs != null && chunk.ExtractedQAPairs.Any())
             {
                 var questions = chunk.ExtractedQAPairs.Select(x => x.Question).ToArray();
-                
-                var embedder = _serviceProvider.GetRequiredKeyedService<IEmbeddingService>(options.ServiceKey);
                 var request = new EmbeddingRequest
                 { 
                     Model = options.ModelName, 
@@ -56,13 +60,12 @@ public class EmbeddingsHandler : IPipelineHandler
                         DocumentId = pipeline.DocumentId,
                         ChunkIndex = chunk.Index,
                         QAPairIndex = i,
-                        Tags = pipeline.Tags.ToArray()
+                        Tags = pipeline.Tags?.ToArray()
                     });
                 }
             }
             else if (!string.IsNullOrWhiteSpace(chunk.SummarizedText))
             {
-                var embedder = _serviceProvider.GetRequiredKeyedService<IEmbeddingService>(options.ServiceKey);
                 var response = await embedder.EmbeddingAsync(options.ModelName, chunk.SummarizedText, cancellationToken);
                 points.Add(new VectorPoint
                 {
@@ -70,21 +73,19 @@ public class EmbeddingsHandler : IPipelineHandler
                     Vectors = response.Embedding,
                     DocumentId = pipeline.DocumentId,
                     ChunkIndex = chunk.Index,
-                    Tags = pipeline.Tags.ToArray()
+                    Tags = pipeline.Tags?.ToArray()
                 });
             }
             else if (!string.IsNullOrEmpty(chunk.RawText))
             {
-                var embedder = _serviceProvider.GetRequiredKeyedService<IEmbeddingService>(options.ServiceKey);
                 var response = await embedder.EmbeddingAsync(options.ModelName, chunk.RawText, cancellationToken);
-
                 points.Add(new VectorPoint
                 {
                     VectorId = Guid.NewGuid(),
                     Vectors = response.Embedding,
                     DocumentId = pipeline.DocumentId,
                     ChunkIndex = chunk.Index,
-                    Tags = pipeline.Tags.ToArray()
+                    Tags = pipeline.Tags?.ToArray()
                 });
             }
             else
@@ -96,27 +97,4 @@ public class EmbeddingsHandler : IPipelineHandler
         await _vectorStorage.UpsertVectorsAsync(pipeline.CollectionName, points, cancellationToken);
         return pipeline;
     }
-
-    #region Private Methods
-
-    private async Task<IEnumerable<string>> GetChunkedDocumentFilesAsync(DataPipeline pipeline, CancellationToken cancellationToken)
-    {
-        var filePaths = await _documentStorage.GetDocumentFilesAsync(
-            collectionName: pipeline.CollectionName,
-            documentId: pipeline.DocumentId,
-            cancellationToken: cancellationToken);
-        return filePaths.Where(x => x.EndsWith(DocumentFileHelper.ChunkedFileExtension));
-    }
-
-    private async Task<ChunkedDocument> GetChunkedDocumentAsync(DataPipeline pipeline, string chunkFilePath, CancellationToken cancellationToken)
-    {
-        var chunkStream = await _documentStorage.ReadDocumentFileAsync(
-            collectionName: pipeline.CollectionName,
-            documentId: pipeline.DocumentId,
-            filePath: chunkFilePath,
-            cancellationToken: cancellationToken);
-        return JsonDocumentSerializer.Deserialize<ChunkedDocument>(chunkStream);
-    }
-
-    #endregion
 }

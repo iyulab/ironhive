@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using Raggle.Abstractions.Memory;
 
 namespace Raggle.Driver.LocalDisk;
@@ -40,7 +41,7 @@ public class LocalDiskDocumentStorage : IDocumentStorage
         string collectionName, 
         CancellationToken cancellationToken = default)
     {
-        var collectionPath = GetFullPath(collectionName);
+        var collectionPath = GetAbsolutePath(collectionName);
         var isExist = Directory.Exists(collectionPath);
         return Task.FromResult(isExist);
     }
@@ -54,7 +55,7 @@ public class LocalDiskDocumentStorage : IDocumentStorage
         await semaphore.WaitAsync(cancellationToken);
         try
         {
-            var collectionPath = GetFullPath(collectionName);
+            var collectionPath = GetAbsolutePath(collectionName);
             if (!Directory.Exists(collectionPath))
             {
                 Directory.CreateDirectory(collectionPath);
@@ -75,7 +76,7 @@ public class LocalDiskDocumentStorage : IDocumentStorage
         await semaphore.WaitAsync(cancellationToken);
         try
         {
-            var collectionPath = GetFullPath(collectionName);
+            var collectionPath = GetAbsolutePath(collectionName);
             if (Directory.Exists(collectionPath))
             {
                 Directory.Delete(collectionPath, true);
@@ -90,18 +91,24 @@ public class LocalDiskDocumentStorage : IDocumentStorage
     }
 
     /// <inheritdoc />
-    public Task<IEnumerable<string>> GetDocumentFilesAsync(
-        string collectionName, 
-        string documentId, 
-        CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<string> GetDocumentFilesAsync(
+        string collectionName,
+        string documentId,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var documentPath = GetFullPath(collectionName, documentId);
+        var documentPath = GetAbsolutePath(collectionName, documentId);
         if (!Directory.Exists(documentPath))
             throw new InvalidOperationException($"'{documentId}' 문서는 존재하지 않습니다.");
 
-        var files = Directory.EnumerateFiles(documentPath, "*", SearchOption.AllDirectories)
-                             .Select(path => Path.GetRelativePath(documentPath, path));
-        return Task.FromResult(files);
+        foreach (var path in Directory.EnumerateFiles(documentPath, "*", SearchOption.AllDirectories))
+        {
+            // 취소 요청이 있는지 확인
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var relativePath = Path.GetRelativePath(documentPath, path);
+            yield return relativePath;
+            await Task.Yield();
+        }
     }
 
     /// <inheritdoc />
@@ -111,7 +118,7 @@ public class LocalDiskDocumentStorage : IDocumentStorage
         string filePath, 
         CancellationToken cancellationToken = default)
     {
-        var fullPath = GetFullPath(collectionName, documentId, filePath);
+        var fullPath = GetAbsolutePath(collectionName, documentId, filePath);
         var isExist = File.Exists(fullPath);
         return Task.FromResult(isExist);
     }
@@ -125,7 +132,7 @@ public class LocalDiskDocumentStorage : IDocumentStorage
         bool overwrite = true, 
         CancellationToken cancellationToken = default)
     {
-        var fullPath = GetFullPath(collectionName, documentId, filePath);
+        var fullPath = GetAbsolutePath(collectionName, documentId, filePath);
         if (!overwrite && File.Exists(fullPath))
             throw new IOException($"파일이 이미 존재합니다: {fullPath}");
 
@@ -147,7 +154,7 @@ public class LocalDiskDocumentStorage : IDocumentStorage
         string filePath, 
         CancellationToken cancellationToken = default)
     {
-        var fullPath = GetFullPath(collectionName, documentId, filePath);
+        var fullPath = GetAbsolutePath(collectionName, documentId, filePath);
         if (!File.Exists(fullPath))
             throw new FileNotFoundException($"파일을 찾을 수 없습니다: {filePath}", fullPath);
 
@@ -167,7 +174,7 @@ public class LocalDiskDocumentStorage : IDocumentStorage
         string filePath, 
         CancellationToken cancellationToken = default)
     {
-        var fullPath = GetFullPath(collectionName, documentId, filePath);
+        var fullPath = GetAbsolutePath(collectionName, documentId, filePath);
         if (File.Exists(fullPath))
         {
             File.Delete(fullPath);
@@ -184,7 +191,7 @@ public class LocalDiskDocumentStorage : IDocumentStorage
     }
 
     // 실제 디스크의 전체 경로를 반환
-    private string GetFullPath(params string[] paths)
+    private string GetAbsolutePath(params string[] paths)
     {
         var allPaths = new List<string> { _rootPath };
         allPaths.AddRange(paths);

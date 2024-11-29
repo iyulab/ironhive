@@ -4,9 +4,9 @@ using System.Text.Json.Serialization;
 
 namespace Raggle.Server.WebApi;
 
-public static class ConfigTester
+public static class TempConfigManager
 {
-    public static RaggleConfig Config(bool init = false)
+    public static RaggleConfig Make(bool init = false)
     {
         //var baseDir = AppContext.BaseDirectory;
         var baseDir = Directory.GetCurrentDirectory();

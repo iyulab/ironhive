@@ -1,0 +1,14 @@
+{
+	"type": "summarization",
+	"metadata": {
+		"file_name": "example.txt",
+		"content_size": 231223,
+		"mime_type": "text/plain",
+		"section": {
+			"type": "line", // line, paragraph, slide, page
+			"from": 1,
+			"to": 3,
+		}
+	},
+	"summary": "오늘 아침 커피를 삼"
+}

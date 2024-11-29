@@ -51,7 +51,7 @@ public class MemoryService
             {
                 _db.Collections.Add(collection);
                 await _memory.CreateCollectionAsync(
-                    collection.CollectionId.ToString(),
+                    collection.CollectionId.ToString("N"),
                     collection.EmbedServiceKey,
                     collection.EmbedModelName);
 
@@ -86,24 +86,21 @@ public class MemoryService
         var collection = await _db.Collections.FindAsync(collectionId)
             ?? throw new InvalidOperationException("Collection not found.");
 
-        var transaction = await _db.Database.BeginTransactionAsync();
+        using (var transaction = await _db.Database.BeginTransactionAsync())
+        {
+            try
+            {
+                _db.Collections.Remove(collection);
+                await _memory.DeleteCollectionAsync(collection.CollectionId.ToString("N"));
 
-        try
-        {
-            _db.Collections.Remove(collection);
-            await _memory.DeleteCollectionAsync(collection.CollectionId.ToString());
-
-            await _db.SaveChangesAsync();
-            await transaction.CommitAsync();
-        }
-        catch
-        {
-            await transaction.RollbackAsync();
-            throw;
-        }
-        finally
-        {
-            await transaction.DisposeAsync();
+                await _db.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
     }
 
@@ -143,8 +140,8 @@ public class MemoryService
         {
             await _db.Documents.AddAsync(document);
 
-            await _memory.MemorizeDocumentAsync(
-                collectionName: collection.CollectionId.ToString(),
+            _ = _memory.MemorizeDocumentAsync(
+                collectionName: collection.CollectionId.ToString("N"),
                 documentId: document.DocumentId.ToString(),
                 fileName: document.FileName,
                 content: data,
@@ -185,7 +182,7 @@ public class MemoryService
         try
         {
             _db.Documents.Remove(document);
-            await _memory.UnMemorizeDocumentAsync(collectionId.ToString(), documentId.ToString());
+            await _memory.UnMemorizeDocumentAsync(collectionId.ToString("N"), documentId.ToString());
 
             await _db.SaveChangesAsync();
             await transaction.CommitAsync();
@@ -199,6 +196,18 @@ public class MemoryService
         {
             await transaction.DisposeAsync();
         }
+    }
+
+    public async Task<object> SearchDocumentAsync(Guid collectionId, string query)
+    {
+        var collection = await _db.Collections.FindAsync(collectionId)
+            ?? throw new InvalidOperationException("Collection not found.");
+
+        return await _memory.GetNearestMemorySourceAsync(
+            collectionName: collection.CollectionId.ToString("N"),
+            embedServiceKey: collection.EmbedServiceKey,
+            embedModelName: collection.EmbedModelName,
+            query: query);
     }
 
     #endregion

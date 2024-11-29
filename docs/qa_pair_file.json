@@ -1,0 +1,23 @@
+{
+	"type": "qa_pair",
+	"metadata": {
+		"file_name": "example.txt",
+		"content_size": 231223,
+		"mime_type": "text/plain",
+		"section": {
+			"type": "line", // line, paragraph, slide, page
+			"from": 1,
+			"to": 3,
+		}
+	},
+	"dialogues": [
+		{
+			"question": "아침에 무었을 하였나",
+			"answer": "커피를 삼"
+		},
+		{
+			"question": "커피를 언제 마셨나",
+			"answer": "오늘"
+		},
+	]
+}

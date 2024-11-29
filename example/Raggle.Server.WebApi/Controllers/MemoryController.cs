@@ -4,6 +4,11 @@ using Raggle.Server.WebApi.Services;
 
 namespace Raggle.Server.WebApi.Controllers;
 
+public class SearchQuery
+{
+    public required string Query { get; set; }
+}
+
 [ApiController]
 [Route("/v1/memory")]
 public class MemoryController : ControllerBase
@@ -62,6 +67,22 @@ public class MemoryController : ControllerBase
         {
             await _service.DeleteCollectionAsync(collectionId);
             return Ok();
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ex);
+        }
+    }
+
+    [HttpPost("{collectionId:guid}/search")]
+    public async Task<ActionResult> SearchDocumentAsync(
+        [FromRoute] Guid collectionId,
+        [FromBody] SearchQuery request)
+    {
+        try
+        {
+            var result = await _service.SearchDocumentAsync(collectionId, request.Query);
+            return Ok(result);
         }
         catch (Exception ex)
         {

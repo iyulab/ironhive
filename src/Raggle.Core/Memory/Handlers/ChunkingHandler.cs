@@ -57,7 +57,7 @@ public class ChunkingHandler : IPipelineHandler
                         var chunk = new ChunkedDocument
                         {
                             Index = chunkIndex++,
-                            SourceFileName = pipeline.FileName,
+                            SourceFileName = pipeline.FileInfo.FileName,
                             SourceSection = section.Identifier,
                             RawText = currentChunkText.ToString().Trim()
                         };
@@ -81,7 +81,7 @@ public class ChunkingHandler : IPipelineHandler
                 var finalChunk = new ChunkedDocument
                 {
                     Index = chunkIndex++,
-                    SourceFileName = pipeline.FileName,
+                    SourceFileName = pipeline.FileInfo.FileName,
                     SourceSection = section.Identifier,
                     RawText = currentChunkText.ToString().Trim()
                 };
@@ -97,7 +97,7 @@ public class ChunkingHandler : IPipelineHandler
 
     private async Task<DecodedDocument> GetDecodedDocumentAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
-        var filename = DocumentFileHelper.GetParsedFileName(pipeline.FileName);
+        var filename = DocumentFileHelper.GetDecodedFileName(pipeline.FileInfo.FileName);
         var fileStream = await _documentStorage.ReadDocumentFileAsync(
             collectionName: pipeline.CollectionName,
             documentId: pipeline.DocumentId,
@@ -113,7 +113,7 @@ public class ChunkingHandler : IPipelineHandler
         ChunkedDocument chunk,
         CancellationToken cancellationToken)
     {
-        var filename = DocumentFileHelper.GetChunkedFileName(pipeline.FileName, chunk.Index);
+        var filename = DocumentFileHelper.GetChunkedFileName(pipeline.FileInfo.FileName, chunk.Index);
         var fileStream = JsonDocumentSerializer.SerializeToStream(chunk);
         await _documentStorage.WriteDocumentFileAsync(
             collectionName: pipeline.CollectionName,

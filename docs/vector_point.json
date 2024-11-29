@@ -1,0 +1,21 @@
+{
+	"point_id": "asdasds",
+	"vector": [],
+
+	"document_id": "",
+	"payload": {
+		// 타입별 파일들.. chunk, summization, qa_pair
+		"metadata": {
+			"file_name": "example.txt",
+			"content_size": 231223,
+			"mime_type": "text/plain",
+			"section": {
+				"type": "line", // line, paragraph, slide, page
+				"from": 1,
+				"to": 3,
+			}
+		},
+		"content": "object type"
+	},
+	"tags": [],
+}

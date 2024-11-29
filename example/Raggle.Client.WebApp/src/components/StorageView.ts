@@ -6,6 +6,7 @@ import { API } from "../backend/ApiClient";
 @customElement('storage-view')
 export class StorageView extends LitElement {
 
+  @query('#query-input') queryInput!: HTMLInputElement;
   @query('#file-input') fileInput!: HTMLInputElement;
   @property({ type: Object }) collection?: Collection;
   @state() documents: Document[] = [];
@@ -19,6 +20,10 @@ export class StorageView extends LitElement {
     return html`
       <input type="file" id="file-input" style="display: none" multiple />
       <div class="storage-view">
+        <div class="query">
+          <input id="query-input" type="text" placeholder="Search" />
+          <sl-button @click=${this.queryDocuments}>Search</sl-button>
+        </div>
         <div class="header">
           <h2>${this.collection?.name || 'No Collection Selected'}</h2>
           <p>${this.collection?.description || ''}</p>
@@ -37,6 +42,15 @@ export class StorageView extends LitElement {
         </div>
       </div>
     `;
+  }
+
+  private async queryDocuments() {
+    if (this.collection?.collectionId) {
+      const query = this.queryInput.value;
+      const response = await API.searchCollectionAsync(this.collection.collectionId, query);
+      this.queryInput.value = '';
+      console.log(response);
+    }
   }
 
   private async loadDocuments() {
@@ -66,6 +80,29 @@ export class StorageView extends LitElement {
       flex-direction: column;
       height: 100%;
     }
+
+    .query {
+      display: flex;
+      padding: 1em;
+      gap: 1em;
+    }
+
+    .query input {
+      flex: 1;
+      padding: 0.5em;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    .query sl-button {
+      padding: 0.5em 1em;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
     .header {
       display: flex;
       justify-content: space-between;

@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace Raggle.Server.WebApi.Models;
 
@@ -28,5 +29,6 @@ public class CollectionModel
     public IDictionary<string, object>? HandlerOptions { get; set; }
 
     // 네비게이션 속성
+    [JsonIgnore]
     public ICollection<DocumentModel> Documents { get; set; } = [];
 }

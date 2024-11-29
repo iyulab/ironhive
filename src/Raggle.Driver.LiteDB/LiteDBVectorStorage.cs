@@ -42,7 +42,7 @@ public class LiteDBVectorStorage : IVectorStorage
         if (await CollectionExistsAsync(collectionName, cancellationToken))
             throw new InvalidOperationException($"Collection '{collectionName}' already exists.");
 
-        _db.GetCollection(collectionName);
+        _db.GetCollection<VectorPoint>(collectionName);
     }
 
     public async Task DeleteCollectionAsync(
@@ -70,6 +70,7 @@ public class LiteDBVectorStorage : IVectorStorage
         IEnumerable<VectorPoint> points, 
         CancellationToken cancellationToken = default)
     {
+        collectionName = $"{collectionName}";
         var collection = _db.GetCollection<VectorPoint>(collectionName);
         collection.Upsert(points);
         return Task.CompletedTask;
@@ -119,7 +120,7 @@ public class LiteDBVectorStorage : IVectorStorage
         {
             Connection = ConnectionType.Shared,
             Filename = config.DatabasePath,
-            Password = config.Password,
+            Password = string.IsNullOrWhiteSpace(config.Password) ? null : config.Password,
             AutoRebuild = false,
             Upgrade = false,
             ReadOnly = false,

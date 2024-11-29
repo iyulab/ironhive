@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace Raggle.Server.WebApi.Models;
 
@@ -31,5 +32,6 @@ public class DocumentModel
 
     // 네비게이션 속성
     [ForeignKey(nameof(CollectionId))]
+    [JsonIgnore]
     public CollectionModel? Collection { get; set; }
 }
