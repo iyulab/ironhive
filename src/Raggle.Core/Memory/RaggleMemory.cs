@@ -2,7 +2,7 @@
 using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Memory;
 using Raggle.Abstractions.Utils;
-using Raggle.Core.Utils;
+using Raggle.Core.Extensions;
 
 namespace Raggle.Core.Memory;
 
@@ -83,13 +83,14 @@ public class RaggleMemory : IRaggleMemory
         _detector.TryGetContentType(fileName, out var contentType);
         var pipeline = new DataPipeline
         {
-            CollectionName = collectionName,
-            DocumentId = documentId,
-            FileInfo = new Abstractions.Memory.FileInfo
+            Source = new DocumentSource
             {
                 FileName = fileName,
-                ContentType = contentType
+                ContentSize = content?.Length ?? 0,
+                MimeType = contentType
             },
+            CollectionName = collectionName,
+            DocumentId = documentId,
             Steps = steps.ToList(),
             Metadata = metadata,
             Tags = tags
@@ -103,7 +104,7 @@ public class RaggleMemory : IRaggleMemory
             pipeline = pipeline.Start();
             await UpsertPipelineAsync(pipeline, cancellationToken);
 
-            while (pipeline.StatusInfo.Status == PipelineStatus.Processing)
+            while (pipeline.Progress.Status == PipelineStatus.Processing)
             {
                 var currentStep = pipeline.CurrentStep;
                 if (currentStep == null)
@@ -146,7 +147,7 @@ public class RaggleMemory : IRaggleMemory
     }
 
     /// <inheritdoc />
-    public async Task<object> GetNearestMemorySourceAsync(
+    public async Task<IEnumerable<ScoredVectorPoint>> GetNearestVectorAsync(
         string collectionName,
         string embedServiceKey,
         string embedModelName,
@@ -168,16 +169,18 @@ public class RaggleMemory : IRaggleMemory
     }
 
     /// <inheritdoc />
-    public async Task<DataPipeline?> GetPipelineAsync(string collectionName, string documentId, CancellationToken cancellationToken = default)
+    public async Task<DataPipeline?> GetPipelineAsync(
+        string collectionName, 
+        string documentId, 
+        CancellationToken cancellationToken = default)
     {
         await foreach (var file in _documentStorage.GetDocumentFilesAsync(collectionName, documentId, cancellationToken))
         {
-            if (!file.EndsWith(DocumentFileHelper.PipelineFileExtension))
+            if (!file.EndsWith("pipeline.json"))
                 continue;
 
-            var stream = await _documentStorage.ReadDocumentFileAsync(collectionName, documentId, file, cancellationToken);
-            var pipeline = JsonDocumentSerializer.Deserialize<DataPipeline>(stream);
-            return pipeline;
+            return await _documentStorage.ReadJsonDocumentFileAsync<DataPipeline>(
+                collectionName, documentId, file, null, cancellationToken);
         }
         return null;
     }
@@ -188,13 +191,11 @@ public class RaggleMemory : IRaggleMemory
         DataPipeline pipeline, 
         CancellationToken cancellationToken = default)
     {
-        var filename = DocumentFileHelper.GetPipelineFileName(pipeline.FileInfo.FileName);
-        var stream = JsonDocumentSerializer.SerializeToStream(pipeline);
-        await _documentStorage.WriteDocumentFileAsync(
-            collectionName: pipeline.CollectionName,
-            documentId: pipeline.DocumentId,
-            filePath: filename,
-            content: stream,
+        await _documentStorage.WriteJsonDocumentFileAsync(
+            collectionName: pipeline.CollectionName, 
+            documentId: pipeline.DocumentId, 
+            filePath: $"{pipeline.Source.FileName}.pipeline.json",
+            model: pipeline,
             cancellationToken: cancellationToken);
     }
 

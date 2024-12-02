@@ -102,8 +102,8 @@ public class LiteDBVectorStorage : IVectorStorage
                 VectorId = p.VectorId,
                 Score = TensorPrimitives.CosineSimilarity(input, p.Vectors),
                 DocumentId = p.DocumentId,
-                ChunkIndex = p.ChunkIndex,
-                QAPairIndex = p.QAPairIndex,
+                Tags = p.Tags,
+                Payload = p.Payload,
             })
             .Where(p => p.Score >= minScore)
             .OrderByDescending(p => p.Score)

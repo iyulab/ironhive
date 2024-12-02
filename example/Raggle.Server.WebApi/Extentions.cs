@@ -93,7 +93,7 @@ public static partial class IServiceCollectionExtention
         return services.AddPipelineHandler<DecodingHandler>(HandlerServiceKeys.Decoding.ToString())
                        .AddPipelineHandler<ChunkingHandler>(HandlerServiceKeys.Chunking.ToString())
                        .AddPipelineHandler<SummarizationHandler>(HandlerServiceKeys.Summarization.ToString())
-                       .AddPipelineHandler<GenerateQAHandler>(HandlerServiceKeys.GenerateQA.ToString())
+                       .AddPipelineHandler<GenerateDialogueHandler>(HandlerServiceKeys.GenerateQA.ToString())
                        .AddPipelineHandler<EmbeddingsHandler>(HandlerServiceKeys.Embeddings.ToString());
     }
 }

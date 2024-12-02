@@ -39,7 +39,7 @@ public interface IRaggleMemory
     /// <summary>
     /// 지정된 컬렉션에서 쿼리와 최소 점수 조건을 바탕으로 문서를 검색합니다.
     /// </summary>
-    Task<object> GetNearestMemorySourceAsync(
+    Task<IEnumerable<ScoredVectorPoint>> GetNearestVectorAsync(
         string collectionName,
         string embedServiceKey,
         string embedModelName,

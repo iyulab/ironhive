@@ -2,8 +2,6 @@
 
 public interface IDocumentStorage : IDisposable
 {
-    #region Collection
-
     Task<IEnumerable<string>> GetCollectionListAsync(
         CancellationToken cancellationToken = default);
 
@@ -18,10 +16,6 @@ public interface IDocumentStorage : IDisposable
     Task DeleteCollectionAsync(
         string collectionName,
         CancellationToken cancellationToken = default);
-
-    #endregion
-
-    #region Document Files
 
     IAsyncEnumerable<string> GetDocumentFilesAsync(
         string collectionName,
@@ -53,6 +47,4 @@ public interface IDocumentStorage : IDisposable
         string documentId,
         string filePath,
         CancellationToken cancellationToken = default);
-
-    #endregion
 }

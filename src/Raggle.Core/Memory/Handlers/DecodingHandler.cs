@@ -1,8 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Raggle.Abstractions.Memory;
-using Raggle.Core.Memory.Decoders;
-using Raggle.Core.Memory.Document;
-using Raggle.Core.Utils;
+using Raggle.Core.Extensions;
 
 namespace Raggle.Core.Memory.Handlers;
 
@@ -19,36 +17,30 @@ public class DecodingHandler : IPipelineHandler
 
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
+        if (pipeline.Source.MimeType == null)
+            throw new InvalidOperationException("The document MIME type is not specified.");
+
         // 문서 파서 선택
-        var decoder = _decoders.FirstOrDefault(d => d.IsSupportContentType(pipeline.FileInfo.ContentType))
-            ?? throw new InvalidOperationException($"No decoder found for MIME type '{pipeline.FileInfo.ContentType}'.");
+        var decoder = _decoders.FirstOrDefault(d => d.IsSupportMimeType(pipeline.Source.MimeType))
+            ?? throw new InvalidOperationException($"No decoder found for MIME type '{pipeline.Source.MimeType}'.");
 
         // 문서 내용 읽기
-        var content = await _documentStorage.ReadDocumentFileAsync(
+        var data = await _documentStorage.ReadDocumentFileAsync(
                 collectionName: pipeline.CollectionName,
                 documentId: pipeline.DocumentId,
-                filePath: pipeline.FileInfo.FileName,
+                filePath: pipeline.Source.FileName,
                 cancellationToken: cancellationToken);
 
         // 문서 파싱
-        var sections = await decoder.DecodeAsync(content, cancellationToken) as IEnumerable<DocumentSection>
-            ?? throw new InvalidOperationException("Invalid document sections.");
-        var parsedDocument = new DecodedDocument
-        {
-            FileName = pipeline.FileInfo.FileName,
-            ContentType = pipeline.FileInfo.ContentType,
-            ContentLength = content.Length,
-            Sections = sections
-        };
+        var extractedFIle = await decoder.DecodeAsync(pipeline, data, cancellationToken);
 
-        // 파싱 결과 저장
-        var filename = DocumentFileHelper.GetDecodedFileName(pipeline.FileInfo.FileName);
-        var stream = JsonDocumentSerializer.SerializeToStream(parsedDocument);
-        await _documentStorage.WriteDocumentFileAsync(
-            collectionName: pipeline.CollectionName,
-            documentId: pipeline.DocumentId,
-            filePath: filename,
-            content: stream,
+        // 파싱된 문서 저장
+        var filename = pipeline.GetCurrentStepFileName();
+        await _documentStorage.WriteJsonDocumentFileAsync(
+            pipeline.CollectionName,
+            pipeline.DocumentId,
+            filename,
+            extractedFIle,
             cancellationToken: cancellationToken);
 
         return pipeline;

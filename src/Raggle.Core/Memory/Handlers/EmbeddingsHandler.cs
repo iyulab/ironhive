@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Memory;
+using Raggle.Core.Extensions;
 using Raggle.Core.Memory.Document;
 using Raggle.Core.Utils;
 
@@ -36,19 +37,46 @@ public class EmbeddingsHandler : IPipelineHandler
         var points = new List<VectorPoint>();
         await foreach (var file in _documentStorage.GetDocumentFilesAsync(collectionName, documentId, cancellationToken))
         {
-            if (!file.EndsWith(DocumentFileHelper.ChunkedFileExtension))
+            if (!pipeline.IsPreviousStepFileName(file))
                 continue;
 
-            var stream = await _documentStorage.ReadDocumentFileAsync(collectionName, documentId, file, cancellationToken);
-            var chunk = JsonDocumentSerializer.Deserialize<ChunkedDocument>(stream);
+            var docFile = await _documentStorage.ReadJsonDocumentFileAsync<DocumentSource>(
+                collectionName: collectionName,
+                documentId: documentId,
+                filePath: file,
+                cancellationToken: cancellationToken);
 
-            if (chunk.ExtractedQAPairs != null && chunk.ExtractedQAPairs.Any())
+            if (docFile is ChunkedFile chunkedFile)
             {
-                var questions = chunk.ExtractedQAPairs.Select(x => x.Question).ToArray();
+                var response = await embedder.EmbeddingAsync(options.ModelName, chunkedFile.Content, cancellationToken);
+                points.Add(new VectorPoint
+                {
+                    VectorId = Guid.NewGuid(),
+                    Vectors = response.Embedding,
+                    DocumentId = pipeline.DocumentId,
+                    Tags = pipeline.Tags?.ToArray(),
+                    Payload = chunkedFile
+                });
+            }
+            else if (docFile is SummarizedFile summarizedFile)
+            {
+                var response = await embedder.EmbeddingAsync(options.ModelName, summarizedFile.Summary, cancellationToken);
+                points.Add(new VectorPoint
+                {
+                    VectorId = Guid.NewGuid(),
+                    Vectors = response.Embedding,
+                    DocumentId = pipeline.DocumentId,
+                    Tags = pipeline.Tags?.ToArray(),
+                    Payload = summarizedFile
+                });
+            }
+            else if (docFile is DialogueFile dialogueFile)
+            {
+                var questions = dialogueFile.Dialogues.Select(x => x.Question).ToArray();
                 var request = new EmbeddingRequest
-                { 
-                    Model = options.ModelName, 
-                    Input = questions 
+                {
+                    Model = options.ModelName,
+                    Input = questions
                 };
                 var response = await embedder.EmbeddingsAsync(request, cancellationToken);
                 for (var i = 0; i < response.Count(); i++)
@@ -58,39 +86,14 @@ public class EmbeddingsHandler : IPipelineHandler
                         VectorId = Guid.NewGuid(),
                         Vectors = response.ElementAt(i).Embedding,
                         DocumentId = pipeline.DocumentId,
-                        ChunkIndex = chunk.Index,
-                        QAPairIndex = i,
-                        Tags = pipeline.Tags?.ToArray()
+                        Tags = pipeline.Tags?.ToArray(),
+                        Payload = dialogueFile.Dialogues.ElementAt(i)
                     });
                 }
             }
-            else if (!string.IsNullOrWhiteSpace(chunk.SummarizedText))
-            {
-                var response = await embedder.EmbeddingAsync(options.ModelName, chunk.SummarizedText, cancellationToken);
-                points.Add(new VectorPoint
-                {
-                    VectorId = Guid.NewGuid(),
-                    Vectors = response.Embedding,
-                    DocumentId = pipeline.DocumentId,
-                    ChunkIndex = chunk.Index,
-                    Tags = pipeline.Tags?.ToArray()
-                });
-            }
-            else if (!string.IsNullOrEmpty(chunk.RawText))
-            {
-                var response = await embedder.EmbeddingAsync(options.ModelName, chunk.RawText, cancellationToken);
-                points.Add(new VectorPoint
-                {
-                    VectorId = Guid.NewGuid(),
-                    Vectors = response.Embedding,
-                    DocumentId = pipeline.DocumentId,
-                    ChunkIndex = chunk.Index,
-                    Tags = pipeline.Tags?.ToArray()
-                });
-            }
             else
             {
-                throw new InvalidOperationException($"No text content found in the document chunk {chunk.Index}.");
+                throw new InvalidOperationException($"No text content found in the document file {file}");
             }
         }
 

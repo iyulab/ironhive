@@ -1,9 +1,8 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Memory;
-using Raggle.Core.Memory.Document;
+using Raggle.Core.Extensions;
 using Raggle.Core.Tokenizers;
-using Raggle.Core.Utils;
 using System.Text;
 
 namespace Raggle.Core.Memory.Handlers;
@@ -22,7 +21,7 @@ public class ChunkingHandler : IPipelineHandler
     {
         _documentStorage = service.GetRequiredService<IDocumentStorage>();
 
-        // AI 마다 다른 토크나이저 사용해야함
+        // 서비스 마다 다른 토크나이저 사용해야함
         _textTokenizer = new TiktokenTokenizer();
     }
 
@@ -30,98 +29,83 @@ public class ChunkingHandler : IPipelineHandler
     {
         var options = pipeline.GetCurrentMetadata<ChunkingHandlerOptions>()
             ?? new ChunkingHandlerOptions();
-        var decodedDocument = await GetDecodedDocumentAsync(pipeline, cancellationToken);
-        var decodedSections = decodedDocument.Sections;
+
+        var docFIle = await _documentStorage.ReadJsonDocumentFileAsync<DocumentSource>(
+            pipeline.CollectionName,
+            pipeline.DocumentId,
+            pipeline.GetPreviousStepFileName(),
+            cancellationToken: cancellationToken);
 
         int chunkIndex = 0;
-        foreach (var section in decodedSections)
+        long totalTokenCount = 0;
+        var sectionFrom = docFIle.Section?.From ?? 1;
+        var sectionTo = sectionFrom;
+
+        var sb = new StringBuilder();
+
+        var contents = docFIle.Content as IEnumerable<string>
+            ?? throw new InvalidOperationException("The document content is not a list of strings.");
+        foreach (var content in contents)
         {
-            // 라인 단위로 텍스트 분할
-            var lines = section.Text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            var tokenCount = _textTokenizer.Encode(content).Count;
 
-            var currentChunkText = new StringBuilder();
-            var currentTokenCount = 0;
-
-            // 각 라인을 사이즈 제한에 맞게 청크로 나누어 저장
-            foreach (var line in lines)
+            if (totalTokenCount + tokenCount > options.MaxTokensPerChunk)
             {
-                var lineTokens = _textTokenizer.Encode(line);
-                var lineTokenCount = lineTokens.Count;
-
-                // 현재 청크에 라인을 추가했을 때 토큰 수가 초과하지 않는지 확인
-                if (currentTokenCount + lineTokenCount > options.MaxTokensPerChunk)
+                var chunk = new DocumentSource
                 {
-                    if (currentChunkText.Length > 0)
+                    Source = docFIle.Source,
+                    Section = new DocumentSegment
                     {
-                        // 현재 청크 저장
-                        var chunk = new ChunkedDocument
-                        {
-                            Index = chunkIndex++,
-                            SourceFileName = pipeline.FileInfo.FileName,
-                            SourceSection = section.Identifier,
-                            RawText = currentChunkText.ToString().Trim()
-                        };
-
-                        await UpsertChunkDocumentAsync(pipeline, chunk, cancellationToken);
-
-                        // 새로운 청크 시작
-                        currentChunkText.Clear();
-                        currentTokenCount = 0;
-                    }
-                }
-
-                // 현재 라인을 청크에 추가
-                currentChunkText.AppendLine(line);
-                currentTokenCount += lineTokenCount;
-            }
-
-            // 마지막 청크 저장 (남아있는 텍스트가 있을 경우)
-            if (currentChunkText.Length > 0)
-            {
-                var finalChunk = new ChunkedDocument
-                {
-                    Index = chunkIndex++,
-                    SourceFileName = pipeline.FileInfo.FileName,
-                    SourceSection = section.Identifier,
-                    RawText = currentChunkText.ToString().Trim()
+                        Unit = docFIle.Section?.Unit,
+                        From = sectionFrom,
+                        To = sectionTo,
+                    },
+                    Index = chunkIndex,
+                    Content = sb.ToString(),
                 };
 
-                await UpsertChunkDocumentAsync(pipeline, finalChunk, cancellationToken);
+                var filename = pipeline.GetCurrentStepFileName(chunkIndex);
+                await _documentStorage.WriteJsonDocumentFileAsync(
+                    collectionName: pipeline.CollectionName,
+                    documentId: pipeline.DocumentId,
+                    filePath: filename,
+                    model: chunk,
+                    cancellationToken: cancellationToken);
+
+                chunkIndex++;
+                sb.Clear();
+                totalTokenCount = 0;
+                sectionFrom = sectionTo + 1;
             }
+
+            sb.Append(content);
+            totalTokenCount += tokenCount;
+            sectionTo++;
+        }
+
+        if (sb.Length > 0)
+        {
+            var chunk = new ChunkedFile
+            {
+                Source = extractedFile.Source,
+                Section = new DocumentSegment
+                {
+                    Unit = extractedFile.Section?.Unit,
+                    From = sectionFrom,
+                    To = sectionTo,
+                },
+                Content = sb.ToString(),
+            };
+
+            var filename = pipeline.GetCurrentStepFileName(chunkIndex);
+            await _documentStorage.WriteJsonDocumentFileAsync(
+                collectionName: pipeline.CollectionName,
+                documentId: pipeline.DocumentId,
+                filePath: filename,
+                model: chunk,
+                cancellationToken: cancellationToken);
         }
 
         return pipeline;
     }
-
-    #region Private Methods
-
-    private async Task<DecodedDocument> GetDecodedDocumentAsync(DataPipeline pipeline, CancellationToken cancellationToken)
-    {
-        var filename = DocumentFileHelper.GetDecodedFileName(pipeline.FileInfo.FileName);
-        var fileStream = await _documentStorage.ReadDocumentFileAsync(
-            collectionName: pipeline.CollectionName,
-            documentId: pipeline.DocumentId,
-            filePath: filename,
-            cancellationToken: cancellationToken);
-
-        var decodedDocument = JsonDocumentSerializer.Deserialize<DecodedDocument>(fileStream);
-        return decodedDocument;
-    }
-
-    private async Task UpsertChunkDocumentAsync(
-        DataPipeline pipeline,
-        ChunkedDocument chunk,
-        CancellationToken cancellationToken)
-    {
-        var filename = DocumentFileHelper.GetChunkedFileName(pipeline.FileInfo.FileName, chunk.Index);
-        var fileStream = JsonDocumentSerializer.SerializeToStream(chunk);
-        await _documentStorage.WriteDocumentFileAsync(
-            collectionName: pipeline.CollectionName,
-            documentId: pipeline.DocumentId,
-            filePath: filename,
-            content: fileStream,
-            cancellationToken: cancellationToken);
-    }
-
-    #endregion
 }

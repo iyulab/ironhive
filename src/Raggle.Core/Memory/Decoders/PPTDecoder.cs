@@ -1,7 +1,6 @@
 ﻿using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Presentation;
 using Raggle.Abstractions.Memory;
-using Raggle.Core.Memory.Document;
 using Raggle.Core.Utils;
 
 namespace Raggle.Core.Memory.Decoders;
@@ -9,7 +8,14 @@ namespace Raggle.Core.Memory.Decoders;
 public class PPTDecoder : IDocumentDecoder
 {
     /// <inheritdoc />
-    public async Task<object> DecodeAsync(
+    public bool IsSupportMimeType(string mimeType)
+    {
+        return mimeType == "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+    }
+
+    /// <inheritdoc />
+    public async Task<DocumentSource> DecodeAsync(
+        DataPipeline pipeline,
         Stream data,
         CancellationToken cancellationToken = default)
     {
@@ -18,7 +24,7 @@ public class PPTDecoder : IDocumentDecoder
             // 취소 요청이 있는지 확인
             cancellationToken.ThrowIfCancellationRequested();
 
-            var results = new List<DocumentSection>();
+            var contents = new List<string>();
 
             using var presentation = PresentationDocument.Open(data, false);
 
@@ -49,29 +55,29 @@ public class PPTDecoder : IDocumentDecoder
                                      .ToList();
 
                 // Combine the text and clean it
-                var sectionText = string.Join(Environment.NewLine, slideText).TrimEnd();
-                var cleanText = TextCleaner.Clean(sectionText);
+                var text = string.Join(Environment.NewLine, slideText).TrimEnd();
+                text = TextCleaner.Clean(text);
 
                 // Determine the slide number based on its position in the SlideIdList
                 int slideNumber = slideIds.IndexOf(slideId) + 1;
 
-                results.Add(new DocumentSection
-                {
-                    Identifier = $"Slide {slideNumber}",
-                    Text = cleanText,
-                });
+                contents.Add(text);
             }
 
             // 최종적으로 한번 더 취소 요청 확인
             cancellationToken.ThrowIfCancellationRequested();
 
-            return results;
+            return new DocumentSource
+            {
+                Source = pipeline.Source,
+                Section = new DocumentSegment
+                {
+                    Unit = "slide",
+                    From = 1,
+                    To = contents.Count,
+                },
+                Content = contents,
+            };
         }, cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <inheritdoc />
-    public bool IsSupportContentType(string contentType)
-    {
-        return contentType == "application/vnd.openxmlformats-officedocument.presentationml.presentation";
     }
 }

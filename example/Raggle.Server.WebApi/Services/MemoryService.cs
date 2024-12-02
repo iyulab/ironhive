@@ -203,7 +203,7 @@ public class MemoryService
         var collection = await _db.Collections.FindAsync(collectionId)
             ?? throw new InvalidOperationException("Collection not found.");
 
-        return await _memory.GetNearestMemorySourceAsync(
+        return await _memory.GetNearestVectorAsync(
             collectionName: collection.CollectionId.ToString("N"),
             embedServiceKey: collection.EmbedServiceKey,
             embedModelName: collection.EmbedModelName,

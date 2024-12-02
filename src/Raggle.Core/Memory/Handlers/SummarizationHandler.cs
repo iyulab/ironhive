@@ -2,8 +2,8 @@
 using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Memory;
 using Raggle.Abstractions.Messages;
+using Raggle.Core.Extensions;
 using Raggle.Core.Memory.Document;
-using Raggle.Core.Utils;
 using System.Text;
 
 namespace Raggle.Core.Memory.Handlers;
@@ -34,27 +34,27 @@ public class SummarizationHandler : IPipelineHandler
 
         await foreach (var file in _documentStorage.GetDocumentFilesAsync(collectionName, documentId, cancellationToken))
         {
-            if (!file.EndsWith(DocumentFileHelper.ChunkedFileExtension))
+            if (!pipeline.IsPreviousStepFileName(file))
                 continue;
 
-            var stream = await _documentStorage.ReadDocumentFileAsync(collectionName, documentId, file, cancellationToken);
-            var chunk = JsonDocumentSerializer.Deserialize<ChunkedDocument>(stream);
+            var chunk = await _documentStorage.ReadJsonDocumentFileAsync<ChunkedFile>(
+                collectionName, documentId, file, null, cancellationToken);
 
-            if (string.IsNullOrWhiteSpace(chunk.RawText))
-                throw new InvalidOperationException("No text content found in the document chunk.");
+            var summary = await GenerateSummarizedTextAsync(chunk.Content, options, cancellationToken);
+            var summaryFile = new SummarizedFile
+            {
+                Source = chunk.Source,
+                Section = chunk.Section,
+                Summary = summary,
+            };
 
-            var answer = await GenerateSummarizedTextAsync(chunk.RawText, options, cancellationToken);
-            chunk.SummarizedText = answer;
-
-            var fileName = DocumentFileHelper.GetChunkedFileName(pipeline.FileInfo.FileName, chunk.Index);
-            var chunkStream = JsonDocumentSerializer.SerializeToStream(chunk);
-            await _documentStorage.WriteDocumentFileAsync(
-                pipeline.CollectionName,
-                pipeline.DocumentId,
-                fileName,
-                chunkStream,
-                overwrite: true,
-                cancellationToken);
+            var fileName = pipeline.GetCurrentStepFileName(chunk.Index);
+            await _documentStorage.WriteJsonDocumentFileAsync(
+                collectionName: pipeline.CollectionName,
+                documentId: pipeline.DocumentId,
+                filePath: fileName,
+                model: summaryFile,
+                cancellationToken: cancellationToken);
         }
 
         return pipeline;

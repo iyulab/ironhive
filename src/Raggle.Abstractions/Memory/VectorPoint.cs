@@ -8,7 +8,7 @@ public class VectorPoint
     /// <summary>
     /// Gets or sets the vector ID.
     /// </summary>
-    public required Guid VectorId { get; set; }
+    public Guid VectorId { get; set; } = Guid.NewGuid();
 
     /// <summary>
     /// Gets or sets the vector values.
@@ -18,20 +18,15 @@ public class VectorPoint
     /// <summary>
     /// Gets or sets the document ID.
     /// </summary>
-    public required string DocumentId { get; set; }
-
-    /// <summary>
-    /// Gets or sets the document chunk index
-    /// </summary>
-    public required int ChunkIndex { get; set; }
-
-    /// <summary>
-    /// Gets or sets the QA pair index.
-    /// </summary>
-    public int? QAPairIndex { get; set; }
+    public string? DocumentId { get; set; }
 
     /// <summary>
     /// Gets or sets the tags.
     /// </summary>
     public string[]? Tags { get; set; }
+
+    /// <summary>
+    /// Gets or sets the creation date.
+    /// </summary>
+    public object? Payload { get; set; }
 }

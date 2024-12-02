@@ -86,8 +86,8 @@ public class QdrantVectorStorage : IVectorStorage
                 Payload =
                 {
                     ["documentId"] = point.DocumentId,
-                    ["chunkIndex"] = point.ChunkIndex,
                     ["tags"] = point.Tags ?? [],
+                    ["payload"] = (Value)point.Payload,
                 }
             });
         }
@@ -149,16 +149,18 @@ public class QdrantVectorStorage : IVectorStorage
         foreach (var result in results)
         {
             var documentId = result.Payload.GetValueOrDefault("documentId")?.StringValue;
-            var chunkIndex = result.Payload.GetValueOrDefault("chunkIndex")?.IntegerValue;
-            if (documentId == null || chunkIndex == null)
+            var tags = result.Payload.GetValueOrDefault("tags")?.ListValue.Values.Select(v => v.StringValue);
+            var payload = result.Payload.GetValueOrDefault("payload");
+            if (documentId == null)
                 continue;
 
             rankedPoints.Add(new ScoredVectorPoint
             {
                 VectorId = Guid.Parse(result.Id.Uuid),
-                DocumentId = documentId,
                 Score = result.Score,
-                ChunkIndex = (int)chunkIndex
+                DocumentId = documentId,
+                Tags = tags?.ToArray(),
+                Payload = payload
             });
         }
         return rankedPoints.OrderByDescending(p => p.Score);

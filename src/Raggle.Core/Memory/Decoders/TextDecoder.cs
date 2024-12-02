@@ -6,77 +6,41 @@ namespace Raggle.Core.Memory.Decoders;
 
 public class TextDecoder : IDocumentDecoder
 {
-    private readonly int _maxSplitLine = 10;
-
     /// <inheritdoc />
-    public async Task<object> DecodeAsync(
-        Stream data,
-        CancellationToken cancellationToken = default)
+    public bool IsSupportMimeType(string mimeType)
     {
-        var results = new List<DocumentSection>();
-
-        using var reader = new StreamReader(data);
-        if (_maxSplitLine <= 0)
-        {
-            var fullText = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
-            var cleanText = TextCleaner.Clean(fullText);
-            results.Add(new DocumentSection
-            {
-                Identifier = "Entire Document",
-                Text = cleanText,
-            });
-        }
-        else
-        {
-            var lines = new List<string>();
-            int currentLineNumber = 0;
-            int startLineNumber = 1;
-
-            string? line;
-            while ((line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false)) != null)
-            {
-                // 라인 추가
-                lines.Add(line);
-                currentLineNumber++;
-
-                if (lines.Count == _maxSplitLine)
-                {
-                    var sectionText = string.Join(Environment.NewLine, lines).TrimEnd();
-                    var cleanText = TextCleaner.Clean(sectionText);
-                    results.Add(new DocumentSection
-                    {
-                        Identifier = $"{startLineNumber} line ~ {currentLineNumber} line",
-                        Text = cleanText,
-                    });
-
-                    // 다음 섹션을 위해 초기화
-                    lines.Clear();
-                    startLineNumber = currentLineNumber + 1;
-                }
-            }
-
-            // 남아있는 라인들을 마지막 섹션으로 추가
-            if (lines.Count > 0)
-            {
-                var sectionText = string.Join(Environment.NewLine, lines).TrimEnd();
-                var cleanText = TextCleaner.Clean(sectionText);
-                results.Add(new DocumentSection
-                {
-                    Identifier = $"{startLineNumber} line ~ {currentLineNumber} line",
-                    Text = cleanText,
-                });
-            }
-        }
-
-        // 취소 요청 확인
-        cancellationToken.ThrowIfCancellationRequested();
-
-        return results;
+        return mimeType.StartsWith("text/");
     }
 
     /// <inheritdoc />
-    public bool IsSupportContentType(string contentType)
+    public async Task<DocumentSource> DecodeAsync(
+        DataPipeline pipeline,
+        Stream data,
+        CancellationToken cancellationToken = default)
     {
-        return contentType.StartsWith("text/");
+        var lines = new List<string>();
+
+        using var reader = new StreamReader(data);
+        while (await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false) is { } line)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            line = TextCleaner.Clean(line);
+            if (string.IsNullOrWhiteSpace(line))
+                continue;
+            lines.Add(line);
+        }
+
+        return new DocumentSource
+        {
+            Source = pipeline.Source,
+            Section = new DocumentSegment
+            {
+                Unit = "line",
+                From = 1,
+                To = lines.Count,
+            },
+            Content = lines,
+        };
     }
 }

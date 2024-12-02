@@ -5,25 +5,25 @@ public class ScoredVectorPoint
     /// <summary>
     /// Gets or sets the vector ID.
     /// </summary>
-    public required Guid VectorId { get; set; }
+    public Guid VectorId { get; set; }
 
     /// <summary>
     /// Gest or sets vector similarity score
     /// </summary>
-    public required float Score { get; set; }
+    public float Score { get; set; }
 
     /// <summary>
-    /// Gets or sets DocumentId
+    /// Gets or sets the document ID.
     /// </summary>
-    public required string DocumentId { get; set; }
+    public string DocumentId { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets Document chunk index
+    /// Gets or sets the tags.
     /// </summary>
-    public required int ChunkIndex { get; set; }
+    public string[]? Tags { get; set; }
 
     /// <summary>
-    /// Gets or sets the QAIndex
+    /// Gets or sets the creation date.
     /// </summary>
-    public int? QAPairIndex { get; set; }
+    public object? Payload { get; set; }
 }

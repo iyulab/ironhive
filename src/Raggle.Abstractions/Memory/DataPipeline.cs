@@ -15,7 +15,7 @@ public enum PipelineStatus
     Failed
 }
 
-public record PipelineStatusInfo
+public class DataPipelineStatus
 {
     [JsonInclude]
     public PipelineStatus Status { get; private set; } = PipelineStatus.Queued;
@@ -52,23 +52,18 @@ public record PipelineStatusInfo
     }
 }
 
-public record FileInfo
-{
-    public string FileName { get; set; } = string.Empty;
-    public long FileSize { get; set; } = 0;
-    public string ContentType { get; set; } = string.Empty;
-}
-
 public class DataPipeline
 {
     [JsonInclude]
-    public PipelineStatusInfo StatusInfo { get; private set; } = new PipelineStatusInfo();
+    public DataPipelineStatus Progress { get; private set; } = new DataPipelineStatus();
 
-    public required FileInfo FileInfo { get; init; }
+    public required string CollectionName { get; set; }
 
-    public required string CollectionName { get; set; } = string.Empty;
+    public required string DocumentId { get; set; }
 
-    public required string DocumentId { get; set; } = string.Empty;
+    public required string FileName { get; set; }
+
+    public required string MimeType { get; set; }
 
     [JsonInclude]
     public string? CurrentStep { get; private set; }
@@ -88,7 +83,7 @@ public class DataPipeline
             throw new InvalidOperationException("파이프라인을 시작할 단계가 없습니다.");
 
         CurrentStep ??= Steps.First();
-        StatusInfo.SetStart();
+        Progress.SetStart();
         return this;
     }
 
@@ -105,13 +100,13 @@ public class DataPipeline
     public DataPipeline Complete()
     {
         CurrentStep = null;
-        StatusInfo.SetComplete();   
+        Progress.SetComplete();   
         return this;
     }
 
     public DataPipeline Failed(string message)
     {
-        StatusInfo.SetFailed(message);
+        Progress.SetFailed(message);
         return this;
     }
 
@@ -144,9 +139,12 @@ public class DataPipeline
         if (Metadata == null || CurrentStep == null)
             return default;
 
-        if (Metadata.TryGetValue<T>(CurrentStep, out var value))
+        if (Metadata.TryGetValue(CurrentStep, out var obj))
         {
-            return value;
+            if (obj.TryGet<T>(out var value))
+            {
+                return value;
+            }
         }
         return default;
     }

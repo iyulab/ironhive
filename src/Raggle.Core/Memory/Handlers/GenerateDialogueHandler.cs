@@ -1,31 +1,30 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Raggle.Abstractions.AI;
-using Raggle.Abstractions.Extensions;
 using Raggle.Abstractions.Memory;
 using Raggle.Abstractions.Messages;
+using Raggle.Core.Extensions;
 using Raggle.Core.Memory.Document;
-using Raggle.Core.Utils;
 using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Raggle.Core.Memory.Handlers;
 
-public class GenerateQAHandlerOptions
+public class GenerateDialogueOptions
 {
     public string ServiceKey { get; set; } = string.Empty;
     public string ModelName { get; set; } = string.Empty;
 }
 
-public class GenerateQAHandler : IPipelineHandler
+public class GenerateDialogueHandler : IPipelineHandler
 {
-    private static readonly Regex QAPairRegex = new Regex(
+    private static readonly Regex DialogueRegex = new Regex(
         @"<qa>\s*<q>\s*(.*?)\s*</q>\s*<a>\s*(.*?)\s*</a>\s*</qa>",
         RegexOptions.Singleline | RegexOptions.Compiled);
 
     private readonly IServiceProvider _serviceProvider;
     private readonly IDocumentStorage _documentStorage;
 
-    public GenerateQAHandler(IServiceProvider service)
+    public GenerateDialogueHandler(IServiceProvider service)
     {
         _serviceProvider = service;
         _documentStorage = service.GetRequiredService<IDocumentStorage>();
@@ -33,43 +32,30 @@ public class GenerateQAHandler : IPipelineHandler
 
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
-        var options = pipeline.GetCurrentMetadata<GenerateQAHandlerOptions>()
-            ?? throw new InvalidOperationException("No options found for GenerateQAPairsHandler.");
+        var options = pipeline.GetCurrentMetadata<GenerateDialogueOptions>()
+            ?? throw new InvalidOperationException($"No options found for {pipeline.CurrentStep}");
         var collectionName = pipeline.CollectionName;
         var documentId = pipeline.DocumentId;
 
         await foreach (var file in _documentStorage.GetDocumentFilesAsync(collectionName, documentId, cancellationToken))
         {
-            if (!file.EndsWith(DocumentFileHelper.ChunkedFileExtension))
+            if (!pipeline.IsPreviousStepFileName(file))
                 continue;
 
-            var steam = await _documentStorage.ReadDocumentFileAsync(collectionName, documentId, file, cancellationToken);
-            var chunk = JsonDocumentSerializer.Deserialize<ChunkedDocument>(steam);
+            var chunk = await _documentStorage.ReadJsonDocumentFileAsync<ChunkedFile>(
+                collectionName: collectionName, 
+                documentId: documentId, 
+                filePath: file, 
+                cancellationToken: cancellationToken);
 
-            string information;
-            if (!string.IsNullOrWhiteSpace(chunk.SummarizedText))
-                information = chunk.SummarizedText;
-            else if (!string.IsNullOrWhiteSpace(chunk.RawText))
-                information = chunk.RawText;
-            else
-                throw new InvalidOperationException("No text content found in the document chunk.");
+            var dialogues = await GenerateDialoguesAsync(chunk.Content, options, cancellationToken);
 
-            var qaPairs = await GenerateQAPairsAsync(information, options, cancellationToken);
-            chunk.ExtractedQAPairs = qaPairs.Select((qa, index) => new QAPair
-            {
-                Index = index,
-                Question = qa.Question,
-                Answer = qa.Answer
-            }).ToList();
-
-            var fileName = DocumentFileHelper.GetChunkedFileName(pipeline.FileInfo.FileName, chunk.Index);
-            var chunkStream = JsonDocumentSerializer.SerializeToStream(chunk);
-            await _documentStorage.WriteDocumentFileAsync(
+            var fileName = pipeline.GetCurrentStepFileName();
+            await _documentStorage.WriteJsonDocumentFileAsync(
                 collectionName: pipeline.CollectionName,
                 documentId: pipeline.DocumentId,
                 filePath: fileName,
-                content: chunkStream,
-                overwrite: true,
+                model: new DialogueFile { Dialogues = dialogues },
                 cancellationToken: cancellationToken);
         }
 
@@ -78,9 +64,9 @@ public class GenerateQAHandler : IPipelineHandler
 
     #region Private Methods
 
-    private async Task<IEnumerable<(string Question, string Answer)>> GenerateQAPairsAsync(
+    private async Task<IEnumerable<DialogueFile.Dialogue>> GenerateDialoguesAsync(
         string text,
-        GenerateQAHandlerOptions options,
+        GenerateDialogueOptions options,
         CancellationToken cancellationToken)
     {
         var messages = new ChatHistory();
@@ -112,7 +98,7 @@ public class GenerateQAHandler : IPipelineHandler
             {
                 throw new InvalidOperationException("Failed to generate QA pairs.");
             }
-            return ParseQAPairsFromText(answer);
+            return ParseDialoguesFromText(answer);
         }
         else
         {
@@ -120,10 +106,10 @@ public class GenerateQAHandler : IPipelineHandler
         }
     }
 
-    private IEnumerable<(string Question, string Answer)> ParseQAPairsFromText(string text)
+    private IEnumerable<DialogueFile.Dialogue> ParseDialoguesFromText(string text)
     {
-        var qaPairs = new List<(string Question, string Answer)>();
-        var matches = QAPairRegex.Matches(text);
+        var dialogues = new List<DialogueFile.Dialogue>();
+        var matches = DialogueRegex.Matches(text);
 
         foreach (Match match in matches)
         {
@@ -133,17 +119,17 @@ public class GenerateQAHandler : IPipelineHandler
                 var answer = match.Groups[2].Value.Trim();
                 if (!string.IsNullOrEmpty(question) && !string.IsNullOrEmpty(answer))
                 {
-                    qaPairs.Add((question, answer));
+                    dialogues.Add(new DialogueFile.Dialogue(question, answer));
                 }
             }
         }
 
-        if (!qaPairs.Any())
+        if (dialogues.Count == 0)
         {
             throw new FormatException("No QA pairs found within <qa> tags.");
         }
 
-        return qaPairs;
+        return dialogues;
     }
 
     private string GetSystemInstruction()
