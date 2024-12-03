@@ -1,68 +1,77 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Raggle.Abstractions.AI;
+using Raggle.Abstractions.Extensions;
 using Raggle.Abstractions.Memory;
 using Raggle.Abstractions.Messages;
-using Raggle.Core.Extensions;
 using Raggle.Core.Memory.Document;
 using System.Text;
 
 namespace Raggle.Core.Memory.Handlers;
 
-public class SummarizationHandlerOptions
-{
-    public string ServiceKey { get; set; } = string.Empty;
-    public string ModelName { get; set; } = string.Empty;
-}
-
 public class SummarizationHandler : IPipelineHandler
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly IDocumentStorage _documentStorage;
+    private readonly IDocumentManager _documentManager;
 
     public SummarizationHandler(IServiceProvider service)
     {
         _serviceProvider = service;
         _documentStorage = service.GetRequiredService<IDocumentStorage>();
+        _documentManager = service.GetRequiredService<IDocumentManager>();
+    }
+
+    public class Options
+    {
+        public string ServiceKey { get; set; } = string.Empty;
+        public string ModelName { get; set; } = string.Empty;
     }
 
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
-        var options = pipeline.GetCurrentMetadata<SummarizationHandlerOptions>()
-            ?? throw new InvalidOperationException("No options found for summarization handler.");
-        var collectionName = pipeline.CollectionName;
-        var documentId = pipeline.DocumentId;
+        var options = pipeline.GetCurrentMetadata<Options>()
+            ?? throw new InvalidOperationException($"Must provide options for {pipeline.CurrentStep}.");
 
-        await foreach (var file in _documentStorage.GetDocumentFilesAsync(collectionName, documentId, cancellationToken))
+        var summaries = new List<DocumentSection>();
+
+        await foreach (var section in _documentManager.GetDocumentFilesAsync<DocumentSection>(
+            collectionName: pipeline.CollectionName,
+            documentId: pipeline.DocumentId,
+            suffix: pipeline.GetPreviousStep() ?? "unknown",
+            cancellationToken: cancellationToken))
         {
-            if (!pipeline.IsPreviousStepFileName(file))
-                continue;
+            var str = section.Content?.Get<string>()
+                ?? throw new InvalidOperationException("The document content is not a string.");
 
-            var chunk = await _documentStorage.ReadJsonDocumentFileAsync<ChunkedFile>(
-                collectionName, documentId, file, null, cancellationToken);
-
-            var summary = await GenerateSummarizedTextAsync(chunk.Content, options, cancellationToken);
-            var summaryFile = new SummarizedFile
+            var content = await GenerateSummarizedTextAsync(str, options, cancellationToken);
+            var summary = new DocumentSection
             {
-                Source = chunk.Source,
-                Section = chunk.Section,
-                Summary = summary,
+                Index = section.Index,
+                Unit = section.Unit,
+                From = section.From,
+                To = section.To,
+                Content = content,
             };
-
-            var fileName = pipeline.GetCurrentStepFileName(chunk.Index);
-            await _documentStorage.WriteJsonDocumentFileAsync(
-                collectionName: pipeline.CollectionName,
-                documentId: pipeline.DocumentId,
-                filePath: fileName,
-                model: summaryFile,
-                cancellationToken: cancellationToken);
+            summaries.Add(summary);
         }
+
+        await _documentManager.UpsertDocumentFilesAsync(
+            collectionName: pipeline.CollectionName,
+            documentId: pipeline.DocumentId,
+            fileName: Path.GetFileNameWithoutExtension(pipeline.FileName),
+            suffix: pipeline.CurrentStep ?? "unknown",
+            values: summaries,
+            cancellationToken: cancellationToken);
 
         return pipeline;
     }
 
     #region Private Methods
 
-    private async Task<string> GenerateSummarizedTextAsync(string text, SummarizationHandlerOptions options, CancellationToken cancellationToken)
+    private async Task<string> GenerateSummarizedTextAsync(
+        string text, 
+        Options options, 
+        CancellationToken cancellationToken)
     {
         var request = new ChatCompletionRequest
         {
@@ -100,7 +109,7 @@ public class SummarizationHandler : IPipelineHandler
         }
     }
 
-    private static string? GetSystemInstructionPrompt()
+    private static string GetSystemInstructionPrompt()
     {
         return """
         You are an AI designed to accurately summarize text without adding or inferring information.

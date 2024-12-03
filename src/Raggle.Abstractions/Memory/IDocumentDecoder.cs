@@ -5,8 +5,7 @@ public interface IDocumentDecoder
     /// <summary>
     /// Extract text content from the given file.
     /// </summary>
-    Task<DocumentSource> DecodeAsync(
-        DataPipeline pipeline,
+    Task<IReadOnlyList<string>> DecodeAsync(
         Stream data,
         CancellationToken cancellationToken = default);
 

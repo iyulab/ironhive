@@ -12,6 +12,7 @@ using Raggle.Server.WebApi.Data;
 using Microsoft.EntityFrameworkCore;
 using Raggle.Core.Memory.Decoders;
 using Raggle.Abstractions;
+using Raggle.Core.Extensions;
 
 namespace Raggle.Server.WebApi;
 
@@ -23,9 +24,10 @@ public static partial class IServiceCollectionExtention
                 .AddAIServices(config)
                 .SetVectorStorage(config)
                 .SetDocumentStorage(config)
+                .SetJsonDocumentManager()
                 .AddDocumentDecoders()
-                .AddPipelineHandlers();
-        services.AddSingleton<IRaggle, Core.Raggle>();
+                .AddPipelineHandlers()
+                .AddSingleton<IRaggle, Core.Raggle>();
         return services;
     }
 

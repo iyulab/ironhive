@@ -1,19 +1,13 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Raggle.Abstractions.AI;
+using Raggle.Abstractions.Extensions;
 using Raggle.Abstractions.Memory;
 using Raggle.Abstractions.Messages;
-using Raggle.Core.Extensions;
 using Raggle.Core.Memory.Document;
 using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Raggle.Core.Memory.Handlers;
-
-public class GenerateDialogueOptions
-{
-    public string ServiceKey { get; set; } = string.Empty;
-    public string ModelName { get; set; } = string.Empty;
-}
 
 public class GenerateDialogueHandler : IPipelineHandler
 {
@@ -23,50 +17,64 @@ public class GenerateDialogueHandler : IPipelineHandler
 
     private readonly IServiceProvider _serviceProvider;
     private readonly IDocumentStorage _documentStorage;
+    private readonly IDocumentManager _documentManager;
 
     public GenerateDialogueHandler(IServiceProvider service)
     {
         _serviceProvider = service;
         _documentStorage = service.GetRequiredService<IDocumentStorage>();
+        _documentManager = service.GetRequiredService<IDocumentManager>();
+    }
+
+    public class Options
+    {
+        public string ServiceKey { get; set; } = string.Empty;
+        public string ModelName { get; set; } = string.Empty;
     }
 
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
-        var options = pipeline.GetCurrentMetadata<GenerateDialogueOptions>()
-            ?? throw new InvalidOperationException($"No options found for {pipeline.CurrentStep}");
-        var collectionName = pipeline.CollectionName;
-        var documentId = pipeline.DocumentId;
+        var options = pipeline.GetCurrentMetadata<Options>()
+            ?? throw new InvalidOperationException($"Must provide options for {pipeline.CurrentStep}.");
+        var dialogues = new List<DocumentSection>();
 
-        await foreach (var file in _documentStorage.GetDocumentFilesAsync(collectionName, documentId, cancellationToken))
+        await foreach (var section in _documentManager.GetDocumentFilesAsync<DocumentSection>(
+            collectionName: pipeline.CollectionName,
+            documentId: pipeline.DocumentId,
+            suffix: pipeline.GetPreviousStep() ?? "unknown",
+            cancellationToken: cancellationToken))
         {
-            if (!pipeline.IsPreviousStepFileName(file))
-                continue;
+            var str = section.Content?.Get<string>()
+                ?? throw new InvalidOperationException("The document content is not a string.");
 
-            var chunk = await _documentStorage.ReadJsonDocumentFileAsync<ChunkedFile>(
-                collectionName: collectionName, 
-                documentId: documentId, 
-                filePath: file, 
-                cancellationToken: cancellationToken);
-
-            var dialogues = await GenerateDialoguesAsync(chunk.Content, options, cancellationToken);
-
-            var fileName = pipeline.GetCurrentStepFileName();
-            await _documentStorage.WriteJsonDocumentFileAsync(
-                collectionName: pipeline.CollectionName,
-                documentId: pipeline.DocumentId,
-                filePath: fileName,
-                model: new DialogueFile { Dialogues = dialogues },
-                cancellationToken: cancellationToken);
+            var content = await GenerateDialoguesAsync(str, options, cancellationToken);
+            var dialogue = new DocumentSection
+            {
+                Index = section.Index,
+                Unit = section.Unit,
+                From = section.From,
+                To = section.To,
+                Content = content,
+            };
+            dialogues.Add(dialogue);
         }
+
+        await _documentManager.UpsertDocumentFilesAsync(
+            collectionName: pipeline.CollectionName,
+            documentId: pipeline.DocumentId,
+            fileName: Path.GetFileNameWithoutExtension(pipeline.FileName),
+            suffix: pipeline.CurrentStep ?? "unknown",
+            values: dialogues,
+            cancellationToken: cancellationToken);
 
         return pipeline;
     }
 
     #region Private Methods
 
-    private async Task<IEnumerable<DialogueFile.Dialogue>> GenerateDialoguesAsync(
+    private async Task<IEnumerable<(string Question, string Answer)>> GenerateDialoguesAsync(
         string text,
-        GenerateDialogueOptions options,
+        Options options,
         CancellationToken cancellationToken)
     {
         var messages = new ChatHistory();
@@ -106,9 +114,9 @@ public class GenerateDialogueHandler : IPipelineHandler
         }
     }
 
-    private IEnumerable<DialogueFile.Dialogue> ParseDialoguesFromText(string text)
+    private IEnumerable<(string Question, string Answer)> ParseDialoguesFromText(string text)
     {
-        var dialogues = new List<DialogueFile.Dialogue>();
+        var dialogues = new List<(string Question, string Answer)>();
         var matches = DialogueRegex.Matches(text);
 
         foreach (Match match in matches)
@@ -119,7 +127,7 @@ public class GenerateDialogueHandler : IPipelineHandler
                 var answer = match.Groups[2].Value.Trim();
                 if (!string.IsNullOrEmpty(question) && !string.IsNullOrEmpty(answer))
                 {
-                    dialogues.Add(new DialogueFile.Dialogue(question, answer));
+                    dialogues.Add((Question: question, Answer: answer));
                 }
             }
         }

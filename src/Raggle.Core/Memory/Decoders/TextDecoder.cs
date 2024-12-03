@@ -13,12 +13,11 @@ public class TextDecoder : IDocumentDecoder
     }
 
     /// <inheritdoc />
-    public async Task<DocumentSource> DecodeAsync(
-        DataPipeline pipeline,
+    public async Task<IReadOnlyList<string>> DecodeAsync(
         Stream data,
         CancellationToken cancellationToken = default)
     {
-        var lines = new List<string>();
+        var contents = new List<string>();
 
         using var reader = new StreamReader(data);
         while (await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false) is { } line)
@@ -28,19 +27,10 @@ public class TextDecoder : IDocumentDecoder
             line = TextCleaner.Clean(line);
             if (string.IsNullOrWhiteSpace(line))
                 continue;
-            lines.Add(line);
+            contents.Add(line);
         }
 
-        return new DocumentSource
-        {
-            Source = pipeline.Source,
-            Section = new DocumentSegment
-            {
-                Unit = "line",
-                From = 1,
-                To = lines.Count,
-            },
-            Content = lines,
-        };
+        cancellationToken.ThrowIfCancellationRequested();
+        return contents;
     }
 }

@@ -2,14 +2,17 @@
 using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Memory;
 using Raggle.Abstractions.Utils;
-using Raggle.Core.Extensions;
+using Raggle.Core.Memory.Document;
 
 namespace Raggle.Core.Memory;
 
 public class RaggleMemory : IRaggleMemory
 {
+    private const string _pipelineSuffix = "pipeline";
+
     private readonly IServiceProvider _serviceProvider;
     private readonly IDocumentStorage _documentStorage;
+    private readonly IDocumentManager _documentManager;
     private readonly IVectorStorage _vectorStorage;
 
     private readonly SemaphoreSlim _semaphore = new(1, 1);
@@ -21,6 +24,7 @@ public class RaggleMemory : IRaggleMemory
     {
         _serviceProvider = services;
         _documentStorage = services.GetRequiredService<IDocumentStorage>();
+        _documentManager = services.GetRequiredService<IDocumentManager>();
         _vectorStorage = services.GetRequiredService<IVectorStorage>();
     }
 
@@ -72,23 +76,19 @@ public class RaggleMemory : IRaggleMemory
         if (content != null)
         {
             await _documentStorage.WriteDocumentFileAsync(
-                collectionName,
-                documentId,
-                fileName,
-                content,
+                collectionName: collectionName,
+                documentId: documentId,
+                filePath: fileName,
+                data: content,
                 overwrite: true,
-                cancellationToken);
+                cancellationToken: cancellationToken);
         }
 
         _detector.TryGetContentType(fileName, out var contentType);
         var pipeline = new DataPipeline
         {
-            Source = new DocumentSource
-            {
-                FileName = fileName,
-                ContentSize = content?.Length ?? 0,
-                MimeType = contentType
-            },
+            FileName = fileName,
+            MimeType = contentType,
             CollectionName = collectionName,
             DocumentId = documentId,
             Steps = steps.ToList(),
@@ -169,33 +169,30 @@ public class RaggleMemory : IRaggleMemory
     }
 
     /// <inheritdoc />
-    public async Task<DataPipeline?> GetPipelineAsync(
+    public async Task<DataPipeline> GetPipelineAsync(
         string collectionName, 
-        string documentId, 
+        string documentId,
         CancellationToken cancellationToken = default)
     {
-        await foreach (var file in _documentStorage.GetDocumentFilesAsync(collectionName, documentId, cancellationToken))
-        {
-            if (!file.EndsWith("pipeline.json"))
-                continue;
-
-            return await _documentStorage.ReadJsonDocumentFileAsync<DataPipeline>(
-                collectionName, documentId, file, null, cancellationToken);
-        }
-        return null;
+        return await _documentManager.GetDocumentFileAsync<DataPipeline>(
+            collectionName: collectionName,
+            documentId: documentId, 
+            suffix: _pipelineSuffix,
+            cancellationToken: cancellationToken);
     }
 
     #region Private Methods
 
     private async Task UpsertPipelineAsync(
-        DataPipeline pipeline, 
+        DataPipeline pipeline,
         CancellationToken cancellationToken = default)
     {
-        await _documentStorage.WriteJsonDocumentFileAsync(
-            collectionName: pipeline.CollectionName, 
-            documentId: pipeline.DocumentId, 
-            filePath: $"{pipeline.Source.FileName}.pipeline.json",
-            model: pipeline,
+        await _documentManager.UpsertDocumentFileAsync(
+            collectionName: pipeline.CollectionName,
+            documentId: pipeline.DocumentId,
+            fileName: Path.GetFileNameWithoutExtension(pipeline.FileName),
+            suffix: _pipelineSuffix,
+            value: pipeline,
             cancellationToken: cancellationToken);
     }
 

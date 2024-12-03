@@ -4,13 +4,11 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Raggle.Abstractions.Memory;
 using System.Runtime.CompilerServices;
-using System.Text.RegularExpressions;
 
 namespace Raggle.Driver.AzureBlob;
 
 public class AzureBlobDocumentStorage : IDocumentStorage
 {
-    private static readonly Regex _collectionNameRegex = new(@"^[a-z0-9]+(-[a-z0-9]+)*$", RegexOptions.Compiled);
     private readonly BlobServiceClient _client;    
 
     public AzureBlobDocumentStorage(AzureBlobConfig config, BlobClientOptions? options = null)
@@ -49,9 +47,6 @@ public class AzureBlobDocumentStorage : IDocumentStorage
         string collectionName, 
         CancellationToken cancellationToken = default)
     {
-        if (!_collectionNameRegex.IsMatch(collectionName))
-            throw new ArgumentException("유효하지 않은 컬렉션 이름입니다. 소문자, 숫자, 하이픈(-)만 사용할 수 있습니다.", nameof(collectionName));
-
         var container = _client.GetBlobContainerClient(collectionName);
         await container.CreateIfNotExistsAsync(cancellationToken: cancellationToken);
     }
@@ -99,7 +94,7 @@ public class AzureBlobDocumentStorage : IDocumentStorage
         string collectionName, 
         string documentId, 
         string filePath, 
-        Stream content, 
+        Stream data, 
         bool overwrite = true, 
         CancellationToken cancellationToken = default)
     {
@@ -111,7 +106,7 @@ public class AzureBlobDocumentStorage : IDocumentStorage
             throw new IOException($"파일이 이미 존재합니다: {blobName}");
 
         // 파일 업로드 또는 덮어쓰기
-        await blobClient.UploadAsync(content, overwrite, cancellationToken);
+        await blobClient.UploadAsync(data, overwrite, cancellationToken);
     }
 
     /// <inheritdoc />

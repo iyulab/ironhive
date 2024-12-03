@@ -1,4 +1,6 @@
 ﻿using Raggle.Abstractions.Extensions;
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Raggle.Abstractions.Memory;
@@ -134,14 +136,14 @@ public class DataPipeline
         return Steps[index + 1];
     }
 
-    public T? GetCurrentMetadata<T>()
+    public T? GetCurrentMetadata<T>(JsonSerializerOptions? jsonOptions = null)
     {
         if (Metadata == null || CurrentStep == null)
             return default;
 
         if (Metadata.TryGetValue(CurrentStep, out var obj))
         {
-            if (obj.TryGet<T>(out var value))
+            if (obj.TryGet<T>(out var value, jsonOptions))
             {
                 return value;
             }

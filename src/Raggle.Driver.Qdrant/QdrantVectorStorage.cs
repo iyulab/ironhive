@@ -2,6 +2,7 @@
 using Qdrant.Client.Grpc;
 using static Qdrant.Client.Grpc.Conditions;
 using Raggle.Abstractions.Memory;
+using System.Text.Json;
 
 namespace Raggle.Driver.Qdrant;
 
@@ -76,6 +77,7 @@ public class QdrantVectorStorage : IVectorStorage
         var pointStructs = new List<PointStruct>();
         foreach(var point in points)
         {
+            var jsonPayload = JsonSerializer.Serialize(point.Payload);
             pointStructs.Add(new PointStruct
             {
                 Id = point.VectorId,
@@ -87,7 +89,7 @@ public class QdrantVectorStorage : IVectorStorage
                 {
                     ["documentId"] = point.DocumentId,
                     ["tags"] = point.Tags ?? [],
-                    ["payload"] = (Value)point.Payload,
+                    ["payload"] = jsonPayload
                 }
             });
         }
@@ -150,7 +152,8 @@ public class QdrantVectorStorage : IVectorStorage
         {
             var documentId = result.Payload.GetValueOrDefault("documentId")?.StringValue;
             var tags = result.Payload.GetValueOrDefault("tags")?.ListValue.Values.Select(v => v.StringValue);
-            var payload = result.Payload.GetValueOrDefault("payload");
+            var jsonPayload = result.Payload.GetValueOrDefault("payload");
+            var payload = jsonPayload != null ? JsonSerializer.Deserialize<object>(jsonPayload.StringValue) : null;
             if (documentId == null)
                 continue;
 

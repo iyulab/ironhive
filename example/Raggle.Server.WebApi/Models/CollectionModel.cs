@@ -8,7 +8,7 @@ namespace Raggle.Server.WebApi.Models;
 public class CollectionModel
 {
     // Primary Key
-    public Guid CollectionId { get; set; } = Guid.NewGuid();
+    public string CollectionId { get; set; } = $"c_{Guid.NewGuid():N}";
 
     [Required]
     public string Name { get; set; } = string.Empty;

@@ -1,5 +1,4 @@
 ﻿using Raggle.Abstractions.Memory;
-using Raggle.Core.Memory.Document;
 using Raggle.Core.Utils;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
@@ -15,8 +14,7 @@ public class PDFDecoder : IDocumentDecoder
     }
 
     /// <inheritdoc />
-    public async Task<DocumentSource> DecodeAsync(
-        DataPipeline pipeline,
+    public async Task<IReadOnlyList<string>> DecodeAsync(
         Stream data,
         CancellationToken cancellationToken = default)
     {
@@ -35,17 +33,8 @@ public class PDFDecoder : IDocumentDecoder
                 contents.Add(text);
             }
 
-            return new DocumentSource
-            {
-                Source = pipeline.Source,
-                Section = new DocumentSegment
-                {
-                    Unit = "page",
-                    From = 1,
-                    To = contents.Count,
-                },
-                Content = contents,
-            };
-        }, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            return contents;
+        }, cancellationToken).ConfigureAwait(false);
     }
 }

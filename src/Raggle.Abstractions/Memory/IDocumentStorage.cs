@@ -38,7 +38,7 @@ public interface IDocumentStorage : IDisposable
         string collectionName,
         string documentId,
         string filePath,
-        Stream content,
+        Stream data,
         bool overwrite = true,
         CancellationToken cancellationToken = default);
 

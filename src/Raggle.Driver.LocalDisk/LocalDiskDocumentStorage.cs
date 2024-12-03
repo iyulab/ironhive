@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Raggle.Abstractions.Memory;
 
@@ -7,8 +7,10 @@ namespace Raggle.Driver.LocalDisk;
 public class LocalDiskDocumentStorage : IDocumentStorage
 {
     private readonly string _rootPath;
-    private readonly ConcurrentDictionary<string, SemaphoreSlim> _collectionLocks = new();
-
+    private const int _defaultBufferSize = 81920; // 기본 80KB
+    private const int _maxBufferSize = 1048576;   // 최대 1MB
+    private const int _minBufferSize = 4096;      // 최소 4KB
+    
     public LocalDiskDocumentStorage(LocalDiskConfig config)
     {
         if (string.IsNullOrWhiteSpace(config.DirectoryPath))
@@ -20,10 +22,6 @@ public class LocalDiskDocumentStorage : IDocumentStorage
 
     public void Dispose()
     {
-        foreach (var semaphore in _collectionLocks.Values)
-        {
-            semaphore.Dispose();
-        }
         GC.SuppressFinalize(this);
     }
 
@@ -51,20 +49,12 @@ public class LocalDiskDocumentStorage : IDocumentStorage
         string collectionName, 
         CancellationToken cancellationToken = default)
     {
-        var semaphore = GetLockForCollection(collectionName);
-        await semaphore.WaitAsync(cancellationToken);
-        try
+        var collectionPath = GetAbsolutePath(collectionName);
+        if (!Directory.Exists(collectionPath))
         {
-            var collectionPath = GetAbsolutePath(collectionName);
-            if (!Directory.Exists(collectionPath))
-            {
-                Directory.CreateDirectory(collectionPath);
-            }
+            Directory.CreateDirectory(collectionPath);
         }
-        finally
-        {
-            semaphore.Release();
-        }
+        await Task.CompletedTask;
     }
 
     /// <inheritdoc />
@@ -72,22 +62,12 @@ public class LocalDiskDocumentStorage : IDocumentStorage
         string collectionName, 
         CancellationToken cancellationToken = default)
     {
-        var semaphore = GetLockForCollection(collectionName);
-        await semaphore.WaitAsync(cancellationToken);
-        try
+        var collectionPath = GetAbsolutePath(collectionName);
+        if (Directory.Exists(collectionPath))
         {
-            var collectionPath = GetAbsolutePath(collectionName);
-            if (Directory.Exists(collectionPath))
-            {
-                Directory.Delete(collectionPath, true);
-            }
+            Directory.Delete(collectionPath, true);
         }
-        finally
-        {            
-            semaphore.Release();
-            _collectionLocks.TryRemove(collectionName, out var removedSemaphore);
-            removedSemaphore?.Dispose();
-        }
+        await Task.CompletedTask;
     }
 
     /// <inheritdoc />
@@ -128,7 +108,7 @@ public class LocalDiskDocumentStorage : IDocumentStorage
         string collectionName, 
         string documentId, 
         string filePath, 
-        Stream content, 
+        Stream data, 
         bool overwrite = true, 
         CancellationToken cancellationToken = default)
     {
@@ -140,10 +120,11 @@ public class LocalDiskDocumentStorage : IDocumentStorage
         if (string.IsNullOrEmpty(directory))
             throw new ArgumentException("잘못된 파일 경로입니다.", nameof(filePath));
         Directory.CreateDirectory(directory);
-
+        
         using (var fileStream = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, useAsync: true))
         {
-            await content.CopyToAsync(fileStream, 81920, cancellationToken); // 버퍼 사이즈 조정 가능
+            var bufferSize = GetOptimalBufferSize(data.Length);
+            await data.CopyToAsync(fileStream, bufferSize, cancellationToken);
         }
     }
 
@@ -161,6 +142,8 @@ public class LocalDiskDocumentStorage : IDocumentStorage
         var memoryStream = new MemoryStream();
         using (var fileStream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 4096, useAsync: true))
         {
+            var fileSize = new FileInfo(fullPath).Length;
+            var bufferSize = GetOptimalBufferSize(fileSize);
             await fileStream.CopyToAsync(memoryStream, 81920, cancellationToken);
         }
         memoryStream.Position = 0;
@@ -179,16 +162,15 @@ public class LocalDiskDocumentStorage : IDocumentStorage
         {
             File.Delete(fullPath);
         }
+        var dirPath = GetAbsolutePath(collectionName, documentId);
+        if (!Directory.EnumerateFileSystemEntries(dirPath).Any())
+        {
+            Directory.Delete(dirPath);
+        }
         await Task.CompletedTask;
     }
 
     #region Private Methods
-
-    // 컬렉션별 SemaphoreSlim을 반환 (쓰기 전용)
-    private SemaphoreSlim GetLockForCollection(string collectionName)
-    {
-        return _collectionLocks.GetOrAdd(collectionName, _ => new SemaphoreSlim(1, 1));
-    }
 
     // 실제 디스크의 전체 경로를 반환
     private string GetAbsolutePath(params string[] paths)
@@ -196,6 +178,21 @@ public class LocalDiskDocumentStorage : IDocumentStorage
         var allPaths = new List<string> { _rootPath };
         allPaths.AddRange(paths);
         return Path.Combine(allPaths.ToArray());
+    }
+
+    // 스트림 크기에 따라 최적의 버퍼 크기를 반환합니다.
+    private int GetOptimalBufferSize(long length)
+    {
+        if (length <= 0) return _defaultBufferSize;
+
+        // 스트림 크기에 따라 동적으로 버퍼 크기 조정
+        if (length < 1 * 1024 * 1024) // 1MB 이하
+            return _minBufferSize;
+        if (length < 100 * 1024 * 1024) // 100MB 이하
+            return _defaultBufferSize;
+
+        // 100MB 이상 대용량 파일
+        return _maxBufferSize;
     }
 
     #endregion

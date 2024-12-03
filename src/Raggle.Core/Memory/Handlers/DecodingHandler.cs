@@ -1,46 +1,64 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Raggle.Abstractions.Memory;
-using Raggle.Core.Extensions;
+using Raggle.Core.Memory.Decoders;
+using Raggle.Core.Memory.Document;
 
 namespace Raggle.Core.Memory.Handlers;
 
 public class DecodingHandler : IPipelineHandler
 {
     private readonly IDocumentStorage _documentStorage;
+    private readonly IDocumentManager _documentManager;
     private readonly IEnumerable<IDocumentDecoder> _decoders;
 
     public DecodingHandler(IServiceProvider service)
     {
         _documentStorage = service.GetRequiredService<IDocumentStorage>();
+        _documentManager = service.GetRequiredService<IDocumentManager>();
         _decoders = service.GetServices<IDocumentDecoder>();
     }
 
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
-        if (pipeline.Source.MimeType == null)
+        if (pipeline.MimeType == null)
             throw new InvalidOperationException("The document MIME type is not specified.");
 
         // 문서 파서 선택
-        var decoder = _decoders.FirstOrDefault(d => d.IsSupportMimeType(pipeline.Source.MimeType))
-            ?? throw new InvalidOperationException($"No decoder found for MIME type '{pipeline.Source.MimeType}'.");
+        var decoder = _decoders.FirstOrDefault(d => d.IsSupportMimeType(pipeline.MimeType))
+            ?? throw new InvalidOperationException($"No decoder found for MIME type '{pipeline.MimeType}'.");
 
         // 문서 내용 읽기
         var data = await _documentStorage.ReadDocumentFileAsync(
                 collectionName: pipeline.CollectionName,
                 documentId: pipeline.DocumentId,
-                filePath: pipeline.Source.FileName,
+                filePath: pipeline.FileName,
                 cancellationToken: cancellationToken);
 
         // 문서 파싱
-        var extractedFIle = await decoder.DecodeAsync(pipeline, data, cancellationToken);
+        var content = await decoder.DecodeAsync(data, cancellationToken);
+        var section = new DocumentSection
+        {
+            Index = 0,
+            Unit = decoder switch
+            {
+                TextDecoder => "line",
+                PPTDecoder => "slide",
+                PDFDecoder => "page",
+                WordDecoder => "paragraph",
+                _ => "unknown",
+            },
+            From = 1,
+            To = content.Count,
+            Content = content
+        };
 
         // 파싱된 문서 저장
-        var filename = pipeline.GetCurrentStepFileName();
-        await _documentStorage.WriteJsonDocumentFileAsync(
-            pipeline.CollectionName,
-            pipeline.DocumentId,
-            filename,
-            extractedFIle,
+        await _documentManager.UpsertDocumentFileAsync(
+            collectionName: pipeline.CollectionName,
+            documentId: pipeline.DocumentId,
+            fileName: Path.GetFileNameWithoutExtension(pipeline.FileName),
+            suffix: pipeline.CurrentStep ?? "unknown",
+            value: section,
             cancellationToken: cancellationToken);
 
         return pipeline;

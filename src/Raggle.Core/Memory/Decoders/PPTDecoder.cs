@@ -14,8 +14,7 @@ public class PPTDecoder : IDocumentDecoder
     }
 
     /// <inheritdoc />
-    public async Task<DocumentSource> DecodeAsync(
-        DataPipeline pipeline,
+    public async Task<IReadOnlyList<string>> DecodeAsync(
         Stream data,
         CancellationToken cancellationToken = default)
     {
@@ -64,20 +63,8 @@ public class PPTDecoder : IDocumentDecoder
                 contents.Add(text);
             }
 
-            // 최종적으로 한번 더 취소 요청 확인
             cancellationToken.ThrowIfCancellationRequested();
-
-            return new DocumentSource
-            {
-                Source = pipeline.Source,
-                Section = new DocumentSegment
-                {
-                    Unit = "slide",
-                    From = 1,
-                    To = contents.Count,
-                },
-                Content = contents,
-            };
+            return contents;
         }, cancellationToken).ConfigureAwait(false);
     }
 }

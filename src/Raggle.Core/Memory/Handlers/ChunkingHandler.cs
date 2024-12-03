@@ -1,110 +1,101 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Raggle.Abstractions.AI;
+using Raggle.Abstractions.Extensions;
 using Raggle.Abstractions.Memory;
-using Raggle.Core.Extensions;
+using Raggle.Core.Memory.Document;
 using Raggle.Core.Tokenizers;
 using System.Text;
 
 namespace Raggle.Core.Memory.Handlers;
 
-public class ChunkingHandlerOptions
-{
-    public int MaxTokensPerChunk { get; set; } = 1024;
-}
-
 public class ChunkingHandler : IPipelineHandler
 {
     private readonly IDocumentStorage _documentStorage;
+    private readonly IDocumentManager _documentManager;
     private readonly ITextTokenizer _textTokenizer;
 
     public ChunkingHandler(IServiceProvider service)
     {
         _documentStorage = service.GetRequiredService<IDocumentStorage>();
+        _documentManager = service.GetRequiredService<IDocumentManager>();
 
         // 서비스 마다 다른 토크나이저 사용해야함
         _textTokenizer = new TiktokenTokenizer();
     }
 
+    public class Options
+    {
+        public int MaxTokensPerChunk { get; set; } = 2048;
+    }
+
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
-        var options = pipeline.GetCurrentMetadata<ChunkingHandlerOptions>()
-            ?? new ChunkingHandlerOptions();
+        var options = pipeline.GetCurrentMetadata<Options>() ?? new Options();
 
-        var docFIle = await _documentStorage.ReadJsonDocumentFileAsync<DocumentSource>(
-            pipeline.CollectionName,
-            pipeline.DocumentId,
-            pipeline.GetPreviousStepFileName(),
+        var section = await _documentManager.GetDocumentFileAsync<DocumentSection>(
+            collectionName: pipeline.CollectionName,
+            documentId: pipeline.DocumentId,
+            suffix: pipeline.GetPreviousStep() ?? "unknown",
             cancellationToken: cancellationToken);
 
-        int chunkIndex = 0;
-        long totalTokenCount = 0;
-        var sectionFrom = docFIle.Section?.From ?? 1;
-        var sectionTo = sectionFrom;
+        var contents = section.Content?.Get<IEnumerable<string>>()
+            ?? throw new InvalidOperationException("The document content is not found");
+        var chunks = new List<DocumentSection>();
 
+        long totalTokenCount = 0;
+        int sectionIndex = 0;
+        int sectionFrom = 1;
+        int sectionTo = 0;
         var sb = new StringBuilder();
 
-        var contents = docFIle.Content as IEnumerable<string>
-            ?? throw new InvalidOperationException("The document content is not a list of strings.");
         foreach (var content in contents)
         {
+            sectionTo++;
             var tokenCount = _textTokenizer.Encode(content).Count;
 
             if (totalTokenCount + tokenCount > options.MaxTokensPerChunk)
             {
-                var chunk = new DocumentSource
+                var chunk = new DocumentSection
                 {
-                    Source = docFIle.Source,
-                    Section = new DocumentSegment
-                    {
-                        Unit = docFIle.Section?.Unit,
-                        From = sectionFrom,
-                        To = sectionTo,
-                    },
-                    Index = chunkIndex,
+                    Index = sectionIndex,
+                    Unit = section?.Unit,
+                    From = sectionFrom,
+                    To = sectionTo,
                     Content = sb.ToString(),
                 };
+                chunks.Add(chunk);
 
-                var filename = pipeline.GetCurrentStepFileName(chunkIndex);
-                await _documentStorage.WriteJsonDocumentFileAsync(
-                    collectionName: pipeline.CollectionName,
-                    documentId: pipeline.DocumentId,
-                    filePath: filename,
-                    model: chunk,
-                    cancellationToken: cancellationToken);
-
-                chunkIndex++;
+                sectionIndex++;
                 sb.Clear();
                 totalTokenCount = 0;
                 sectionFrom = sectionTo + 1;
             }
 
-            sb.Append(content);
+            sb.AppendLine(content);
             totalTokenCount += tokenCount;
-            sectionTo++;
         }
 
         if (sb.Length > 0)
         {
-            var chunk = new ChunkedFile
+            var chunk = new DocumentSection
             {
-                Source = extractedFile.Source,
-                Section = new DocumentSegment
-                {
-                    Unit = extractedFile.Section?.Unit,
-                    From = sectionFrom,
-                    To = sectionTo,
-                },
+                Index = sectionIndex,
+                Unit = section?.Unit,
+                From = sectionFrom,
+                To = sectionTo,
                 Content = sb.ToString(),
             };
 
-            var filename = pipeline.GetCurrentStepFileName(chunkIndex);
-            await _documentStorage.WriteJsonDocumentFileAsync(
-                collectionName: pipeline.CollectionName,
-                documentId: pipeline.DocumentId,
-                filePath: filename,
-                model: chunk,
-                cancellationToken: cancellationToken);
+            chunks.Add(chunk);
         }
+
+        await _documentManager.UpsertDocumentFilesAsync(
+            collectionName: pipeline.CollectionName,
+            documentId: pipeline.DocumentId,
+            fileName: Path.GetFileNameWithoutExtension(pipeline.FileName),
+            suffix: pipeline.CurrentStep ?? "unknown",
+            values: chunks,
+            cancellationToken: cancellationToken);
 
         return pipeline;
     }

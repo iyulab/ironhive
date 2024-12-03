@@ -1,5 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
@@ -9,7 +8,7 @@ namespace Raggle.Server.WebApi.Models;
 public class DocumentModel
 {
     // Primary Key
-    public Guid DocumentId { get; set; } = Guid.NewGuid();
+    public string DocumentId { get; set; } = $"{Guid.NewGuid():N}";
 
     [Required]
     public string FileName { get; set; } = string.Empty;
@@ -28,7 +27,7 @@ public class DocumentModel
     public IEnumerable<string>? Tags { get; set; }
 
     // Foreign Key
-    public Guid CollectionId { get; set; }
+    public string CollectionId { get; set; } = string.Empty;
 
     // 네비게이션 속성
     [ForeignKey(nameof(CollectionId))]

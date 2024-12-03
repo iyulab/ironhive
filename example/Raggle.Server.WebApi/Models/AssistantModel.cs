@@ -7,7 +7,7 @@ namespace Raggle.Server.WebApi.Models;
 public class AssistantModel
 {
     // Primary Key
-    public Guid AssistantId { get; set; } = Guid.NewGuid();
+    public string AssistantId { get; set; } = $"{Guid.NewGuid():N}";
 
     [Required]
     public string Name { get; set; } = string.Empty;

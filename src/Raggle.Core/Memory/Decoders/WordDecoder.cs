@@ -15,8 +15,7 @@ public class WordDecoder : IDocumentDecoder
     }
 
     /// <inheritdoc />
-    public async Task<DocumentSource> DecodeAsync(
-        DataPipeline pipeline,
+    public async Task<IReadOnlyList<string>> DecodeAsync(
         Stream data,
         CancellationToken cancellationToken = default)
     {
@@ -41,17 +40,7 @@ public class WordDecoder : IDocumentDecoder
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            return new DocumentSource
-            {
-                Source = pipeline.Source,
-                Section = new DocumentSegment
-                {
-                    Unit = "paragraph",
-                    From = 1,
-                    To = paragraphs.Count,
-                },
-                Content = contents,
-            };
+            return contents;
         }, cancellationToken).ConfigureAwait(false);
     }
 }

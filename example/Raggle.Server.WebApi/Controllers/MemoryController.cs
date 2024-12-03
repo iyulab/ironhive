@@ -59,9 +59,9 @@ public class MemoryController : ControllerBase
         }
     }
 
-    [HttpDelete("{collectionId:guid}")]
+    [HttpDelete("{collectionId}")]
     public async Task<ActionResult> DeleteCollectionAsync(
-        [FromRoute] Guid collectionId)
+        [FromRoute] string collectionId)
     {
         try
         {
@@ -74,9 +74,9 @@ public class MemoryController : ControllerBase
         }
     }
 
-    [HttpPost("{collectionId:guid}/search")]
+    [HttpPost("{collectionId}/search")]
     public async Task<ActionResult> SearchDocumentAsync(
-        [FromRoute] Guid collectionId,
+        [FromRoute] string collectionId,
         [FromBody] SearchQuery request)
     {
         try
@@ -94,9 +94,9 @@ public class MemoryController : ControllerBase
 
     #region Document
 
-    [HttpGet("{collectionId:guid}/documents")]
+    [HttpGet("{collectionId}/documents")]
     public async Task<ActionResult> FindDocumentsAsync(
-        [FromRoute] Guid collectionId,
+        [FromRoute] string collectionId,
         [FromQuery(Name = "name")] string? name = null,
         [FromQuery(Name = "limit")] int limit = 10,
         [FromQuery(Name = "skip")] int skip = 0,
@@ -114,9 +114,9 @@ public class MemoryController : ControllerBase
     }
 
     [RequestSizeLimit(10_737_418_240)]
-    [HttpPost("{collectionId:guid}/documents")]
+    [HttpPost("{collectionId}/documents")]
     public async Task<ActionResult> UploadDocumentAsync(
-        [FromRoute] Guid collectionId,
+        [FromRoute] string collectionId,
         IFormFile file)
     {
         try
@@ -129,8 +129,10 @@ public class MemoryController : ControllerBase
                 ContentType = file.ContentType,
                 Tags = []
             };
-            var data = file.OpenReadStream();
-            await _service.UploadDocumentAsync(collectionId, document, data);
+            using (var data = file.OpenReadStream())
+            {
+                await _service.UploadDocumentAsync(collectionId, document, data);
+            }
             return Ok(document);
         }
         catch (Exception ex)
@@ -139,10 +141,10 @@ public class MemoryController : ControllerBase
         }
     }
 
-    [HttpDelete("{collectionId:guid}/documents/{documentId:guid}")]
+    [HttpDelete("{collectionId}/documents/{documentId}")]
     public async Task<ActionResult> DeleteDocumentAsync(
-        [FromRoute] Guid collectionId,
-        [FromRoute] Guid documentId)
+        [FromRoute] string collectionId,
+        [FromRoute] string documentId)
     {
         try
         {

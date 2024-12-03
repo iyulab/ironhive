@@ -42,7 +42,10 @@ public class LiteDBVectorStorage : IVectorStorage
         if (await CollectionExistsAsync(collectionName, cancellationToken))
             throw new InvalidOperationException($"Collection '{collectionName}' already exists.");
 
-        _db.GetCollection<VectorPoint>(collectionName);
+        var coll = _db.GetCollection<VectorPoint>(collectionName);
+        var emptyPoint = new VectorPoint();
+        coll.Upsert(emptyPoint);
+        coll.Delete(emptyPoint.VectorId);
     }
 
     public async Task DeleteCollectionAsync(
@@ -125,7 +128,11 @@ public class LiteDBVectorStorage : IVectorStorage
             Upgrade = false,
             ReadOnly = false,
         };
-        return new LiteDatabase(connectionString);
+        var mapper = new BsonMapper();
+        mapper.Entity<VectorPoint>()
+              .Id(p => p.VectorId);
+            
+        return new LiteDatabase(connectionString, mapper);
     }
 
     #endregion
