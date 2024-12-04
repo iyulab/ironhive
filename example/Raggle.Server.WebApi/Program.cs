@@ -1,17 +1,15 @@
 using Microsoft.AspNetCore.Http.Features;
+using Raggle.Server;
 using Raggle.Server.WebApi;
-using Raggle.Server.WebApi.Services;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
+# region For Raggle
 var config = TempConfigManager.Make(false);
 builder.Services.AddRaggleServices(config);
+#endregion
 
 builder.Services.AddControllers();
-builder.Services.AddScoped<AssistantService>();
-builder.Services.AddScoped<MemoryService>();
 
 if (builder.Environment.IsDevelopment())
 {
@@ -40,7 +38,10 @@ else
 
 var app = builder.Build();
 
-app.Services.EnsureRaggleDB();
+# region For Raggle
+app.Services.EnsureRaggleServices();
+#endregion
+
 app.MapControllers();
 app.UseCors("AllowAll");
 

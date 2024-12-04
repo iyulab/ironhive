@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Raggle.Server.WebApi.Models;
-using Raggle.Server.WebApi.Services;
+using Raggle.Server.Entities;
+using Raggle.Server.Services;
 
 namespace Raggle.Server.WebApi.Controllers;
 
@@ -38,7 +38,7 @@ public class AssistantController : ControllerBase
 
     [HttpPost]
     public async Task<ActionResult> UpsertAssistantAsync(
-        [FromBody] AssistantModel assistant)
+        [FromBody] AssistantEntity assistant)
     {
         var result = await _service.UpsertAssistantAsync(assistant);
         return Ok(result);

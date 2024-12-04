@@ -1,11 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Raggle.Server.WebApi.Models;
+using Raggle.Server.Entities;
 using System.Text.Json;
 
-namespace Raggle.Server.WebApi.Data;
+namespace Raggle.Server.Data;
 
-public class AppDbContext : DbContext
+public class RaggleDbContext : DbContext
 {
     private static readonly ValueConverter<IDictionary<string, object>?, string?> DictionaryConverter =
         new(v => v == null ? null : JsonSerializer.Serialize(v, new JsonSerializerOptions()),
@@ -15,11 +15,11 @@ public class AppDbContext : DbContext
         new(v => v == null ? null : JsonSerializer.Serialize(v, new JsonSerializerOptions()),
             v => v == null ? null : JsonSerializer.Deserialize<List<string>>(v, new JsonSerializerOptions()));
 
-    public DbSet<CollectionModel> Collections { get; set; }
-    public DbSet<DocumentModel> Documents { get; set; }
-    public DbSet<AssistantModel> Assistants { get; set; }
+    public DbSet<CollectionEntity> Collections { get; set; }
+    public DbSet<DocumentEntity> Documents { get; set; }
+    public DbSet<AssistantEntity> Assistants { get; set; }
 
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
+    public RaggleDbContext(DbContextOptions<RaggleDbContext> options) : base(options)
     {
     }
 
@@ -33,43 +33,43 @@ public class AppDbContext : DbContext
         base.OnModelCreating(builder);
 
         // 키 설정
-        builder.Entity<CollectionModel>()
+        builder.Entity<CollectionEntity>()
             .HasKey(c => c.CollectionId);
 
-        builder.Entity<DocumentModel>()
+        builder.Entity<DocumentEntity>()
             .HasKey(d => d.DocumentId);
 
-        builder.Entity<AssistantModel>()
+        builder.Entity<AssistantEntity>()
             .HasKey(a => a.AssistantId);
 
         // 타입 설정
-        builder.Entity<CollectionModel>()
+        builder.Entity<CollectionEntity>()
             .Property(c => c.HandlerOptions)
             .HasConversion(DictionaryConverter)
             .HasColumnType("TEXT");
 
-        builder.Entity<DocumentModel>()
+        builder.Entity<DocumentEntity>()
             .Property(d => d.Tags)
             .HasConversion(EnumerableConverter)
             .HasColumnType("TEXT");
 
-        builder.Entity<AssistantModel>()
+        builder.Entity<AssistantEntity>()
             .Property(a => a.ToolkitOptions)
             .HasConversion(DictionaryConverter)
             .HasColumnType("TEXT");
 
-        builder.Entity<AssistantModel>()
+        builder.Entity<AssistantEntity>()
             .Property(a => a.Memories)
             .HasConversion(EnumerableConverter)
             .HasColumnType("TEXT");
 
-        builder.Entity<AssistantModel>()
+        builder.Entity<AssistantEntity>()
             .Property(a => a.ToolKits)
             .HasConversion(EnumerableConverter)
             .HasColumnType("TEXT");
 
         // 관계 설정: 외래 키
-        builder.Entity<DocumentModel>()
+        builder.Entity<DocumentEntity>()
             .HasOne(d => d.Collection)
             .WithMany(c => c.Documents)
             .HasForeignKey(d => d.CollectionId)

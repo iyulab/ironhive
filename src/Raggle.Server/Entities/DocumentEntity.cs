@@ -2,10 +2,9 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
-namespace Raggle.Server.WebApi.Models;
+namespace Raggle.Server.Entities;
 
-[Table("Document")]
-public class DocumentModel
+public class DocumentEntity
 {
     // Primary Key
     public string DocumentId { get; set; } = $"{Guid.NewGuid():N}";
@@ -32,5 +31,5 @@ public class DocumentModel
     // 네비게이션 속성
     [ForeignKey(nameof(CollectionId))]
     [JsonIgnore]
-    public CollectionModel? Collection { get; set; }
+    public CollectionEntity? Collection { get; set; }
 }

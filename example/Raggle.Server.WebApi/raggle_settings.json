@@ -1,24 +1,32 @@
 {
-  "Raggle": {
-    "ConnectionString": "Data Source=C:\\temp\\index.db",
-    "AIService": {
-      "OpenAI": {
-        "EndPoint": "https://api.openai.com/v1/",
-        "ApiKey": "",
-        "Organization": "",
-        "Project": ""
-      },
-      "Anthropic": {
-        "EndPoint": "https://api.anthropic.com/v1/",
-        "ApiKey": "",
-        "Version": ""
-      },
-      "Ollama": {
-        "EndPoint": "http://localhost:11434/",
-        "DefaultRequestHeaders": {}
-      }
+  "Database": {
+    "Type": "sqlite",
+    "Sqlite": {
+      "ConnectionString": "Data Source=C:\\temp\\index.db"
     },
-    "VectorStorage": {
+    "SqlServer": {
+      "ConnectionString": ""
+    },
+    "Cosmos": {
+      "ConnectionString": "",
+      "DatabaseName": ""
+    },
+    "PostgreSQL": {
+      "ConnectionString": ""
+    },
+    "MongoDB": {
+      "ConnectionString": "",
+      "DatabaseName": ""
+    },
+    "MySql": {
+      "ConnectionString": ""
+    },
+    "Oracle": {
+      "ConnectionString": ""
+    }
+  },
+  "Storages": {
+    "Vectors": {
       "Type": "lite_db",
       "LiteDB": {
         "DatabasePath": "C:\\temp\\vector.db",
@@ -32,22 +40,52 @@
         "GrpcTimeout": "00:01:40"
       }
     },
-    "DocumentStorage": {
+    "Documents": {
       "Type": "local_disk",
       "LocalDisk": {
-        "DirectoryPath": "C:\\temp\\documents",
-        "BlobMaxRetryAttempts": 10,
-        "BlobDelayMilliseconds": 200
+        "DirectoryPath": "C:\\temp\\documents"
       },
       "AzureBlob": {
         "AuthType": "connection_string",
         "ConnectionString": "",
         "AccountName": "",
         "AccountKey": "",
-        "SASToken": "",
-        "BlobMaxRetryAttempts": 10,
-        "BlobDelayMilliseconds": 200
+        "SASToken": ""
       }
+    }
+  },
+  "Services": {
+    "AIProviders": {
+      "OpenAI": {
+        "ServiceKey": "openai",
+        "EndPoint": "https://api.openai.com/v1/",
+        "ApiKey": "",
+        "Organization": "",
+        "Project": ""
+      },
+      "Anthropic": {
+        "ServiceKey": "anthropic",
+        "EndPoint": "https://api.anthropic.com/v1/",
+        "ApiKey": "",
+        "Version": ""
+      },
+      "Ollama": {
+        "ServiceKey": "ollama",
+        "EndPoint": "http://localhost:11434/",
+        "DefaultRequestHeaders": {}
+      }
+    },
+    "ToolKits": {
+      "VectorSearch": {
+        "ServiceKey": ""
+      }
+    },
+    "StepNames": {
+      "Decoding": "extract",
+      "Chunking": "chunk",
+      "Summarizing": "summary",
+      "GenDialogue": "dialogue",
+      "Embeddings": "embeddings"
     }
   }
 }

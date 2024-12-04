@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using Raggle.Server.WebApi.Models;
-using Raggle.Server.WebApi.Services;
+using Raggle.Server.Entities;
+using Raggle.Server.Services;
 
 namespace Raggle.Server.WebApi.Controllers;
 
@@ -46,7 +46,7 @@ public class MemoryController : ControllerBase
 
     [HttpPost]
     public async Task<ActionResult> UpsertCollectionAsync(
-        [FromBody] CollectionModel collection)
+        [FromBody] CollectionEntity collection)
     {
         try
         {
@@ -121,7 +121,7 @@ public class MemoryController : ControllerBase
     {
         try
         {
-            var document = new DocumentModel
+            var document = new DocumentEntity
             {
                 CollectionId = collectionId,
                 FileName = file.FileName,

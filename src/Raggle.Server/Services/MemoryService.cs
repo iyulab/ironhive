@@ -1,18 +1,18 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Raggle.Abstractions;
 using Raggle.Abstractions.Memory;
-using Raggle.Server.WebApi.Configuration;
-using Raggle.Server.WebApi.Data;
-using Raggle.Server.WebApi.Models;
+using Raggle.Server.Configurations;
+using Raggle.Server.Data;
+using Raggle.Server.Entities;
 
-namespace Raggle.Server.WebApi.Services;
+namespace Raggle.Server.Services;
 
 public class MemoryService
 {
-    private readonly AppDbContext _db;
+    private readonly RaggleDbContext _db;
     private readonly IRaggleMemory _memory;
 
-    public MemoryService(AppDbContext dbContext, IRaggle raggle)
+    public MemoryService(RaggleDbContext dbContext, IRaggle raggle)
     {
         _db = dbContext;
         _memory = raggle.Memory;
@@ -20,7 +20,7 @@ public class MemoryService
 
     #region Collection
 
-    public async Task<IEnumerable<CollectionModel>> FindCollectionsAsync(
+    public async Task<IEnumerable<CollectionEntity>> FindCollectionsAsync(
         string? name = null,
         int limit = 10,
         int skip = 0,
@@ -40,7 +40,7 @@ public class MemoryService
         return collections;
     }
 
-    public async Task<CollectionModel> UpsertCollectionAsync(CollectionModel collection)
+    public async Task<CollectionEntity> UpsertCollectionAsync(CollectionEntity collection)
     {
         var existing = await _db.Collections.FindAsync(collection.CollectionId);
         var transaction = await _db.Database.BeginTransactionAsync();
@@ -108,7 +108,7 @@ public class MemoryService
 
     #region Document
 
-    public async Task<IEnumerable<DocumentModel>> FindDocumentsAsync(
+    public async Task<IEnumerable<DocumentEntity>> FindDocumentsAsync(
         string collectionId,
         string? fileName = null,
         int limit = 10,
@@ -129,7 +129,7 @@ public class MemoryService
         return documents;
     }
 
-    public async Task UploadDocumentAsync(string collectionId, DocumentModel document, Stream data)
+    public async Task UploadDocumentAsync(string collectionId, DocumentEntity document, Stream data)
     {
         var collection = await _db.Collections.FindAsync(collectionId)
             ?? throw new InvalidOperationException("Collection not found.");
@@ -148,10 +148,10 @@ public class MemoryService
                 tags: document.Tags?.ToArray(),
                 steps:
                 [
-                    HandlerServiceKeys.Decoding.ToString(),
-                    HandlerServiceKeys.Chunking.ToString(),
-                    HandlerServiceKeys.GenerateQA.ToString(),
-                    HandlerServiceKeys.Embeddings.ToString(),
+                    DefaultServiceKeys.Decoding,
+                    DefaultServiceKeys.Chunking,
+                    DefaultServiceKeys.GenDialogue,
+                    DefaultServiceKeys.Embeddings,
                 ],
                 metadata: collection.HandlerOptions);
 
@@ -198,7 +198,7 @@ public class MemoryService
         }
     }
 
-    public async Task<object> SearchDocumentAsync(string collectionId, string query)
+    public async Task<IEnumerable<ScoredVectorPoint>> SearchDocumentAsync(string collectionId, string query)
     {
         var collection = await _db.Collections.FindAsync(collectionId)
             ?? throw new InvalidOperationException("Collection not found.");

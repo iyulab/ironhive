@@ -50,6 +50,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Raggle.Driver.LocalDisk", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Raggle.Driver.Qdrant", "Raggle.Driver.Qdrant\Raggle.Driver.Qdrant.csproj", "{E82FBE79-FDD8-42D4-ADEC-199F6F469142}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Raggle.Server", "Raggle.Server\Raggle.Server.csproj", "{14F82B98-4BE7-437E-A3A1-B8A579DFB829}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -104,6 +106,10 @@ Global
 		{E82FBE79-FDD8-42D4-ADEC-199F6F469142}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E82FBE79-FDD8-42D4-ADEC-199F6F469142}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E82FBE79-FDD8-42D4-ADEC-199F6F469142}.Release|Any CPU.Build.0 = Release|Any CPU
+		{14F82B98-4BE7-437E-A3A1-B8A579DFB829}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{14F82B98-4BE7-437E-A3A1-B8A579DFB829}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{14F82B98-4BE7-437E-A3A1-B8A579DFB829}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{14F82B98-4BE7-437E-A3A1-B8A579DFB829}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -124,6 +130,7 @@ Global
 		{2CF95631-FD8C-483D-8737-7D7110EAFAFB} = {0E0B40CA-1316-4A75-89E7-41DF7B8D2BE0}
 		{2E636877-DAD9-4E9F-BDC6-11479A7AD9A9} = {0E0B40CA-1316-4A75-89E7-41DF7B8D2BE0}
 		{E82FBE79-FDD8-42D4-ADEC-199F6F469142} = {0E0B40CA-1316-4A75-89E7-41DF7B8D2BE0}
+		{14F82B98-4BE7-437E-A3A1-B8A579DFB829} = {D742CF15-98B2-4095-B749-589A7ED4EFD1}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {D53D41CC-8B85-4816-A6CC-C1161061E791}

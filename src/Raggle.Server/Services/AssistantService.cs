@@ -1,20 +1,20 @@
 ﻿using DocumentFormat.OpenXml.Office2010.Excel;
 using Microsoft.EntityFrameworkCore;
-using Raggle.Server.WebApi.Data;
-using Raggle.Server.WebApi.Models;
+using Raggle.Server.Data;
+using Raggle.Server.Entities;
 
-namespace Raggle.Server.WebApi.Services;
+namespace Raggle.Server.Services;
 
 public class AssistantService
 {
-    private readonly AppDbContext _db;
+    private readonly RaggleDbContext _db;
 
-    public AssistantService(AppDbContext dbContext)
+    public AssistantService(RaggleDbContext dbContext)
     {
         _db = dbContext;
     }
 
-    public async Task<IEnumerable<AssistantModel>> GetAssistantsAsync(int skip = 0, int limit = 10)
+    public async Task<IEnumerable<AssistantEntity>> GetAssistantsAsync(int skip = 0, int limit = 10)
     {
         var query = _db.Assistants.AsQueryable();
         var assistants = await query.OrderByDescending(a => a.LastUpdatedAt)
@@ -22,13 +22,13 @@ public class AssistantService
         return assistants;
     }
 
-    public async Task<AssistantModel?> GetAssistantAsync(Guid id)
+    public async Task<AssistantEntity?> GetAssistantAsync(Guid id)
     {
         var assistant = await _db.Assistants.FindAsync(id);
         return assistant;
     }
 
-    public async Task<AssistantModel> UpsertAssistantAsync(AssistantModel assistant)
+    public async Task<AssistantEntity> UpsertAssistantAsync(AssistantEntity assistant)
     {
         var existingAssistant = await _db.Assistants.AsTracking()
             .FirstOrDefaultAsync(a => a.AssistantId == assistant.AssistantId);

@@ -1,8 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Raggle.Abstractions;
 using Raggle.Abstractions.AI;
-using Raggle.Server.WebApi.Configuration;
-using Raggle.Server.WebApi.Models;
 
 namespace Raggle.Server.WebApi.Controllers;
 
@@ -11,12 +9,6 @@ namespace Raggle.Server.WebApi.Controllers;
 public class ModelController : ControllerBase
 {
     private readonly IRaggle _raggle;
-    private readonly AIServiceKeys[] modelServiceKeys =
-    [
-        AIServiceKeys.OpenAI,
-        AIServiceKeys.Anthropic,
-        AIServiceKeys.Ollama
-    ];
 
     public ModelController(IRaggle raggle)
     {
@@ -27,15 +19,12 @@ public class ModelController : ControllerBase
     public async Task<ActionResult> GetChatCompletionModelsAsync()
     {
         var models = new Dictionary<string, string[]>();
+        var services = _raggle.Services.GetKeyedServices<IChatCompletionService>(KeyedService.AnyKey);
 
-        foreach (var key in modelServiceKeys)
+        foreach (var service in services)
         {
-            var service = _raggle.Services.GetKeyedService<IChatCompletionService>(key);
-            if (service != null)
-            {
-                var chatModels = await service.GetChatCompletionModelsAsync();
-                models[key.ToString()] = chatModels.Select(m => m.Model).ToArray();
-            }
+            var chatModels = await service.GetChatCompletionModelsAsync();
+            models["openai"] = chatModels.Select(m => m.Model).ToArray();
         }
 
         return Ok(models);
@@ -45,15 +34,12 @@ public class ModelController : ControllerBase
     public async Task<ActionResult> GetEmbeddingModelsAsync()
     {
         var models = new Dictionary<string, string[]>();
+        var services = _raggle.Services.GetKeyedServices<IEmbeddingService>("openai");
 
-        foreach (var key in modelServiceKeys)
+        foreach (var service in services)
         {
-            var service = _raggle.Services.GetKeyedService<IEmbeddingService>(key.ToString());
-            if (service != null)
-            {
-                var embeddingModels = await service.GetEmbeddingModelsAsync();
-                models[key.ToString()] = embeddingModels.Select(m => m.Model).ToArray();
-            }
+            var embeddingModels = await service.GetEmbeddingModelsAsync();
+            models["openai"] = embeddingModels.Select(m => m.Model).ToArray();
         }
 
         return Ok(models);

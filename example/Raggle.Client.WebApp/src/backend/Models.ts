@@ -11,7 +11,6 @@ export interface Collection {
   createdAt?: string;
   lastUpdatedAt?: string;
   handlerOptions?: Record<string, any>;
-  documents?: Document[];
 }
 
 export interface Document {
@@ -23,7 +22,6 @@ export interface Document {
   lastUpdatedAt?: string;
   tags?: string[];
   collectionId?: string;
-  collection?: Collection;
 }
 
 export interface Assistant {

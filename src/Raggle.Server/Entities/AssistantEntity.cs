@@ -1,10 +1,8 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Raggle.Server.WebApi.Models;
+namespace Raggle.Server.Entities;
 
-[Table("Assistants")]
-public class AssistantModel
+public class AssistantEntity
 {
     // Primary Key
     public string AssistantId { get; set; } = $"{Guid.NewGuid():N}";

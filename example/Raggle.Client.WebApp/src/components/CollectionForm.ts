@@ -13,12 +13,12 @@ export class CollectionForm extends LitElement {
     embedServiceKey: '',
     embedModelName: '',
     handlerOptions: {
-      "GenerateQA": {
-        "ServiceKey": "OpenAI",
+      "dialogue": {
+        "ServiceKey": "openai",
         "ModelName": "gpt-4o-mini",
       },
-      "Embeddings": {
-        "ServiceKey": "OpenAI",
+      "embeddings": {
+        "ServiceKey": "openai",
         "ModelName": "text-embedding-ada-002",
       }
     },

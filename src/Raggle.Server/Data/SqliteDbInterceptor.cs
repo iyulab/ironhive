@@ -2,9 +2,9 @@
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using System.Data.Common;
 
-namespace Raggle.Server.WebApi.Data;
+namespace Raggle.Server.Data;
 
-public class AppDbIntercepter : DbConnectionInterceptor
+public class SqliteDbInterceptor : DbConnectionInterceptor
 {
     public override void ConnectionOpened(DbConnection connection, ConnectionEndEventData eventData)
     {

@@ -9,19 +9,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Raggle.Core\Raggle.Core.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.Driver.Anthropic\Raggle.Driver.Anthropic.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.Driver.AzureBlob\Raggle.Driver.AzureBlob.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.Driver.LiteDB\Raggle.Driver.LiteDB.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.Driver.LocalDisk\Raggle.Driver.LocalDisk.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.Driver.Ollama\Raggle.Driver.Ollama.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.Driver.OpenAI\Raggle.Driver.OpenAI.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.Driver.Qdrant\Raggle.Driver.Qdrant.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Server\Raggle.Server.csproj" />
   </ItemGroup>
 
 </Project>

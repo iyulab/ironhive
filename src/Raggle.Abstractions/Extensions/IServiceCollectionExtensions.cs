@@ -7,7 +7,8 @@ namespace Raggle.Abstractions.Extensions;
 
 public static partial class IServiceCollectionExtensions
 {
-    // Only One Singleton
+    #region Only One Singleton Service
+
     public static IServiceCollection SetDocumentStorage<T>(
         this IServiceCollection services,
         T implementationInstance)
@@ -17,7 +18,6 @@ public static partial class IServiceCollectionExtensions
         return services.AddSingleton<IDocumentStorage>(implementationInstance);
     }
 
-    // Only One Singleton
     public static IServiceCollection SetVectorStorage<T>(
         this IServiceCollection services,
         T implementationInstance)
@@ -27,7 +27,10 @@ public static partial class IServiceCollectionExtensions
         return services.AddSingleton<IVectorStorage>(implementationInstance);
     }
 
-    // Keyed Singletons
+    #endregion
+
+    #region Keyed Singlton Services
+
     public static IServiceCollection AddChatCompletionService<T>(
         this IServiceCollection services,
         string serviceKey,
@@ -37,7 +40,6 @@ public static partial class IServiceCollectionExtensions
         return services.AddKeyedSingleton<IChatCompletionService>(serviceKey, implementationInstance);
     }
 
-    // Keyed Singletons
     public static IServiceCollection AddEmbeddingService<T>(
         this IServiceCollection services, 
         string serviceKey, 
@@ -47,7 +49,6 @@ public static partial class IServiceCollectionExtensions
         return services.AddKeyedSingleton<IEmbeddingService>(serviceKey, implementationInstance);
     }
 
-    // Keyed Singletons
     public static IServiceCollection AddPipelineHandler<T>(
         this IServiceCollection services,
         string serviceKey)        
@@ -56,13 +57,25 @@ public static partial class IServiceCollectionExtensions
         return services.AddKeyedSingleton<IPipelineHandler, T>(serviceKey);
     }
 
-    // Multiple Singletons
+    public static IServiceCollection AddToolKit<T>(
+        this IServiceCollection services,
+        string serviceKey)
+        where T : class
+    {
+        return services.AddKeyedSingleton<T>(serviceKey);
+    }
+
+    #endregion
+
+    // Multiple Singleton Services
     public static IServiceCollection AddDocumentDecoder<T>(
         this IServiceCollection services)
         where T : class, IDocumentDecoder
     {
         return services.AddSingleton<IDocumentDecoder, T>();
     }
+
+    #region Utility Methods
 
     public static IServiceCollection CopyServicesFrom<T>(
         this IServiceCollection target,
@@ -95,7 +108,8 @@ public static partial class IServiceCollectionExtensions
                 // Keyed Service
                 isRaggleService = service.ServiceType == typeof(IChatCompletionService)
                     || service.ServiceType == typeof(IEmbeddingService)
-                    || service.ServiceType == typeof(IPipelineHandler);
+                    || service.ServiceType == typeof(IPipelineHandler)
+                    || service.ServiceType == typeof(string);
             }
             else
             {
@@ -112,4 +126,6 @@ public static partial class IServiceCollectionExtensions
         }
         return target;
     }
+
+    #endregion
 }

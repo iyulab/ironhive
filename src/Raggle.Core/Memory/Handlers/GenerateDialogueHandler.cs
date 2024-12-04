@@ -72,7 +72,7 @@ public class GenerateDialogueHandler : IPipelineHandler
 
     #region Private Methods
 
-    private async Task<IEnumerable<(string Question, string Answer)>> GenerateDialoguesAsync(
+    private async Task<IEnumerable<Tuple<string,string>>> GenerateDialoguesAsync(
         string text,
         Options options,
         CancellationToken cancellationToken)
@@ -114,9 +114,9 @@ public class GenerateDialogueHandler : IPipelineHandler
         }
     }
 
-    private IEnumerable<(string Question, string Answer)> ParseDialoguesFromText(string text)
+    private IEnumerable<Tuple<string, string>> ParseDialoguesFromText(string text)
     {
-        var dialogues = new List<(string Question, string Answer)>();
+        var dialogues = new List<Tuple<string,string>>();
         var matches = DialogueRegex.Matches(text);
 
         foreach (Match match in matches)
@@ -127,7 +127,7 @@ public class GenerateDialogueHandler : IPipelineHandler
                 var answer = match.Groups[2].Value.Trim();
                 if (!string.IsNullOrEmpty(question) && !string.IsNullOrEmpty(answer))
                 {
-                    dialogues.Add((Question: question, Answer: answer));
+                    dialogues.Add(new Tuple<string, string>(question,answer));
                 }
             }
         }

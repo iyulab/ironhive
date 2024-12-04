@@ -33,5 +33,5 @@ public class SystemController : ControllerBase
     {
         var serverTimeUtc = DateTime.UtcNow;
         return Ok(serverTimeUtc);
-    }   
+    }
 }

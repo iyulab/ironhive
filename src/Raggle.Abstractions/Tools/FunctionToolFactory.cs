@@ -5,7 +5,7 @@ using System.Reflection;
 
 namespace Raggle.Abstractions.Tools;
 
-public static class ToolKitFactory
+public static class FunctionToolFactory
 {
     public static ICollection<FunctionTool> CreateFromType<T>(
         IServiceProvider? serviceProvider = null, 

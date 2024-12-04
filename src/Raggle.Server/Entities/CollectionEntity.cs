@@ -2,10 +2,9 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
-namespace Raggle.Server.WebApi.Models;
+namespace Raggle.Server.Entities;
 
-[Table("Collections")]
-public class CollectionModel
+public class CollectionEntity
 {
     // Primary Key
     public string CollectionId { get; set; } = $"c_{Guid.NewGuid():N}";
@@ -30,5 +29,5 @@ public class CollectionModel
 
     // 네비게이션 속성
     [JsonIgnore]
-    public ICollection<DocumentModel> Documents { get; set; } = [];
+    public ICollection<DocumentEntity> Documents { get; set; } = [];
 }

@@ -1,15 +1,10 @@
-﻿using System;
-using System.IO;
-using System.Text.Json;
+﻿using Raggle.Server.Configurations;
 using System.Text.Json.Serialization;
-using System.Threading;
+using System.Text.Json;
 
-namespace Raggle.Server.WebApi.Configuration;
+namespace Raggle.Server.Services;
 
-/// <summary>
-/// Manages the Raggle configuration by loading, saving, and watching for changes in the configuration file.
-/// </summary>
-public class RaggleConfigManager : IDisposable
+public class ConfigurationService
 {
     private const string DefaultFileName = "raggle_settings.json";
     private const string SectionName = "Raggle";
@@ -30,7 +25,7 @@ public class RaggleConfigManager : IDisposable
     /// </summary>
     /// <param name="filePath">Optional path to the configuration file. If null, the default path is used.</param>
     /// <param name="jsonOptions">Optional JSON serializer options. If null, default options are used.</param>
-    public RaggleConfigManager(string? filePath = null, JsonSerializerOptions? jsonOptions = null)
+    public ConfigurationService(string? filePath = null, JsonSerializerOptions? jsonOptions = null)
     {
         FilePath = filePath ?? GetDefaultPath();
         _jsonOptions = jsonOptions ?? new JsonSerializerOptions
@@ -210,29 +205,6 @@ public class RaggleConfigManager : IDisposable
             ConfigureWatcher();
             LoadConfig();
             // Optionally, notify other parts of the application about the config rename
-        }
-    }
-
-    #endregion
-
-    #region IDisposable Support
-
-    private bool _disposed = false;
-
-    /// <summary>
-    /// Releases all resources used by the <see cref="RaggleConfigManager"/>.
-    /// </summary>
-    public void Dispose()
-    {
-        if (_disposed)
-        {
-            throw new ObjectDisposedException(nameof(RaggleConfigManager));
-        }
-        else
-        {
-            _watcher.Dispose();
-            _disposed = true;
-            GC.SuppressFinalize(this);
         }
     }
 

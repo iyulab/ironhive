@@ -3,7 +3,7 @@ using Raggle.Abstractions.Extensions;
 
 namespace Raggle.Driver.Qdrant;
 
-public static partial class IServiceCollectionExtension
+public static partial class IServiceCollectionExtensions
 {
     public static IServiceCollection SetQdrantVectorStorage(
         this IServiceCollection services,

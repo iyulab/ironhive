@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Cosmos" Version="8.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.11" />
+    <PackageReference Include="MongoDB.EntityFrameworkCore" Version="8.2.0" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.11" />
+    <PackageReference Include="Oracle.EntityFrameworkCore" Version="8.23.60" />
+    <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="8.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Raggle.Core\Raggle.Core.csproj" />
+    <ProjectReference Include="..\Raggle.Driver.Anthropic\Raggle.Driver.Anthropic.csproj" />
+    <ProjectReference Include="..\Raggle.Driver.AzureBlob\Raggle.Driver.AzureBlob.csproj" />
+    <ProjectReference Include="..\Raggle.Driver.LiteDB\Raggle.Driver.LiteDB.csproj" />
+    <ProjectReference Include="..\Raggle.Driver.LocalDisk\Raggle.Driver.LocalDisk.csproj" />
+    <ProjectReference Include="..\Raggle.Driver.Ollama\Raggle.Driver.Ollama.csproj" />
+    <ProjectReference Include="..\Raggle.Driver.OpenAI\Raggle.Driver.OpenAI.csproj" />
+    <ProjectReference Include="..\Raggle.Driver.Qdrant\Raggle.Driver.Qdrant.csproj" />
+  </ItemGroup>
+
+</Project>

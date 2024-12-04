@@ -56,9 +56,9 @@ public class EmbeddingsHandler : IPipelineHandler
                     Payload = section
                 });
             }
-            else if (section.Content.TryGet<IEnumerable<(string Question, string Answer)>>(out var dialogues))
+            else if (section.Content.TryGet<IEnumerable<Tuple<string,string>>>(out var dialogues))
             {
-                var questions = dialogues.Select(x => x.Question).ToArray();
+                var questions = dialogues.Select(x => x.Item1).ToArray();
                 var request = new EmbeddingRequest
                 {
                     Model = options.ModelName,

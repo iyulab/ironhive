@@ -14,7 +14,7 @@ public interface IRaggleAssistant
 
     string? Instructions { get; set; }
 
-    ToolKit[]? ToolKitList { get; set; }
+    //IToolKit[]? ToolKitList { get; set; }
 
 
     //object Provider { get; set; }

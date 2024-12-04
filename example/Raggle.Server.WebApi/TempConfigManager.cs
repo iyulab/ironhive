@@ -1,4 +1,5 @@
-﻿using Raggle.Server.WebApi.Configuration;
+﻿using Raggle.Server.Configurations;
+using Raggle.Server.Utils;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -14,23 +15,24 @@ public static class TempConfigManager
         {
             WriteIndented = true,
             PropertyNameCaseInsensitive = true,
-            Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower) }
+            Converters = { 
+                new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower),
+                new ServiceKeyValueJsonConverterFactory()
+            }
         };
         var filePath = Path.Combine(baseDir, "raggle_settings.json");
 
         if (!init && File.Exists(filePath))
         {
-            var jsonText = File.ReadAllText(filePath);
-            var jsonDoc = JsonSerializer.Deserialize<JsonDocument>(jsonText, jsonOptions);
-            var config = jsonDoc?.RootElement.GetProperty("Raggle").Deserialize<RaggleConfig>(jsonOptions);
+            var json = File.ReadAllText(filePath);
+            var config = JsonSerializer.Deserialize<RaggleConfig>(json, jsonOptions);
             return config;
         }
         else
         {
             var config = new RaggleConfig();
-            var jsonConfig = new { Raggle = config };
-            var jsonText = JsonSerializer.Serialize(jsonConfig, jsonOptions);
-            File.WriteAllText(filePath, jsonText);
+            var json = JsonSerializer.Serialize(config, jsonOptions);
+            File.WriteAllText(filePath, json);
             return config;
         }
     }
