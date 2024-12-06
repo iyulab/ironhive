@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Http.Features;
 using Raggle.Server;
 using Raggle.Server.WebApi;
+using Raggle.Server.WebApi.Development;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,7 +12,11 @@ var config = TempConfigManager.Make(false);
 builder.Services.AddRaggleServices(config);
 #endregion
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+    });
 
 if (builder.Environment.IsDevelopment())
 {
@@ -49,6 +56,9 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+
+    app.UseMiddleware<ControllerMiddleware>();
+    app.UseDeveloperExceptionPage();
 }
 else
 {

@@ -4,3 +4,4 @@ export * from './MainChat';
 export * from './CollectionForm';
 export * from './ModelSelect';
 export * from './StorageView';
+export * from './MessageBlock';

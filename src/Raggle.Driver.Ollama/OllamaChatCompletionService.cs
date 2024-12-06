@@ -47,9 +47,13 @@ public class OllamaChatCompletionService : IChatCompletionService
         return new ChatCompletionResponse
         {
             Completed = true,
-            Contents = 
+            Content = 
             [
-                new TextContentBlock { Text = res.Message?.Content }
+                new TextContent 
+                {
+                    Index = 0,
+                    Text = res.Message?.Content 
+                }
             ]
         };
     }
@@ -73,10 +77,10 @@ public class OllamaChatCompletionService : IChatCompletionService
 
     private static ChatRequest ConvertToOllamaRequest(ChatCompletionRequest request)
     {
-        var messages = new List<ChatCompletion.Models.ChatMessage>();
+        var messages = new List<ChatMessage>();
         if (!string.IsNullOrWhiteSpace(request.System))
         {
-            messages.Add(new ChatCompletion.Models.ChatMessage 
+            messages.Add(new ChatMessage 
             {
                 Role = ChatRole.System,
                 Content = request.System
@@ -85,20 +89,23 @@ public class OllamaChatCompletionService : IChatCompletionService
 
         foreach (var message in request.Messages)
         {
-            if (message.Contents == null || message.Contents.Count == 0)
+            if (message.Content == null || message.Content.Count == 0)
                 continue;
 
             if (message.Role == MessageRole.User)
             {
-                var userMessage = new ChatCompletion.Models.ChatMessage { Role = ChatRole.User };
-                foreach (var content in message.Contents)
+                var userMessage = new ChatMessage
+                { 
+                    Role = ChatRole.User
+                };
+                foreach (var item in message.Content)
                 {
-                    if (content is TextContentBlock text)
+                    if (item is TextContent text)
                     {
                         userMessage.Content ??= string.Empty;
                         userMessage.Content += text.Text;
                     }
-                    else if (content is ImageContentBlock image)
+                    else if (item is ImageContent image)
                     {
                         userMessage.Images ??= new List<string>();
                         userMessage.Images.Add(image.Data);
@@ -108,16 +115,22 @@ public class OllamaChatCompletionService : IChatCompletionService
             }
             else if (message.Role == MessageRole.Assistant)
             {
-                foreach (var content in message.Contents)
+                foreach (var item in message.Content)
                 {
-                    var assistantMessage = new ChatCompletion.Models.ChatMessage { Role = ChatRole.Assistant };
-                    var toolMessages = new ChatCompletion.Models.ChatMessage { Role = ChatRole.Tool };
-                    if (content is TextContentBlock text)
+                    var assistantMessage = new ChatMessage 
+                    { 
+                        Role = ChatRole.Assistant
+                    };
+                    var toolMessages = new ChatMessage 
+                    { 
+                        Role = ChatRole.Tool
+                    };
+                    if (item is TextContent text)
                     {
                         assistantMessage.Content ??= string.Empty;
                         assistantMessage.Content += text.Text;
                     }
-                    else if (content is ToolContentBlock tool)
+                    else if (item is ToolContent tool)
                     {
                         assistantMessage.ToolCalls ??= new List<ToolCall>();
                         assistantMessage.ToolCalls.Add(new ToolCall

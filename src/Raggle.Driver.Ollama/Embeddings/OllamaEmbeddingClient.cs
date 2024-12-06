@@ -26,7 +26,7 @@ internal class OllamaEmbeddingClient : OllamaClientBase
     {
         var json = JsonSerializer.Serialize(request, _jsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        var response = await _client.PostAsync(OllamaConstants.PostEmbeddingPath, content, cancellationToken);
+        using var response = await _client.PostAsync(OllamaConstants.PostEmbeddingPath, content, cancellationToken);
         response.EnsureSuccessStatusCode();
 
         var embeddings = await response.Content.ReadFromJsonAsync<EmbeddingResponse>(cancellationToken)

@@ -1,26 +1,40 @@
 import { LitElement, css, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
+import { Message } from "../models";
+import { API } from "../backend/ApiClient";
 
 @customElement('main-chat')
 export class MainChat extends LitElement {
 
-  @property({ type: Array }) messages: { user: string, message: string }[] = [];
-  @property({ type: String }) currentMessage: string = '';
+  @property({ type: String })
+  assistantId: string = '';
+
+  @property({ type: Array })
+  messages: Message[] = [];
+
+  @property({ type: String })
+  input: string = '';
 
   render() {
     return html`
       <div class="chat-container">
         <div class="messages">
           ${this.messages.map(msg => html`
-            <div class="message">
-              <span class="user">${msg.user}:</span>
-              <span class="text">${msg.message}</span>
-            </div>
+            <message-block
+              .message=${msg}
+            ></message-block>
           `)}
         </div>
         <div class="input-container">
-          <input type="text" .value=${this.currentMessage} @input=${this.onInput} placeholder="Type a message..." />
-          <button @click=${this.sendMessage}>Send</button>
+          <input 
+            type="text" 
+            .value=${this.input} 
+            @input=${this.onInput} 
+            placeholder="Type a message..."
+          />
+          <button @click=${this.sendMessage}>
+            Send
+          </button>
         </div>
       </div>
     `;
@@ -28,13 +42,38 @@ export class MainChat extends LitElement {
 
   private onInput(event: Event) {
     const input = event.target as HTMLInputElement;
-    this.currentMessage = input.value;
+    this.input = input.value;
   }
 
-  private sendMessage() {
-    if (this.currentMessage.trim()) {
-      this.messages = [...this.messages, { user: 'Me', message: this.currentMessage }];
-      this.currentMessage = '';
+  private async sendMessage() {
+    if (this.input.trim()) {
+      this.messages = [ 
+        ...this.messages, 
+        { role: 'user', content: [
+          { type: 'text', index: 0,  text: this.input }
+        ]}
+      ];
+      this.input = '';
+      const message: Message = { role: 'assistant', content: []};
+      var controller = API.chatAssistantAsync(this.assistantId, this.messages, (msg) => {
+        message.content?.push({ type: 'text', text: msg.text });
+        this.messages = [
+          ...this.messages,
+          message
+        ];
+        if (msg.status === 'text_gen')
+        {
+          message.content[0].text = msg.text;
+        }
+        else if (msg.status === 'stop')
+        {
+        }
+      });
+
+      // await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // console.log('aborting');
+      // controller.abort();
     }
   }
 

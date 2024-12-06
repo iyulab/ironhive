@@ -11,12 +11,12 @@ public class ChatCompletionRequest
     /// <summary>
     /// Gets or sets the chat completion model name.
     /// </summary>
-    public required string Model { get; set; }
+    public string Model { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the chat history to use for completion.
     /// </summary>
-    public required ChatHistory Messages { get; set; }
+    public MessageCollection Messages { get; set; } = new MessageCollection();
 
     /// <summary>
     /// Gets or sets the instructions to the model.

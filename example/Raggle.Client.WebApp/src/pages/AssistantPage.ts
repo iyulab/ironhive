@@ -1,13 +1,13 @@
 import { LitElement, css, html } from "lit";
 import { customElement, state } from "lit/decorators.js";
-import type { Assistant } from "../backend/Models";
+import type { AssistantEntity } from "../models";
 import { API } from "../backend/ApiClient";
 
 @customElement('assistant-page')
 export class AssistantPage extends LitElement {
 
-  @state() assistants?: Assistant[] = undefined;
-  @state() assistant?: Assistant = undefined;
+  @state() assistants?: AssistantEntity[] = undefined;
+  @state() assistant?: AssistantEntity = undefined;
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -20,14 +20,15 @@ export class AssistantPage extends LitElement {
         <main-list
           create-label="Create Assistant"
           slot="left"
-          key="id"
+          key="assistantId"
           .items=${this.assistants || []}
           @create=${this.createAssistant}
           @select=${(e: CustomEvent) => this.loadAssistant(e.detail)}
           @delete=${(e: CustomEvent) => this.deleteAssistant(e.detail)}
         ></main-list>
-        <main-chat slot="right"
-
+        <main-chat 
+          slot="right"
+          .assistantId=${this.assistant?.assistantId || ''}
         ></main-chat>
         <div class="assistant-form" slot="main">
           <div class="info">Created: ${this.assistant?.createdAt}</div>
@@ -52,22 +53,13 @@ export class AssistantPage extends LitElement {
               @change=${(e: Event) => this.changeAssistant(e)}
             ></textarea>
           </div>
-          <div class="input-group">
-            <label for="toolKit">ToolKit</label>
-            <input id="toolKit" type="checkbox" />
-            <div>Vector Search</div>
-            <input id="toolKit" type="checkbox" />
-            <div>Web Search</div>
-            <input id="toolKit" type="checkbox" />
-            <div>Time Tool</div>
-          </div>
         </div>
       </main-layout>
     `;
   }
 
   private async loadAssistants() {
-    this.assistants = await API.getAssistants();
+    this.assistants = await API.getAssistantsAsync();
     if (this.assistants.length > 0)
       this.assistant = this.assistants[0];
     else
@@ -75,22 +67,26 @@ export class AssistantPage extends LitElement {
   }
 
   private async loadAssistant(id: string) {
-    this.assistant = await API.getAssistant(id);
+    this.assistant = await API.getAssistantAsync(id);
   }
 
   private async deleteAssistant(id: string) {
-    await API.deleteAssistant(id);
-    if (this.assistant?.id === id) {
+    await API.deleteAssistantAsync(id);
+    if (this.assistant?.assistantId === id) {
       this.assistant = undefined;
     }
     await this.loadAssistants();
   }
 
   private async createAssistant() {
-    this.assistant = await API.upsertAssistant({
+    this.assistant = await API.upsertAssistantAsync({
       name: 'Default Assistant',
       description: 'This assistant is created by default',
       instruction: 'You are useful assistant',
+      settings: {
+        provider: 'anthropic',
+        model: 'claude-3-5-sonnet-20241022'
+      }
     });
     await this.loadAssistants();
   }
@@ -101,7 +97,7 @@ export class AssistantPage extends LitElement {
     const propValue = (target as any).value;
     if (this.assistant) {
       const updated = { ...this.assistant, [propKey]: propValue };
-      this.assistant = await API.upsertAssistant(updated);
+      this.assistant = await API.upsertAssistantAsync(updated);
       await this.loadAssistants();
     }
   }

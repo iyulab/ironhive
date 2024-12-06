@@ -1,13 +1,13 @@
 import { LitElement, css, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import type { Collection } from "../backend/Models";
+import type { CollectionEntity } from "../models";
 import { API } from "../backend/ApiClient";
 
 @customElement('collection-form')
 export class CollectionForm extends LitElement {
 
   @state() 
-  collection: Collection = {
+  collection: CollectionEntity = {
     name: '',
     description: '',
     embedServiceKey: '',
@@ -61,7 +61,7 @@ export class CollectionForm extends LitElement {
     `;
   }
 
-  private updateField(field: keyof Collection) {
+  private updateField(field: keyof CollectionEntity) {
     return (event: Event) => {
       const target = event.target as HTMLInputElement | HTMLTextAreaElement;
       this.collection = {

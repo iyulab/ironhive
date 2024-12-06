@@ -73,35 +73,35 @@ public class GenerateDialogueHandler : IPipelineHandler
     #region Private Methods
 
     private async Task<IEnumerable<Tuple<string,string>>> GenerateDialoguesAsync(
-        string text,
+        string information,
         Options options,
         CancellationToken cancellationToken)
     {
-        var messages = new ChatHistory();
-        messages.AddUserMessage(new TextContentBlock
-        {
-            Text = $"Generate QA pairs In This:\n\n{text}",
-        });
         var request = new ChatCompletionRequest
         {
             System = GetSystemInstruction(),
             Model = options.ModelName,
-            Messages = messages,
         };
+        request.Messages.AddUserMessage(new TextContent
+        {
+            Index = 0,
+            Text = $"Generate QA pairs In This:\n\n{information}" 
+        });
+
         var chat = _serviceProvider.GetRequiredKeyedService<IChatCompletionService>(options.ServiceKey);
-        var response = await chat.ChatCompletionAsync(request);
+        var response = await chat.ChatCompletionAsync(request, cancellationToken);
 
         if (response.Completed)
         {
-            var textAnswer = new StringBuilder();
-            foreach (var content in response.Contents)
+            var sb = new StringBuilder();
+            foreach (var item in response.Content)
             {
-                if (content is TextContentBlock textContent)
+                if (item is TextContent text)
                 {
-                    textAnswer.AppendLine(textContent.Text);
+                    sb.AppendLine(text.Text);
                 }
             }
-            var answer = textAnswer.ToString();
+            var answer = sb.ToString();
             if (string.IsNullOrWhiteSpace(answer))
             {
                 throw new InvalidOperationException("Failed to generate QA pairs.");
@@ -112,6 +112,7 @@ public class GenerateDialogueHandler : IPipelineHandler
         {
             throw new InvalidOperationException("Failed to generate QA pairs.");
         }
+
     }
 
     private IEnumerable<Tuple<string, string>> ParseDialoguesFromText(string text)

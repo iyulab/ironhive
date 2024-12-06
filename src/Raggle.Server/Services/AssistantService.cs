@@ -1,20 +1,28 @@
-﻿using DocumentFormat.OpenXml.Office2010.Excel;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Raggle.Abstractions;
+using Raggle.Abstractions.AI;
+using Raggle.Abstractions.Messages;
 using Raggle.Server.Data;
 using Raggle.Server.Entities;
+using System.Runtime.CompilerServices;
 
 namespace Raggle.Server.Services;
 
 public class AssistantService
 {
     private readonly RaggleDbContext _db;
+    private readonly IRaggle _raggle;
 
-    public AssistantService(RaggleDbContext dbContext)
+    public AssistantService(RaggleDbContext dbContext, IRaggle raggle)
     {
         _db = dbContext;
+        _raggle = raggle;
     }
 
-    public async Task<IEnumerable<AssistantEntity>> GetAssistantsAsync(int skip = 0, int limit = 10)
+    public async Task<IEnumerable<AssistantEntity>> GetAssistantsAsync(
+        int skip = 0, 
+        int limit = 10)
     {
         var query = _db.Assistants.AsQueryable();
         var assistants = await query.OrderByDescending(a => a.LastUpdatedAt)
@@ -22,9 +30,9 @@ public class AssistantService
         return assistants;
     }
 
-    public async Task<AssistantEntity?> GetAssistantAsync(Guid id)
+    public async Task<AssistantEntity?> GetAssistantAsync(string assistantId)
     {
-        var assistant = await _db.Assistants.FindAsync(id);
+        var assistant = await _db.Assistants.FindAsync(assistantId);
         return assistant;
     }
 
@@ -50,11 +58,38 @@ public class AssistantService
         return existingAssistant ?? assistant;
     }
 
-    public async Task DeleteAssistantAsync(Guid id)
+    public async Task DeleteAssistantAsync(string assistantId)
     {
-        var existing = await _db.Assistants.FindAsync(id)
-            ?? throw new KeyNotFoundException($"Assistant with id {id} not found");
+        var existing = await _db.Assistants.FindAsync(assistantId)
+            ?? throw new KeyNotFoundException($"Assistant not found");
         _db.Assistants.Remove(existing);
         await _db.SaveChangesAsync();
+    }
+
+    public async IAsyncEnumerable<IStreamingChatCompletionResponse> ChatAssistantAsync(
+        string assistantId, 
+        MessageCollection messages,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var entity = await _db.Assistants.FindAsync(assistantId)
+            ?? throw new KeyNotFoundException($"Assistant not found");
+
+        var chat = _raggle.Services.GetRequiredKeyedService<IChatCompletionService>(entity.Settings.Provider);
+        var request = new ChatCompletionRequest
+        {
+            Model = entity.Settings.Model,
+            System = entity.Instruction,
+            Messages = messages,
+            MaxTokens = entity.Settings.MaxTokens,
+            Temperature = entity.Settings.Temperature,
+            TopK = entity.Settings.TopK,
+            TopP = entity.Settings.TopP,
+            StopSequences = entity.Settings.StopSequences,
+        };
+        
+        await foreach (var message in chat.StreamingChatCompletionAsync(request, cancellationToken))
+        {
+            yield return message;
+        }
     }
 }

@@ -84,5 +84,5 @@ internal class ToolResultMessageContent : MessageContent
     /// <see cref="MessageTextContent"/> or <see cref="MessageImageContent"/>
     /// </summary>
     [JsonPropertyName("content")]
-    public MessageContent[] Content { get; set; } = [];
+    public IEnumerable<MessageContent> Content { get; set; } = [];
 }

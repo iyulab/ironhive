@@ -4,9 +4,7 @@ namespace Raggle.Abstractions.Assistant;
 
 public interface IRaggleAssistant
 {
-    public IServiceProvider Services { get; }
-
-    Guid Id { get; set; }
+    IServiceProvider Services { get; }
 
     string Name { get; set; }
 

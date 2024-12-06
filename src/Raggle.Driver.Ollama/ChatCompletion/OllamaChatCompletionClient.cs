@@ -28,7 +28,7 @@ internal class OllamaChatCompletionClient : OllamaClientBase
         request.Stream = false;
         var json = JsonSerializer.Serialize(request, _jsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        var response = await _client.PostAsync(OllamaConstants.PostChatCompletionPath, content, cancellationToken);
+        using var response = await _client.PostAsync(OllamaConstants.PostChatCompletionPath, content, cancellationToken);
         response.EnsureSuccessStatusCode();
 
         var message = await response.Content.ReadFromJsonAsync<ChatResponse>(_jsonOptions, cancellationToken)
@@ -43,7 +43,9 @@ internal class OllamaChatCompletionClient : OllamaClientBase
         request.Stream = true;
         var json = JsonSerializer.Serialize(request, _jsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        var response = await _client.PostAsync(OllamaConstants.PostChatCompletionPath, content, cancellationToken);
+        using var _request = new HttpRequestMessage(HttpMethod.Post, OllamaConstants.PostChatCompletionPath);
+        _request.Content = content;
+        using var response = await _client.SendAsync(_request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         response.EnsureSuccessStatusCode();
 
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);

@@ -1,11 +1,18 @@
 import axios, { AxiosInstance } from 'axios';
-import { Assistant, Collection, Models } from './Models';
+import { 
+  AssistantEntity, 
+  CollectionEntity, 
+  Message, 
+  ServiceModels, 
+  StreamingChatResponse
+} from '../models';
 
 export class API {
+  private static readonly _baseURL: string = import.meta.env.DEV
+    ? import.meta.env.VITE_API || 'http://localhost:5000/v1'
+    : window.location.origin + '/v1';
   private static readonly _client: AxiosInstance = axios.create({
-    baseURL: import.meta.env.DEV
-      ? import.meta.env.VITE_API || 'http://localhost:5000/v1'
-      : window.location.origin + '/v1',
+    baseURL: this._baseURL,
     headers: {
       'Content-Type': 'application/json',
     },
@@ -13,9 +20,9 @@ export class API {
 
   // Model API
 
-  public static async getChatModelsAsync(): Promise<Models> {
+  public static async getChatModelsAsync(): Promise<ServiceModels> {
     try {
-      const res = await this._client.get<Models>('/models/chat');
+      const res = await this._client.get<ServiceModels>('/models/chat');
       return res.data;
     } catch (error) {
       console.error('Error fetching chat models:', error);
@@ -23,9 +30,9 @@ export class API {
     }
   }
 
-  public static async getEmbeddingModelsAsync(): Promise<Models> {
+  public static async getEmbeddingModelsAsync(): Promise<ServiceModels> {
     try {
-      const res = await this._client.get<Models>('/models/embedding');
+      const res = await this._client.get<ServiceModels>('/models/embedding');
       return res.data;
     } catch (error) {
       console.error('Error fetching embedding models:', error);
@@ -35,9 +42,9 @@ export class API {
 
   // Assistant API
 
-  public static async getAssistantsAsync(skip: number = 0, limit: number = 20): Promise<Assistant[]> {
+  public static async getAssistantsAsync(skip: number = 0, limit: number = 20): Promise<AssistantEntity[]> {
     try {
-      const res = await this._client.get<Assistant[]>('/assistants', {
+      const res = await this._client.get<AssistantEntity[]>('/assistants', {
         params: { skip, limit },
       });
       return res.data;
@@ -47,9 +54,9 @@ export class API {
     }
   }
 
-  public static async getAssistantAsync(assistantId: string): Promise<Assistant> {
+  public static async getAssistantAsync(assistantId: string): Promise<AssistantEntity> {
     try {
-      const res = await this._client.get<Assistant>(`/assistants/${assistantId}`);
+      const res = await this._client.get<AssistantEntity>(`/assistants/${assistantId}`);
       return res.data;
     } catch (error) {
       console.error('Error fetching assistant:', error);
@@ -57,9 +64,9 @@ export class API {
     }
   }
 
-  public static async upsertAssistantAsync(assistant: Assistant): Promise<Assistant> {
+  public static async upsertAssistantAsync(assistant: AssistantEntity): Promise<AssistantEntity> {
     try {
-      const res = await this._client.post<Assistant>('/assistants', assistant);
+      const res = await this._client.post<AssistantEntity>('/assistants', assistant);
       return res.data;
     } catch (error) {
       console.error('Error upserting assistant:', error);
@@ -76,6 +83,78 @@ export class API {
     }
   }
 
+  public static chatAssistantAsync(
+    assistantId: string,
+    messages: Message[],
+    on: (message: StreamingChatResponse) => void
+  ): AbortController {
+    const controller = new AbortController();
+    const { signal } = controller;
+  
+    (async () => {
+      try {
+        console.log('Sending messages:', assistantId, messages);
+  
+        const response = await fetch(`${this._baseURL}/assistants/${assistantId}/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(messages),
+          signal,
+        });
+  
+        if (!response.ok || !response.body) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+  
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+  
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+  
+          buffer += decoder.decode(value, { stream: true });
+          let lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+  
+          for (const line of lines) {
+            if (line.trim()) { // 빈 줄 무시
+              try {
+                const parsed = JSON.parse(line);
+                console.log('Received:', parsed);
+                on(parsed);
+              } catch (e) {
+                console.error('Error parsing JSON:', e);
+              }
+            }
+          }
+        }
+  
+        // 남아있는 버퍼 처리
+        if (buffer.trim()) {
+          try {
+            const parsed = JSON.parse(buffer);
+            on(parsed);
+          } catch (e) {
+            console.error('Error parsing JSON:', e);
+          }
+        }
+  
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          console.log('Stream aborted');
+        } else {
+          console.error('Fetch error:', error);
+        }
+      }
+    })(); // IIFE를 사용하여 비동기 작업 실행
+  
+    return controller; // AbortController를 즉시 반환
+  }
+
   // Memory API
   
   public static async findCollectionsAsync(
@@ -83,9 +162,9 @@ export class API {
     limit: number = 10,
     skip: number = 0,
     order: string = 'desc'
-  ): Promise<Collection[]> {
+  ): Promise<CollectionEntity[]> {
     try {
-      const response = await this._client.get<Collection[]>('/memory', { 
+      const response = await this._client.get<CollectionEntity[]>('/memory', { 
         params: { limit, skip, order, name }
       });
       return response.data;
@@ -95,9 +174,9 @@ export class API {
     }
   }
 
-  public static async upsertCollectionAsync(collection: Collection): Promise<Collection> {
+  public static async upsertCollectionAsync(collection: CollectionEntity): Promise<CollectionEntity> {
     try {
-      const response = await this._client.post<Collection>('/memory', collection);
+      const response = await this._client.post<CollectionEntity>('/memory', collection);
       return response.data;
     } catch (error) {
       console.error('Error upserting collection:', error);

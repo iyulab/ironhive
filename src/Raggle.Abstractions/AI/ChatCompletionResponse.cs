@@ -6,7 +6,7 @@ public class ChatCompletionResponse
 {
     public required bool Completed { get; set; }
 
-    public IContentBlock[] Contents { get; set; } = [];
+    public IMessageContent[] Content { get; set; } = [];
 
     public TokenUsage? TokenUsage { get; set; }
 

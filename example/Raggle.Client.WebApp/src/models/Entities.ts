@@ -1,8 +1,8 @@
-export interface Models {
+export interface ServiceModels {
   [provider: string]: string[];
 }
 
-export interface Collection {
+export interface CollectionEntity {
   collectionId?: string;
   name?: string;
   description?: string;
@@ -13,7 +13,7 @@ export interface Collection {
   handlerOptions?: Record<string, any>;
 }
 
-export interface Document {
+export interface DocumentEntity {
   documentId?: string;
   fileName?: string;
   fileSize?: number;
@@ -24,14 +24,25 @@ export interface Document {
   collectionId?: string;
 }
 
-export interface Assistant {
+export interface AssistantEntity {
   assistantId?: string;
   name?: string;
   description?: string;
   instruction?: string;
-  createdAt?: string;
-  lastUpdatedAt?: string;
+  settings: ServiceSettings;
   memories?: string[];
   toolKits?: string[];
   toolkitOptions?: Record<string, any>;
+  createdAt?: Date;
+  lastUpdatedAt?: Date;
+}
+
+export interface ServiceSettings {
+  provider?: string;
+  model?: string;
+  maxTokens?: number;
+  temperature?: number;
+  topK?: number;
+  topP?: number;
+  stopSequences?: string[];
 }

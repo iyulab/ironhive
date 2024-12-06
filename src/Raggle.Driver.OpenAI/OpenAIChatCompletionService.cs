@@ -41,43 +41,42 @@ public class OpenAIChatCompletionService : IChatCompletionService
         Abstractions.AI.ChatCompletionRequest request, 
         CancellationToken cancellationToken = default)
     {
-        var openaiRequest = ConvertToOpenAIRequest(request);
-        var response = await _client.PostChatCompletionAsync(openaiRequest, cancellationToken);
-
+        var _request = ConvertToOpenAIRequest(request);
+        var response = await _client.PostChatCompletionAsync(_request, cancellationToken);
         var choice = response.Choices?.First();
+
+        var tools = request.Tools?.ToDictionary(t => t.Name, t => t) ?? new Dictionary<string, FunctionTool>();
+        var content = request.Messages.Last().Role == MessageRole.Assistant
+            ? request.Messages.Last().Content
+            : new MessageContentCollection();
+
         if (choice?.FinishReason == FinishReason.ToolCalls && choice.Message?.ToolCalls?.Length > 0)
         {
-            var cloneHistory = request.Messages.Clone();
             foreach (var toolCall in choice.Message.ToolCalls)
             {
-                var content = new ToolContentBlock
-                {
-                    ID = toolCall.ID,
-                    Name = toolCall.Function?.Name,
-                    Arguments = toolCall.Function?.Arguments,
-                };
+                var index = toolCall.Index ?? 0;
+                var id = toolCall.ID;
+                var name = toolCall.Function?.Name;
+                var args = toolCall.Function?.Arguments;
 
-                var function = request.Tools?.FirstOrDefault(t => t.Name == content.Name);
-                if (function == null)
-                {
-                    content.Result = FunctionResult.Failed($"Function '{content.Name}' not exist.");
-                }
-                else
-                {
-                    var result = await function.InvokeAsync(content.Arguments);
-                    content.Result = result;
-                }
-                cloneHistory.AddAssistantMessage(content);
+                var result = string.IsNullOrWhiteSpace(name)
+                    ? FunctionResult.Failed("Function name is required.")
+                    : tools.TryGetValue(name, out var function)
+                    ? await function.InvokeAsync(args)
+                    : FunctionResult.Failed($"Function '{name}' not exist.");
+
+                content.AddTool(id, name, args, result);
             }
-            request.Messages = cloneHistory;
+            request.Messages.AddAssistantMessage(content);
             return await ChatCompletionAsync(request, cancellationToken);
         }
         else
         {
-            var textContent = new TextContentBlock { Text = choice?.Message?.Content ?? string.Empty };
-            var contents = request.Messages.TryGetLastAssistantMessage(out var lastMessage)
-                ? lastMessage.Contents.Append(textContent)
-                : [textContent];
+            if (!string.IsNullOrWhiteSpace(choice?.Message?.Content))
+            {
+                content.AddText(choice.Message.Content);
+            }
+
             var tokenUsage = new Abstractions.AI.TokenUsage
             {
                 TotalTokens = response.Usage?.TotalTokens,
@@ -90,7 +89,7 @@ public class OpenAIChatCompletionService : IChatCompletionService
                 return new Abstractions.AI.ChatCompletionResponse
                 { 
                     Completed = false,
-                    Contents = contents.ToArray(),
+                    Content = content.ToArray(),
                     TokenUsage = tokenUsage,
                     ErrorMessage = "You have reached the token limit.",
                 };
@@ -100,7 +99,7 @@ public class OpenAIChatCompletionService : IChatCompletionService
                 return new Abstractions.AI.ChatCompletionResponse
                 {
                     Completed = true,
-                    Contents = contents.ToArray(),
+                    Content = content.ToArray(),
                     TokenUsage = tokenUsage,
                 };
             }
@@ -114,7 +113,7 @@ public class OpenAIChatCompletionService : IChatCompletionService
     {
         var openaiRequest = ConvertToOpenAIRequest(request);
         var tools = request.Tools?.ToDictionary(t => t.Name, t => t) ?? new Dictionary<string, FunctionTool>();
-        var toolContents = new Dictionary<int, ToolContentBlock>();
+        var toolContents = new Dictionary<int, ToolContent>();
 
         await foreach (var response in _client.PostStreamingChatCompletionAsync(openaiRequest, cancellationToken))
         {
@@ -185,9 +184,10 @@ public class OpenAIChatCompletionService : IChatCompletionService
                 }
                 else
                 {
-                    content = new ToolContentBlock
+                    content = new ToolContent
                     {
-                        ID = toolCall.ID,
+                        Index = (int)toolCall.Index,
+                        Id = toolCall.ID,
                         Name = toolCall.Function?.Name,
                         Arguments = toolCall.Function?.Arguments ?? string.Empty
                     };
@@ -200,51 +200,62 @@ public class OpenAIChatCompletionService : IChatCompletionService
 
     #region Private Methods
 
-    private static ChatCompletion.Models.ChatCompletionRequest ConvertToOpenAIRequest(Abstractions.AI.ChatCompletionRequest request)
+    private static ChatCompletion.Models.ChatCompletionRequest ConvertToOpenAIRequest(
+        Abstractions.AI.ChatCompletionRequest request)
     {
-        var messages = new List<Message>();
+        var _request = new ChatCompletion.Models.ChatCompletionRequest
+        {
+            Model = request.Model,
+            MaxTokens = request.MaxTokens,
+            Temperature = request.Temperature,
+            TopP = request.TopP,
+            Stop = request.StopSequences,
+            Messages = [],
+        };
+
+        var _messages = new List<ChatCompletion.Models.Message>();
         if (!string.IsNullOrWhiteSpace(request.System))
         {
-            messages.Add(new SystemMessage { Content = request.System });
+            _messages.Add(new SystemMessage { Content = request.System });
         }
 
         foreach (var message in request.Messages)
         {
-            if (message.Contents == null || message.Contents.Count == 0)
+            if (message.Content == null || message.Content.Count == 0)
                 continue;
 
             if (message.Role == MessageRole.User)
             {
-                var contents = new List<MessageContent>();
-                foreach (var content in message.Contents)
+                var content = new List<MessageContent>();
+                foreach (var item in message.Content)
                 {
-                    if (content is TextContentBlock text)
+                    if (item is TextContent text)
                     {
-                        contents.Add(new TextMessageContent { Text = text.Text ?? string.Empty });
+                        content.Add(new TextMessageContent { Text = text.Text ?? string.Empty });
                     }
-                    else if (content is ImageContentBlock image)
+                    else if (item is ImageContent image)
                     {
-                        contents.Add(new ImageMessageContent { ImageURL = new ImageURL { URL = image.Data ?? string.Empty } });
+                        content.Add(new ImageMessageContent { ImageURL = new ImageURL { URL = image.Data ?? string.Empty } });
                     }
                 }
-                messages.Add(new UserMessage { Content = contents });
+                _messages.Add(new UserMessage { Content = content });
             }
             else if (message.Role == MessageRole.Assistant)
             {
-                foreach (var content in message.Contents)
+                foreach (var item in message.Content)
                 {
-                    if (content is TextContentBlock text)
+                    if (item is TextContent text)
                     {
-                        messages.Add(new AssistantMessage { Content = text.Text });
+                        _messages.Add(new AssistantMessage { Content = text.Text });
                     }
-                    else if (content is ToolContentBlock tool)
+                    else if (item is ToolContent tool)
                     {
-                        messages.Add(new AssistantMessage
+                        _messages.Add(new AssistantMessage
                         {
                             ToolCalls = [
                                 new ToolCall
                                 {
-                                    ID = tool.ID,
+                                    ID = tool.Id,
                                     Function = new FunctionCall
                                     {
                                         Name = tool.Name,
@@ -253,25 +264,16 @@ public class OpenAIChatCompletionService : IChatCompletionService
                                 }
                             ]
                         });
-                        messages.Add(new ToolMessage 
+                        _messages.Add(new ToolMessage 
                         { 
-                            ID = tool.ID ?? string.Empty, 
+                            ID = tool.Id ?? string.Empty, 
                             Content = JsonSerializer.Serialize(tool.Result)
                         });
                     }
                 }
             }
         }
-
-        var openaiRequest = new ChatCompletion.Models.ChatCompletionRequest
-        {
-            Model = request.Model,
-            Messages = messages.ToArray(),
-            MaxTokens = request.MaxTokens,
-            Temperature = request.Temperature,
-            TopP = request.TopP,
-            Stop = request.StopSequences,
-        };
+        _request.Messages = _messages.ToArray();
 
         if (request.Tools != null && request.Tools.Length > 0)
         {
@@ -293,10 +295,10 @@ public class OpenAIChatCompletionService : IChatCompletionService
                     }
                 });
             }
-            openaiRequest.Tools = tools.ToArray();
+            _request.Tools = tools.ToArray();
         }
 
-        return openaiRequest;
+        return _request;
     }
 
     #endregion

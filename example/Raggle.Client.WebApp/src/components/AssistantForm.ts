@@ -1,10 +1,12 @@
 import { LitElement, css, html } from "lit";
-import { customElement, state } from "lit/decorators.js";
-import type { Assistant } from "../backend/Models";
+import { customElement, property, state } from "lit/decorators.js";
+import type { AssistantEntity } from "../models";
 
 @customElement('assistant-form')
 export class AssistantForm extends LitElement {
-  @state() assistant?: Assistant;
+
+  @property({ type: Object }) 
+  assistant?: AssistantEntity;
 
   render() {
     return html`
@@ -12,10 +14,10 @@ export class AssistantForm extends LitElement {
         <div class="form-group">
           <label for="name">Name</label>
           <input 
-            type="text" 
-            id="name" 
+            type="text"
+            id="name"
             .value=${this.assistant?.name || ''} 
-            @input=${this.updateField('name')}
+            @change=${this.updateField('name')}
           />
         </div>
 
@@ -24,7 +26,7 @@ export class AssistantForm extends LitElement {
           <textarea 
             id="description" 
             .value=${this.assistant?.description || ''} 
-            @input=${this.updateField('description')}
+            @change=${this.updateField('description')}
           ></textarea>
         </div>
 
@@ -33,30 +35,8 @@ export class AssistantForm extends LitElement {
           <textarea 
             id="instruction" 
             .value=${this.assistant?.instruction || ''} 
-            @input=${this.updateField('instruction')}
+            @change=${this.updateField('instruction')}
           ></textarea>
-        </div>
-
-        <div class="form-group">
-          <label for="toolKit">ToolKit</label>
-          <input 
-            type="checkbox" 
-            id="toolKit" 
-            .checked=${this.assistant?.toolKit?.includes('Vector Search') || false} 
-            @change=${this.updateToolKit('Vector Search')}
-          /> Vector Search
-          <input 
-            type="checkbox" 
-            id="toolKit" 
-            .checked=${this.assistant?.toolKit?.includes('Web Search') || false} 
-            @change=${this.updateToolKit('Web Search')}
-          /> Web Search
-          <input 
-            type="checkbox" 
-            id="toolKit" 
-            .checked=${this.assistant?.toolKit?.includes('Time Tool') || false} 
-            @change=${this.updateToolKit('Time Tool')}
-          /> Time Tool
         </div>
 
         <button type="submit" class="submit-button">Submit</button>
@@ -64,31 +44,12 @@ export class AssistantForm extends LitElement {
     `;
   }
 
-  private updateField(field: keyof Assistant) {
+  private updateField(field: keyof AssistantEntity) {
     return (event: Event) => {
       const target = event.target as HTMLInputElement | HTMLTextAreaElement;
       this.assistant = {
         ...this.assistant,
         [field]: target.value
-      };
-    };
-  }
-
-  private updateToolKit(tool: string) {
-    return (event: Event) => {
-      const target = event.target as HTMLInputElement;
-      const toolKit = this.assistant?.toolKit || [];
-      if (target.checked) {
-        toolKit.push(tool);
-      } else {
-        const index = toolKit.indexOf(tool);
-        if (index > -1) {
-          toolKit.splice(index, 1);
-        }
-      }
-      this.assistant = {
-        ...this.assistant,
-        toolKit
       };
     };
   }

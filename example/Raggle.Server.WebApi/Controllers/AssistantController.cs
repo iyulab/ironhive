@@ -1,6 +1,12 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using Raggle.Abstractions.AI;
+using Raggle.Abstractions.Messages;
 using Raggle.Server.Entities;
 using Raggle.Server.Services;
+using System.Security.Claims;
+using System.Text;
+using System.Text.Json;
 
 namespace Raggle.Server.WebApi.Controllers;
 
@@ -9,13 +15,16 @@ namespace Raggle.Server.WebApi.Controllers;
 public class AssistantController : ControllerBase
 {
     private readonly ILogger<AssistantController> _logger;
+    private readonly JsonOptions _jsonOptions;
     private readonly AssistantService _service;
 
     public AssistantController(
         ILogger<AssistantController> logger,
+        IOptions<JsonOptions> jsonOptions,
         AssistantService service)
     {
         _logger = logger;
+        _jsonOptions = jsonOptions.Value;
         _service = service;
     }
 
@@ -28,9 +37,9 @@ public class AssistantController : ControllerBase
         return assistants.Count() > 0 ? Ok(assistants) : NoContent();
     }
 
-    [HttpGet("{assistantId:guid}")]
+    [HttpGet("{assistantId}")]
     public async Task<ActionResult> FindAssistantAsync(
-        [FromRoute] Guid assistantId)
+        [FromRoute] string assistantId)
     {
         var assistant = await _service.GetAssistantAsync(assistantId);
         return assistant != null ? Ok(assistant) : NotFound();
@@ -44,9 +53,9 @@ public class AssistantController : ControllerBase
         return Ok(result);
     }
 
-    [HttpDelete("{assistantId:guid}")]
+    [HttpDelete("{assistantId}")]
     public async Task<ActionResult> DeleteAssistantAsync(
-        [FromRoute] Guid assistantId)
+        [FromRoute] string assistantId)
     {
         try
         {
@@ -56,6 +65,33 @@ public class AssistantController : ControllerBase
         catch(KeyNotFoundException)
         {
             return BadRequest("Assistant not found");
+        }
+    }
+
+    [HttpPost("{assistantId}/chat")]
+    public async Task ChatAssistantAsync(
+        [FromRoute] string assistantId,
+        [FromBody] MessageCollection messages,
+        CancellationToken cancellationToken)
+    {
+        Response.ContentType = "application/stream+json";
+
+        try
+        {
+            await foreach (var response in _service.ChatAssistantAsync(assistantId, messages, cancellationToken))
+            {
+                var json = JsonSerializer.Serialize(response, _jsonOptions.JsonSerializerOptions);
+
+                var data = Encoding.UTF8.GetBytes(json + "\n");
+                await Response.Body.WriteAsync(data, cancellationToken);
+
+                // 데이터를 즉시 전송하도록 버퍼를 플러시
+                await Response.Body.FlushAsync(cancellationToken);
+            }
+        }
+        catch(Exception ex)
+        {
+            _logger.LogError(ex.Message);
         }
     }
 }

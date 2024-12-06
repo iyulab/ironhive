@@ -10,7 +10,7 @@ public class RaggleKeyedServiceConfig
 {
     public AIProviderConfig AIProviders { get; set; } = new AIProviderConfig();
 
-    public ToolKitConfig ToolKits { get; set; } = new ToolKitConfig();
+    //public ToolKitConfig ToolKits { get; set; } = new ToolKitConfig();
 
     //public HandlerKeyConfig StepNames { get; set; } = new HandlerKeyConfig();
 
@@ -19,11 +19,6 @@ public class RaggleKeyedServiceConfig
         public ServiceKeyValue<OpenAIConfig> OpenAI { get; set; } = new ServiceKeyValue<OpenAIConfig>();
         public ServiceKeyValue<AnthropicConfig> Anthropic { get; set; } = new ServiceKeyValue<AnthropicConfig>();
         public ServiceKeyValue<OllamaConfig> Ollama { get; set; } = new ServiceKeyValue<OllamaConfig>();
-    }
-
-    public class ToolKitConfig
-    {
-        public ServiceKeyValue<VectorSearchToolKit> VectorSearch { get; set; } = new ServiceKeyValue<VectorSearchToolKit>();
     }
 
     //public class HandlerKeyConfig

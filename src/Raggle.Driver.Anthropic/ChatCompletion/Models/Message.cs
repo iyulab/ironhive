@@ -11,5 +11,5 @@ internal class Message
     public required string Role { get; set; }
 
     [JsonPropertyName("content")]
-    public required MessageContent[] Content { get; set; }
+    public required ICollection<MessageContent> Content { get; set; }
 }

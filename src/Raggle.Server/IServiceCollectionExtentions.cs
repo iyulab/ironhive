@@ -137,10 +137,10 @@ public static partial class IServiceCollectionExtentions
                 config: config.AIProviders.Anthropic.Value);
         }
 
-        if (config.ToolKits.VectorSearch.Validate())
-        {
-            // TODO: Add toolkit
-        }
+        //if (config.ToolKits.VectorSearch.Validate())
+        //{
+        //    // TODO: Add toolkit
+        //}
 
         return services;
     }
