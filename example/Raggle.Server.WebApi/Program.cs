@@ -12,10 +12,23 @@ var config = TempConfigManager.Make(false);
 builder.Services.AddRaggleServices(config);
 #endregion
 
+Console.WriteLine("Default Options");
+var json = JsonSerializer.Serialize(new JsonSerializerOptions(), new JsonSerializerOptions
+{
+    WriteIndented = true,
+    Converters = { new JsonStringEnumConverter() }
+});
+Console.WriteLine(json);
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+        var json = JsonSerializer.Serialize(options, new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            Converters = { new JsonStringEnumConverter() }
+        });
+        Console.WriteLine(json);
     });
 
 if (builder.Environment.IsDevelopment())

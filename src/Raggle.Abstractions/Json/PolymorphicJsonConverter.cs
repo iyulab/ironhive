@@ -3,12 +3,12 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Raggle.Abstractions.Utils;
+namespace Raggle.Abstractions.Json;
 
 /// <summary>
 /// JSON String의 다형성을 지원하는 컨버터입니다.
 /// </summary>
-public class JsonPolymorphicConverter<T> : JsonConverter<T> where T : class
+public class PolymorphicJsonConverter<T> : JsonConverter<T> where T : class
 {
     private const string DefaultDiscriminatorName = "type";
     private const StringComparison DefaultDiscriminatorComparison = StringComparison.OrdinalIgnoreCase;
@@ -21,13 +21,13 @@ public class JsonPolymorphicConverter<T> : JsonConverter<T> where T : class
 
     /// <summary>
     /// 사용자 지정 판별자 이름을 사용하는 생성자입니다.
-    /// 판별자 이름은 <see cref="JsonDiscriminatorNameAttribute"/>로 지정된 속성 이름이거나 기본값인 "type"입니다.
-    /// 판별자 값은 <see cref="JsonDiscriminatorValueAttribute"/>로 지정된 속성 값입니다.
+    /// 판별자 이름은 <see cref="PolymorphicPropertyNameAttribute"/>로 지정된 속성 이름이거나 기본값인 "type"입니다.
+    /// 판별자 값은 <see cref="PolymorphicPropertyValueAttribute"/>로 지정된 속성 값입니다.
     /// </summary>
-    public JsonPolymorphicConverter()
+    public PolymorphicJsonConverter()
     {
-        var discriminatorNameAttr = typeof(T).GetCustomAttribute<JsonDiscriminatorNameAttribute>();
-        _discriminatorName = discriminatorNameAttr?.PropertyName ?? DefaultDiscriminatorName;
+        var attr = typeof(T).GetCustomAttribute<PolymorphicPropertyNameAttribute>();
+        _discriminatorName = attr?.Name ?? DefaultDiscriminatorName;
         _discriminatorComparison = DefaultDiscriminatorComparison;
         _typeMapping = _cachedTypeMapping.Value;
     }
@@ -38,7 +38,7 @@ public class JsonPolymorphicConverter<T> : JsonConverter<T> where T : class
     /// <param name="discriminatorName">JSON 타입 판별자 속성 이름</param>
     /// <param name="discriminatorComparison">판별자 이름의 비교 방법</param>
     /// <param name="typeMapping">파생 클래스와 판별자 값의 매핑</param>
-    public JsonPolymorphicConverter(
+    public PolymorphicJsonConverter(
         string? discriminatorName = null,
         StringComparison? discriminatorComparison = null,
         Dictionary<string, Type>? typeMapping = null)
@@ -94,7 +94,7 @@ public class JsonPolymorphicConverter<T> : JsonConverter<T> where T : class
         writer.WriteEndObject();
     }
 
-    // Collect all types that are derived from T and have a JsonDiscriminatorValueAttribute
+    // Collect all types that are derived from T and have a PolymorphicPropertyValueAttribute
     private static Dictionary<string, Type> GetTypeMapping()
     {
         var typeMapping = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
@@ -119,14 +119,14 @@ public class JsonPolymorphicConverter<T> : JsonConverter<T> where T : class
             if (type == null) continue;
 
             // 파생 클래스에서 어트리뷰트가 지정되지 않은 것은 건너뜁니다.
-            var discriminatorValueAttr = type.GetCustomAttribute<JsonDiscriminatorValueAttribute>();
+            var discriminatorValueAttr = type.GetCustomAttribute<PolymorphicPropertyValueAttribute>();
             if (discriminatorValueAttr == null) continue;
 
             // 중복 판별자 값이 있는 경우 예외를 발생시킵니다.
-            if (typeMapping.ContainsKey(discriminatorValueAttr.PropertyValue))
-                throw new JsonException($"Duplicate discriminator value '{discriminatorValueAttr.PropertyValue}'.");
+            if (typeMapping.ContainsKey(discriminatorValueAttr.Value))
+                throw new JsonException($"Duplicate discriminator value '{discriminatorValueAttr.Value}'.");
 
-            typeMapping[discriminatorValueAttr.PropertyValue] = type;
+            typeMapping[discriminatorValueAttr.Value] = type;
         }
 
         return typeMapping;

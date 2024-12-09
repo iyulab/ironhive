@@ -28,9 +28,7 @@ public static partial class IServiceCollectionExtentions
                 .SetStorageServices(config.Storages)
                 .AddKeyedServices(config.Services)
                 .AddDefaultDocumentDecoders()
-                .AddDefaultPipelineHandlers(config.Services)
-
-                .SetJsonDocumentManager(); // ?? 삭제 또는 변경 TODO
+                .AddDefaultPipelineHandlers(config.Services);
 
         services.AddSingleton<IRaggle, Core.Raggle>();
         return services;
@@ -160,8 +158,8 @@ public static partial class IServiceCollectionExtentions
     {
         return services.AddPipelineHandler<DecodingHandler>(DefaultServiceKeys.Decoding)
                        .AddPipelineHandler<ChunkingHandler>(DefaultServiceKeys.Chunking)
-                       .AddPipelineHandler<SummarizationHandler>(DefaultServiceKeys.Summarizing)
-                       .AddPipelineHandler<GenerateDialogueHandler>(DefaultServiceKeys.GenDialogue)
+                       .AddPipelineHandler<SummaryHandler>(DefaultServiceKeys.Summarizing)
+                       .AddPipelineHandler<DialogueHandler>(DefaultServiceKeys.GenDialogue)
                        .AddPipelineHandler<EmbeddingsHandler>(DefaultServiceKeys.Embeddings);
     }
 }

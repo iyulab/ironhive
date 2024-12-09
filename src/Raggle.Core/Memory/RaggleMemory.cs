@@ -2,7 +2,7 @@
 using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Memory;
 using Raggle.Abstractions.Utils;
-using Raggle.Core.Memory.Document;
+using Raggle.Core.Extensions;
 
 namespace Raggle.Core.Memory;
 
@@ -12,7 +12,6 @@ public class RaggleMemory : IRaggleMemory
 
     private readonly IServiceProvider _serviceProvider;
     private readonly IDocumentStorage _documentStorage;
-    private readonly IDocumentManager _documentManager;
     private readonly IVectorStorage _vectorStorage;
 
     private readonly SemaphoreSlim _semaphore = new(1, 1);
@@ -24,7 +23,6 @@ public class RaggleMemory : IRaggleMemory
     {
         _serviceProvider = services;
         _documentStorage = services.GetRequiredService<IDocumentStorage>();
-        _documentManager = services.GetRequiredService<IDocumentManager>();
         _vectorStorage = services.GetRequiredService<IVectorStorage>();
     }
 
@@ -70,7 +68,7 @@ public class RaggleMemory : IRaggleMemory
         Stream? content,
         string[] steps,
         string[]? tags = null,
-        IDictionary<string, object>? metadata = null,
+        IDictionary<string, object>? options = null,
         CancellationToken cancellationToken = default)
     {
         if (content != null)
@@ -92,7 +90,7 @@ public class RaggleMemory : IRaggleMemory
             CollectionName = collectionName,
             DocumentId = documentId,
             Steps = steps.ToList(),
-            Metadata = metadata,
+            Options = options,
             Tags = tags
         };
 
@@ -174,7 +172,7 @@ public class RaggleMemory : IRaggleMemory
         string documentId,
         CancellationToken cancellationToken = default)
     {
-        return await _documentManager.GetDocumentFileAsync<DataPipeline>(
+        return await _documentStorage.GetDocumentJsonFirstAsync<DataPipeline>(
             collectionName: collectionName,
             documentId: documentId, 
             suffix: _pipelineSuffix,
@@ -187,7 +185,7 @@ public class RaggleMemory : IRaggleMemory
         DataPipeline pipeline,
         CancellationToken cancellationToken = default)
     {
-        await _documentManager.UpsertDocumentFileAsync(
+        await _documentStorage.UpsertDocumentJsonAsync(
             collectionName: pipeline.CollectionName,
             documentId: pipeline.DocumentId,
             fileName: Path.GetFileNameWithoutExtension(pipeline.FileName),

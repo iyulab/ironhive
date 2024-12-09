@@ -13,7 +13,7 @@ public class ServiceKeyValueJsonConverter<T> : JsonConverter<ServiceKeyValue<T>>
         if (reader.TokenType != JsonTokenType.StartObject)
             throw new JsonException("Expected StartObject token");
 
-        var keyValue = new ServiceKeyValue<T>();
+        var result = new ServiceKeyValue<T>();
 
         using (var jsonDoc = JsonDocument.ParseValue(ref reader))
         {
@@ -22,7 +22,7 @@ public class ServiceKeyValueJsonConverter<T> : JsonConverter<ServiceKeyValue<T>>
             // "Key" 속성 이름을 NamingPolicy에 따라 변환하여 찾기
             string keyPropertyName = options.PropertyNamingPolicy?.ConvertName(KeyName) ?? KeyName;
             if (root.TryGetProperty(keyPropertyName, out JsonElement keyProp))
-                keyValue.ServiceKey = keyProp.GetString() ?? string.Empty;
+                result.ServiceKey = keyProp.GetString() ?? string.Empty;
             else
                 throw new JsonException($"Missing property '{keyPropertyName}'");
 
@@ -41,11 +41,11 @@ public class ServiceKeyValueJsonConverter<T> : JsonConverter<ServiceKeyValue<T>>
             }
 
             valueStream.Position = 0;
-            keyValue.Value = JsonSerializer.Deserialize<T>(valueStream, options)
+            result.Value = JsonSerializer.Deserialize<T>(valueStream, options)
                 ?? throw new JsonException("Failed to deserialize the Value object");
         }
 
-        return keyValue;
+        return result;
     }
 
     public override void Write(Utf8JsonWriter writer, ServiceKeyValue<T> value, JsonSerializerOptions options)

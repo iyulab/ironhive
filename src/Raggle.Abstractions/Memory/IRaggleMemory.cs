@@ -25,14 +25,14 @@ public interface IRaggleMemory
         Stream content,
         string[] steps,
         string[]? tags = null,
-        IDictionary<string, object>? metadata = null,
+        IDictionary<string, object>? options = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 지정된 컬렉션에서 문서를 삭제합니다.
     /// </summary>
     Task UnMemorizeDocumentAsync(
-        string collectionName, 
+        string collectionName,
         string documentId,
         CancellationToken cancellationToken = default);
 

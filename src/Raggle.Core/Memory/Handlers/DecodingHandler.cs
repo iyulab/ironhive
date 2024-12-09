@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Raggle.Abstractions.Memory;
+using Raggle.Core.Extensions;
 using Raggle.Core.Memory.Decoders;
 using Raggle.Core.Memory.Document;
 
@@ -8,13 +9,11 @@ namespace Raggle.Core.Memory.Handlers;
 public class DecodingHandler : IPipelineHandler
 {
     private readonly IDocumentStorage _documentStorage;
-    private readonly IDocumentManager _documentManager;
     private readonly IEnumerable<IDocumentDecoder> _decoders;
 
     public DecodingHandler(IServiceProvider service)
     {
         _documentStorage = service.GetRequiredService<IDocumentStorage>();
-        _documentManager = service.GetRequiredService<IDocumentManager>();
         _decoders = service.GetServices<IDocumentDecoder>();
     }
 
@@ -53,7 +52,7 @@ public class DecodingHandler : IPipelineHandler
         };
 
         // 파싱된 문서 저장
-        await _documentManager.UpsertDocumentFileAsync(
+        await _documentStorage.UpsertDocumentJsonAsync(
             collectionName: pipeline.CollectionName,
             documentId: pipeline.DocumentId,
             fileName: Path.GetFileNameWithoutExtension(pipeline.FileName),

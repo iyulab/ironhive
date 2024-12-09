@@ -1,4 +1,5 @@
 ﻿using Raggle.Abstractions.Extensions;
+using Raggle.Abstractions.Json;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -74,7 +75,7 @@ public class DataPipeline
 
     public IEnumerable<string>? Tags { get; set; }
 
-    public IDictionary<string, object>? Metadata { get; set; }
+    public IDictionary<string, object>? Options { get; set; }
 
     [JsonInclude]
     public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
@@ -136,17 +137,14 @@ public class DataPipeline
         return Steps[index + 1];
     }
 
-    public T? GetCurrentMetadata<T>(JsonSerializerOptions? jsonOptions = null)
+    public T? GetCurrentOptions<T>()
     {
-        if (Metadata == null || CurrentStep == null)
+        if (Options == null || CurrentStep == null)
             return default;
 
-        if (Metadata.TryGetValue(CurrentStep, out var obj))
+        if (Options.TryGetValue(CurrentStep, out var obj))
         {
-            if (obj.TryGet<T>(out var value, jsonOptions))
-            {
-                return value;
-            }
+            return JsonObjectConverter.ConvertTo<T>(obj);
         }
         return default;
     }

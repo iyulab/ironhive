@@ -1,7 +1,8 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Raggle.Abstractions.AI;
-using Raggle.Abstractions.Extensions;
+using Raggle.Abstractions.Json;
 using Raggle.Abstractions.Memory;
+using Raggle.Core.Extensions;
 using Raggle.Core.Memory.Document;
 
 namespace Raggle.Core.Memory.Handlers;
@@ -10,14 +11,12 @@ public class EmbeddingsHandler : IPipelineHandler
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly IDocumentStorage _documentStorage;
-    private readonly IDocumentManager _documentManager;
     private readonly IVectorStorage _vectorStorage;
 
     public EmbeddingsHandler(IServiceProvider service)
     {
         _serviceProvider = service;
         _documentStorage = service.GetRequiredService<IDocumentStorage>();
-        _documentManager = service.GetRequiredService<IDocumentManager>();
         _vectorStorage = service.GetRequiredService<IVectorStorage>();
     }
 
@@ -29,13 +28,13 @@ public class EmbeddingsHandler : IPipelineHandler
 
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
-        var options = pipeline.GetCurrentMetadata<Options>()
+        var options = pipeline.GetCurrentOptions<Options>()
             ?? throw new InvalidOperationException("must provide options for embeddings handler");
         var embedder = _serviceProvider.GetRequiredKeyedService<IEmbeddingService>(options.ServiceKey);
         
         var points = new List<VectorPoint>();
 
-        await foreach (var section in _documentManager.GetDocumentFilesAsync<DocumentSection>(
+        await foreach (var section in _documentStorage.GetDocumentJsonAsync<DocumentSection>(
             collectionName: pipeline.CollectionName,
             documentId: pipeline.DocumentId,
             suffix: pipeline.GetPreviousStep() ?? "unknown",
@@ -44,7 +43,7 @@ public class EmbeddingsHandler : IPipelineHandler
             if (section.Content == null)
                 throw new InvalidOperationException($"No content found in the document");
 
-            if (section.Content.TryGet<string>(out var str))
+            if (JsonObjectConverter.TryConvertTo<string>(section.Content, out string str))
             {
                 var response = await embedder.EmbeddingAsync(options.ModelName, str, cancellationToken);
                 points.Add(new VectorPoint
@@ -56,7 +55,7 @@ public class EmbeddingsHandler : IPipelineHandler
                     Payload = section
                 });
             }
-            else if (section.Content.TryGet<IEnumerable<Tuple<string,string>>>(out var dialogues))
+            else if (JsonObjectConverter.TryConvertTo<IEnumerable<Tuple<string,string>>>(section.Content, out var dialogues))
             {
                 var questions = dialogues.Select(x => x.Item1).ToArray();
                 var request = new EmbeddingRequest

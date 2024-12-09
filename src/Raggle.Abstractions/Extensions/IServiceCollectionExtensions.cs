@@ -2,6 +2,8 @@
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Memory;
+using Raggle.Abstractions.Tools;
+using Raggle.Abstractions.Json;
 
 namespace Raggle.Abstractions.Extensions;
 
@@ -51,7 +53,7 @@ public static partial class IServiceCollectionExtensions
 
     public static IServiceCollection AddPipelineHandler<T>(
         this IServiceCollection services,
-        string serviceKey)        
+        string serviceKey)
         where T : class, IPipelineHandler
     {
         return services.AddKeyedSingleton<IPipelineHandler, T>(serviceKey);
@@ -60,9 +62,9 @@ public static partial class IServiceCollectionExtensions
     public static IServiceCollection AddToolKit<T>(
         this IServiceCollection services,
         string serviceKey)
-        where T : class
+        where T : class, IToolKit
     {
-        return services.AddKeyedSingleton<T>(serviceKey);
+        return services.AddKeyedSingleton<IToolKit, T>(serviceKey);
     }
 
     #endregion

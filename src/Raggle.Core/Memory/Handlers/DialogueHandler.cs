@@ -1,15 +1,16 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Raggle.Abstractions.AI;
-using Raggle.Abstractions.Extensions;
+using Raggle.Abstractions.Json;
 using Raggle.Abstractions.Memory;
 using Raggle.Abstractions.Messages;
+using Raggle.Core.Extensions;
 using Raggle.Core.Memory.Document;
 using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Raggle.Core.Memory.Handlers;
 
-public class GenerateDialogueHandler : IPipelineHandler
+public class DialogueHandler : IPipelineHandler
 {
     private static readonly Regex DialogueRegex = new Regex(
         @"<qa>\s*<q>\s*(.*?)\s*</q>\s*<a>\s*(.*?)\s*</a>\s*</qa>",
@@ -17,13 +18,11 @@ public class GenerateDialogueHandler : IPipelineHandler
 
     private readonly IServiceProvider _serviceProvider;
     private readonly IDocumentStorage _documentStorage;
-    private readonly IDocumentManager _documentManager;
 
-    public GenerateDialogueHandler(IServiceProvider service)
+    public DialogueHandler(IServiceProvider service)
     {
         _serviceProvider = service;
         _documentStorage = service.GetRequiredService<IDocumentStorage>();
-        _documentManager = service.GetRequiredService<IDocumentManager>();
     }
 
     public class Options
@@ -34,19 +33,20 @@ public class GenerateDialogueHandler : IPipelineHandler
 
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
-        var options = pipeline.GetCurrentMetadata<Options>()
+        var options = pipeline.GetCurrentOptions<Options>()
             ?? throw new InvalidOperationException($"Must provide options for {pipeline.CurrentStep}.");
         var dialogues = new List<DocumentSection>();
 
-        await foreach (var section in _documentManager.GetDocumentFilesAsync<DocumentSection>(
+        await foreach (var section in _documentStorage.GetDocumentJsonAsync<DocumentSection>(
             collectionName: pipeline.CollectionName,
             documentId: pipeline.DocumentId,
             suffix: pipeline.GetPreviousStep() ?? "unknown",
             cancellationToken: cancellationToken))
         {
-            var str = section.Content?.Get<string>()
-                ?? throw new InvalidOperationException("The document content is not a string.");
 
+            var str = JsonObjectConverter.ConvertTo<string>(section.Content)
+                ?? throw new InvalidOperationException("The document content is not a string.");
+            
             var content = await GenerateDialoguesAsync(str, options, cancellationToken);
             var dialogue = new DocumentSection
             {
@@ -59,7 +59,7 @@ public class GenerateDialogueHandler : IPipelineHandler
             dialogues.Add(dialogue);
         }
 
-        await _documentManager.UpsertDocumentFilesAsync(
+        await _documentStorage.UpsertDocumentJsonAsync(
             collectionName: pipeline.CollectionName,
             documentId: pipeline.DocumentId,
             fileName: Path.GetFileNameWithoutExtension(pipeline.FileName),

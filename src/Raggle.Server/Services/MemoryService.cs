@@ -1,9 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Google.Protobuf;
+using Microsoft.EntityFrameworkCore;
 using Raggle.Abstractions;
 using Raggle.Abstractions.Memory;
 using Raggle.Server.Configurations;
 using Raggle.Server.Data;
 using Raggle.Server.Entities;
+using System.Text.Json.Nodes;
 
 namespace Raggle.Server.Services;
 
@@ -153,7 +155,7 @@ public class MemoryService
                     DefaultServiceKeys.GenDialogue,
                     DefaultServiceKeys.Embeddings,
                 ],
-                metadata: collection.HandlerOptions);
+                options: collection.HandlerOptions);
 
             await _db.SaveChangesAsync();
             await transaction.CommitAsync();
