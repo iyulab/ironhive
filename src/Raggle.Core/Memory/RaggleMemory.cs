@@ -1,7 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Memory;
-using Raggle.Abstractions.Utils;
 using Raggle.Core.Extensions;
 
 namespace Raggle.Core.Memory;
@@ -17,7 +16,7 @@ public class RaggleMemory : IRaggleMemory
     private readonly SemaphoreSlim _semaphore = new(1, 1);
 
     // 제거??
-    private readonly ContentTypeDetector _detector = new();
+    private readonly MimeTypeDetector _detector = new();
 
     public RaggleMemory(IServiceProvider services)
     {
@@ -102,7 +101,7 @@ public class RaggleMemory : IRaggleMemory
             pipeline = pipeline.Start();
             await UpsertPipelineAsync(pipeline, cancellationToken);
 
-            while (pipeline.Progress.Status == PipelineStatus.Processing)
+            while (pipeline.Status == PipelineStatus.Processing)
             {
                 var currentStep = pipeline.CurrentStep;
                 if (currentStep == null)

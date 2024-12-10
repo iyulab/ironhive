@@ -1,10 +1,10 @@
-﻿namespace Raggle.Server.Configurations;
+﻿namespace Raggle.Server.Configurations.Models;
 
-public class RaggleConfig
+public partial class RaggleConfig
 {
     public RaggleDatabaseConfig Database { get; set; } = new RaggleDatabaseConfig();
 
     public RaggleStorageConfig Storages { get; set; } = new RaggleStorageConfig();
 
-    public RaggleKeyedServiceConfig Services { get; set; } = new RaggleKeyedServiceConfig();
+    public RaggleAIConfig Services { get; set; } = new RaggleAIConfig();
 }

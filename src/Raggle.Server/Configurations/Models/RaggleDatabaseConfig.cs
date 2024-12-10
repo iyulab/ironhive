@@ -1,4 +1,4 @@
-﻿namespace Raggle.Server.Configurations;
+﻿namespace Raggle.Server.Configurations.Models;
 
 public enum DatabaseTypes
 {
@@ -11,7 +11,7 @@ public enum DatabaseTypes
     MongoDB
 }
 
-public class RaggleDatabaseConfig
+public partial class RaggleDatabaseConfig
 {
     public DatabaseTypes Type { get; set; }
 

@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
 namespace Raggle.Abstractions.Json;
 
@@ -10,8 +11,10 @@ public static class JsonObjectConverter
 {
     public static JsonSerializerOptions Options { get; set; } = new JsonSerializerOptions
     {
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         PropertyNameCaseInsensitive = true,
-        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        NumberHandling = JsonNumberHandling.AllowReadingFromString,
+        MaxDepth = 32,
     };
 
     public static bool TryConvertTo<T>(object? obj, [NotNullWhen(true)] out T value)

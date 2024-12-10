@@ -1,7 +1,7 @@
 ﻿using Raggle.Abstractions.AI;
 using Tiktoken;
 
-namespace Raggle.Core.Tokenizers;
+namespace Raggle.Core.AI;
 
 // 임시
 public class TiktokenTokenizer : ITextTokenizer

@@ -6,6 +6,7 @@ using Raggle.Driver.OpenAI.ChatCompletion.Models;
 using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Messages;
 using System.Runtime.CompilerServices;
+using System.Diagnostics;
 
 namespace Raggle.Driver.OpenAI;
 
@@ -45,7 +46,6 @@ public class OpenAIChatCompletionService : IChatCompletionService
         var response = await _client.PostChatCompletionAsync(_request, cancellationToken);
         var choice = response.Choices?.First();
 
-        var tools = request.Tools?.ToDictionary(t => t.Name, t => t) ?? new Dictionary<string, FunctionTool>();
         var content = request.Messages.Last().Role == MessageRole.Assistant
             ? request.Messages.Last().Content
             : new MessageContentCollection();
@@ -61,7 +61,7 @@ public class OpenAIChatCompletionService : IChatCompletionService
 
                 var result = string.IsNullOrWhiteSpace(name)
                     ? FunctionResult.Failed("Function name is required.")
-                    : tools.TryGetValue(name, out var function)
+                    : request.Tools != null && request.Tools.TryGetValue(name, out var function)
                     ? await function.InvokeAsync(args)
                     : FunctionResult.Failed($"Function '{name}' not exist.");
 
@@ -76,33 +76,36 @@ public class OpenAIChatCompletionService : IChatCompletionService
             {
                 content.AddText(choice.Message.Content);
             }
-
-            var tokenUsage = new Abstractions.AI.TokenUsage
-            {
-                TotalTokens = response.Usage?.TotalTokens,
-                InputTokens = response.Usage?.PromptTokens,
-                OutputTokens = response.Usage?.CompletionTokens
-            };
-
-            if (choice?.FinishReason == FinishReason.Length)
-            {
-                return new Abstractions.AI.ChatCompletionResponse
-                { 
-                    Completed = false,
-                    Content = content.ToArray(),
-                    TokenUsage = tokenUsage,
-                    ErrorMessage = "You have reached the token limit.",
-                };
-            }
             else
             {
-                return new Abstractions.AI.ChatCompletionResponse
-                {
-                    Completed = true,
-                    Content = content.ToArray(),
-                    TokenUsage = tokenUsage,
-                };
+                Debug.WriteLine("No content found in the response.");
             }
+
+            var result = new Abstractions.AI.ChatCompletionResponse
+            {
+                EndReason = choice?.FinishReason switch
+                {
+                    FinishReason.Stop => CompletionReason.EndTurn,
+                    FinishReason.Length => CompletionReason.MaxTokens,
+                    FinishReason.ContentFilter => CompletionReason.ContentFilter,
+                    _ => null
+                },
+                Model = response.Model,
+                Message = new Abstractions.Messages.Message
+                {
+                    Role = MessageRole.Assistant,
+                    Content = content,
+                    TimeStamp = DateTime.UtcNow
+                },
+                TokenUsage = new Abstractions.AI.TokenUsage
+                {
+                    TotalTokens = response.Usage?.TotalTokens,
+                    InputTokens = response.Usage?.PromptTokens,
+                    OutputTokens = response.Usage?.CompletionTokens
+                },
+            };
+
+            return result;
         }
     }
 
@@ -112,7 +115,6 @@ public class OpenAIChatCompletionService : IChatCompletionService
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var openaiRequest = ConvertToOpenAIRequest(request);
-        var tools = request.Tools?.ToDictionary(t => t.Name, t => t) ?? new Dictionary<string, FunctionTool>();
         var toolContents = new Dictionary<int, ToolContent>();
 
         await foreach (var response in _client.PostStreamingChatCompletionAsync(openaiRequest, cancellationToken))
@@ -146,7 +148,7 @@ public class OpenAIChatCompletionService : IChatCompletionService
                     {
                         content.Result = FunctionResult.Failed("Function name is required.");
                     }
-                    else if (tools.TryGetValue(content.Name, out var tool))
+                    else if (request.Tools != null && request.Tools.TryGetValue(content.Name, out var tool))
                     {
                         var result = await tool.InvokeAsync(content.Arguments);
                         content.Result = result;
@@ -275,7 +277,7 @@ public class OpenAIChatCompletionService : IChatCompletionService
         }
         _request.Messages = _messages.ToArray();
 
-        if (request.Tools != null && request.Tools.Length > 0)
+        if (request.Tools != null && request.Tools.Count > 0)
         {
             var tools = new List<Tool>();
             foreach (var tool in request.Tools)

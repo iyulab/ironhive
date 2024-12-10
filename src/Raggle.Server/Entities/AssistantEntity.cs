@@ -11,32 +11,27 @@ public class AssistantEntity
 
     public string? Instruction { get; set; }
 
-    public ServiceSettings Settings { get; set; } = new ServiceSettings();
-
-    public IEnumerable<string>? Memories { get; set; }
-
-    public IEnumerable<string>? ToolKits { get; set; }
-
-    public IDictionary<string, object>? ToolkitOptions { get; set; }
-
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-    public DateTime? LastUpdatedAt { get; set; }
-}
-
-public class ServiceSettings
-{
     public string Provider { get; set; } = string.Empty;
 
     public string Model { get; set; } = string.Empty;
 
-    public int MaxTokens { get; set; } = 2048;
+    public int? MaxTokens { get; set; }
 
-    public float Temperature { get; set; } = 0.7f;
+    public float? Temperature { get; set; }
 
-    public int TopK { get; set; } = 50;
+    public int? TopK { get; set; }
 
-    public float TopP { get; set; } = 1.0f;
+    public float? TopP { get; set; }
 
     public string[]? StopSequences { get; set; }
+
+    public IEnumerable<string>? Memories { get; set; }
+
+    public IEnumerable<string>? Tools { get; set; }
+
+    public IDictionary<string, object>? ToolOptions { get; set; }
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public DateTime? LastUpdatedAt { get; set; }
 }

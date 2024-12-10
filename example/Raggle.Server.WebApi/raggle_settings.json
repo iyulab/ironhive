@@ -1,91 +1,74 @@
 {
-  "Database": {
-    "Type": "sqlite",
-    "Sqlite": {
-      "ConnectionString": "Data Source=C:\\temp\\index.db"
+  "database": {
+    "type": "sqlite",
+    "sqlite": {
+      "connection_string": "Data Source=C:\\temp\\index.db"
     },
-    "SqlServer": {
-      "ConnectionString": ""
+    "sql_server": {
+      "connection_string": ""
     },
-    "Cosmos": {
-      "ConnectionString": "",
-      "DatabaseName": ""
+    "cosmos": {
+      "connection_string": "",
+      "database_name": ""
     },
-    "PostgreSQL": {
-      "ConnectionString": ""
+    "postgre_sql": {
+      "connection_string": ""
     },
-    "MongoDB": {
-      "ConnectionString": "",
-      "DatabaseName": ""
+    "mongo_db": {
+      "connection_string": "",
+      "database_name": ""
     },
-    "MySql": {
-      "ConnectionString": ""
+    "my_sql": {
+      "connection_string": ""
     },
-    "Oracle": {
-      "ConnectionString": ""
+    "oracle": {
+      "connection_string": ""
     }
   },
-  "Storages": {
-    "Vectors": {
-      "Type": "lite_db",
-      "LiteDB": {
-        "DatabasePath": "C:\\temp\\vector.db",
-        "Password": ""
+  "storages": {
+    "vectors": {
+      "type": "lite_db",
+      "lite_db": {
+        "database_path": "C:\\temp\\vector.db",
+        "password": ""
       },
-      "Qdrant": {
-        "Host": "http://localhost",
-        "Port": 6333,
-        "ApiKey": "",
-        "Https": false,
-        "GrpcTimeout": "00:01:40"
+      "qdrant": {
+        "host": "http://localhost",
+        "port": 6333,
+        "api_key": "",
+        "https": false,
+        "grpc_timeout": "00:01:40"
       }
     },
-    "Documents": {
-      "Type": "local_disk",
-      "LocalDisk": {
-        "DirectoryPath": "C:\\temp\\documents"
+    "documents": {
+      "type": "local_disk",
+      "local_disk": {
+        "directory_path": "C:\\temp\\documents"
       },
-      "AzureBlob": {
-        "AuthType": "connection_string",
-        "ConnectionString": "",
-        "AccountName": "",
-        "AccountKey": "",
-        "SASToken": ""
+      "azure_blob": {
+        "auth_type": "connection_string",
+        "connection_string": "",
+        "account_name": "",
+        "account_key": "",
+        "sas_token": ""
       }
     }
   },
-  "Services": {
-    "AIProviders": {
-      "OpenAI": {
-        "ServiceKey": "openai",
-        "EndPoint": "https://api.openai.com/v1/",
-        "ApiKey": "",
-        "Organization": "",
-        "Project": ""
-      },
-      "Anthropic": {
-        "ServiceKey": "anthropic",
-        "EndPoint": "https://api.anthropic.com/v1/",
-        "ApiKey": "",
-        "Version": ""
-      },
-      "Ollama": {
-        "ServiceKey": "ollama",
-        "EndPoint": "http://localhost:11434/",
-        "DefaultRequestHeaders": {}
-      }
+  "services": {
+    "open_ai": {
+      "end_point": "https://api.openai.com/v1/",
+      "api_key": "",
+      "organization": "",
+      "project": ""
     },
-    "ToolKits": {
-      "VectorSearch": {
-        "ServiceKey": ""
-      }
+    "anthropic": {
+      "end_point": "https://api.anthropic.com/v1/",
+      "api_key": "",
+      "version": ""
     },
-    "StepNames": {
-      "Decoding": "extract",
-      "Chunking": "chunk",
-      "Summarizing": "summary",
-      "GenDialogue": "dialogue",
-      "Embeddings": "embeddings"
+    "ollama": {
+      "end_point": "http://localhost:11434/",
+      "default_request_headers": {}
     }
   }
 }

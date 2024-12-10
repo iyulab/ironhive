@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
-namespace Raggle.Abstractions.Tools.Schema;
+namespace Raggle.Abstractions.Json;
 
 public static class JsonSchemaConverter
 {
@@ -112,6 +112,8 @@ public static class JsonSchemaConverter
         throw new ArgumentException("Type not supported.", nameof(type));
     }
 
+    #region Private Methods
+
     private static bool IsGenericArray(Type type)
     {
         if (!type.IsGenericType)
@@ -161,4 +163,6 @@ public static class JsonSchemaConverter
 
         return false;
     }
+
+    #endregion
 }

@@ -6,11 +6,11 @@ using System.ComponentModel;
 
 namespace Raggle.Server.ToolKits;
 
-public class VectorSearchToolKit
+public class VectorSearchTool
 {
     private readonly MemoryService _memory;
 
-    public VectorSearchToolKit(IServiceProvider serviceProvider)
+    public VectorSearchTool(IServiceProvider serviceProvider)
     {
         _memory = serviceProvider.GetRequiredService<MemoryService>();
     }

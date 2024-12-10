@@ -1,11 +1,10 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Raggle.Abstractions.AI;
-using Raggle.Abstractions.Extensions;
 using Raggle.Abstractions.Json;
 using Raggle.Abstractions.Memory;
+using Raggle.Core.AI;
 using Raggle.Core.Extensions;
 using Raggle.Core.Memory.Document;
-using Raggle.Core.Tokenizers;
 using System.Text;
 
 namespace Raggle.Core.Memory.Handlers;

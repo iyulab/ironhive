@@ -5,7 +5,7 @@ public class EmbeddingRequest
     /// <summary>
     /// The Embedding Model Name.
     /// </summary>
-    public required string Model { get; set; }
+    public string Model { get; set; } = string.Empty;
 
     /// <summary>
     /// The input text to embed.

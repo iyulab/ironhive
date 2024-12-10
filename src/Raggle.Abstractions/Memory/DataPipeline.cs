@@ -8,6 +8,8 @@ namespace Raggle.Abstractions.Memory;
 
 public enum PipelineStatus
 {
+    // 대기
+    Pending,
     // 준비
     Queued,
     // 처리 중
@@ -18,47 +20,10 @@ public enum PipelineStatus
     Failed
 }
 
-public class DataPipelineStatus
-{
-    [JsonInclude]
-    public PipelineStatus Status { get; private set; } = PipelineStatus.Queued;
-
-    [JsonInclude]
-    public DateTime? StartedAt { get; private set; }
-
-    [JsonInclude]
-    public DateTime? CompletedAt { get; private set; }
-
-    [JsonInclude]
-    public DateTime? FailedAt { get; private set; }
-
-    [JsonInclude]
-    public string? ErrorMessage { get; private set; }
-
-    public void SetStart()
-    {
-        Status = PipelineStatus.Processing;
-        StartedAt = DateTime.UtcNow;
-    }
-
-    public void SetComplete()
-    {
-        Status = PipelineStatus.Completed;
-        CompletedAt = DateTime.UtcNow;
-    }
-
-    public void SetFailed(string message)
-    {
-        Status = PipelineStatus.Failed;
-        FailedAt = DateTime.UtcNow;
-        ErrorMessage = message;
-    }
-}
-
 public class DataPipeline
 {
     [JsonInclude]
-    public DataPipelineStatus Progress { get; private set; } = new DataPipelineStatus();
+    public PipelineStatus Status { get; private set; } = PipelineStatus.Queued;
 
     public required string CollectionName { get; set; }
 
@@ -73,22 +38,24 @@ public class DataPipeline
 
     public List<string> Steps { get; set; } = [];
 
-    public IEnumerable<string>? Tags { get; set; }
-
     public IDictionary<string, object>? Options { get; set; }
+
+    public IEnumerable<string>? Tags { get; set; }
 
     [JsonInclude]
     public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
 
-    public DataPipeline Start()
-    {
-        if (Steps.Count == 0)
-            throw new InvalidOperationException("파이프라인을 시작할 단계가 없습니다.");
+    [JsonInclude]
+    public DateTime? StartedAt { get; private set; }
 
-        CurrentStep ??= Steps.First();
-        Progress.SetStart();
-        return this;
-    }
+    [JsonInclude]
+    public DateTime? CompletedAt { get; private set; }
+
+    [JsonInclude]
+    public DateTime? FailedAt { get; private set; }
+
+    [JsonInclude]
+    public string? ErrorMessage { get; private set; }
 
     public DataPipeline Next()
     {
@@ -100,16 +67,30 @@ public class DataPipeline
         return this;
     }
 
+    public DataPipeline Start()
+    {
+        if (Steps.Count == 0)
+            throw new InvalidOperationException("파이프라인을 시작할 단계가 없습니다.");
+
+        CurrentStep ??= Steps.First();
+        Status = PipelineStatus.Processing;
+        StartedAt = DateTime.UtcNow;
+        return this;
+    }
+
     public DataPipeline Complete()
     {
         CurrentStep = null;
-        Progress.SetComplete();   
+        Status = PipelineStatus.Completed;
+        CompletedAt = DateTime.UtcNow;
         return this;
     }
 
     public DataPipeline Failed(string message)
     {
-        Progress.SetFailed(message);
+        Status = PipelineStatus.Failed;
+        FailedAt = DateTime.UtcNow;
+        ErrorMessage = message;
         return this;
     }
 

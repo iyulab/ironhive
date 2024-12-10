@@ -2,7 +2,6 @@
 using Microsoft.EntityFrameworkCore;
 using Raggle.Abstractions;
 using Raggle.Abstractions.Memory;
-using Raggle.Server.Configurations;
 using Raggle.Server.Data;
 using Raggle.Server.Entities;
 using System.Text.Json.Nodes;
@@ -150,10 +149,10 @@ public class MemoryService
                 tags: document.Tags?.ToArray(),
                 steps:
                 [
-                    DefaultServiceKeys.Decoding,
-                    DefaultServiceKeys.Chunking,
-                    DefaultServiceKeys.GenDialogue,
-                    DefaultServiceKeys.Embeddings,
+                    RaggleServiceKeys.Decoding,
+                    RaggleServiceKeys.Chunking,
+                    RaggleServiceKeys.Dialogue,
+                    RaggleServiceKeys.Embeddings,
                 ],
                 options: collection.HandlerOptions);
 

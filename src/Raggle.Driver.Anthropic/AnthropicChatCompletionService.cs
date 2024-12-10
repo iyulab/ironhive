@@ -4,6 +4,7 @@ using Raggle.Abstractions.Tools;
 using Raggle.Driver.Anthropic.ChatCompletion;
 using Raggle.Driver.Anthropic.ChatCompletion.Models;
 using Raggle.Driver.Anthropic.Configurations;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -49,7 +50,6 @@ public class AnthropicChatCompletionService : IChatCompletionService
         var _request = ConvertToAnthropicRequest(request);
         var response = await _client.PostMessagesAsync(_request, cancellationToken);
 
-        var tools = request.Tools?.ToDictionary(t => t.Name, t => t) ?? new Dictionary<string, FunctionTool>();
         var content = request.Messages.Last().Role == MessageRole.Assistant
             ? request.Messages.Last().Content
             : new MessageContentCollection();
@@ -69,7 +69,7 @@ public class AnthropicChatCompletionService : IChatCompletionService
                     var args = JsonSerializer.Serialize(toolUse.Input);
                     var result = string.IsNullOrWhiteSpace(name)
                         ? FunctionResult.Failed("Tool name is missing")
-                        : tools.TryGetValue(name, out var tool)
+                        : request.Tools != null && request.Tools.TryGetValue(name, out var tool)
                         ? await tool.InvokeAsync(args)
                         : FunctionResult.Failed($"Tool [{name}] not found");
 
@@ -90,36 +90,36 @@ public class AnthropicChatCompletionService : IChatCompletionService
                 }
                 else
                 {
-                    throw new InvalidOperationException("Unexpected message content type");
+                    Debug.WriteLine($"Unexpected message content type: {item.GetType()}");
+                    //throw new InvalidOperationException("Unexpected message content type");
                 }
             }
 
-            var tokenUsage = new Abstractions.AI.TokenUsage
+            var result = new ChatCompletionResponse
             {
-                TotalTokens = response.Usage.InputTokens + response.Usage.OutputTokens,
-                InputTokens = response.Usage.InputTokens,
-                OutputTokens = response.Usage.OutputTokens
+                EndReason = response.StopReason switch
+                {
+                    StopReason.EndTurn => CompletionReason.EndTurn,
+                    StopReason.MaxTokens => CompletionReason.MaxTokens,
+                    StopReason.StopSequence => CompletionReason.StopSequence,
+                    _ => null
+                },
+                Model = response.Model,
+                Message = new Abstractions.Messages.Message
+                {
+                    Role = MessageRole.Assistant,
+                    Content = content,
+                    TimeStamp = DateTime.UtcNow
+                },
+                TokenUsage = new Abstractions.AI.TokenUsage
+                {
+                    TotalTokens = response.Usage.InputTokens + response.Usage.OutputTokens,
+                    InputTokens = response.Usage.InputTokens,
+                    OutputTokens = response.Usage.OutputTokens
+                },
             };
 
-            if (response.StopReason == StopReason.MaxTokens)
-            {
-                return new ChatCompletionResponse
-                {
-                    Completed = false,
-                    Content = content.ToArray(),
-                    TokenUsage = tokenUsage,
-                    ErrorMessage = "You have reached the maximum tokens limit",
-                };
-            }
-            else
-            {
-                return new ChatCompletionResponse
-                {
-                    Completed = true,
-                    Content = content.ToArray(),
-                    TokenUsage = tokenUsage,
-                };
-            }
+            return result;
         }
     }
 
@@ -129,8 +129,7 @@ public class AnthropicChatCompletionService : IChatCompletionService
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var _request = ConvertToAnthropicRequest(request);
-        var tools = request.Tools?.ToDictionary(t => t.Name, t => t) ?? new Dictionary<string, FunctionTool>();
-        
+
         var content = new MessageContentCollection();
         await foreach (var response in _client.PostStreamingMessagesAsync(_request, cancellationToken))
         {
@@ -173,7 +172,7 @@ public class AnthropicChatCompletionService : IChatCompletionService
                             {
                                 toolContent.Result = FunctionResult.Failed("Tool name is missing");
                             }
-                            else if (tools.TryGetValue(toolContent.Name, out var tool))
+                            else if (request.Tools != null && request.Tools.TryGetValue(toolContent.Name, out var tool))
                             {
                                 yield return new StreamingToolUseResponse 
                                 { 
@@ -372,7 +371,7 @@ public class AnthropicChatCompletionService : IChatCompletionService
         }
         _request.Messages = _messages.ToArray();
 
-        if (request.Tools != null && request.Tools.Length > 0)
+        if (request.Tools != null && request.Tools.Count > 0)
         {
             var _tools = new List<Tool>();
             foreach (var tool in request.Tools)

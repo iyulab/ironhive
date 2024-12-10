@@ -1,7 +1,6 @@
 ﻿using Raggle.Driver.Anthropic;
 using Raggle.Driver.Ollama;
 using Raggle.Driver.OpenAI;
-using Raggle.Abstractions.Extensions;
 using Raggle.Core.Memory.Handlers;
 using Raggle.Driver.LiteDB;
 using Raggle.Driver.Qdrant;
@@ -12,25 +11,37 @@ using Raggle.Core.Memory.Decoders;
 using Raggle.Abstractions;
 using Raggle.Core.Extensions;
 using Microsoft.Extensions.DependencyInjection;
-using Raggle.Server.Configurations;
 using Raggle.Server.Data;
 using Raggle.Server.Services;
+using Raggle.Server.ToolKits;
+using Raggle.Abstractions.Memory;
+using Raggle.Core.Memory;
+using Raggle.Server.Configurations.Models;
 
-namespace Raggle.Server;
+namespace Raggle.Server.Extensions;
 
 public static partial class IServiceCollectionExtentions
 {
+    public static IServiceCollection AddToolService<T>(
+        this IServiceCollection services,
+        string serviceKey)
+        where T : class
+    {
+        return services.AddKeyedSingleton<T>(serviceKey);
+    }
+
     public static IServiceCollection AddRaggleServices(
-        this IServiceCollection services, 
+        this IServiceCollection services,
         RaggleConfig config)
     {
         services.SetDatabaseService(config.Database)
                 .SetStorageServices(config.Storages)
-                .AddKeyedServices(config.Services)
+                .AddAIServices(config.Services)
                 .AddDefaultDocumentDecoders()
-                .AddDefaultPipelineHandlers(config.Services);
+                .AddDefaultPipelineHandlers();
 
         services.AddSingleton<IRaggle, Core.Raggle>();
+        services.AddSingleton<IRaggleMemory, RaggleMemory>();
         return services;
     }
 
@@ -82,7 +93,7 @@ public static partial class IServiceCollectionExtentions
     }
 
     public static IServiceCollection SetStorageServices(
-        this IServiceCollection services, 
+        this IServiceCollection services,
         RaggleStorageConfig config)
     {
         switch (config.Vectors.Type)
@@ -112,34 +123,21 @@ public static partial class IServiceCollectionExtentions
         return services;
     }
 
-    public static IServiceCollection AddKeyedServices(
+    public static IServiceCollection AddAIServices(
         this IServiceCollection services,
-        RaggleKeyedServiceConfig config)
+        RaggleAIConfig config)
     {
-        if (config.AIProviders.Ollama.Validate())
-        {
-            services.AddOllamaServices(
-                serviceKey: config.AIProviders.Ollama.ServiceKey, 
-                config: config.AIProviders.Ollama.Value);
-        }
-        if (config.AIProviders.OpenAI.Validate())
-        {
-            services.AddOpenAIServices(
-                serviceKey: config.AIProviders.OpenAI.ServiceKey,
-                config: config.AIProviders.OpenAI.Value);
-        }
-        if (config.AIProviders.Anthropic.Validate())
-        {
-            services.AddAnthropicServices(
-                serviceKey: config.AIProviders.Anthropic.ServiceKey,
-                config: config.AIProviders.Anthropic.Value);
-        }
+        services.AddOpenAIServices(RaggleServiceKeys.OpenAI, config.OpenAI);
+        services.AddAnthropicServices(RaggleServiceKeys.Anthrophic, config.Anthropic);
+        services.AddOllamaServices(RaggleServiceKeys.Ollama, config.Ollama);
+        return services;
+    }
 
-        //if (config.ToolKits.VectorSearch.Validate())
-        //{
-        //    // TODO: Add toolkit
-        //}
-
+    public static IServiceCollection AddToolServices(
+        this IServiceCollection services,
+        RaggleAIConfig config)
+    {
+        services.AddToolService<VectorSearchTool>(RaggleServiceKeys.VectorSearch);
         return services;
     }
 
@@ -153,13 +151,12 @@ public static partial class IServiceCollectionExtentions
     }
 
     public static IServiceCollection AddDefaultPipelineHandlers(
-        this IServiceCollection services,
-        RaggleKeyedServiceConfig config)
+        this IServiceCollection services)
     {
-        return services.AddPipelineHandler<DecodingHandler>(DefaultServiceKeys.Decoding)
-                       .AddPipelineHandler<ChunkingHandler>(DefaultServiceKeys.Chunking)
-                       .AddPipelineHandler<SummaryHandler>(DefaultServiceKeys.Summarizing)
-                       .AddPipelineHandler<DialogueHandler>(DefaultServiceKeys.GenDialogue)
-                       .AddPipelineHandler<EmbeddingsHandler>(DefaultServiceKeys.Embeddings);
+        return services.AddPipelineHandler<DecodingHandler>(RaggleServiceKeys.Decoding)
+                       .AddPipelineHandler<ChunkingHandler>(RaggleServiceKeys.Chunking)
+                       .AddPipelineHandler<SummaryHandler>(RaggleServiceKeys.Summarizing)
+                       .AddPipelineHandler<DialogueHandler>(RaggleServiceKeys.Dialogue)
+                       .AddPipelineHandler<EmbeddingsHandler>(RaggleServiceKeys.Embeddings);
     }
 }

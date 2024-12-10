@@ -17,8 +17,6 @@ public class FunctionArguments : IDictionary<string, object>
         _inner = new Dictionary<string, object>(dictionary);
     }
 
-    #region Implementations
-
     public object this[string key]
     {
         get => _inner[key];
@@ -32,6 +30,8 @@ public class FunctionArguments : IDictionary<string, object>
     public int Count => _inner.Count;
 
     public bool IsReadOnly => false;
+
+    #region Implementation Methods
 
     public void Add(string key, object value) => _inner.Add(key, value);
 

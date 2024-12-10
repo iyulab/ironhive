@@ -1,4 +1,4 @@
-﻿namespace Raggle.Abstractions.Memory;
+﻿namespace Raggle.Core.Memory.Decoders;
 
 public interface IDocumentDecoder
 {

@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Memory;
 using Raggle.Abstractions.Tools;
-using Raggle.Abstractions.Json;
 
 namespace Raggle.Abstractions.Extensions;
 
@@ -49,84 +48,6 @@ public static partial class IServiceCollectionExtensions
         where T : class, IEmbeddingService
     {
         return services.AddKeyedSingleton<IEmbeddingService>(serviceKey, implementationInstance);
-    }
-
-    public static IServiceCollection AddPipelineHandler<T>(
-        this IServiceCollection services,
-        string serviceKey)
-        where T : class, IPipelineHandler
-    {
-        return services.AddKeyedSingleton<IPipelineHandler, T>(serviceKey);
-    }
-
-    public static IServiceCollection AddToolKit<T>(
-        this IServiceCollection services,
-        string serviceKey)
-        where T : class, IToolKit
-    {
-        return services.AddKeyedSingleton<IToolKit, T>(serviceKey);
-    }
-
-    #endregion
-
-    // Multiple Singleton Services
-    public static IServiceCollection AddDocumentDecoder<T>(
-        this IServiceCollection services)
-        where T : class, IDocumentDecoder
-    {
-        return services.AddSingleton<IDocumentDecoder, T>();
-    }
-
-    #region Utility Methods
-
-    public static IServiceCollection CopyServicesFrom<T>(
-        this IServiceCollection target,
-        IServiceCollection source)
-    {
-        foreach (var service in source)
-        {
-            if (service.ServiceType == typeof(T) && !target.Contains(service))
-            {
-                target.Add(service);
-            }
-        }
-        return target;
-    }
-
-    public static IServiceCollection CopyRaggleServicesFrom(
-        this IServiceCollection target,
-        IServiceCollection source)
-    {
-        foreach (var service in source)
-        {
-            if (target.Contains(service))
-            {
-                continue;
-            }
-
-            bool isRaggleService;
-            if (service.IsKeyedService)
-            {
-                // Keyed Service
-                isRaggleService = service.ServiceType == typeof(IChatCompletionService)
-                    || service.ServiceType == typeof(IEmbeddingService)
-                    || service.ServiceType == typeof(IPipelineHandler)
-                    || service.ServiceType == typeof(string);
-            }
-            else
-            {
-                // Singleton Service
-                isRaggleService = service.ServiceType == typeof(IDocumentStorage)
-                    || service.ServiceType == typeof(IVectorStorage)
-                    || service.ServiceType == typeof(IDocumentDecoder);
-            }
-
-            if (isRaggleService)
-            {
-                target.Add(service);
-            }
-        }
-        return target;
     }
 
     #endregion

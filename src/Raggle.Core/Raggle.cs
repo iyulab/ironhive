@@ -1,7 +1,10 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Raggle.Abstractions;
 using Raggle.Abstractions.AI;
+using Raggle.Abstractions.Assistant;
 using Raggle.Abstractions.Memory;
+using Raggle.Abstractions.Tools;
+using Raggle.Core.Assistant;
 using Raggle.Core.Memory;
 
 namespace Raggle.Core;
@@ -31,4 +34,35 @@ public class Raggle : IRaggle
 
     public IEmbeddingService GetEmbeddingService(string serviceKey)
         => Services.GetRequiredKeyedService<IEmbeddingService>(serviceKey);
+
+    public IRaggleAssistant CreateAssistant(
+        string provider, 
+        string model, 
+        string? id = null, 
+        string? name = null, 
+        string? description = null, 
+        string? instruction = null, 
+        int? maxTokens = null, 
+        float? temperature = null, 
+        int? topK = null, 
+        float? topP = null, 
+        string[]? stopSequences = null, 
+        FunctionToolCollection? tools = null)
+    {
+        return new RaggleAssistant(Services)
+        {
+            Provider = provider,
+            Model = model,
+            Id = id,
+            Name = name,
+            Description = description,
+            Instruction = instruction,
+            MaxTokens = maxTokens,
+            Temperature = temperature,
+            TopK = topK,
+            TopP = topP,
+            StopSequences = stopSequences,
+            Tools = tools
+        };
+    }
 }

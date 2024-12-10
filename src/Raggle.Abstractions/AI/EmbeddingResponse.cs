@@ -13,5 +13,5 @@ public class EmbeddingResponse
     /// <summary>
     /// Gets or sets the embedding values.
     /// </summary>
-    public required float[] Embedding { get; set; }
+    public float[]? Embedding { get; set; }
 }

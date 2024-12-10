@@ -85,7 +85,6 @@ public class AssistantController : ControllerBase
                 var data = Encoding.UTF8.GetBytes(json + "\n");
                 await Response.Body.WriteAsync(data, cancellationToken);
 
-                // 데이터를 즉시 전송하도록 버퍼를 플러시
                 await Response.Body.FlushAsync(cancellationToken);
             }
         }

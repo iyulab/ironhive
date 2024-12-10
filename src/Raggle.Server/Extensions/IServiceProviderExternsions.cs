@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Options;
 using Raggle.Server.Data;
 
-namespace Raggle.Server;
+namespace Raggle.Server.Extensions;
 
 public static partial class IServiceProviderExtensions
 {

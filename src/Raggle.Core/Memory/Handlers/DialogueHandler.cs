@@ -91,28 +91,20 @@ public class DialogueHandler : IPipelineHandler
         var chat = _serviceProvider.GetRequiredKeyedService<IChatCompletionService>(options.ServiceKey);
         var response = await chat.ChatCompletionAsync(request, cancellationToken);
 
-        if (response.Completed)
+        var sb = new StringBuilder();
+        foreach (var item in response.Message?.Content ?? [])
         {
-            var sb = new StringBuilder();
-            foreach (var item in response.Content)
+            if (item is TextContent text)
             {
-                if (item is TextContent text)
-                {
-                    sb.AppendLine(text.Text);
-                }
+                sb.AppendLine(text.Text);
             }
-            var answer = sb.ToString();
-            if (string.IsNullOrWhiteSpace(answer))
-            {
-                throw new InvalidOperationException("Failed to generate QA pairs.");
-            }
-            return ParseDialoguesFromText(answer);
         }
-        else
+        var answer = sb.ToString();
+        if (string.IsNullOrWhiteSpace(answer))
         {
             throw new InvalidOperationException("Failed to generate QA pairs.");
         }
-
+        return ParseDialoguesFromText(answer);
     }
 
     private IEnumerable<Tuple<string, string>> ParseDialoguesFromText(string text)

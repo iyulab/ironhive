@@ -27,8 +27,8 @@ public class OllamaChatCompletionService : IChatCompletionService
     public async Task<IEnumerable<ChatCompletionModel>> GetChatCompletionModelsAsync(
         CancellationToken cancellationToken = default)
     {
-        var ollamaModels = await _client.GetChatModelsAsync(cancellationToken);
-        return ollamaModels.Select(m => new ChatCompletionModel
+        var models = await _client.GetChatModelsAsync(cancellationToken);
+        return models.Select(m => new ChatCompletionModel
         {
             Model = m.Name,
             CreatedAt = null,
@@ -42,19 +42,25 @@ public class OllamaChatCompletionService : IChatCompletionService
         ChatCompletionRequest request,
         CancellationToken cancellationToken = default)
     {
-        var ollamaRequest = ConvertToOllamaRequest(request);
-        var res = await _client.PostChatAsync(ollamaRequest, cancellationToken);
+        var _request = ConvertToOllamaRequest(request);
+        var response = await _client.PostChatAsync(_request, cancellationToken);
+        var content = new MessageContentCollection();
+        content.AddText(response.Message?.Content);
         return new ChatCompletionResponse
         {
-            Completed = true,
-            Content = 
-            [
-                new TextContent 
-                {
-                    Index = 0,
-                    Text = res.Message?.Content 
-                }
-            ]
+            Model = response.Model,
+            EndReason = response.DoneReason switch
+            {
+                DoneReason.Stop => CompletionReason.EndTurn,
+                _ => null
+            },
+            Message = new Message
+            {
+                Role = MessageRole.Assistant,
+                Content = content,
+                TimeStamp = DateTime.UtcNow,
+            },
+            TokenUsage = null,
         };
     }
 
@@ -167,7 +173,7 @@ public class OllamaChatCompletionService : IChatCompletionService
             },
         };
 
-        if (request.Tools != null && request.Tools.Length > 0)
+        if (request.Tools != null && request.Tools.Count > 0)
         {
             var tools = new List<Tool>();
             foreach (var tool in request.Tools)

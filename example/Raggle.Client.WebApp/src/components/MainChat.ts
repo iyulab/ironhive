@@ -67,6 +67,7 @@ export class MainChat extends LitElement {
         }
         else if (msg.status === 'stop')
         {
+          controller.abort();
         }
       });
 

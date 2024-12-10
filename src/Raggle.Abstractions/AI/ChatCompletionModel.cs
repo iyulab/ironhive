@@ -5,7 +5,7 @@ public class ChatCompletionModel
     /// <summary>
     /// Gets or sets the name of the model.
     /// </summary>
-    public required string Model { get; set; }
+    public string Model { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the date and time when the model was created.

@@ -3,7 +3,7 @@ using Raggle.Driver.LiteDB;
 using Raggle.Driver.LocalDisk;
 using Raggle.Driver.Qdrant;
 
-namespace Raggle.Server.Configurations;
+namespace Raggle.Server.Configurations.Models;
 
 public enum VectorStorageTypes
 {

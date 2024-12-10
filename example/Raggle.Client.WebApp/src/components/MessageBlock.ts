@@ -16,7 +16,7 @@ export class MessageBlock extends LitElement {
   message?: Message;
 
   render() {
-    if (!this.message?.contents) return nothing;
+    if (!this.message?.content) return nothing;
 
     return html`
       <div class="container">
@@ -24,8 +24,8 @@ export class MessageBlock extends LitElement {
           ${this.message.role}:
         </div>
         <div class="content">
-          ${this.message.contents?.map(content => html`
-              ${until(this.renderContent(content), "Loading...")}
+          ${this.message.content?.map(item => html`
+              ${until(this.renderContent(item), "Loading...")}
           `)}
         </div>
       </div>
@@ -46,7 +46,7 @@ export class MessageBlock extends LitElement {
     if (content.type === 'text') {
       return unsafeHTML(`${await this.parse(content.text || '')}`);
     } else if (content.type === 'image') {
-      return html`<img src="${ifDefined(content.url)}" alt="Image content" />`;
+      return html`<img src="${ifDefined(content.data)}" alt="Image content" />`;
     } else if (content.type === 'tool') {
       return html`<span>Tool: ${content.name}</span>`;
     } else {

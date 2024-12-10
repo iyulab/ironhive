@@ -1,5 +1,4 @@
-﻿using Raggle.Abstractions.Memory;
-using Raggle.Core.Utils;
+﻿using Raggle.Core.Utils;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 

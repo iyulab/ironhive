@@ -1,35 +1,19 @@
 using Microsoft.AspNetCore.Http.Features;
-using Raggle.Server;
-using Raggle.Server.WebApi;
+using Raggle.Server.Configurations;
+using Raggle.Server.Extensions;
 using Raggle.Server.WebApi.Development;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 # region For Raggle
-var config = TempConfigManager.Make(false);
-builder.Services.AddRaggleServices(config);
+var cm = new JsonConfigManager(Path.Combine(Directory.GetCurrentDirectory(),"raggle_settings.json"));
+if (cm.Config == null)
+    throw new Exception("Failed to load raggle_settings.json");
+
+builder.Services.AddRaggleServices(cm.Config);
 #endregion
 
-Console.WriteLine("Default Options");
-var json = JsonSerializer.Serialize(new JsonSerializerOptions(), new JsonSerializerOptions
-{
-    WriteIndented = true,
-    Converters = { new JsonStringEnumConverter() }
-});
-Console.WriteLine(json);
-
-builder.Services.AddControllers()
-    .AddJsonOptions(options =>
-    {
-        var json = JsonSerializer.Serialize(options, new JsonSerializerOptions
-        {
-            WriteIndented = true,
-            Converters = { new JsonStringEnumConverter() }
-        });
-        Console.WriteLine(json);
-    });
+builder.Services.AddControllers();
 
 if (builder.Environment.IsDevelopment())
 {

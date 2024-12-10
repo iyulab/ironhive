@@ -15,12 +15,6 @@ public class RaggleDbContext : DbContext
         new(v => v == null ? null : JsonSerializer.Serialize(v, new JsonSerializerOptions()),
             v => v == null ? null : JsonSerializer.Deserialize<List<string>>(v, new JsonSerializerOptions()));
 
-    private static readonly ValueConverter<ServiceSettings, string> ServiceSettingsConverter =
-            new(
-                v => JsonSerializer.Serialize(v, new JsonSerializerOptions()),
-                v => JsonSerializer.Deserialize<ServiceSettings>(v, new JsonSerializerOptions()) ?? new ServiceSettings()
-            );
-
     public DbSet<CollectionEntity> Collections { get; set; }
     public DbSet<DocumentEntity> Documents { get; set; }
     public DbSet<AssistantEntity> Assistants { get; set; }
@@ -60,7 +54,7 @@ public class RaggleDbContext : DbContext
             .HasColumnType("TEXT");
 
         builder.Entity<AssistantEntity>()
-            .Property(a => a.ToolkitOptions)
+            .Property(a => a.ToolOptions)
             .HasConversion(DictionaryConverter)
             .HasColumnType("TEXT");
 
@@ -70,13 +64,8 @@ public class RaggleDbContext : DbContext
             .HasColumnType("TEXT");
 
         builder.Entity<AssistantEntity>()
-            .Property(a => a.ToolKits)
+            .Property(a => a.Tools)
             .HasConversion(EnumerableConverter)
-            .HasColumnType("TEXT");
-
-        builder.Entity<AssistantEntity>()
-            .Property(a => a.Settings)
-            .HasConversion(ServiceSettingsConverter)
             .HasColumnType("TEXT");
 
         // 관계 설정: 외래 키

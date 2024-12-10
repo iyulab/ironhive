@@ -5,7 +5,7 @@ public class EmbeddingModel
     /// <summary>
     /// The Embedding Model Name.
     /// </summary>
-    public required string Model { get; set; }
+    public string Model { get; set; } = string.Empty;
 
     /// <summary>
     /// The Embedding Model Created At.
