@@ -2,13 +2,13 @@
 
 namespace Raggle.Abstractions.AI;
 
-public class ChatCompletionResponse
+public class ChatCompletionStreamingResponse
 {
     public ChatCompletionEndReason? EndReason { get; set; }
 
     public string? Model { get; set; }
 
-    public Message? Message { get; set; }
+    public IMessageContent? Content { get; set; }
 
     public TokenUsage? TokenUsage { get; set; }
 }

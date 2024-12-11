@@ -3,7 +3,7 @@
 /// <summary>
 /// Represents the stop reason for the chat completion of an LLM operation.
 /// </summary>
-public enum CompletionReason
+public enum ChatCompletionEndReason
 {
     /// <summary>
     /// AI turn was completed.

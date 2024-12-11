@@ -1,20 +1,20 @@
 import { LitElement, PropertyValues, css, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import type { Models } from "../backend/Models";
+import type { ServiceModels } from "../models";
 import { API } from "../backend/ApiClient";
 
 @customElement('model-select')
 export class ModelSelect extends LitElement {
   // 모델 캐시: 타입별로 분리
-  private static chatModels?: Models;
-  private static embedModels?: Models;
+  private static chatModels?: ServiceModels;
+  private static embedModels?: ServiceModels;
 
   // 로딩 상태: 타입별로 분리
   @state() private loadingChat: boolean = false;
   @state() private loadingEmbed: boolean = false;
 
   // 현재 타입에 따른 모델
-  @state() private models?: Models;
+  @state() private models?: ServiceModels;
 
   @property({ type: String }) type: 'chat' | 'embed' = 'embed';
 
@@ -87,7 +87,7 @@ export class ModelSelect extends LitElement {
   /**
    * 현재 타입에 맞는 모델을 반환합니다.
    */
-  private getCachedModels(): Models | undefined {
+  private getCachedModels(): ServiceModels | undefined {
     return this.type === 'chat' ? ModelSelect.chatModels : ModelSelect.embedModels;
   }
 

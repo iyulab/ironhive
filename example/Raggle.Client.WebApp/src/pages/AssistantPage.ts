@@ -20,7 +20,7 @@ export class AssistantPage extends LitElement {
         <main-list
           create-label="Create Assistant"
           slot="left"
-          key="assistantId"
+          key="id"
           .items=${this.assistants || []}
           @create=${this.createAssistant}
           @select=${(e: CustomEvent) => this.loadAssistant(e.detail)}
@@ -28,7 +28,7 @@ export class AssistantPage extends LitElement {
         ></main-list>
         <main-chat 
           slot="right"
-          .assistantId=${this.assistant?.assistantId || ''}
+          .assistantId=${this.assistant?.id || ''}
         ></main-chat>
         <div class="assistant-form" slot="main">
           <div class="info">Created: ${this.assistant?.createdAt}</div>
@@ -72,7 +72,7 @@ export class AssistantPage extends LitElement {
 
   private async deleteAssistant(id: string) {
     await API.deleteAssistantAsync(id);
-    if (this.assistant?.assistantId === id) {
+    if (this.assistant?.id === id) {
       this.assistant = undefined;
     }
     await this.loadAssistants();
@@ -80,13 +80,11 @@ export class AssistantPage extends LitElement {
 
   private async createAssistant() {
     this.assistant = await API.upsertAssistantAsync({
+      provider: 'anthropic',
+      model: 'claude-3-5-sonnet-20241022',
       name: 'Default Assistant',
       description: 'This assistant is created by default',
       instruction: 'You are useful assistant',
-      settings: {
-        provider: 'anthropic',
-        model: 'claude-3-5-sonnet-20241022'
-      }
     });
     await this.loadAssistants();
   }

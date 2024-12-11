@@ -20,4 +20,12 @@ public static class IServiceCollectionExtensions
     {
         return services.AddKeyedSingleton<IPipelineHandler, T>(serviceKey);
     }
+
+    public static IServiceCollection AddToolService<T>(
+        this IServiceCollection services,
+        string serviceKey)
+        where T : class
+    {
+        return services.AddKeyedSingleton<T>(serviceKey);
+    }
 }

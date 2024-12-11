@@ -85,9 +85,9 @@ public class OpenAIChatCompletionService : IChatCompletionService
             {
                 EndReason = choice?.FinishReason switch
                 {
-                    FinishReason.Stop => CompletionReason.EndTurn,
-                    FinishReason.Length => CompletionReason.MaxTokens,
-                    FinishReason.ContentFilter => CompletionReason.ContentFilter,
+                    FinishReason.Stop => ChatCompletionEndReason.EndTurn,
+                    FinishReason.Length => ChatCompletionEndReason.MaxTokens,
+                    FinishReason.ContentFilter => ChatCompletionEndReason.ContentFilter,
                     _ => null
                 },
                 Model = response.Model,
@@ -110,58 +110,32 @@ public class OpenAIChatCompletionService : IChatCompletionService
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<IStreamingChatCompletionResponse> StreamingChatCompletionAsync(
+    public async IAsyncEnumerable<Abstractions.AI.ChatCompletionStreamingResponse> StreamingChatCompletionAsync(
         Abstractions.AI.ChatCompletionRequest request, 
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var openaiRequest = ConvertToOpenAIRequest(request);
+        var _request = ConvertToOpenAIRequest(request);
         var toolContents = new Dictionary<int, ToolContent>();
 
-        await foreach (var response in _client.PostStreamingChatCompletionAsync(openaiRequest, cancellationToken))
+        await foreach (var response in _client.PostStreamingChatCompletionAsync(_request, cancellationToken))
         {
             var choice = response.Choices?.First();
             if (choice == null) continue;
 
-            if (choice.FinishReason == FinishReason.Stop)
-            {
-                // Text Stream Stop
-                yield return new StreamingStopResponse();
-            }
-            else if (choice.FinishReason == FinishReason.ContentFilter)
-            {
-                // Text Invalid Content Filter
-                yield return new StreamingFilterResponse();
-            }
-            else if (choice.FinishReason == FinishReason.Length)
-            {
-                // Token Limit
-                yield return new StreamingLimitResponse();
-            }
-            else if (choice.FinishReason == FinishReason.ToolCalls)
+            if (choice.FinishReason == FinishReason.ToolCalls)
             {
                 // Tool Callings
-                var cloneHistory = request.Messages.Clone();
                 foreach (var (_, content) in toolContents)
                 {
-                    yield return new StreamingToolUseResponse { Name = content.Name, Argument = content.Arguments };
-                    if (string.IsNullOrWhiteSpace(content.Name))
-                    {
-                        content.Result = FunctionResult.Failed("Function name is required.");
-                    }
-                    else if (request.Tools != null && request.Tools.TryGetValue(content.Name, out var tool))
-                    {
-                        var result = await tool.InvokeAsync(content.Arguments);
-                        content.Result = result;
-                    }
-                    else
-                    {
-                        content.Result = FunctionResult.Failed($"Function '{content.Name}' not exist.");
-                    }
-                    cloneHistory.AddAssistantMessage(content);
-                    yield return new StreamingToolResultResponse { Name = content.Name, Result = content.Result };
+                    content.Result = string.IsNullOrWhiteSpace(content.Name)
+                        ? FunctionResult.Failed("Function name is required.")
+                        : request.Tools != null && request.Tools.TryGetValue(content.Name, out var tool)
+                        ? await tool.InvokeAsync(content.Arguments)
+                        : FunctionResult.Failed($"Function '{content.Name}' not exist.");
+                    request.Messages.AddAssistantMessage(content);
+                    yield return new ChatCompletionStreamingResponse { Content = content };
                 }
 
-                request.Messages = cloneHistory;
                 await foreach (var stream in StreamingChatCompletionAsync(request, cancellationToken))
                 {
                     yield return stream;
@@ -169,9 +143,10 @@ public class OpenAIChatCompletionService : IChatCompletionService
             }
             else if (choice.Delta?.Content != null)
             {
-                // Text Generation
-                var text = choice.Delta.Content ?? string.Empty;
-                yield return new StreamingTextResponse { Text = text };
+                yield return new ChatCompletionStreamingResponse
+                {
+                    Content = new TextContent { Text = choice.Delta.Content }
+                };
             }
             else if (choice.Delta?.ToolCalls != null)
             {
@@ -195,7 +170,27 @@ public class OpenAIChatCompletionService : IChatCompletionService
                     };
                     toolContents.Add((int)toolCall.Index, content);
                 }
-                yield return new StreamingToolCallResponse { Name = content.Name, Argument = content.Arguments };
+                yield return new ChatCompletionStreamingResponse { Content = content };
+            }
+            else if(choice.FinishReason != null)
+            {
+                yield return new ChatCompletionStreamingResponse
+                {
+                    Model = response.Model,
+                    EndReason = choice.FinishReason switch
+                    {
+                        FinishReason.Stop => ChatCompletionEndReason.EndTurn,
+                        FinishReason.Length => ChatCompletionEndReason.MaxTokens,
+                        FinishReason.ContentFilter => ChatCompletionEndReason.ContentFilter,
+                        _ => null
+                    },
+                    TokenUsage = new Abstractions.AI.TokenUsage
+                    {
+                        TotalTokens = response.Usage?.TotalTokens,
+                        InputTokens = response.Usage?.PromptTokens,
+                        OutputTokens = response.Usage?.CompletionTokens
+                    }
+                };
             }
         }
     }

@@ -51,7 +51,7 @@ public class OllamaChatCompletionService : IChatCompletionService
             Model = response.Model,
             EndReason = response.DoneReason switch
             {
-                DoneReason.Stop => CompletionReason.EndTurn,
+                DoneReason.Stop => ChatCompletionEndReason.EndTurn,
                 _ => null
             },
             Message = new Message
@@ -65,16 +65,19 @@ public class OllamaChatCompletionService : IChatCompletionService
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<IStreamingChatCompletionResponse> StreamingChatCompletionAsync(
+    public async IAsyncEnumerable<ChatCompletionStreamingResponse> StreamingChatCompletionAsync(
         ChatCompletionRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var ollamaRequest = ConvertToOllamaRequest(request);
-        await foreach (var res in _client.PostSteamingChatAsync(ollamaRequest, cancellationToken))
+        var _request = ConvertToOllamaRequest(request);
+        await foreach (var res in _client.PostSteamingChatAsync(_request, cancellationToken))
         {
-            yield return new StreamingTextResponse
+            yield return new ChatCompletionStreamingResponse
             {
-                Text = res.Message.Content
+                Content = new TextContent
+                {
+                    Text = res.Message?.Content
+                },
             };
         }
     }

@@ -17,19 +17,12 @@ using Raggle.Server.ToolKits;
 using Raggle.Abstractions.Memory;
 using Raggle.Core.Memory;
 using Raggle.Server.Configurations.Models;
+using Raggle.Abstractions.AI;
 
 namespace Raggle.Server.Extensions;
 
 public static partial class IServiceCollectionExtentions
 {
-    public static IServiceCollection AddToolService<T>(
-        this IServiceCollection services,
-        string serviceKey)
-        where T : class
-    {
-        return services.AddKeyedSingleton<T>(serviceKey);
-    }
-
     public static IServiceCollection AddRaggleServices(
         this IServiceCollection services,
         RaggleConfig config)
@@ -37,11 +30,13 @@ public static partial class IServiceCollectionExtentions
         services.SetDatabaseService(config.Database)
                 .SetStorageServices(config.Storages)
                 .AddAIServices(config.Services)
+                .AddDefaultToolServices()
                 .AddDefaultDocumentDecoders()
                 .AddDefaultPipelineHandlers();
 
         services.AddSingleton<IRaggle, Core.Raggle>();
         services.AddSingleton<IRaggleMemory, RaggleMemory>();
+
         return services;
     }
 
@@ -133,21 +128,11 @@ public static partial class IServiceCollectionExtentions
         return services;
     }
 
-    public static IServiceCollection AddToolServices(
-        this IServiceCollection services,
-        RaggleAIConfig config)
+    public static IServiceCollection AddDefaultToolServices(
+        this IServiceCollection services)
     {
         services.AddToolService<VectorSearchTool>(RaggleServiceKeys.VectorSearch);
         return services;
-    }
-
-    public static IServiceCollection AddDefaultDocumentDecoders(
-        this IServiceCollection services)
-    {
-        return services.AddDocumentDecoder<WordDecoder>()
-                       .AddDocumentDecoder<TextDecoder>()
-                       .AddDocumentDecoder<PPTDecoder>()
-                       .AddDocumentDecoder<PDFDecoder>();
     }
 
     public static IServiceCollection AddDefaultPipelineHandlers(
@@ -158,5 +143,14 @@ public static partial class IServiceCollectionExtentions
                        .AddPipelineHandler<SummaryHandler>(RaggleServiceKeys.Summarizing)
                        .AddPipelineHandler<DialogueHandler>(RaggleServiceKeys.Dialogue)
                        .AddPipelineHandler<EmbeddingsHandler>(RaggleServiceKeys.Embeddings);
+    }
+
+    public static IServiceCollection AddDefaultDocumentDecoders(
+        this IServiceCollection services)
+    {
+        return services.AddDocumentDecoder<WordDecoder>()
+                       .AddDocumentDecoder<TextDecoder>()
+                       .AddDocumentDecoder<PPTDecoder>()
+                       .AddDocumentDecoder<PDFDecoder>();
     }
 }

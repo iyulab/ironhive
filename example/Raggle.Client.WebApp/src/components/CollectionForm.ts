@@ -10,8 +10,8 @@ export class CollectionForm extends LitElement {
   collection: CollectionEntity = {
     name: '',
     description: '',
-    embedServiceKey: '',
-    embedModelName: '',
+    provider: '',
+    model: '',
     handlerOptions: {
       "dialogue": {
         "ServiceKey": "openai",
@@ -51,11 +51,6 @@ export class CollectionForm extends LitElement {
           @change=${this.updateModelField}
         ></model-select>
 
-        <!-- 숨겨진 필드 -->
-        <input type="hidden" name="id" .value=${this.collection.collectionId || ''} />
-        <input type="hidden" name="createdAt" .value=${this.collection.createdAt || ''} />
-        <input type="hidden" name="lastUpdatedAt" .value=${this.collection.lastUpdatedAt || ''} />
-
         <button type="submit" class="submit-button">Submit</button>
       </form>
     `;
@@ -74,8 +69,8 @@ export class CollectionForm extends LitElement {
   private updateModelField(event: CustomEvent) {    
     this.collection = {
       ...this.collection,
-      embedServiceKey: event.detail.provider,
-      embedModelName: event.detail.model
+      provider: event.detail.provider,
+      model: event.detail.model
     };
   }
 

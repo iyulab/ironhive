@@ -1,20 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Raggle.Abstractions.AI;
 using Raggle.Server.Entities;
-using System.Text.Json;
 
 namespace Raggle.Server.Data;
 
 public class RaggleDbContext : DbContext
 {
-    private static readonly ValueConverter<IDictionary<string, object>?, string?> DictionaryConverter =
-        new(v => v == null ? null : JsonSerializer.Serialize(v, new JsonSerializerOptions()),
-            v => v == null ? null : JsonSerializer.Deserialize<Dictionary<string, object>>(v, new JsonSerializerOptions()));
-
-    private static readonly ValueConverter<IEnumerable<string>?, string?> EnumerableConverter =
-        new(v => v == null ? null : JsonSerializer.Serialize(v, new JsonSerializerOptions()),
-            v => v == null ? null : JsonSerializer.Deserialize<List<string>>(v, new JsonSerializerOptions()));
-
     public DbSet<CollectionEntity> Collections { get; set; }
     public DbSet<DocumentEntity> Documents { get; set; }
     public DbSet<AssistantEntity> Assistants { get; set; }
@@ -31,48 +22,138 @@ public class RaggleDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+        
+        // if sqlite
+        if (true)
+        {
+            OnSqliteModelCreating(builder);
+        }
+    }
 
-        // 키 설정
-        builder.Entity<CollectionEntity>()
-            .HasKey(c => c.CollectionId);
+    private void OnSqliteModelCreating(ModelBuilder builder)
+    {
+        // CollectionEntity 설정
+        builder.Entity<CollectionEntity>(entity =>
+        {
+            // 테이블 이름 설정
+            entity.ToTable("collections");
 
-        builder.Entity<DocumentEntity>()
-            .HasKey(d => d.DocumentId);
+            // 기본 키 설정
+            entity.HasKey(e => e.Id);
 
-        builder.Entity<AssistantEntity>()
-            .HasKey(a => a.AssistantId);
+            // 속성 설정
+            entity.Property(e => e.Provider)
+                  .IsRequired()
+                  .HasMaxLength(255);
 
-        // 타입 설정
-        builder.Entity<CollectionEntity>()
-            .Property(c => c.HandlerOptions)
-            .HasConversion(DictionaryConverter)
-            .HasColumnType("TEXT");
+            entity.Property(e => e.Model)
+                  .IsRequired()
+                  .HasMaxLength(255);
 
-        builder.Entity<DocumentEntity>()
-            .Property(d => d.Tags)
-            .HasConversion(EnumerableConverter)
-            .HasColumnType("TEXT");
+            entity.Property(e => e.Name)
+                  .IsRequired()
+                  .HasMaxLength(255);
 
-        builder.Entity<AssistantEntity>()
-            .Property(a => a.ToolOptions)
-            .HasConversion(DictionaryConverter)
-            .HasColumnType("TEXT");
+            entity.Property(e => e.CreatedAt)
+                  .IsRequired();
 
-        builder.Entity<AssistantEntity>()
-            .Property(a => a.Memories)
-            .HasConversion(EnumerableConverter)
-            .HasColumnType("TEXT");
+            entity.Property(e => e.HandlerOptions)
+                  .HasConversion<JsonValueConverter<IDictionary<string, object>>>()
+                  .HasColumnType("TEXT");
 
-        builder.Entity<AssistantEntity>()
-            .Property(a => a.Tools)
-            .HasConversion(EnumerableConverter)
-            .HasColumnType("TEXT");
+            // 참조 속성 설정
+            entity.HasMany(e => e.Documents)
+                  .WithOne(d => d.Collection)
+                  .HasForeignKey(d => d.CollectionId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
 
-        // 관계 설정: 외래 키
-        builder.Entity<DocumentEntity>()
-            .HasOne(d => d.Collection)
-            .WithMany(c => c.Documents)
-            .HasForeignKey(d => d.CollectionId)
-            .OnDelete(DeleteBehavior.Cascade);
+        // DocumentEntity 설정
+        builder.Entity<DocumentEntity>(entity =>
+        {
+            // 테이블 이름 설정
+            entity.ToTable("documents");
+
+            // 기본 키 설정 (Id로 설정)
+            entity.HasKey(d => d.Id);
+
+            // 속성 설정
+            entity.Property(d => d.FileName)
+                  .IsRequired()
+                  .HasMaxLength(255);
+
+            entity.Property(d => d.ContentType)
+                  .IsRequired()
+                  .HasMaxLength(100);
+
+            entity.Property(d => d.CreatedAt)
+                  .IsRequired();
+
+            entity.Property(d => d.Tags)
+                  .HasConversion<JsonValueConverter<IEnumerable<string>>>()
+                  .HasColumnType("TEXT");
+        });
+
+        // AssistantEntity 설정
+        builder.Entity<AssistantEntity>(entity =>
+        {
+            // 테이블 이름 설정
+            entity.ToTable("assistants");
+
+            // 기본 키 설정
+            entity.HasKey(a => a.Id);
+
+            // 속성 설정
+            entity.Property(e => e.Provider)
+                  .IsRequired()
+                  .HasMaxLength(255);
+
+            entity.Property(e => e.Model)
+                  .IsRequired()
+                  .HasMaxLength(255);
+
+            entity.Property(e => e.Name)
+                  .IsRequired()
+                  .HasMaxLength(255);
+
+            entity.Property(e => e.CreatedAt)
+                  .IsRequired();
+
+            entity.Property(a => a.Options)
+                  .HasConversion<JsonValueConverter<ChatCompletionOptions>>()
+                  .HasColumnType("TEXT");
+
+            entity.Property(a => a.Tools)
+                  .HasConversion<JsonValueConverter<IEnumerable<string>>>()
+                  .HasColumnType("TEXT");
+
+            entity.Property(a => a.ToolOptions)
+                  .HasConversion<JsonValueConverter<IDictionary<string, object>>>()
+                  .HasColumnType("TEXT");
+        });
+    }
+
+    private void OnSqlServerModelCreating(ModelBuilder builder)
+    {
+    }
+
+    private void OnCosmosModelCreating(ModelBuilder builder)
+    {
+    }
+
+    private void OnPostgreSQLModelCreating(ModelBuilder builder)
+    {
+    }
+
+    private void OnMySqlModelCreating(ModelBuilder builder)
+    {
+    }
+
+    private void OnMongoDBModelCreating(ModelBuilder builder)
+    {
+    }
+
+    private void OnOracleModelCreating(ModelBuilder builder)
+    {
     }
 }

@@ -31,9 +31,9 @@ public class SummaryHandler : IPipelineHandler
         var options = pipeline.GetCurrentOptions<Options>()
             ?? throw new InvalidOperationException($"Must provide options for {pipeline.CurrentStep}.");
 
-        var summaries = new List<DocumentSection>();
+        var summaries = new List<DocumentFragment>();
 
-        await foreach (var section in _documentStorage.GetDocumentJsonAsync<DocumentSection>(
+        await foreach (var section in _documentStorage.GetDocumentJsonAsync<DocumentFragment>(
             collectionName: pipeline.CollectionName,
             documentId: pipeline.DocumentId,
             suffix: pipeline.GetPreviousStep() ?? "unknown",
@@ -43,7 +43,7 @@ public class SummaryHandler : IPipelineHandler
                 ?? throw new InvalidOperationException("The document content is not a string.");
 
             var content = await GenerateSummarizedTextAsync(str, options, cancellationToken);
-            var summary = new DocumentSection
+            var summary = new DocumentFragment
             {
                 Index = section.Index,
                 Unit = section.Unit,

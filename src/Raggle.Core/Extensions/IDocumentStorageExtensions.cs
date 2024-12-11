@@ -1,4 +1,5 @@
-﻿using Raggle.Abstractions.Json;
+﻿using Raggle.Abstractions;
+using Raggle.Abstractions.Json;
 using Raggle.Abstractions.Memory;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -62,7 +63,7 @@ public static class IDocumentStorageExtensions
 
                 var json = await JsonSerializer.DeserializeAsync<T>(
                     utf8Json: stream,
-                    options: options ?? JsonObjectConverter.Options,
+                    options: options ?? RaggleOptions.JsonOptions,
                     cancellationToken: cancellationToken)
                     ?? throw new InvalidOperationException("문서의 역직렬화에 실패했습니다.");
 
@@ -105,7 +106,7 @@ public static class IDocumentStorageExtensions
 
                 var json = await JsonSerializer.DeserializeAsync<T>(
                     utf8Json: stream,
-                    options: options ?? JsonObjectConverter.Options,
+                    options: options ?? RaggleOptions.JsonOptions,
                     cancellationToken: cancellationToken)
                     ?? throw new InvalidOperationException("문서의 역직렬화에 실패했습니다.");
 
@@ -145,7 +146,7 @@ public static class IDocumentStorageExtensions
             await JsonSerializer.SerializeAsync(
                 utf8Json: stream,
                 value: valueList[i],
-                options: options ?? JsonObjectConverter.Options,
+                options: options ?? RaggleOptions.JsonOptions,
                 cancellationToken: cancellationToken);
             stream.Position = 0;
 
@@ -187,7 +188,7 @@ public static class IDocumentStorageExtensions
         await JsonSerializer.SerializeAsync(
             utf8Json: stream,
             value: value,
-            options: options ?? JsonObjectConverter.Options,
+            options: options ?? RaggleOptions.JsonOptions,
             cancellationToken: cancellationToken);
         stream.Position = 0;
 

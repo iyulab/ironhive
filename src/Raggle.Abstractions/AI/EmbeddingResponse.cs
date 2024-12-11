@@ -8,10 +8,15 @@ public class EmbeddingResponse
     /// <summary>
     /// Gets or sets the index of the embedding.
     /// </summary>
-    public int? Index { get; set; }
+    public string? Model { get; set; }
 
     /// <summary>
     /// Gets or sets the embedding values.
     /// </summary>
     public float[]? Embedding { get; set; }
+
+    /// <summary>
+    /// Gets or sets the timestamp of the response.
+    /// </summary>
+    public DateTime TimeStamp { get; set; } = DateTime.UtcNow;
 }

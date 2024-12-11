@@ -1,6 +1,6 @@
 import { LitElement, css, html } from "lit";
 import { customElement, property, state, query } from "lit/decorators.js";
-import type { Collection, Document } from "../backend/Models";
+import type { CollectionEntity, DocumentEntity } from "../models";
 import { API } from "../backend/ApiClient";
 
 @customElement('storage-view')
@@ -8,8 +8,8 @@ export class StorageView extends LitElement {
 
   @query('#query-input') queryInput!: HTMLInputElement;
   @query('#file-input') fileInput!: HTMLInputElement;
-  @property({ type: Object }) collection?: Collection;
-  @state() documents: Document[] = [];
+  @property({ type: Object }) collection?: CollectionEntity;
+  @state() documents: DocumentEntity[] = [];
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -45,33 +45,36 @@ export class StorageView extends LitElement {
   }
 
   private async queryDocuments() {
-    if (this.collection?.collectionId) {
+    if (this.collection?.id) {
       const query = this.queryInput.value;
-      const response = await API.searchCollectionAsync(this.collection.collectionId, query);
+      const response = await API.searchCollectionAsync(this.collection.id, query);
       this.queryInput.value = '';
       console.log(response);
     }
   }
 
   private async loadDocuments() {
-    console.log(this.collection?.collectionId);
-    this.documents = await API.findDocumentsAsync(this.collection?.collectionId);
+    if (this.collection?.id) {
+      this.documents = await API.findDocumentsAsync(this.collection?.id);
+    }
   }
 
   private uploadFile() {
     this.fileInput.click();
     this.fileInput.onchange = async () => {
       const file = this.fileInput.files?.[0];
-      if (file && this.collection?.collectionId) {
-        await API.uploadDocumentAsync(this.collection.collectionId, file);
+      if (file && this.collection?.id) {
+        await API.uploadDocumentAsync(this.collection.id, file);
         this.loadDocuments();
       }
     };
   }
 
-  private async deleteDocument(document: Document) {
-    await API.deleteDocumentAsync(this.collection?.collectionId, document.documentId);
-    this.loadDocuments();
+  private async deleteDocument(document: DocumentEntity) {
+    if (this.collection?.id && document.id) {
+      await API.deleteDocumentAsync(this.collection?.id, document.id);
+      this.loadDocuments();
+    }
   }
 
   static styles = css`

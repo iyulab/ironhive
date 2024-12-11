@@ -7,5 +7,5 @@ public interface IRaggleAssistant
 {
     Task<ChatCompletionResponse> ChatCompletionAsync(MessageCollection messages);
 
-    IAsyncEnumerable<IStreamingChatCompletionResponse> StreamingChatCompletionAsync(MessageCollection messages);
+    IAsyncEnumerable<ChatCompletionStreamingResponse> StreamingChatCompletionAsync(MessageCollection messages);
 }

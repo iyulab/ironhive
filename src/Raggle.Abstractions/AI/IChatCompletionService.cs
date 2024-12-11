@@ -30,9 +30,9 @@ public interface IChatCompletionService
     /// <param name="request">The chat completion request.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
     /// <returns>
-    /// An asynchronous enumerable of <see cref="IStreamingChatCompletionResponse"/>.
+    /// An asynchronous enumerable of <see cref="ChatCompletionStreamingResponse"/>.
     /// </returns>
-    IAsyncEnumerable<IStreamingChatCompletionResponse> StreamingChatCompletionAsync(
+    IAsyncEnumerable<ChatCompletionStreamingResponse> StreamingChatCompletionAsync(
         ChatCompletionRequest request,
         CancellationToken cancellationToken = default);
 }

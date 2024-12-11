@@ -38,16 +38,16 @@ public class AssistantService
 
     public async Task<AssistantEntity> UpsertAssistantAsync(AssistantEntity assistant)
     {
-        var existingAssistant = await _db.Assistants.AsTracking()
-            .FirstOrDefaultAsync(a => a.AssistantId == assistant.AssistantId);
+        var existing = await _db.Assistants.AsTracking()
+            .FirstOrDefaultAsync(a => a.Id == assistant.Id);
 
-        if (existingAssistant != null)
+        if (existing != null)
         {
-            existingAssistant.Name = assistant.Name;
-            existingAssistant.Description = assistant.Description;
-            existingAssistant.Instruction = assistant.Instruction;
-            existingAssistant.LastUpdatedAt = DateTime.UtcNow;
-            _db.Entry(existingAssistant).State = EntityState.Modified;
+            existing.Name = assistant.Name;
+            existing.Description = assistant.Description;
+            existing.Instruction = assistant.Instruction;
+            existing.LastUpdatedAt = DateTime.UtcNow;
+            _db.Entry(existing).State = EntityState.Modified;
         }
         else
         {
@@ -55,7 +55,7 @@ public class AssistantService
         }
 
         await _db.SaveChangesAsync();
-        return existingAssistant ?? assistant;
+        return existing ?? assistant;
     }
 
     public async Task DeleteAssistantAsync(string assistantId)
@@ -66,7 +66,7 @@ public class AssistantService
         await _db.SaveChangesAsync();
     }
 
-    public async IAsyncEnumerable<IStreamingChatCompletionResponse> ChatAssistantAsync(
+    public async IAsyncEnumerable<ChatCompletionStreamingResponse> ChatAssistantAsync(
         string assistantId, 
         MessageCollection messages,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -80,11 +80,11 @@ public class AssistantService
             Model = entity.Model,
             System = entity.Instruction,
             Messages = messages,
-            MaxTokens = entity.MaxTokens,
-            Temperature = entity.Temperature,
-            TopK = entity.TopK,
-            TopP = entity.TopP,
-            StopSequences = entity.StopSequences,
+            MaxTokens = entity.Options?.MaxTokens,
+            Temperature = entity.Options?.Temperature,
+            TopK = entity.Options?.TopK,
+            TopP = entity.Options?.TopP,
+            StopSequences = entity.Options?.StopSequences,
         };
         
         await foreach (var message in chat.StreamingChatCompletionAsync(request, cancellationToken))

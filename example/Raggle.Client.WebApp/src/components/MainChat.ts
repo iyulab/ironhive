@@ -55,19 +55,21 @@ export class MainChat extends LitElement {
       ];
       this.input = '';
       const message: Message = { role: 'assistant', content: []};
+      
       var controller = API.chatAssistantAsync(this.assistantId, this.messages, (msg) => {
-        message.content?.push({ type: 'text', text: msg.text });
-        this.messages = [
-          ...this.messages,
-          message
-        ];
-        if (msg.status === 'text_gen')
-        {
-          message.content[0].text = msg.text;
-        }
-        else if (msg.status === 'stop')
-        {
-          controller.abort();
+        if (msg.content) {
+          console.log(msg.content);
+          if (msg.content?.type === 'text') {
+            console.log('text');
+            const content = message.content?.at(msg.content.index);
+            if (content) {
+              console.log('content');
+              content.text = msg.content.text;
+            } else {
+              console.log('push');
+              message.content?.push(msg.content);
+            }
+          }
         }
       });
 

@@ -1,7 +1,11 @@
 using Microsoft.AspNetCore.Http.Features;
+using Raggle.Abstractions;
+using Raggle.Server;
 using Raggle.Server.Configurations;
 using Raggle.Server.Extensions;
 using Raggle.Server.WebApi.Development;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,7 +17,13 @@ if (cm.Config == null)
 builder.Services.AddRaggleServices(cm.Config);
 #endregion
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.UnknownTypeHandling = JsonUnknownTypeHandling.JsonNode;
+        options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+    });
 
 if (builder.Environment.IsDevelopment())
 {

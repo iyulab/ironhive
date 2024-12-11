@@ -40,7 +40,7 @@ export class MainList extends LitElement {
   private onDelete = async (event: Event, item: any) => {
     event.stopPropagation();
     const key = item[this.key];
-    this.dispatchEvent(new CustomEvent('delete', { detail: key }));
+    this.dispatchEvent(new CustomEvent<string>('delete', { detail: key }));
   }
 
   static styles = css`

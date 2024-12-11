@@ -1,6 +1,6 @@
 ﻿namespace Raggle.Core.Memory.Document;
 
-public class DocumentSection
+public class DocumentFragment
 {
     public int Index { get; set; } = 0;
 

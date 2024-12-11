@@ -43,7 +43,7 @@ public class MemoryService
 
     public async Task<CollectionEntity> UpsertCollectionAsync(CollectionEntity collection)
     {
-        var existing = await _db.Collections.FindAsync(collection.CollectionId);
+        var existing = await _db.Collections.FindAsync(collection.Id);
         var transaction = await _db.Database.BeginTransactionAsync();
 
         try
@@ -52,9 +52,9 @@ public class MemoryService
             {
                 _db.Collections.Add(collection);
                 await _memory.CreateCollectionAsync(
-                    collection.CollectionId,
-                    collection.EmbedServiceKey,
-                    collection.EmbedModelName);
+                    collection.Id,
+                    collection.Provider,
+                    collection.Model);
 
                 await _db.SaveChangesAsync();
                 await transaction.CommitAsync();
@@ -92,7 +92,7 @@ public class MemoryService
             try
             {
                 _db.Collections.Remove(collection);
-                await _memory.DeleteCollectionAsync(collection.CollectionId);
+                await _memory.DeleteCollectionAsync(collection.Id);
 
                 await _db.SaveChangesAsync();
                 await transaction.CommitAsync();
@@ -142,8 +142,8 @@ public class MemoryService
             await _db.Documents.AddAsync(document);
 
             await _memory.MemorizeDocumentAsync(
-                collectionName: collection.CollectionId,
-                documentId: document.DocumentId.ToString(),
+                collectionName: collection.Id,
+                documentId: document.Id,
                 fileName: document.FileName,
                 content: data,
                 tags: document.Tags?.ToArray(),
@@ -205,9 +205,9 @@ public class MemoryService
             ?? throw new InvalidOperationException("Collection not found.");
 
         return await _memory.GetNearestVectorAsync(
-            collectionName: collection.CollectionId,
-            embedServiceKey: collection.EmbedServiceKey,
-            embedModelName: collection.EmbedModelName,
+            collectionName: collection.Id,
+            embedServiceKey: collection.Provider,
+            embedModelName: collection.Model,
             query: query);
     }
 

@@ -22,15 +22,7 @@ internal class RaggleAssistant : IRaggleAssistant
 
     public required string Model { get; set; }
 
-    public int? MaxTokens { get; set; }
-
-    public float? Temperature { get; set; }
-
-    public int? TopK { get; set; }
-
-    public float? TopP { get; set; }
-
-    public string[]? StopSequences { get; set; }
+    public ChatCompletionOptions? Options { get; set; }
 
     public FunctionToolCollection? Tools { get; set; }
 
@@ -45,7 +37,7 @@ internal class RaggleAssistant : IRaggleAssistant
         return _service.ChatCompletionAsync(request);
     }
 
-    public IAsyncEnumerable<IStreamingChatCompletionResponse> StreamingChatCompletionAsync(MessageCollection messages)
+    public IAsyncEnumerable<ChatCompletionStreamingResponse> StreamingChatCompletionAsync(MessageCollection messages)
     {
         var request = BuildRequest(messages);
         return _service.StreamingChatCompletionAsync(request);
@@ -57,13 +49,13 @@ internal class RaggleAssistant : IRaggleAssistant
         {
             Model = Model,
             System = Instruction,
-            MaxTokens = MaxTokens,
             Messages = messages,
-            Temperature = Temperature,
-            StopSequences = StopSequences,
-            Tools = Tools,
-            TopK = TopK,
-            TopP = TopP
+            MaxTokens = Options?.MaxTokens,
+            Temperature = Options?.Temperature,
+            StopSequences = Options?.StopSequences,
+            TopK = Options?.TopK,
+            TopP = Options?.TopP,
+            Tools = Tools
         };
     }
 }

@@ -34,7 +34,7 @@ public class EmbeddingsHandler : IPipelineHandler
         
         var points = new List<VectorPoint>();
 
-        await foreach (var section in _documentStorage.GetDocumentJsonAsync<DocumentSection>(
+        await foreach (var section in _documentStorage.GetDocumentJsonAsync<DocumentFragment>(
             collectionName: pipeline.CollectionName,
             documentId: pipeline.DocumentId,
             suffix: pipeline.GetPreviousStep() ?? "unknown",
@@ -45,7 +45,11 @@ public class EmbeddingsHandler : IPipelineHandler
 
             if (JsonObjectConverter.TryConvertTo<string>(section.Content, out string str))
             {
-                var response = await embedder.EmbeddingAsync(options.ModelName, str, cancellationToken);
+                var request = new EmbeddingRequest { Model = options.ModelName, Input = str };
+                var response = await embedder.EmbeddingAsync(request, cancellationToken);
+                if (response.Embedding == null)
+                    throw new InvalidOperationException($"failed to get embedding for {str}");
+
                 points.Add(new VectorPoint
                 {
                     VectorId = Guid.NewGuid(),
@@ -58,19 +62,25 @@ public class EmbeddingsHandler : IPipelineHandler
             else if (JsonObjectConverter.TryConvertTo<IEnumerable<Tuple<string,string>>>(section.Content, out var dialogues))
             {
                 var questions = dialogues.Select(x => x.Item1).ToArray();
-                var request = new EmbeddingRequest
+                var request = new EmbeddingsRequest
                 {
                     Model = options.ModelName,
                     Input = questions
                 };
                 var response = await embedder.EmbeddingsAsync(request, cancellationToken);
-                for (var i = 0; i < response.Count(); i++)
+                if (response.Embeddings == null && response.Embeddings?.Count() != questions.Length)
+                    throw new InvalidOperationException($"failed to get embeddings for {questions}");
+
+                for (var i = 0; i < response.Embeddings?.Count(); i++)
                 {
                     section.Content = dialogues.ElementAt(i);
+                    var embedding = response.Embeddings.FirstOrDefault(d => d.Index == i)?.Embedding
+                        ?? throw new InvalidOperationException($"failed to get embedding for {questions[i]}");
+
                     points.Add(new VectorPoint
                     {
                         VectorId = Guid.NewGuid(),
-                        Vectors = response.ElementAt(i).Embedding,
+                        Vectors = embedding,
                         DocumentId = pipeline.DocumentId,
                         Tags = pipeline.Tags?.ToArray(),
                         Payload = section

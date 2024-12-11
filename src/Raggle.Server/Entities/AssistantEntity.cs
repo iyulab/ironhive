@@ -1,9 +1,10 @@
-﻿namespace Raggle.Server.Entities;
+﻿using Raggle.Abstractions.AI;
+
+namespace Raggle.Server.Entities;
 
 public class AssistantEntity
 {
-    // Primary Key
-    public string AssistantId { get; set; } = $"{Guid.NewGuid():N}";
+    public string Id { get; set; } = $"{Guid.NewGuid():N}";
 
     public string Name { get; set; } = string.Empty;
 
@@ -15,17 +16,7 @@ public class AssistantEntity
 
     public string Model { get; set; } = string.Empty;
 
-    public int? MaxTokens { get; set; }
-
-    public float? Temperature { get; set; }
-
-    public int? TopK { get; set; }
-
-    public float? TopP { get; set; }
-
-    public string[]? StopSequences { get; set; }
-
-    public IEnumerable<string>? Memories { get; set; }
+    public ChatCompletionOptions? Options { get; set; }
 
     public IEnumerable<string>? Tools { get; set; }
 

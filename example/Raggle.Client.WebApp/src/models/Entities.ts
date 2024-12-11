@@ -1,48 +1,37 @@
-export interface ServiceModels {
-  [provider: string]: string[];
-}
+import { CompletionOptions } from "./Options";
 
 export interface CollectionEntity {
-  collectionId?: string;
+  id?: string;
   name?: string;
   description?: string;
-  embedServiceKey?: string;
-  embedModelName?: string;
+  provider?: string;
+  model?: string;
   createdAt?: string;
   lastUpdatedAt?: string;
   handlerOptions?: Record<string, any>;
 }
 
 export interface DocumentEntity {
-  documentId?: string;
+  id?: string;
   fileName?: string;
   fileSize?: number;
   contentType?: string;
+  tags?: string[];
   createdAt?: string;
   lastUpdatedAt?: string;
-  tags?: string[];
   collectionId?: string;
 }
 
 export interface AssistantEntity {
-  assistantId?: string;
+  id?: string;
+  provider?: string;
+  model?: string;
   name?: string;
   description?: string;
   instruction?: string;
-  settings: ServiceSettings;
-  memories?: string[];
-  toolKits?: string[];
-  toolkitOptions?: Record<string, any>;
+  options?: CompletionOptions;
+  tools?: string[];
+  toolOptions?: Record<string, any>;
   createdAt?: Date;
   lastUpdatedAt?: Date;
-}
-
-export interface ServiceSettings {
-  provider?: string;
-  model?: string;
-  maxTokens?: number;
-  temperature?: number;
-  topK?: number;
-  topP?: number;
-  stopSequences?: string[];
 }

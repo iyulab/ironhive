@@ -4,7 +4,7 @@ import {
   CollectionEntity, 
   Message, 
   ServiceModels, 
-  StreamingChatResponse
+  StreamingResponse
 } from '../models';
 
 export class API {
@@ -86,7 +86,7 @@ export class API {
   public static chatAssistantAsync(
     assistantId: string,
     messages: Message[],
-    on: (message: StreamingChatResponse) => void
+    on: (message: StreamingResponse) => void
   ): AbortController {
     const controller = new AbortController();
     const { signal } = controller;
@@ -124,7 +124,6 @@ export class API {
             if (line.trim()) { // 빈 줄 무시
               try {
                 const parsed = JSON.parse(line);
-                console.log('Received:', parsed);
                 on(parsed);
               } catch (e) {
                 console.error('Error parsing JSON:', e);

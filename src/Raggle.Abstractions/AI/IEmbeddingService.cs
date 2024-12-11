@@ -6,11 +6,10 @@ public interface IEmbeddingService
         CancellationToken cancellationToken = default);
 
     Task<EmbeddingResponse> EmbeddingAsync(
-        string model,
-        string input,
+        EmbeddingRequest request,
         CancellationToken cancellationToken = default);
 
-    Task<IEnumerable<EmbeddingResponse>> EmbeddingsAsync(
-        EmbeddingRequest request,
+    Task<EmbeddingsResponse> EmbeddingsAsync(
+        EmbeddingsRequest request,
         CancellationToken cancellationToken = default);
 }

@@ -1,6 +1,6 @@
 ﻿namespace Raggle.Abstractions.AI;
 
-public class EmbeddingRequest
+public class EmbeddingsRequest
 {
     /// <summary>
     /// The Embedding Model Name.
@@ -10,5 +10,5 @@ public class EmbeddingRequest
     /// <summary>
     /// The input text to embed.
     /// </summary>
-    public string Input { get; set; } = string.Empty;
+    public string[] Input { get; set; } = [];
 }

@@ -35,9 +35,9 @@ public class DialogueHandler : IPipelineHandler
     {
         var options = pipeline.GetCurrentOptions<Options>()
             ?? throw new InvalidOperationException($"Must provide options for {pipeline.CurrentStep}.");
-        var dialogues = new List<DocumentSection>();
+        var dialogues = new List<DocumentFragment>();
 
-        await foreach (var section in _documentStorage.GetDocumentJsonAsync<DocumentSection>(
+        await foreach (var section in _documentStorage.GetDocumentJsonAsync<DocumentFragment>(
             collectionName: pipeline.CollectionName,
             documentId: pipeline.DocumentId,
             suffix: pipeline.GetPreviousStep() ?? "unknown",
@@ -48,7 +48,7 @@ public class DialogueHandler : IPipelineHandler
                 ?? throw new InvalidOperationException("The document content is not a string.");
             
             var content = await GenerateDialoguesAsync(str, options, cancellationToken);
-            var dialogue = new DocumentSection
+            var dialogue = new DocumentFragment
             {
                 Index = section.Index,
                 Unit = section.Unit,

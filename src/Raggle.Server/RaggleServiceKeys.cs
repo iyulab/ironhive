@@ -3,24 +3,23 @@
 public static class RaggleServiceKeys
 {
     // For AI services
-    public const string OpenAI = "openai";
+    public static string OpenAI { get; set; } = "openai";
 
-    public const string Anthrophic = "anthrophic";
+    public static string Anthrophic { get; set; } = "anthropic";
 
-    public const string Ollama = "ollama";
+    public static string Ollama { get; set; } = "ollama";
 
     // For pipeline handlers
-    public const string Decoding = "extract";
+    public static string Decoding { get; set; } = "extract";
 
-    public const string Chunking = "chunk";
+    public static string Chunking { get; set; } = "chunk";
 
-    public const string Summarizing = "summary";
+    public static string Summarizing { get; set; } = "summary";
 
-    public const string Dialogue = "dialogue";
+    public static string Dialogue { get; set; } = "dialogue";
 
-    public const string Embeddings = "embeddings";
+    public static string Embeddings { get; set; } = "embeddings";
 
     // For tool services
-    public const string VectorSearch = "vector_search";
-
+    public static string VectorSearch { get; set; } = "vector_search";
 }

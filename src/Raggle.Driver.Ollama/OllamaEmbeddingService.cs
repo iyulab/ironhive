@@ -22,8 +22,8 @@ public class OllamaEmbeddingService : IEmbeddingService
     public async Task<IEnumerable<EmbeddingModel>> GetEmbeddingModelsAsync(
         CancellationToken cancellationToken = default)
     {
-        var ollamaModels = await _client.GetEmbeddingModelsAsync(cancellationToken);
-        return ollamaModels.Select(m => new EmbeddingModel
+        var models = await _client.GetEmbeddingModelsAsync(cancellationToken);
+        return models.Select(m => new EmbeddingModel
         {
             Model = m.Name,
             CreatedAt = null,
@@ -33,43 +33,47 @@ public class OllamaEmbeddingService : IEmbeddingService
     }
 
     /// <inheritdoc />
-    public async Task<Abstractions.AI.EmbeddingResponse> EmbeddingAsync(
-        string model,
-        string input,
+    public async Task<EmbeddingResponse> EmbeddingAsync(
+        EmbeddingRequest request,
         CancellationToken cancellationToken = default)
     {
-        var request = new Abstractions.AI.EmbeddingRequest
+        var _request = new Embeddings.Models.EmbeddingRequest
         {
-            Model = model,
-            Input = [input]
+            Model = request.Model,
+            Input = [ request.Input ]
         };
-        var embedding = (await EmbeddingsAsync(request, cancellationToken).ConfigureAwait(false))
-                        .FirstOrDefault()
-                        ?? throw new InvalidOperationException("Failed to get embedding");
-        return embedding;
+        var response = await _client.PostEmbeddingAsync(_request, cancellationToken);
+        
+        return new EmbeddingResponse
+        {
+            Model = response.Model,
+            Embedding = response.Embeddings.FirstOrDefault(),
+            TimeStamp = DateTime.UtcNow
+        };
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<Abstractions.AI.EmbeddingResponse>> EmbeddingsAsync(
-        Abstractions.AI.EmbeddingRequest request, 
+    public async Task<EmbeddingsResponse> EmbeddingsAsync(
+        EmbeddingsRequest request, 
         CancellationToken cancellationToken = default)
     {
-        var ollamaRequest = new Embeddings.Models.EmbeddingRequest
+        var _request = new Embeddings.Models.EmbeddingRequest
         {
             Model = request.Model,
             Input = request.Input
         };
-        var response = await _client.PostEmbeddingAsync(ollamaRequest, cancellationToken);
-        var embeddings = new List<Abstractions.AI.EmbeddingResponse>();
-        for (var i = 0; i < response.Embeddings.Length; i++)
+        var response = await _client.PostEmbeddingAsync(_request, cancellationToken);
+        var embeddings = response.Embeddings.Select((e, i) => new EmbeddingsResponse.EmbeddingData
         {
-            var embedding = response.Embeddings[i];
-            embeddings.Add(new Abstractions.AI.EmbeddingResponse
-            {
-                Index = i,
-                Embedding = embedding
-            });
-        }
-        return embeddings;
+            Index = i,
+            Embedding = e
+        }).ToArray();
+
+        return new EmbeddingsResponse
+        {
+            Model = request.Model,
+            Embeddings = embeddings,
+            TimeStamp = DateTime.UtcNow
+        };
     }
 }

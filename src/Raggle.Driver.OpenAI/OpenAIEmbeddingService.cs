@@ -32,43 +32,47 @@ public class OpenAIEmbeddingService : IEmbeddingService
     }
 
     /// <inheritdoc />
-    public async Task<Abstractions.AI.EmbeddingResponse> EmbeddingAsync(
-        string model,
-        string input,
+    public async Task<EmbeddingResponse> EmbeddingAsync(
+        EmbeddingRequest request,
         CancellationToken cancellationToken = default)
     {
-        var request = new Abstractions.AI.EmbeddingRequest
+        var _request = new Embeddings.Models.EmbeddingRequest
         {
-            Model = model,
-            Input = [input],
+            Model = request.Model,
+            Input = [ request.Input ],
         };
-        var embedding = (await EmbeddingsAsync(request, cancellationToken).ConfigureAwait(false))
-                        .FirstOrDefault()
-                        ?? throw new InvalidOperationException("Failed to get embedding.");
-        return embedding;
+        var response = await _client.PostEmbeddingAsync(_request, cancellationToken);
+        return new EmbeddingResponse
+        {
+            Model = request.Model,
+            Embedding = response.First().Embedding,
+            TimeStamp = DateTime.UtcNow,
+        };
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<Abstractions.AI.EmbeddingResponse>> EmbeddingsAsync(
-        Abstractions.AI.EmbeddingRequest request, 
+    public async Task<EmbeddingsResponse> EmbeddingsAsync(
+        EmbeddingsRequest request, 
         CancellationToken cancellationToken = default)
     {
-        var openaiRequest = new Embeddings.Models.EmbeddingRequest
+        var _request = new Embeddings.Models.EmbeddingRequest
         {
             Model = request.Model,
             Input = request.Input,
         };
+        var response = await _client.PostEmbeddingAsync(_request, cancellationToken);
 
-        var response = await _client.PostEmbeddingAsync(openaiRequest, cancellationToken);
+        var embeddings = response.Select(r => new EmbeddingsResponse.EmbeddingData
+        {
+            Index = r.Index,
+            Embedding = r.Embedding,
+        }).ToArray();
 
-        return response
-                .Where(r => r.Embedding != null)
-                .OrderBy(r => r.Index)
-                .Select(r => new Abstractions.AI.EmbeddingResponse
-                {
-                    Index = r.Index,
-                    Embedding = r.Embedding!,
-                })
-                .ToList();
+        return new EmbeddingsResponse
+        {
+            Model = request.Model,
+            Embeddings = embeddings,
+            TimeStamp = DateTime.UtcNow,
+        };
     }
 }

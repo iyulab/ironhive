@@ -24,14 +24,14 @@ public class ChunkingHandler : IPipelineHandler
 
     public class Options
     {
-        public int MaxTokensPerChunk { get; set; } = 2048;
+        public int MaxTokens { get; set; } = 2048;
     }
 
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
         var options = pipeline.GetCurrentOptions<Options>() ?? new Options();
 
-        var section = await _documentStorage.GetDocumentJsonFirstAsync<DocumentSection>(
+        var section = await _documentStorage.GetDocumentJsonFirstAsync<DocumentFragment>(
             collectionName: pipeline.CollectionName,
             documentId: pipeline.DocumentId,
             suffix: pipeline.GetPreviousStep() ?? "unknown",
@@ -39,7 +39,7 @@ public class ChunkingHandler : IPipelineHandler
 
         var content = JsonObjectConverter.ConvertTo<IEnumerable<string>>(section.Content)
             ?? throw new InvalidOperationException("The document content is not found");
-        var chunks = new List<DocumentSection>();
+        var chunks = new List<DocumentFragment>();
 
         long totalTokenCount = 0;
         int sectionIndex = 0;
@@ -52,9 +52,9 @@ public class ChunkingHandler : IPipelineHandler
             sectionTo++;
             var tokenCount = _textTokenizer.Encode(item).Count;
 
-            if (totalTokenCount + tokenCount > options.MaxTokensPerChunk)
+            if (totalTokenCount + tokenCount > options.MaxTokens)
             {
-                var chunk = new DocumentSection
+                var chunk = new DocumentFragment
                 {
                     Index = sectionIndex,
                     Unit = section?.Unit,
@@ -76,7 +76,7 @@ public class ChunkingHandler : IPipelineHandler
 
         if (sb.Length > 0)
         {
-            var chunk = new DocumentSection
+            var chunk = new DocumentFragment
             {
                 Index = sectionIndex,
                 Unit = section?.Unit,

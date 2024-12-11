@@ -35,7 +35,7 @@ public class DecodingHandler : IPipelineHandler
 
         // 문서 파싱
         var content = await decoder.DecodeAsync(data, cancellationToken);
-        var section = new DocumentSection
+        var section = new DocumentFragment
         {
             Index = 0,
             Unit = decoder switch

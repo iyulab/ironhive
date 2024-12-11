@@ -1,6 +1,6 @@
 import { LitElement, css, html } from "lit";
 import { customElement, state } from "lit/decorators.js";
-import type { Collection } from "../backend/Models";
+import type { CollectionEntity } from "../models";
 import { API } from "../backend/ApiClient";
 
 @customElement('memory-page')
@@ -8,8 +8,8 @@ export class MemoryPage extends LitElement {
 
   @state() mode: 'view' | 'edit' | 'none' = 'none';
 
-  @state() collections?: Collection[] = [];
-  @state() collection?: Collection;
+  @state() collections?: CollectionEntity[] = [];
+  @state() collection?: CollectionEntity;
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -22,7 +22,7 @@ export class MemoryPage extends LitElement {
         <main-list
           create-label="New Collection +"
           slot="left"
-          key="collectionId"
+          key="id"
           .items=${this.collections || []}
           @create=${this.createCollection}
           @delete=${this.deleteCollection}
@@ -56,13 +56,13 @@ export class MemoryPage extends LitElement {
     this.mode = 'edit';
   }
 
-  private selectedCollection(event: CustomEvent) {
+  private selectedCollection(event: CustomEvent<string>) {
     const key = event.detail;
-    this.collection = this.collections?.find(c => c.collectionId === key);
+    this.collection = this.collections?.find(c => c.id === key);
     this.mode = 'view';
   }
 
-  private async deleteCollection(event: CustomEvent) {
+  private async deleteCollection(event: CustomEvent<string>) {
     console.log(event.detail);
     await API.deleteCollectionAsync(event.detail);
     await this.loadCollections();

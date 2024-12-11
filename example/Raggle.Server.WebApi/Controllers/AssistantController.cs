@@ -94,3 +94,8 @@ public class AssistantController : ControllerBase
         }
     }
 }
+
+public class StreamingDataResponse<T>
+{
+    public T? Data {get; set;}
+}

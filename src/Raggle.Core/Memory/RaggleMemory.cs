@@ -200,7 +200,14 @@ public class RaggleMemory : IRaggleMemory
         CancellationToken cancellationToken)
     {
         var embedService = _serviceProvider.GetRequiredKeyedService<IEmbeddingService>(embedServiceKey);
-        var response = await embedService.EmbeddingAsync(embedModelName, text, cancellationToken);
+        var response = await embedService.EmbeddingAsync(new EmbeddingRequest
+        {
+            Model = embedModelName,
+            Input = text
+        }, cancellationToken);
+        if (response.Embedding == null)
+            throw new InvalidOperationException($"failed to get embedding for {text}");
+
         return response.Embedding;
     }
 

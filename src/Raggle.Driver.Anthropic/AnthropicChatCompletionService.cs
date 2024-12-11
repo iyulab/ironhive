@@ -99,9 +99,9 @@ public class AnthropicChatCompletionService : IChatCompletionService
             {
                 EndReason = response.StopReason switch
                 {
-                    StopReason.EndTurn => CompletionReason.EndTurn,
-                    StopReason.MaxTokens => CompletionReason.MaxTokens,
-                    StopReason.StopSequence => CompletionReason.StopSequence,
+                    StopReason.EndTurn => ChatCompletionEndReason.EndTurn,
+                    StopReason.MaxTokens => ChatCompletionEndReason.MaxTokens,
+                    StopReason.StopSequence => ChatCompletionEndReason.StopSequence,
                     _ => null
                 },
                 Model = response.Model,
@@ -124,7 +124,7 @@ public class AnthropicChatCompletionService : IChatCompletionService
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<IStreamingChatCompletionResponse> StreamingChatCompletionAsync(
+    public async IAsyncEnumerable<ChatCompletionStreamingResponse> StreamingChatCompletionAsync(
         ChatCompletionRequest request, 
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
@@ -133,60 +133,24 @@ public class AnthropicChatCompletionService : IChatCompletionService
         var content = new MessageContentCollection();
         await foreach (var response in _client.PostStreamingMessagesAsync(_request, cancellationToken))
         {
-            if (response is PingEvent)
-            {
-                // nothing to do
-            }
-            else if (response is MessageStartEvent)
-            {
-                // nothing to do
-            }
-            else if (response is MessageStopEvent)
-            {
-                // nothing to do
-            }
-            else if (response is ContentStopEvent)
-            {
-                // nothing to do
-            }
-            else if (response is MessageDeltaEvent messageDelta)
+            if (response is MessageDeltaEvent messageDelta)
             {
                 var reason = messageDelta.Delta?.StopReason;
-                if (reason == StopReason.EndTurn || reason == StopReason.StopSequence)
-                {
-                    // yield break;
-                    yield return new StreamingStopResponse();
-                }
-                else if (reason == StopReason.MaxTokens)
-                {
-                    // throw max tokens exception
-                    yield return new StreamingLimitResponse();
-                }
-                else if (reason == StopReason.ToolUse)
+                if (reason == StopReason.ToolUse)
                 {
                     foreach (var item in content)
                     {
                         if (item is ToolContent toolContent)
                         {
-                            if (string.IsNullOrWhiteSpace(toolContent.Name))
-                            {
-                                toolContent.Result = FunctionResult.Failed("Tool name is missing");
-                            }
-                            else if (request.Tools != null && request.Tools.TryGetValue(toolContent.Name, out var tool))
-                            {
-                                yield return new StreamingToolUseResponse 
-                                { 
-                                    Name = toolContent.Name, 
-                                    Argument = toolContent.Arguments 
-                                };
-                                var result = await tool.InvokeAsync(toolContent.Arguments);
-                                toolContent.Result = result;
-                            }
-                            else
-                            {
-                                toolContent.Result = FunctionResult.Failed("Tool not found");
-                            }
-                            yield return new StreamingToolResultResponse { Name = toolContent.Name, Result = toolContent.Result };
+                            toolContent.Result = string.IsNullOrWhiteSpace(toolContent.Name)
+                                    ? FunctionResult.Failed("Tool name is missing")
+                                    : request.Tools != null && request.Tools.TryGetValue(toolContent.Name, out var tool)
+                                    ? await tool.InvokeAsync(toolContent.Arguments)
+                                    : FunctionResult.Failed($"Tool [{toolContent.Name}] not found");
+                            yield return new ChatCompletionStreamingResponse 
+                            { 
+                                Content = toolContent
+                            };
                         }
                     }
 
@@ -195,6 +159,26 @@ public class AnthropicChatCompletionService : IChatCompletionService
                     {
                         yield return stream;
                     }
+                }
+                else
+                {
+                    yield return new ChatCompletionStreamingResponse
+                    {
+                        Model = request.Model,
+                        EndReason = reason switch
+                        {
+                            StopReason.EndTurn => ChatCompletionEndReason.EndTurn,
+                            StopReason.StopSequence => ChatCompletionEndReason.StopSequence,
+                            StopReason.MaxTokens => ChatCompletionEndReason.MaxTokens,
+                            _ => null
+                        },
+                        TokenUsage = new Abstractions.AI.TokenUsage
+                        {
+                            TotalTokens = messageDelta.Usage?.InputTokens + messageDelta.Usage?.OutputTokens,
+                            InputTokens = messageDelta.Usage?.InputTokens,
+                            OutputTokens = messageDelta.Usage?.OutputTokens
+                        }
+                    };
                 }
             }
             else if (response is ContentStartEvent contentStart)
@@ -217,7 +201,7 @@ public class AnthropicChatCompletionService : IChatCompletionService
                     {
                         textContent.Text = textDelta.Text;
                     }
-                    yield return new StreamingTextResponse { Text = textContent.Text };
+                    yield return new ChatCompletionStreamingResponse { Content = textContent };
                 }
                 else if (item is ToolContent toolContent)
                 {
@@ -225,16 +209,33 @@ public class AnthropicChatCompletionService : IChatCompletionService
                     {
                         toolContent.Arguments += toolDelta.PartialJson;
                     }
-                    yield return new StreamingToolCallResponse { Name = toolContent.Name, Argument = toolContent.Arguments };
+                    yield return new ChatCompletionStreamingResponse { Content = toolContent };
                 }
             }
             else if (response is ErrorEvent error)
             {
-                throw new InvalidOperationException(error.ToString());
+                throw new InvalidOperationException(error.Error.ToString());
+            }
+            else if (response is PingEvent)
+            {
+                // nothing to do
+            }
+            else if (response is MessageStartEvent)
+            {
+                // nothing to do
+            }
+            else if (response is MessageStopEvent)
+            {
+                // nothing to do
+            }
+            else if (response is ContentStopEvent)
+            {
+                // nothing to do
             }
             else
             {
-                throw new NotImplementedException();
+                // unexpected event nothing to do
+                Debug.WriteLine($"Unexpected event: {response.GetType()}");
             }
         }
     }
