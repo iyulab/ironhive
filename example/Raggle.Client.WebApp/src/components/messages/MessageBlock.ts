@@ -7,7 +7,7 @@ import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
 
-import type { Message, MessageContent } from "../models";
+import type { Message, MessageContent } from "../../models";
 
 @customElement('message-block')
 export class MessageBlock extends LitElement {
@@ -39,16 +39,21 @@ export class MessageBlock extends LitElement {
       gfm: true,
     });
     text = DOMPurify.sanitize(text);
-    return text;
+    return unsafeHTML(text);
   }
 
   private async renderContent(content: MessageContent) {
     if (content.type === 'text') {
-      return unsafeHTML(`${await this.parse(content.text || '')}`);
+      return await this.parse(content.text || '');
     } else if (content.type === 'image') {
-      return html`<img src="${ifDefined(content.data)}" alt="Image content" />`;
+      return html`
+          <img src="${ifDefined(content.data)}" alt="Image content" />
+        `;
     } else if (content.type === 'tool') {
-      return html`<span>Tool: ${content.name}</span>`;
+      return html`
+          <span>Tool: ${content.name}</span>
+          <span>Tool ID: ${content.result}</span>
+        `;
     } else {
       return html`<span>Unsupported content type</span>`;
     }

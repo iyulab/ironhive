@@ -1,10 +1,12 @@
 import { LitElement, css, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { Message } from "../models";
-import { API } from "../backend/ApiClient";
+import { Api } from "../services/ApiClient";
 
-@customElement('main-chat')
-export class MainChat extends LitElement {
+@customElement('chat-room')
+export class ChatRoom extends LitElement {
+  @property({ type: String })
+  key: string = '';
 
   @property({ type: String })
   assistantId: string = '';
@@ -56,7 +58,7 @@ export class MainChat extends LitElement {
       this.input = '';
       const message: Message = { role: 'assistant', content: []};
       
-      var controller = API.chatAssistantAsync(this.assistantId, this.messages, (msg) => {
+      var controller = Api.chatAssistantAsync(this.assistantId, this.messages, (msg) => {
         if (msg.content) {
           console.log(msg.content);
           if (msg.content?.type === 'text') {
@@ -78,6 +80,7 @@ export class MainChat extends LitElement {
       // console.log('aborting');
       // controller.abort();
     }
+  
   }
 
   static styles = css`

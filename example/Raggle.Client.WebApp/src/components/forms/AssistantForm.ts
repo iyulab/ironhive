@@ -1,6 +1,6 @@
 import { LitElement, css, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import type { AssistantEntity } from "../models";
+import type { AssistantEntity } from "../../models";
 
 @customElement('assistant-form')
 export class AssistantForm extends LitElement {

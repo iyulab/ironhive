@@ -1,7 +1,7 @@
 import { LitElement, css, html } from "lit";
 import { customElement, property, state, query } from "lit/decorators.js";
 import type { CollectionEntity, DocumentEntity } from "../models";
-import { API } from "../backend/ApiClient";
+import { Api } from "../services/ApiClient";
 
 @customElement('storage-view')
 export class StorageView extends LitElement {
@@ -47,7 +47,7 @@ export class StorageView extends LitElement {
   private async queryDocuments() {
     if (this.collection?.id) {
       const query = this.queryInput.value;
-      const response = await API.searchCollectionAsync(this.collection.id, query);
+      const response = await Api.searchCollectionAsync(this.collection.id, query);
       this.queryInput.value = '';
       console.log(response);
     }
@@ -55,7 +55,7 @@ export class StorageView extends LitElement {
 
   private async loadDocuments() {
     if (this.collection?.id) {
-      this.documents = await API.findDocumentsAsync(this.collection?.id);
+      this.documents = await Api.findDocumentsAsync(this.collection?.id);
     }
   }
 
@@ -64,7 +64,7 @@ export class StorageView extends LitElement {
     this.fileInput.onchange = async () => {
       const file = this.fileInput.files?.[0];
       if (file && this.collection?.id) {
-        await API.uploadDocumentAsync(this.collection.id, file);
+        await Api.uploadDocumentAsync(this.collection.id, file);
         this.loadDocuments();
       }
     };
@@ -72,7 +72,7 @@ export class StorageView extends LitElement {
 
   private async deleteDocument(document: DocumentEntity) {
     if (this.collection?.id && document.id) {
-      await API.deleteDocumentAsync(this.collection?.id, document.id);
+      await Api.deleteDocumentAsync(this.collection?.id, document.id);
       this.loadDocuments();
     }
   }

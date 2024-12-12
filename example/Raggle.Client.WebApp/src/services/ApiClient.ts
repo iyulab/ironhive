@@ -7,7 +7,7 @@ import {
   StreamingResponse
 } from '../models';
 
-export class API {
+export class Api {
   private static readonly _baseURL: string = import.meta.env.DEV
     ? import.meta.env.VITE_API || 'http://localhost:5000/v1'
     : window.location.origin + '/v1';

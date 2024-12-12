@@ -1,7 +1,7 @@
 import { LitElement, css, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import type { CollectionEntity } from "../models";
-import { API } from "../backend/ApiClient";
+import type { CollectionEntity } from "../../models";
+import { Api } from "../../services/ApiClient";
 
 @customElement('collection-form')
 export class CollectionForm extends LitElement {
@@ -76,7 +76,7 @@ export class CollectionForm extends LitElement {
 
   private async handleSubmit(event: Event) {
     event.preventDefault();
-    await API.upsertCollectionAsync(this.collection);
+    await Api.upsertCollectionAsync(this.collection);
     this.dispatchEvent(new CustomEvent('submit'));
   }
 

@@ -1,7 +1,7 @@
 import { LitElement, PropertyValues, css, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import type { ServiceModels } from "../models";
-import { API } from "../backend/ApiClient";
+import { Api } from "../services/ApiClient";
 
 @customElement('model-select')
 export class ModelSelect extends LitElement {
@@ -100,9 +100,9 @@ export class ModelSelect extends LitElement {
       this.setLoading(true);
       try {
         if (this.type === 'chat') {
-          ModelSelect.chatModels = await API.getChatModelsAsync();
+          ModelSelect.chatModels = await Api.getChatModelsAsync();
         } else {
-          ModelSelect.embedModels = await API.getEmbeddingModelsAsync();
+          ModelSelect.embedModels = await Api.getEmbeddingModelsAsync();
         }
         this.models = this.getCachedModels();
       } catch (error) {
