@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Raggle.Abstractions;
 using Raggle.Abstractions.AI;
-using Raggle.Abstractions.Memory;
+using Raggle.Driver.Anthropic;
 using Raggle.Driver.Ollama;
 using Raggle.Driver.OpenAI;
 
@@ -24,10 +24,20 @@ public class ModelController : ControllerBase
         var models = new Dictionary<string, string[]>();
         var services = _raggle.Services.GetKeyedServices<IChatCompletionService>(KeyedService.AnyKey);
 
+        var serviceKeyMap = new Dictionary<Type, string>
+        {
+            { typeof(OpenAIChatCompletionService), RaggleServiceKeys.OpenAI },
+            { typeof(AnthropicChatCompletionService), RaggleServiceKeys.Anthrophic },
+            { typeof(OllamaChatCompletionService), RaggleServiceKeys.Ollama }
+        };
+
         foreach (var service in services)
         {
-            var chatModels = await service.GetChatCompletionModelsAsync();
-            models["openai"] = chatModels.Select(m => m.Model).ToArray();
+            if (serviceKeyMap.TryGetValue(service.GetType(), out var key))
+            {
+                var _models = await service.GetChatCompletionModelsAsync();
+                models[key] = _models.Select(m => m.Model).ToArray();
+            }
         }
 
         return Ok(models);
@@ -37,14 +47,21 @@ public class ModelController : ControllerBase
     public async Task<ActionResult> GetEmbeddingModelsAsync()
     {
         var models = new Dictionary<string, string[]>();
-        var services = _raggle.Services.GetKeyedServices<Raggle.Abstractions.AI.IEmbeddingService>(KeyedService.AnyKey);
-        var services2 = _raggle.Services.GetKeyedServices(typeof(IEmbeddingService), KeyedService.AnyKey);
-        var services3 = _raggle.Services.GetKeyedServices<IEmbeddingService>(string.Empty);
+        var services = _raggle.Services.GetKeyedServices<IEmbeddingService>(KeyedService.AnyKey);
+
+        var serviceKeyMap = new Dictionary<Type, string>
+        {
+            { typeof(OpenAIEmbeddingService), RaggleServiceKeys.OpenAI },
+            { typeof(OllamaEmbeddingService), RaggleServiceKeys.Ollama }
+        };
 
         foreach (var service in services)
         {
-            //var embeddingModels = await service.GetEmbeddingModelsAsync();
-            //models["openai"] = embeddingModels.Select(m => m.Model).ToArray();
+            if (serviceKeyMap.TryGetValue(service.GetType(), out var key))
+            {
+                var _models = await service.GetEmbeddingModelsAsync();
+                models[key] = _models.Select(m => m.Model).ToArray();
+            }
         }
 
         return Ok(models);

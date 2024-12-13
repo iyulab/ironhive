@@ -8,8 +8,6 @@ namespace Raggle.Abstractions.Extensions;
 
 public static partial class IServiceCollectionExtensions
 {
-    #region Only One Singleton Service
-
     public static IServiceCollection SetDocumentStorage<T>(
         this IServiceCollection services,
         T implementationInstance)
@@ -28,10 +26,6 @@ public static partial class IServiceCollectionExtensions
         return services.AddSingleton<IVectorStorage>(implementationInstance);
     }
 
-    #endregion
-
-    #region Keyed Singlton Services
-
     public static IServiceCollection AddChatCompletionService<T>(
         this IServiceCollection services,
         string serviceKey,
@@ -49,6 +43,4 @@ public static partial class IServiceCollectionExtensions
     {
         return services.AddKeyedSingleton<IEmbeddingService>(serviceKey, implementationInstance);
     }
-
-    #endregion
 }

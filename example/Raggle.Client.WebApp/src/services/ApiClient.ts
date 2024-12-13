@@ -21,66 +21,36 @@ export class Api {
   // Model API
 
   public static async getChatModelsAsync(): Promise<ServiceModels> {
-    try {
-      const res = await this._client.get<ServiceModels>('/models/chat');
-      return res.data;
-    } catch (error) {
-      console.error('Error fetching chat models:', error);
-      throw error;
-    }
+    const res = await this._client.get<ServiceModels>('/models/chat');
+    return res.data;
   }
 
   public static async getEmbeddingModelsAsync(): Promise<ServiceModels> {
-    try {
-      const res = await this._client.get<ServiceModels>('/models/embedding');
-      return res.data;
-    } catch (error) {
-      console.error('Error fetching embedding models:', error);
-      throw error;
-    }
+    const res = await this._client.get<ServiceModels>('/models/embedding');
+    return res.data;
   }
 
   // Assistant API
 
   public static async getAssistantsAsync(skip: number = 0, limit: number = 20): Promise<AssistantEntity[]> {
-    try {
-      const res = await this._client.get<AssistantEntity[]>('/assistants', {
-        params: { skip, limit },
-      });
-      return res.data;
-    } catch (error) {
-      console.error('Error fetching assistants:', error);
-      throw error;
-    }
+    const res = await this._client.get<AssistantEntity[]>('/assistants', {
+      params: { skip, limit },
+    });
+    return res.data;
   }
 
   public static async getAssistantAsync(assistantId: string): Promise<AssistantEntity> {
-    try {
-      const res = await this._client.get<AssistantEntity>(`/assistants/${assistantId}`);
-      return res.data;
-    } catch (error) {
-      console.error('Error fetching assistant:', error);
-      throw error;
-    }
+    const res = await this._client.get<AssistantEntity>(`/assistants/${assistantId}`);
+    return res.data;
   }
 
   public static async upsertAssistantAsync(assistant: AssistantEntity): Promise<AssistantEntity> {
-    try {
-      const res = await this._client.post<AssistantEntity>('/assistants', assistant);
-      return res.data;
-    } catch (error) {
-      console.error('Error upserting assistant:', error);
-      throw error;
-    }
+    const res = await this._client.post<AssistantEntity>('/assistants', assistant);
+    return res.data;
   }
 
   public static async deleteAssistantAsync(assistantId: string): Promise<void> {
-    try {
-      await this._client.delete(`/assistants/${assistantId}`);
-    } catch (error) {
-      console.error('Error deleting assistant:', error);
-      throw error;
-    }
+    await this._client.delete(`/assistants/${assistantId}`);
   }
 
   public static chatAssistantAsync(
@@ -162,46 +132,26 @@ export class Api {
     skip: number = 0,
     order: string = 'desc'
   ): Promise<CollectionEntity[]> {
-    try {
-      const response = await this._client.get<CollectionEntity[]>('/memory', { 
-        params: { limit, skip, order, name }
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Error finding collections:', error);
-      throw error;
-    }
+    const response = await this._client.get<CollectionEntity[]>('/memory', { 
+      params: { limit, skip, order, name }
+    });
+    return response.data;
   }
 
   public static async upsertCollectionAsync(collection: CollectionEntity): Promise<CollectionEntity> {
-    try {
-      const response = await this._client.post<CollectionEntity>('/memory', collection);
-      return response.data;
-    } catch (error) {
-      console.error('Error upserting collection:', error);
-      throw error;
-    }
+    const response = await this._client.post<CollectionEntity>('/memory', collection);
+    return response.data;
   }
 
   public static async deleteCollectionAsync(collectionId: string): Promise<void> {
-    try {
-      await this._client.delete(`/memory/${collectionId}`);
-    } catch (error) {
-      console.error('Error deleting collection:', error);
-      throw error;
-    }
+    await this._client.delete(`/memory/${collectionId}`);
   }
 
   public static async searchCollectionAsync(collectionId: string, query: string): Promise<any> {
-    try {
-      const response = await this._client.post(`/memory/${collectionId}/search`, {
-        query,
-      });
-      return response;
-    } catch (error) {
-      console.error('Error searching document:', error);
-      throw error;
-    }
+    const response = await this._client.post(`/memory/${collectionId}/search`, {
+      query,
+    });
+    return response;
   }
 
   public static async findDocumentsAsync(
@@ -211,46 +161,32 @@ export class Api {
     skip: number = 0,
     order: string = 'desc'
   ): Promise<Document[]> {
-    try {
-      const params: any = { limit, skip, order };
-      if (name) {
-        params.name = name;
-      }
-
-      const response = await this._client.get<Document[]>(`/memory/${collectionId}/documents`,
-        { params }
-      );
-      return response.data;
-    } catch (error) {
-      console.error('문서 조회 실패:', error);
-      throw error;
+    const params: any = { limit, skip, order };
+    if (name) {
+      params.name = name;
     }
+
+    const response = await this._client.get<Document[]>(`/memory/${collectionId}/documents`,
+      { params }
+    );
+    return response.data;
   }
 
   public static async uploadDocumentAsync(collectionId: string, file: File): Promise<void> {
     const formData = new FormData();
-    formData.append("file", file);
-    try {
-      await this._client.post(`/memory/${collectionId}/documents`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        onUploadProgress(progressEvent) {
-          console.log('Upload progress:', progressEvent.progress);
-        },
-      });
-    } catch (error) {
-      console.error('File upload failed:', error);
-    }
+    formData.append("file", file);    
+    await this._client.post(`/memory/${collectionId}/documents`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      onUploadProgress(progressEvent) {
+        console.log('Upload progress:', progressEvent.progress);
+      },
+    });
   }
 
   public static async deleteDocumentAsync(collectionId: string, documentId: string): Promise<void> {
-    try {
-      await this._client.delete(`/memory/${collectionId}/documents/${documentId}`);
-      console.log(`문서 ${documentId} 삭제 완료`);
-    } catch (error) {
-      console.error('문서 삭제 실패:', error);
-    }
+    await this._client.delete(`/memory/${collectionId}/documents/${documentId}`);
   }
   
 }

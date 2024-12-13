@@ -17,32 +17,26 @@ export class StorageEditor extends LitElement {
       <form class="form">
         <sl-input
           label="Name"
+          size="small"
           name="name"
           required
           .value=${this.collection?.name || ''}
+          @sl-change=${this.change}
         ></sl-input>
         <sl-textarea
           label="Description"
+          size="small"
           name="description"
           required
           .value=${this.collection?.description || ''}
         ></sl-textarea>
-        <sl-select
+        <model-select
           label="Embedding Model"
-          name="embeddingModel"
+          size="small"
           required
-          @sl-change=${this.change}
-        >
-          <small>Section 1</small>
-          <sl-option value="option-1">Option 1</sl-option>
-          <sl-option value="option-2">Option 2</sl-option>
-          <sl-option value="option-3">Option 3</sl-option>
-          <sl-divider></sl-divider>
-          <small>Section 2</small>
-          <sl-option value="option-4">Option 4</sl-option>
-          <sl-option value="option-5">Option 5</sl-option>
-          <sl-option value="option-6">Option 6</sl-option>
-        </sl-select>
+          .value=${`${this.collection?.provider}/${this.collection?.model}` || ''}
+          @model-change=${this.change}
+        ></model-select>
         <sl-details summary="Options" open>
           <sl-checkbox name="option-1">Option 1</sl-checkbox>
           <sl-checkbox name="option-2">Option 2</sl-checkbox>
@@ -67,6 +61,8 @@ export class StorageEditor extends LitElement {
 
   private change(event: Event) {
     const target = event.target as HTMLSelectElement;
+    console.log(target);
+    console.log(target.name);
     console.log(target.value);
   }
 
