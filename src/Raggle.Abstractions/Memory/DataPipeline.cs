@@ -36,7 +36,7 @@ public class DataPipeline
     [JsonInclude]
     public string? CurrentStep { get; private set; }
 
-    public List<string> Steps { get; set; } = [];
+    public required List<string> Steps { get; set; } = [];
 
     public IDictionary<string, object>? Options { get; set; }
 

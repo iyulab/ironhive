@@ -1,6 +1,7 @@
 import { LitElement, css, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
-import { Message } from "../models";
+
+import type { Message } from "../models";
 import { Api } from "../services/ApiClient";
 
 @customElement('chat-room')

@@ -18,7 +18,7 @@ public class VectorPoint
     /// <summary>
     /// Gets or sets the document ID.
     /// </summary>
-    public string DocumentId { get; set; } = string.Empty;
+    public string? DocumentId { get; set; }
 
     /// <summary>
     /// Gets or sets the tags.

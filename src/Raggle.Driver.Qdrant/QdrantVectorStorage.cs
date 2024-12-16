@@ -69,6 +69,37 @@ public class QdrantVectorStorage : IVectorStorage
             cancellationToken: cancellationToken);
     }
 
+    public async Task<IEnumerable<VectorPoint>> FindVectorsAsync(
+        string collectionName, 
+        MemoryFilter? filter = null, 
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _client.ScrollAsync(
+            collectionName: collectionName,
+            cancellationToken: cancellationToken);
+
+        var points = new List<VectorPoint>();
+
+        foreach (var point in response.Result)
+        {
+            var documentId = point.Payload.GetValueOrDefault("documentId")?.StringValue;
+            var tags = point.Payload.GetValueOrDefault("tags")?.ListValue.Values.Select(v => v.StringValue);
+            var jsonPayload = point.Payload.GetValueOrDefault("payload");
+            var payload = jsonPayload != null ? JsonSerializer.Deserialize<object>(jsonPayload.StringValue) : null;
+            var vectors = point.Vectors.Vectors_.Vectors[DefaultVectorsName].Data.ToArray();
+
+            points.Add(new VectorPoint
+            {
+                VectorId = Guid.Parse(point.Id.Uuid),
+                Vectors = vectors,
+                DocumentId = documentId,
+                Tags = tags?.ToArray(),
+                Payload = payload
+            });
+        }
+        return points;
+    }
+
     public async Task UpsertVectorsAsync(
         string collectionName, 
         IEnumerable<VectorPoint> points, 

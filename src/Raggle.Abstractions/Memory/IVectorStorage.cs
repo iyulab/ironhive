@@ -18,11 +18,8 @@ public interface IVectorStorage : IDisposable
         string collectionName,
         CancellationToken cancellationToken = default);
 
-    Task<IEnumerable<ScoredVectorPoint>> SearchVectorsAsync(
+    Task<IEnumerable<VectorPoint>> FindVectorsAsync(
         string collectionName,
-        float[] input,
-        float minScore = 0.0f,
-        int limit = 5,
         MemoryFilter? filter = null,
         CancellationToken cancellationToken = default);
 
@@ -34,5 +31,13 @@ public interface IVectorStorage : IDisposable
     Task DeleteVectorsAsync(
         string collectionName,
         string documentId,
+        CancellationToken cancellationToken = default);
+
+    Task<IEnumerable<ScoredVectorPoint>> SearchVectorsAsync(
+        string collectionName,
+        float[] input,
+        float minScore = 0.0f,
+        int limit = 5,
+        MemoryFilter? filter = null,
         CancellationToken cancellationToken = default);
 }

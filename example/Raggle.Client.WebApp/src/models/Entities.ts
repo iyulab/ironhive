@@ -1,14 +1,14 @@
-import { CompletionOptions } from "./Options";
+import { CompletionOptions, HandlerOptions } from "./Options";
 
 export interface CollectionEntity {
   id?: string;
   name?: string;
   description?: string;
-  provider?: string;
-  model?: string;
+  embedService?: string;
+  embedModel?: string;
   createdAt?: string;
   lastUpdatedAt?: string;
-  handlerOptions?: Record<string, any>;
+  handlerOptions: HandlerOptions;
 }
 
 export interface DocumentEntity {

@@ -1,14 +1,14 @@
-export type AIKey = 
+export type AIServiceKey = 
   | "openai" 
   | "anthropic" 
   | "ollama";
 
-export type HandlerKey = 
+export type HandlerServiceKey = 
   | "extract"
   | "chunk" 
   | "summary" 
   | "dialogue" 
   | "embeddings";
 
-export type ToolKey = 
+export type ToolServiceKey = 
   | "vector_search";

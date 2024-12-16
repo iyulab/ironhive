@@ -74,20 +74,17 @@ public class AssistantService
         var entity = await _db.Assistants.FindAsync(assistantId)
             ?? throw new KeyNotFoundException($"Assistant not found");
 
-        var chat = _raggle.Services.GetRequiredKeyedService<IChatCompletionService>(entity.Provider);
-        var request = new ChatCompletionRequest
-        {
-            Model = entity.Model,
-            System = entity.Instruction,
-            Messages = messages,
-            MaxTokens = entity.Options?.MaxTokens,
-            Temperature = entity.Options?.Temperature,
-            TopK = entity.Options?.TopK,
-            TopP = entity.Options?.TopP,
-            StopSequences = entity.Options?.StopSequences,
-        };
-        
-        await foreach (var message in chat.StreamingChatCompletionAsync(request, cancellationToken))
+        var assistant = _raggle.CreateAssistant(
+            id: entity.Id,
+            name: entity.Name,
+            description: entity.Description,
+            instruction: entity.Instruction,
+            options: entity.Options);
+
+        await foreach (var message in assistant.StreamingChatCompletionAsync(
+            messages: messages,
+            options: null,
+            cancellationToken: cancellationToken))
         {
             yield return message;
         }

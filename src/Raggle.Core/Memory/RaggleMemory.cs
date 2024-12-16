@@ -60,27 +60,32 @@ public class RaggleMemory : IRaggleMemory
     }
 
     /// <inheritdoc />
+    public async Task UploadDocumentAsync(
+        string collectionName,
+        string documentId,
+        string fileName,
+        Stream data,
+        CancellationToken cancellationToken = default)
+    {
+        await _documentStorage.WriteDocumentFileAsync(
+                collectionName: collectionName,
+                documentId: documentId,
+                filePath: fileName,
+                data: data,
+                overwrite: true,
+                cancellationToken: cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task MemorizeDocumentAsync(
         string collectionName,
         string documentId,
         string fileName,
-        Stream? content,
         string[] steps,
-        string[]? tags = null,
         IDictionary<string, object>? options = null,
+        string[]? tags = null,
         CancellationToken cancellationToken = default)
     {
-        if (content != null)
-        {
-            await _documentStorage.WriteDocumentFileAsync(
-                collectionName: collectionName,
-                documentId: documentId,
-                filePath: fileName,
-                data: content,
-                overwrite: true,
-                cancellationToken: cancellationToken);
-        }
-
         _detector.TryGetContentType(fileName, out var contentType);
         var pipeline = new DataPipeline
         {
@@ -92,12 +97,12 @@ public class RaggleMemory : IRaggleMemory
             Options = options,
             Tags = tags
         };
+        await UpsertPipelineAsync(pipeline, cancellationToken);
 
         try
         {
             await _semaphore.WaitAsync(cancellationToken);
 
-            // 초기화
             pipeline = pipeline.Start();
             await UpsertPipelineAsync(pipeline, cancellationToken);
 

@@ -1,16 +1,20 @@
-import { LitElement, css, html } from "lit";
+import { LitElement, css, html, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { until } from "lit/directives/until.js";
 
-import type { ModelOptions, ServiceModels } from "../models";
-import { Api } from "../services/ApiClient";
-import type { SlSelect } from "@shoelace-style/shoelace";
+import type { AIServiceModels, AIServiceKey } from "../../models";
+import { Api } from "../../services/ApiClient";
+
+export interface ModelValue {
+  provider: AIServiceKey;
+  model: string;
+}
 
 @customElement('model-select')
 export class ModelSelect extends LitElement {
   // Chache the models to avoid fetching them multiple times
-  private static cmodels?: ServiceModels;
-  private static emodels?: ServiceModels;
+  private static cmodels?: AIServiceModels;
+  private static emodels?: AIServiceModels;
 
   @property({ type: String }) type: 'chat' | 'embed' = 'embed';
   @property({ type: String }) label: string = '';
@@ -23,6 +27,7 @@ export class ModelSelect extends LitElement {
 
   render() {
     return until(this.getModels().then((models) => {
+      if (!models) return nothing;
       return html`
         <sl-select
           label=${this.label}
@@ -32,6 +37,7 @@ export class ModelSelect extends LitElement {
           ?required=${this.required}
           ?disabled=${this.disabled}
           value=${this.value}
+          .hoist=${true}
           @sl-change=${this.onChange}
         >
           ${Object.entries(models).map(([k,v]) => html`
@@ -62,9 +68,9 @@ export class ModelSelect extends LitElement {
   }
 
   private onChange = async (event: Event) => {
-    this.value = (event.target as SlSelect).value as string;
+    this.value = (event.target as HTMLSelectElement).value as string;
     const [provider, model] = this.value.split('/');
-    const value: ModelOptions = { provider, model } as ModelOptions;
+    const value: ModelValue = { provider, model } as ModelValue;
     this.dispatchEvent(new CustomEvent('model-change', {
       detail: value,
     }));

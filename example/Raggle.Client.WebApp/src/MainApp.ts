@@ -75,7 +75,7 @@ export class MainApp extends LitElement {
           ></sl-icon-button>
         </div>
         <div class="right">
-          <sl-icon-button 
+          <sl-icon-button
             name="sun"
             @click=${this.toggleTheme}
           ></sl-icon-button>
@@ -109,6 +109,8 @@ export class MainApp extends LitElement {
       width: 100vw;
       height: 100vh;
       overflow: hidden;
+
+      color: var(--sl-color-neutral-1000);
     }
 
     .side-bar {

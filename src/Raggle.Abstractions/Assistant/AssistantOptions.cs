@@ -1,7 +1,11 @@
-﻿namespace Raggle.Abstractions.AI;
+﻿namespace Raggle.Abstractions.Assistant;
 
-public class ChatCompletionOptions
+public class AssistantOptions
 {
+    public required string Provider { get; set; }
+
+    public required string Model { get; set; }
+
     /// <summary>
     /// Gets or sets the maximum number of tokens to generate.
     /// </summary>

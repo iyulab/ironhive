@@ -24,8 +24,8 @@ public interface IRaggleMemory
         string fileName,
         Stream content,
         string[] steps,
-        string[]? tags = null,
         IDictionary<string, object>? options = null,
+        string[]? tags = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

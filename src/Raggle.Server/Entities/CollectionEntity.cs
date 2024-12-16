@@ -6,13 +6,13 @@ public class CollectionEntity
 {
     public string Id { get; set; } = $"c_{Guid.NewGuid():N}";
 
-    public string Provider { get; set; } = string.Empty;
-
-    public string Model { get; set; } = string.Empty;
-
     public string Name { get; set; } = string.Empty;
 
     public string? Description { get; set; }
+
+    public string EmbedService { get; set; } = string.Empty;
+
+    public string EmbedModel { get; set; } = string.Empty;
 
     public IDictionary<string, object>? HandlerOptions { get; set; }
 

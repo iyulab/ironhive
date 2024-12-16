@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Raggle.Abstractions;
 using Raggle.Abstractions.Memory;
+using Raggle.Core.Memory.Handlers;
 using Raggle.Server.Data;
 using Raggle.Server.Entities;
 using System.Text.Json.Nodes;
@@ -41,6 +42,12 @@ public class MemoryService
         return collections;
     }
 
+    public async Task<CollectionEntity> GetCollectionAsync(string collectionId)
+    {
+        var collection = await _db.Collections.FindAsync(collectionId);
+        return collection ?? throw new InvalidOperationException("Collection not found.");
+    }
+
     public async Task<CollectionEntity> UpsertCollectionAsync(CollectionEntity collection)
     {
         var existing = await _db.Collections.FindAsync(collection.Id);
@@ -53,8 +60,8 @@ public class MemoryService
                 _db.Collections.Add(collection);
                 await _memory.CreateCollectionAsync(
                     collection.Id,
-                    collection.Provider,
-                    collection.Model);
+                    collection.EmbedService,
+                    collection.EmbedModel);
 
                 await _db.SaveChangesAsync();
                 await transaction.CommitAsync();
@@ -147,14 +154,8 @@ public class MemoryService
                 fileName: document.FileName,
                 content: data,
                 tags: document.Tags?.ToArray(),
-                steps:
-                [
-                    RaggleServiceKeys.Decoding,
-                    RaggleServiceKeys.Chunking,
-                    RaggleServiceKeys.Dialogue,
-                    RaggleServiceKeys.Embeddings,
-                ],
-                options: collection.HandlerOptions);
+                steps: PreparePipelineSteps(collection),
+                options: PreparePipelineOptions(collection));
 
             await _db.SaveChangesAsync();
             await transaction.CommitAsync();
@@ -206,10 +207,50 @@ public class MemoryService
 
         return await _memory.GetNearestVectorAsync(
             collectionName: collection.Id,
-            embedServiceKey: collection.Provider,
-            embedModelName: collection.Model,
+            embedServiceKey: collection.EmbedService,
+            embedModelName: collection.EmbedModel,
             query: query);
     }
 
     #endregion
+
+    private static string[] PreparePipelineSteps(CollectionEntity collection)
+    {
+        var steps = new List<string>
+        {
+            RaggleServiceKeys.Decoding,
+            RaggleServiceKeys.Chunking
+        };
+
+        if (collection.HandlerOptions?.ContainsKey(RaggleServiceKeys.Summarizing) == true)
+            steps.Add(RaggleServiceKeys.Summarizing);
+
+        if (collection.HandlerOptions?.ContainsKey(RaggleServiceKeys.Dialogue) == true)
+            steps.Add(RaggleServiceKeys.Dialogue);
+
+        steps.Add(RaggleServiceKeys.Embeddings);
+        return steps.ToArray();
+    }
+
+    private static IDictionary<string, object> PreparePipelineOptions(CollectionEntity collection)
+    {
+        var options = new Dictionary<string, object>();
+
+        if (collection.HandlerOptions?.ContainsKey(RaggleServiceKeys.Chunking) == true)
+            options[RaggleServiceKeys.Chunking] = collection.HandlerOptions[RaggleServiceKeys.Decoding];
+
+        if (collection.HandlerOptions?.ContainsKey(RaggleServiceKeys.Summarizing) == true)
+            options[RaggleServiceKeys.Summarizing] = collection.HandlerOptions[RaggleServiceKeys.Summarizing];
+
+        if (collection.HandlerOptions?.ContainsKey(RaggleServiceKeys.Dialogue) == true)
+            options[RaggleServiceKeys.Dialogue] = collection.HandlerOptions[RaggleServiceKeys.Dialogue];
+
+        options[RaggleServiceKeys.Embeddings] = new EmbeddingsHandler.Options
+        {
+            ServiceKey = collection.EmbedService,
+            ModelName = collection.EmbedModel
+        };
+
+        return options;
+    }
 }

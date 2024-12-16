@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Raggle.Abstractions.AI;
+using Raggle.Abstractions.Assistant;
 using Raggle.Server.Entities;
 
 namespace Raggle.Server.Data;
@@ -42,11 +43,11 @@ public class RaggleDbContext : DbContext
             entity.HasKey(e => e.Id);
 
             // 속성 설정
-            entity.Property(e => e.Provider)
+            entity.Property(e => e.EmbedService)
                   .IsRequired()
                   .HasMaxLength(255);
 
-            entity.Property(e => e.Model)
+            entity.Property(e => e.EmbedModel)
                   .IsRequired()
                   .HasMaxLength(255);
 
@@ -104,13 +105,6 @@ public class RaggleDbContext : DbContext
             entity.HasKey(a => a.Id);
 
             // 속성 설정
-            entity.Property(e => e.Provider)
-                  .IsRequired()
-                  .HasMaxLength(255);
-
-            entity.Property(e => e.Model)
-                  .IsRequired()
-                  .HasMaxLength(255);
 
             entity.Property(e => e.Name)
                   .IsRequired()
@@ -120,7 +114,7 @@ public class RaggleDbContext : DbContext
                   .IsRequired();
 
             entity.Property(a => a.Options)
-                  .HasConversion<JsonValueConverter<ChatCompletionOptions>>()
+                  .HasConversion<JsonValueConverter<AssistantOptions>>()
                   .HasColumnType("TEXT");
 
             entity.Property(a => a.Tools)

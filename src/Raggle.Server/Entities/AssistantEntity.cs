@@ -1,4 +1,5 @@
 ﻿using Raggle.Abstractions.AI;
+using Raggle.Abstractions.Assistant;
 
 namespace Raggle.Server.Entities;
 
@@ -12,11 +13,7 @@ public class AssistantEntity
 
     public string? Instruction { get; set; }
 
-    public string Provider { get; set; } = string.Empty;
-
-    public string Model { get; set; } = string.Empty;
-
-    public ChatCompletionOptions? Options { get; set; }
+    public required AssistantOptions Options { get; set; }
 
     public IEnumerable<string>? Tools { get; set; }
 

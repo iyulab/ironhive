@@ -1,5 +1,6 @@
 import { LitElement, css, html } from "lit";
 import { customElement, state } from "lit/decorators.js";
+
 import type { AssistantEntity } from "../models";
 import { Api } from "../services/ApiClient";
 
@@ -9,8 +10,9 @@ export class AssistantExplorer extends LitElement {
   @state() 
   assistants: AssistantEntity[] = [];
 
-  protected async firstUpdated(_changedProperties: any): Promise<void> {
-    this.assistants = await this.loadAsync();
+  connectedCallback(): void {
+    super.connectedCallback();
+    this.loadAsync().then(a => this.assistants = a);
   }
 
   render() {
@@ -23,12 +25,20 @@ export class AssistantExplorer extends LitElement {
       </div>
       <sl-divider></sl-divider>
       <div class="control">
-        <sl-button
-          size="small" variant="primary"
-        >Create New</sl-button>
+        <sl-button href="/storage/new">
+          Create New
+          <sl-icon slot="suffix" name="plus-lg"></sl-icon>
+        </sl-button>
       </div>
       <div class="list">
-
+        ${this.assistants?.map(a => html`
+          <sl-details open>
+            <span slot="summary">${a.name}</span>
+            <span>${a.createdAt}</span>
+            <span>${a.lastUpdatedAt}</span>
+            <sl-button size="small" @click=${() => this.deleteAsync(a.id)}>Delete</sl-button>
+          </sl-details>
+        `)}
       </div>
     `;
   }
@@ -55,44 +65,29 @@ export class AssistantExplorer extends LitElement {
 
   static styles = css`
     :host {
-      display: block;
-      width: 100%;
-      height: 100%;
-    }
-
-    .assistant-form {
       display: flex;
       flex-direction: column;
-      gap: 16px;
-      padding: 24px;
+      padding: 8px 48px;
     }
 
-    .input-group {
+    .header {
       display: flex;
-      flex-direction: column;
-    }
+      flex-direction: row;
+      align-items: flex-end;
+      font-size: 24px;
+      padding: 0px 16px;
+      line-height: 32px;
+      gap: 14px;
 
-    .input-group label {
-      margin-bottom: 8px;
-      font-weight: bold;
-      color: #333333;
-      cursor: pointer;
-    }
+      span {
+        font-size: 32px;
+        font-weight: 600;
+        color: var(--sl-color-gray-800);
+      }
 
-    .input-group input,
-    .input-group textarea {
-      padding: 12px;
-      border: 1px solid #cccccc;
-      border-radius: 4px;
-      font-size: 16px;
-      resize: vertical;
-      transition: border-color 0.3s;
-    }
-
-    .input-group input:focus,
-    .input-group textarea:focus {
-      border-color: #007bff;
-      outline: none;
+      .flex {
+        flex: 1;
+      }
     }
   `;
 }

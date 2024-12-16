@@ -58,6 +58,37 @@ public class LiteDBVectorStorage : IVectorStorage
         _db.DropCollection(collectionName);
     }
 
+    public Task<IEnumerable<VectorPoint>> FindVectorsAsync(
+        string collectionName, 
+        MemoryFilter? filter = null, 
+        CancellationToken cancellationToken = default)
+    {
+        var collection = _db.GetCollection<VectorPoint>(collectionName);
+        var query = collection.Query();
+
+        if (filter != null)
+        {
+            if (filter.DocumentIds.Count > 0)
+                query = query.Where(p => filter.DocumentIds.Contains(p.DocumentId));
+            if (filter.Tags.Count > 0)
+                query = query.Where(p => p.Tags != null && p.Tags.Any(t => filter.Tags.Contains(t)));
+        }
+
+        var results = query.ToList();
+        return Task.FromResult(results.AsEnumerable());
+    }
+
+    public Task UpsertVectorsAsync(
+        string collectionName,
+        IEnumerable<VectorPoint> points,
+        CancellationToken cancellationToken = default)
+    {
+        collectionName = $"{collectionName}";
+        var collection = _db.GetCollection<VectorPoint>(collectionName);
+        collection.Upsert(points);
+        return Task.CompletedTask;
+    }
+
     public Task DeleteVectorsAsync(
         string collectionName, 
         string documentId, 
@@ -65,17 +96,6 @@ public class LiteDBVectorStorage : IVectorStorage
     {
         var collection = _db.GetCollection<VectorPoint>(collectionName);
         collection.DeleteMany(p => p.DocumentId == documentId);
-        return Task.CompletedTask;
-    }
-
-    public Task UpsertVectorsAsync(
-        string collectionName, 
-        IEnumerable<VectorPoint> points, 
-        CancellationToken cancellationToken = default)
-    {
-        collectionName = $"{collectionName}";
-        var collection = _db.GetCollection<VectorPoint>(collectionName);
-        collection.Upsert(points);
         return Task.CompletedTask;
     }
 

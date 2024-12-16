@@ -20,12 +20,10 @@ public interface IRaggle
     IEmbeddingService GetEmbeddingService(string serviceKey);
 
     IRaggleAssistant CreateAssistant(
-        string provider,      // required
-        string model,         // required
+        AssistantOptions options,
         string? id = null,
         string? name = null,
         string? description = null,
         string? instruction = null,
-        ChatCompletionOptions? options = null,
         FunctionToolCollection? tools = null);
 }

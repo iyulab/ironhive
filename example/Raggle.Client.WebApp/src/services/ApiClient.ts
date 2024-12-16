@@ -3,9 +3,10 @@ import {
   AssistantEntity, 
   CollectionEntity, 
   Message, 
-  ServiceModels, 
+  AIServiceModels, 
   StreamingResponse
 } from '../models';
+import { FileUploadRequest } from '../models/Request';
 
 export class Api {
   private static readonly _baseURL: string = import.meta.env.DEV
@@ -20,13 +21,13 @@ export class Api {
 
   // Model API
 
-  public static async getChatModelsAsync(): Promise<ServiceModels> {
-    const res = await this._client.get<ServiceModels>('/models/chat');
+  public static async getChatModelsAsync(): Promise<AIServiceModels> {
+    const res = await this._client.get<AIServiceModels>('/models/chat');
     return res.data;
   }
 
-  public static async getEmbeddingModelsAsync(): Promise<ServiceModels> {
-    const res = await this._client.get<ServiceModels>('/models/embedding');
+  public static async getEmbeddingModelsAsync(): Promise<AIServiceModels> {
+    const res = await this._client.get<AIServiceModels>('/models/embedding');
     return res.data;
   }
 
@@ -138,6 +139,11 @@ export class Api {
     return response.data;
   }
 
+  public static async getCollectionAsync(collectionId: string): Promise<CollectionEntity> {
+    const response = await this._client.get<CollectionEntity>(`/memory/${collectionId}`);
+    return response.data;
+  }
+
   public static async upsertCollectionAsync(collection: CollectionEntity): Promise<CollectionEntity> {
     const response = await this._client.post<CollectionEntity>('/memory', collection);
     return response.data;
@@ -172,15 +178,20 @@ export class Api {
     return response.data;
   }
 
-  public static async uploadDocumentAsync(collectionId: string, file: File): Promise<void> {
+  public static async uploadDocumentAsync(collectionId: string, files: File[], tags: string[] = []): Promise<void> {
     const formData = new FormData();
-    formData.append("file", file);    
+    files.forEach((file) => {
+      formData.append('files', file);
+    });
+    tags.forEach((tag) => {
+      formData.append('tags', tag);
+    });
     await this._client.post(`/memory/${collectionId}/documents`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
-      onUploadProgress(progressEvent) {
-        console.log('Upload progress:', progressEvent.progress);
+      onUploadProgress(event) {
+        console.log('Upload progress:', event.progress);
       },
     });
   }

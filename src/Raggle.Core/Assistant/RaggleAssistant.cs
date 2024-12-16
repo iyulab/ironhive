@@ -8,7 +8,7 @@ namespace Raggle.Core.Assistant;
 
 internal class RaggleAssistant : IRaggleAssistant
 {
-    private readonly IChatCompletionService _service;
+    private readonly IServiceProvider _provider;
 
     public string? Id { get; set; }
 
@@ -16,45 +16,53 @@ internal class RaggleAssistant : IRaggleAssistant
 
     public string? Description { get; set; }
 
-    public string? Instruction { get; set; }
+    public string? Instruction { get; set; }    
 
-    public required string Provider { get; set; }
-
-    public required string Model { get; set; }
-
-    public ChatCompletionOptions? Options { get; set; }
+    public required AssistantOptions DefaultOptions { get; set; }
 
     public FunctionToolCollection? Tools { get; set; }
 
-    public RaggleAssistant(IServiceProvider services)
+    public RaggleAssistant(IServiceProvider provider)
     {
-        _service = services.GetRequiredKeyedService<IChatCompletionService>(Provider);
+        _provider = provider;
     }
 
-    public Task<ChatCompletionResponse> ChatCompletionAsync(MessageCollection messages)
+    public Task<ChatCompletionResponse> ChatCompletionAsync(
+        MessageCollection messages,
+        AssistantOptions? options,
+        CancellationToken cancellationToken = default)
     {
-        var request = BuildRequest(messages);
-        return _service.ChatCompletionAsync(request);
+        options ??= DefaultOptions;
+        var request = BuildRequest(messages, options);
+        var service = _provider.GetRequiredKeyedService<IChatCompletionService>(options.Provider);
+        return service.ChatCompletionAsync(request, cancellationToken);
     }
 
-    public IAsyncEnumerable<ChatCompletionStreamingResponse> StreamingChatCompletionAsync(MessageCollection messages)
+    public IAsyncEnumerable<ChatCompletionStreamingResponse> StreamingChatCompletionAsync(
+        MessageCollection messages,
+        AssistantOptions? options,
+        CancellationToken cancellationToken = default)
     {
-        var request = BuildRequest(messages);
-        return _service.StreamingChatCompletionAsync(request);
+        options ??= DefaultOptions;
+        var request = BuildRequest(messages, options);
+        var service = _provider.GetRequiredKeyedService<IChatCompletionService>(options.Provider);
+        return service.StreamingChatCompletionAsync(request, cancellationToken);
     }
 
-    private ChatCompletionRequest BuildRequest(MessageCollection messages)
+    private ChatCompletionRequest BuildRequest(
+        MessageCollection messages,
+        AssistantOptions options)
     {
         return new ChatCompletionRequest
         {
-            Model = Model,
+            Model = options.Model,
             System = Instruction,
             Messages = messages,
-            MaxTokens = Options?.MaxTokens,
-            Temperature = Options?.Temperature,
-            StopSequences = Options?.StopSequences,
-            TopK = Options?.TopK,
-            TopP = Options?.TopP,
+            MaxTokens = options.MaxTokens,
+            Temperature = options.Temperature,
+            StopSequences = options.StopSequences,
+            TopK = options.TopK,
+            TopP = options.TopP,
             Tools = Tools
         };
     }

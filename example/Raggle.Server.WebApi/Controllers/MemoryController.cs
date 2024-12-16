@@ -9,6 +9,12 @@ public class SearchQuery
     public required string Query { get; set; }
 }
 
+public class FileUploadRequest
+{
+    public IEnumerable<IFormFile> Files { get; set; } = [];
+    public IEnumerable<string>? Tags { get; set; }
+}
+
 [ApiController]
 [Route("/v1/memory")]
 public class MemoryController : ControllerBase
@@ -39,6 +45,21 @@ public class MemoryController : ControllerBase
             return Ok(collections);
         }
         catch(Exception ex)
+        {
+            return StatusCode(500, ex);
+        }
+    }
+
+    [HttpGet("{collectionId}")]
+    public async Task<ActionResult> GetCollectionAsync(
+        [FromRoute] string collectionId)
+    {
+        try
+        {
+            var collection = await _service.GetCollectionAsync(collectionId);
+            return Ok(collection);
+        }
+        catch (Exception ex)
         {
             return StatusCode(500, ex);
         }
@@ -117,23 +138,12 @@ public class MemoryController : ControllerBase
     [HttpPost("{collectionId}/documents")]
     public async Task<ActionResult> UploadDocumentAsync(
         [FromRoute] string collectionId,
-        IFormFile file)
+        [FromForm] FileUploadRequest request)
     {
         try
         {
-            var document = new DocumentEntity
-            {
-                CollectionId = collectionId,
-                FileName = file.FileName,
-                FileSize = file.Length,
-                ContentType = file.ContentType,
-                Tags = []
-            };
-            using (var data = file.OpenReadStream())
-            {
-                await _service.UploadDocumentAsync(collectionId, document, data);
-            }
-            return Ok(document);
+            
+            return Ok(null);
         }
         catch (Exception ex)
         {

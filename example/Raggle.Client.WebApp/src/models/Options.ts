@@ -1,7 +1,7 @@
-import { AIKey } from "./ServiceKeys";
+import { AIServiceKey } from "./ServiceKeys";
 
-export type ServiceModels = {
-  [provider in AIKey]: string[];
+export type AIServiceModels = {
+  [provider in AIServiceKey]: string[];
 };
 
 export interface CompletionOptions {
@@ -13,39 +13,20 @@ export interface CompletionOptions {
 }
 
 export interface ModelOptions {
-  provider: AIKey;
-  model: string;
+  serviceKey: AIServiceKey;
+  modelName: string;
 }
 
 export interface ChunkOptions {
   maxTokens: number;
 }
 
-export interface ToolOptions {
-  vector_search?: string[];
-}
-
 export interface HandlerOptions {
   chunk: ChunkOptions;
   summary?: ModelOptions;
   dialogue?: ModelOptions;
-  embeddings: ModelOptions;
 }
 
-const options: HandlerOptions = {
-  summary: {
-    provider: 'openai',
-    model: 'gpt-4o-mini',
-  },
-  chunk: {
-    maxTokens: 100,
-  },
-  dialogue: {
-    provider: 'openai',
-    model: 'gpt-4o-mini',
-  },
-  embeddings: {
-    provider: 'openai',
-    model: 'text-embedding-ada-002',
-  },
+export interface ToolOptions {
+  vector_search?: string[];
 }

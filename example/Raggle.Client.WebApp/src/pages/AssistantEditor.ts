@@ -1,8 +1,8 @@
 import { LitElement, css, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 
-import { Api } from "../services/ApiClient";
 import type { AssistantEntity } from "../models";
+import { Api } from "../services/ApiClient";
 
 @customElement('assistant-editor')
 export class AssistantEditor extends LitElement {
