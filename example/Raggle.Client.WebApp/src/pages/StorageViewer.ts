@@ -23,7 +23,7 @@ export class StorageViewer extends LitElement {
   openPanel: boolean = false;
 
   @property({ type: Boolean, reflect: true })
-  openUpload: boolean = true;
+  openUpload: boolean = false;
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -73,7 +73,7 @@ export class StorageViewer extends LitElement {
           ${this.documents.map(d => html`
             <li>
               <span>${d.fileName}</span>
-              <span>${d.fileSize} MB</span>
+              <span>${d.fileSize} Byte</span>
             </li>
           `)}
         </div>
@@ -100,11 +100,18 @@ export class StorageViewer extends LitElement {
   }
 
   private onUpload = async (e: CustomEvent<File[]>) => {
+    const uploader = e.target as any;
     const files = e.detail;
     if (!files || files.length === 0) {
       App.alert('File not selected', 'neutral');
     }
-    await Api.uploadDocumentAsync(this.key, files);
+    uploader.loading = true;
+    const res = await Api.uploadDocumentAsync(this.key, files);
+    uploader.loading = false;
+    uploader.files = [];
+    this.openUpload = false;
+    console.log(res);
+    this.documents = await this.loadDocumentAsync(this.key);
   }
 
   static styles = css`

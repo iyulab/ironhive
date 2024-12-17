@@ -1,27 +1,27 @@
 import { LitElement, css, html } from "lit";
-import { customElement } from "lit/decorators.js";
+import { customElement, state } from "lit/decorators.js";
 import { Router } from '@lit-labs/router';
-import { Theme } from "./models";
 
 import '@shoelace-style/shoelace';
 import "./components";
 import "./pages";
+import type { Theme } from "./models";
+import { App } from "./services";
 
 @customElement('main-app')
 export class MainApp extends LitElement {
-  private theme: Theme = localStorage.getItem('theme') as Theme || 'light';
   private router = new Router(this, [
     { path: '/', 
       render: () => html`<home-page></home-page>`},
     { path: '/storages', 
       render: () => html`<storage-explorer></storage-explorer>`},
-    { path: '/storages/:id',
+    { path: '/storage/:id?',
         render: ({id}) => html`<storage-viewer key=${id!}></storage-viewer>`},
     { path: '/storage/new',
         render: () => html`<storage-editor></storage-editor>`},
     { path: '/assistants', 
       render: () => html`<assistant-explorer></assistant-explorer>`},
-    { path: '/assistants/:id', 
+    { path: '/assistant/:id?', 
         render: ({id}) => html`<assistant-editor key=${id!}></assistant-editor>`},
     { path: '/chat/:id',
       render: ({id}) => html`<chat-room key=${id!}></chat-room>`},
@@ -32,6 +32,8 @@ export class MainApp extends LitElement {
       render: () => html`<error-page status="404"></error-page>`
     }
   });
+
+  @state() theme: Theme = App.getTheme();
 
   render() {
     return html`
@@ -76,7 +78,7 @@ export class MainApp extends LitElement {
         </div>
         <div class="right">
           <sl-icon-button
-            name="sun"
+            name=${this.theme === 'dark' ? 'sun' : 'moon'}
             @click=${this.toggleTheme}
           ></sl-icon-button>
         </div>
@@ -96,9 +98,13 @@ export class MainApp extends LitElement {
   }
 
   private toggleTheme = async () => {
-    const root = document.body.classList;
-    root.toggle('sl-theme-dark');
-    this.theme = root.contains('sl-theme-dark') ? 'dark' : 'light';
+    if (App.getTheme() === 'light') {
+      App.setTheme('dark');
+      this.theme = 'dark';
+    } else {
+      App.setTheme('light');
+      this.theme = 'light';
+    }
   }
 
   static styles = css`

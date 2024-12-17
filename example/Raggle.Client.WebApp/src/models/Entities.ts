@@ -1,4 +1,4 @@
-import { CompletionOptions, HandlerOptions } from "./Options";
+import { ExecuteOptions, HandlerOptions, ToolOptions } from "./Options";
 
 export interface CollectionEntity {
   id?: string;
@@ -24,14 +24,14 @@ export interface DocumentEntity {
 
 export interface AssistantEntity {
   id?: string;
-  provider?: string;
+  service?: string;
   model?: string;
   name?: string;
   description?: string;
   instruction?: string;
-  options?: CompletionOptions;
+  options: ExecuteOptions;
   tools?: string[];
-  toolOptions?: Record<string, any>;
-  createdAt?: Date;
-  lastUpdatedAt?: Date;
+  toolOptions?: ToolOptions;
+  createdAt?: string;
+  lastUpdatedAt?: string;
 }

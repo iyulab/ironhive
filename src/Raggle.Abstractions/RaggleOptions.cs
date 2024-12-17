@@ -15,5 +15,7 @@ public static class RaggleOptions
         PropertyNameCaseInsensitive = true,
         NumberHandling = JsonNumberHandling.AllowReadingFromString,
         MaxDepth = 32,
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower) },
+        WriteIndented = true,
     };
 }

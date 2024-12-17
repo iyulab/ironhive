@@ -2,6 +2,7 @@
 using Raggle.Abstractions.Json;
 using Raggle.Abstractions.Memory;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.Json;
 
 namespace Raggle.Core.Extensions;
@@ -181,6 +182,7 @@ public static class IDocumentStorageExtensions
         string fileName,
         string suffix,
         T value,
+        int? index = null,
         JsonSerializerOptions? options = null,
         CancellationToken cancellationToken = default)
     {
@@ -192,7 +194,7 @@ public static class IDocumentStorageExtensions
             cancellationToken: cancellationToken);
         stream.Position = 0;
 
-        var filePath = BuildJsonFileName(fileName, suffix);
+        var filePath = BuildJsonFileName(fileName, suffix, index);
         await documentStorage.WriteDocumentFileAsync(
             collectionName: collectionName,
             documentId: documentId,
@@ -204,34 +206,43 @@ public static class IDocumentStorageExtensions
 
     private static JsonFileName ParseJsonFileName(string filePath)
     {
-        var fullName = Path.GetFileName(filePath)
+        var fileName = Path.GetFileName(filePath)
             ?? throw new InvalidOperationException("파일 이름을 가져올 수 없습니다.");
-
-        var parts = fullName.Split('.');
-        if (parts.Length < 2)
-            throw new InvalidOperationException("파일 이름 형식이 올바르지 않습니다.");
-        if (parts[^1] != JsonExtension)
+        if (!fileName.EndsWith($".{JsonExtension}"))
             throw new InvalidOperationException("JSON 파일이 아닙니다.");
 
-        var name = parts[0];
+        var baseName = fileName.Substring(0, fileName.Length - JsonExtension.Length - 1);
+        var parts = baseName.Split('.');
+
+        if (parts.Length < 1)
+            throw new InvalidOperationException("파일 이름 형식이 올바르지 않습니다.");
+
+        string name;
         string? suffix = null;
         int? index = null;
 
-        if (parts.Length == 3)
+        // 이름, 인덱스, 접미사 파싱
+        if (parts.Length >= 2)
         {
-            suffix = parts[^2];
+            if (int.TryParse(parts[^2], out int parsedIndex))
+            {
+                index = parsedIndex;
+                suffix = parts.Length >= 3 ? parts[^3] : null;
+            }
+            else
+            {
+                suffix = parts[^2];
+            }
         }
-        if (parts.Length == 4)
-        {
-            suffix = parts[^2];
-            index = int.Parse(parts[1]);
-        }
+
+        // 기본 이름 조립 (복수의 점이 포함된 이름 고려)
+        name = string.Join(".", parts.Take(parts.Length - (index.HasValue ? 2 : suffix != null ? 1 : 0)));
 
         return new JsonFileName
         {
             Name = name,
             Index = index,
-            Suffix = suffix,
+            Suffix = suffix
         };
     }
 
@@ -240,18 +251,17 @@ public static class IDocumentStorageExtensions
         string? suffix = null,
         int? index = null)
     {
-        if (suffix is not null && index is not null)
-        {
-            return $"{fileName}.{index:D3}.{suffix}.{JsonExtension}";
-        }
-        else if (suffix is not null)
-        {
-            return $"{fileName}.{suffix}.{JsonExtension}";
-        }
-        else
-        {
-            return $"{fileName}.{JsonExtension}";
-        }
+        var builder = new StringBuilder(fileName);
+
+        if (index.HasValue)
+            builder.Append($".{index.Value:D3}");
+
+        if (!string.IsNullOrEmpty(suffix))
+            builder.Append($".{suffix}");
+
+        builder.Append($".{JsonExtension}");
+
+        return builder.ToString();
     }
 
     public static bool WithInRange(this Range range, int value)

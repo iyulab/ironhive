@@ -4,11 +4,11 @@ export type AIServiceModels = {
   [provider in AIServiceKey]: string[];
 };
 
-export interface CompletionOptions {
-  maxTokens?: number;
-  temperature?: number;
-  topK?: number;
-  topP?: number;
+export interface ExecuteOptions {
+  maxTokens: number;
+  temperature: number;
+  topK: number;
+  topP: number;
   stopSequences?: string[];
 }
 

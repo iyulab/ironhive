@@ -1,4 +1,5 @@
 ﻿using Google.Protobuf;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Raggle.Abstractions;
 using Raggle.Abstractions.Memory;
@@ -94,21 +95,24 @@ public class MemoryService
         var collection = await _db.Collections.FindAsync(collectionId)
             ?? throw new InvalidOperationException("Collection not found.");
 
-        using (var transaction = await _db.Database.BeginTransactionAsync())
-        {
-            try
-            {
-                _db.Collections.Remove(collection);
-                await _memory.DeleteCollectionAsync(collection.Id);
+        var transaction = await _db.Database.BeginTransactionAsync();
 
-                await _db.SaveChangesAsync();
-                await transaction.CommitAsync();
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+        try
+        {
+            _db.Collections.Remove(collection);
+            await _memory.DeleteCollectionAsync(collection.Id);
+
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+        finally
+        {
+            await transaction.DisposeAsync();
         }
     }
 
@@ -137,7 +141,10 @@ public class MemoryService
         return documents;
     }
 
-    public async Task UploadDocumentAsync(string collectionId, DocumentEntity document, Stream data)
+    public async Task<DocumentEntity> UploadDocumentAsync(
+        string collectionId, 
+        IFormFile file, 
+        IEnumerable<string>? tags = null)
     {
         var collection = await _db.Collections.FindAsync(collectionId)
             ?? throw new InvalidOperationException("Collection not found.");
@@ -146,19 +153,38 @@ public class MemoryService
 
         try
         {
+            var document = new DocumentEntity
+            {
+                CollectionId = collectionId,
+                FileName = file.FileName,
+                FileSize = file.Length,
+                ContentType = file.ContentType,
+                Tags = tags,   
+            };
+
             await _db.Documents.AddAsync(document);
 
-            await _memory.MemorizeDocumentAsync(
+            var data = new MemoryStream();
+            await file.CopyToAsync(data);
+            data.Position = 0;
+
+            await _memory.UploadDocumentAsync(
                 collectionName: collection.Id,
                 documentId: document.Id,
                 fileName: document.FileName,
-                content: data,
+                data: data);
+
+            _ = _memory.MemorizeDocumentAsync(
+                collectionName: collection.Id,
+                documentId: document.Id,
+                fileName: document.FileName,
                 tags: document.Tags?.ToArray(),
                 steps: PreparePipelineSteps(collection),
                 options: PreparePipelineOptions(collection));
 
             await _db.SaveChangesAsync();
             await transaction.CommitAsync();
+            return document;
         }
         catch
         {
@@ -184,7 +210,7 @@ public class MemoryService
         try
         {
             _db.Documents.Remove(document);
-            await _memory.UnMemorizeDocumentAsync(collectionId, documentId);
+            await _memory.DeleteDocumentAsync(collectionId, documentId);
 
             await _db.SaveChangesAsync();
             await transaction.CommitAsync();
@@ -205,7 +231,7 @@ public class MemoryService
         var collection = await _db.Collections.FindAsync(collectionId)
             ?? throw new InvalidOperationException("Collection not found.");
 
-        return await _memory.GetNearestVectorAsync(
+        return await _memory.SearchSimilarVectorsAsync(
             collectionName: collection.Id,
             embedServiceKey: collection.EmbedService,
             embedModelName: collection.EmbedModel,
@@ -237,7 +263,7 @@ public class MemoryService
         var options = new Dictionary<string, object>();
 
         if (collection.HandlerOptions?.ContainsKey(RaggleServiceKeys.Chunking) == true)
-            options[RaggleServiceKeys.Chunking] = collection.HandlerOptions[RaggleServiceKeys.Decoding];
+            options[RaggleServiceKeys.Chunking] = collection.HandlerOptions[RaggleServiceKeys.Chunking];
 
         if (collection.HandlerOptions?.ContainsKey(RaggleServiceKeys.Summarizing) == true)
             options[RaggleServiceKeys.Summarizing] = collection.HandlerOptions[RaggleServiceKeys.Summarizing];

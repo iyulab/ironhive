@@ -35,7 +35,6 @@ public class DialogueHandler : IPipelineHandler
     {
         var options = pipeline.GetCurrentOptions<Options>()
             ?? throw new InvalidOperationException($"Must provide options for {pipeline.CurrentStep}.");
-        var dialogues = new List<DocumentFragment>();
 
         await foreach (var section in _documentStorage.GetDocumentJsonAsync<DocumentFragment>(
             collectionName: pipeline.CollectionName,
@@ -56,16 +55,15 @@ public class DialogueHandler : IPipelineHandler
                 To = section.To,
                 Content = content,
             };
-            dialogues.Add(dialogue);
-        }
-
-        await _documentStorage.UpsertDocumentJsonAsync(
+            await _documentStorage.UpsertDocumentJsonAsync(
             collectionName: pipeline.CollectionName,
             documentId: pipeline.DocumentId,
             fileName: Path.GetFileNameWithoutExtension(pipeline.FileName),
             suffix: pipeline.CurrentStep ?? "unknown",
-            values: dialogues,
+            value: dialogue,
+            index: section.Index,
             cancellationToken: cancellationToken);
+        }
 
         return pipeline;
     }

@@ -114,7 +114,7 @@ public class RaggleDbContext : DbContext
                   .IsRequired();
 
             entity.Property(a => a.Options)
-                  .HasConversion<JsonValueConverter<AssistantOptions>>()
+                  .HasConversion<JsonValueConverter<ExecuteOptions>>()
                   .HasColumnType("TEXT");
 
             entity.Property(a => a.Tools)

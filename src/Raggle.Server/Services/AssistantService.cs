@@ -75,16 +75,15 @@ public class AssistantService
             ?? throw new KeyNotFoundException($"Assistant not found");
 
         var assistant = _raggle.CreateAssistant(
+            service: entity.Service,
+            model: entity.Model,
             id: entity.Id,
             name: entity.Name,
             description: entity.Description,
             instruction: entity.Instruction,
             options: entity.Options);
 
-        await foreach (var message in assistant.StreamingChatCompletionAsync(
-            messages: messages,
-            options: null,
-            cancellationToken: cancellationToken))
+        await foreach (var message in assistant.StreamingInvokeAsync(messages, cancellationToken))
         {
             yield return message;
         }

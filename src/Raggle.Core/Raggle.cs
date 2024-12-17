@@ -36,20 +36,24 @@ public class Raggle : IRaggle
         => Services.GetRequiredKeyedService<IEmbeddingService>(serviceKey);
 
     public IRaggleAssistant CreateAssistant(
-        AssistantOptions options,
+        string service,
+        string model,
         string? id = null, 
         string? name = null,
         string? description = null,
         string? instruction = null,
+        ExecuteOptions? options = null,
         FunctionToolCollection? tools = null)
     {
-        return new RaggleAssistant(Services)
+        return new BasicRaggleAssistant(Services)
         {
+            Service = service,
+            Model = model,
             Id = id,
             Name = name,
             Description = description,
             Instruction = instruction,
-            DefaultOptions = options,
+            Options = options,
             Tools = tools
         };
     }

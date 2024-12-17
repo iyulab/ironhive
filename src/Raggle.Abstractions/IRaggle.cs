@@ -20,10 +20,12 @@ public interface IRaggle
     IEmbeddingService GetEmbeddingService(string serviceKey);
 
     IRaggleAssistant CreateAssistant(
-        AssistantOptions options,
+        string service,
+        string model,
         string? id = null,
         string? name = null,
         string? description = null,
         string? instruction = null,
+        ExecuteOptions? options = null,
         FunctionToolCollection? tools = null);
 }

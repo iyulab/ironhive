@@ -1,11 +1,22 @@
 import { Theme } from "../models";
 
 export class App {
-  private static theme: Theme = localStorage.getItem('theme') as Theme || 'light';
-
   public static setTheme(theme: Theme) {
-    this.theme = theme;
-    localStorage.setItem('theme', theme);
+    localStorage.setItem('app-theme', theme);
+    if (theme === 'light') 
+      document.body.classList.remove('sl-theme-dark');
+    if (theme === 'dark' && !document.body.classList.contains('sl-theme-dark'))
+      document.body.classList.add('sl-theme-dark');
+  }
+
+  public static getTheme() {
+    const theme = localStorage.getItem('app-theme');
+    if (theme) {
+      return theme as Theme;
+    } else {
+      this.setTheme('light');
+      return 'light';
+    }
   }
 
   public static alert(message: string, variant: 'primary' | 'success' | 'neutral' | 'warning' | 'danger' = 'danger') {

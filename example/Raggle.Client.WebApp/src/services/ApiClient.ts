@@ -186,7 +186,7 @@ export class Api {
     tags.forEach((tag) => {
       formData.append('tags', tag);
     });
-    await this._client.post(`/memory/${collectionId}/documents`, formData, {
+    const response = await this._client.post(`/memory/${collectionId}/documents`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -194,6 +194,7 @@ export class Api {
         console.log('Upload progress:', event.progress);
       },
     });
+    return response.data;
   }
 
   public static async deleteDocumentAsync(collectionId: string, documentId: string): Promise<void> {

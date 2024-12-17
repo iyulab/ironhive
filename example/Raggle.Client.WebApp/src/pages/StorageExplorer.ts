@@ -60,7 +60,7 @@ export class StorageExplorer extends LitElement {
 
   private onSelect = async (e: CustomEvent<string>) => {
     const id = e.detail;
-    window.location.href = `/storages/${id}`;
+    window.location.href = `/storage/${id}`;
   }
 
   static styles = css`

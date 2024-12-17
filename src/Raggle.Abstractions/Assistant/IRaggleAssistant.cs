@@ -5,13 +5,11 @@ namespace Raggle.Abstractions.Assistant;
 
 public interface IRaggleAssistant
 {
-    Task<ChatCompletionResponse> ChatCompletionAsync(
+    Task<ChatCompletionResponse> InvokeAsync(
         MessageCollection messages,
-        AssistantOptions? options,
         CancellationToken cancellationToken = default);
 
-    IAsyncEnumerable<ChatCompletionStreamingResponse> StreamingChatCompletionAsync(
+    IAsyncEnumerable<ChatCompletionStreamingResponse> StreamingInvokeAsync(
         MessageCollection messages,
-        AssistantOptions? options,
         CancellationToken cancellationToken = default);
 }

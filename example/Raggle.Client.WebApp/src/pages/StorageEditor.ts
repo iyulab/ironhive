@@ -1,5 +1,5 @@
 import { LitElement, css, html } from "lit";
-import { customElement, query, state } from "lit/decorators.js";
+import { customElement, property, state } from "lit/decorators.js";
 
 import type { SlButton } from "@shoelace-style/shoelace";
 import type { CollectionEntity } from "../models";
@@ -8,12 +8,7 @@ import { Api, App } from "../services";
 
 @customElement('storage-editor')
 export class StorageEditor extends LitElement {
-
-  @query('form')
-  form!: HTMLDivElement;
-
-  @state()
-  collection: CollectionEntity = {
+  private static readonly DefaultCollection: CollectionEntity = {
     name: '',
     description: '',
     handlerOptions: {
@@ -21,7 +16,11 @@ export class StorageEditor extends LitElement {
         maxTokens: 2048
       }
     }
-  };
+  }
+
+  @property({ type: String }) key: string = '';
+
+  @state() collection: CollectionEntity = StorageEditor.DefaultCollection;
 
   render() {
     return html`
@@ -61,14 +60,14 @@ export class StorageEditor extends LitElement {
             type="number"
             label="Max Chunk Token Size"
             size="small"
-            value=${this.collection.handlerOptions?.chunk.maxTokens || 0}
+            value=${this.collection.handlerOptions.chunk.maxTokens || 0}
             required
             @sl-change=${this.changeChunkOption}
           ></sl-input>
         </checkbox-option>
         <checkbox-option
           label="Generate Summary"
-          ?checked=${this.collection.handlerOptions?.summary !== undefined}
+          ?checked=${this.collection.handlerOptions.summary !== undefined}
           help-text="Generate a summary for each chunk data"
           @change=${this.changeSummayCheck}>
           <model-select
@@ -76,13 +75,13 @@ export class StorageEditor extends LitElement {
             label="Text Model"
             size="small"
             required
-            .value=${this.getModelValue(this.collection.handlerOptions?.summary)}
+            .value=${this.getModelValue(this.collection.handlerOptions.summary)}
             @model-change=${this.changeSummaryOption}
           ></model-select>
         </checkbox-option>
         <checkbox-option
           label="Generate QnA"
-          ?checked=${this.collection.handlerOptions?.dialogue !== undefined}
+          ?checked=${this.collection.handlerOptions.dialogue !== undefined}
           help-text="Generate QnA pairs for each chunk data"
           @change=${this.changeDialogueCheck}>
           <model-select
@@ -90,7 +89,7 @@ export class StorageEditor extends LitElement {
             label="Text Model"
             size="small"
             required
-            .value=${this.getModelValue(this.collection.handlerOptions?.dialogue)}
+            .value=${this.getModelValue(this.collection.handlerOptions.dialogue)}
             @model-change=${this.changeDialogueOption}
           ></model-select>
         </checkbox-option>
@@ -115,6 +114,7 @@ export class StorageEditor extends LitElement {
 
   private submit = async (event: Event) => {
     const target = event.target as SlButton;
+    if (target.loading) return;
     
     try {
       target.loading = true;
@@ -152,7 +152,9 @@ export class StorageEditor extends LitElement {
   private changeSummayCheck = (event: CustomEvent<boolean>) => {
     const value = event.detail;
     if (value === false) {
-      delete this.collection.handlerOptions.dialogue;
+      delete this.collection.handlerOptions.summary;
+    } else {
+      (this.collection.handlerOptions.summary as any) = {};
     }
   }
 
@@ -168,6 +170,8 @@ export class StorageEditor extends LitElement {
     const value = event.detail;
     if (value === false) {
       delete this.collection.handlerOptions.dialogue;
+    } else {
+      (this.collection.handlerOptions.dialogue as any) = {};
     }
   }
 
@@ -198,8 +202,9 @@ export class StorageEditor extends LitElement {
     } else if (this.collection.handlerOptions.dialogue && (!this.collection.handlerOptions.dialogue.serviceKey || !this.collection.handlerOptions.dialogue.modelName)) {
       App.alert('Dialogue Model is required', 'warning');
       return false;
+    } else {
+      return true;
     }
-    return true;
   }
 
   private getModelValue(data: any) {

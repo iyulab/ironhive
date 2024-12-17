@@ -68,12 +68,25 @@ public class RaggleMemory : IRaggleMemory
         CancellationToken cancellationToken = default)
     {
         await _documentStorage.WriteDocumentFileAsync(
-                collectionName: collectionName,
-                documentId: documentId,
-                filePath: fileName,
-                data: data,
-                overwrite: true,
-                cancellationToken: cancellationToken);
+            collectionName: collectionName,
+            documentId: documentId,
+            filePath: fileName,
+            data: data,
+            overwrite: true,
+            cancellationToken: cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task DeleteDocumentAsync(
+        string collectionName, 
+        string documentId, 
+        CancellationToken cancellationToken = default)
+    {
+        await _vectorStorage.DeleteVectorsAsync(collectionName, documentId, cancellationToken);
+        await foreach (var file in _documentStorage.GetDocumentFilesAsync(collectionName, documentId, cancellationToken))
+        {
+            await _documentStorage.DeleteDocumentFileAsync(collectionName, documentId, file, cancellationToken);
+        }
     }
 
     /// <inheritdoc />
@@ -142,14 +155,10 @@ public class RaggleMemory : IRaggleMemory
         CancellationToken cancellationToken = default)
     {
         await _vectorStorage.DeleteVectorsAsync(collectionName, documentId, cancellationToken);
-        await foreach(var file in _documentStorage.GetDocumentFilesAsync(collectionName, documentId, cancellationToken))
-        {
-            await _documentStorage.DeleteDocumentFileAsync(collectionName, documentId, file, cancellationToken);
-        }
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<ScoredVectorPoint>> GetNearestVectorAsync(
+    public async Task<IEnumerable<ScoredVectorPoint>> SearchSimilarVectorsAsync(
         string collectionName,
         string embedServiceKey,
         string embedModelName,

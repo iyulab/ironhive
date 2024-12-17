@@ -78,7 +78,7 @@ export class ModelSelect extends LitElement {
 
   static styles = css`
     :host {
-      display: contents;
+      width: 100%;
     }
   `;
 }

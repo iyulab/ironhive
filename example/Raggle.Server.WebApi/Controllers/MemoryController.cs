@@ -9,7 +9,7 @@ public class SearchQuery
     public required string Query { get; set; }
 }
 
-public class FileUploadRequest
+public class UploadRequest
 {
     public IEnumerable<IFormFile> Files { get; set; } = [];
     public IEnumerable<string>? Tags { get; set; }
@@ -138,12 +138,17 @@ public class MemoryController : ControllerBase
     [HttpPost("{collectionId}/documents")]
     public async Task<ActionResult> UploadDocumentAsync(
         [FromRoute] string collectionId,
-        [FromForm] FileUploadRequest request)
+        [FromForm] UploadRequest request)
     {
         try
         {
-            
-            return Ok(null);
+            var documents = new List<DocumentEntity>();
+            foreach (var file in request.Files)
+            {
+                var doc = await _service.UploadDocumentAsync(collectionId, file, request.Tags);
+                documents.Add(doc);
+            }
+            return Ok(documents);
         }
         catch (Exception ex)
         {

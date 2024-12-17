@@ -31,8 +31,6 @@ public class SummaryHandler : IPipelineHandler
         var options = pipeline.GetCurrentOptions<Options>()
             ?? throw new InvalidOperationException($"Must provide options for {pipeline.CurrentStep}.");
 
-        var summaries = new List<DocumentFragment>();
-
         await foreach (var section in _documentStorage.GetDocumentJsonAsync<DocumentFragment>(
             collectionName: pipeline.CollectionName,
             documentId: pipeline.DocumentId,
@@ -51,17 +49,16 @@ public class SummaryHandler : IPipelineHandler
                 To = section.To,
                 Content = content,
             };
-            summaries.Add(summary);
+
+            await _documentStorage.UpsertDocumentJsonAsync(
+                collectionName: pipeline.CollectionName,
+                documentId: pipeline.DocumentId,
+                fileName: Path.GetFileNameWithoutExtension(pipeline.FileName),
+                suffix: pipeline.CurrentStep ?? "unknown",
+                value: summary,
+                index: section.Index,
+                cancellationToken: cancellationToken);
         }
-
-        await _documentStorage.UpsertDocumentJsonAsync(
-            collectionName: pipeline.CollectionName,
-            documentId: pipeline.DocumentId,
-            fileName: Path.GetFileNameWithoutExtension(pipeline.FileName),
-            suffix: pipeline.CurrentStep ?? "unknown",
-            values: summaries,
-            cancellationToken: cancellationToken);
-
         return pipeline;
     }
 
