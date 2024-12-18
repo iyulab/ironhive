@@ -46,7 +46,7 @@ export class StorageEditor extends LitElement {
           size="small"
           required
           .value=${this.getModelValue(this.collection)}
-          @model-change=${this.changeEmbedModel}
+          @change=${this.changeEmbedModel}
         ></model-select>
         <div class="label">
           Options
@@ -76,7 +76,7 @@ export class StorageEditor extends LitElement {
             size="small"
             required
             .value=${this.getModelValue(this.collection.handlerOptions.summary)}
-            @model-change=${this.changeSummaryOption}
+            @change=${this.changeSummaryOption}
           ></model-select>
         </checkbox-option>
         <checkbox-option
@@ -90,7 +90,7 @@ export class StorageEditor extends LitElement {
             size="small"
             required
             .value=${this.getModelValue(this.collection.handlerOptions.dialogue)}
-            @model-change=${this.changeDialogueOption}
+            @change=${this.changeDialogueOption}
           ></model-select>
         </checkbox-option>
         <div class="control">

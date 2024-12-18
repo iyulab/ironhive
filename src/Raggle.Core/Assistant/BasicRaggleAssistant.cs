@@ -8,7 +8,7 @@ namespace Raggle.Core.Assistant;
 
 internal class BasicRaggleAssistant : IRaggleAssistant
 {
-    private readonly IChatCompletionService _service;
+    private readonly IServiceProvider _provider;
 
     public required string Service { get; set; }
 
@@ -28,7 +28,7 @@ internal class BasicRaggleAssistant : IRaggleAssistant
 
     public BasicRaggleAssistant(IServiceProvider provider)
     {
-        _service = provider.GetRequiredKeyedService<IChatCompletionService>(Service);
+        _provider = provider;
     }
 
     public Task<ChatCompletionResponse> InvokeAsync(
@@ -36,7 +36,8 @@ internal class BasicRaggleAssistant : IRaggleAssistant
         CancellationToken cancellationToken = default)
     {
         var request = BuildRequest(messages);
-        return _service.ChatCompletionAsync(request, cancellationToken);
+        var service = _provider.GetRequiredKeyedService<IChatCompletionService>(Service);
+        return service.ChatCompletionAsync(request, cancellationToken);
     }
 
     public IAsyncEnumerable<ChatCompletionStreamingResponse> StreamingInvokeAsync(
@@ -44,7 +45,8 @@ internal class BasicRaggleAssistant : IRaggleAssistant
         CancellationToken cancellationToken = default)
     {
         var request = BuildRequest(messages);
-        return _service.StreamingChatCompletionAsync(request, cancellationToken);
+        var service = _provider.GetRequiredKeyedService<IChatCompletionService>(Service);
+        return service.StreamingChatCompletionAsync(request, cancellationToken);
     }
 
     private ChatCompletionRequest BuildRequest(

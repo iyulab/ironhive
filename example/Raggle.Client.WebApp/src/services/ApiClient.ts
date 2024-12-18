@@ -1,4 +1,4 @@
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import { 
   AssistantEntity, 
   CollectionEntity, 
@@ -6,7 +6,6 @@ import {
   AIServiceModels, 
   StreamingResponse
 } from '../models';
-import { FileUploadRequest } from '../models/Request';
 
 export class Api {
   private static readonly _baseURL: string = import.meta.env.DEV

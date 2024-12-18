@@ -8,8 +8,7 @@ import { goTo } from "../services/AppUtility";
 @customElement('assistant-explorer')
 export class AssistantExplorer extends LitElement {
 
-  @state() 
-  assistants: AssistantEntity[] = [];
+  @state() assistants: AssistantEntity[] = [];
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -30,7 +29,7 @@ export class AssistantExplorer extends LitElement {
 
         <div class="control">
           <div class="flex"></div>
-          <sl-button @click=${this.createAsync}>
+          <sl-button size="small" @click=${this.createAsync}>
             Create New
             <sl-icon slot="suffix" name="plus-lg"></sl-icon>
           </sl-button>
@@ -65,14 +64,7 @@ export class AssistantExplorer extends LitElement {
   }
 
   private async createAsync() {
-    const assistant = await Api.upsertAssistantAsync({
-      service: 'anthropic',
-      model: 'claude-3-5-sonnet-20241022',
-      name: 'Default Assistant',
-      description: 'This assistant is created by default',
-      instruction: 'You are useful assistant',
-    });
-    goTo(`/assistant/${assistant.id}`);
+    goTo(`/assistant`);
   }
 
   static styles = css`

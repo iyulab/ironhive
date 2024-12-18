@@ -38,16 +38,12 @@ public class AssistantService
 
     public async Task<AssistantEntity> UpsertAssistantAsync(AssistantEntity assistant)
     {
-        var existing = await _db.Assistants.AsTracking()
-            .FirstOrDefaultAsync(a => a.Id == assistant.Id);
+        var exists = await _db.Assistants.AnyAsync(a => a.Id == assistant.Id);
 
-        if (existing != null)
+        if (exists)
         {
-            existing.Name = assistant.Name;
-            existing.Description = assistant.Description;
-            existing.Instruction = assistant.Instruction;
-            existing.LastUpdatedAt = DateTime.UtcNow;
-            _db.Entry(existing).State = EntityState.Modified;
+            assistant.LastUpdatedAt = DateTime.UtcNow;
+            _db.Assistants.Update(assistant);
         }
         else
         {
@@ -55,7 +51,7 @@ public class AssistantService
         }
 
         await _db.SaveChangesAsync();
-        return existing ?? assistant;
+        return assistant;
     }
 
     public async Task DeleteAssistantAsync(string assistantId)

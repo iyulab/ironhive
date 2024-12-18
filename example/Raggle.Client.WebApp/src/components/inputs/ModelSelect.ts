@@ -68,10 +68,12 @@ export class ModelSelect extends LitElement {
   }
 
   private onChange = async (event: Event) => {
+    event.preventDefault();
+    event.stopPropagation();
     this.value = (event.target as HTMLSelectElement).value as string;
     const [provider, model] = this.value.split('/');
     const value: ModelValue = { provider, model } as ModelValue;
-    this.dispatchEvent(new CustomEvent('model-change', {
+    this.dispatchEvent(new CustomEvent('change', {
       detail: value,
     }));
   }

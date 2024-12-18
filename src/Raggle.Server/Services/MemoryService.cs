@@ -51,33 +51,27 @@ public class MemoryService
 
     public async Task<CollectionEntity> UpsertCollectionAsync(CollectionEntity collection)
     {
-        var existing = await _db.Collections.FindAsync(collection.Id);
         var transaction = await _db.Database.BeginTransactionAsync();
 
         try
         {
-            if (existing == null)
+            var exists = await _db.Collections.AnyAsync(c => c.Id == collection.Id);
+            if (exists)
+            {
+                collection.LastUpdatedAt = DateTime.UtcNow;
+                _db.Collections.Update(collection);
+            }
+            else
             {
                 _db.Collections.Add(collection);
                 await _memory.CreateCollectionAsync(
                     collection.Id,
                     collection.EmbedService,
                     collection.EmbedModel);
-
-                await _db.SaveChangesAsync();
-                await transaction.CommitAsync();
-                return collection;
             }
-            else
-            {
-                existing.Name = collection.Name;
-                existing.Description = collection.Description;
-                existing.LastUpdatedAt = DateTime.UtcNow;
-
-                await _db.SaveChangesAsync();
-                await transaction.CommitAsync();
-                return existing;
-            }
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return collection;
         }
         catch
         {
@@ -92,13 +86,13 @@ public class MemoryService
 
     public async Task DeleteCollectionAsync(string collectionId)
     {
-        var collection = await _db.Collections.FindAsync(collectionId)
-            ?? throw new InvalidOperationException("Collection not found.");
-
         var transaction = await _db.Database.BeginTransactionAsync();
 
         try
         {
+            var collection = await _db.Collections.FindAsync(collectionId)
+                ?? throw new InvalidOperationException("Collection not found.");
+
             _db.Collections.Remove(collection);
             await _memory.DeleteCollectionAsync(collection.Id);
 
@@ -199,16 +193,13 @@ public class MemoryService
 
     public async Task DeleteDocumentAsync(string collectionId, string documentId)
     {
-        var collection = await _db.Collections.FindAsync(collectionId)
-            ?? throw new InvalidOperationException("Collection not found.");
-
-        var document = await _db.Documents.FindAsync(documentId)
-            ?? throw new InvalidOperationException("Document not found.");
-
         var transaction = await _db.Database.BeginTransactionAsync();
 
         try
         {
+            var document = await _db.Documents.FindAsync(documentId)
+            ?? throw new InvalidOperationException("Document not found.");
+
             _db.Documents.Remove(document);
             await _memory.DeleteDocumentAsync(collectionId, documentId);
 

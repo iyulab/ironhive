@@ -6,9 +6,9 @@ export interface CollectionEntity {
   description?: string;
   embedService?: string;
   embedModel?: string;
+  handlerOptions: HandlerOptions;
   createdAt?: string;
   lastUpdatedAt?: string;
-  handlerOptions: HandlerOptions;
 }
 
 export interface DocumentEntity {
@@ -26,11 +26,11 @@ export interface AssistantEntity {
   id?: string;
   service?: string;
   model?: string;
-  name?: string;
+  name: string;
   description?: string;
   instruction?: string;
   options: ExecuteOptions;
-  tools?: string[];
+  tools: string[];
   toolOptions?: ToolOptions;
   createdAt?: string;
   lastUpdatedAt?: string;
