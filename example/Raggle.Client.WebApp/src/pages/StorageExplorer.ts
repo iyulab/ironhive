@@ -3,6 +3,7 @@ import { customElement, state } from "lit/decorators.js";
 
 import type { CollectionEntity } from "../models";
 import { Api } from "../services/ApiClient";
+import { goTo } from "../services";
 
 @customElement('storage-explorer')
 export class StorageExplorer extends LitElement {
@@ -29,7 +30,7 @@ export class StorageExplorer extends LitElement {
 
         <div class="control">
           <div class="flex"></div>
-          <sl-button href="/storage/new">
+          <sl-button size="small" href="/storage">
             Create New
             <sl-icon slot="suffix" name="plus-lg"></sl-icon>
           </sl-button>
@@ -60,7 +61,7 @@ export class StorageExplorer extends LitElement {
 
   private onSelect = async (e: CustomEvent<string>) => {
     const id = e.detail;
-    window.location.href = `/storage/${id}`;
+    goTo(`/storage/${id}`);
   }
 
   static styles = css`

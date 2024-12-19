@@ -1,11 +1,16 @@
 import { LitElement, css, html, nothing } from "lit";
-import { customElement, property } from "lit/decorators.js";
+import { customElement, property, query, queryAll } from "lit/decorators.js";
 
 import type { Message } from "../models";
+import type { AssistantMessage, UserMessage } from "../components";
 import { Api } from "../services/ApiClient";
 
 @customElement('chat-room')
 export class ChatRoom extends LitElement {
+
+  @query('.messages') messagesEl!: HTMLDivElement;
+  @queryAll('user-message') userMsgs!: NodeListOf<UserMessage>;
+  @queryAll('assistant-message') assistantMsgs!: NodeListOf<AssistantMessage>;
 
   @property({ type: String }) key: string = '';
   @property({ type: String }) assistantId: string = '';
@@ -17,13 +22,13 @@ export class ChatRoom extends LitElement {
         ${this.messages.map(msg => {
           if (msg.role === 'user') {
             return html`
-              <user-message 
+              <user-message
                 .message=${msg}
               ></user-message>
             `;
           } else if (msg.role === 'assistant') {
             return html`
-              <assistant-message 
+              <assistant-message
                 .message=${msg}
               ></assistant-message>
             `;
@@ -50,33 +55,18 @@ export class ChatRoom extends LitElement {
         ...this.messages, 
         { role: 'user', content: [
           { type: 'text', index: 0,  text: value }
-        ]}
+        ]},
+        { role: 'assistant', content: [] }
       ];
-      const message: Message = { role: 'assistant', content: []};
+      this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
       
-      var controller = Api.chatAssistantAsync(this.assistantId, this.messages, (msg) => {
-        if (msg.content) {
-          console.log(msg.content);
-          if (msg.content?.type === 'text') {
-            console.log('text');
-            const content = message.content?.at(msg.content.index);
-            if (content) {
-              console.log('content');
-              content.text = msg.content.text;
-            } else {
-              console.log('push');
-              message.content?.push(msg.content);
-            }
-          }
-        }
+      var res = await Api.chatAssistantAsync(this.assistantId, this.messages);
+      res.onReceive<any>(async (data) => {
+        if (!data.content) return;
+        this.assistantMsgs[this.assistantMsgs.length - 1].appendContent(data.content);
+        this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
       });
-
-      // await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // console.log('aborting');
-      // controller.abort();
     }
-  
   }
 
   static styles = css`
@@ -94,7 +84,10 @@ export class ChatRoom extends LitElement {
       flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 16px;
+      overflow-y: auto;
+      padding: 32px 16px;
+      box-sizing: border-box;
     }
 
     .input {

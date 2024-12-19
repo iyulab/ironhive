@@ -21,7 +21,7 @@ export class AssistantEditor extends LitElement {
     },
   }
 
-  @property({ type: String }) key: string = '';
+  @property({ type: String }) key?: string;
 
   @state() assistant: AssistantEntity = AssistantEditor.DefaultAssistant;
   @state() status: 'draft' | 'updating' | 'updated' | 'error' = 'draft';

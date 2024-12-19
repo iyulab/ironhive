@@ -153,15 +153,12 @@ public class MemoryService
                 FileName = file.FileName,
                 FileSize = file.Length,
                 ContentType = file.ContentType,
-                Tags = tags,   
+                Tags = tags,
             };
 
             await _db.Documents.AddAsync(document);
 
-            var data = new MemoryStream();
-            await file.CopyToAsync(data);
-            data.Position = 0;
-
+            var data = file.OpenReadStream();
             await _memory.UploadDocumentAsync(
                 collectionName: collection.Id,
                 documentId: document.Id,

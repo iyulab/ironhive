@@ -1,127 +1,56 @@
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import { 
   AssistantEntity, 
   CollectionEntity, 
   Message, 
-  AIServiceModels, 
-  StreamingResponse
+  AIServiceModels,
 } from '../models';
+import { HttpController } from './http/HttpController';
+import { HttpResponse } from './http/HttpResponse';
 
 export class Api {
-  private static readonly _baseURL: string = import.meta.env.DEV
-    ? import.meta.env.VITE_API || 'http://localhost:5000/v1'
-    : window.location.origin + '/v1';
-  private static readonly _client: AxiosInstance = axios.create({
-    baseURL: this._baseURL,
-    headers: {
-      'Content-Type': 'application/json',
-    },
+  private static readonly _client: HttpController = new HttpController({
+    baseUrl: import.meta.env.DEV 
+      ? import.meta.env.VITE_API 
+      : window.location.origin + '/v1'
   });
 
   // Model API
 
   public static async getChatModelsAsync(): Promise<AIServiceModels> {
-    const res = await this._client.get<AIServiceModels>('/models/chat');
-    return res.data;
+    const res = await this._client.get('/models/chat');
+    return await res.json<AIServiceModels>();
   }
 
   public static async getEmbeddingModelsAsync(): Promise<AIServiceModels> {
-    const res = await this._client.get<AIServiceModels>('/models/embedding');
-    return res.data;
+    const res = await this._client.get('/models/embedding');
+    return await res.json<AIServiceModels>();
   }
 
   // Assistant API
 
   public static async getAssistantsAsync(skip: number = 0, limit: number = 20): Promise<AssistantEntity[]> {
-    const res = await this._client.get<AssistantEntity[]>('/assistants', {
-      params: { skip, limit },
+    const res = await this._client.get('/assistants', { 
+      params: { skip, limit } 
     });
-    return res.data;
+    return await res.json<AssistantEntity[]>();
   }
 
   public static async getAssistantAsync(assistantId: string): Promise<AssistantEntity> {
-    const res = await this._client.get<AssistantEntity>(`/assistants/${assistantId}`);
-    return res.data;
+    const res = await this._client.get(`/assistants/${assistantId}`);
+    return await res.json<AssistantEntity>();
   }
 
   public static async upsertAssistantAsync(assistant: AssistantEntity): Promise<AssistantEntity> {
-    const res = await this._client.post<AssistantEntity>('/assistants', assistant);
-    return res.data;
+    const res = await this._client.post('/assistants', assistant);
+    return await res.json<AssistantEntity>();
   }
 
   public static async deleteAssistantAsync(assistantId: string): Promise<void> {
     await this._client.delete(`/assistants/${assistantId}`);
   }
 
-  public static chatAssistantAsync(
-    assistantId: string,
-    messages: Message[],
-    on: (message: StreamingResponse) => void
-  ): AbortController {
-    const controller = new AbortController();
-    const { signal } = controller;
-  
-    (async () => {
-      try {
-        console.log('Sending messages:', assistantId, messages);
-  
-        const response = await fetch(`${this._baseURL}/assistants/${assistantId}/chat`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(messages),
-          signal,
-        });
-  
-        if (!response.ok || !response.body) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-  
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder('utf-8');
-        let buffer = '';
-  
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-  
-          buffer += decoder.decode(value, { stream: true });
-          let lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-  
-          for (const line of lines) {
-            if (line.trim()) { // 빈 줄 무시
-              try {
-                const parsed = JSON.parse(line);
-                on(parsed);
-              } catch (e) {
-                console.error('Error parsing JSON:', e);
-              }
-            }
-          }
-        }
-  
-        // 남아있는 버퍼 처리
-        if (buffer.trim()) {
-          try {
-            const parsed = JSON.parse(buffer);
-            on(parsed);
-          } catch (e) {
-            console.error('Error parsing JSON:', e);
-          }
-        }
-  
-      } catch (error: any) {
-        if (error.name === 'AbortError') {
-          console.log('Stream aborted');
-        } else {
-          console.error('Fetch error:', error);
-        }
-      }
-    })(); // IIFE를 사용하여 비동기 작업 실행
-  
-    return controller; // AbortController를 즉시 반환
+  public static async chatAssistantAsync(assistantId: string, messages: Message[]): Promise<HttpResponse> {
+    return await this._client.post(`/assistants/${assistantId}/chat`, messages);
   }
 
   // Memory API
@@ -132,20 +61,20 @@ export class Api {
     skip: number = 0,
     order: string = 'desc'
   ): Promise<CollectionEntity[]> {
-    const response = await this._client.get<CollectionEntity[]>('/memory', { 
-      params: { limit, skip, order, name }
+    const res = await this._client.get('/memory', { 
+      params: { limit, skip, order, name: name ?? '' }
     });
-    return response.data;
+    return await res.json<CollectionEntity[]>();
   }
 
   public static async getCollectionAsync(collectionId: string): Promise<CollectionEntity> {
-    const response = await this._client.get<CollectionEntity>(`/memory/${collectionId}`);
-    return response.data;
+    const res = await this._client.get(`/memory/${collectionId}`);
+    return await res.json<CollectionEntity>();
   }
 
   public static async upsertCollectionAsync(collection: CollectionEntity): Promise<CollectionEntity> {
-    const response = await this._client.post<CollectionEntity>('/memory', collection);
-    return response.data;
+    const res = await this._client.post('/memory', collection);
+    return await res.json<CollectionEntity>();
   }
 
   public static async deleteCollectionAsync(collectionId: string): Promise<void> {
@@ -153,10 +82,10 @@ export class Api {
   }
 
   public static async searchCollectionAsync(collectionId: string, query: string): Promise<any> {
-    const response = await this._client.post(`/memory/${collectionId}/search`, {
+    const res = await this._client.post(`/memory/${collectionId}/search`, {
       query,
     });
-    return response;
+    return res;
   }
 
   public static async findDocumentsAsync(
@@ -166,18 +95,17 @@ export class Api {
     skip: number = 0,
     order: string = 'desc'
   ): Promise<Document[]> {
-    const params: any = { limit, skip, order };
-    if (name) {
-      params.name = name;
-    }
-
-    const response = await this._client.get<Document[]>(`/memory/${collectionId}/documents`,
-      { params }
-    );
-    return response.data;
+    const res = await this._client.get(`/memory/${collectionId}/documents`,{ 
+      params: { limit, skip, order, name: name ?? '' }
+    });
+    return await res.json<Document[]>();
   }
 
-  public static async uploadDocumentAsync(collectionId: string, files: File[], tags: string[] = []): Promise<void> {
+  public static uploadDocument(
+    collectionId: string, 
+    files: File[], 
+    tags: string[] = []
+  ): XMLHttpRequest {
     const formData = new FormData();
     files.forEach((file) => {
       formData.append('files', file);
@@ -185,15 +113,17 @@ export class Api {
     tags.forEach((tag) => {
       formData.append('tags', tag);
     });
-    const response = await this._client.post(`/memory/${collectionId}/documents`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
+    return this._client.upload(`/memory/${collectionId}/documents`, formData,
+      (e) => {
+        console.log(e);
       },
-      onUploadProgress(event) {
-        console.log('Upload progress:', event.progress);
+      (e) => {
+        console.log(e);
       },
-    });
-    return response.data;
+      (e) => {
+        console.log(e);
+      }
+    );
   }
 
   public static async deleteDocumentAsync(collectionId: string, documentId: string): Promise<void> {

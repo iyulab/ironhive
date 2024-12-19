@@ -31,6 +31,7 @@ export class StorageViewer extends LitElement {
       this.collection = c;
     });
     this.loadDocumentAsync(this.key).then(d => {
+      console.log(d);
       this.documents = d;
     });
   }
@@ -106,11 +107,10 @@ export class StorageViewer extends LitElement {
       App.alert('File not selected', 'neutral');
     }
     uploader.loading = true;
-    const res = await Api.uploadDocumentAsync(this.key, files);
+    const request = Api.uploadDocument(this.key, files);
     uploader.loading = false;
     uploader.files = [];
     this.openUpload = false;
-    console.log(res);
     this.documents = await this.loadDocumentAsync(this.key);
   }
 
