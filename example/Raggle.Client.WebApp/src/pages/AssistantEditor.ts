@@ -72,7 +72,7 @@ export class AssistantEditor extends LitElement {
             <sl-button
               size="small"
               ?disabled=${this.status === 'updating'}
-              @click=${this.updateAsync}>
+              @click=${this.onUpdate}>
               Update
             </sl-button>
           </div>
@@ -120,7 +120,7 @@ export class AssistantEditor extends LitElement {
             name="tools.vector_search"
             ?checked=${this.assistant.tools.includes('vector_search')}
             @change=${this.onChange}>
-            ${until(Api.findCollectionsAsync().then(collections => html`
+            ${until(Api.Memory.findCollections().then(collections => html`
               <sl-select
                 size="small"
                 ?hoist=${true}
@@ -185,7 +185,7 @@ export class AssistantEditor extends LitElement {
   private loadAsync = async () => {
     try {
       if (this.key) {
-        this.assistant = await Api.getAssistantAsync(this.key);
+        this.assistant = await Api.Assistant.get(this.key);
         this.status = 'updated';
       } else {
         this.assistant = AssistantEditor.DefaultAssistant;
@@ -227,16 +227,16 @@ export class AssistantEditor extends LitElement {
     if (this.debouncer) {
       clearTimeout(this.debouncer);
     } else {
-      this.debouncer = setTimeout(this.updateAsync, 5_000);
+      this.debouncer = setTimeout(this.onUpdate, 5_000);
     }
   }
 
-  private updateAsync = async () => {
+  private onUpdate = async () => {
     if (!this.validate()) return;
 
     try {
       this.status = 'updating';
-      this.assistant = await Api.upsertAssistantAsync(this.assistant);
+      this.assistant = await Api.Assistant.upsert(this.assistant);
       if (this.key) {
         this.status = 'updated';
       } else {

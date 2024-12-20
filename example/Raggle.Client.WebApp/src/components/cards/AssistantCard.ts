@@ -1,8 +1,8 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
-import type { AssistantEntity } from "../../models/Entities";
-import { sinceEntity } from "../../services/AppUtility";
+import type { AssistantEntity } from "../../models";
+import { sinceEntity } from "../../services";
 
 @customElement('assistant-card')
 export class AssistantCard extends LitElement {

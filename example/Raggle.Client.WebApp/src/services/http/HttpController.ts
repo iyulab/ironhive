@@ -1,6 +1,14 @@
-import { HttpRequest, HttpMethod, HttpRequestConfig, HttpControllerConfig } from './HttpRequest';
-import { HttpResponse } from "./HttpResponse";
-import { XMLHttpResponse } from './XMLHttpResponse';
+import { 
+  HttpRequest, 
+  HttpMethod, 
+  HttpRequestConfig, 
+  HttpControllerConfig 
+} from './HttpRequest';
+import { 
+  HttpResponse, 
+  FetchResponse, 
+  XhrResponse 
+} from "./HttpResponse";
 
 export class HttpController {
   private readonly baseUrl: string;
@@ -13,199 +21,259 @@ export class HttpController {
 
   constructor(config: HttpControllerConfig) {
     this.baseUrl = config.baseUrl;
-    this.headers = config?.headers;
-    this.timeout = config?.timeout;
-    this.credentials = config?.credentials;
-    this.mode = config?.mode;
-    this.cache = config?.cache;
-    this.keepalive = config?.keepalive;
+    this.headers = config.headers;
+    this.timeout = config.timeout;
+    this.credentials = config.credentials;
+    this.mode = config.mode;
+    this.cache = config.cache;
+    this.keepalive = config.keepalive;
   }
 
-  public async get(
-    path: string, 
-    config?: HttpRequestConfig
-  ): Promise<HttpResponse> {
+  // HTTP Methods
+  public get(path: string, config?: HttpRequestConfig): Promise<HttpResponse> {
     const request = this.buildRequest("GET", path, undefined, config);
-    return await this.fetch(request);
+    return this.send(request);
   }
 
-  public async post(
-    path: string, 
-    body?: any, 
-    config?: HttpRequestConfig
-  ): Promise<HttpResponse> {
+  public post(path: string, body?: any, config?: HttpRequestConfig): Promise<HttpResponse> {
     const request = this.buildRequest("POST", path, body, config);
-    return await this.fetch(request);
+    return this.send(request);
   }
 
-  public async put(
-    path: string, 
-    body?: any, 
-    config?: HttpRequestConfig
-  ): Promise<HttpResponse> {
+  public put(path: string, body?: any, config?: HttpRequestConfig): Promise<HttpResponse> {
     const request = this.buildRequest("PUT", path, body, config);
-    return await this.fetch(request);
+    return this.send(request);
   }
 
-  public async patch(
-    path: string, 
-    body?: any, 
-    config?: HttpRequestConfig
-  ): Promise<HttpResponse> {
+  public patch(path: string, body?: any, config?: HttpRequestConfig): Promise<HttpResponse> {
     const request = this.buildRequest("PATCH", path, body, config);
-    return await this.fetch(request);
+    return this.send(request);
   }
 
-  public async delete(
-    path: string, 
-    config?: HttpRequestConfig
-  ): Promise<HttpResponse> {
+  public delete(path: string, config?: HttpRequestConfig): Promise<HttpResponse> {
     const request = this.buildRequest("DELETE", path, undefined, config);
-    return await this.fetch(request);
+    return this.send(request);
   }
 
-  public upload(
-    path: string,
-    form: FormData,
-    progress?: (event: ProgressEvent) => void,
-    complete?: (data?: any) => void,
-    error?: (event: Event) => void,
-    config?: HttpRequestConfig
-  ): XMLHttpRequest {
-    const url = this.buildUrl(path, config?.params);
-    const xhr = new XMLHttpRequest();
+  public async send(request: HttpRequest): Promise<HttpResponse> {
+    if (request.body instanceof FormData) {
+      return this.sendXhr(request);
+    } else {
+      return this.sendFetch(request);
+    }
+  }
 
-    xhr.open("POST", url.toString(), true);
+  // Fetch Implementation
+  private async sendFetch(request: HttpRequest): Promise<HttpResponse> {
+    const url = this.buildUrl(request.path, request.params);
+    const headers = new Headers(request.headers);
 
-    const headers = config?.headers || this.headers;
-    if (headers) {
-      for (const [key, value] of Object.entries(headers)) {
-        // FormData의 Content-Type은 브라우저가 자동 설정하므로 제외
-        if (key.toLowerCase() === "content-type") continue;
-        xhr.setRequestHeader(key, value);
+    let body: BodyInit | undefined = request.body;
+
+    if (body && !(body instanceof FormData) && typeof body === 'object' && !(body instanceof Blob)) {
+      if (body instanceof URLSearchParams) {
+        headers.set("Content-Type", "application/x-www-form-urlencoded");
+        body = body.toString();
+      } else {
+        headers.set("Content-Type", "application/json");
+        body = JSON.stringify(body);
       }
     }
-    
-    const credentials = config?.credentials || this.credentials;
-    if (credentials) {
-      xhr.withCredentials = credentials !== "omit";
-    }
-    
-    const timeout = config?.timeout || this.timeout;
-    if (timeout) {
-      xhr.timeout = timeout;
-    }
 
-    if (progress && xhr.upload) {
-      xhr.upload.onprogress = progress;
-    }
-
-    if (error) {
-      xhr.onerror = error;
-    }
-
-    xhr.onreadystatechange = () => {
-      if (xhr.readyState !== XMLHttpRequest.DONE) return;
-      if (xhr.status >= 300) return;
-      if (!complete) return;
-      
-      complete(JSON.parse(xhr.response));
-    };
-
-    xhr.send(form);
-    return xhr;
-  }
-
-  public async fetch(request: HttpRequest): Promise<HttpResponse> {
-    const url = this.buildUrl(request.path, request.params);
     const controller = new AbortController();
-    const timer = this.timeout
-      ? setTimeout(() => controller.abort(), this.timeout)
+    const signal = controller.signal;
+
+    const timeoutId = request.timeout
+      ? setTimeout(() => controller.abort(), request.timeout)
       : null;
 
     try {
-      const response = await fetch(url, {
+      const response = await fetch(url.toString(), {
         method: request.method,
-        headers: request.headers,
-        body: request.body,
+        headers: headers,
+        body: body,
         cache: request.cache,
         credentials: request.credentials,
-        keepalive: request.keepalive,
         mode: request.mode,
-        signal: controller.signal,
-
-        integrity: "",
-        priority: "auto",
-        redirect: "follow",
+        keepalive: request.keepalive,
+        signal: signal,
       });
 
-      return new HttpResponse(response, controller);
+      // Handle onReceive if provided
+      if (request.onReceive && response.body) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+
+        const read = async () => {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            let lines = buffer.split('\n');
+
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              if (line.trim()) {
+                try {
+                  const data = JSON.parse(line);
+                  request.onReceive!(data);
+                } catch (e) {
+                  console.error('Failed to parse JSON:', e);
+                }
+              }
+            }
+          }
+
+          // Handle any remaining data in the buffer
+          if (buffer.trim()) {
+            try {
+              const data = JSON.parse(buffer);
+              request.onReceive!(data);
+            } catch (e) {
+              console.error('Failed to parse JSON:', e);
+            }
+          }
+        };
+
+        read();
+      }
+
+      return new FetchResponse(response, controller);
     } catch (error) {
       throw error;
     } finally {
-      if (timer) {
-        clearTimeout(timer);
-      }
+      if (timeoutId) clearTimeout(timeoutId);
     }
   }
 
+  // XHR Implementation
+  private sendXhr(request: HttpRequest): Promise<HttpResponse> {
+    return new Promise<HttpResponse>((resolve, reject) => {
+      const url = this.buildUrl(request.path, request.params);
+      const xhr = new XMLHttpRequest();
+
+      xhr.open(request.method, url.toString(), true);
+      if (request.body) {
+        if (request.body instanceof FormData) {
+          // No need to set content type for FormData
+        } else if (typeof request.body === 'object') {
+          xhr.setRequestHeader('Content-Type', 'application/json');
+          request.body = JSON.stringify(request.body);
+        }
+      }
+
+      // Set up request options
+      if (request.headers) {
+        for (const [key, value] of Object.entries(request.headers)) {
+          xhr.setRequestHeader(key, value);
+        }
+      }
+      if (request.credentials) {
+        xhr.withCredentials = request.credentials !== "omit";
+      }
+      if (request.timeout) {
+        xhr.timeout = request.timeout;
+      }
+
+      // Handle upload progress if onProgress is provided
+      if (request.onProgress && xhr.upload) {
+        xhr.upload.onprogress = (event: ProgressEvent) => {
+          if (event.lengthComputable) {
+            const progress = (event.loaded / event.total);
+            request.onProgress!(progress);
+          } else {
+            request.onProgress!(-1);
+          }
+        };
+      }
+
+      // Handle response streaming if onReceive is provided
+      if (request.onReceive && "responseType" in xhr) {
+        xhr.responseType = 'text';
+        let lastLength = 0;
+
+        xhr.onprogress = () => {
+          const chunk = xhr.responseText.slice(lastLength);
+          lastLength = xhr.responseText.length;
+          let lines = chunk.split('\n');
+
+          lines.forEach(line => {
+            if (line.trim()) {
+              try {
+                const data = JSON.parse(line);
+                request.onReceive!(data);
+              } catch (e) {
+                console.error('Failed to parse JSON:', e);
+              }
+            }
+          });
+        };
+      }
+
+      // Set up event listeners
+      xhr.onload = () => {
+        resolve(new XhrResponse(xhr));
+      };
+      xhr.onerror = () => {
+        reject(new Error('Network error'));
+      };
+      xhr.ontimeout = () => {
+        reject(new Error('Request timed out'));
+      };
+
+      // Send the request
+      try {
+        xhr.send(request.body);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  // Helper Methods
   private buildRequest(
-    method: HttpMethod, 
+    method: HttpMethod,
     path: string,
     body?: any,
     config?: HttpRequestConfig
   ): HttpRequest {
-    
-    const headers = config?.headers 
-      ? new Headers(config.headers) 
-      : new Headers(this.headers);
-
-    if (body instanceof FormData) {
-      headers.delete("Content-Type");
-    } else if (body instanceof Blob) {
-      headers.set("Content-Type", body.type || "application/octet-stream");
-    } else if (body instanceof ArrayBuffer || ArrayBuffer.isView(body)) {
-      headers.set("Content-Type", "application/octet-stream");
-    } else if (body instanceof URLSearchParams) {
-      headers.set("Content-Type", "application/x-www-form-urlencoded");
-      body = body.toString();
-    } else if (typeof body === "string") {
-      headers.set("Content-Type", "text/plain");
-    } else if (typeof body === "object") {
-      const contentType = headers.get("Content-Type");
-      if (contentType === "application/xml") {
-        body = new XMLSerializer().serializeToString(body);
-      } else {
-        body = JSON.stringify(body);
-        headers.set("Content-Type", "application/json");
-      }
-    }
-
     return {
-      path: path,
-      method: method,
+      method,
+      path,
       body: body,
-      headers: headers,
+      headers: config?.headers || this.headers,
       params: config?.params,
       credentials: config?.credentials || this.credentials,
       cache: config?.cache || this.cache,
       mode: config?.mode || this.mode,
       keepalive: config?.keepalive || this.keepalive,
       timeout: config?.timeout || this.timeout,
-    }
+      onReceive: config?.onReceive,
+      onProgress: config?.onProgress,
+    };
   }
 
-  private buildUrl(path: string, params?: any): URL {
-    if (this.baseUrl.endsWith('/') && path.startsWith('/')) {
-      path = path.slice(1);
-    }
+  private buildUrl(path: string, params?: Record<string, any>): URL {
+    let fullPath = this.baseUrl.endsWith('/') && path.startsWith('/')
+      ? this.baseUrl + path.slice(1)
+      : this.baseUrl + path;
+
+    const url = new URL(fullPath);
 
     if (params) {
-      const query = new URLSearchParams(params).toString();
-      return new URL(`${this.baseUrl}${path}?${query}`);
-    } else {
-      return new URL(`${this.baseUrl}${path}`);
+      Object.keys(params).forEach(key => {
+        const value = params[key];
+        if (Array.isArray(value)) {
+          value.forEach(val => url.searchParams.append(key, String(val)));
+        } else if (value !== undefined && value !== null) {
+          url.searchParams.append(key, String(value));
+        }
+      });
     }
+
+    return url;
   }
-  
 }

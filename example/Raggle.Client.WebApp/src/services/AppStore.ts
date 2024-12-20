@@ -19,7 +19,9 @@ export class App {
     }
   }
 
-  public static alert(message: string, variant: 'primary' | 'success' | 'neutral' | 'warning' | 'danger' = 'danger') {
+  public static alert(
+    message: string, 
+    variant: 'primary' | 'success' | 'neutral' | 'warning' | 'danger' = 'danger') {
     const alert = Object.assign(document.createElement('sl-alert'), {
       variant,
       closable: true,

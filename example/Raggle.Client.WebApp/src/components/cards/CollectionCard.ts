@@ -2,6 +2,7 @@ import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
 import type { CollectionEntity } from "../../models";
+import { sinceEntity } from "../../services";
 
 @customElement('collection-card')
 export class CollectionCard extends LitElement {
@@ -13,111 +14,110 @@ export class CollectionCard extends LitElement {
     if (!this.collection) return nothing;
 
     return html`
-      <div class="content"
-        @click=${() => this.onSelect(this.collection?.id || '')}>
-        <div class="name">
+      <div class="container"
+        @click=${this.onSelect}>
+        <div class="header">
           ${this.collection.name}
         </div>
-        <div class="id">
-          ${this.collection.id}
+        <div class="control">
+          <sl-icon-button
+            name="trash"
+            @click=${this.onDelete}
+          ></sl-icon-button>
         </div>
-        <p class="description">
+        <div class="description">
           ${this.collection.description}
-        </p>
-      </div>
-      <div class="meta">
-        <div class="service">
-          ${this.collection.embedService}/${this.collection.embedModel}
         </div>
-        <div class="flex"></div>
+        <div class="meta">
+          <strong>${this.collection.embedService}</strong>
+          ${this.collection.embedModel}
+        </div>
         <div class="date">
-          ${this.getDate()}
+          ${sinceEntity(this.collection)}
         </div>
-        <sl-icon-button
-          name="trash"
-          @click=${() => this.onDelete(this.collection?.id || '')}
-        ></sl-icon-button>
       </div>
     `;
   }
 
-  private getDate() {
-    if (!this.collection) return '';
-    if (this.collection.lastUpdatedAt)
-      return new Date(this.collection.lastUpdatedAt).toLocaleDateString();
-    if (this.collection.createdAt)
-      return new Date(this.collection.createdAt).toLocaleDateString();
-    return '';
+  private onSelect = async () => {
+    this.dispatchEvent(new CustomEvent('select', { 
+      detail: this.collection?.id
+    }));
   }
 
-  private onSelect = async (id: string) => {
-    this.dispatchEvent(new CustomEvent('select', { detail: id }));
-  }
-
-  private onDelete = async (id: string) => {
-    this.dispatchEvent(new CustomEvent('delete', { detail: id }));
+  private onDelete = async (event: Event) => {
+    event.stopPropagation();
+    this.dispatchEvent(new CustomEvent('delete', { 
+      detail: this.collection?.id
+    }));
   }
 
   static styles = css`
     :host {
-      min-width: 340px;
-      max-width: 700px;
-      display: flex;
-      flex-direction: column;
-      padding: 16px 24px;
-      background-color: var(--sl-color-neutral-0);
+      display: contents;
+    }
+
+    .container {
+      display: grid;
+      grid-template-areas:
+        "header control"
+        "description description"
+        "meta date";
+      grid-template-columns: 70% 30%;
+      grid-template-rows: 20% 60% 20%;
+      padding: 16px;
+      width: 400px;
+      height: 200px;
       border: 1px solid var(--sl-color-gray-200);
+      background-color: var(--sl-panel-background-color);
       border-radius: 8px;
-      font-family: Arial, sans-serif;
       box-sizing: border-box;
-      text-overflow: ellipsis;
+      font-size: 18px;
+      font-family: Arial, sans-serif;
       overflow: hidden;
-      white-space: nowrap;
-    }
-
-    .content {
-      display: flex;
-      height: 120px;
-      flex-direction: column;
-      gap: 4px;
-      color: var(--sl-color-gray-800);
       cursor: pointer;
-
-      .name {
-        font-size: 18px;
-        font-weight: 600;
-      }
-
-      .id {
-        font-size: 12px;
-        color: var(--sl-color-gray-400);
-      }
-
-      .description {
-        margin: 0;
-        font-size: 16px;
-        display: -webkit-box;
-        -webkit-line-clamp: 3;
-        -webkit-box-orient: vertical;
-        white-space: normal;
-        overflow: hidden;
-      }
     }
-    .content:hover {
-      color: var(--sl-color-primary-500);
+    .container:hover {
+      scale: 1.05;
+      background-color: var(--sl-color-gray-50);
+    }
+    .container:active {
+      scale: 1.0;
+    }
+
+    .header {
+      grid-area: header;
+      align-content: center;
+      font-size: 1em;
+      font-weight: 600;
+    }
+
+    .control {
+      grid-area: control;
+      text-align: right;
+    }
+
+    .description {
+      grid-area: description;
+      font-size: 0.8em;
     }
 
     .meta {
       display: flex;
-      flex-direction: row;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 14px;
-      color: var(--sl-color-gray-400);
-
-      .flex {
-        flex: 1;
-      }
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: flex-end;
+      grid-area: meta;
+      font-size: 0.8em;
     }
-`;
+
+    .date {
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-end;
+      grid-area: date;
+      font-size: 0.8em;
+      text-align: right;
+    }
+  `;
 }

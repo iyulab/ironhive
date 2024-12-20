@@ -2,8 +2,7 @@ import { LitElement, css, html } from "lit";
 import { customElement, state } from "lit/decorators.js";
 
 import type { CollectionEntity } from "../models";
-import { Api } from "../services/ApiClient";
-import { goTo } from "../services";
+import { Api, goTo } from "../services";
 
 @customElement('storage-explorer')
 export class StorageExplorer extends LitElement {
@@ -36,7 +35,7 @@ export class StorageExplorer extends LitElement {
           </sl-button>
         </div>
 
-        <div class="list">
+        <div class="grid">
           ${this.collections?.map(c => html`
             <collection-card
               .collection=${c}
@@ -50,12 +49,12 @@ export class StorageExplorer extends LitElement {
   }
 
   private loadAsync = async () => {
-    return await Api.findCollectionsAsync();
+    return await Api.Memory.findCollections();
   }
 
   private onDelete =  async (e: CustomEvent<string>) => {
     const id = e.detail;
-    await Api.deleteCollectionAsync(id);
+    await Api.Memory.deleteCollection(id);
     this.collections = this.collections?.filter(c => c.id !== id);
   }
 
@@ -117,7 +116,7 @@ export class StorageExplorer extends LitElement {
       }
     }
 
-    .list {
+    .grid {
       display: flex;
       flex-direction: column;
       gap: 16px;

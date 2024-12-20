@@ -5,8 +5,8 @@ import { Router } from '@lit-labs/router';
 import '@shoelace-style/shoelace';
 import "./components";
 import "./pages";
-import type { Theme } from "./models";
 import { App } from "./services";
+import type { Theme } from "./models";
 
 @customElement('main-app')
 export class MainApp extends LitElement {
@@ -34,6 +34,11 @@ export class MainApp extends LitElement {
   });
 
   @state() theme: Theme = App.getTheme();
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    App.setTheme(this.theme);
+  }
 
   render() {
     return html`

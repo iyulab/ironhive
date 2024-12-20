@@ -3,7 +3,7 @@ import { customElement, property } from "lit/decorators.js";
 import { until } from "lit/directives/until.js";
 
 import type { AIServiceModels, AIServiceKey } from "../../models";
-import { Api } from "../../services/ApiClient";
+import { Api } from "../../services";
 
 export interface ModelValue {
   provider: AIServiceKey;
@@ -59,10 +59,10 @@ export class ModelSelect extends LitElement {
 
   private getModels = async () => {
     if (this.type === 'chat') {
-      ModelSelect.cmodels ??= await Api.getChatModelsAsync();
+      ModelSelect.cmodels ??= await Api.System.getModels('chat');
       return ModelSelect.cmodels;
     } else {
-      ModelSelect.emodels ??= await Api.getEmbeddingModelsAsync();
+      ModelSelect.emodels ??= await Api.System.getModels('embed');
       return ModelSelect.emodels;
     }
   }

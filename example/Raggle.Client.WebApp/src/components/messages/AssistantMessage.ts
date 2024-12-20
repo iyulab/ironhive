@@ -2,6 +2,7 @@ import { LitElement, css, html, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
 import type { Message, MessageContent } from "../../models";
+import { clone } from "../../services";
 
 @customElement('assistant-message')
 export class AssistantMessage extends LitElement {
@@ -50,25 +51,19 @@ export class AssistantMessage extends LitElement {
   }
 
   public appendContent = (content: MessageContent) => {
-    const item = this.getContent(content);
-    if (item.type === 'text' && content.type === 'text') {
+    this.message.content ??= [];
+    const item = this.message.content.find(i => i.index === content.index);
+    
+    if (!item) {
+      const _content = clone(content);
+      this.message.content.push(_content);
+    } else if (item.type === 'text' && content.type === 'text') {
       item.text ??= '';
       item.text += content.text;
     } else {
       throw new Error('TODO: Implement appendContent for other types');
     }
     this.requestUpdate();
-  }
-
-  private getContent = (content: MessageContent) => {
-    const item = this.message?.content?.find(i => i.index === content.index);
-    if (item) {
-      return item;
-    } else {
-      this.message.content ??= [];
-      this.message.content = [...this.message.content, content];
-      return content;
-    }
   }
 
   static styles = css`

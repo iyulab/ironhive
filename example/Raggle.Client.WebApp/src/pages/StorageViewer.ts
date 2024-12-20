@@ -3,6 +3,7 @@ import { customElement, property, state } from "lit/decorators.js";
 
 import type { CollectionEntity, DocumentEntity } from "../models";
 import { Api, App } from "../services";
+import { LoadingOverlay } from "../components";
 
 @customElement('storage-viewer')
 export class StorageViewer extends LitElement {
@@ -93,11 +94,11 @@ export class StorageViewer extends LitElement {
   }
 
   private loadCollectionAsync = async (key: string) => {
-    return await Api.getCollectionAsync(key);
+    return await Api.Memory.getCollection(key);
   }
 
   private loadDocumentAsync = async (key: string) => {
-    return await Api.findDocumentsAsync(key);
+    return await Api.Memory.findDocuments(key);
   }
 
   private onUpload = async (e: CustomEvent<File[]>) => {
@@ -106,9 +107,13 @@ export class StorageViewer extends LitElement {
     if (!files || files.length === 0) {
       App.alert('File not selected', 'neutral');
     }
-    uploader.loading = true;
-    const request = Api.uploadDocument(this.key, files);
-    uploader.loading = false;
+    const loader = new LoadingOverlay();
+    loader.label = 'Uploading...\n Do not close this window';
+    document.body.append(loader);
+    const res = await Api.Memory.uploadDocument(this.key, files, [] , (progress) => {
+      loader.value = progress * 100;
+    });
+    loader.remove();
     uploader.files = [];
     this.openUpload = false;
     this.documents = await this.loadDocumentAsync(this.key);

@@ -3,7 +3,7 @@ import { customElement, property, query, queryAll } from "lit/decorators.js";
 
 import type { Message } from "../models";
 import type { AssistantMessage, UserMessage } from "../components";
-import { Api } from "../services/ApiClient";
+import { Api, Stopwatch } from "../services";
 
 @customElement('chat-room')
 export class ChatRoom extends LitElement {
@@ -58,10 +58,16 @@ export class ChatRoom extends LitElement {
         ]},
         { role: 'assistant', content: [] }
       ];
+      await this.updateComplete;
       this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
       
-      var res = await Api.chatAssistantAsync(this.assistantId, this.messages);
-      res.onReceive<any>(async (data) => {
+      const watch = new Stopwatch();
+      watch.start();
+      await Api.Assistant.message(this.assistantId, this.messages, async (data) => {
+        if(data.endReason) {
+          watch.stop();
+          console.log(`Elapsed time: ${watch.elapsed}`);
+        }
         if (!data.content) return;
         this.assistantMsgs[this.assistantMsgs.length - 1].appendContent(data.content);
         this.messagesEl.scrollTop = this.messagesEl.scrollHeight;

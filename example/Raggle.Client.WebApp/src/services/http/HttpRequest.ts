@@ -18,16 +18,18 @@ export interface HttpOptions {
   keepalive?: boolean;
 }
 
-export type HttpControllerConfig = HttpOptions & {
+export interface HttpControllerConfig extends HttpOptions {
   baseUrl: string;
 }
 
-export type HttpRequestConfig = HttpOptions & {
-  params?: any;
+export interface HttpRequestConfig extends HttpOptions {
+  params?: Record<string, any>;
+  onReceive?: (data: any) => void;
+  onProgress?: (progress: number) => void;
 }
 
-export type HttpRequest = HttpRequestConfig & {
+export interface HttpRequest extends HttpRequestConfig {
   method: HttpMethod;
   path: string;
-  body?: BodyInit;
+  body?: any;
 }

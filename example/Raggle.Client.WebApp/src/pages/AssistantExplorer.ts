@@ -2,8 +2,7 @@ import { LitElement, css, html } from "lit";
 import { customElement, state } from "lit/decorators.js";
 
 import type { AssistantEntity } from "../models";
-import { Api } from "../services/ApiClient";
-import { goTo } from "../services/AppUtility";
+import { Api, goTo } from "../services";
 
 @customElement('assistant-explorer')
 export class AssistantExplorer extends LitElement {
@@ -49,18 +48,18 @@ export class AssistantExplorer extends LitElement {
   }
 
   private async loadAsync() {
-    return await Api.getAssistantsAsync();
+    return await Api.Assistant.find();
   }
 
   private async deleteAsync(event: CustomEvent<string>) {
     const id = event.detail;
-    await Api.deleteAssistantAsync(id);
+    await Api.Assistant.delete(id);
     this.assistants = this.assistants.filter(a => a.id !== id);
   }
 
   private async selectAsync(event: CustomEvent<string>) {
     const id = event.detail;
-    window.location.href = `/assistant/${id}`;
+    goTo(`/assistant/${id}`);
   }
 
   private async createAsync() {

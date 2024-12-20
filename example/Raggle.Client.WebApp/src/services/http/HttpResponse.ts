@@ -1,7 +1,95 @@
-export class HttpResponse {
+export interface HttpResponse {
+  ok: boolean;
+  status: number;
+  headers: Headers;
+  url: string;
+  redirected: boolean;
+
+  text(): Promise<string>;
+  json<T>(): Promise<T>;
+  bytes(): Promise<Uint8Array>;
+  arrayBuffer(): Promise<ArrayBuffer>;
+  formData(): Promise<FormData>;
+  blob(): Promise<Blob>;
+  
+  cancel(): void;
+}
+
+export class XhrResponse implements HttpResponse {
+  private readonly xhr: XMLHttpRequest;
+
+  constructor(xhr: XMLHttpRequest) {
+    this.xhr = xhr;
+  }
+
+  public get ok(): boolean {
+    return this.status >= 200 && this.status < 300;
+  }
+
+  public get status(): number {
+    return this.xhr.status;
+  }
+
+  public get headers(): Headers {
+    const headers = new Headers();
+    const headerLines = this.xhr.getAllResponseHeaders().trim().split(/[\r\n]+/);
+    headerLines.forEach((line) => {
+      const parts = line.split(': ');
+      const header = parts.shift();
+      const value = parts.join(': ');
+      if (header && value) {
+        headers.append(header, value);
+      }
+    });
+    return headers;
+  }
+
+  public get url(): string {
+    return this.xhr.responseURL;
+  }
+
+  public get redirected(): boolean {
+    // XHR does not provide redirect info directly
+    return false;
+  }
+
+  public text(): Promise<string> {
+    return Promise.resolve(this.xhr.responseText);
+  }
+
+  public bytes(): Promise<Uint8Array> {
+    return Promise.resolve(new Uint8Array(this.xhr.response as ArrayBuffer));
+  }
+
+  public blob(): Promise<Blob> {
+    return Promise.resolve(this.xhr.response as Blob);
+  }
+
+  public arrayBuffer(): Promise<ArrayBuffer> {
+    return Promise.resolve(this.xhr.response as ArrayBuffer);
+  }
+
+  public formData(): Promise<FormData> {
+    return Promise.resolve(this.xhr.response as FormData);
+  }
+
+  public json<T>(): Promise<T> {
+    return Promise.resolve(JSON.parse(this.xhr.responseText));
+  }
+
+  public cancel(): void {
+    this.xhr.abort();
+  }
+}
+
+export class FetchResponse implements HttpResponse {
   private readonly response: Response;
   private readonly controller: AbortController;
-  private reader?: ReadableStreamDefaultReader<Uint8Array>;
+
+  constructor(response: Response, controller: AbortController) {
+    this.response = response;
+    this.controller = controller;
+  }
 
   public get ok(): boolean {
     return this.response.ok;
@@ -23,76 +111,31 @@ export class HttpResponse {
     return this.response.redirected;
   }
 
-  constructor(response: Response, controller: AbortController) {
-    this.response = response;
-    this.controller = controller;
+  public text(): Promise<string> {
+    return this.response.text();
   }
 
-  public text = (): Promise<string> => this.response.text();
+  public bytes(): Promise<Uint8Array> {
+    return this.response.bytes();
+  }
 
-  public bytes = async (): Promise<Uint8Array> => this.response.bytes();
+  public blob(): Promise<Blob> {
+    return this.response.blob();
+  }
 
-  public blob = async (): Promise<Blob> => this.response.blob();
+  public arrayBuffer(): Promise<ArrayBuffer> {
+    return this.response.arrayBuffer();
+  }
 
-  public arrayBuffer = async (): Promise<ArrayBuffer> => this.response.arrayBuffer();
+  public formData(): Promise<FormData> {
+    return this.response.formData();
+  }
 
-  public formData = async (): Promise<FormData> => this.response.formData();
-
-  public async json<T>(): Promise<T> {
+  public json<T>(): Promise<T> {
     return this.response.json();
-  }
-
-  public async onReceive<T>(callback: (data: T) => void): Promise<void> {
-    this.reader = this.response.body?.getReader();
-    if (!this.reader) {
-      throw new Error('Response body is not readable');
-    }
-
-    const decoder = new TextDecoder('utf-8');
-    let buffer = '';
-
-    try {
-      while (true) {
-        const { done, value } = await this.reader.read();
-        if (done) break;
-  
-        // Decode the incoming value and append it to the buffer
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-
-        // Keep the incomplete line in the buffer
-        buffer = lines.pop() || ''; 
-  
-        for (const line of lines) {
-          this.parseAndCallback(line, callback);
-        }
-      }
-  
-      // Handle any remaining data in the buffer
-      this.parseAndCallback(buffer, callback);
-      
-    } finally {
-      // Ensure the reader is closed properly
-      this.reader.cancel();
-      this.reader = undefined;
-    }
   }
 
   public cancel(): void {
     this.controller.abort();
-    if (this.reader) {
-      this.reader.cancel();
-    }
-  }
-
-  private parseAndCallback<T>(line: string, callback: (data: T) => void): void {
-    if (!line.trim()) return;
-
-    try {
-      const parsed = JSON.parse(line);
-      callback(parsed);
-    } catch (error) {
-      console.error('Failed to parse JSON:', error);
-    }
   }
 }

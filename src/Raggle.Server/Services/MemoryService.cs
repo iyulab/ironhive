@@ -121,15 +121,20 @@ public class MemoryService
         int skip = 0,
         string order = "desc")
     {
-        var query = _db.Documents.AsQueryable();
+        var query = _db.Collections
+            .Where(c => c.Id == collectionId)
+            .Include(c => c.Documents)
+            .SelectMany(c => c.Documents!)
+            .AsQueryable();
 
-        if (fileName != null)
+        if (!string.IsNullOrWhiteSpace(fileName))
             query = query.Where(c => c.FileName.Contains(fileName));
 
-        if (order == "desc")
-            query = query.OrderByDescending(c => c.LastUpdatedAt);
-        else
-            query = query.OrderBy(c => c.ContentType);
+        query = (order.ToLowerInvariant()) switch
+        {
+            "desc" => query.OrderByDescending(c => c.LastUpdatedAt),
+            _ => query.OrderBy(c => c.LastUpdatedAt)
+        };
 
         var documents = await query.Skip(skip).Take(limit).ToArrayAsync();
         return documents;
