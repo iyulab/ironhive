@@ -17,6 +17,14 @@ public class FunctionToolCollection : ICollection<FunctionTool>
 
     public bool TryGetValue(string name, [NotNullWhen(true)] out FunctionTool tool) => _items.TryGetValue(name, out tool!);
 
+    public void AddRange(IEnumerable<FunctionTool> tools)
+    {
+        foreach (var tool in tools)
+        {
+            Add(tool);
+        }
+    }
+
     #region Implementation Methods
 
     public void Add(FunctionTool tool) => _items.Add(tool.Name, tool);

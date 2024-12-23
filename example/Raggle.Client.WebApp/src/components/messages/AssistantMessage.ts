@@ -60,6 +60,13 @@ export class AssistantMessage extends LitElement {
     } else if (item.type === 'text' && content.type === 'text') {
       item.text ??= '';
       item.text += content.text;
+    } else if (item.type === 'image' && content.type === 'image') {
+      item.data = content.data;
+    } else if (item.type === 'tool' && content.type === 'tool') {
+      item.id = content.id;
+      item.name = content.name;
+      item.arguments = content.arguments;
+      item.result = content.result;
     } else {
       throw new Error('TODO: Implement appendContent for other types');
     }
@@ -89,6 +96,7 @@ export class AssistantMessage extends LitElement {
     }
 
     .name {
+      width: 100%;
       grid-area: name;
       font-size: 12px;
       font-weight: 600;
@@ -96,6 +104,7 @@ export class AssistantMessage extends LitElement {
     }
 
     .content {
+      width: 100%;
       grid-area: content;
       display: flex;
       flex-direction: column;

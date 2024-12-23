@@ -43,7 +43,7 @@ public class EmbeddingsHandler : IPipelineHandler
             if (section.Content == null)
                 throw new InvalidOperationException($"No content found in the document");
 
-            if (JsonObjectConverter.TryConvertTo<string>(section.Content, out string str))
+            if (JsonObjectConverter.TryConvertTo<string>(section.Content, out var str))
             {
                 var request = new EmbeddingRequest { Model = options.ModelName, Input = str };
                 var response = await embedder.EmbeddingAsync(request, cancellationToken);
@@ -59,9 +59,9 @@ public class EmbeddingsHandler : IPipelineHandler
                     Payload = section
                 });
             }
-            else if (JsonObjectConverter.TryConvertTo<IEnumerable<Tuple<string,string>>>(section.Content, out var dialogues))
+            else if (JsonObjectConverter.TryConvertTo<IEnumerable<DialogueHandler.Dialogue>>(section.Content, out var dialogues))
             {
-                var questions = dialogues.Select(x => x.Item1).ToArray();
+                var questions = dialogues.Select(x => x.Question).ToArray();
                 var request = new EmbeddingsRequest
                 {
                     Model = options.ModelName,
@@ -73,7 +73,7 @@ public class EmbeddingsHandler : IPipelineHandler
 
                 for (var i = 0; i < response.Embeddings?.Count(); i++)
                 {
-                    section.Content = dialogues.ElementAt(i);
+                    var content = dialogues.ElementAt(i);
                     var embedding = response.Embeddings.FirstOrDefault(d => d.Index == i)?.Embedding
                         ?? throw new InvalidOperationException($"failed to get embedding for {questions[i]}");
 
@@ -83,7 +83,14 @@ public class EmbeddingsHandler : IPipelineHandler
                         Vectors = embedding,
                         DocumentId = pipeline.DocumentId,
                         Tags = pipeline.Tags?.ToArray(),
-                        Payload = section
+                        Payload = new DocumentFragment
+                        {
+                            Unit = section.Unit,
+                            Index = section.Index,
+                            From = section.From,
+                            To = section.To,
+                            Content = content
+                        }
                     });
                 }
             }

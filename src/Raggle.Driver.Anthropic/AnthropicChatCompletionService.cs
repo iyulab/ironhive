@@ -328,7 +328,7 @@ public class AnthropicChatCompletionService : IChatCompletionService
                             {
                                 ID = tool.Id,
                                 Name = tool.Name,
-                                Input = JsonSerializer.Deserialize<JsonObject>(tool.Arguments ?? string.Empty)
+                                Input = JsonSerializer.Deserialize<object?>(tool.Arguments ?? string.Empty)
                             });
                         }
                         else
@@ -342,11 +342,12 @@ public class AnthropicChatCompletionService : IChatCompletionService
                                     {
                                         ID = tool.Id,
                                         Name = tool.Name,
-                                        Input = JsonSerializer.Deserialize<JsonObject>(tool.Arguments ?? string.Empty)
+                                        Input = JsonSerializer.Deserialize<object?>(tool.Arguments ?? string.Empty)
                                     }
                                 ]
                             });
                         }
+
                         _messages.Add(new ChatCompletion.Models.Message
                         {
                             Role = "user",

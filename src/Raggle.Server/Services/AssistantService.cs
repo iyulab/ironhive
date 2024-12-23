@@ -1,10 +1,15 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Qdrant.Client.Grpc;
 using Raggle.Abstractions;
 using Raggle.Abstractions.AI;
+using Raggle.Abstractions.Extensions;
 using Raggle.Abstractions.Messages;
+using Raggle.Abstractions.Tools;
 using Raggle.Server.Data;
 using Raggle.Server.Entities;
+using Raggle.Server.ToolKits;
+using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace Raggle.Server.Services;
@@ -69,6 +74,39 @@ public class AssistantService
     {
         var entity = await _db.Assistants.FindAsync(assistantId)
             ?? throw new KeyNotFoundException($"Assistant not found");
+        var instructions = entity.Instruction;
+        if (entity.ToolOptions != null && 
+            entity.ToolOptions.TryGetValue<IEnumerable<string>>(RaggleServiceKeys.VectorSearch, out var collectionNames))
+        {
+            instructions += "\nyou have below vector collections:\n";
+            foreach (var name in collectionNames)
+            {
+                var collection = await _db.Collections.FindAsync(name)
+                    ?? throw new KeyNotFoundException($"Collection not found: {name}");
+                instructions += $"""
+                - collectionName: {collection.Id}
+                - description: {collection.Description}
+                """;
+            }
+        };
+
+        var tools = new FunctionToolCollection();
+        if (entity.Tools != null && entity.Tools.Any())
+        {
+            foreach (var tool in entity.Tools)
+            {
+                if (tool == RaggleServiceKeys.VectorSearch)
+                {
+                    var toolService = _raggle.Services.GetRequiredKeyedService<VectorSearchTool>(RaggleServiceKeys.VectorSearch);
+                    var functions = FunctionToolFactory.CreateFromInstance(toolService);
+                    tools.AddRange(functions);
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Tool not found: {tool}");
+                }
+            }
+        }
 
         var assistant = _raggle.CreateAssistant(
             service: entity.Service,
@@ -76,8 +114,9 @@ public class AssistantService
             id: entity.Id,
             name: entity.Name,
             description: entity.Description,
-            instruction: entity.Instruction,
-            options: entity.Options);
+            instruction: instructions,
+            options: entity.Options,
+            tools: tools);
 
         await foreach (var message in assistant.StreamingInvokeAsync(messages, cancellationToken))
         {

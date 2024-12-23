@@ -58,6 +58,7 @@ export class UserMessage extends LitElement {
     }
 
     .name {
+      width: 100%;
       grid-area: name;
       font-size: 12px;
       font-weight: 600;
@@ -65,6 +66,7 @@ export class UserMessage extends LitElement {
     }
 
     .content {
+      width: 100%;
       grid-area: content;
       display: flex;
       flex-direction: column;

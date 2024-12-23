@@ -4,28 +4,29 @@ import { customElement, property } from "lit/decorators.js";
 @customElement('tool-block')
 export class ToolBlock extends LitElement {
 
-  @property({ type: String })
-  name: string = '';
-
-  @property({ type: Object })
-  result: any;
+  @property({ type: String }) name: string = '';
+  @property({ type: Object }) result: any;
 
   render() {
     return html`
-      <div class="tool">
-        <div class="name">Tool: ${this.name}</div>
-        <div class="result">Result: ${this.result}</div>
+      <div class="name">
+        Tool: ${this.name}
+      </div>
+      <div class="result">
+        ${this.result ? html`
+          <pre>${JSON.stringify(this.result, null, 2)}</pre>
+        ` : html`
+          <sl-skeleton></sl-skeleton>
+        `}
       </div>
     `;
   }
 
   static styles = css`
     :host {
-      display: block;
+      display: flex;
+      flex-direction: column;
       width: 100%;
-    }
-
-    .tool {
       background-color: #f0f0f0;
       border-radius: 8px;
       padding: 8px;
@@ -33,12 +34,14 @@ export class ToolBlock extends LitElement {
     }
 
     .name {
-      font-weight: bold;
-      margin-bottom: 4px;
+      width: 100%;
+      font-weight: 600;
+      font-size: 18px;
     }
 
     .result {
-      color: #555;
+      width: 100%;
+      margin-top: 8px;
     }
   `;
 }

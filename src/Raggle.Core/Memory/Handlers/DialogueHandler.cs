@@ -31,6 +31,12 @@ public class DialogueHandler : IPipelineHandler
         public string ModelName { get; set; } = string.Empty;
     }
 
+    public class Dialogue
+    {
+        public string Question { get; set; } = string.Empty;
+        public string Answer { get; set; } = string.Empty;
+    }
+
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
         var options = pipeline.GetCurrentOptions<Options>()
@@ -70,7 +76,7 @@ public class DialogueHandler : IPipelineHandler
 
     #region Private Methods
 
-    private async Task<IEnumerable<Tuple<string,string>>> GenerateDialoguesAsync(
+    private async Task<IEnumerable<Dialogue>> GenerateDialoguesAsync(
         string information,
         Options options,
         CancellationToken cancellationToken)
@@ -105,9 +111,9 @@ public class DialogueHandler : IPipelineHandler
         return ParseDialoguesFromText(answer);
     }
 
-    private IEnumerable<Tuple<string, string>> ParseDialoguesFromText(string text)
+    private IEnumerable<Dialogue> ParseDialoguesFromText(string text)
     {
-        var dialogues = new List<Tuple<string,string>>();
+        var dialogues = new List<Dialogue>();
         var matches = DialogueRegex.Matches(text);
 
         foreach (Match match in matches)
@@ -118,7 +124,11 @@ public class DialogueHandler : IPipelineHandler
                 var answer = match.Groups[2].Value.Trim();
                 if (!string.IsNullOrEmpty(question) && !string.IsNullOrEmpty(answer))
                 {
-                    dialogues.Add(new Tuple<string, string>(question,answer));
+                    dialogues.Add(new Dialogue
+                    {
+                        Question = question,
+                        Answer = answer
+                    });
                 }
             }
         }
