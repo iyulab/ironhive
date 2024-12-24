@@ -17,6 +17,7 @@ if (cm.Config == null)
 builder.Services.AddRaggleServices(cm.Config);
 #endregion
 
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {

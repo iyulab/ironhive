@@ -1,4 +1,5 @@
 ﻿using Raggle.Abstractions.Assistant;
+using System.Text.Json.Serialization;
 
 namespace Raggle.Server.Entities;
 
@@ -25,4 +26,7 @@ public class AssistantEntity
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime? LastUpdatedAt { get; set; }
+
+    [JsonIgnore]
+    public string? ServiceId { get; set; }
 }

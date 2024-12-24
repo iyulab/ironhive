@@ -17,7 +17,7 @@ using Raggle.Server.ToolKits;
 using Raggle.Abstractions.Memory;
 using Raggle.Core.Memory;
 using Raggle.Server.Configurations.Models;
-using Raggle.Abstractions.AI;
+using Microsoft.AspNetCore.Http;
 
 namespace Raggle.Server.Extensions;
 
@@ -37,6 +37,7 @@ public static partial class IServiceCollectionExtentions
         services.AddSingleton<IRaggle, Core.Raggle>();
         services.AddSingleton<IRaggleMemory, RaggleMemory>();
 
+        
         return services;
     }
 
@@ -82,8 +83,24 @@ public static partial class IServiceCollectionExtentions
             }
         });
 
-        services.AddScoped<MemoryService>();
-        services.AddScoped<AssistantService>();
+        services.AddScoped<MemoryService>((provider) =>
+        {
+            var dbContext = provider.GetRequiredService<RaggleDbContext>();
+            var memory = provider.GetRequiredService<IRaggleMemory>();
+            var http = provider.GetRequiredService<IHttpContextAccessor>();
+            var serviceId = http.HttpContext.User.Claims.FirstOrDefault(c => c.Type == "serviceId")?.Value
+                ?? string.Empty;
+            return new MemoryService(dbContext, memory, serviceId);
+        });
+        services.AddScoped<AssistantService>((provider) => 
+        {
+            var dbContext = provider.GetRequiredService<RaggleDbContext>();
+            var raggle = provider.GetRequiredService<IRaggle>();
+            var http = provider.GetRequiredService<IHttpContextAccessor>();
+            var serviceId = http.HttpContext.User.Claims.FirstOrDefault(c => c.Type == "serviceId")?.Value
+                ?? string.Empty;
+            return new AssistantService(dbContext, raggle, serviceId);
+        });
         return services;
     }
 

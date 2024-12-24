@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Assistant;
+using Raggle.Abstractions.Messages;
 using Raggle.Server.Entities;
 
 namespace Raggle.Server.Data;
@@ -10,6 +11,7 @@ public class RaggleDbContext : DbContext
     public DbSet<CollectionEntity> Collections { get; set; }
     public DbSet<DocumentEntity> Documents { get; set; }
     public DbSet<AssistantEntity> Assistants { get; set; }
+    public DbSet<ConversationEntity> Conversations { get; set; }
 
     public RaggleDbContext(DbContextOptions<RaggleDbContext> options) : base(options)
     {
@@ -55,11 +57,17 @@ public class RaggleDbContext : DbContext
                   .IsRequired()
                   .HasMaxLength(255);
 
-            entity.Property(e => e.CreatedAt)
-                  .IsRequired();
-
             entity.Property(e => e.HandlerOptions)
                   .HasConversion<JsonValueConverter<IDictionary<string, object>>>()
+                  .HasColumnType("TEXT");
+
+            entity.Property(c => c.CreatedAt)
+                  .IsRequired()
+                  .HasConversion<DateTimeValueConverter>()
+                  .HasColumnType("TEXT");
+
+            entity.Property(c => c.LastUpdatedAt)
+                  .HasConversion<DateTimeValueConverter>()
                   .HasColumnType("TEXT");
 
             // 참조 속성 설정
@@ -87,11 +95,17 @@ public class RaggleDbContext : DbContext
                   .IsRequired()
                   .HasMaxLength(100);
 
-            entity.Property(d => d.CreatedAt)
-                  .IsRequired();
-
             entity.Property(d => d.Tags)
                   .HasConversion<JsonValueConverter<IEnumerable<string>>>()
+                  .HasColumnType("TEXT");
+
+            entity.Property(c => c.CreatedAt)
+                  .IsRequired()
+                  .HasConversion<DateTimeValueConverter>()
+                  .HasColumnType("TEXT");
+
+            entity.Property(c => c.LastUpdatedAt)
+                  .HasConversion<DateTimeValueConverter>()
                   .HasColumnType("TEXT");
         });
 
@@ -110,9 +124,6 @@ public class RaggleDbContext : DbContext
                   .IsRequired()
                   .HasMaxLength(255);
 
-            entity.Property(e => e.CreatedAt)
-                  .IsRequired();
-
             entity.Property(a => a.Options)
                   .HasConversion<JsonValueConverter<ExecuteOptions>>()
                   .HasColumnType("TEXT");
@@ -123,6 +134,39 @@ public class RaggleDbContext : DbContext
 
             entity.Property(a => a.ToolOptions)
                   .HasConversion<JsonValueConverter<IDictionary<string, object>>>()
+                  .HasColumnType("TEXT");
+
+            entity.Property(c => c.CreatedAt)
+                  .IsRequired()
+                  .HasConversion<DateTimeValueConverter>()
+                  .HasColumnType("TEXT");
+
+            entity.Property(c => c.LastUpdatedAt)
+                  .HasConversion<DateTimeValueConverter>()
+                  .HasColumnType("TEXT");
+        });
+
+        // ConversationEntity 설정
+        builder.Entity<ConversationEntity>(entity =>
+        {
+            // 테이블 이름 설정
+            entity.ToTable("conversations");
+
+            // 기본 키 설정
+            entity.HasKey(c => c.Id);
+
+            // 속성 설정
+            entity.Property(c => c.Messages)
+                  .HasConversion<JsonValueConverter<MessageCollection>>()
+                  .HasColumnType("TEXT");
+
+            entity.Property(c => c.CreatedAt)
+                  .IsRequired()
+                  .HasConversion<DateTimeValueConverter>()
+                  .HasColumnType("TEXT");
+
+            entity.Property(c => c.LastUpdatedAt)
+                  .HasConversion<DateTimeValueConverter>()
                   .HasColumnType("TEXT");
         });
     }

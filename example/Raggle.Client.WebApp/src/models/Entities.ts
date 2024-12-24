@@ -35,3 +35,9 @@ export interface AssistantEntity {
   createdAt?: string;
   lastUpdatedAt?: string;
 }
+
+export interface UserEntity {  
+  userName: string;
+  createdAt?: string;
+  lastUpdatedAt?: string;
+}

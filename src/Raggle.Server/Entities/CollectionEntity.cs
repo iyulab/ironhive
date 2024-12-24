@@ -23,4 +23,7 @@ public class CollectionEntity
     // 네비게이션 속성
     [JsonIgnore]
     public ICollection<DocumentEntity>? Documents { get; set; }
+
+    [JsonIgnore]
+    public string? ServiceId { get; set; }
 }

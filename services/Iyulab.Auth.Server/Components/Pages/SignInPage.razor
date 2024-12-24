@@ -1,0 +1,61 @@
+﻿@page "/signin"
+
+
+@inject NavigationManager Navigation
+
+<PageTitle>Sign In</PageTitle>
+
+<FluentCard>
+    
+        Header
+    
+    
+        UserName: 
+        <FluentTextField />
+    
+    
+        Password
+        <FluentTextField />
+    
+        <FluentButton>
+            Register
+        </FluentButton>
+    
+        <FluentButton>
+            Login
+        </FluentButton>
+    
+    
+        <FluentButton>
+            Google Login
+        </FluentButton>
+    
+    
+        <FluentButton>
+            Microsoft Login
+        </FluentButton>
+    
+    
+        <FluentButton>
+            Facebook Login
+        </FluentButton>
+    
+</FluentCard>
+
+@code {
+    private SignIn Request { get; set; } = new SignIn
+    {
+        UserName = string.Empty,
+        Password = string.Empty
+    };
+
+    private async Task HandleSubmit()
+    {
+        
+    }
+
+    private void NavigateToRegister()
+    {
+        Navigation.NavigateTo("/register");
+    }
+}

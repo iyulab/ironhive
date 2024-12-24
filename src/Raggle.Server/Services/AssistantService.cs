@@ -1,6 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Qdrant.Client.Grpc;
 using Raggle.Abstractions;
 using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Extensions;
@@ -9,18 +8,19 @@ using Raggle.Abstractions.Tools;
 using Raggle.Server.Data;
 using Raggle.Server.Entities;
 using Raggle.Server.ToolKits;
-using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace Raggle.Server.Services;
 
 public class AssistantService
 {
+    private readonly string _id;
     private readonly RaggleDbContext _db;
     private readonly IRaggle _raggle;
 
-    public AssistantService(RaggleDbContext dbContext, IRaggle raggle)
+    public AssistantService(RaggleDbContext dbContext, IRaggle raggle, string serviceId)
     {
+        _id = serviceId;
         _db = dbContext;
         _raggle = raggle;
     }

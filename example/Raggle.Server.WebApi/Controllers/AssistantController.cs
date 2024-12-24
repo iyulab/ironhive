@@ -1,10 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Messages;
 using Raggle.Server.Entities;
 using Raggle.Server.Services;
-using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 
@@ -34,7 +32,7 @@ public class AssistantController : ControllerBase
         [FromQuery(Name = "limit")] int limit = 10)
     {
         var assistants = await _service.GetAssistantsAsync(skip, limit);
-        return assistants.Count() > 0 ? Ok(assistants) : NoContent();
+        return assistants.Any() ? Ok(assistants) : NoContent();
     }
 
     [HttpGet("{assistantId}")]
@@ -93,9 +91,4 @@ public class AssistantController : ControllerBase
             _logger.LogError(ex.Message);
         }
     }
-}
-
-public class StreamingDataResponse<T>
-{
-    public T? Data {get; set;}
 }
