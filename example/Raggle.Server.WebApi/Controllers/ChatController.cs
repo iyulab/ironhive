@@ -50,15 +50,15 @@ public class ChatController : ControllerBase
         try
         {
             var conversation = await _service.UpsertAsync(entity);
-            await foreach (var response in _service.ChatAssistantAsync(assistantId, messages, cancellationToken))
-            {
-                var json = JsonSerializer.Serialize(response, _jsonOptions.JsonSerializerOptions);
+            //await foreach (var response in _service.ChatAssistantAsync(assistantId, messages, cancellationToken))
+            //{
+            //    var json = JsonSerializer.Serialize(response, _jsonOptions.JsonSerializerOptions);
 
-                var data = Encoding.UTF8.GetBytes(json + "\n");
-                await Response.Body.WriteAsync(data, cancellationToken);
+            //    var data = Encoding.UTF8.GetBytes(json + "\n");
+            //    await Response.Body.WriteAsync(data, cancellationToken);
 
-                await Response.Body.FlushAsync(cancellationToken);
-            }
+            //    await Response.Body.FlushAsync(cancellationToken);
+            //}
         }
         catch (Exception ex)
         {

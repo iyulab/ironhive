@@ -1,61 +1,92 @@
 ﻿@page "/signin"
 
-
+@using Iyulab.Auth.Server.Components.Icons
 @inject NavigationManager Navigation
 
 <PageTitle>Sign In</PageTitle>
 
-<FluentCard>
-    
-        Header
-    
-    
-        UserName: 
-        <FluentTextField />
-    
-    
-        Password
-        <FluentTextField />
-    
-        <FluentButton>
-            Register
-        </FluentButton>
-    
-        <FluentButton>
-            Login
-        </FluentButton>
-    
-    
-        <FluentButton>
-            Google Login
-        </FluentButton>
-    
-    
-        <FluentButton>
-            Microsoft Login
-        </FluentButton>
-    
-    
-        <FluentButton>
-            Facebook Login
-        </FluentButton>
-    
-</FluentCard>
+<div class="root">
+    <div class="container">
+        <FluentCard>
+            <div class="card">
+                <div class="panel">
+                    <img class="header"
+                         src="/images/logo.png" />
+                    <div class="form">
+                        <FluentTextField Style="width: 100%"
+                                         Label="Email" />
+                        <FluentTextField Style="width: 100%"
+                                         Label="Password" />
+                    </div>
+                    <div class="control">
+                        <FluentButton
+                            OnClick="HandleSignUp">
+                            Sign Up
+                        </FluentButton>
+                        <FluentButton
+                            OnClick="HandleSignIn">
+                            Sign In
+                        </FluentButton>
+                    </div>
+                </div>
+                <div class="panel">
+                    <FluentButton Style="width: 100%"
+                                  OnClick="@HandleSignInWithGoogle">
+                        <FluentIcon Slot="start"
+                                    Value="@(new GoogleIcon())" />
+                        Sign in With Google
+                    </FluentButton>
+                    <FluentButton Style="width: 100%"
+                                  OnClick="@HandleSignInWithMicrosoft">
+                        <FluentIcon Slot="start"
+                                    Value="@(new MicrosoftIcon())" />
+                        Sign in With Microsoft
+                    </FluentButton>
+                    <FluentButton Style="width: 100%"
+                                   Onclick="@HandleSignInWithNaver">
+                        <FluentIcon Slot="start"
+                                    Value="@(new NaverIcon())" 
+                                    OnClick="@HandleSignInWithNaver" />
+                        Sign in With Naver
+                    </FluentButton>
+                </div>
+            </div>
+        </FluentCard>
+    </div>
+</div>
 
 @code {
+    [SupplyParameterFromQuery(Name = "redirect")]
+    private string? RedirectUrl { get; set; }
+
     private SignIn Request { get; set; } = new SignIn
     {
         UserName = string.Empty,
         Password = string.Empty
     };
 
-    private async Task HandleSubmit()
+    private void HandleSignUp()
+    {
+        Navigation.NavigateTo("/signup");
+    }
+
+    private void HandleSignIn()
     {
         
     }
 
-    private void NavigateToRegister()
+    private void HandleSignInWithGoogle()
     {
-        Navigation.NavigateTo("/register");
+        Navigation.NavigateTo("/oauth", true);
+    }
+
+    private void HandleSignInWithMicrosoft()
+    {
+
+    }
+
+    private void HandleSignInWithNaver()
+    {
+
     }
 }

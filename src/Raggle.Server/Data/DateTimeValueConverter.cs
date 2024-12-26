@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using System.Diagnostics;
 using System.Globalization;
 
 public class DateTimeValueConverter : ValueConverter<DateTime?, string?>
@@ -29,21 +30,22 @@ public class DateTimeValueConverter : ValueConverter<DateTime?, string?>
 
     private static DateTime? Deserialize(string? value)
     {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-        else if (DateTime.TryParseExact(value, "oZ", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var utcDateTime))
-        {
-            return DateTime.SpecifyKind(utcDateTime, DateTimeKind.Utc);
-        }
-        else if (DateTime.TryParseExact(value, "o", CultureInfo.InvariantCulture, DateTimeStyles.None, out var localDateTime))
-        {
-            return DateTime.SpecifyKind(localDateTime, DateTimeKind.Local);
-        }
-        else
-        {
-            throw new FormatException($"Unable to parse '{value}' as a DateTime.");
-        }
+        return DateTime.UtcNow;
+        //if (string.IsNullOrWhiteSpace(value))
+        //{
+        //    return null;
+        //}
+        //else if (DateTime.TryParseExact(value, "oZ", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var utcDateTime))
+        //{
+        //    return DateTime.SpecifyKind(utcDateTime, DateTimeKind.Utc);
+        //}
+        //else if (DateTime.TryParseExact(value, "o", CultureInfo.InvariantCulture, DateTimeStyles.None, out var localDateTime))
+        //{
+        //    return DateTime.SpecifyKind(localDateTime, DateTimeKind.Local);
+        //}
+        //else
+        //{
+        //    throw new FormatException($"Unable to parse '{value}' as a DateTime.");
+        //}
     }
 }

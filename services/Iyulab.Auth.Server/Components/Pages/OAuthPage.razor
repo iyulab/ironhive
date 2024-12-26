@@ -1,0 +1,21 @@
+﻿@page "/oauth"
+
+@inject IHttpContextAccessor HttpContextAccessor
+@inject NavigationManager Navigation
+
+<PageTitle>OAuth</PageTitle>
+
+@code {
+
+    protected override async Task OnInitializedAsync()
+    {
+        var properties = new AuthenticationProperties
+            {
+                RedirectUri = "https://localhost:7229/oauth"
+            };
+
+        await HttpContextAccessor.HttpContext.ChallengeAsync(
+            GoogleDefaults.AuthenticationScheme,
+            properties);
+    }
+}
