@@ -8,16 +8,22 @@ export class ToolBlock extends LitElement {
   @property({ type: Object }) result: any;
 
   render() {
+    console.log(this.result);
     return html`
       <div class="name">
         Tool: ${this.name}
       </div>
       <div class="result">
-        ${this.result ? html`
-          <pre>${JSON.stringify(this.result, null, 2)}</pre>
-        ` : html`
-          <sl-skeleton></sl-skeleton>
-        `}
+      ${this.result
+        ? html`  
+        ${this.result.result.map((item: any) => html`
+          <div class="question">${item.payload.content.question}</div>
+          <div class="answer">${item.payload.content.answer}</div>
+        `)}`
+        : html`
+          <sl-spinner></sl-spinner>
+        `
+      }
       </div>
     `;
   }
@@ -42,6 +48,28 @@ export class ToolBlock extends LitElement {
     .result {
       width: 100%;
       margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+
+      .question {
+        font-weight: 600;
+        font-size: 16px;
+      }
+
+      .answer {
+        font-size: 14px;
+      }
+
+      .question, .answer {
+        padding: 8px;
+        border-radius: 8px;
+        background-color: #fff;
+      }
+
+      .question {
+        background-color: #f0f0f0;
+      }
     }
   `;
 }
