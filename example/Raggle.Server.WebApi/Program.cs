@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Http.Features;
 using Raggle.Abstractions;
+using Raggle.Core.Extensions;
 using Raggle.Server;
 using Raggle.Server.Configurations;
 using Raggle.Server.Extensions;
+using Raggle.Server.Tools;
 using Raggle.Server.WebApi.Development;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -15,6 +17,7 @@ if (cm.Config == null)
     throw new Exception("Failed to load raggle_settings.json");
 
 builder.Services.AddRaggleServices(cm.Config);
+builder.Services.AddToolService<DatabaseTool>("database_search");
 #endregion
 
 builder.Services.AddHttpContextAccessor();

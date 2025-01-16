@@ -7,7 +7,7 @@ using Raggle.Abstractions.Messages;
 using Raggle.Abstractions.Tools;
 using Raggle.Server.Data;
 using Raggle.Server.Entities;
-using Raggle.Server.ToolKits;
+using Raggle.Server.Tools;
 using System.Runtime.CompilerServices;
 
 namespace Raggle.Server.Services;
@@ -106,6 +106,18 @@ public class AssistantService
                     throw new InvalidOperationException($"Tool not found: {tool}");
                 }
             }
+        }
+
+        // 테스트용 코드
+        if (true)
+        {
+            instructions += "\n\nYou have database connection:\n";
+            instructions += "- type: ms_sql_server\n";
+            instructions += "- description: Current user company information\n";
+
+            var dbService = _raggle.Services.GetRequiredKeyedService<DatabaseTool>("database_search");
+            var functions = FunctionToolFactory.CreateFromInstance(dbService);
+            tools.AddRange(functions);
         }
 
         var assistant = _raggle.CreateAssistant(

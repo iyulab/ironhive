@@ -5,7 +5,7 @@ using Raggle.Server.Services;
 using System;
 using System.ComponentModel;
 
-namespace Raggle.Server.ToolKits;
+namespace Raggle.Server.Tools;
 
 public class VectorSearchTool
 {
