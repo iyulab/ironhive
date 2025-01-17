@@ -35,8 +35,15 @@ public class ModelController : ControllerBase
         {
             if (serviceKeyMap.TryGetValue(service.GetType(), out var key))
             {
-                var _models = await service.GetChatCompletionModelsAsync();
-                models[key] = _models.Select(m => m.Model).ToArray();
+                try
+                {
+                    var _models = await service.GetChatCompletionModelsAsync();
+                    models[key] = _models.Select(m => m.Model).ToArray();
+                }
+                catch
+                {
+                    models[key] = [];
+                }
             }
         }
 
@@ -59,8 +66,16 @@ public class ModelController : ControllerBase
         {
             if (serviceKeyMap.TryGetValue(service.GetType(), out var key))
             {
-                var _models = await service.GetEmbeddingModelsAsync();
-                models[key] = _models.Select(m => m.Model).ToArray();
+                try
+                {
+                    var _models = await service.GetEmbeddingModelsAsync();
+                    models[key] = _models.Select(m => m.Model).ToArray();
+                }
+                catch
+                {
+                    models[key] = [];
+
+                }
             }
         }
 

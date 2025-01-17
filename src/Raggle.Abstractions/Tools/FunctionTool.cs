@@ -51,13 +51,12 @@ public class FunctionTool
     {
         try
         {
-            var args = jsonArgs != null
+            var args = !string.IsNullOrEmpty(jsonArgs)
                 ? JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(jsonArgs)
                 : null;
 
             var arguments = GetArguments(args);
             var result = _function.DynamicInvoke(arguments);
-
             if (result is Task task)
             {
                 await task;

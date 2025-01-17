@@ -130,9 +130,10 @@ public class LiteDBVectorStorage : IVectorStorage
             })
             .Where(p => p.Score >= minScore)
             .OrderByDescending(p => p.Score)
-            .Take((int)limit);
+            .Take((int)limit)
+            .AsEnumerable();
 
-        return Task.FromResult(results.AsEnumerable());
+        return Task.FromResult(results.Any() ? results : []);
     }
 
     #region Private Methods

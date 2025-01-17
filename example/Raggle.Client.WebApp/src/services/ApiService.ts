@@ -14,8 +14,19 @@ export class Api {
   });
 
   private static getBaseUrl(): string {
-    const version = import.meta.env.VITE_API_VERSION || '';
-    const host = import.meta.env.VITE_API_HOST || window.location.origin;
+    const isDev = import.meta.env.DEV || false;
+    let host: string;
+    let version: string;
+    if (isDev) {
+      host = import.meta.env.VITE_API_HOST || window.location.origin;
+      version = import.meta.env.VITE_API_VERSION || 'v1';
+    } else {
+      host = window.location.origin;
+      version = 'v1';
+    }
+    console.log('API Host:', host);
+    console.log('API Version:', version);
+    console.log('API Origin:', window.location.origin);
     return new URL(`${version}`, host).toString();
   }
 

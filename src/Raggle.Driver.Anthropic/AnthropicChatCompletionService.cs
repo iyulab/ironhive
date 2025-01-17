@@ -197,11 +197,13 @@ public class AnthropicChatCompletionService : IChatCompletionService
                 var item = content.ElementAt(contentDelta.Index);
                 if (item is TextContent textContent)
                 {
+                    var newTextContent = new TextContent { Index = textContent.Index };
                     if (contentDelta.ContentBlock is TextDeltaMessageContent textDelta)
                     {
-                        textContent.Text = textDelta.Text;
+                        newTextContent.Text = textDelta.Text;
+                        textContent.Text += textDelta.Text;
                     }
-                    yield return new ChatCompletionStreamingResponse { Content = textContent };
+                    yield return new ChatCompletionStreamingResponse { Content = newTextContent };
                 }
                 else if (item is ToolContent toolContent)
                 {
@@ -328,7 +330,9 @@ public class AnthropicChatCompletionService : IChatCompletionService
                             {
                                 ID = tool.Id,
                                 Name = tool.Name,
-                                Input = JsonSerializer.Deserialize<object?>(tool.Arguments ?? string.Empty)
+                                Input = !string.IsNullOrEmpty(tool.Arguments)
+                                    ? JsonSerializer.Deserialize<object?>(tool.Arguments)
+                                    : new object()
                             });
                         }
                         else
@@ -342,7 +346,9 @@ public class AnthropicChatCompletionService : IChatCompletionService
                                     {
                                         ID = tool.Id,
                                         Name = tool.Name,
-                                        Input = JsonSerializer.Deserialize<object?>(tool.Arguments ?? string.Empty)
+                                        Input = !string.IsNullOrEmpty(tool.Arguments)
+                                            ? JsonSerializer.Deserialize<object?>(tool.Arguments)
+                                            : new object()
                                     }
                                 ]
                             });
@@ -357,13 +363,7 @@ public class AnthropicChatCompletionService : IChatCompletionService
                                 {
                                     IsError = tool.Result?.IsSuccess != true,
                                     ToolUseID = tool.Id,
-                                    Content =
-                                    [
-                                        new TextMessageContent
-                                        {
-                                            Text = JsonSerializer.Serialize(tool.Result)
-                                        }
-                                    ]
+                                    Content = JsonSerializer.Serialize(tool.Result)
                                 }
                             ]
                         });
