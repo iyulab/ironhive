@@ -33,26 +33,27 @@ if (builder.Environment.IsDevelopment())
 {
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
-    builder.Services.AddCors(options =>
-    {
-        options.AddPolicy("AllowAll", builder =>
-        {
-            builder.AllowAnyOrigin()
-                .AllowAnyMethod()
-                .AllowAnyHeader();
-                //.AllowCredentials();
-        });
-    });
-    builder.Services.Configure<FormOptions>(options =>
-    {
-        options.MultipartBodyLengthLimit = 10_737_418_240; // 10GB
-    });
 }
 else
 {
-    builder.Services.AddAuthentication();
-    builder.Services.AddAuthorization();
+    //builder.Services.AddAuthentication();
+    //builder.Services.AddAuthorization();
 }
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", builder =>
+    {
+        builder.AllowAnyOrigin()
+            .AllowAnyMethod()
+            .AllowAnyHeader();
+        //.AllowCredentials();
+    });
+});
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 10_737_418_240; // 10GB
+});
 
 var app = builder.Build();
 
@@ -60,8 +61,13 @@ var app = builder.Build();
 app.Services.EnsureRaggleServices();
 #endregion
 
-app.MapControllers();
+app.UseRouting();
+app.UseStaticFiles();
+
 app.UseCors("AllowAll");
+
+app.MapControllers();
+app.MapFallbackToFile("index.html");
 
 if (app.Environment.IsDevelopment())
 {
@@ -73,14 +79,15 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
-    app.UseAuthentication();
-    app.UseAuthorization();
+    //app.UseAuthentication();
+    //app.UseAuthorization();
 
-    app.UseHttpsRedirection();
-    app.UseHsts();
+    //app.UseHttpsRedirection();
+    //app.UseHsts();
 
-    app.Urls.Add("https://*:7297");
-    app.Urls.Add("http://*:5075");
+    app.Urls.Clear();
+    //app.Urls.Add("https://*:7297");
+    app.Urls.Add("http://*:80");
 }
 
 app.Run();

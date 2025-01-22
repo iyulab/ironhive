@@ -19,7 +19,7 @@ public interface ITextTokenizer
     /// <summary>
     /// Return token strings
     /// </summary>
-    /// <param name="values">Token values</param>
-    /// <returns>Collection of token strings</returns>
-    string Decode(IReadOnlyList<int> values);
+    /// <param name="tokens">Token values</param>
+    /// <returns>Decoded string value</returns>
+    string Decode(IReadOnlyList<int> tokens);
 }

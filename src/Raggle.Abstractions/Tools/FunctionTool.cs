@@ -1,7 +1,6 @@
 ﻿using Raggle.Abstractions.Json;
 using System.ComponentModel;
 using System.Reflection;
-using System.Text.Json;
 
 namespace Raggle.Abstractions.Tools;
 
@@ -9,9 +8,8 @@ public class FunctionTool
 {
     private readonly Delegate _function;
     public object? Target => _function.Target;
-    public MethodInfo Method => _function.Method;
-    public ParameterInfo[] Parameters => Method.GetParameters();
-    public Type ReturnType => Method.ReturnType;
+    public ParameterInfo[] Parameters => _function.Method.GetParameters();
+    public Type ReturnType => _function.Method.ReturnType;
 
     public required string Name { get; set; }
     public string? Description { get; set; }
@@ -21,7 +19,7 @@ public class FunctionTool
         _function = function;
     }
 
-    public ObjectJsonSchema GetParametersJsonSchema()
+    public ObjectJsonSchema ToJsonSchema()
     {
         var properties = new Dictionary<string, JsonSchema>();
         var required = new List<string>();
@@ -41,22 +39,17 @@ public class FunctionTool
 
         return new ObjectJsonSchema
         {
-            Properties = properties,
             Description = Description,
-            Required = required.ToArray(),
+            Properties = properties,
+            Required = required.ToArray()
         };
     }
 
-    public async Task<FunctionResult> InvokeAsync(string? jsonArgs)
+    public async Task<FunctionResult> InvokeAsync(FunctionArguments? args)
     {
         try
         {
-            var args = !string.IsNullOrEmpty(jsonArgs)
-                ? JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(jsonArgs)
-                : null;
-
-            var arguments = GetArguments(args);
-            var result = _function.DynamicInvoke(arguments);
+            var result = _function.DynamicInvoke(PrepareArguments(args));
             if (result is Task task)
             {
                 await task;
@@ -81,10 +74,6 @@ public class FunctionTool
 
             return FunctionResult.Success(result);
         }
-        catch (JsonException)
-        {
-            return FunctionResult.Failed($"Invalid JSON format for arguments: {jsonArgs}");
-        }
         catch (TargetInvocationException ex) when (ex.InnerException != null)
         {
             return FunctionResult.Failed(ex.InnerException.Message);
@@ -95,7 +84,7 @@ public class FunctionTool
         }
     }
 
-    private object?[]? GetArguments(Dictionary<string, JsonElement>? args)
+    private object?[]? PrepareArguments(FunctionArguments? args)
     {
         if (Parameters.Length == 0) return null;
         var arguments = new object?[Parameters.Length];
@@ -105,23 +94,22 @@ public class FunctionTool
             var param = Parameters[i];
             var paramName = param.Name ?? throw new InvalidOperationException("Parameter name cannot be null.");
             var paramType = param.ParameterType;
-            var isRequired = !param.IsOptional;
             
             if (args != null && args.TryGetValue(paramName, out var value))
             {
-                arguments[i] = JsonSerializer.Deserialize(value.GetRawText(), paramType);
+                arguments[i] = JsonObjectConverter.ConvertTo(paramType, value);
             }
             else if (param.HasDefaultValue)
             {
                 arguments[i] = param.DefaultValue;
             }
-            else if (isRequired)
+            else if (param.IsOptional)
             {
-                throw new ArgumentException($"Required parameter '{paramName}' is missing.");
+                arguments[i] = null;
             }
             else
             {
-                arguments[i] = null;
+                throw new ArgumentException($"Parameter '{paramName}' is required");
             }
         }
 

@@ -181,7 +181,7 @@ public class OllamaChatCompletionService : IChatCompletionService
             var tools = new List<Tool>();
             foreach (var tool in request.Tools)
             {
-                var schema = tool.GetParametersJsonSchema();
+                var schema = tool.ToJsonSchema();
                 tools.Add(new Tool
                 {
                     Function = new FunctionTool

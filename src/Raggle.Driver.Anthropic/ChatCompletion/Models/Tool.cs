@@ -11,23 +11,8 @@ internal class Tool
     public string? Description { get; set; }
 
     [JsonPropertyName("input_schema")]
-    public required InputSchema InputSchema { get; set; }
+    public required object InputSchema { get; set; }
 
     [JsonPropertyName("cache_control")]
     public CacheControl? CacheControl { get; set; }
-}
-
-internal class InputSchema
-{
-    /// <summary>
-    /// "object" only
-    /// </summary>
-    [JsonPropertyName("type")]
-    public string Type { get; } = "object";
-
-    [JsonPropertyName("properties")]
-    public object? Properties { get; set; }
-
-    [JsonPropertyName("required")]
-    public string[]? Required { get; set; }
 }

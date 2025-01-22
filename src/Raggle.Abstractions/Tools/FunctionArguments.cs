@@ -1,21 +1,69 @@
 ﻿using System.Collections;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
 
 namespace Raggle.Abstractions.Tools;
 
 public class FunctionArguments : IDictionary<string, object>
 {
-    private readonly Dictionary<string, object> _inner;
+    private Dictionary<string, object> _inner = new();
+    private string _buffer = string.Empty;
 
-    public FunctionArguments()
-    {
-        _inner = new Dictionary<string, object>();
-    }
+    public FunctionArguments() 
+    { }
 
     public FunctionArguments(IDictionary<string, object> dictionary)
     {
         _inner = new Dictionary<string, object>(dictionary);
     }
+
+    public FunctionArguments(string json)
+    {
+        _inner = ParseJson(json);
+    }
+
+    public void Append(string? partialJson)
+    {
+        if (string.IsNullOrEmpty(partialJson))
+            return;
+
+        _buffer += partialJson;
+        if (_buffer.EndsWith('}'))
+        {
+            _inner = ParseJson(_buffer);
+            _buffer = string.Empty;
+        }
+    }
+
+    public override string ToString()
+    {
+        try
+        {
+            return JsonSerializer.Serialize(_inner);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+            return @"{}";
+        }
+    }
+
+    private static Dictionary<string, object> ParseJson(string json)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<Dictionary<string, object>>(json) 
+                ?? new Dictionary<string, object>();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+            return new Dictionary<string, object>();
+        }
+    }
+
+    #region IDictionary Implementation
 
     public object this[string key]
     {
@@ -30,8 +78,6 @@ public class FunctionArguments : IDictionary<string, object>
     public int Count => _inner.Count;
 
     public bool IsReadOnly => false;
-
-    #region Implementation Methods
 
     public void Add(string key, object value) => _inner.Add(key, value);
 

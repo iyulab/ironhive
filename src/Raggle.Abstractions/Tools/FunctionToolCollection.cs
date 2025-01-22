@@ -15,7 +15,10 @@ public class FunctionToolCollection : ICollection<FunctionTool>
 
     public FunctionTool this[string name] => _items[name];
 
-    public bool TryGetValue(string name, [NotNullWhen(true)] out FunctionTool tool) => _items.TryGetValue(name, out tool!);
+    public bool TryGetValue(string name, [NotNullWhen(true)] out FunctionTool tool)
+    {
+        return _items.TryGetValue(name, out tool!);
+    }
 
     public void AddRange(IEnumerable<FunctionTool> tools)
     {

@@ -83,6 +83,7 @@ public static class JsonSchemaConverter
             var additionalProperties = ConvertFromType(valueType);
             return new ObjectJsonSchema
             {
+                Description = description,
                 AdditionalProperties = additionalProperties
             };
         }
@@ -104,6 +105,7 @@ public static class JsonSchemaConverter
 
             return new ObjectJsonSchema
             {
+                Description = description,
                 Properties = properties,
                 Required = required.Count > 0 ? required.ToArray() : null
             };

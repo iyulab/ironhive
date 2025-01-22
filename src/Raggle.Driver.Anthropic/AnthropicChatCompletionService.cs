@@ -66,7 +66,7 @@ public class AnthropicChatCompletionService : IChatCompletionService
                 {
                     var id = toolUse.ID;
                     var name = toolUse.Name;
-                    var args = JsonSerializer.Serialize(toolUse.Input);
+                    var args = new FunctionArguments(JsonSerializer.Serialize(toolUse.Input));
                     var result = string.IsNullOrWhiteSpace(name)
                         ? FunctionResult.Failed("Tool name is missing")
                         : request.Tools != null && request.Tools.TryGetValue(name, out var tool)
@@ -129,12 +129,79 @@ public class AnthropicChatCompletionService : IChatCompletionService
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var _request = ConvertToAnthropicRequest(request);
-
         var content = new MessageContentCollection();
+
+        /*
+         * 1. Request 변환 => To OpenAI
+         * 2. Assistant Message 생성
+         * 3. Foreach Loop Until MaxTry 
+         *    3.0 메시지 Concat 또는 Pass
+         *    3.1 요청 ToOpenAI
+         *    3.2 응답 Message 저장 With Return
+         *    3.3 ToolUse With 2번 메시지
+         *    3.4 다시 Loop
+         *  4. Context??? 필요
+         */
+
         await foreach (var response in _client.PostStreamingMessagesAsync(_request, cancellationToken))
         {
-            if (response is MessageDeltaEvent messageDelta)
+            // 임시 출력; 추후 삭제
+            Console.WriteLine(JsonSerializer.Serialize(response));
+
+
+            if (response is MessageStartEvent)
             {
+                // 시작 이벤트
+                // nothing to do
+            }
+            else if (response is ContentStartEvent contentStart)
+            {
+                // 컨텐츠 블록 생성 시작 이벤트
+
+                if (contentStart.ContentBlock is TextMessageContent text)
+                {
+                    content.AddText(text.Text);
+                }
+                else if (contentStart.ContentBlock is ToolUseMessageContent tool)
+                {
+                    content.AddTool(tool.ID, tool.Name, null, null);
+                }
+            }
+            else if (response is ContentDeltaEvent contentDelta)
+            {
+                // 컨텐츠 블록 생성 진행 이벤트
+
+                var item = content.ElementAt(contentDelta.Index);
+                if (item is TextContent textContent)
+                {
+                    var newTextContent = new TextContent { Index = textContent.Index };
+                    if (contentDelta.ContentBlock is TextDeltaMessageContent textDelta)
+                    {
+                        newTextContent.Text = textDelta.Text;
+                        textContent.Text += textDelta.Text;
+                    }
+                    yield return new ChatCompletionStreamingResponse { Content = newTextContent };
+                }
+                else if (item is ToolContent toolContent)
+                {
+                    if (contentDelta.ContentBlock is ToolUseDeltaMessageContent toolDelta)
+                    {
+                        toolContent.Arguments ??= new FunctionArguments();
+                        toolContent.Arguments.Append(toolDelta.PartialJson);
+                    }
+                    yield return new ChatCompletionStreamingResponse { Content = toolContent };
+                }
+            }
+            else if (response is ContentStopEvent)
+            {
+                // 컨텐츠 블록 생성 종료 이벤트
+
+                // nothing to do
+            }
+            else if (response is MessageDeltaEvent messageDelta)
+            {
+                // 생성 종료 이벤트
+
                 var reason = messageDelta.Delta?.StopReason;
                 if (reason == StopReason.ToolUse)
                 {
@@ -147,8 +214,8 @@ public class AnthropicChatCompletionService : IChatCompletionService
                                     : request.Tools != null && request.Tools.TryGetValue(toolContent.Name, out var tool)
                                     ? await tool.InvokeAsync(toolContent.Arguments)
                                     : FunctionResult.Failed($"Tool [{toolContent.Name}] not found");
-                            yield return new ChatCompletionStreamingResponse 
-                            { 
+                            yield return new ChatCompletionStreamingResponse
+                            {
                                 Content = toolContent
                             };
                         }
@@ -181,58 +248,18 @@ public class AnthropicChatCompletionService : IChatCompletionService
                     };
                 }
             }
-            else if (response is ContentStartEvent contentStart)
+            else if (response is MessageStopEvent)
             {
-                if (contentStart.ContentBlock is TextMessageContent text)
-                {
-                    content.AddText(text.Text);
-                }
-                else if (contentStart.ContentBlock is ToolUseMessageContent tool)
-                {
-                    content.AddTool(tool.ID, tool.Name, null, null);
-                }
-            }
-            else if (response is ContentDeltaEvent contentDelta)
-            {
-                var item = content.ElementAt(contentDelta.Index);
-                if (item is TextContent textContent)
-                {
-                    var newTextContent = new TextContent { Index = textContent.Index };
-                    if (contentDelta.ContentBlock is TextDeltaMessageContent textDelta)
-                    {
-                        newTextContent.Text = textDelta.Text;
-                        textContent.Text += textDelta.Text;
-                    }
-                    yield return new ChatCompletionStreamingResponse { Content = newTextContent };
-                }
-                else if (item is ToolContent toolContent)
-                {
-                    if (contentDelta.ContentBlock is ToolUseDeltaMessageContent toolDelta)
-                    {
-                        toolContent.Arguments += toolDelta.PartialJson;
-                    }
-                    yield return new ChatCompletionStreamingResponse { Content = toolContent };
-                }
-            }
-            else if (response is ErrorEvent error)
-            {
-                throw new InvalidOperationException(error.Error.ToString());
+                // 종료 이벤트
+                // nothing to do
             }
             else if (response is PingEvent)
             {
                 // nothing to do
             }
-            else if (response is MessageStartEvent)
+            else if (response is ErrorEvent error)
             {
-                // nothing to do
-            }
-            else if (response is MessageStopEvent)
-            {
-                // nothing to do
-            }
-            else if (response is ContentStopEvent)
-            {
-                // nothing to do
+                throw new InvalidOperationException(error.Error.ToString());
             }
             else
             {
@@ -330,9 +357,7 @@ public class AnthropicChatCompletionService : IChatCompletionService
                             {
                                 ID = tool.Id,
                                 Name = tool.Name,
-                                Input = !string.IsNullOrEmpty(tool.Arguments)
-                                    ? JsonSerializer.Deserialize<object?>(tool.Arguments)
-                                    : new object()
+                                Input = tool.Arguments
                             });
                         }
                         else
@@ -346,9 +371,7 @@ public class AnthropicChatCompletionService : IChatCompletionService
                                     {
                                         ID = tool.Id,
                                         Name = tool.Name,
-                                        Input = !string.IsNullOrEmpty(tool.Arguments)
-                                            ? JsonSerializer.Deserialize<object?>(tool.Arguments)
-                                            : new object()
+                                        Input = tool.Arguments
                                     }
                                 ]
                             });
@@ -375,22 +398,12 @@ public class AnthropicChatCompletionService : IChatCompletionService
 
         if (request.Tools != null && request.Tools.Count > 0)
         {
-            var _tools = new List<Tool>();
-            foreach (var tool in request.Tools)
+            _request.Tools = request.Tools.Select(t => new Tool
             {
-                var schema = tool.GetParametersJsonSchema();
-                _tools.Add(new Tool
-                {
-                    Name = tool.Name,
-                    Description = tool.Description,
-                    InputSchema = new InputSchema
-                    {
-                        Properties = schema.Properties,
-                        Required = schema.Required
-                    }
-                });
-            }
-            _request.Tools = _tools.ToArray();
+                Name = t.Name,
+                Description = t.Description,
+                InputSchema = t.ToJsonSchema()
+            }).ToArray();
         }
 
         return _request;

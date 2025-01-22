@@ -23,26 +23,11 @@ internal class Function
     public string? Description { get; set; }
 
     [JsonPropertyName("parameters")]
-    public InputSchema? Parameters { get; set; }
+    public object? Parameters { get; set; }
 
     /// <summary>
     /// "true" is not working, "false" is default
     /// </summary>
     [JsonPropertyName("strict")]
     public bool Strict { get; } = false;
-}
-
-internal class InputSchema
-{
-    /// <summary>
-    /// "object" only
-    /// </summary>
-    [JsonPropertyName("type")]
-    public string Type { get; } = "object";
-
-    [JsonPropertyName("properties")]
-    public object? Properties { get; set; }
-
-    [JsonPropertyName("required")]
-    public string[]? Required { get; set; }
 }

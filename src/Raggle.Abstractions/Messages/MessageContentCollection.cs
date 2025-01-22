@@ -10,20 +10,10 @@ public class MessageContentCollection : ICollection<IMessageContent>
 {
     private readonly List<IMessageContent> _items = new();
 
-    public int Count => _items.Count;
-
-    public bool IsReadOnly => false;
-
-    public IMessageContent this[int index]
-    {
-        get => _items[index];
-        set => _items[index] = value;
-    }
-
     public void AddText(string? text)
     {
         Add(new TextContent 
-        { 
+        {
             Index = _items.Count,
             Text = text 
         });
@@ -38,7 +28,11 @@ public class MessageContentCollection : ICollection<IMessageContent>
         });
     }
 
-    public void AddTool(string? id, string? name, string? arguments, FunctionResult? result)
+    public void AddTool(
+        string? id,
+        string? name,
+        FunctionArguments? arguments, 
+        FunctionResult? result)
     {
         Add(new ToolContent 
         {
@@ -50,7 +44,17 @@ public class MessageContentCollection : ICollection<IMessageContent>
         });
     }
 
-    #region Implementation Methods
+    #region Implementation
+
+    public int Count => _items.Count;
+
+    public bool IsReadOnly => false;
+
+    public IMessageContent this[int index]
+    {
+        get => _items[index];
+        set => _items[index] = value;
+    }
 
     public void AddRange(IEnumerable<IMessageContent> collection) => _items.AddRange(collection);
 

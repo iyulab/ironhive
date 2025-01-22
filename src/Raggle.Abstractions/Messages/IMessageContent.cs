@@ -46,7 +46,7 @@ public class ToolContent : IMessageContent
 
     public string? Name { get; set; }
 
-    public string? Arguments { get; set; }
+    public FunctionArguments? Arguments { get; set; }
 
     public FunctionResult? Result { get; set; }
 }
