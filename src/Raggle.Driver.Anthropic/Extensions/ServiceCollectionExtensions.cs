@@ -1,13 +1,12 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Raggle.Abstractions.Extensions;
+﻿using Raggle.Driver.Anthropic;
 using Raggle.Driver.Anthropic.Configurations;
 
-namespace Raggle.Driver.Anthropic;
+namespace Microsoft.Extensions.DependencyInjection;
 
-public static partial class IServiceCollectionExtensions
+public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddAnthropicServices(
-        this IServiceCollection services, 
+        this IServiceCollection services,
         string serviceKey,
         AnthropicConfig config)
     {

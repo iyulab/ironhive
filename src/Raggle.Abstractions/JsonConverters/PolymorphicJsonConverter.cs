@@ -3,7 +3,7 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Raggle.Abstractions.Json;
+namespace Raggle.Abstractions.JsonConverters;
 
 /// <summary>
 /// JSON String의 다형성을 지원하는 컨버터입니다.
@@ -26,7 +26,7 @@ public class PolymorphicJsonConverter<T> : JsonConverter<T> where T : class
     /// </summary>
     public PolymorphicJsonConverter()
     {
-        var attr = typeof(T).GetCustomAttribute<PolymorphicPropertyNameAttribute>();
+        var attr = typeof(T).GetCustomAttribute<PolymorphicNameAttribute>();
         _discriminatorName = attr?.Name ?? DefaultDiscriminatorName;
         _discriminatorComparison = DefaultDiscriminatorComparison;
         _typeMapping = _cachedTypeMapping.Value;
@@ -119,7 +119,7 @@ public class PolymorphicJsonConverter<T> : JsonConverter<T> where T : class
             if (type == null) continue;
 
             // 파생 클래스에서 어트리뷰트가 지정되지 않은 것은 건너뜁니다.
-            var discriminatorValueAttr = type.GetCustomAttribute<PolymorphicPropertyValueAttribute>();
+            var discriminatorValueAttr = type.GetCustomAttribute<PolymorphicValueAttribute>();
             if (discriminatorValueAttr == null) continue;
 
             // 중복 판별자 값이 있는 경우 예외를 발생시킵니다.

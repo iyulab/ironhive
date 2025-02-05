@@ -10,11 +10,23 @@ internal class ChatCompletionRequest
     [JsonPropertyName("model")]
     public required string Model { get; set; }
 
+    [JsonPropertyName("store")]
+    public bool? Store { get; set; }
+
+    /// <summary>
+    /// "low", "medium", "high"
+    /// </summary>
+    [JsonPropertyName("reasoning_effort")]
+    public string? ReasoningEffort { get; set; }
+
+    [JsonPropertyName("metadata")]
+    public KeyValuePair<string, string>? Metadata { get; set; }
+
     /// <summary>
     /// -2.0 to 2.0
     /// </summary>
     [JsonPropertyName("frequency_penalty")]
-    public double? FrequencyPenalty { get; set; }
+    public float? FrequencyPenalty { get; set; }
 
     /// <summary>
     /// key is the token id, value is -100 to 100
@@ -31,8 +43,8 @@ internal class ChatCompletionRequest
     [JsonPropertyName("top_logprobs")]
     public int? TopLogProbs { get; set; }
 
-    [JsonPropertyName("max_tokens")]
-    public int? MaxTokens { get; set; }
+    [JsonPropertyName("max_completion_tokens")]
+    public int? MaxCompletionTokens { get; set; }
 
     /// <summary>
     /// Generated Message Count of completions
@@ -41,10 +53,25 @@ internal class ChatCompletionRequest
     public int? N { get; set; }
 
     /// <summary>
+    /// ["text", "audio"]
+    /// </summary>
+    [JsonPropertyName("modalities")]
+    public string[]? Modalities { get; set; }
+
+    [JsonPropertyName("prediction")]
+    public object? Prediction { get; set; }
+
+    /// <summary>
+    /// when you use modalities: ["audio"]
+    /// </summary>
+    [JsonPropertyName("audio")]
+    public object? Audio { get; set; }
+
+    /// <summary>
     /// -2.0 to 2.0
     /// </summary>
     [JsonPropertyName("presence_penalty")]
-    public double? PresencePenalty { get; set; }
+    public float? PresencePenalty { get; set; }
 
     [JsonPropertyName("response_format")]
     public ResponseFormat? ResponseFormat { get; set; }
@@ -64,17 +91,23 @@ internal class ChatCompletionRequest
     [JsonPropertyName("stop")]
     public string[]? Stop { get; set; }
 
+    [JsonPropertyName("stream")]
+    public bool? Stream { get; set; }
+
+    [JsonPropertyName("stream_options")]
+    public StreamOptions? StreamOptions { get; set; }
+
     /// <summary>
     /// 0.0 to 1.0
     /// </summary>
     [JsonPropertyName("temperature")]
-    public double? Temperature { get; set; }
+    public float? Temperature { get; set; }
 
     /// <summary>
     /// 0.0 to 1.0
     /// </summary>
     [JsonPropertyName("top_p")]
-    public double? TopP { get; set; }
+    public float? TopP { get; set; }
 
     [JsonPropertyName("tools")]
     public Tool[]? Tools { get; set; }
@@ -90,12 +123,6 @@ internal class ChatCompletionRequest
 
     [JsonPropertyName("user")]
     public string? User { get; set; }
-
-    [JsonPropertyName("stream")]
-    public bool? Stream { get; set; }
-
-    [JsonPropertyName("stream_options")]
-    public StreamOptions? StreamOptions { get; set; }
 }
 
 internal class StreamOptions

@@ -27,7 +27,7 @@ internal abstract class OpenAIClientBase
     /// </summary>
     protected async Task<IEnumerable<OpenAIModel>> GetModelsAsync(CancellationToken cancellationToken)
     {
-        var jsonDocument = await _client.GetFromJsonAsync<JsonDocument>(OpenAIConstants.GetModelsPath, cancellationToken);
+        var jsonDocument = await _client.GetFromJsonAsync<JsonDocument>(OpenAIConstants.ListModelsPath, cancellationToken);
         var models = jsonDocument?.RootElement.GetProperty("data").Deserialize<IEnumerable<OpenAIModel>>();
 
         return models?.OrderByDescending(m => m.Created).ToArray() ?? [];
@@ -38,8 +38,8 @@ internal abstract class OpenAIClientBase
         var client = new HttpClient
         {
             BaseAddress = string.IsNullOrWhiteSpace(config.EndPoint)
-                ? new Uri(OpenAIConstants.DefaultEndPoint)
-                : new Uri(config.EndPoint.EndsWith('/') ? config.EndPoint : $"{config.EndPoint}/")
+                ? new Uri(OpenAIConstants.DefaultEndPoint.EnsureSuffix('/'))
+                : new Uri(config.EndPoint.EnsureSuffix('/'))
         };
 
         if (!string.IsNullOrWhiteSpace(config.ApiKey))

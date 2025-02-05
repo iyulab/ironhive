@@ -14,17 +14,18 @@ internal class AnthropicChatCompletionClient : AnthropicClientBase
 
     internal AnthropicChatCompletionClient(string apiKey) : base(apiKey) { }
 
-    /// <summary>
-    /// Anthropic does not provide a way to list available models.
-    /// so this list is hardcoded models, writed at 2024-09-02.
-    /// </summary>
-    internal IEnumerable<AnthropicChatCompletionModel> GetChatCompletionModels()
+    internal async Task<IEnumerable<AnthropicChatCompletionModel>> GetChatCompletionModelsAsync(
+        CancellationToken cancellationToken)
     {
-        var models = GetModels();
-        return models.Select(m => new AnthropicChatCompletionModel
-        {
-            ModelId = m.ModelId,
-        });
+        var models = await GetModelsAsync(cancellationToken);
+        return models.Where(AnthropicModel.IsChatCompletionModel)
+                     .Select(m => new AnthropicChatCompletionModel
+                     {
+                         Type = m.Type,
+                         ID = m.ID,
+                         DisplayName = m.DisplayName,
+                         CreatedAt = m.CreatedAt,
+                     });
     }
 
     internal async Task<MessagesResponse> PostMessagesAsync(

@@ -35,8 +35,8 @@ internal abstract class OllamaClientBase
         var client = new HttpClient
         {
             BaseAddress = string.IsNullOrEmpty(config.EndPoint)
-                ? new Uri(OllamaConstants.DefaultEndPoint)
-                : new Uri(config.EndPoint.EndsWith('/') ? config.EndPoint : $"{config.EndPoint}/"),
+                ? new Uri(OllamaConstants.DefaultEndPoint.EnsureSuffix('/'))
+                : new Uri(config.EndPoint.EnsureSuffix('/')),
         };
 
         if (config.DefaultRequestHeaders != null)

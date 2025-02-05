@@ -4,6 +4,12 @@ namespace Raggle.Driver.Anthropic.ChatCompletion.Models;
 
 internal class Tool
 {
+    /// <summary>
+    /// "custom", 
+    /// </summary>
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
+
     [JsonPropertyName("name")]
     public required string Name { get; set; }
 

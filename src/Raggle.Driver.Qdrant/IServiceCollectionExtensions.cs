@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using Raggle.Abstractions.Extensions;
 
 namespace Raggle.Driver.Qdrant;
 

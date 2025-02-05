@@ -1,9 +1,9 @@
 ﻿using Raggle.Abstractions.Json;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Raggle.Abstractions.Extensions;
+namespace System.Collections.Generic;
 
-public static class IDictionaryExtensions
+public static class DictionaryExtensions
 {
     public static bool TryGetValue<T>(
         this IDictionary<string, object> dictionary, 

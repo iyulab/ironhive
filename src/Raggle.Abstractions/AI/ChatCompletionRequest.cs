@@ -9,47 +9,50 @@ namespace Raggle.Abstractions.AI;
 public class ChatCompletionRequest
 {
     /// <summary>
-    /// Gets or sets the chat completion model name.
+    /// chat completion model name.
     /// </summary>
     public string Model { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the instructions to the model.
+    /// the instructions to the model.
     /// </summary>
     public string? System { get; set; }
 
     /// <summary>
-    /// Gets or sets the chat history to use for completion.
+    /// the chat history to use for completion.
     /// </summary>
     public MessageCollection Messages { get; set; } = new();
 
     /// <summary>
-    /// Gets or sets the maximum number of tokens to generate.
+    /// the maximum number of tokens to generate.
     /// </summary>
     public int? MaxTokens { get; set; }
 
     /// <summary>
-    /// Gets or sets the temperature for the model. Value ranges from 0.0 to 1.0.
+    /// Value ranges from 0.0 to 1.0.
     /// </summary>
     public float? Temperature { get; set; }
 
     /// <summary>
-    /// Gets or sets the top K value for the model. Value ranges from 0 to 100.
+    /// Value ranges from 0 to 100.
     /// </summary>
     public int? TopK { get; set; }
 
     /// <summary>
-    /// Gets or sets the top P value for the model. Value ranges from 0.0 to 1.0.
+    /// Value ranges from 0.0 to 1.0.
     /// </summary>
     public float? TopP { get; set; }
 
     /// <summary>
-    /// Gets or sets the stop sequences to stop text generation at specified sequences.
+    /// the sequences to stop text generation
     /// </summary>
     public string[]? StopSequences { get; set; }
 
     /// <summary>
-    /// Gets or sets the tools to use in the model.
+    /// the tool list to use in the model.
     /// </summary>
     public FunctionToolCollection? Tools { get; set; }
+
+
+
 }

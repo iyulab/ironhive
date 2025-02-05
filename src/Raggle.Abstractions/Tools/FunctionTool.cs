@@ -6,24 +6,16 @@ namespace Raggle.Abstractions.Tools;
 
 public class FunctionTool
 {
-    private readonly Delegate _function;
-    public object? Target => _function.Target;
-    public ParameterInfo[] Parameters => _function.Method.GetParameters();
-    public Type ReturnType => _function.Method.ReturnType;
-
-    public required string Name { get; set; }
+    public required Delegate Function { get; init; }
+    public required string Name { get; init; }
     public string? Description { get; set; }
-
-    public FunctionTool(Delegate function)
-    {
-        _function = function;
-    }
 
     public ObjectJsonSchema ToJsonSchema()
     {
+        var parameters = Function.Method.GetParameters();
         var properties = new Dictionary<string, JsonSchema>();
         var required = new List<string>();
-        foreach (var prop in Parameters)
+        foreach (var prop in parameters)
         {
             if (string.IsNullOrEmpty(prop.Name))
                 continue;
@@ -49,7 +41,7 @@ public class FunctionTool
     {
         try
         {
-            var result = _function.DynamicInvoke(PrepareArguments(args));
+            var result = Function.DynamicInvoke(PrepareArguments(args));
             if (result is Task task)
             {
                 await task;
@@ -60,7 +52,7 @@ public class FunctionTool
                 await valueTask;
                 result = valueTask.GetType().GetProperty("Result")?.GetValue(valueTask);
             }
-            else if (ReturnType == typeof(IAsyncEnumerable<>))
+            else if (Function.Method.ReturnType == typeof(IAsyncEnumerable<>))
             {
                 var enumerable = result as IAsyncEnumerable<object?>
                     ?? throw new InvalidOperationException("Expected IAsyncEnumerable but got null.");
@@ -86,12 +78,13 @@ public class FunctionTool
 
     private object?[]? PrepareArguments(FunctionArguments? args)
     {
-        if (Parameters.Length == 0) return null;
-        var arguments = new object?[Parameters.Length];
+        var parameters = Function.Method.GetParameters();
+        if (parameters.Length == 0) return null;
+        var arguments = new object?[parameters.Length];
 
-        for (int i = 0; i < Parameters.Length; i++)
+        for (int i = 0; i < parameters.Length; i++)
         {
-            var param = Parameters[i];
+            var param = parameters[i];
             var paramName = param.Name ?? throw new InvalidOperationException("Parameter name cannot be null.");
             var paramType = param.ParameterType;
             

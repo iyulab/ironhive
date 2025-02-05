@@ -26,7 +26,7 @@ internal class MessagesRequest
     /// 0.0 to 1.0
     /// </summary>
     [JsonPropertyName("temperature")]
-    public double? Temperature { get; set; }
+    public float? Temperature { get; set; }
 
     /// <summary>
     /// 0 to 100
@@ -38,7 +38,7 @@ internal class MessagesRequest
     /// 0.0 to 1.0
     /// </summary>
     [JsonPropertyName("top_p")]
-    public double? TopP { get; set; }
+    public float? TopP { get; set; }
 
     [JsonPropertyName("stop_sequences")]
     public string[]? StopSequences { get; set; }

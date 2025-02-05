@@ -16,7 +16,8 @@ public class VectorSearchTool
         _provider = provider;
     }
 
-    [FunctionTool("vector_search", "search vectordb for internel information")]
+    [FunctionTool("vector_search")]
+    [Description("search vector db for internel information")]
     public async Task<IEnumerable<ScoredVectorPoint>> SearchVectorAsync(
         [Description("memory collectionName")] string collectionName,
         [Description("search query")] string query)

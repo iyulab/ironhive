@@ -1,10 +1,9 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Raggle.Abstractions.Extensions;
+﻿using Raggle.Driver.OpenAI;
 using Raggle.Driver.OpenAI.Configurations;
 
-namespace Raggle.Driver.OpenAI;
+namespace Microsoft.Extensions.DependencyInjection;
 
-public static partial class IServiceCollectionExtensions
+public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddOpenAIServices(
         this IServiceCollection services,

@@ -1,4 +1,4 @@
-﻿using Raggle.Driver.OpenAI.Converters;
+﻿using Raggle.Abstractions.JsonConverters;
 using System.Text.Json.Serialization;
 
 namespace Raggle.Driver.OpenAI.ChatCompletion.Models;
@@ -12,7 +12,7 @@ internal class StreamingChatCompletionResponse
     public ChoiceDelta[]? Choices { get; set; }
 
     [JsonPropertyName("created")]
-    [JsonConverter(typeof(UnixTimeJsonConverter))]
+    [JsonConverter(typeof(DateTimeJsonConverter))]
     public DateTime Created { get; set; }
 
     [JsonPropertyName("model")]
@@ -25,10 +25,10 @@ internal class StreamingChatCompletionResponse
     public string? SystemFingerprint { get; set; }
 
     /// <summary>
-    /// "chat.completion" only
+    /// always "chat.completion"
     /// </summary>
     [JsonPropertyName("object")]
-    public string? Object { get; } = "chat.completion";
+    public string? Object { get; set; }
 
     [JsonPropertyName("usage")]
     public TokenUsage? Usage { get; set; }

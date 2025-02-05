@@ -23,10 +23,10 @@ internal class ChatCompletionResponse
     public string? SystemFingerprint { get; set; }
 
     /// <summary>
-    /// "chat.completion" only
+    /// always "chat.completion"
     /// </summary>
     [JsonPropertyName("object")]
-    public string Object { get; } = "chat.completion";
+    public string? Object { get; set; }
 
     [JsonPropertyName("usage")]
     public TokenUsage? Usage { get; set; }

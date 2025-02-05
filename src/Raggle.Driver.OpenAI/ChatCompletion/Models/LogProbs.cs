@@ -17,7 +17,7 @@ internal class LogProbTokens
     public string? Token { get; set; }
 
     [JsonPropertyName("logprob")]
-    public double? LogProb { get; set; }
+    public float? LogProb { get; set; }
 
     [JsonPropertyName("bytes")]
     public int[]? Bytes { get; set; }
@@ -32,7 +32,7 @@ internal class LogProbToken
     public string? Token { get; set; }
 
     [JsonPropertyName("logprob")]
-    public double? LogProb { get; set; }
+    public float? LogProb { get; set; }
 
     [JsonPropertyName("bytes")]
     public int[]? Bytes { get; set; }

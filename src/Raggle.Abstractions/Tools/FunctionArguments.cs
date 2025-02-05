@@ -20,7 +20,8 @@ public class FunctionArguments : IDictionary<string, object>
 
     public FunctionArguments(string json)
     {
-        _inner = ParseJson(json);
+        if (TryParseJson(json, out var value))
+            _inner = value;
     }
 
     public void Append(string? partialJson)
@@ -29,9 +30,9 @@ public class FunctionArguments : IDictionary<string, object>
             return;
 
         _buffer += partialJson;
-        if (_buffer.EndsWith('}'))
+        if (_buffer.EndsWith('}') && TryParseJson(_buffer, out var value))
         {
-            _inner = ParseJson(_buffer);
+            _inner = value;
             _buffer = string.Empty;
         }
     }
@@ -49,18 +50,18 @@ public class FunctionArguments : IDictionary<string, object>
         }
     }
 
-    private static Dictionary<string, object> ParseJson(string json)
+    private static bool TryParseJson(string json, [NotNullWhen(true)] out Dictionary<string, object> value)
     {
         try
         {
-            return JsonSerializer.Deserialize<Dictionary<string, object>>(json) 
-                ?? new Dictionary<string, object>();
+            value = JsonSerializer.Deserialize<Dictionary<string, object>>(json)!;
         }
         catch (Exception ex)
         {
             Debug.WriteLine(ex);
-            return new Dictionary<string, object>();
+            value = null!;
         }
+        return value != null;
     }
 
     #region IDictionary Implementation

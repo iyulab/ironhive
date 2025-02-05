@@ -1,10 +1,9 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Raggle.Abstractions.Extensions;
+﻿using Raggle.Driver.Ollama;
 using Raggle.Driver.Ollama.Configurations;
 
-namespace Raggle.Driver.Ollama;
+namespace Microsoft.Extensions.DependencyInjection;
 
-public static partial class IServiceCollectionExtensions
+public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddOllamaServices(
         this IServiceCollection services,

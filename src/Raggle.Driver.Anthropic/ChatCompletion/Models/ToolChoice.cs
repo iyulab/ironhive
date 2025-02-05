@@ -6,7 +6,11 @@ namespace Raggle.Driver.Anthropic.ChatCompletion.Models;
 [JsonDerivedType(typeof(AutoToolChoice), "auto")]
 [JsonDerivedType(typeof(AnyToolChoice), "any")]
 [JsonDerivedType(typeof(ManualToolChoice), "tool")]
-internal abstract class ToolChoice { }
+internal abstract class ToolChoice 
+{
+    [JsonPropertyName("disable_parallel_tool_use")]
+    public bool? DisaableParallelToolUse { get; set; }
+}
 
 internal class AutoToolChoice : ToolChoice { }
 

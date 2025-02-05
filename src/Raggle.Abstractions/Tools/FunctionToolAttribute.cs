@@ -4,15 +4,12 @@
 public class FunctionToolAttribute : Attribute
 {
     public string? Name { get; set; }
-    public string? Description { get; set; }
 
     public FunctionToolAttribute() { }
 
     public FunctionToolAttribute(
-        string? name = null,
-        string? description = null)
+        string? name = null)
     {
         Name = name;
-        Description = description;
     }
 }

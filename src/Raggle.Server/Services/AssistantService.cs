@@ -2,7 +2,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Raggle.Abstractions;
 using Raggle.Abstractions.AI;
-using Raggle.Abstractions.Extensions;
 using Raggle.Abstractions.Messages;
 using Raggle.Abstractions.Tools;
 using Raggle.Server.Data;
@@ -98,7 +97,7 @@ public class AssistantService
                 if (tool == RaggleServiceKeys.VectorSearch)
                 {
                     var toolService = _raggle.Services.GetRequiredKeyedService<VectorSearchTool>(RaggleServiceKeys.VectorSearch);
-                    var functions = FunctionToolFactory.CreateFromInstance(toolService);
+                    var functions = FunctionToolFactory.CreateFromObject(toolService);
                     tools.AddRange(functions);
                 }
                 else
@@ -116,8 +115,12 @@ public class AssistantService
             instructions += "- description: Current user company information\n";
 
             var dbService = _raggle.Services.GetRequiredKeyedService<DatabaseTool>("database_search");
-            var functions = FunctionToolFactory.CreateFromInstance(dbService);
+            var functions = FunctionToolFactory.CreateFromObject(dbService);
             tools.AddRange(functions);
+
+            var t = _raggle.Services.GetRequiredKeyedService<PythonTool>("python-interpreter");
+            var f = FunctionToolFactory.CreateFromObject(t);
+            tools.AddRange(f);
         }
 
         var assistant = _raggle.CreateAssistant(

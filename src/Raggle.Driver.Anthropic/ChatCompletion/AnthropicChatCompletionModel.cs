@@ -8,7 +8,7 @@ internal class AnthropicChatCompletionModel : AnthropicModel
     {
         get
         {
-            return ModelId.Contains("claude-3");
+            return ID.Contains("claude-3");
         }
     }
 
@@ -16,7 +16,7 @@ internal class AnthropicChatCompletionModel : AnthropicModel
     {
         get
         {
-            return ModelId.Contains("opus") || ModelId.Contains("sonnet");
+            return ID.Contains("opus") || ID.Contains("sonnet");
         }
     }
 
@@ -24,8 +24,8 @@ internal class AnthropicChatCompletionModel : AnthropicModel
     {
         get
         {
-            return ModelId.Contains("claude-2")
-                || ModelId.Contains("claude-instant-1.2");
+            return ID.Contains("claude-2")
+                || ID.Contains("claude-instant-1.2");
         }
     }
 }

@@ -1,7 +1,4 @@
-﻿using Raggle.Driver.Anthropic;
-using Raggle.Driver.Ollama;
-using Raggle.Driver.OpenAI;
-using Raggle.Core.Memory.Handlers;
+﻿using Raggle.Core.Memory.Handlers;
 using Raggle.Driver.LiteDB;
 using Raggle.Driver.Qdrant;
 using Raggle.Driver.LocalDisk;
@@ -149,6 +146,7 @@ public static partial class IServiceCollectionExtentions
         this IServiceCollection services)
     {
         services.AddToolService<VectorSearchTool>(RaggleServiceKeys.VectorSearch);
+        services.AddToolService<PythonTool>("python-interpreter");
         return services;
     }
 

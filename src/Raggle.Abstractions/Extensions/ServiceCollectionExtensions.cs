@@ -1,12 +1,10 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
+﻿using Microsoft.Extensions.DependencyInjection.Extensions;
 using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Memory;
-using Raggle.Abstractions.Tools;
 
-namespace Raggle.Abstractions.Extensions;
+namespace Microsoft.Extensions.DependencyInjection;
 
-public static partial class IServiceCollectionExtensions
+public static class ServiceCollectionExtensions
 {
     public static IServiceCollection SetDocumentStorage<T>(
         this IServiceCollection services,

@@ -1,7 +1,7 @@
 ﻿using System.Runtime.Serialization;
 using System.Text.Json;
 
-namespace Raggle.Abstractions.Extensions;
+namespace System;
 
 public static class ObjectExtensions
 {
