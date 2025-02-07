@@ -65,3 +65,4 @@ node_modules/
 
 # for secret
 example/ConsoleTest/Secrets.json
+example/Raggle.Server.WebApi/publish

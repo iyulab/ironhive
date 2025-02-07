@@ -26,7 +26,7 @@ export class MainApp extends LitElement {
     { path: '/chat/:id',
       render: ({id}) => html`<chat-room .key=${id!}></chat-room>`},
     { path: '/user', 
-      render: () => html`<user-page></user-page>`},
+      render: () => html`<user-page></user-page>`}
   ], {
     fallback: {
       render: () => html`<error-page status="404"></error-page>`
@@ -41,6 +41,10 @@ export class MainApp extends LitElement {
   }
 
   render() {
+    if (window.location.pathname === '/guest') {
+      return html`<guest-page></guest-page>`;
+    }
+
     return html`
       <div class="side-bar">
         <a class="home" href="/">

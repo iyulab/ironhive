@@ -2,7 +2,7 @@
   "database": {
     "type": "sqlite",
     "sqlite": {
-      "connection_string": "Data Source=C:\\temp\\index.db"
+      "connection_string": "Data Source=/var/db/index.db"
     },
     "sql_server": {
       "connection_string": ""
@@ -29,7 +29,7 @@
     "vectors": {
       "type": "lite_db",
       "lite_db": {
-        "database_path": "C:\\temp\\vector.db",
+        "database_path": "/var/db/vector.db",
         "password": ""
       },
       "qdrant": {
@@ -43,7 +43,7 @@
     "documents": {
       "type": "local_disk",
       "local_disk": {
-        "directory_path": "C:\\temp\\documents"
+        "directory_path": "/var/data/documents"
       },
       "azure_blob": {
         "auth_type": "connection_string",
@@ -56,13 +56,13 @@
   },
   "services": {
     "open_ai": {
-      "end_point": "https://api.openai.com/v1/",
+      "end_point": "https://api.openai.com/",
       "api_key": "",
       "organization": "",
       "project": ""
     },
     "anthropic": {
-      "end_point": "https://api.anthropic.com/v1/",
+      "end_point": "https://api.anthropic.com/",
       "api_key": "",
       "version": ""
     },

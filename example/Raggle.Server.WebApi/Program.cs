@@ -15,6 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 var cm = new JsonConfigManager(Path.Combine(Directory.GetCurrentDirectory(),"raggle_settings.json"));
 if (cm.Config == null)
     throw new Exception("Failed to load raggle_settings.json");
+Directory.CreateDirectory("/var/db");
 
 builder.Services.AddRaggleServices(cm.Config);
 builder.Services.AddToolService<DatabaseTool>("database_search");

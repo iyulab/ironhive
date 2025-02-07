@@ -1,5 +1,6 @@
 import { 
   AssistantApi,
+  GuestApi,
   MemoryApi,
   SystemApi
 } from './api';
@@ -25,5 +26,7 @@ export class Api {
   public static readonly Assistant = new AssistantApi(Api.controller);
 
   public static readonly Memory = new MemoryApi(Api.controller);
+
+  public static readonly Guest = new GuestApi(Api.controller);
 
 }
