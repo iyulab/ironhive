@@ -45,15 +45,14 @@ public class EmbeddingsHandler : IPipelineHandler
 
             if (JsonObjectConverter.TryConvertTo<string>(section.Content, out var str))
             {
-                var request = new EmbeddingRequest { Model = options.ModelName, Input = str };
-                var response = await embedder.EmbeddingAsync(request, cancellationToken);
-                if (response.Embedding == null)
+                var embedding = await embedder.EmbeddingAsync(options.ModelName, str, cancellationToken);
+                if (embedding == null)
                     throw new InvalidOperationException($"failed to get embedding for {str}");
 
                 points.Add(new VectorPoint
                 {
                     VectorId = Guid.NewGuid(),
-                    Vectors = response.Embedding,
+                    Vectors = embedding,
                     DocumentId = pipeline.DocumentId,
                     Tags = pipeline.Tags?.ToArray(),
                     Payload = section

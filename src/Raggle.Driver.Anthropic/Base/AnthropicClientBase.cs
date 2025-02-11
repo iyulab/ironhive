@@ -25,11 +25,10 @@ internal abstract class AnthropicClientBase
     /// <summary>
     /// Gets the list of Anthropic models.
     /// </summary>
-    protected async Task<IEnumerable<AnthropicModel>> GetModelsAsync(CancellationToken cancellationToken)
+    public async Task<IEnumerable<AnthropicModel>> GetModelsAsync(CancellationToken cancellationToken)
     {
-        var jsonDocument = await _client.GetFromJsonAsync<JsonDocument>(AnthropicConstants.ListModelsPath, cancellationToken);
+        var jsonDocument = await _client.GetFromJsonAsync<JsonDocument>(AnthropicConstants.GetModelListPath, cancellationToken);
         var models = jsonDocument?.RootElement.GetProperty("data").Deserialize<IEnumerable<AnthropicModel>>(_jsonOptions);
-
         return models?.OrderByDescending(m => m.CreatedAt).ToArray() ?? [];
     }
 
@@ -42,13 +41,14 @@ internal abstract class AnthropicClientBase
                 : new Uri(config.EndPoint.EnsureSuffix('/')),
         };
 
-        if (string.IsNullOrEmpty(config.Version))
-            client.DefaultRequestHeaders.Add(AnthropicConstants.VersionHeaderName, AnthropicConstants.VersionHeaderValue);
-        else
-            client.DefaultRequestHeaders.Add(AnthropicConstants.VersionHeaderName, config.Version);
+        client.DefaultRequestHeaders.Add(AnthropicConstants.VersionHeaderName, 
+            string.IsNullOrEmpty(config.Version)
+            ? AnthropicConstants.VersionHeaderValue
+            : config.Version);
 
         if (!string.IsNullOrEmpty(config.ApiKey))
-            client.DefaultRequestHeaders.Add(AnthropicConstants.ApiKeyHeaderName, config.ApiKey);
+            client.DefaultRequestHeaders.Add(
+                AnthropicConstants.ApiKeyHeaderName, config.ApiKey);
 
         return client;
     }

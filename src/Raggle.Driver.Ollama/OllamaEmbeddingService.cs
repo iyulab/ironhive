@@ -19,37 +19,33 @@ public class OllamaEmbeddingService : IEmbeddingService
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<EmbeddingModel>> GetEmbeddingModelsAsync(
+    public async Task<IEnumerable<EmbeddingModel>> GetModelsAsync(
         CancellationToken cancellationToken = default)
     {
-        var models = await _client.GetEmbeddingModelsAsync(cancellationToken);
+        var models = await _client.GetModelsAsync(cancellationToken);
         return models.Select(m => new EmbeddingModel
         {
             Model = m.Name,
+            Owner = null,
             CreatedAt = null,
             ModifiedAt = m.ModifiedAt,
-            Owner = null
         });
     }
 
     /// <inheritdoc />
-    public async Task<EmbeddingResponse> EmbeddingAsync(
-        EmbeddingRequest request,
+    public async Task<float[]> EmbeddingAsync(
+        string model,
+        string input,
         CancellationToken cancellationToken = default)
     {
-        var _request = new Embeddings.Models.EmbeddingRequest
+        var response = await _client.PostEmbeddingAsync(new EmbeddingRequest
         {
-            Model = request.Model,
-            Input = [ request.Input ]
-        };
-        var response = await _client.PostEmbeddingAsync(_request, cancellationToken);
-        
-        return new EmbeddingResponse
-        {
-            Model = response.Model,
-            Embedding = response.Embeddings.FirstOrDefault(),
-            TimeStamp = DateTime.UtcNow
-        };
+            Model = model,
+            Input = [input]
+        }, cancellationToken);
+
+        return response.Embeddings.FirstOrDefault()
+            ?? throw new InvalidOperationException("Failed to generate embedding");
     }
 
     /// <inheritdoc />
@@ -57,12 +53,12 @@ public class OllamaEmbeddingService : IEmbeddingService
         EmbeddingsRequest request, 
         CancellationToken cancellationToken = default)
     {
-        var _request = new Embeddings.Models.EmbeddingRequest
+        var response = await _client.PostEmbeddingAsync(new EmbeddingRequest
         {
             Model = request.Model,
             Input = request.Input
-        };
-        var response = await _client.PostEmbeddingAsync(_request, cancellationToken);
+        }, cancellationToken);
+
         var embeddings = response.Embeddings.Select((e, i) => new EmbeddingsResponse.EmbeddingData
         {
             Index = i,
@@ -73,7 +69,6 @@ public class OllamaEmbeddingService : IEmbeddingService
         {
             Model = request.Model,
             Embeddings = embeddings,
-            TimeStamp = DateTime.UtcNow
         };
     }
 }

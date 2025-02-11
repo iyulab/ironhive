@@ -3,7 +3,6 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text;
 using Raggle.Driver.OpenAI.Base;
-using Raggle.Driver.OpenAI.ChatCompletion.Models;
 using System.Runtime.CompilerServices;
 
 namespace Raggle.Driver.OpenAI.ChatCompletion;
@@ -13,19 +12,6 @@ internal class OpenAIChatCompletionClient : OpenAIClientBase
     internal OpenAIChatCompletionClient(string apiKey) : base(apiKey) { }
 
     internal OpenAIChatCompletionClient(OpenAIConfig config) : base(config) { }
-
-    internal async Task<IEnumerable<OpenAIChatCompletionModel>> GetChatCompletionModelsAsync(
-        CancellationToken cancellationToken)
-    {
-        var models = await GetModelsAsync(cancellationToken);
-        return models.Where(OpenAIModel.IsChatCompletionModel)
-                     .Select(m => new OpenAIChatCompletionModel
-                     {
-                         ID = m.ID,
-                         Created = m.Created,
-                         OwnedBy = m.OwnedBy
-                     });
-    }
 
     internal async Task<ChatCompletionResponse> PostChatCompletionAsync(
         ChatCompletionRequest request,

@@ -1,6 +1,7 @@
 ﻿using Raggle.Abstractions.AI;
 using Raggle.Driver.OpenAI.Configurations;
 using Raggle.Driver.OpenAI.Embeddings;
+using Raggle.Driver.OpenAI.Extensions;
 
 namespace Raggle.Driver.OpenAI;
 
@@ -19,35 +20,33 @@ public class OpenAIEmbeddingService : IEmbeddingService
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<EmbeddingModel>> GetEmbeddingModelsAsync(
+    public async Task<IEnumerable<EmbeddingModel>> GetModelsAsync(
         CancellationToken cancellationToken = default)
     {
-        var models = await _client.GetEmbeddingModelsAsync(cancellationToken);
-        return models.Select(m => new EmbeddingModel
-        {
-            Model = m.ID,
-            CreatedAt = m.Created,
-            Owner = m.OwnedBy,
-        }).ToArray();
+        var models = await _client.GetModelsAsync(cancellationToken);
+        return models.Where(m => m.IsEmbedding())
+                    .Select(m => new EmbeddingModel
+                    {
+                        Model = m.ID,
+                        Owner = m.OwnedBy,
+                        CreatedAt = m.Created,
+                    }).ToArray();
     }
 
     /// <inheritdoc />
-    public async Task<EmbeddingResponse> EmbeddingAsync(
-        EmbeddingRequest request,
+    public async Task<float[]> EmbeddingAsync(
+        string model,
+        string input,
         CancellationToken cancellationToken = default)
     {
-        var _request = new Embeddings.Models.EmbeddingRequest
+        var response = await _client.PostEmbeddingAsync(new EmbeddingRequest
         {
-            Model = request.Model,
-            Input = [ request.Input ],
-        };
-        var response = await _client.PostEmbeddingAsync(_request, cancellationToken);
-        return new EmbeddingResponse
-        {
-            Model = request.Model,
-            Embedding = response.First().Embedding,
-            TimeStamp = DateTime.UtcNow,
-        };
+            Model = model,
+            Input = [input],
+        }, cancellationToken);
+
+        return response.First().Embedding
+            ?? throw new InvalidOperationException("Failed to generate embedding");
     }
 
     /// <inheritdoc />
@@ -55,12 +54,11 @@ public class OpenAIEmbeddingService : IEmbeddingService
         EmbeddingsRequest request, 
         CancellationToken cancellationToken = default)
     {
-        var _request = new Embeddings.Models.EmbeddingRequest
+        var response = await _client.PostEmbeddingAsync(new EmbeddingRequest
         {
             Model = request.Model,
             Input = request.Input,
-        };
-        var response = await _client.PostEmbeddingAsync(_request, cancellationToken);
+        }, cancellationToken);
 
         var embeddings = response.Select(r => new EmbeddingsResponse.EmbeddingData
         {
@@ -71,8 +69,7 @@ public class OpenAIEmbeddingService : IEmbeddingService
         return new EmbeddingsResponse
         {
             Model = request.Model,
-            Embeddings = embeddings,
-            TimeStamp = DateTime.UtcNow,
+            Embeddings = embeddings
         };
     }
 }

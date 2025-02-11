@@ -26,35 +26,4 @@ internal class OpenAIModel
     [JsonPropertyName("created")]
     [JsonConverter(typeof(DateTimeJsonConverter))]
     public DateTime Created { get; set; }
-
-    internal static bool IsChatCompletionModel(OpenAIModel model)
-    {
-        return model.ID.Equals("o3-mini")
-            //|| model.ID.Equals("o1")
-            //|| model.ID.Equals("o1-mini")
-            || model.ID.Equals("gpt-4o-mini")
-            || model.ID.Equals("gpt-4o");
-            //|| model.ID.Equals("gpt-4-turbo")
-            //|| model.ID.Equals("gpt-4");
-    }
-
-    internal static bool IsEmbeddingModel(OpenAIModel model)
-    {
-        return model.ID.Contains("embedding");
-    }
-
-    internal static bool IsTextToImageModel(OpenAIModel model)
-    {
-        return model.ID.Contains("dall-e");
-    }
-
-    internal static bool IsTextToSpeechModel(OpenAIModel model)
-    {
-        return model.ID.Contains("tts");
-    }
-
-    internal static bool IsAudioToTextModel(OpenAIModel model)
-    {
-        return model.ID.Contains("whisper");
-    }
 }

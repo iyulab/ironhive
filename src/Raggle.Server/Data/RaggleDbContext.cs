@@ -1,6 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Raggle.Abstractions.AI;
-using Raggle.Abstractions.Assistant;
 using Raggle.Abstractions.Messages;
 using Raggle.Server.Entities;
 
@@ -125,7 +124,7 @@ public class RaggleDbContext : DbContext
                   .HasMaxLength(255);
 
             entity.Property(a => a.Options)
-                  .HasConversion<JsonValueConverter<ExecuteOptions>>()
+                  .HasConversion<JsonValueConverter<ChatCompletionParameters>>()
                   .HasColumnType("TEXT");
 
             entity.Property(a => a.Tools)

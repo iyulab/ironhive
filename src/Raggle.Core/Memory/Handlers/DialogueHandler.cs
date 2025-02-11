@@ -81,7 +81,7 @@ public class DialogueHandler : IPipelineHandler
         Options options,
         CancellationToken cancellationToken)
     {
-        var request = new ChatCompletionRequest
+        var request = new MessageContext
         {
             System = GetSystemInstruction(),
             Model = options.ModelName,

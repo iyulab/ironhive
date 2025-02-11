@@ -1,6 +1,5 @@
 ﻿using Raggle.Driver.OpenAI.Base;
 using Raggle.Driver.OpenAI.Configurations;
-using Raggle.Driver.OpenAI.Embeddings.Models;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
@@ -12,19 +11,6 @@ internal class OpenAIEmbeddingClient : OpenAIClientBase
     internal OpenAIEmbeddingClient(string apiKey) : base(apiKey) { }
 
     internal OpenAIEmbeddingClient(OpenAIConfig config) : base(config) { }
-
-    internal async Task<IEnumerable<OpenAIEmbeddingModel>> GetEmbeddingModelsAsync(
-        CancellationToken cancellationToken)
-    {
-        var models = await GetModelsAsync(cancellationToken);
-        return models.Where(OpenAIModel.IsEmbeddingModel)
-                     .Select(m => new OpenAIEmbeddingModel
-                     {
-                         ID = m.ID,
-                         Created = m.Created,
-                         OwnedBy = m.OwnedBy
-                     });
-    }
 
     internal async Task<IEnumerable<EmbeddingResponse>> PostEmbeddingAsync(
         EmbeddingRequest request,
@@ -40,7 +26,8 @@ internal class OpenAIEmbeddingClient : OpenAIClientBase
 
         var embeddings = jsonDocument.RootElement.GetProperty("data").EnumerateArray().Select(e =>
         {
-            return JsonSerializer.Deserialize<EmbeddingResponse>(e, _jsonOptions)!;
+            return JsonSerializer.Deserialize<EmbeddingResponse>(e, _jsonOptions)
+                ?? throw new InvalidOperationException("Failed to deserialize response.");
         });
 
         return embeddings;

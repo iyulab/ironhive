@@ -1,4 +1,4 @@
-﻿using Raggle.Abstractions.Assistant;
+﻿using Raggle.Abstractions.AI;
 using System.Text.Json.Serialization;
 
 namespace Raggle.Server.Entities;
@@ -17,7 +17,7 @@ public class AssistantEntity
 
     public string? Instruction { get; set; }
 
-    public ExecuteOptions? Options { get; set; }
+    public ChatCompletionParameters? Options { get; set; }
 
     public IEnumerable<string>? Tools { get; set; }
 

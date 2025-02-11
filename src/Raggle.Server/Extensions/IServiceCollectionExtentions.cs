@@ -12,9 +12,9 @@ using Raggle.Server.Data;
 using Raggle.Server.Services;
 using Raggle.Abstractions.Memory;
 using Raggle.Core.Memory;
-using Raggle.Server.Configurations.Models;
 using Microsoft.AspNetCore.Http;
 using Raggle.Server.Tools;
+using Raggle.Server.Configurations;
 
 namespace Raggle.Server.Extensions;
 

@@ -10,7 +10,7 @@ public class AnthropicConfig
 {
     /// <summary>
     /// Gets or sets the endpoint URL for the OpenAI API.
-    /// Default value is "https://api.anthropic.com/v1/".
+    /// Default value is "https://api.anthropic.com/".
     /// </summary>
     public string EndPoint { get; set; } = AnthropicConstants.DefaultEndPoint;
 

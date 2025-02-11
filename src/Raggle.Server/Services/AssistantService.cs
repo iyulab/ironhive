@@ -66,7 +66,7 @@ public class AssistantService
         await _db.SaveChangesAsync();
     }
 
-    public async IAsyncEnumerable<ChatCompletionStreamingResponse> ChatAssistantAsync(
+    public async IAsyncEnumerable<StreamingMessageResponse> ChatAssistantAsync(
         string assistantId, 
         MessageCollection messages,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)

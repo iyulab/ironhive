@@ -69,7 +69,7 @@ public class SummaryHandler : IPipelineHandler
         Options options, 
         CancellationToken cancellationToken)
     {
-        var request = new ChatCompletionRequest
+        var request = new MessageContext
         {
             Model = options.ModelName,
             System = GetSystemInstructionPrompt(),

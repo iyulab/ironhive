@@ -32,9 +32,4 @@ internal class AnthropicModel
     [JsonPropertyName("created_at")]
     [JsonConverter(typeof(DateTimeJsonConverter))]
     public DateTime? CreatedAt { get; set; }
-
-    internal static bool IsChatCompletionModel(AnthropicModel model)
-    {
-        return model.ID.Contains("claude-3-5");
-    }
 }

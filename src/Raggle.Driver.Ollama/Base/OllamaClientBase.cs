@@ -23,9 +23,9 @@ internal abstract class OllamaClientBase
         _jsonOptions = config.JsonOptions;
     }
 
-    protected async Task<IEnumerable<OllamaModel>> GetModelsAsync(CancellationToken cancellationToken)
+    public async Task<IEnumerable<OllamaModel>> GetModelsAsync(CancellationToken cancellationToken)
     {
-        var jsonDocument = await _client.GetFromJsonAsync<JsonDocument>(OllamaConstants.GetModelsPath, _jsonOptions, cancellationToken);
+        var jsonDocument = await _client.GetFromJsonAsync<JsonDocument>(OllamaConstants.GetModelListPath, _jsonOptions, cancellationToken);
         var models = jsonDocument?.RootElement.GetProperty("models").Deserialize<IEnumerable<OllamaModel>>();
         return models?.OrderByDescending(m => m.ModifiedAt).ToArray() ?? [];
     }

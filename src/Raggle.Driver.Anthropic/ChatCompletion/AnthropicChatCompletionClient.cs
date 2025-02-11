@@ -1,7 +1,6 @@
 ﻿using System.Text.Json;
 using System.Text;
 using System.Net.Http.Json;
-using Raggle.Driver.Anthropic.ChatCompletion.Models;
 using Raggle.Driver.Anthropic.Configurations;
 using Raggle.Driver.Anthropic.Base;
 using System.Runtime.CompilerServices;
@@ -13,20 +12,6 @@ internal class AnthropicChatCompletionClient : AnthropicClientBase
     internal AnthropicChatCompletionClient(AnthropicConfig config) : base(config) { }
 
     internal AnthropicChatCompletionClient(string apiKey) : base(apiKey) { }
-
-    internal async Task<IEnumerable<AnthropicChatCompletionModel>> GetChatCompletionModelsAsync(
-        CancellationToken cancellationToken)
-    {
-        var models = await GetModelsAsync(cancellationToken);
-        return models.Where(AnthropicModel.IsChatCompletionModel)
-                     .Select(m => new AnthropicChatCompletionModel
-                     {
-                         Type = m.Type,
-                         ID = m.ID,
-                         DisplayName = m.DisplayName,
-                         CreatedAt = m.CreatedAt,
-                     });
-    }
 
     internal async Task<MessagesResponse> PostMessagesAsync(
         MessagesRequest request, 

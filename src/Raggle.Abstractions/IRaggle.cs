@@ -26,6 +26,6 @@ public interface IRaggle
         string? name = null,
         string? description = null,
         string? instruction = null,
-        ExecuteOptions? options = null,
+        ChatCompletionParameters? options = null,
         FunctionToolCollection? tools = null);
 }

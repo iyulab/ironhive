@@ -2,11 +2,11 @@
 using Raggle.Abstractions.Messages;
 using Raggle.Abstractions.Tools;
 using Raggle.Driver.Anthropic.ChatCompletion;
-using Raggle.Driver.Anthropic.ChatCompletion.Models;
 using Raggle.Driver.Anthropic.Configurations;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using MessageRole = Raggle.Abstractions.Messages.MessageRole;
 
 namespace Raggle.Driver.Anthropic;
 
@@ -25,31 +25,31 @@ public class AnthropicChatCompletionService : IChatCompletionService
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<ChatCompletionModel>> GetChatCompletionModelsAsync(
+    public async Task<IEnumerable<ChatCompletionModel>> GetModelsAsync(
         CancellationToken cancellationToken = default)
     {
-        var anthropicModels = await _client.GetChatCompletionModelsAsync(cancellationToken);
+        var models = await _client.GetModelsAsync(cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
-        var models = anthropicModels.Select(m => new ChatCompletionModel
+
+        return models.Select(m => new ChatCompletionModel
         {
             Model = m.ID,
+            Owner = "Anthropic",
             CreatedAt = m.CreatedAt,
             ModifiedAt = null,
-            Owner = "Anthropic"
         });
-        return models;
     }
 
     /// <inheritdoc />
-    public async Task<ChatCompletionResponse> ChatCompletionAsync(
-        ChatCompletionRequest request, 
+    public async Task<MessageResponse> ChatCompletionAsync(
+        MessageContext context, 
         CancellationToken cancellationToken = default)
     {
-        var _request = request.ToAnthropic();
-        var response = await _client.PostMessagesAsync(_request, cancellationToken);
+        var request = ConvertToRequest(context);
+        var response = await _client.PostMessagesAsync(request, cancellationToken);
 
-        var content = request.Messages.Last().Role == MessageRole.Assistant
-            ? request.Messages.Last().Content
+        var content = context.Messages.Last().Role == MessageRole.Assistant
+            ? context.Messages.Last().Content
             : new MessageContentCollection();
 
         if (response.StopReason == StopReason.ToolUse)
@@ -67,7 +67,7 @@ public class AnthropicChatCompletionService : IChatCompletionService
                     var args = new FunctionArguments(JsonSerializer.Serialize(toolUse.Input));
                     var result = string.IsNullOrWhiteSpace(name)
                         ? FunctionResult.Failed("Tool name is missing")
-                        : request.Tools != null && request.Tools.TryGetValue(name, out var tool)
+                        : context.Tools != null && context.Tools.TryGetValue(name, out var tool)
                         ? await tool.InvokeAsync(args)
                         : FunctionResult.Failed($"Tool [{name}] not found");
 
@@ -75,8 +75,8 @@ public class AnthropicChatCompletionService : IChatCompletionService
                 }
             }
 
-            request.Messages.AddAssistantMessage(content);
-            return await ChatCompletionAsync(request, cancellationToken);
+            context.Messages.AddAssistantMessage(content);
+            return await ChatCompletionAsync(context, cancellationToken);
         }
         else
         {
@@ -93,13 +93,13 @@ public class AnthropicChatCompletionService : IChatCompletionService
                 }
             }
 
-            var result = new ChatCompletionResponse
+            var result = new MessageResponse
             {
                 EndReason = response.StopReason switch
                 {
-                    StopReason.EndTurn => ChatCompletionEndReason.EndTurn,
-                    StopReason.MaxTokens => ChatCompletionEndReason.MaxTokens,
-                    StopReason.StopSequence => ChatCompletionEndReason.StopSequence,
+                    StopReason.EndTurn => MessageEndReason.EndTurn,
+                    StopReason.MaxTokens => MessageEndReason.MaxTokens,
+                    StopReason.StopSequence => MessageEndReason.StopSequence,
                     _ => null
                 },
                 Model = response.Model,
@@ -122,26 +122,14 @@ public class AnthropicChatCompletionService : IChatCompletionService
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<ChatCompletionStreamingResponse> StreamingChatCompletionAsync(
-        ChatCompletionRequest request, 
+    public async IAsyncEnumerable<StreamingMessageResponse> StreamingChatCompletionAsync(
+        MessageContext context, 
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var _request = request.ToAnthropic();
+        var request = ConvertToRequest(context);
+
         var content = new MessageContentCollection();
-
-        /*
-         * 1. Request 변환 => To OpenAI
-         * 2. Assistant Message 생성
-         * 3. Foreach Loop Until MaxTry 
-         *    3.0 메시지 Concat 또는 Pass
-         *    3.1 요청 ToOpenAI
-         *    3.2 응답 Message 저장 With Return
-         *    3.3 ToolUse With 2번 메시지
-         *    3.4 다시 Loop
-         *  4. Context??? 필요
-         */
-
-        await foreach (var response in _client.PostStreamingMessagesAsync(_request, cancellationToken))
+        await foreach (var response in _client.PostStreamingMessagesAsync(request, cancellationToken))
         {
             // 임시 출력; 추후 삭제
             Console.WriteLine(JsonSerializer.Serialize(response));
@@ -149,44 +137,47 @@ public class AnthropicChatCompletionService : IChatCompletionService
             if (response is MessageStartEvent)
             {
                 // 시작 이벤트
-                // nothing to do
             }
-            else if (response is ContentStartEvent contentStart)
+            else if (response is ContentStartEvent cse)
             {
                 // 컨텐츠 블록 생성 시작 이벤트
 
-                if (contentStart.ContentBlock is TextMessageContent text)
+                if (cse.ContentBlock is TextMessageContent text)
                 {
                     content.AddText(text.Text);
                 }
-                else if (contentStart.ContentBlock is ToolUseMessageContent tool)
+                else if (cse.ContentBlock is ToolUseMessageContent tool)
                 {
                     content.AddTool(tool.ID, tool.Name, null, null);
                 }
             }
-            else if (response is ContentDeltaEvent contentDelta)
+            else if (response is ContentDeltaEvent cde)
             {
                 // 컨텐츠 블록 생성 진행 이벤트
 
-                var item = content.ElementAt(contentDelta.Index);
-                if (item is TextContent textContent)
+                
+                if (cde.ContentBlock is TextDeltaMessageContent text)
                 {
-                    var newTextContent = new TextContent { Index = textContent.Index };
-                    if (contentDelta.ContentBlock is TextDeltaMessageContent textDelta)
+                    var item = content.ElementAt(cde.Index) as TextContent
+                        ?? throw new InvalidOperationException("Unexpected content type");
+                    item.Text += text.Text;
+                    yield return new StreamingMessageResponse
                     {
-                        newTextContent.Text = textDelta.Text;
-                        textContent.Text += textDelta.Text;
-                    }
-                    yield return new ChatCompletionStreamingResponse { Content = newTextContent };
+                        Content = new TextContent
+                        {
+                            Index = item.Index,
+                            Text = text.Text
+                        }
+                    };
                 }
-                else if (item is ToolContent toolContent)
+                else if (cde.ContentBlock is ToolUseDeltaMessageContent tool)
                 {
-                    if (contentDelta.ContentBlock is ToolUseDeltaMessageContent toolDelta)
-                    {
-                        toolContent.Arguments ??= new FunctionArguments();
-                        toolContent.Arguments.Append(toolDelta.PartialJson);
-                    }
-                    yield return new ChatCompletionStreamingResponse { Content = toolContent };
+                    var item = content.ElementAt(cde.Index) as ToolContent
+                        ?? throw new InvalidOperationException("Unexpected content type");
+                    item.Arguments ??= new FunctionArguments();
+                    item.Arguments.Append(tool.PartialJson);
+
+                    yield return new StreamingMessageResponse { Content = item };
                 }
             }
             else if (response is ContentStopEvent)
@@ -208,32 +199,32 @@ public class AnthropicChatCompletionService : IChatCompletionService
                         {
                             toolContent.Result = string.IsNullOrWhiteSpace(toolContent.Name)
                                     ? FunctionResult.Failed("Tool name is missing")
-                                    : request.Tools != null && request.Tools.TryGetValue(toolContent.Name, out var tool)
+                                    : context.Tools != null && context.Tools.TryGetValue(toolContent.Name, out var tool)
                                     ? await tool.InvokeAsync(toolContent.Arguments)
                                     : FunctionResult.Failed($"Tool [{toolContent.Name}] not found");
-                            yield return new ChatCompletionStreamingResponse
+                            yield return new StreamingMessageResponse
                             {
                                 Content = toolContent
                             };
                         }
                     }
 
-                    request.Messages.AddAssistantMessage(content);
-                    await foreach (var stream in StreamingChatCompletionAsync(request, cancellationToken))
+                    context.Messages.AddAssistantMessage(content);
+                    await foreach (var stream in StreamingChatCompletionAsync(context, cancellationToken))
                     {
                         yield return stream;
                     }
                 }
                 else
                 {
-                    yield return new ChatCompletionStreamingResponse
+                    yield return new StreamingMessageResponse
                     {
-                        Model = request.Model,
+                        Model = context.Model,
                         EndReason = reason switch
                         {
-                            StopReason.EndTurn => ChatCompletionEndReason.EndTurn,
-                            StopReason.StopSequence => ChatCompletionEndReason.StopSequence,
-                            StopReason.MaxTokens => ChatCompletionEndReason.MaxTokens,
+                            StopReason.EndTurn => MessageEndReason.EndTurn,
+                            StopReason.StopSequence => MessageEndReason.StopSequence,
+                            StopReason.MaxTokens => MessageEndReason.MaxTokens,
                             _ => null
                         },
                         TokenUsage = new Abstractions.AI.TokenUsage
@@ -264,5 +255,32 @@ public class AnthropicChatCompletionService : IChatCompletionService
                 Debug.WriteLine($"Unexpected event: {response.GetType()}");
             }
         }
+    }
+
+    private MessagesRequest ConvertToRequest(MessageContext context)
+    {
+        var request = new MessagesRequest
+        {
+            Model = context.Model,
+            System = context.System,
+            Messages = context.Messages.ToAnthropic().ToArray(),
+            MaxTokens = context.Parameters?.MaxTokens,
+            Temperature = context.Parameters?.Temperature,
+            TopK = context.Parameters?.TopK,
+            TopP = context.Parameters?.TopP,
+            StopSequences = context.Parameters?.StopSequences?.ToArray(),
+        };
+
+        if (context.Tools != null && context.Tools.Count > 0)
+        {
+            request.Tools = context.Tools.Select(t => new Tool
+            {
+                Name = t.Name,
+                Description = t.Description,
+                InputSchema = t.ToJsonSchema()
+            }).ToArray();
+        }
+
+        return request;
     }
 }

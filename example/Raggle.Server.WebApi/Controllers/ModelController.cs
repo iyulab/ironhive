@@ -37,7 +37,7 @@ public class ModelController : ControllerBase
             {
                 try
                 {
-                    var _models = await service.GetChatCompletionModelsAsync();
+                    var _models = await service.GetModelsAsync();
                     models[key] = _models.Select(m => m.Model).ToArray();
                 }
                 catch
@@ -68,7 +68,7 @@ public class ModelController : ControllerBase
             {
                 try
                 {
-                    var _models = await service.GetEmbeddingModelsAsync();
+                    var _models = await service.GetModelsAsync();
                     models[key] = _models.Select(m => m.Model).ToArray();
                 }
                 catch

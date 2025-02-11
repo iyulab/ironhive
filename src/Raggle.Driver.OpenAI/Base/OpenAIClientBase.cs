@@ -17,22 +17,26 @@ internal abstract class OpenAIClientBase
 
     protected OpenAIClientBase(string apiKey)
     {
-        var defaultOptions = new OpenAIConfig { ApiKey = apiKey };
-        _client = CreateHttpClient(defaultOptions);
-        _jsonOptions = defaultOptions.JsonOptions;
+        var config = new OpenAIConfig { ApiKey = apiKey };
+        _client = CreateHttpClient(config);
+        _jsonOptions = config.JsonOptions;
     }
 
     /// <summary>
     /// Gets the list of OpenAI models.
     /// </summary>
-    protected async Task<IEnumerable<OpenAIModel>> GetModelsAsync(CancellationToken cancellationToken)
+    public async Task<IEnumerable<OpenAIModel>> GetModelsAsync(CancellationToken cancellationToken)
     {
-        var jsonDocument = await _client.GetFromJsonAsync<JsonDocument>(OpenAIConstants.ListModelsPath, cancellationToken);
+        var jsonDocument = await _client.GetFromJsonAsync<JsonDocument>(
+            OpenAIConstants.GetModelListPath, cancellationToken);
         var models = jsonDocument?.RootElement.GetProperty("data").Deserialize<IEnumerable<OpenAIModel>>();
 
         return models?.OrderByDescending(m => m.Created).ToArray() ?? [];
     }
 
+    /// <summary>
+    /// Creates a new instance of <see cref="HttpClient"/> with the specified configuration settings.
+    /// </summary>
     private static HttpClient CreateHttpClient(OpenAIConfig config)
     {
         var client = new HttpClient
@@ -43,13 +47,16 @@ internal abstract class OpenAIClientBase
         };
 
         if (!string.IsNullOrWhiteSpace(config.ApiKey))
-            client.DefaultRequestHeaders.Add(OpenAIConstants.ApiKeyHeaderName, string.Format(OpenAIConstants.ApiKeyHeaderValue, config.ApiKey));
+            client.DefaultRequestHeaders.Add(
+                OpenAIConstants.ApiKeyHeaderName, string.Format(OpenAIConstants.ApiKeyHeaderValue, config.ApiKey));
 
         if (!string.IsNullOrWhiteSpace(config.Organization))
-            client.DefaultRequestHeaders.Add(OpenAIConstants.OrganizationHeaderName, config.Organization);
+            client.DefaultRequestHeaders.Add(
+                OpenAIConstants.OrganizationHeaderName, config.Organization);
 
         if (!string.IsNullOrWhiteSpace(config.Project))
-            client.DefaultRequestHeaders.Add(OpenAIConstants.ProjectHeaderName, config.Project);
+            client.DefaultRequestHeaders.Add(
+                OpenAIConstants.ProjectHeaderName, config.Project);
 
         return client;
     }

@@ -1,6 +1,5 @@
 ﻿using Raggle.Driver.Ollama.Base;
 using Raggle.Driver.Ollama.Configurations;
-using Raggle.Driver.Ollama.Embeddings.Models;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
@@ -12,13 +11,6 @@ internal class OllamaEmbeddingClient : OllamaClientBase
     internal OllamaEmbeddingClient(OllamaConfig? config = null) : base(config) { }
 
     internal OllamaEmbeddingClient(string endPoint) : base(endPoint) { }
-
-    internal async Task<IEnumerable<OllamaModel>> GetEmbeddingModelsAsync(
-        CancellationToken cancellationToken)
-    {
-        // Ollama does not have a information about model categories
-        return await GetModelsAsync(cancellationToken);
-    }
 
     internal async Task<EmbeddingResponse> PostEmbeddingAsync(
         EmbeddingRequest request,

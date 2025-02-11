@@ -1,5 +1,4 @@
 ﻿using Raggle.Driver.Ollama.Base;
-using Raggle.Driver.Ollama.ChatCompletion.Models;
 using Raggle.Driver.Ollama.Configurations;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
@@ -13,13 +12,6 @@ internal class OllamaChatCompletionClient : OllamaClientBase
     internal OllamaChatCompletionClient(OllamaConfig? config = null) : base(config) { }
 
     internal OllamaChatCompletionClient(string endPoint) : base(endPoint) { }
-
-    internal async Task<IEnumerable<OllamaModel>> GetChatModelsAsync(
-        CancellationToken cancellationToken)
-    {
-        // Ollama does not have a information about model categories
-        return await GetModelsAsync(cancellationToken);
-    }
 
     internal async Task<ChatResponse> PostChatAsync(
         ChatRequest request, 

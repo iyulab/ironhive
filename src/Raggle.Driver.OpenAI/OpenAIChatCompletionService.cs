@@ -1,11 +1,11 @@
 ﻿using Raggle.Driver.OpenAI.ChatCompletion;
 using Raggle.Driver.OpenAI.Configurations;
 using Raggle.Abstractions.Tools;
-using Raggle.Driver.OpenAI.ChatCompletion.Models;
 using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Messages;
 using System.Runtime.CompilerServices;
 using System.Diagnostics;
+using Raggle.Driver.OpenAI.Extensions;
 
 namespace Raggle.Driver.OpenAI;
 
@@ -24,29 +24,30 @@ public class OpenAIChatCompletionService : IChatCompletionService
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<ChatCompletionModel>> GetChatCompletionModelsAsync(
+    public async Task<IEnumerable<ChatCompletionModel>> GetModelsAsync(
         CancellationToken cancellationToken = default)
     {
-        var models = await _client.GetChatCompletionModelsAsync(cancellationToken);
-        return models.Select(m => new ChatCompletionModel
-        {
-            Model = m.ID,
-            CreatedAt = m.Created,
-            Owner = m.OwnedBy,
-        });
+        var models = await _client.GetModelsAsync(cancellationToken);
+        return models.Where(m => m.IsChatCompletion())
+                    .Select(m => new ChatCompletionModel
+                    {
+                        Model = m.ID,
+                        Owner = m.OwnedBy,
+                        CreatedAt = m.Created,
+                    });
     }
 
     /// <inheritdoc />
-    public async Task<Abstractions.AI.ChatCompletionResponse> ChatCompletionAsync(
-        Abstractions.AI.ChatCompletionRequest request,
+    public async Task<MessageResponse> ChatCompletionAsync(
+        MessageContext context,
         CancellationToken cancellationToken = default)
     {
-        var _request = request.ToOpenAI();
+        var _request = ConvertToRequest(context);
         var response = await _client.PostChatCompletionAsync(_request, cancellationToken);
         var choice = response.Choices?.First();
 
-        var content = request.Messages.Last().Role == MessageRole.Assistant
-            ? request.Messages.Last().Content
+        var content = context.Messages.Last().Role == MessageRole.Assistant
+            ? context.Messages.Last().Content
             : new MessageContentCollection();
 
         if (choice?.FinishReason == FinishReason.ToolCalls && choice.Message?.ToolCalls?.Length > 0)
@@ -60,14 +61,14 @@ public class OpenAIChatCompletionService : IChatCompletionService
 
                 var result = string.IsNullOrWhiteSpace(name)
                     ? FunctionResult.Failed("Function name is required.")
-                    : request.Tools != null && request.Tools.TryGetValue(name, out var function)
+                    : context.Tools != null && context.Tools.TryGetValue(name, out var function)
                     ? await function.InvokeAsync(args)
                     : FunctionResult.Failed($"Function '{name}' not exist.");
 
                 content.AddTool(id, name, args, result);
             }
-            request.Messages.AddAssistantMessage(content);
-            return await ChatCompletionAsync(request, cancellationToken);
+            context.Messages.AddAssistantMessage(content);
+            return await ChatCompletionAsync(context, cancellationToken);
         }
         else
         {
@@ -80,13 +81,13 @@ public class OpenAIChatCompletionService : IChatCompletionService
                 Debug.WriteLine("No content found in the response.");
             }
 
-            var result = new Abstractions.AI.ChatCompletionResponse
+            var result = new MessageResponse
             {
                 EndReason = choice?.FinishReason switch
                 {
-                    FinishReason.Stop => ChatCompletionEndReason.EndTurn,
-                    FinishReason.Length => ChatCompletionEndReason.MaxTokens,
-                    FinishReason.ContentFilter => ChatCompletionEndReason.ContentFilter,
+                    FinishReason.Stop => MessageEndReason.EndTurn,
+                    FinishReason.Length => MessageEndReason.MaxTokens,
+                    FinishReason.ContentFilter => MessageEndReason.ContentFilter,
                     _ => null
                 },
                 Model = response.Model,
@@ -109,11 +110,11 @@ public class OpenAIChatCompletionService : IChatCompletionService
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<ChatCompletionStreamingResponse> StreamingChatCompletionAsync(
-        Abstractions.AI.ChatCompletionRequest request, 
+    public async IAsyncEnumerable<StreamingMessageResponse> StreamingChatCompletionAsync(
+        MessageContext context, 
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var _request = request.ToOpenAI();
+        var _request = ConvertToRequest(context);
         var toolContents = new Dictionary<int, ToolContent>();
 
         /*
@@ -142,28 +143,28 @@ public class OpenAIChatCompletionService : IChatCompletionService
                     {
                         content.Result = string.IsNullOrWhiteSpace(content.Name)
                             ? FunctionResult.Failed("Function name is required.")
-                            : request.Tools != null && request.Tools.TryGetValue(content.Name, out var tool)
+                            : context.Tools != null && context.Tools.TryGetValue(content.Name, out var tool)
                             ? await tool.InvokeAsync(content.Arguments)
                             : FunctionResult.Failed($"Function '{content.Name}' not exist.");
-                        request.Messages.AddAssistantMessage(content);
-                        yield return new ChatCompletionStreamingResponse { Content = content };
+                        context.Messages.AddAssistantMessage(content);
+                        yield return new StreamingMessageResponse { Content = content };
                     }
 
-                    await foreach (var stream in StreamingChatCompletionAsync(request, cancellationToken))
+                    await foreach (var stream in StreamingChatCompletionAsync(context, cancellationToken))
                     {
                         yield return stream;
                     };
                 }
                 else
                 {
-                    yield return new ChatCompletionStreamingResponse
+                    yield return new StreamingMessageResponse
                     {
                         Model = response.Model,
                         EndReason = choice.FinishReason switch
                         {
-                            FinishReason.Stop => ChatCompletionEndReason.EndTurn,
-                            FinishReason.Length => ChatCompletionEndReason.MaxTokens,
-                            FinishReason.ContentFilter => ChatCompletionEndReason.ContentFilter,
+                            FinishReason.Stop => MessageEndReason.EndTurn,
+                            FinishReason.Length => MessageEndReason.MaxTokens,
+                            FinishReason.ContentFilter => MessageEndReason.ContentFilter,
                             _ => null
                         },
                         TokenUsage = new Abstractions.AI.TokenUsage
@@ -177,7 +178,7 @@ public class OpenAIChatCompletionService : IChatCompletionService
             }
             else if (choice.Delta?.Content != null)
             {
-                yield return new ChatCompletionStreamingResponse
+                yield return new StreamingMessageResponse
                 {
                     Content = new TextContent { Text = choice.Delta.Content }
                 };
@@ -205,12 +206,43 @@ public class OpenAIChatCompletionService : IChatCompletionService
                     };
                     toolContents.Add((int)toolCall.Index, content);
                 }
-                yield return new ChatCompletionStreamingResponse { Content = content };
+                yield return new StreamingMessageResponse { Content = content };
             }
             else
             {
                 continue;
             }
         }
+    }
+
+    private static ChatCompletionRequest ConvertToRequest(MessageContext context)
+    {
+        // Reasoning Models, 일부 파라미터 작동 안함
+        var reason = context.Model.Contains("o1") || context.Model.Contains("o3");
+
+        var request = new ChatCompletionRequest
+        {
+            Model = context.Model,
+            Messages = context.Messages.ToOpenAI(context.System).ToArray(),
+            MaxCompletionTokens = context.Parameters?.MaxTokens,
+            Temperature = reason ? null : context.Parameters?.Temperature,
+            TopP = reason ? null : context.Parameters?.TopP,
+            Stop = context.Parameters?.StopSequences?.ToArray(),
+        };
+
+        if (context.Tools != null && context.Tools.Count > 0)
+        {
+            request.Tools = context.Tools.Select(t => new Tool
+            {
+                Function = new Function
+                {
+                    Name = t.Name,
+                    Description = t.Description,
+                    Parameters = t.ToJsonSchema()
+                }
+            }).ToArray();
+        }
+
+        return request;
     }
 }

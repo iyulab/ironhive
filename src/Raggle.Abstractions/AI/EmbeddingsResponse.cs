@@ -6,8 +6,6 @@ public class EmbeddingsResponse
 
     public IEnumerable<EmbeddingData>? Embeddings { get; set; }
 
-    public DateTime TimeStamp { get; set; } = DateTime.UtcNow;
-
     public record EmbeddingData
     {
         /// <summary>

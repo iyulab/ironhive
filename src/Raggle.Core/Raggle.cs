@@ -42,7 +42,7 @@ public class Raggle : IRaggle
         string? name = null,
         string? description = null,
         string? instruction = null,
-        ExecuteOptions? options = null,
+        ChatCompletionParameters? options = null,
         FunctionToolCollection? tools = null)
     {
         return new BasicRaggleAssistant(Services)
