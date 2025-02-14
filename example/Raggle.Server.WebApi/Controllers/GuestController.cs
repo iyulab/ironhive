@@ -35,7 +35,7 @@ public class GuestController : ControllerBase
         [FromBody] GuestRequest request,
         CancellationToken cancellationToken)
     {
-        var tools = new FunctionToolCollection();
+        var tools = new ToolCollection();
         var instruction = """
             you are helpful assistant to company employees.
             you can help them with kindness and respect.

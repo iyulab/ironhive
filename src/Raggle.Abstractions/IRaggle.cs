@@ -1,5 +1,4 @@
 ﻿using Raggle.Abstractions.AI;
-using Raggle.Abstractions.Assistant;
 using Raggle.Abstractions.Memory;
 using Raggle.Abstractions.Tools;
 
@@ -19,7 +18,7 @@ public interface IRaggle
 
     IEmbeddingService GetEmbeddingService(string serviceKey);
 
-    IRaggleAssistant CreateAssistant(
+    IAssistant CreateAssistant(
         string service,
         string model,
         string? id = null,
@@ -27,5 +26,5 @@ public interface IRaggle
         string? description = null,
         string? instruction = null,
         ChatCompletionParameters? options = null,
-        FunctionToolCollection? tools = null);
+        ToolCollection? tools = null);
 }

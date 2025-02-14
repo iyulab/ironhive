@@ -1,4 +1,4 @@
-﻿namespace Raggle.Server;
+﻿namespace Raggle.Server.Configurations;
 
 public static class RaggleServiceKeys
 {

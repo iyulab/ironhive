@@ -49,7 +49,7 @@ public class ToolContent : MessageContentBase
 
     public string? Name { get; set; }
 
-    public FunctionArguments? Arguments { get; set; }
+    public ToolArguments? Arguments { get; set; }
 
-    public FunctionResult? Result { get; set; }
+    public ToolResult? Result { get; set; }
 }

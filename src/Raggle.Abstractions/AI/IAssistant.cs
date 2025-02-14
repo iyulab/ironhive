@@ -1,9 +1,8 @@
-﻿using Raggle.Abstractions.AI;
-using Raggle.Abstractions.Messages;
+﻿using Raggle.Abstractions.Messages;
 
-namespace Raggle.Abstractions.Assistant;
+namespace Raggle.Abstractions.AI;
 
-public interface IRaggleAssistant
+public interface IAssistant
 {
     Task<MessageResponse> InvokeAsync(
         MessageCollection messages,

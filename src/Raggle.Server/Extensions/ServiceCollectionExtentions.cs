@@ -18,7 +18,7 @@ using Raggle.Server.Configurations;
 
 namespace Raggle.Server.Extensions;
 
-public static partial class IServiceCollectionExtentions
+public static class ServiceCollectionExtentions
 {
     public static IServiceCollection AddRaggleServices(
         this IServiceCollection services,

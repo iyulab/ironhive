@@ -31,8 +31,8 @@ public class MessageContentCollection : ICollection<IMessageContent>
     public void AddTool(
         string? id,
         string? name,
-        FunctionArguments? arguments, 
-        FunctionResult? result)
+        ToolArguments? arguments, 
+        ToolResult? result)
     {
         Add(new ToolContent 
         {

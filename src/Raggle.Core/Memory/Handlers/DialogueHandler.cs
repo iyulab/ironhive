@@ -83,8 +83,11 @@ public class DialogueHandler : IPipelineHandler
     {
         var request = new MessageContext
         {
-            System = GetSystemInstruction(),
             Model = options.ModelName,
+            MessagesOptions = new MessageOptions
+            {
+                System = GetSystemInstruction()
+            }
         };
         request.Messages.AddUserMessage(new TextContent
         {

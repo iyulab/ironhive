@@ -4,6 +4,7 @@ using Raggle.Abstractions;
 using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Messages;
 using Raggle.Abstractions.Tools;
+using Raggle.Server.Configurations;
 using Raggle.Server.Data;
 using Raggle.Server.Entities;
 using Raggle.Server.Tools;
@@ -89,7 +90,7 @@ public class AssistantService
             }
         };
 
-        var tools = new FunctionToolCollection();
+        var tools = new ToolCollection();
         if (entity.Tools != null && entity.Tools.Any())
         {
             foreach (var tool in entity.Tools)

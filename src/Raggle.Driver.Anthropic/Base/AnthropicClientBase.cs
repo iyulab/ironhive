@@ -36,19 +36,16 @@ internal abstract class AnthropicClientBase
     {
         var client = new HttpClient
         {
-            BaseAddress = string.IsNullOrEmpty(config.EndPoint)
+            BaseAddress = string.IsNullOrWhiteSpace(config.EndPoint)
                 ? new Uri(AnthropicConstants.DefaultEndPoint.EnsureSuffix('/'))
                 : new Uri(config.EndPoint.EnsureSuffix('/')),
         };
 
-        client.DefaultRequestHeaders.Add(AnthropicConstants.VersionHeaderName, 
-            string.IsNullOrEmpty(config.Version)
-            ? AnthropicConstants.VersionHeaderValue
-            : config.Version);
+        client.DefaultRequestHeaders.Add(AnthropicConstants.VersionHeaderName,
+            config.Version.OrDefault(AnthropicConstants.VersionHeaderValue));
 
         if (!string.IsNullOrEmpty(config.ApiKey))
-            client.DefaultRequestHeaders.Add(
-                AnthropicConstants.ApiKeyHeaderName, config.ApiKey);
+            client.DefaultRequestHeaders.Add(AnthropicConstants.ApiKeyHeaderName, config.ApiKey);
 
         return client;
     }

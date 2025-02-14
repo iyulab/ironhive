@@ -1,12 +1,11 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Raggle.Abstractions.AI;
-using Raggle.Abstractions.Assistant;
 using Raggle.Abstractions.Messages;
 using Raggle.Abstractions.Tools;
 
-namespace Raggle.Core.Assistant;
+namespace Raggle.Core.AI;
 
-internal class BasicRaggleAssistant : IRaggleAssistant
+internal class BasicRaggleAssistant : IAssistant
 {
     private readonly IServiceProvider _provider;
 
@@ -24,7 +23,7 @@ internal class BasicRaggleAssistant : IRaggleAssistant
 
     public ChatCompletionParameters? Options { get; set; }
 
-    public FunctionToolCollection? Tools { get; set; }
+    public ToolCollection? Tools { get; set; }
 
     public BasicRaggleAssistant(IServiceProvider provider)
     {
@@ -55,10 +54,18 @@ internal class BasicRaggleAssistant : IRaggleAssistant
         return new MessageContext
         {
             Model = Model,
-            System = Instruction,
             Messages = messages,
             Parameters = Options,
-            Tools = Tools
+            Tools = Tools,
+            MessagesOptions = new MessageOptions
+            {
+                System = Instruction,
+                Strategy = MessageStrategy.Summarize
+            },
+            ToolOptions = new ToolExecutionOptions
+            {
+                SelectionMode = ToolSelectionMode.Auto
+            }
         };
     }
 }

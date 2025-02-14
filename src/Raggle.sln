@@ -5,15 +5,8 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "00. docs", "00. docs", "{C5D07BAA-9B0C-4DBD-A39A-6043C34F1443}"
 	ProjectSection(SolutionItems) = preProject
-		..\docs\chunk_file.json = ..\docs\chunk_file.json
-		..\docs\class_structure.yaml = ..\docs\class_structure.yaml
-		..\docs\document_files.yaml = ..\docs\document_files.yaml
-		..\docs\extract_file.json = ..\docs\extract_file.json
-		..\docs\qa_pair_file.json = ..\docs\qa_pair_file.json
 		..\docs\STRUCTURE.md = ..\docs\STRUCTURE.md
-		..\docs\summarization_file.json = ..\docs\summarization_file.json
 		..\docs\TODO.md = ..\docs\TODO.md
-		..\docs\vector_point.json = ..\docs\vector_point.json
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "20. src", "20. src", "{D742CF15-98B2-4095-B749-589A7ED4EFD1}"

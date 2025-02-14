@@ -72,7 +72,10 @@ public class SummaryHandler : IPipelineHandler
         var request = new MessageContext
         {
             Model = options.ModelName,
-            System = GetSystemInstructionPrompt(),
+            MessagesOptions = new MessageOptions
+            {
+                System = GetSystemInstructionPrompt(),
+            }
         };
         request.Messages.AddUserMessage(new TextContent
         {

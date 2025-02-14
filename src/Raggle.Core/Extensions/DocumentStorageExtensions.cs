@@ -7,7 +7,7 @@ using System.Text.Json;
 
 namespace Raggle.Core.Extensions;
 
-public static class IDocumentStorageExtensions
+public static class DocumentStorageExtensions
 {
     private const string JsonExtension = "json";
 

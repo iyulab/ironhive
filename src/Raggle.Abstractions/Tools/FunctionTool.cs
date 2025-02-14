@@ -4,44 +4,33 @@ using System.Reflection;
 
 namespace Raggle.Abstractions.Tools;
 
-public class FunctionTool
+public class FunctionTool : ITool
 {
-    public required Delegate Function { get; init; }
-    public required string Name { get; init; }
+    private readonly Delegate _function;
+
+    public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public IDictionary<string, JsonSchema>? Properties { get; set; }
+    public IEnumerable<string>? Required { get; set; }
 
-    public ObjectJsonSchema ToJsonSchema()
+    public FunctionTool(
+        Delegate function,
+        string? name,
+        string? description)
     {
-        var parameters = Function.Method.GetParameters();
-        var properties = new Dictionary<string, JsonSchema>();
-        var required = new List<string>();
-        foreach (var prop in parameters)
-        {
-            if (string.IsNullOrEmpty(prop.Name))
-                continue;
-
-            var propType = prop.ParameterType;
-            var propDescription = prop.GetCustomAttribute<DescriptionAttribute>()?.Description;
-            var propSchema = JsonSchemaConverter.ConvertFromType(propType, propDescription);
-            properties.Add(prop.Name, propSchema);
-
-            if (!prop.IsOptional)
-                required.Add(prop.Name);
-        }
-
-        return new ObjectJsonSchema
-        {
-            Description = Description,
-            Properties = properties,
-            Required = required.ToArray()
-        };
+        _function = function;
+        Name = name ?? function.Method.Name;
+        Description = description;
+        var schema = GetJsonSchema();
+        Properties = schema.Properties;
+        Required = schema.Required;
     }
 
-    public async Task<FunctionResult> InvokeAsync(FunctionArguments? args)
+    public async Task<ToolResult> InvokeAsync(ToolArguments? args)
     {
         try
         {
-            var result = Function.DynamicInvoke(PrepareArguments(args));
+            var result = _function.DynamicInvoke(PrepareArguments(args));
             if (result is Task task)
             {
                 await task;
@@ -52,7 +41,7 @@ public class FunctionTool
                 await valueTask;
                 result = valueTask.GetType().GetProperty("Result")?.GetValue(valueTask);
             }
-            else if (Function.Method.ReturnType == typeof(IAsyncEnumerable<>))
+            else if (_function.Method.ReturnType == typeof(IAsyncEnumerable<>))
             {
                 var enumerable = result as IAsyncEnumerable<object?>
                     ?? throw new InvalidOperationException("Expected IAsyncEnumerable but got null.");
@@ -64,21 +53,21 @@ public class FunctionTool
                 result = list;
             }
 
-            return FunctionResult.Success(result);
+            return ToolResult.Success(result);
         }
         catch (TargetInvocationException ex) when (ex.InnerException != null)
         {
-            return FunctionResult.Failed(ex.InnerException.Message);
+            return ToolResult.Failed(ex.InnerException.Message);
         }
         catch (Exception ex)
         {
-            return FunctionResult.Failed(ex.Message);
+            return ToolResult.Failed(ex.Message);
         }
     }
 
-    private object?[]? PrepareArguments(FunctionArguments? args)
+    private object?[]? PrepareArguments(ToolArguments? args)
     {
-        var parameters = Function.Method.GetParameters();
+        var parameters = _function.Method.GetParameters();
         if (parameters.Length == 0) return null;
         var arguments = new object?[parameters.Length];
 
@@ -107,6 +96,33 @@ public class FunctionTool
         }
 
         return arguments;
+    }
+
+    private ObjectJsonSchema GetJsonSchema()
+    {
+        var parameters = _function.Method.GetParameters();
+        var properties = new Dictionary<string, JsonSchema>();
+        var required = new List<string>();
+
+        foreach (var prop in parameters)
+        {
+            if (string.IsNullOrEmpty(prop.Name))
+                continue;
+
+            var propType = prop.ParameterType;
+            var propDescription = prop.GetCustomAttribute<DescriptionAttribute>()?.Description;
+            var propSchema = JsonSchemaConverter.ConvertFromType(propType, propDescription);
+            properties.Add(prop.Name, propSchema);
+
+            if (!prop.IsOptional)
+                required.Add(prop.Name);
+        }
+
+        return new ObjectJsonSchema
+        {
+            Properties = properties,
+            Required = required.ToArray()
+        };
     }
 
 }

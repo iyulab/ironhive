@@ -5,20 +5,20 @@ using System.Text.Json;
 
 namespace Raggle.Abstractions.Tools;
 
-public class FunctionArguments : IDictionary<string, object>
+public class ToolArguments : IDictionary<string, object>
 {
     private Dictionary<string, object> _inner = new();
     private string _buffer = string.Empty;
 
-    public FunctionArguments() 
+    public ToolArguments() 
     { }
 
-    public FunctionArguments(IDictionary<string, object> dictionary)
+    public ToolArguments(IDictionary<string, object> dictionary)
     {
         _inner = new Dictionary<string, object>(dictionary);
     }
 
-    public FunctionArguments(string json)
+    public ToolArguments(string json)
     {
         if (TryParseJson(json, out var value))
             _inner = value;

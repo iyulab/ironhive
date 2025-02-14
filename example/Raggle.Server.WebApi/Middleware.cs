@@ -1,16 +1,16 @@
 ﻿using System.Text;
 
-namespace Raggle.Server.WebApi.Development;
+namespace Raggle.Server.WebApi;
 
-public class ControllerMiddleware
+public class Middleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger _logger;
 
-    public ControllerMiddleware(RequestDelegate next, ILoggerFactory loggerFactory)
+    public Middleware(RequestDelegate next, ILoggerFactory loggerFactory)
     {
         _next = next;
-        _logger = loggerFactory.CreateLogger<ControllerMiddleware>();
+        _logger = loggerFactory.CreateLogger<Middleware>();
     }
 
     public async Task Invoke(HttpContext context)

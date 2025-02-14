@@ -57,13 +57,13 @@ public class OpenAIChatCompletionService : IChatCompletionService
                 var index = toolCall.Index ?? 0;
                 var id = toolCall.ID;
                 var name = toolCall.Function?.Name;
-                var args = new FunctionArguments(toolCall.Function?.Arguments ?? string.Empty);
+                var args = new ToolArguments(toolCall.Function?.Arguments ?? string.Empty);
 
                 var result = string.IsNullOrWhiteSpace(name)
-                    ? FunctionResult.Failed("Function name is required.")
+                    ? ToolResult.Failed("Function name is required.")
                     : context.Tools != null && context.Tools.TryGetValue(name, out var function)
                     ? await function.InvokeAsync(args)
-                    : FunctionResult.Failed($"Function '{name}' not exist.");
+                    : ToolResult.Failed($"Function '{name}' not exist.");
 
                 content.AddTool(id, name, args, result);
             }
@@ -142,10 +142,10 @@ public class OpenAIChatCompletionService : IChatCompletionService
                     foreach (var (_, content) in toolContents)
                     {
                         content.Result = string.IsNullOrWhiteSpace(content.Name)
-                            ? FunctionResult.Failed("Function name is required.")
+                            ? ToolResult.Failed("Function name is required.")
                             : context.Tools != null && context.Tools.TryGetValue(content.Name, out var tool)
                             ? await tool.InvokeAsync(content.Arguments)
-                            : FunctionResult.Failed($"Function '{content.Name}' not exist.");
+                            : ToolResult.Failed($"Function '{content.Name}' not exist.");
                         context.Messages.AddAssistantMessage(content);
                         yield return new StreamingMessageResponse { Content = content };
                     }
@@ -192,7 +192,7 @@ public class OpenAIChatCompletionService : IChatCompletionService
 
                 if (toolContents.TryGetValue((int)toolCall.Index, out var content))
                 {
-                    content.Arguments ??= new FunctionArguments();
+                    content.Arguments ??= new ToolArguments();
                     content.Arguments.Append(toolCall.Function?.Arguments);
                 }
                 else
@@ -202,7 +202,7 @@ public class OpenAIChatCompletionService : IChatCompletionService
                         Index = (int)toolCall.Index,
                         Id = toolCall.ID,
                         Name = toolCall.Function?.Name,
-                        Arguments = new FunctionArguments(toolCall.Function?.Arguments ?? string.Empty)
+                        Arguments = new ToolArguments(toolCall.Function?.Arguments ?? string.Empty)
                     };
                     toolContents.Add((int)toolCall.Index, content);
                 }
@@ -223,7 +223,7 @@ public class OpenAIChatCompletionService : IChatCompletionService
         var request = new ChatCompletionRequest
         {
             Model = context.Model,
-            Messages = context.Messages.ToOpenAI(context.System).ToArray(),
+            Messages = context.Messages.ToOpenAI(context.MessagesOptions?.System).ToArray(),
             MaxCompletionTokens = context.Parameters?.MaxTokens,
             Temperature = reason ? null : context.Parameters?.Temperature,
             TopP = reason ? null : context.Parameters?.TopP,
@@ -238,7 +238,11 @@ public class OpenAIChatCompletionService : IChatCompletionService
                 {
                     Name = t.Name,
                     Description = t.Description,
-                    Parameters = t.ToJsonSchema()
+                    Parameters = new
+                    {
+                        Properties = t.Properties,
+                        Required = t.Required,
+                    }
                 }
             }).ToArray();
         }

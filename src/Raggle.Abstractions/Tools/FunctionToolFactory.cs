@@ -56,12 +56,7 @@ public static class FunctionToolFactory
                 : Expression.GetFuncType([.. parameterTypes, returnType]);
             var function = method.CreateDelegate(functionType, instance);
 
-            var tool = new FunctionTool
-            {
-                Function = function,
-                Name = name,
-                Description = description,
-            };
+            var tool = new FunctionTool(function, name, description);
             tools.Add(tool);
         }
 

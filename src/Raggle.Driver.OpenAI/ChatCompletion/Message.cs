@@ -8,7 +8,10 @@ namespace Raggle.Driver.OpenAI.ChatCompletion;
 [JsonDerivedType(typeof(UserMessage), "user")]
 [JsonDerivedType(typeof(AssistantMessage), "assistant")]
 [JsonDerivedType(typeof(ToolMessage), "tool")]
-internal class Message { }
+internal abstract class Message 
+{ 
+    
+}
 
 internal class DeveloperMessage : Message
 {

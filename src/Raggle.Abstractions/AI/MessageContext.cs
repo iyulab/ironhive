@@ -8,22 +8,10 @@ namespace Raggle.Abstractions.AI;
 /// </summary>
 public class MessageContext
 {
-    private int _count = 0;
-
-    public void TryCount()
-    {
-        _count++;
-    }
-
     /// <summary>
     /// chat completion model name.
     /// </summary>
     public string Model { get; set; } = string.Empty;
-
-    /// <summary>
-    /// the instructions to the model.
-    /// </summary>
-    public string? System { get; set; }
 
     /// <summary>
     /// the chat history to use for completion.
@@ -31,17 +19,22 @@ public class MessageContext
     public MessageCollection Messages { get; set; } = new();
 
     /// <summary>
+    /// the tool list to use in the model.
+    /// </summary>
+    public ToolCollection? Tools { get; set; }
+
+    /// <summary>
     /// the chat completion parameters.
     /// </summary>
     public ChatCompletionParameters? Parameters { get; set; }
 
     /// <summary>
-    /// the tool list to use in the model.
+    /// Message management options.
     /// </summary>
-    public FunctionToolCollection? Tools { get; set; }
+    public MessageOptions? MessagesOptions { get; set; }
 
     /// <summary>
-    /// the maximum number of tries to generate.
+    /// Tool execution options.
     /// </summary>
-    public int MaxTryCount => _count;
+    public ToolExecutionOptions? ToolOptions { get; set; }
 }

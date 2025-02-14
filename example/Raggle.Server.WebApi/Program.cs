@@ -1,11 +1,9 @@
 using Microsoft.AspNetCore.Http.Features;
-using Raggle.Abstractions;
 using Raggle.Core.Extensions;
-using Raggle.Server;
 using Raggle.Server.Configurations;
 using Raggle.Server.Extensions;
 using Raggle.Server.Tools;
-using Raggle.Server.WebApi.Development;
+using Raggle.Server.WebApi;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -41,16 +39,6 @@ else
     //builder.Services.AddAuthorization();
 }
 
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll", builder =>
-    {
-        builder.AllowAnyOrigin()
-            .AllowAnyMethod()
-            .AllowAnyHeader();
-        //.AllowCredentials();
-    });
-});
 builder.Services.Configure<FormOptions>(options =>
 {
     options.MultipartBodyLengthLimit = 10_737_418_240; // 10GB
@@ -65,8 +53,6 @@ app.Services.EnsureRaggleServices();
 app.UseRouting();
 app.UseStaticFiles();
 
-app.UseCors("AllowAll");
-
 app.MapControllers();
 app.MapFallbackToFile("index.html");
 
@@ -75,7 +61,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 
-    app.UseMiddleware<ControllerMiddleware>();
+    app.UseCors(builder => builder.AllowAnyOrigin()
+                                  .AllowAnyMethod()
+                                  //.AllowCredentials()
+                                  .AllowAnyHeader());
+
+    app.UseMiddleware<Middleware>();
     app.UseDeveloperExceptionPage();
 }
 else
@@ -87,7 +78,6 @@ else
     //app.UseHsts();
 
     app.Urls.Clear();
-    //app.Urls.Add("https://*:7297");
     app.Urls.Add("http://*:80");
 }
 

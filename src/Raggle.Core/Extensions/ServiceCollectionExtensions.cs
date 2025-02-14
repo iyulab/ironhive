@@ -4,7 +4,7 @@ using Raggle.Core.Memory.Decoders;
 
 namespace Raggle.Core.Extensions;
 
-public static class IServiceCollectionExtensions
+public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddDocumentDecoder<T>(
         this IServiceCollection services)

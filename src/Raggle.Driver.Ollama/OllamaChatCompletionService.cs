@@ -91,7 +91,7 @@ public class OllamaChatCompletionService : IChatCompletionService
         var request = new ChatRequest
         {
             Model = context.Model,
-            Messages = context.Messages.ToOllama(context.System).ToArray(),
+            Messages = context.Messages.ToOllama(context.MessagesOptions?.System).ToArray(),
             Options = new ModelOptions
             {
                 NumPredict = context.Parameters?.MaxTokens,
@@ -104,26 +104,25 @@ public class OllamaChatCompletionService : IChatCompletionService
             },
         };
 
-        if (context.Tools != null && context.Tools.Count > 0)
-        {
-            request.Tools = context.Tools.Select(t =>
-            {
-                var schema = t.ToJsonSchema();
-                return new Tool
-                {
-                    Function = new FunctionTool
-                    {
-                        Name = t.Name,
-                        Description = t.Description,
-                        Parameters = new ParametersSchema
-                        {
-                            Properties = schema.Properties,
-                            Required = schema.Required,
-                        }
-                    }
-                };
-            }).ToArray();
-        }
+        //if (context.Tools != null && context.Tools.Count > 0)
+        //{
+        //    request.Tools = context.Tools.Select(t =>
+        //    {
+        //        return new Tool
+        //        {
+        //            Function = new FunctionTool
+        //            {
+        //                Name = t.Name,
+        //                Description = t.Description,
+        //                Parameters = new ParametersSchema
+        //                {
+        //                    Properties = t.Properties,
+        //                    Required = t.Required?.ToArray(),
+        //                }
+        //            }
+        //        };
+        //    }).ToArray();
+        //}
 
         return request;
     }

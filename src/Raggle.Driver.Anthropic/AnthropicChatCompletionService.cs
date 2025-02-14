@@ -64,12 +64,12 @@ public class AnthropicChatCompletionService : IChatCompletionService
                 {
                     var id = toolUse.ID;
                     var name = toolUse.Name;
-                    var args = new FunctionArguments(JsonSerializer.Serialize(toolUse.Input));
+                    var args = new ToolArguments(JsonSerializer.Serialize(toolUse.Input));
                     var result = string.IsNullOrWhiteSpace(name)
-                        ? FunctionResult.Failed("Tool name is missing")
+                        ? ToolResult.Failed("Tool name is missing")
                         : context.Tools != null && context.Tools.TryGetValue(name, out var tool)
                         ? await tool.InvokeAsync(args)
-                        : FunctionResult.Failed($"Tool [{name}] not found");
+                        : ToolResult.Failed($"Tool [{name}] not found");
 
                     content.AddTool(id, name, args, result);
                 }
@@ -174,7 +174,7 @@ public class AnthropicChatCompletionService : IChatCompletionService
                 {
                     var item = content.ElementAt(cde.Index) as ToolContent
                         ?? throw new InvalidOperationException("Unexpected content type");
-                    item.Arguments ??= new FunctionArguments();
+                    item.Arguments ??= new ToolArguments();
                     item.Arguments.Append(tool.PartialJson);
 
                     yield return new StreamingMessageResponse { Content = item };
@@ -198,10 +198,10 @@ public class AnthropicChatCompletionService : IChatCompletionService
                         if (item is ToolContent toolContent)
                         {
                             toolContent.Result = string.IsNullOrWhiteSpace(toolContent.Name)
-                                    ? FunctionResult.Failed("Tool name is missing")
+                                    ? ToolResult.Failed("Tool name is missing")
                                     : context.Tools != null && context.Tools.TryGetValue(toolContent.Name, out var tool)
                                     ? await tool.InvokeAsync(toolContent.Arguments)
-                                    : FunctionResult.Failed($"Tool [{toolContent.Name}] not found");
+                                    : ToolResult.Failed($"Tool [{toolContent.Name}] not found");
                             yield return new StreamingMessageResponse
                             {
                                 Content = toolContent
@@ -262,7 +262,7 @@ public class AnthropicChatCompletionService : IChatCompletionService
         var request = new MessagesRequest
         {
             Model = context.Model,
-            System = context.System,
+            System = context.MessagesOptions?.System,
             Messages = context.Messages.ToAnthropic().ToArray(),
             MaxTokens = context.Parameters?.MaxTokens,
             Temperature = context.Parameters?.Temperature,
@@ -277,7 +277,11 @@ public class AnthropicChatCompletionService : IChatCompletionService
             {
                 Name = t.Name,
                 Description = t.Description,
-                InputSchema = t.ToJsonSchema()
+                InputSchema = new
+                {
+                    Properties = t.Properties,
+                    Required = t.Required,
+                }
             }).ToArray();
         }
 
