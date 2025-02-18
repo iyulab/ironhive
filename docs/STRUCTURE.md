@@ -1,41 +1,53 @@
 # STRUCTURE
 
-- IMessageSession(µ¶¸³)
-  - Title
-  - Summary
-  - TruncatedIndex
-  - TokenUsage
-  - Invoke()
+## Core
 
-- Task(Workflow)
+```yaml
+- IHiveMind
+  - IAgent[]
+  - InvokeAsync()
+
+- IChatbot : IAgent
   - ID
-  - Nodes(Action)
+  - Name
+  - Description
+  - Instruction
+  - ExecuteAsync()
+  - ExecuteStreamingAsync()
+
+- IWorker<TIn,TOut> : IAgent
+  - ID
+  - Name
+  - Description
+  - Instruction
+  - TOut ExecuteAsync(TIn)
+
+- IMessageSession
+  - Title
+  - CondensationStrategy
+  - TokenUsage
+  - ToolRetryPolicy
+  - InvokeAsync()
+  - InvokeStreamingAsync()
+
+- Workflow
+  - ID
+  - Node[]
     - ID
     - Execute()
-  - Edges
-    - From
-    - To
+  - Edge[]
+    - Source
+    - Target
+```
 
-- IHiveMind
-  - IManager
-  - IAssistant(IWorker)
-    - Name
-    - Description
-    - Instruction
-    - Tools
-    - AddTool()
-  - AddAssistant()
-  - Invoke()
+## Basic
 
-- ToolManager(??)
-  - Tools
-  - RetryPolicy
-  - AddTool()
-  - RemoveTool()
-  - ChainingTools()
-  - Invoke()
-
+```yaml
 - IChatCompletionService
-  - GenerateCompletion()
+  - GenerateMessageAsync()
+  - GenerateStreamingMessageAsync()
 - IEmbeddingService
-  - GetEmbedding()
+  - EmbedAsync()
+  - EmbedBatchAsync()
+```
+

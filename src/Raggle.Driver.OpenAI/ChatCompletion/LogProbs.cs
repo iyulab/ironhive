@@ -5,10 +5,10 @@ namespace Raggle.Driver.OpenAI.ChatCompletion;
 internal class LogProbs
 {
     [JsonPropertyName("content")]
-    public LogProbTokens[]? Content { get; set; }
+    public IEnumerable<LogProbTokens>? Content { get; set; }
 
     [JsonPropertyName("refusal")]
-    public LogProbTokens[]? Refusal { get; set; }
+    public IEnumerable<LogProbTokens>? Refusal { get; set; }
 }
 
 internal class LogProbTokens
@@ -20,10 +20,10 @@ internal class LogProbTokens
     public float? LogProb { get; set; }
 
     [JsonPropertyName("bytes")]
-    public int[]? Bytes { get; set; }
+    public IEnumerable<int>? Bytes { get; set; }
 
     [JsonPropertyName("top_logprobs")]
-    public LogProbToken[]? TopLogProbs { get; set; }
+    public IEnumerable<LogProbToken>? TopLogProbs { get; set; }
 }
 
 internal class LogProbToken
@@ -35,5 +35,5 @@ internal class LogProbToken
     public float? LogProb { get; set; }
 
     [JsonPropertyName("bytes")]
-    public int[]? Bytes { get; set; }
+    public IEnumerable<int>? Bytes { get; set; }
 }

@@ -2,7 +2,6 @@
 using Raggle.Abstractions.Memory;
 using Raggle.Core.Extensions;
 using Raggle.Core.Memory.Decoders;
-using Raggle.Core.Memory.Document;
 
 namespace Raggle.Core.Memory.Handlers;
 

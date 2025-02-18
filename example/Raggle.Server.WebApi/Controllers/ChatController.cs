@@ -12,9 +12,9 @@ namespace Raggle.Server.WebApi.Controllers;
 [Route("/v1/chat")]
 public class ChatController : ControllerBase
 {
-    private readonly ConversationService _service;
+    private readonly SessionService _service;
 
-    public ChatController(ConversationService service)
+    public ChatController(SessionService service)
     {
         _service = service;
     }
@@ -42,7 +42,7 @@ public class ChatController : ControllerBase
     [HttpPost("{id}")]
     public async Task UpsertConversationAsync(
         [FromRoute] string id,
-        [FromBody] ConversationEntity entity,
+        [FromBody] SessionEntity entity,
         CancellationToken cancellationToken = default)
     {
         Response.ContentType = "application/stream+json";
@@ -50,15 +50,6 @@ public class ChatController : ControllerBase
         try
         {
             var conversation = await _service.UpsertAsync(entity);
-            //await foreach (var response in _service.ChatAssistantAsync(assistantId, messages, cancellationToken))
-            //{
-            //    var json = JsonSerializer.Serialize(response, _jsonOptions.JsonSerializerOptions);
-
-            //    var data = Encoding.UTF8.GetBytes(json + "\n");
-            //    await Response.Body.WriteAsync(data, cancellationToken);
-
-            //    await Response.Body.FlushAsync(cancellationToken);
-            //}
         }
         catch (Exception ex)
         {

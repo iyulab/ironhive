@@ -19,5 +19,5 @@ internal class AnyToolChoice : ToolChoice { }
 internal class ManualToolChoice : ToolChoice
 {
     [JsonPropertyName("name")]
-    public required string Name { get; set; }
+    public string? Name { get; set; }
 }

@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Raggle.Abstractions;
 using Raggle.Abstractions.AI;
+using Raggle.Abstractions.Experimental;
 using Raggle.Abstractions.Memory;
 using Raggle.Abstractions.Tools;
 using Raggle.Core.AI;
@@ -11,12 +12,12 @@ namespace Raggle.Core;
 public class Raggle : IRaggle
 {
     public IServiceProvider Services { get; }
-    public IRaggleMemory Memory { get; }
+    public IMemoryService Memory { get; }
 
     public Raggle(IServiceProvider services)
     {
         Services = services;
-        Memory = new RaggleMemory(services);
+        Memory = new MemoryService(services);
     }
 
     public T GetKeyedService<T>(string serviceKey) where T : notnull
@@ -34,7 +35,7 @@ public class Raggle : IRaggle
     public IEmbeddingService GetEmbeddingService(string serviceKey)
         => Services.GetRequiredKeyedService<IEmbeddingService>(serviceKey);
 
-    public IAssistant CreateAssistant(
+    public IAgent CreateAssistant(
         string service,
         string model,
         string? id = null, 
@@ -44,16 +45,6 @@ public class Raggle : IRaggle
         ChatCompletionParameters? options = null,
         ToolCollection? tools = null)
     {
-        return new BasicRaggleAssistant(Services)
-        {
-            Service = service,
-            Model = model,
-            Id = id,
-            Name = name,
-            Description = description,
-            Instruction = instruction,
-            Options = options,
-            Tools = tools
-        };
+        throw new NotImplementedException();
     }
 }

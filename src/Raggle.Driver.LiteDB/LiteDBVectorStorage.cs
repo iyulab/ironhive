@@ -101,7 +101,7 @@ public class LiteDBVectorStorage : IVectorStorage
 
     public Task<IEnumerable<ScoredVectorPoint>> SearchVectorsAsync(
         string collectionName, 
-        float[] input, 
+        IEnumerable<float> input, 
         float minScore = 0, 
         int limit = 5, 
         MemoryFilter? filter = null, 
@@ -123,9 +123,9 @@ public class LiteDBVectorStorage : IVectorStorage
             .Select(p => new ScoredVectorPoint
             {
                 VectorId = p.VectorId,
-                Score = TensorPrimitives.CosineSimilarity(input, p.Vectors),
+                Score = TensorPrimitives.CosineSimilarity(input.ToArray(), p.Vectors.ToArray()),
                 DocumentId = p.DocumentId,
-                Tags = p.Tags,
+                Tags = p.Tags?.ToArray(),
                 Payload = p.Payload,
             })
             .Where(p => p.Score >= minScore)

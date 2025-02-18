@@ -33,7 +33,7 @@ public class OllamaEmbeddingService : IEmbeddingService
     }
 
     /// <inheritdoc />
-    public async Task<float[]> EmbeddingAsync(
+    public async Task<IEnumerable<float>> EmbedAsync(
         string model,
         string input,
         CancellationToken cancellationToken = default)
@@ -49,7 +49,7 @@ public class OllamaEmbeddingService : IEmbeddingService
     }
 
     /// <inheritdoc />
-    public async Task<EmbeddingsResponse> EmbeddingsAsync(
+    public async Task<EmbeddingsResponse> EmbedBatchAsync(
         EmbeddingsRequest request, 
         CancellationToken cancellationToken = default)
     {
@@ -63,7 +63,7 @@ public class OllamaEmbeddingService : IEmbeddingService
         {
             Index = i,
             Embedding = e
-        }).ToArray();
+        });
 
         return new EmbeddingsResponse
         {

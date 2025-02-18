@@ -34,7 +34,7 @@ internal class MessagesResponse
     /// <see cref="MessageTextContent"/> or <see cref="MessageToolUseContent"/>
     /// </summary>
     [JsonPropertyName("content")]
-    public required MessageContent[] Content { get; set; }
+    public required IEnumerable<MessageContent> Content { get; set; }
 
     /// <summary>
     /// "end_turn", "max_tokens", "stop_sequence", "tool_use"

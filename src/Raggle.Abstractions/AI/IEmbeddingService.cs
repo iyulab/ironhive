@@ -11,15 +11,15 @@ public interface IEmbeddingService
     /// <summary>
     /// Generates an embedding for the given input using the specified model.
     /// </summary>
-    Task<float[]> EmbeddingAsync(
+    Task<IEnumerable<float>> EmbedAsync(
         string model,
         string input,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Generates embeddings for the given request.
+    /// Generates multiple embeddings for the given request.
     /// </summary>
-    Task<EmbeddingsResponse> EmbeddingsAsync(
+    Task<EmbeddingsResponse> EmbedBatchAsync(
         EmbeddingsRequest request,
         CancellationToken cancellationToken = default);
 }

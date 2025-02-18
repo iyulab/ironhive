@@ -18,7 +18,7 @@ public class ToolArguments : IDictionary<string, object>
         _inner = new Dictionary<string, object>(dictionary);
     }
 
-    public ToolArguments(string json)
+    public ToolArguments(string? json)
     {
         if (TryParseJson(json, out var value))
             _inner = value;
@@ -50,10 +50,15 @@ public class ToolArguments : IDictionary<string, object>
         }
     }
 
-    private static bool TryParseJson(string json, [NotNullWhen(true)] out Dictionary<string, object> value)
+    private static bool TryParseJson(string? json, [NotNullWhen(true)] out Dictionary<string, object> value)
     {
         try
         {
+            if (string.IsNullOrEmpty(json))
+            {
+                value = new Dictionary<string, object>();
+                return true;
+            }
             value = JsonSerializer.Deserialize<Dictionary<string, object>>(json)!;
         }
         catch (Exception ex)
@@ -64,13 +69,7 @@ public class ToolArguments : IDictionary<string, object>
         return value != null;
     }
 
-    #region IDictionary Implementation
-
-    public object this[string key]
-    {
-        get => _inner[key];
-        set => _inner[key] = value;
-    }
+    #region IDictionary Implementations
 
     public ICollection<string> Keys => _inner.Keys;
 
@@ -79,6 +78,12 @@ public class ToolArguments : IDictionary<string, object>
     public int Count => _inner.Count;
 
     public bool IsReadOnly => false;
+
+    public object this[string key]
+    {
+        get => _inner[key];
+        set => _inner[key] = value;
+    }
 
     public void Add(string key, object value) => _inner.Add(key, value);
 

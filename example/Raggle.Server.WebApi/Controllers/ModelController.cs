@@ -75,7 +75,6 @@ public class ModelController : ControllerBase
                 catch
                 {
                     models[key] = [];
-
                 }
             }
         }

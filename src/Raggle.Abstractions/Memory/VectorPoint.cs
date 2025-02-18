@@ -13,7 +13,7 @@ public class VectorPoint
     /// <summary>
     /// Gets or sets the vector values.
     /// </summary>
-    public float[] Vectors { get; set; } = [];
+    public IEnumerable<float> Vectors { get; set; } = [];
 
     /// <summary>
     /// Gets or sets the document ID.
@@ -23,7 +23,7 @@ public class VectorPoint
     /// <summary>
     /// Gets or sets the tags.
     /// </summary>
-    public string[]? Tags { get; set; }
+    public IEnumerable<string>? Tags { get; set; }
 
     /// <summary>
     /// Gets or sets the creation date.

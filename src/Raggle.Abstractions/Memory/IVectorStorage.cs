@@ -35,7 +35,7 @@ public interface IVectorStorage : IDisposable
 
     Task<IEnumerable<ScoredVectorPoint>> SearchVectorsAsync(
         string collectionName,
-        float[] input,
+        IEnumerable<float> input,
         float minScore = 0.0f,
         int limit = 5,
         MemoryFilter? filter = null,

@@ -8,7 +8,7 @@ internal class EmbeddingResponse
     public int? Index { get; set; }
 
     [JsonPropertyName("embedding")]
-    public float[]? Embedding { get; set; }
+    public IEnumerable<float>? Embedding { get; set; }
 
     /// <summary>
     /// "embedding" only

@@ -15,9 +15,9 @@ public class MemoryService
 {
     private readonly string _id;
     private readonly RaggleDbContext _db;
-    private readonly IRaggleMemory _memory;
+    private readonly IMemoryService _memory;
 
-    public MemoryService(RaggleDbContext dbContext, IRaggleMemory memory, string serviceId)
+    public MemoryService(RaggleDbContext dbContext, IMemoryService memory, string serviceId)
     {
         _id = serviceId;
         _db = dbContext;

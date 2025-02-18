@@ -17,10 +17,10 @@ public class Middleware
     {
         // 요청 본문을 읽기 위해 스트림을 재설정 가능하게 함
         context.Request.EnableBuffering();
-        var cType = context.Request.ContentType;
+        var type = context.Request.ContentType;
 
         // 요청 본문 읽기
-        if (cType == "application/json")
+        if (type == "application/json")
         {
             using var reader = new StreamReader(context.Request.Body,
                                                  encoding: Encoding.UTF8,
@@ -32,7 +32,7 @@ public class Middleware
             context.Request.Body.Position = 0;
             _logger.LogInformation($"[Request] {context.Request.Method} {context.Request.Path} {body}");
         }
-        else if (cType != null && cType.Contains("multipart/form-data"))
+        else if (type != null && type.Contains("multipart/form-data"))
         {
             //var form = await context.Request.ReadFormAsync();
             //var fileNames = form.Files.Select(f => f.FileName);

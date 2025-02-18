@@ -1,10 +1,8 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Raggle.Abstractions.AI;
-using Raggle.Abstractions.Json;
 using Raggle.Abstractions.Memory;
 using Raggle.Core.AI;
 using Raggle.Core.Extensions;
-using Raggle.Core.Memory.Document;
 using System.Text;
 
 namespace Raggle.Core.Memory.Handlers;
@@ -37,7 +35,7 @@ public class ChunkingHandler : IPipelineHandler
             suffix: pipeline.GetPreviousStep() ?? "unknown",
             cancellationToken: cancellationToken);
 
-        var content = JsonObjectConverter.ConvertTo<IEnumerable<string>>(section.Content)
+        var content = section.Content.ConvertTo<IEnumerable<string>>()
             ?? throw new InvalidOperationException("The document content is not found");
         var chunks = new List<DocumentFragment>();
 

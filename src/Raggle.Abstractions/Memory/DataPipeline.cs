@@ -122,7 +122,7 @@ public class DataPipeline
 
         if (Options.TryGetValue(CurrentStep, out var obj))
         {
-            return JsonObjectConverter.ConvertTo<T>(obj);
+            return obj.ConvertTo<T>();
         }
         return default;
     }

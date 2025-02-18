@@ -9,7 +9,7 @@ internal class EmbeddingRequest
     public required string Model { get; set; }
 
     [JsonPropertyName("input")]
-    public required string[] Input { get; set; }
+    public required IEnumerable<string> Input { get; set; }
 
     [JsonPropertyName("options")]
     public ModelOptions? Options { get; set; }

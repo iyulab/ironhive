@@ -22,57 +22,111 @@ internal static class MessageCollectionExtensions
 
             if (message.Role == MessageRole.User)
             {
-                var content = new List<MessageContent>();
+                var um = new UserMessage
+                { 
+                    Content = new List<MessageContent>() 
+                };
                 foreach (var item in message.Content)
                 {
                     if (item is TextContent text)
                     {
-                        content.Add(new TextMessageContent { Text = text.Text ?? string.Empty });
+                        um.Content.Add(new TextMessageContent 
+                        { 
+                            Text = text.Text ?? string.Empty 
+                        });
                     }
                     else if (item is ImageContent image)
                     {
-                        content.Add(new ImageMessageContent { ImageURL = new ImageURL { URL = image.Data ?? string.Empty } });
+                        um.Content.Add(new ImageMessageContent 
+                        {
+                            ImageURL = new ImageURL 
+                            { 
+                                URL = image.Data ?? string.Empty,
+                            } 
+                        });
                     }
                 }
-                _messages.Add(new UserMessage { Content = content });
+                _messages.Add(um);
             }
             else if (message.Role == MessageRole.Assistant)
             {
-                foreach (var item in message.Content)
+                foreach (var content in message.Content.SplitContent())
                 {
-                    if (item is TextContent text)
+                    var am = new AssistantMessage();
+                    var tms = new List<ToolMessage>();
+                    foreach (var item in content)
                     {
-                        _messages.Add(new AssistantMessage { Content = text.Text });
-                    }
-                    else if (item is ToolContent tool)
-                    {
-                        _messages.Add(new AssistantMessage
+                        if (item is TextContent text)
                         {
-                            ToolCalls = [
-                                new ToolCall
+                            am.Content = text.Text ?? string.Empty;
+                        }
+                        else if (item is ToolContent tool)
+                        {
+                            am.ToolCalls ??= new List<ToolCall>();
+                            am.ToolCalls.Add(new ToolCall
+                            {
+                                Index = tool.Index,
+                                ID = tool.Id,
+                                Function = new FunctionCall
                                 {
-                                    Index = tool.Index,
-                                    ID = tool.Id,
-                                    Function = new FunctionCall
-                                    {
-                                        Name = tool.Name,
-                                        Arguments = tool.Arguments?.ToString()
-                                    }
+                                    Name = tool.Name,
+                                    Arguments = tool.Arguments?.ToString()
                                 }
-                            ]
-                        });
-                        if (tool.Result == null) continue;
+                            });
 
-                        _messages.Add(new ToolMessage
-                        {
-                            ID = tool.Id ?? string.Empty,
-                            Content = JsonSerializer.Serialize(tool.Result)
-                        });
+                            tms.Add(new ToolMessage
+                            {
+                                ID = tool.Id ?? string.Empty,
+                                Content = JsonSerializer.Serialize(tool.Result)
+                            });
+                        }
                     }
+
+                    _messages.Add(am);
+                    if (tms.Count > 0)
+                        _messages.AddRange(tms);
                 }
             }
         }
 
         return _messages;
+    }
+
+    /// <summary>
+    /// 동일한 종류의 content끼리 묶습니다.
+    /// 예) ToolContent, ToolContent, ToolContent, TextContent, TextContent, ToolContent, ToolContent
+    ///     => [ToolContent, ToolContent, ToolContent], [TextContent, TextContent], [ToolContent, ToolContent]
+    /// </summary>
+    internal static IEnumerable<MessageContentCollection> SplitContent(this MessageContentCollection content)
+    {
+        var result = new List<MessageContentCollection>();
+        var group = new MessageContentCollection();
+        Type? currentType = null;
+
+        foreach (var item in content)
+        {
+            // 그룹이 비어있으면 현재 아이템 타입을 기준으로 그룹 시작
+            if (group.Count == 0)
+            {
+                currentType = item.GetType();
+            }
+            // 현재 아이템 타입과 이전 그룹의 타입이 다르면 그룹 분리
+            else if (item.GetType() != currentType)
+            {
+                result.Add(group);
+                group = new MessageContentCollection();
+                currentType = item.GetType();
+            }
+
+            group.Add(item);
+        }
+
+        // 마지막 그룹이 있다면 추가합니다.
+        if (group.Count > 0)
+        {
+            result.Add(group);
+        }
+
+        return result;
     }
 }

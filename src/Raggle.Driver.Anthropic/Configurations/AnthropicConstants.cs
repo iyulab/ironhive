@@ -6,7 +6,8 @@
 internal class AnthropicConstants
 {
     internal const string DefaultEndPoint = "https://api.anthropic.com/";
-    internal const string ApiKeyHeaderName = "x-api-key";
+    
+    internal const string AuthorizationHeaderName = "x-api-key";
     internal const string VersionHeaderName = "anthropic-version";
     internal const string VersionHeaderValue = "2023-06-01";
 

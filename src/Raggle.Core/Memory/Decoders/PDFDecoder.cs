@@ -1,5 +1,4 @@
-﻿using Raggle.Core.Utils;
-using UglyToad.PdfPig;
+﻿using UglyToad.PdfPig;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 
 namespace Raggle.Core.Memory.Decoders;

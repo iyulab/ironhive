@@ -6,8 +6,8 @@
 internal class OpenAIConstants
 {
     internal const string DefaultEndPoint = "https://api.openai.com/";
-    internal const string ApiKeyHeaderName = "Authorization";
-    internal const string ApiKeyHeaderValue = $"Bearer {{0}}";
+    internal const string AuthorizationHeaderName = "Authorization";
+    internal const string AuthorizationHeaderValue = $"Bearer {{0}}";
     internal const string OrganizationHeaderName = "OpenAI-Organization";
     internal const string ProjectHeaderName = "OpenAI-Project";
 

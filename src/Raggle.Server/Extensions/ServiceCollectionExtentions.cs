@@ -32,7 +32,7 @@ public static class ServiceCollectionExtentions
                 .AddDefaultPipelineHandlers();
 
         services.AddSingleton<IRaggle, Core.Raggle>();
-        services.AddSingleton<IRaggleMemory, RaggleMemory>();
+        services.AddSingleton<IMemoryService, Core.Memory.MemoryService>();
 
         
         return services;
@@ -80,14 +80,14 @@ public static class ServiceCollectionExtentions
             }
         });
 
-        services.AddScoped<MemoryService>((provider) =>
+        services.AddScoped((provider) =>
         {
             var dbContext = provider.GetRequiredService<RaggleDbContext>();
-            var memory = provider.GetRequiredService<IRaggleMemory>();
+            var memory = provider.GetRequiredService<IMemoryService>();
             var http = provider.GetRequiredService<IHttpContextAccessor>();
             var serviceId = http.HttpContext.User.Claims.FirstOrDefault(c => c.Type == "serviceId")?.Value
                 ?? string.Empty;
-            return new MemoryService(dbContext, memory, serviceId);
+            return new Services.MemoryService(dbContext, memory, serviceId);
         });
         services.AddScoped<AssistantService>((provider) => 
         {

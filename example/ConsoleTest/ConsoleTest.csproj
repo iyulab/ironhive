@@ -17,7 +17,6 @@
     <ProjectReference Include="..\..\src\Raggle.Driver.Ollama\Raggle.Driver.Ollama.csproj" />
     <ProjectReference Include="..\..\src\Raggle.Driver.OpenAI\Raggle.Driver.OpenAI.csproj" />
     <ProjectReference Include="..\..\src\Raggle.Driver.Qdrant\Raggle.Driver.Qdrant.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.Helpers.HuggingFace\Raggle.Helpers.HuggingFace.csproj" />
   </ItemGroup>
 
 </Project>

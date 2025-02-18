@@ -6,45 +6,23 @@ public sealed class MessageCollection : ICollection<Message>
 {
     private readonly List<Message> _items = [];
 
-    public int Count => _items.Count;
-
-    public bool IsReadOnly => false;
-
-    public Message this[int index]
+    public void Append(MessageRole role, IMessageContent content)
     {
-        get => _items[index];
-        set => _items[index] = value;
-    }
-
-    public void AddUserMessage(IMessageContent content)
-    {
-        AddMessage(MessageRole.User, content);
-    }
-
-    public void AddUserMessage(MessageContentCollection content)
-    {
-        AddMessage(MessageRole.User, content);
-    }
-
-    // 어시스턴트 메시지를 추가합니다. 이전 메시지가 어시스턴트 메시지인 경우, 같은 메시지에 추가합니다.
-    public void AddAssistantMessage(IMessageContent content)
-    {
-        if (_items.Last().Role == MessageRole.Assistant)
+        if (_items.Last().Role == role)
             _items.Last().Content.Add(content);
         else
-            AddMessage(MessageRole.Assistant, content);
+            Add(role, content);
     }
 
-    // 어시스턴트 메시지를 추가합니다. 이전 메시지가 어시스턴트 메시지인 경우, 같은 메시지에 추가합니다.
-    public void AddAssistantMessage(MessageContentCollection content)
+    public void Append(MessageRole role, MessageContentCollection content)
     {
-        if (_items.Last().Role == MessageRole.Assistant)
+        if (_items.Last().Role == role)
             _items.Last().Content.AddRange(content);
         else
-            AddMessage(MessageRole.Assistant, content);
+            Add(role, content);
     }
 
-    public void AddMessage(MessageRole role, IMessageContent content)
+    public void Add(MessageRole role, IMessageContent content)
     {
         _items.Add(new Message
         {
@@ -54,7 +32,7 @@ public sealed class MessageCollection : ICollection<Message>
         });
     }
 
-    public void AddMessage(MessageRole role, MessageContentCollection content)
+    public void Add(MessageRole role, MessageContentCollection content)
     {
         _items.Add(new Message
         {
@@ -64,17 +42,17 @@ public sealed class MessageCollection : ICollection<Message>
         });
     }
 
-    public MessageCollection Clone()
-    {
-        var clone = new MessageCollection();
-        foreach (var message in _items)
-        {
-            clone.Add(message.Clone());
-        }
-        return clone;
-    }
+    #region ICollection Implementations
 
-    #region Implementation Methods
+    public int Count => _items.Count;
+
+    public bool IsReadOnly => false;
+
+    public Message this[int index]
+    {
+        get => _items[index];
+        set => _items[index] = value;
+    }
 
     public void Add(Message message) => _items.Add(message);
 

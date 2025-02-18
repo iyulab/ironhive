@@ -10,6 +10,9 @@ public class MessageContentCollection : ICollection<IMessageContent>
 {
     private readonly List<IMessageContent> _items = new();
 
+    /// <summary>
+    /// TextContent를 추가합니다.
+    /// </summary>
     public void AddText(string? text)
     {
         Add(new TextContent 
@@ -19,6 +22,9 @@ public class MessageContentCollection : ICollection<IMessageContent>
         });
     }
 
+    /// <summary>
+    /// ImageContent를 추가합니다.
+    /// </summary>
     public void AddImage(string? data)
     {
         Add(new ImageContent 
@@ -28,6 +34,9 @@ public class MessageContentCollection : ICollection<IMessageContent>
         });
     }
 
+    /// <summary>
+    /// ToolContent를 추가합니다.
+    /// </summary>
     public void AddTool(
         string? id,
         string? name,
@@ -44,7 +53,7 @@ public class MessageContentCollection : ICollection<IMessageContent>
         });
     }
 
-    #region Implementation
+    #region ICollection Implementations
 
     public int Count => _items.Count;
 

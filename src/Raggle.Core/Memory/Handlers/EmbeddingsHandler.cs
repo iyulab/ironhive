@@ -3,7 +3,6 @@ using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Json;
 using Raggle.Abstractions.Memory;
 using Raggle.Core.Extensions;
-using Raggle.Core.Memory.Document;
 
 namespace Raggle.Core.Memory.Handlers;
 
@@ -43,9 +42,9 @@ public class EmbeddingsHandler : IPipelineHandler
             if (section.Content == null)
                 throw new InvalidOperationException($"No content found in the document");
 
-            if (JsonObjectConverter.TryConvertTo<string>(section.Content, out var str))
+            if (section.Content.TryConvertTo<string>(out var str))
             {
-                var embedding = await embedder.EmbeddingAsync(options.ModelName, str, cancellationToken);
+                var embedding = await embedder.EmbedAsync(options.ModelName, str, cancellationToken);
                 if (embedding == null)
                     throw new InvalidOperationException($"failed to get embedding for {str}");
 
@@ -58,7 +57,7 @@ public class EmbeddingsHandler : IPipelineHandler
                     Payload = section
                 });
             }
-            else if (JsonObjectConverter.TryConvertTo<IEnumerable<DialogueHandler.Dialogue>>(section.Content, out var dialogues))
+            else if (section.Content.TryConvertTo<IEnumerable<DialogueHandler.Dialogue>>(out var dialogues))
             {
                 var questions = dialogues.Select(x => x.Question).ToArray();
                 var request = new EmbeddingsRequest
@@ -66,7 +65,8 @@ public class EmbeddingsHandler : IPipelineHandler
                     Model = options.ModelName,
                     Input = questions
                 };
-                var response = await embedder.EmbeddingsAsync(request, cancellationToken);
+
+                var response = await embedder.EmbedBatchAsync(request, cancellationToken);
                 if (response.Embeddings == null && response.Embeddings?.Count() != questions.Length)
                     throw new InvalidOperationException($"failed to get embeddings for {questions}");
 

@@ -48,7 +48,7 @@ internal abstract class OpenAIClientBase
 
         if (!string.IsNullOrWhiteSpace(config.ApiKey))
             client.DefaultRequestHeaders.Add(
-                OpenAIConstants.ApiKeyHeaderName, string.Format(OpenAIConstants.ApiKeyHeaderValue, config.ApiKey));
+                OpenAIConstants.AuthorizationHeaderName, string.Format(OpenAIConstants.AuthorizationHeaderValue, config.ApiKey));
 
         if (!string.IsNullOrWhiteSpace(config.Organization))
             client.DefaultRequestHeaders.Add(

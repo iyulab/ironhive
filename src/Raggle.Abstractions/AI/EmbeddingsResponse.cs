@@ -16,6 +16,6 @@ public class EmbeddingsResponse
         /// <summary>
         /// Gets or sets the embedding values.
         /// </summary>
-        public float[]? Embedding { get; set; }
+        public IEnumerable<float>? Embedding { get; set; }
     }
 }

@@ -30,11 +30,11 @@ public class OpenAIEmbeddingService : IEmbeddingService
                         Model = m.ID,
                         Owner = m.OwnedBy,
                         CreatedAt = m.Created,
-                    }).ToArray();
+                    });
     }
 
     /// <inheritdoc />
-    public async Task<float[]> EmbeddingAsync(
+    public async Task<IEnumerable<float>> EmbedAsync(
         string model,
         string input,
         CancellationToken cancellationToken = default)
@@ -50,7 +50,7 @@ public class OpenAIEmbeddingService : IEmbeddingService
     }
 
     /// <inheritdoc />
-    public async Task<EmbeddingsResponse> EmbeddingsAsync(
+    public async Task<EmbeddingsResponse> EmbedBatchAsync(
         EmbeddingsRequest request, 
         CancellationToken cancellationToken = default)
     {
@@ -64,7 +64,7 @@ public class OpenAIEmbeddingService : IEmbeddingService
         {
             Index = r.Index,
             Embedding = r.Embedding,
-        }).ToArray();
+        });
 
         return new EmbeddingsResponse
         {

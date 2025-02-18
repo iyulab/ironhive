@@ -7,7 +7,7 @@ namespace Raggle.Abstractions.Json;
 
 public static class JsonSchemaConverter
 {
-    public static JsonSchema ConvertFromType(Type type, string? description = null)
+    public static JsonSchema ConvertFrom(Type type, string? description = null)
     {
         // boolean type
         if (type == typeof(bool))
@@ -60,19 +60,19 @@ public static class JsonSchemaConverter
         {
             var genericType = type.GetElementType()
                 ?? throw new ArgumentException("Array type must have an element type.", nameof(type));
-            var items = ConvertFromType(genericType);
+            var items = ConvertFrom(genericType);
             return new ArrayJsonSchema(description) { Items = items };
         }
         if (IsGenericArray(type))
         {
             var genericType = type.GetGenericArguments()[0];
-            var items = ConvertFromType(genericType);
+            var items = ConvertFrom(genericType);
             return new ArrayJsonSchema(description) { Items = items };
         }
         if (IsTuple(type))
         {
             var genericTypes = type.GetGenericArguments();
-            var items = genericTypes.Select(t => ConvertFromType(t)).ToArray();
+            var items = genericTypes.Select(t => ConvertFrom(t)).ToArray();
             return new ArrayJsonSchema(description) { Items = items };
         }
 
@@ -80,7 +80,7 @@ public static class JsonSchemaConverter
         if (IsDictionary(type))
         {
             var valueType = type.GetGenericArguments()[1];
-            var additionalProperties = ConvertFromType(valueType);
+            var additionalProperties = ConvertFrom(valueType);
             return new ObjectJsonSchema
             {
                 Description = description,
@@ -96,7 +96,7 @@ public static class JsonSchemaConverter
             {
                 var propType = prop.PropertyType;
                 var propDescription = prop.GetCustomAttribute<DescriptionAttribute>()?.Description;
-                var propSchema = ConvertFromType(propType, propDescription);
+                var propSchema = ConvertFrom(propType, propDescription);
                 properties.Add(prop.Name, propSchema);
 
                 if (IsRequiredProperty(prop))

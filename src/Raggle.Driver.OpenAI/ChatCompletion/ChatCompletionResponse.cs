@@ -8,7 +8,7 @@ internal class ChatCompletionResponse
     public string? ID { get; set; }
 
     [JsonPropertyName("choices")]
-    public Choice[]? Choices { get; set; }
+    public IEnumerable<Choice>? Choices { get; set; }
 
     [JsonPropertyName("created")]
     public int Created { get; set; }

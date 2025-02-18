@@ -9,9 +9,7 @@ namespace Raggle.Driver.OpenAI.ChatCompletion;
 [JsonDerivedType(typeof(AssistantMessage), "assistant")]
 [JsonDerivedType(typeof(ToolMessage), "tool")]
 internal abstract class Message 
-{ 
-    
-}
+{ }
 
 internal class DeveloperMessage : Message
 {
@@ -36,12 +34,8 @@ internal class UserMessage : Message
     [JsonPropertyName("name")]
     public string? Name { get; set; }
 
-    /// <summary>
-    /// Sets the content of the message. Use <see cref="MessageContent"/> Collection if attaching an image,
-    /// otherwise use <see cref="string"/>.
-    /// </summary>
     [JsonPropertyName("content")]
-    public required object Content { get; set; }
+    public required ICollection<MessageContent> Content { get; set; }
 }
 
 internal class AssistantMessage : Message
@@ -62,7 +56,7 @@ internal class AssistantMessage : Message
     /// the tools that the assistant calls.
     /// </summary>
     [JsonPropertyName("tool_calls")]
-    public ToolCall[]? ToolCalls { get; set; }
+    public ICollection<ToolCall>? ToolCalls { get; set; }
 
     /// <summary>
     /// If the audio output modality is requested

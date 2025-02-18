@@ -1,4 +1,6 @@
-﻿namespace Raggle.Abstractions.AI;
+﻿using Raggle.Abstractions.Messages;
+
+namespace Raggle.Abstractions.AI;
 
 public interface IChatCompletionService
 {
@@ -9,16 +11,16 @@ public interface IChatCompletionService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Generates a chat completion based on the provided request.
+    /// Generates a chat completion message based on the provided request.
     /// </summary>
-    Task<MessageResponse> ChatCompletionAsync(
-        MessageContext context,
+    Task<ChatCompletionResponse<IEnumerable<IMessageContent>>> GenerateMessageAsync(
+        ChatCompletionRequest request,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Streams chat completion responses based on the provided request.
+    /// Generates a chat completion streaming message based on the provided request.
     /// </summary>
-    IAsyncEnumerable<StreamingMessageResponse> StreamingChatCompletionAsync(
-        MessageContext context,
+    IAsyncEnumerable<ChatCompletionResponse<IMessageContent>> GenerateStreamingMessageAsync(
+        ChatCompletionRequest request,
         CancellationToken cancellationToken = default);
 }

@@ -6,9 +6,11 @@ internal static class OpenAIModelExtensions
 {
     internal static bool IsChatCompletion(this OpenAIModel model)
     {
+        // 최신 모델 및 Alias 모델만 추가
+
         return model.ID.Equals("o3-mini")
-            //|| model.ID.Equals("o1")
-            //|| model.ID.Equals("o1-mini")
+            || model.ID.Equals("o1")
+            || model.ID.Equals("o1-mini")
             || model.ID.Equals("gpt-4o-mini")
             || model.ID.Equals("gpt-4o");
             //|| model.ID.Equals("gpt-4-turbo")

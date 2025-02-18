@@ -39,13 +39,17 @@ internal abstract class AnthropicClientBase
             BaseAddress = string.IsNullOrWhiteSpace(config.EndPoint)
                 ? new Uri(AnthropicConstants.DefaultEndPoint.EnsureSuffix('/'))
                 : new Uri(config.EndPoint.EnsureSuffix('/')),
+            DefaultRequestHeaders =
+            {
+                { 
+                    AnthropicConstants.VersionHeaderName, 
+                    config.Version.OrDefault(AnthropicConstants.VersionHeaderValue) 
+                }
+            },
         };
 
-        client.DefaultRequestHeaders.Add(AnthropicConstants.VersionHeaderName,
-            config.Version.OrDefault(AnthropicConstants.VersionHeaderValue));
-
-        if (!string.IsNullOrEmpty(config.ApiKey))
-            client.DefaultRequestHeaders.Add(AnthropicConstants.ApiKeyHeaderName, config.ApiKey);
+        if (!string.IsNullOrWhiteSpace(config.ApiKey))
+            client.DefaultRequestHeaders.Add(AnthropicConstants.AuthorizationHeaderName, config.ApiKey);
 
         return client;
     }

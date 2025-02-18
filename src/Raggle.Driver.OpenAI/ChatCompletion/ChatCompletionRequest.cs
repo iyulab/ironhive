@@ -5,7 +5,7 @@ namespace Raggle.Driver.OpenAI.ChatCompletion;
 internal class ChatCompletionRequest
 {
     [JsonPropertyName("messages")]
-    public required Message[] Messages { get; set; }
+    public required IEnumerable<Message> Messages { get; set; }
 
     [JsonPropertyName("model")]
     public required string Model { get; set; }
@@ -56,7 +56,7 @@ internal class ChatCompletionRequest
     /// ["text", "audio"]
     /// </summary>
     [JsonPropertyName("modalities")]
-    public string[]? Modalities { get; set; }
+    public IEnumerable<string>? Modalities { get; set; }
 
     [JsonPropertyName("prediction")]
     public object? Prediction { get; set; }
@@ -89,7 +89,7 @@ internal class ChatCompletionRequest
     /// Up to 4 sequences is available
     /// </summary>
     [JsonPropertyName("stop")]
-    public string[]? Stop { get; set; }
+    public IEnumerable<string>? Stop { get; set; }
 
     [JsonPropertyName("stream")]
     public bool? Stream { get; set; }
@@ -110,7 +110,7 @@ internal class ChatCompletionRequest
     public float? TopP { get; set; }
 
     [JsonPropertyName("tools")]
-    public Tool[]? Tools { get; set; }
+    public IEnumerable<Tool>? Tools { get; set; }
 
     /// <summary>
     /// "none", "auto", <see cref="Tool"/>

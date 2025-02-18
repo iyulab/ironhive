@@ -32,5 +32,5 @@ internal class ParametersSchema
     public object? Properties { get; set; }
 
     [JsonPropertyName("required")]
-    public string[]? Required { get; set; }
+    public IEnumerable<string>? Required { get; set; }
 }

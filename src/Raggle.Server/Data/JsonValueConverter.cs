@@ -1,5 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Raggle.Abstractions;
+using Raggle.Abstractions.Json;
 using System.Text.Json;
 
 namespace Raggle.Server.Data;
@@ -18,7 +18,7 @@ public class JsonValueConverter<T> : ValueConverter<T?, string?>
         if (value == null)
             return null;
 
-        return JsonSerializer.Serialize(value, RaggleOptions.JsonOptions);
+        return JsonSerializer.Serialize(value, JsonDefaultOptions.Options);
     }
 
     private static T? Deserialize(string? value)
@@ -28,7 +28,7 @@ public class JsonValueConverter<T> : ValueConverter<T?, string?>
 
         try
         {
-            return JsonSerializer.Deserialize<T>(value, RaggleOptions.JsonOptions);
+            return JsonSerializer.Deserialize<T>(value, JsonDefaultOptions.Options);
         }
         catch
         {

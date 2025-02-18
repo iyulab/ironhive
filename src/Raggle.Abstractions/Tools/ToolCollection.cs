@@ -7,17 +7,9 @@ public class ToolCollection : ICollection<ITool>
 {
     private readonly Dictionary<string, ITool> _items = [];
 
-    public int Count => _items.Count;
-
-    public bool IsReadOnly => false;
-
-    public ITool this[int index] => _items.Values.ElementAt(index);
-
-    public ITool this[string name] => _items[name];
-
-    public bool TryGetValue(string name, [NotNullWhen(true)] out ITool tool)
+    public bool TryGetValue(string name, [MaybeNullWhen(false)] out ITool tool)
     {
-        return _items.TryGetValue(name, out tool!);
+        return _items.TryGetValue(name, out tool);
     }
 
     public void AddRange(IEnumerable<ITool> tools)
@@ -28,7 +20,23 @@ public class ToolCollection : ICollection<ITool>
         }
     }
 
-    #region Implementation Methods
+    #region ICollection Implementations
+
+    public int Count => _items.Count;
+
+    public bool IsReadOnly => false;
+
+    public ITool this[int index]
+    {
+        get => _items.Values.ElementAt(index);
+        set => _items[_items.Keys.ElementAt(index)] = value;
+    }
+
+    public ITool this[string name]
+    {
+        get => _items[name];
+        set => _items[name] = value;
+    }
 
     public void Add(ITool tool) => _items.Add(tool.Name, tool);
 

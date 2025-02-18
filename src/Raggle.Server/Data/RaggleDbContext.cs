@@ -10,7 +10,7 @@ public class RaggleDbContext : DbContext
     public DbSet<CollectionEntity> Collections { get; set; }
     public DbSet<DocumentEntity> Documents { get; set; }
     public DbSet<AssistantEntity> Assistants { get; set; }
-    public DbSet<ConversationEntity> Conversations { get; set; }
+    public DbSet<SessionEntity> Conversations { get; set; }
 
     public RaggleDbContext(DbContextOptions<RaggleDbContext> options) : base(options)
     {
@@ -146,7 +146,7 @@ public class RaggleDbContext : DbContext
         });
 
         // ConversationEntity 설정
-        builder.Entity<ConversationEntity>(entity =>
+        builder.Entity<SessionEntity>(entity =>
         {
             // 테이블 이름 설정
             entity.ToTable("conversations");

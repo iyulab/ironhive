@@ -4,7 +4,6 @@ using Raggle.Abstractions.Json;
 using Raggle.Abstractions.Memory;
 using Raggle.Abstractions.Messages;
 using Raggle.Core.Extensions;
-using Raggle.Core.Memory.Document;
 using System.Text;
 
 namespace Raggle.Core.Memory.Handlers;
@@ -37,7 +36,7 @@ public class SummaryHandler : IPipelineHandler
             suffix: pipeline.GetPreviousStep() ?? "unknown",
             cancellationToken: cancellationToken))
         {
-            var str = JsonObjectConverter.ConvertTo<string>(section.Content)
+            var str = section.Content.ConvertTo<string>()
                 ?? throw new InvalidOperationException("The document content is not a string.");
 
             var content = await GenerateSummarizedTextAsync(str, options, cancellationToken);
@@ -69,25 +68,22 @@ public class SummaryHandler : IPipelineHandler
         Options options, 
         CancellationToken cancellationToken)
     {
-        var request = new MessageContext
+        var request = new ChatCompletionRequest
         {
             Model = options.ModelName,
-            MessagesOptions = new MessageOptions
-            {
-                System = GetSystemInstructionPrompt(),
-            }
+            System = GetSystemInstructionPrompt(),
         };
-        request.Messages.AddUserMessage(new TextContent
+        request.Messages.Append(MessageRole.User, new TextContent
         {
             Index = 0,
             Text = $"Summarize This:\n\n{information}",
         });
 
         var chat = _serviceProvider.GetRequiredKeyedService<IChatCompletionService>(options.ServiceKey);
-        var response = await chat.ChatCompletionAsync(request, cancellationToken);
+        var response = await chat.GenerateMessageAsync(request, cancellationToken);
 
         var sb = new StringBuilder();
-        foreach (var item in response.Message?.Content ?? [])
+        foreach (var item in response.Content ?? [])
         {
             if (item is TextContent text)
             {

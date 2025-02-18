@@ -3,24 +3,24 @@
 public class ToolResult
 {
     public bool IsSuccess { get; set; }
+
     public object? Result { get; set; }
+
     public object? Error { get; set; }
 
-    public static ToolResult Success(object? result)
+    public ToolResult()
+    { }
+
+    public ToolResult(bool isSuccess, object? result, object? error)
     {
-        return new ToolResult
-        {
-            IsSuccess = true,
-            Result = result
-        };
+        IsSuccess = isSuccess;
+        Result = result;
+        Error = error;
     }
 
+    public static ToolResult Success(object? result)
+        => new(true, result, null);
+
     public static ToolResult Failed(object? error)
-    {
-        return new ToolResult
-        {
-            IsSuccess = false,
-            Error = error
-        };
-    }
+        => new(false, null, error);
 }

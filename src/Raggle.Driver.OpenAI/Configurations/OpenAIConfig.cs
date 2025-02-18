@@ -12,7 +12,7 @@ public class OpenAIConfig
     /// Gets or sets the endpoint URL for the OpenAI API.
     /// Default value is "https://api.openai.com/v1/".
     /// </summary>
-    public string EndPoint { get; set; } = OpenAIConstants.DefaultEndPoint;
+    public string EndPoint { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the API key used for authenticating requests to the OpenAI API.

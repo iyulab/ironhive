@@ -9,10 +9,10 @@ internal class ChatRequest
     public required string Model { get; set; }
 
     [JsonPropertyName("messages")]
-    public required Message[] Messages { get; set; }
+    public required IEnumerable<Message> Messages { get; set; }
 
     [JsonPropertyName("tools")]
-    public Tool[]? Tools { get; set; }
+    public IEnumerable<Tool>? Tools { get; set; }
 
     [JsonPropertyName("format")]
     public string? Format { get; set; }

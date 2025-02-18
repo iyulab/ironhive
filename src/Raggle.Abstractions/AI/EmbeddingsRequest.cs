@@ -10,5 +10,5 @@ public class EmbeddingsRequest
     /// <summary>
     /// The input text to embed.
     /// </summary>
-    public string[] Input { get; set; } = [];
+    public IEnumerable<string> Input { get; set; } = [];
 }

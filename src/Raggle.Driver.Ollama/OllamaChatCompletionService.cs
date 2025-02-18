@@ -5,8 +5,6 @@ using Raggle.Driver.Ollama.ChatCompletion;
 using Raggle.Driver.Ollama.Configurations;
 using Raggle.Driver.Ollama.Extensions;
 using System.Runtime.CompilerServices;
-using Message = Raggle.Abstractions.Messages.Message;
-using MessageRole = Raggle.Abstractions.Messages.MessageRole;
 
 namespace Raggle.Driver.Ollama;
 
@@ -35,48 +33,42 @@ public class OllamaChatCompletionService : IChatCompletionService
             Owner = null,
             CreatedAt = null,
             ModifiedAt = m.ModifiedAt,
-        }).ToArray();
+        });
     }
 
     /// <inheritdoc />
-    public async Task<MessageResponse> ChatCompletionAsync(
-        MessageContext context,
+    public async Task<ChatCompletionResponse<IEnumerable<IMessageContent>>> GenerateMessageAsync(
+        ChatCompletionRequest request, 
         CancellationToken cancellationToken = default)
     {
-        var request = ConvertToRequest(context);
-        var response = await _client.PostChatAsync(request, cancellationToken);
+        var _request = ConvertToOllama(request);
+        var response = await _client.PostChatAsync(_request, cancellationToken);
 
         var content = new MessageContentCollection();
         content.AddText(response.Message?.Content);
 
-        return new MessageResponse
+        return new ChatCompletionResponse<IEnumerable<IMessageContent>>
         {
-            Model = response.Model,
             EndReason = response.DoneReason switch
             {
-                DoneReason.Stop => MessageEndReason.EndTurn,
+                DoneReason.Stop => ChatCompletionEndReason.EndTurn,
                 _ => null
             },
-            Message = new Message
-            {
-                Role = MessageRole.Assistant,
-                Content = content,
-                TimeStamp = DateTime.UtcNow,
-            },
             TokenUsage = null,
+            Content = content,
         };
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<StreamingMessageResponse> StreamingChatCompletionAsync(
-        MessageContext context,
+    public async IAsyncEnumerable<ChatCompletionResponse<IMessageContent>> GenerateStreamingMessageAsync(
+        ChatCompletionRequest request, 
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var request = ConvertToRequest(context);
+        var _request = ConvertToOllama(request);
 
-        await foreach (var res in _client.PostSteamingChatAsync(request, cancellationToken))
+        await foreach (var res in _client.PostSteamingChatAsync(_request, cancellationToken))
         {
-            yield return new StreamingMessageResponse
+            yield return new ChatCompletionResponse<IMessageContent>
             {
                 Content = new TextContent
                 {
@@ -86,27 +78,28 @@ public class OllamaChatCompletionService : IChatCompletionService
         }
     }
 
-    private static ChatRequest ConvertToRequest(MessageContext context)
+    private static ChatRequest ConvertToOllama(ChatCompletionRequest request)
     {
-        var request = new ChatRequest
+        var _request = new ChatRequest
         {
-            Model = context.Model,
-            Messages = context.Messages.ToOllama(context.MessagesOptions?.System).ToArray(),
+            Model = request.Model,
+            Messages = request.Messages.ToOllama(request?.System),
             Options = new ModelOptions
             {
-                NumPredict = context.Parameters?.MaxTokens,
-                Temperature = context.Parameters?.Temperature,
-                TopP = context.Parameters?.TopP,
-                TopK = context.Parameters?.TopK,
-                Stop = context.Parameters?.StopSequences != null 
-                    ? string.Join(" ", context.Parameters.StopSequences) 
+                NumPredict = request?.MaxTokens,
+                Temperature = request?.Temperature,
+                TopP = request?.TopP,
+                TopK = request?.TopK,
+                Stop = request?.StopSequences != null
+                    ? string.Join(" ", request.StopSequences)
                     : null,
             },
         };
 
-        //if (context.Tools != null && context.Tools.Count > 0)
+        // 동작하지 않는 모델 존재함
+        //if (request?.Tools != null && request.Tools.Count > 0)
         //{
-        //    request.Tools = context.Tools.Select(t =>
+        //    _request.Tools = request.Tools.Select(t =>
         //    {
         //        return new Tool
         //        {
@@ -117,13 +110,13 @@ public class OllamaChatCompletionService : IChatCompletionService
         //                Parameters = new ParametersSchema
         //                {
         //                    Properties = t.Properties,
-        //                    Required = t.Required?.ToArray(),
+        //                    Required = t.Required,
         //                }
         //            }
         //        };
-        //    }).ToArray();
+        //    });
         //}
 
-        return request;
+        return _request;
     }
 }

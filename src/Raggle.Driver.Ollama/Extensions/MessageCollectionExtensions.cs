@@ -40,7 +40,7 @@ internal static class MessageCollectionExtensions
                     else if (item is ImageContent image)
                     {
                         um.Images ??= [];
-                        um.Images.Add(image.Data);
+                        um.Images.Add(image.Data!);
                     }
                 }
                 _messages.Add(um);

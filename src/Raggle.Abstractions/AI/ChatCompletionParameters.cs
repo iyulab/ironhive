@@ -2,6 +2,12 @@
 
 public class ChatCompletionParameters
 {
+
+    /// <summary>
+    /// chat completion model name.
+    /// </summary>
+    public string Model { get; set; } = string.Empty;
+
     /// <summary>
     /// the maximum number of tokens to generate.
     /// </summary>

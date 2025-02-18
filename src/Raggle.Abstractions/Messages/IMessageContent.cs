@@ -1,5 +1,4 @@
 ﻿using Raggle.Abstractions.Tools;
-using System.ComponentModel;
 using System.Text.Json.Serialization;
 
 namespace Raggle.Abstractions.Messages;
@@ -37,6 +36,8 @@ public class TextContent : MessageContentBase
 /// </summary>
 public class ImageContent : MessageContentBase
 {
+    public string? Id { get; set; }
+
     public string? Data { get; set; }
 }
 

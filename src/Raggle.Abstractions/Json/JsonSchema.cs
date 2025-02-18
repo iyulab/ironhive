@@ -71,7 +71,8 @@ public class ArrayJsonSchema : JsonSchema
         }
         set
         {
-            _items = value is JsonSchema || value is JsonSchema[]? value
+            _items = value is JsonSchema || value is JsonSchema[]
+                ? value
                 : throw new ArgumentException("Items must be a JsonSchema or Array of JsonSchema");
         }
     }

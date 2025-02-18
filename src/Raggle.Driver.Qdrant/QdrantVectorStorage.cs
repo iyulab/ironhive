@@ -114,12 +114,12 @@ public class QdrantVectorStorage : IVectorStorage
                 Id = point.VectorId,
                 Vectors = new Dictionary<string, float[]>
                 {
-                    [DefaultVectorsName] = point.Vectors,
+                    [DefaultVectorsName] = point.Vectors.ToArray(),
                 },
                 Payload =
                 {
                     ["documentId"] = point.DocumentId,
-                    ["tags"] = point.Tags ?? [],
+                    ["tags"] = point.Tags?.ToArray() ?? [],
                     ["payload"] = jsonPayload
                 }
             });
@@ -141,7 +141,7 @@ public class QdrantVectorStorage : IVectorStorage
 
     public async Task<IEnumerable<ScoredVectorPoint>> SearchVectorsAsync(
         string collectionName, 
-        float[] input, 
+        IEnumerable<float> input, 
         float minScore = 0.0f, 
         int limit = 5, 
         MemoryFilter? filter = null, 
@@ -169,7 +169,7 @@ public class QdrantVectorStorage : IVectorStorage
 
         var results = await _client.SearchAsync(
             collectionName: collectionName,
-            vector: input,
+            vector: input.ToArray(),
             filter: condition,
             limit: (ulong)limit,
             payloadSelector: true,

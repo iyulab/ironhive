@@ -1,4 +1,5 @@
 ﻿using Raggle.Abstractions.AI;
+using Raggle.Abstractions.Experimental;
 using Raggle.Abstractions.Memory;
 using Raggle.Abstractions.Tools;
 
@@ -8,7 +9,7 @@ public interface IRaggle
 {
     IServiceProvider Services { get; }
 
-    IRaggleMemory Memory { get; }
+    IMemoryService Memory { get; }
 
     IDocumentStorage GetDocumentStorage();
 
@@ -18,7 +19,7 @@ public interface IRaggle
 
     IEmbeddingService GetEmbeddingService(string serviceKey);
 
-    IAssistant CreateAssistant(
+    IAgent CreateAssistant(
         string service,
         string model,
         string? id = null,

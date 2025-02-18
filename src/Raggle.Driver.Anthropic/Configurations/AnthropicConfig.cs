@@ -12,7 +12,7 @@ public class AnthropicConfig
     /// Gets or sets the endpoint URL for the OpenAI API.
     /// Default value is "https://api.anthropic.com/".
     /// </summary>
-    public string EndPoint { get; set; } = AnthropicConstants.DefaultEndPoint;
+    public string EndPoint { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the API key used for authenticating requests to the Anthropic API.
@@ -21,7 +21,7 @@ public class AnthropicConfig
 
     /// <summary>
     /// Gets or sets the version of the Anthropic API being used.
-    /// This value is typically set to a <see cref="AnthropicConstants.VersionHeaderValue"/>
+    /// Default value is "2023-06-01".
     /// </summary>
     public string Version { get; set; } = string.Empty;
 

@@ -1,26 +1,24 @@
-﻿using Raggle.Abstractions.Json;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 
 namespace System.Collections.Generic;
 
 public static class DictionaryExtensions
 {
-    public static bool TryGetValue<T>(
-        this IDictionary<string, object> dictionary, 
-        string key,
-        [NotNullWhen(true)] out T value)
+    public static bool TryGetValue<T>(this IDictionary<string, object> dic, 
+        string key, 
+        [MaybeNullWhen(false)] out T value)
     {
-        if (dictionary.TryGetValue(key, out object? obj))
+        if (dic.TryGetValue(key, out object? obj))
         {
-            var json = JsonObjectConverter.ConvertTo<T>(obj);
-            if (json != null)
-            {
-                value = json;
-                return true;
-            }
+            value = obj.ConvertTo<T>();
+            return value != null;
         }
-
-        value = default!;
-        return false;
+        else
+        {
+            value = default;
+            return false;
+        }
     }
+
+
 }

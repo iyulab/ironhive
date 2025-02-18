@@ -5,7 +5,7 @@ namespace Raggle.Driver.OpenAI.Embeddings;
 internal class EmbeddingRequest
 {
     [JsonPropertyName("input")]
-    public required string[] Input { get; set; }
+    public required IEnumerable<string> Input { get; set; }
 
     [JsonPropertyName("model")]
     public required string Model { get; set; }
