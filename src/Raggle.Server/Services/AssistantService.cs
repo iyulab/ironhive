@@ -1,15 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Raggle.Abstractions;
-using Raggle.Abstractions.AI;
-using Raggle.Abstractions.Messages;
-using Raggle.Abstractions.Tools;
-using Raggle.Core.Tools;
-using Raggle.Server.Configurations;
 using Raggle.Server.Data;
 using Raggle.Server.Entities;
-using Raggle.Server.Tools;
-using System.Runtime.CompilerServices;
 
 namespace Raggle.Server.Services;
 
@@ -17,13 +8,11 @@ public class AssistantService
 {
     private readonly string _id;
     private readonly RaggleDbContext _db;
-    private readonly IRaggle _raggle;
 
-    public AssistantService(RaggleDbContext dbContext, IRaggle raggle, string serviceId)
+    public AssistantService(RaggleDbContext dbContext, string serviceId)
     {
         _id = serviceId;
         _db = dbContext;
-        _raggle = raggle;
     }
 
     public async Task<IEnumerable<AssistantEntity>> GetAssistantsAsync(

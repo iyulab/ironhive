@@ -12,24 +12,24 @@ namespace Raggle.Server.WebApi.Controllers;
 [Route("/v1/models")]
 public class ModelController : ControllerBase
 {
-    private readonly IRaggle _raggle;
+    private readonly IServiceProvider _services;
 
-    public ModelController(IRaggle raggle, IServiceProvider provider)
+    public ModelController(IServiceProvider provider)
     {
-        _raggle = raggle;
+        _services = provider;
     }
 
     [HttpGet("chat")]
     public async Task<ActionResult> GetChatCompletionModelsAsync()
     {
         var models = new Dictionary<string, string[]>();
-        var services = _raggle.Services.GetKeyedServices<IChatCompletionService>(KeyedService.AnyKey);
+        var services = _services.GetKeyedServices<IChatCompletionService>(KeyedService.AnyKey);
 
         var serviceKeyMap = new Dictionary<Type, string>
         {
-            { typeof(OpenAIChatCompletionService), RaggleServiceKeys.OpenAI },
-            { typeof(AnthropicChatCompletionService), RaggleServiceKeys.Anthrophic },
-            { typeof(OllamaChatCompletionService), RaggleServiceKeys.Ollama }
+            { typeof(OpenAIChatCompletionService), DefaultServiceKeys.OpenAI },
+            { typeof(AnthropicChatCompletionService), DefaultServiceKeys.Anthrophic },
+            { typeof(OllamaChatCompletionService), DefaultServiceKeys.Ollama }
         };
 
         foreach (var service in services)
@@ -55,12 +55,12 @@ public class ModelController : ControllerBase
     public async Task<ActionResult> GetEmbeddingModelsAsync()
     {
         var models = new Dictionary<string, string[]>();
-        var services = _raggle.Services.GetKeyedServices<IEmbeddingService>(KeyedService.AnyKey);
+        var services = _services.GetKeyedServices<IEmbeddingService>(KeyedService.AnyKey);
 
         var serviceKeyMap = new Dictionary<Type, string>
         {
-            { typeof(OpenAIEmbeddingService), RaggleServiceKeys.OpenAI },
-            { typeof(OllamaEmbeddingService), RaggleServiceKeys.Ollama }
+            { typeof(OpenAIEmbeddingService), DefaultServiceKeys.OpenAI },
+            { typeof(OllamaEmbeddingService), DefaultServiceKeys.Ollama }
         };
 
         foreach (var service in services)

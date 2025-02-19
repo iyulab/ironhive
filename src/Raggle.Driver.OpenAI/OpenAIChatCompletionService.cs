@@ -7,6 +7,8 @@ using Raggle.Driver.OpenAI.Extensions;
 using System.Runtime.CompilerServices;
 using ChatCompletionRequest = Raggle.Abstractions.AI.ChatCompletionRequest;
 using OpenAIChatCompletionRequest = Raggle.Driver.OpenAI.ChatCompletion.ChatCompletionRequest;
+using AssistantMessage = Raggle.Abstractions.Messages.AssistantMessage;
+using OpenAIAssistantMessage = Raggle.Driver.OpenAI.ChatCompletion.AssistantMessage;
 
 namespace Raggle.Driver.OpenAI;
 
@@ -39,7 +41,7 @@ public class OpenAIChatCompletionService : IChatCompletionService
     }
 
     /// <inheritdoc />
-    public async Task<ChatCompletionResponse<IEnumerable<IMessageContent>>> GenerateMessageAsync(
+    public async Task<ChatCompletionResponse<IMessage>> GenerateMessageAsync(
         ChatCompletionRequest request, 
         CancellationToken cancellationToken = default)
     {
@@ -64,7 +66,7 @@ public class OpenAIChatCompletionService : IChatCompletionService
             content.AddText(choice.Message.Content);
         }
 
-        var result = new ChatCompletionResponse<IEnumerable<IMessageContent>>
+        var result = new ChatCompletionResponse<IMessage>
         {
             EndReason = choice?.FinishReason switch
             {
@@ -80,7 +82,10 @@ public class OpenAIChatCompletionService : IChatCompletionService
                 InputTokens = response.Usage?.PromptTokens,
                 OutputTokens = response.Usage?.CompletionTokens
             },
-            Content = content,
+            Content = new AssistantMessage
+            {
+                Content = content
+            }
         };
 
         return result;
@@ -177,8 +182,8 @@ public class OpenAIChatCompletionService : IChatCompletionService
                     Description = t.Description,
                     Parameters = new
                     {
-                        t.Properties,
-                        t.Required,
+                        Properties = t.Parameters,
+                        Required = t.Required,
                     }
                 }
             });

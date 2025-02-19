@@ -2,44 +2,40 @@
 
 namespace Raggle.Abstractions.Messages;
 
-public sealed class MessageCollection : ICollection<Message>
+public sealed class MessageCollection : ICollection<IMessage>
 {
-    private readonly List<Message> _items = [];
+    private readonly List<IMessage> _items = [];
 
-    public void Append(MessageRole role, IMessageContent content)
+    public void Append<T>(IMessageContent content)
+        where T : IMessage
     {
-        if (_items.Last().Role == role)
+        if (_items.Last() is T)
             _items.Last().Content.Add(content);
         else
-            Add(role, content);
+            Add<T>(content);
     }
 
-    public void Append(MessageRole role, MessageContentCollection content)
+    public void Append<T>(MessageContentCollection content)
+        where T : IMessage
     {
-        if (_items.Last().Role == role)
+        if (_items.Last() is T)
             _items.Last().Content.AddRange(content);
         else
-            Add(role, content);
+            Add<T>(content);
     }
 
-    public void Add(MessageRole role, IMessageContent content)
+    public void Add<T>(IMessageContent content)
+        where T : IMessage
     {
-        _items.Add(new Message
-        {
-            Role = role,
-            Content = new MessageContentCollection { content },
-            TimeStamp = DateTime.UtcNow
-        });
+        var message = Activator.CreateInstance<T>();
+        message.Content.Add(content);
     }
 
-    public void Add(MessageRole role, MessageContentCollection content)
+    public void Add<T>(MessageContentCollection content)
+        where T : IMessage
     {
-        _items.Add(new Message
-        {
-            Role = role,
-            Content = content,
-            TimeStamp = DateTime.UtcNow
-        });
+        var message = Activator.CreateInstance<T>();
+        message.Content.AddRange(content);
     }
 
     #region ICollection Implementations
@@ -48,23 +44,23 @@ public sealed class MessageCollection : ICollection<Message>
 
     public bool IsReadOnly => false;
 
-    public Message this[int index]
+    public IMessage this[int index]
     {
         get => _items[index];
         set => _items[index] = value;
     }
 
-    public void Add(Message message) => _items.Add(message);
+    public void Add(IMessage message) => _items.Add(message);
 
-    public bool Remove(Message message) => _items.Remove(message);
+    public bool Remove(IMessage message) => _items.Remove(message);
 
-    public bool Contains(Message message) => _items.Contains(message);
+    public bool Contains(IMessage message) => _items.Contains(message);
 
-    public void CopyTo(Message[] array, int arrayIndex) => _items.CopyTo(array, arrayIndex);
+    public void CopyTo(IMessage[] array, int arrayIndex) => _items.CopyTo(array, arrayIndex);
 
     public void Clear() => _items.Clear();
 
-    public IEnumerator<Message> GetEnumerator() => _items.GetEnumerator();
+    public IEnumerator<IMessage> GetEnumerator() => _items.GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 

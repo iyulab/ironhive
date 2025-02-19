@@ -17,7 +17,7 @@ public enum DocumentStorageTypes
     AzureBlob
 }
 
-public partial class RaggleStorageConfig
+public partial class StorageConfig
 {
     public VectorStorageConfig Vectors { get; set; } = new VectorStorageConfig();
 

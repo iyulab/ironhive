@@ -11,19 +11,19 @@ public class FunctionTool : ITool
 
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public IDictionary<string, JsonSchema>? Properties { get; set; }
+    public IDictionary<string, JsonSchema>? Parameters { get; set; }
     public IEnumerable<string>? Required { get; set; }
 
     public FunctionTool(
         Delegate function,
-        string? name,
-        string? description)
+        string? name = null,
+        string? description = null)
     {
         _function = function;
         Name = name ?? function.Method.Name;
         Description = description;
         var schema = GetJsonSchema();
-        Properties = schema.Properties;
+        Parameters = schema.Properties;
         Required = schema.Required;
     }
 
@@ -122,7 +122,7 @@ public class FunctionTool : ITool
         return new ObjectJsonSchema
         {
             Properties = properties,
-            Required = required.ToArray()
+            Required = required.Count != 0 ? required.ToArray() : null
         };
     }
 

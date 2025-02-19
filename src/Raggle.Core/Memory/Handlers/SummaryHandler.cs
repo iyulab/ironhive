@@ -73,7 +73,7 @@ public class SummaryHandler : IPipelineHandler
             Model = options.ModelName,
             System = GetSystemInstructionPrompt(),
         };
-        request.Messages.Append(MessageRole.User, new TextContent
+        request.Messages.Append<UserMessage>(new TextContent
         {
             Index = 0,
             Text = $"Summarize This:\n\n{information}",
@@ -83,7 +83,7 @@ public class SummaryHandler : IPipelineHandler
         var response = await chat.GenerateMessageAsync(request, cancellationToken);
 
         var sb = new StringBuilder();
-        foreach (var item in response.Content ?? [])
+        foreach (var item in response.Content?.Content ?? [])
         {
             if (item is TextContent text)
             {

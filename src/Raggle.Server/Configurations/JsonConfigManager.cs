@@ -7,7 +7,7 @@ namespace Raggle.Server.Configurations;
 
 public class JsonConfigManager : IDisposable
 {
-    private RaggleConfig? _config;
+    private ServiceConfig? _config;
     private readonly ILogger<JsonConfigManager> _logger;
     private readonly object _lock = new();
     private Timer? _debounceTimer;
@@ -37,7 +37,7 @@ public class JsonConfigManager : IDisposable
     /// <summary>
     /// Gets the current configuration.
     /// </summary>
-    public RaggleConfig? Config
+    public ServiceConfig? Config
     {
         get
         {
@@ -60,7 +60,7 @@ public class JsonConfigManager : IDisposable
         }
     }
 
-    public event EventHandler<RaggleConfig?>? Changed;
+    public event EventHandler<ServiceConfig?>? Changed;
     public event EventHandler<Exception>? Error;
 
     public JsonConfigManager(string filePath, ILogger<JsonConfigManager>? logger = null)
@@ -75,7 +75,7 @@ public class JsonConfigManager : IDisposable
         Config = Load();
         if (Config == null)
         {
-            Create(new RaggleConfig());
+            Create(new ServiceConfig());
             Config = Load() ?? throw new Exception("Failed to create configuration file.");
         }
     }
@@ -153,7 +153,7 @@ public class JsonConfigManager : IDisposable
         }
     }
 
-    private void Create(RaggleConfig config)
+    private void Create(ServiceConfig config)
     {
         if (_disposed)
             throw new ObjectDisposedException(nameof(JsonConfigManager));
@@ -171,7 +171,7 @@ public class JsonConfigManager : IDisposable
         }
     }
 
-    private RaggleConfig? Load()
+    private ServiceConfig? Load()
     {
         try
         {
@@ -182,7 +182,7 @@ public class JsonConfigManager : IDisposable
             }
 
             var json = File.ReadAllText(FilePath);
-            var config = JsonSerializer.Deserialize<RaggleConfig>(json, Options);
+            var config = JsonSerializer.Deserialize<ServiceConfig>(json, Options);
             _logger.LogInformation("Configuration loaded from {FilePath}.", FilePath);
             return config;
         }

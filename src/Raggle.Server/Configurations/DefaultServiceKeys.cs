@@ -1,6 +1,6 @@
 ﻿namespace Raggle.Server.Configurations;
 
-public static class RaggleServiceKeys
+public static class DefaultServiceKeys
 {
     // For AI services
     public static string OpenAI { get; set; } = "openai";

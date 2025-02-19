@@ -240,17 +240,17 @@ public class MemoryService
     {
         var steps = new List<string>
         {
-            RaggleServiceKeys.Decoding,
-            RaggleServiceKeys.Chunking
+            DefaultServiceKeys.Decoding,
+            DefaultServiceKeys.Chunking
         };
 
-        if (collection.HandlerOptions?.ContainsKey(RaggleServiceKeys.Summarizing) == true)
-            steps.Add(RaggleServiceKeys.Summarizing);
+        if (collection.HandlerOptions?.ContainsKey(DefaultServiceKeys.Summarizing) == true)
+            steps.Add(DefaultServiceKeys.Summarizing);
 
-        if (collection.HandlerOptions?.ContainsKey(RaggleServiceKeys.Dialogue) == true)
-            steps.Add(RaggleServiceKeys.Dialogue);
+        if (collection.HandlerOptions?.ContainsKey(DefaultServiceKeys.Dialogue) == true)
+            steps.Add(DefaultServiceKeys.Dialogue);
 
-        steps.Add(RaggleServiceKeys.Embeddings);
+        steps.Add(DefaultServiceKeys.Embeddings);
         return steps.ToArray();
     }
 
@@ -258,16 +258,16 @@ public class MemoryService
     {
         var options = new Dictionary<string, object>();
 
-        if (collection.HandlerOptions?.ContainsKey(RaggleServiceKeys.Chunking) == true)
-            options[RaggleServiceKeys.Chunking] = collection.HandlerOptions[RaggleServiceKeys.Chunking];
+        if (collection.HandlerOptions?.ContainsKey(DefaultServiceKeys.Chunking) == true)
+            options[DefaultServiceKeys.Chunking] = collection.HandlerOptions[DefaultServiceKeys.Chunking];
 
-        if (collection.HandlerOptions?.ContainsKey(RaggleServiceKeys.Summarizing) == true)
-            options[RaggleServiceKeys.Summarizing] = collection.HandlerOptions[RaggleServiceKeys.Summarizing];
+        if (collection.HandlerOptions?.ContainsKey(DefaultServiceKeys.Summarizing) == true)
+            options[DefaultServiceKeys.Summarizing] = collection.HandlerOptions[DefaultServiceKeys.Summarizing];
 
-        if (collection.HandlerOptions?.ContainsKey(RaggleServiceKeys.Dialogue) == true)
-            options[RaggleServiceKeys.Dialogue] = collection.HandlerOptions[RaggleServiceKeys.Dialogue];
+        if (collection.HandlerOptions?.ContainsKey(DefaultServiceKeys.Dialogue) == true)
+            options[DefaultServiceKeys.Dialogue] = collection.HandlerOptions[DefaultServiceKeys.Dialogue];
 
-        options[RaggleServiceKeys.Embeddings] = new EmbeddingsHandler.Options
+        options[DefaultServiceKeys.Embeddings] = new EmbeddingsHandler.Options
         {
             ServiceKey = collection.EmbedService,
             ModelName = collection.EmbedModel

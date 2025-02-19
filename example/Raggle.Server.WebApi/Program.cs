@@ -10,12 +10,12 @@ using System.Text.Json.Serialization;
 var builder = WebApplication.CreateBuilder(args);
 
 # region For Raggle
-var cm = new JsonConfigManager(Path.Combine(Directory.GetCurrentDirectory(),"raggle_settings.json"));
+var cm = new JsonConfigManager(Path.Combine(Directory.GetCurrentDirectory(),"appservicesettings.json"));
 if (cm.Config == null)
     throw new Exception("Failed to load raggle_settings.json");
 Directory.CreateDirectory("/var/db");
 
-builder.Services.AddRaggleServices(cm.Config);
+builder.Services.AddDefaultServices(cm.Config);
 builder.Services.AddToolService<DatabaseTool>("database_search");
 #endregion
 

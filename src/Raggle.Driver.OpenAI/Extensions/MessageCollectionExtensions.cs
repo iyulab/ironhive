@@ -2,6 +2,10 @@
 using Raggle.Driver.OpenAI.ChatCompletion;
 using System.Text.Json;
 using OpenAIMessage = Raggle.Driver.OpenAI.ChatCompletion.Message;
+using UserMessage = Raggle.Abstractions.Messages.UserMessage;
+using OpenAIUserMessage = Raggle.Driver.OpenAI.ChatCompletion.UserMessage;
+using AssistantMessage = Raggle.Abstractions.Messages.AssistantMessage;
+using OpenAIAssistantMessage = Raggle.Driver.OpenAI.ChatCompletion.AssistantMessage;
 
 namespace Raggle.Driver.OpenAI.Extensions;
 
@@ -20,9 +24,9 @@ internal static class MessageCollectionExtensions
             if (message.Content == null || message.Content.Count == 0)
                 continue;
 
-            if (message.Role == MessageRole.User)
+            if (message.GetType() == typeof(UserMessage))
             {
-                var um = new UserMessage
+                var um = new OpenAIUserMessage
                 { 
                     Content = new List<MessageContent>() 
                 };
@@ -48,11 +52,11 @@ internal static class MessageCollectionExtensions
                 }
                 _messages.Add(um);
             }
-            else if (message.Role == MessageRole.Assistant)
+            else if (message.GetType() == typeof(AssistantMessage))
             {
                 foreach (var content in message.Content.SplitContent())
                 {
-                    var am = new AssistantMessage();
+                    var am = new OpenAIAssistantMessage();
                     var tms = new List<ToolMessage>();
                     foreach (var item in content)
                     {

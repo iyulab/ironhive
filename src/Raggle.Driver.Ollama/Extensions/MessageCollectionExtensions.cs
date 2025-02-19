@@ -1,9 +1,7 @@
 ﻿using Raggle.Abstractions.Messages;
 using Raggle.Driver.Ollama.ChatCompletion;
 using System.Text.Json;
-using MessageRole = Raggle.Abstractions.Messages.MessageRole;
 using OllamaMessage = Raggle.Driver.Ollama.ChatCompletion.Message;
-using OllamaMessageRole = Raggle.Driver.Ollama.ChatCompletion.MessageRole;
 
 namespace Raggle.Driver.Ollama.Extensions;
 
@@ -17,7 +15,7 @@ internal static class MessageCollectionExtensions
         {
             _messages.Add(new OllamaMessage
             {
-                Role = OllamaMessageRole.System,
+                Role = MessageRole.System,
                 Content = system
             });
         }
@@ -27,9 +25,9 @@ internal static class MessageCollectionExtensions
             if (message.Content == null || message.Content.Count == 0)
                 continue;
 
-            if (message.Role == MessageRole.User)
+            if (message.GetType() == typeof(UserMessage))
             {
-                var um = new OllamaMessage { Role = OllamaMessageRole.User };
+                var um = new OllamaMessage { Role = MessageRole.User };
                 foreach (var item in message.Content)
                 {
                     if (item is TextContent text)
@@ -45,12 +43,12 @@ internal static class MessageCollectionExtensions
                 }
                 _messages.Add(um);
             }
-            else if (message.Role == MessageRole.Assistant)
+            else if (message.GetType() == typeof(AssistantMessage))
             {
                 foreach (var item in message.Content)
                 {
-                    var am = new OllamaMessage { Role = OllamaMessageRole.Assistant };
-                    var tm = new OllamaMessage { Role = OllamaMessageRole.Tool };
+                    var am = new OllamaMessage { Role = MessageRole.Assistant };
+                    var tm = new OllamaMessage { Role = MessageRole.Tool };
 
                     if (item is TextContent text)
                     {

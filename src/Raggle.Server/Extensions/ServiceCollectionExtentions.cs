@@ -5,13 +5,11 @@ using Raggle.Driver.LocalDisk;
 using Raggle.Driver.AzureBlob;
 using Microsoft.EntityFrameworkCore;
 using Raggle.Core.Memory.Decoders;
-using Raggle.Abstractions;
 using Raggle.Core.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Raggle.Server.Data;
 using Raggle.Server.Services;
 using Raggle.Abstractions.Memory;
-using Raggle.Core.Memory;
 using Microsoft.AspNetCore.Http;
 using Raggle.Server.Tools;
 using Raggle.Server.Configurations;
@@ -20,9 +18,9 @@ namespace Raggle.Server.Extensions;
 
 public static class ServiceCollectionExtentions
 {
-    public static IServiceCollection AddRaggleServices(
+    public static IServiceCollection AddDefaultServices(
         this IServiceCollection services,
-        RaggleConfig config)
+        ServiceConfig config)
     {
         services.SetDatabaseService(config.Database)
                 .SetStorageServices(config.Storages)
@@ -31,16 +29,13 @@ public static class ServiceCollectionExtentions
                 .AddDefaultDocumentDecoders()
                 .AddDefaultPipelineHandlers();
 
-        services.AddSingleton<IRaggle, Core.Raggle>();
         services.AddSingleton<IMemoryService, Core.Memory.MemoryService>();
-
-        
         return services;
     }
 
     public static IServiceCollection SetDatabaseService(
         this IServiceCollection services,
-        RaggleDatabaseConfig config)
+        DatabaseConfig config)
     {
         services.AddDbContext<RaggleDbContext>(options =>
         {
@@ -92,18 +87,17 @@ public static class ServiceCollectionExtentions
         services.AddScoped<AssistantService>((provider) => 
         {
             var dbContext = provider.GetRequiredService<RaggleDbContext>();
-            var raggle = provider.GetRequiredService<IRaggle>();
             var http = provider.GetRequiredService<IHttpContextAccessor>();
             var serviceId = http.HttpContext.User.Claims.FirstOrDefault(c => c.Type == "serviceId")?.Value
                 ?? string.Empty;
-            return new AssistantService(dbContext, raggle, serviceId);
+            return new AssistantService(dbContext, serviceId);
         });
         return services;
     }
 
     public static IServiceCollection SetStorageServices(
         this IServiceCollection services,
-        RaggleStorageConfig config)
+        StorageConfig config)
     {
         switch (config.Vectors.Type)
         {
@@ -134,18 +128,18 @@ public static class ServiceCollectionExtentions
 
     public static IServiceCollection AddAIServices(
         this IServiceCollection services,
-        RaggleAIConfig config)
+        AIServiceConfig config)
     {
-        services.AddOpenAIServices(RaggleServiceKeys.OpenAI, config.OpenAI);
-        services.AddAnthropicServices(RaggleServiceKeys.Anthrophic, config.Anthropic);
-        services.AddOllamaServices(RaggleServiceKeys.Ollama, config.Ollama);
+        services.AddOpenAIServices(DefaultServiceKeys.OpenAI, config.OpenAI);
+        services.AddAnthropicServices(DefaultServiceKeys.Anthrophic, config.Anthropic);
+        services.AddOllamaServices(DefaultServiceKeys.Ollama, config.Ollama);
         return services;
     }
 
     public static IServiceCollection AddDefaultToolServices(
         this IServiceCollection services)
     {
-        services.AddToolService<VectorSearchTool>(RaggleServiceKeys.VectorSearch);
+        services.AddToolService<VectorSearchTool>(DefaultServiceKeys.VectorSearch);
         services.AddToolService<PythonTool>("python-interpreter");
         return services;
     }
@@ -153,11 +147,11 @@ public static class ServiceCollectionExtentions
     public static IServiceCollection AddDefaultPipelineHandlers(
         this IServiceCollection services)
     {
-        return services.AddPipelineHandler<DecodingHandler>(RaggleServiceKeys.Decoding)
-                       .AddPipelineHandler<ChunkingHandler>(RaggleServiceKeys.Chunking)
-                       .AddPipelineHandler<SummaryHandler>(RaggleServiceKeys.Summarizing)
-                       .AddPipelineHandler<DialogueHandler>(RaggleServiceKeys.Dialogue)
-                       .AddPipelineHandler<EmbeddingsHandler>(RaggleServiceKeys.Embeddings);
+        return services.AddPipelineHandler<DecodingHandler>(DefaultServiceKeys.Decoding)
+                       .AddPipelineHandler<ChunkingHandler>(DefaultServiceKeys.Chunking)
+                       .AddPipelineHandler<SummaryHandler>(DefaultServiceKeys.Summarizing)
+                       .AddPipelineHandler<DialogueHandler>(DefaultServiceKeys.Dialogue)
+                       .AddPipelineHandler<EmbeddingsHandler>(DefaultServiceKeys.Embeddings);
     }
 
     public static IServiceCollection AddDefaultDocumentDecoders(

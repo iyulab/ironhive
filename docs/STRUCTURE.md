@@ -3,24 +3,23 @@
 ## Core
 
 ```yaml
-- IHiveMind
-  - IAgent[]
+- IHive
+
+
+- ChatAgent : IAgent<MessageRequest, MessageRespone>
+  - ID
+  - Name
+  - Description
+  - Instruction
   - InvokeAsync()
+  - InvokeStreamingAsync()
 
-- IChatbot : IAgent
+- SummaryAgent : IAgent<string,string>
   - ID
   - Name
   - Description
   - Instruction
-  - ExecuteAsync()
-  - ExecuteStreamingAsync()
-
-- IWorker<TIn,TOut> : IAgent
-  - ID
-  - Name
-  - Description
-  - Instruction
-  - TOut ExecuteAsync(TIn)
+  - InvokeAsync()
 
 - IMessageSession
   - Title

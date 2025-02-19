@@ -1,9 +1,7 @@
 ﻿using Raggle.Abstractions.Messages;
 using System.Text.Json;
 using Raggle.Driver.Anthropic.ChatCompletion;
-using MessageRole = Raggle.Abstractions.Messages.MessageRole;
 using AnthropicMessage = Raggle.Driver.Anthropic.ChatCompletion.Message;
-using AnthropicMessageRole = Raggle.Driver.Anthropic.ChatCompletion.MessageRole;
 
 namespace Raggle.Abstractions.AI;
 
@@ -18,11 +16,11 @@ internal static class MessageCollectionExtensions
             if (message.Content == null || message.Content.Count == 0)
                 continue;
 
-            if (message.Role == MessageRole.User)
+            if (message.GetType() == typeof(UserMessage))
             {
                 var um = new AnthropicMessage
                 {
-                    Role = AnthropicMessageRole.User,
+                    Role = MessageRole.User,
                     Content = new List<MessageContent>()
                 };
                 foreach (var item in message.Content)
@@ -48,18 +46,18 @@ internal static class MessageCollectionExtensions
                 }
                 _messages.Add(um);
             }
-            else if (message.Role == MessageRole.Assistant)
+            else if (message.GetType() == typeof(AssistantMessage))
             {
                 foreach (var content in message.Content.SplitContent())
                 {
                     var am = new AnthropicMessage
                     {
-                        Role = AnthropicMessageRole.Assistant,
+                        Role = MessageRole.Assistant,
                         Content = new List<MessageContent>()
                     };
                     var um = new AnthropicMessage
                     {
-                        Role = AnthropicMessageRole.User,
+                        Role = MessageRole.User,
                         Content = new List<MessageContent>()
                     };
                     foreach (var item in content)

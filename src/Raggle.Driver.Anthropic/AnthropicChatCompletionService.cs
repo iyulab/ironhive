@@ -38,7 +38,7 @@ public class AnthropicChatCompletionService : IChatCompletionService
     }
 
     /// <inheritdoc />
-    public async Task<ChatCompletionResponse<IEnumerable<IMessageContent>>> GenerateMessageAsync(
+    public async Task<ChatCompletionResponse<IMessage>> GenerateMessageAsync(
         ChatCompletionRequest request, 
         CancellationToken cancellationToken = default)
     {
@@ -62,7 +62,7 @@ public class AnthropicChatCompletionService : IChatCompletionService
             }
         }
 
-        var result = new ChatCompletionResponse<IEnumerable<IMessageContent>>
+        var result = new ChatCompletionResponse<IMessage>
         {
             EndReason = response.StopReason switch
             {
@@ -78,7 +78,10 @@ public class AnthropicChatCompletionService : IChatCompletionService
                 InputTokens = response.Usage.InputTokens,
                 OutputTokens = response.Usage.OutputTokens
             },
-            Content = content,
+            Content = new AssistantMessage
+            {
+                Content = content
+            }
         };
 
         return result;
@@ -222,8 +225,8 @@ public class AnthropicChatCompletionService : IChatCompletionService
                 Description = t.Description,
                 InputSchema = new
                 {
-                    t.Properties,
-                    t.Required,
+                    Properties = t.Parameters,
+                    Required = t.Required,
                 }
             });
 

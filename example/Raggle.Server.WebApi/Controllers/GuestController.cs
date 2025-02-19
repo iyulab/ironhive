@@ -16,12 +16,10 @@ public class GuestRequest
 [Route("/v1/guest")]
 public class GuestController : ControllerBase
 {
-    private readonly IRaggle _raggle;
     private readonly JsonOptions _jsonOptions;
 
-    public GuestController(IRaggle raggle, IOptions<JsonOptions> jsonOptions)
+    public GuestController(IOptions<JsonOptions> jsonOptions)
     {
-        _raggle = raggle;
         _jsonOptions = jsonOptions.Value;
     }
 

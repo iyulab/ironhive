@@ -11,7 +11,7 @@ public enum DatabaseTypes
     MongoDB
 }
 
-public partial class RaggleDatabaseConfig
+public partial class DatabaseConfig
 {
     public DatabaseTypes Type { get; set; }
 

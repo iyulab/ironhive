@@ -4,7 +4,7 @@ using Raggle.Driver.OpenAI.Configurations;
 
 namespace Raggle.Server.Configurations;
 
-public partial class RaggleAIConfig
+public partial class AIServiceConfig
 {
     public OpenAIConfig OpenAI { get; set; } = new OpenAIConfig();
 

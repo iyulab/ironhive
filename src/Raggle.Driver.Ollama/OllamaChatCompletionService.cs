@@ -37,7 +37,7 @@ public class OllamaChatCompletionService : IChatCompletionService
     }
 
     /// <inheritdoc />
-    public async Task<ChatCompletionResponse<IEnumerable<IMessageContent>>> GenerateMessageAsync(
+    public async Task<ChatCompletionResponse<IMessage>> GenerateMessageAsync(
         ChatCompletionRequest request, 
         CancellationToken cancellationToken = default)
     {
@@ -47,7 +47,7 @@ public class OllamaChatCompletionService : IChatCompletionService
         var content = new MessageContentCollection();
         content.AddText(response.Message?.Content);
 
-        return new ChatCompletionResponse<IEnumerable<IMessageContent>>
+        return new ChatCompletionResponse<IMessage>
         {
             EndReason = response.DoneReason switch
             {
@@ -55,7 +55,10 @@ public class OllamaChatCompletionService : IChatCompletionService
                 _ => null
             },
             TokenUsage = null,
-            Content = content,
+            Content = new AssistantMessage
+            {
+                Content = content
+            },
         };
     }
 
@@ -109,7 +112,7 @@ public class OllamaChatCompletionService : IChatCompletionService
         //                Description = t.Description,
         //                Parameters = new ParametersSchema
         //                {
-        //                    Properties = t.Properties,
+        //                    Properties = t.Parameters,
         //                    Required = t.Required,
         //                }
         //            }

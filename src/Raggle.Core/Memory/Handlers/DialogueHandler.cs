@@ -85,7 +85,7 @@ public class DialogueHandler : IPipelineHandler
             Model = options.ModelName,
             System = GetSystemInstruction()
         };
-        request.Messages.Append(MessageRole.User, new TextContent
+        request.Messages.Append<UserMessage>(new TextContent
         {
             Index = 0,
             Text = $"Generate QA pairs In This:\n\n{information}" 
@@ -95,7 +95,7 @@ public class DialogueHandler : IPipelineHandler
         var response = await chat.GenerateMessageAsync(request, cancellationToken);
 
         var sb = new StringBuilder();
-        foreach (var item in response.Content ?? [])
+        foreach (var item in response.Content?.Content ?? [])
         {
             if (item is TextContent text)
             {
