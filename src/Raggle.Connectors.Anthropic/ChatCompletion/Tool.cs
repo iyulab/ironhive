@@ -1,5 +1,4 @@
-﻿using Raggle.Connectors.Anthropic.ChatCompletion;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 
 namespace Raggle.Connectors.Anthropic.ChatCompletion;
 

@@ -15,12 +15,12 @@ public class DialogueHandler : IPipelineHandler
         RegexOptions.Singleline | RegexOptions.Compiled);
 
     private readonly IServiceProvider _serviceProvider;
-    private readonly IDocumentStorage _documentStorage;
+    private readonly IFileStorage _documentStorage;
 
     public DialogueHandler(IServiceProvider service)
     {
         _serviceProvider = service;
-        _documentStorage = service.GetRequiredService<IDocumentStorage>();
+        _documentStorage = service.GetRequiredService<IFileStorage>();
     }
 
     public class Options

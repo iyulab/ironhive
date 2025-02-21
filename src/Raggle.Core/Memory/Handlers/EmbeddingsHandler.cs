@@ -8,13 +8,13 @@ namespace Raggle.Core.Memory.Handlers;
 public class EmbeddingsHandler : IPipelineHandler
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly IDocumentStorage _documentStorage;
+    private readonly IFileStorage _documentStorage;
     private readonly IVectorStorage _vectorStorage;
 
     public EmbeddingsHandler(IServiceProvider service)
     {
         _serviceProvider = service;
-        _documentStorage = service.GetRequiredService<IDocumentStorage>();
+        _documentStorage = service.GetRequiredService<IFileStorage>();
         _vectorStorage = service.GetRequiredService<IVectorStorage>();
     }
 

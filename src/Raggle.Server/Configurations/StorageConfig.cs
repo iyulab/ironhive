@@ -1,7 +1,7 @@
-﻿using Raggle.Connectors.AzureBlob;
-using Raggle.Connectors.LiteDB;
-using Raggle.Connectors.LocalDisk;
-using Raggle.Connectors.Qdrant;
+﻿using Raggle.Storages.AzureBlob;
+using Raggle.Storages.LiteDB;
+using Raggle.Storages.LocalDisk;
+using Raggle.Storages.Qdrant;
 
 namespace Raggle.Server.Configurations;
 

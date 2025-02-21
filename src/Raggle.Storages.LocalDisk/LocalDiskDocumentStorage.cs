@@ -3,7 +3,7 @@ using Raggle.Abstractions.Memory;
 
 namespace Raggle.Storages.LocalDisk;
 
-public class LocalDiskDocumentStorage : IDocumentStorage
+public class LocalDiskDocumentStorage : IFileStorage
 {
     private readonly string _rootPath;
     private const int _defaultBufferSize = 81920; // 기본 80KB

@@ -4,16 +4,16 @@ using Raggle.Connectors.Ollama.Embeddings;
 
 namespace Raggle.Connectors.Ollama;
 
-public class OllamaEmbeddingAdapter : IEmbeddingAdapter
+public class OllamaEmbeddingConnector : IEmbeddingConnector
 {
     private readonly OllamaEmbeddingClient _client;
 
-    public OllamaEmbeddingAdapter(OllamaConfig? config = null)
+    public OllamaEmbeddingConnector(OllamaConfig? config = null)
     {
         _client = new OllamaEmbeddingClient(config);
     }
 
-    public OllamaEmbeddingAdapter(string baseUrl)
+    public OllamaEmbeddingConnector(string baseUrl)
     {
         _client = new OllamaEmbeddingClient(baseUrl);
     }

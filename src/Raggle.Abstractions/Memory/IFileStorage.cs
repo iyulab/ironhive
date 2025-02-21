@@ -1,6 +1,6 @@
 ﻿namespace Raggle.Abstractions.Memory;
 
-public interface IDocumentStorage : IDisposable
+public interface IFileStorage : IDisposable
 {
     Task<IEnumerable<string>> GetCollectionListAsync(
         CancellationToken cancellationToken = default);

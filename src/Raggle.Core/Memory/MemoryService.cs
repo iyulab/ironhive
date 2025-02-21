@@ -10,7 +10,7 @@ public class MemoryService : IMemoryService
     private const string _pipelineSuffix = "pipeline";
 
     private readonly IServiceProvider _serviceProvider;
-    private readonly IDocumentStorage _documentStorage;
+    private readonly IFileStorage _documentStorage;
     private readonly IVectorStorage _vectorStorage;
     private readonly IEmbeddingService _embeddingService;
 
@@ -22,7 +22,7 @@ public class MemoryService : IMemoryService
     public MemoryService(IServiceProvider services)
     {
         _serviceProvider = services;
-        _documentStorage = services.GetRequiredService<IDocumentStorage>();
+        _documentStorage = services.GetRequiredService<IFileStorage>();
         _vectorStorage = services.GetRequiredService<IVectorStorage>();
         _embeddingService = services.GetRequiredService<IEmbeddingService>();
     }

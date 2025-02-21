@@ -1,9 +1,6 @@
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http.Features;
-using Raggle.Core.Extensions;
 using Raggle.Server.Configurations;
 using Raggle.Server.Extensions;
-using Raggle.Server.Tools;
 using Raggle.Server.WebApi;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -16,8 +13,8 @@ if (cm.Config == null)
     throw new Exception("Failed to load raggle_settings.json");
 Directory.CreateDirectory("/var/db");
 
-builder.Services.AddDefaultServices(cm.Config);
-builder.Services.AddToolService<DatabaseTool>("database_search");
+//builder.Services.AddDefaultServices(cm.Config);
+//builder.Services.AddToolService<DatabaseTool>("database_search");
 #endregion
 
 builder.Services.AddHttpContextAccessor();

@@ -2,7 +2,6 @@
 using Raggle.Connectors.Anthropic.ChatCompletion;
 using AnthropicMessage = Raggle.Connectors.Anthropic.ChatCompletion.Message;
 using Raggle.Abstractions.ChatCompletion.Messages;
-using Raggle.Connectors.Anthropic.ChatCompletion;
 
 namespace Raggle.Abstractions.AI;
 

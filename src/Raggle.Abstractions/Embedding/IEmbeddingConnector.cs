@@ -1,6 +1,6 @@
 ﻿namespace Raggle.Abstractions.Embedding;
 
-public interface IEmbeddingAdapter
+public interface IEmbeddingConnector
 {
     /// <summary>
     /// Gets the available embedding models.

@@ -7,12 +7,12 @@ namespace Raggle.Core.Memory.Handlers;
 
 public class DecodingHandler : IPipelineHandler
 {
-    private readonly IDocumentStorage _documentStorage;
+    private readonly IFileStorage _documentStorage;
     private readonly IEnumerable<IDocumentDecoder> _decoders;
 
     public DecodingHandler(IServiceProvider service)
     {
-        _documentStorage = service.GetRequiredService<IDocumentStorage>();
+        _documentStorage = service.GetRequiredService<IFileStorage>();
         _decoders = service.GetServices<IDocumentDecoder>();
     }
 

@@ -10,19 +10,21 @@ using Raggle.Connectors.OpenAI.ChatCompletion;
 using Raggle.Abstractions.ChatCompletion;
 using Raggle.Abstractions.ChatCompletion.Messages;
 using Raggle.Abstractions.ChatCompletion.Tools;
+using AutoToolChoice = Raggle.Abstractions.ChatCompletion.Tools.AutoToolChoice;
+using OpenAIAutoToolChoice = Raggle.Connectors.OpenAI.ChatCompletion.AutoToolChoice;
 
 namespace Raggle.Connectors.OpenAI;
 
-public class OpenAIChatCompletionAdapter : IChatCompletionAdapter
+public class OpenAIChatCompletionConnector : IChatCompletionConnector
 {
     private readonly OpenAIChatCompletionClient _client;
 
-    public OpenAIChatCompletionAdapter(OpenAIConfig config)
+    public OpenAIChatCompletionConnector(OpenAIConfig config)
     {
         _client = new OpenAIChatCompletionClient(config);
     }
 
-    public OpenAIChatCompletionAdapter(string apiKey)
+    public OpenAIChatCompletionConnector(string apiKey)
     {
         _client = new OpenAIChatCompletionClient(apiKey);
     }
@@ -191,21 +193,21 @@ public class OpenAIChatCompletionAdapter : IChatCompletionAdapter
 
             if (request.ToolChoice != null)
             {
-                if (request.ToolChoice.Mode == ToolChoiceMode.Manual)
+                if (request.ToolChoice is ManualToolChoice manual)
                 {
                     _request.ToolChoice = new RequiredToolChoice
                     {
                         Function = new FunctionChoice
                         {
-                            Name = request.ToolChoice.ToolName,
+                            Name = manual.ToolName,
                         }
                     };
                 }
-                else if (request.ToolChoice.Mode == ToolChoiceMode.Auto)
+                else if (request.ToolChoice is AutoToolChoice)
                 {
-                    _request.ToolChoice = new AutoToolChoice();
+                    _request.ToolChoice = new OpenAIAutoToolChoice();
                 }
-                else if (request.ToolChoice.Mode == ToolChoiceMode.None)
+                else if (request.ToolChoice is DisabledToolChoice)
                 {
                     _request.ToolChoice = new NoneToolChoice();
                 }

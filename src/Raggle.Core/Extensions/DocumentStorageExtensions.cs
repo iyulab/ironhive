@@ -30,7 +30,7 @@ public static class DocumentStorageExtensions
     /// <param name="cancellationToken">취소 토큰.</param>
     /// <returns>IAsyncEnumerable&lt;T&gt;을 반환합니다.</returns>
     public static async IAsyncEnumerable<T> GetDocumentJsonAsync<T>(
-        this IDocumentStorage documentStorage,
+        this IFileStorage documentStorage,
         string collectionName,
         string documentId,
         string suffix,
@@ -84,7 +84,7 @@ public static class DocumentStorageExtensions
     /// <param name="cancellationToken">취소 토큰.</param>
     /// <returns>타입 T의 객체를 반환합니다.</returns>
     public static async Task<T> GetDocumentJsonFirstAsync<T>(
-        this IDocumentStorage documentStorage,
+        this IFileStorage documentStorage,
         string collectionName,
         string documentId,
         string suffix,
@@ -130,7 +130,7 @@ public static class DocumentStorageExtensions
     /// <param name="cancellationToken">취소 토큰.</param>
     /// <returns>비동기 작업.</returns>
     public static async Task UpsertDocumentJsonAsync<T>(
-        this IDocumentStorage documentStorage,
+        this IFileStorage documentStorage,
         string collectionName,
         string documentId,
         string fileName,
@@ -175,7 +175,7 @@ public static class DocumentStorageExtensions
     /// <param name="cancellationToken">취소 토큰.</param>
     /// <returns>비동기 작업.</returns>
     public static async Task UpsertDocumentJsonAsync<T>(
-        this IDocumentStorage documentStorage,
+        this IFileStorage documentStorage,
         string collectionName,
         string documentId,
         string fileName,

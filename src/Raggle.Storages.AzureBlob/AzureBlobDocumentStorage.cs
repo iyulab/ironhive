@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 
 namespace Raggle.Storages.AzureBlob;
 
-public class AzureBlobDocumentStorage : IDocumentStorage
+public class AzureBlobDocumentStorage : IFileStorage
 {
     private readonly BlobServiceClient _client;
 

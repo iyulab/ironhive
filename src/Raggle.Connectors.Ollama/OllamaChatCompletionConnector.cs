@@ -8,16 +8,16 @@ using System.Runtime.CompilerServices;
 
 namespace Raggle.Connectors.Ollama;
 
-public class OllamaChatCompletionAdapter : IChatCompletionAdapter
+public class OllamaChatCompletionConnector : IChatCompletionConnector
 {
     private readonly OllamaChatCompletionClient _client;
 
-    public OllamaChatCompletionAdapter(OllamaConfig? config = null)
+    public OllamaChatCompletionConnector(OllamaConfig? config = null)
     {
         _client = new OllamaChatCompletionClient(config);
     }
 
-    public OllamaChatCompletionAdapter(string baseUrl)
+    public OllamaChatCompletionConnector(string baseUrl)
     {
         _client = new OllamaChatCompletionClient(baseUrl);
     }

@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Raggle.Abstractions;
+﻿using Raggle.Abstractions;
 using Raggle.Abstractions.ChatCompletion;
 using Raggle.Abstractions.ChatCompletion.Messages;
 using System.Runtime.CompilerServices;
@@ -8,30 +7,29 @@ namespace Raggle.Core.ChatCompletion;
 
 public class ChatCompletionService : IChatCompletionService
 {
-    private readonly IServiceProvider _service;
-    private readonly IServiceModelConverter _converter;
+    private readonly IReadOnlyDictionary<string, IChatCompletionConnector> _connectors;
+    private readonly ITextParser<(string, string)> _parser;
 
-    public ChatCompletionService(IServiceProvider service)
+    public ChatCompletionService(
+        IHiveServiceRegistry registry,
+        ITextParser<(string, string)> parser)
     {
-        _service = service;
-        _converter = service.GetRequiredService<IServiceModelConverter>();
+        _connectors = registry.GetKeyedServices<IChatCompletionConnector>();
+        _parser = parser;
     }
 
     /// <inheritdoc />
     public async Task<IEnumerable<ChatCompletionModel>> GetModelsAsync(
         CancellationToken cancellationToken = default)
     {
-        var services = _service.GetKeyedServices<IChatCompletionAdapter>(KeyedService.AnyKey);
         var models = new List<ChatCompletionModel>();
-
-        foreach (var service in services)
+        foreach (var (key, connector) in _connectors)
         {
-            var serviceKey = ServiceKeyRegistry.Get(service.GetType());
-            var serviceModels = await service.GetModelsAsync(cancellationToken);
+            var serviceModels = await connector.GetModelsAsync(cancellationToken);
 
             models.AddRange(serviceModels.Select(x => new ChatCompletionModel
             {
-                Model = _converter.Format(serviceKey, x.Model),
+                Model = _parser.Stringify((key, x.Model)),
             }));
         }
         return models;
@@ -42,11 +40,14 @@ public class ChatCompletionService : IChatCompletionService
         ChatCompletionRequest request,
         CancellationToken cancellationToken = default)
     {
-        var (serviceKey, model) = _converter.Parse(request.Model);
-        var adapter = _service.GetRequiredKeyedService<IChatCompletionAdapter>(serviceKey);
-        request.Model = model;
+        var (serviceKey, model) = _parser.Parse(request.Model);
+        if (!_connectors.TryGetValue(serviceKey, out var connector))
+        {
+            throw new KeyNotFoundException($"Service key '{serviceKey}' not found.");
+        }
 
-        return await adapter.GenerateMessageAsync(request, cancellationToken);
+        request.Model = model;
+        return await connector.GenerateMessageAsync(request, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -54,11 +55,14 @@ public class ChatCompletionService : IChatCompletionService
         ChatCompletionRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var (serviceKey, model) = _converter.Parse(request.Model);
-        var adapter = _service.GetRequiredKeyedService<IChatCompletionAdapter>(serviceKey);
-        request.Model = model;
+        var (serviceKey, model) = _parser.Parse(request.Model);
+        if (!_connectors.TryGetValue(serviceKey, out var connector))
+        {
+            throw new KeyNotFoundException($"Service key '{serviceKey}' not found.");
+        }
 
-        await foreach(var res in adapter.GenerateStreamingMessageAsync(request, cancellationToken))
+        request.Model = model;
+        await foreach(var res in connector.GenerateStreamingMessageAsync(request, cancellationToken))
         {
             yield return res;
         }

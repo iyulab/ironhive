@@ -7,12 +7,12 @@ namespace Raggle.Core.Memory.Handlers;
 
 public class ChunkingHandler : IPipelineHandler
 {
-    private readonly IDocumentStorage _documentStorage;
+    private readonly IFileStorage _documentStorage;
     private readonly ITextTokenizer _textTokenizer;
 
     public ChunkingHandler(IServiceProvider service)
     {
-        _documentStorage = service.GetRequiredService<IDocumentStorage>();
+        _documentStorage = service.GetRequiredService<IFileStorage>();
 
         // 서비스 마다 다른 토크나이저 사용해야함
         _textTokenizer = new TiktokenTokenizer();

@@ -2,7 +2,6 @@
 using Raggle.Abstractions.ChatCompletion;
 using Raggle.Abstractions.ChatCompletion.Messages;
 using Raggle.Connectors.Anthropic.ChatCompletion;
-using Raggle.Connectors.Anthropic.ChatCompletion;
 using Raggle.Connectors.Anthropic.Configurations;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -10,16 +9,16 @@ using TokenUsage = Raggle.Abstractions.ChatCompletion.TokenUsage;
 
 namespace Raggle.Connectors.Anthropic;
 
-public class AnthropicChatCompletionAdapter : IChatCompletionAdapter
+public class AnthropicChatCompletionConnector : IChatCompletionConnector
 {
     private readonly AnthropicChatCompletionClient _client;
 
-    public AnthropicChatCompletionAdapter(AnthropicConfig config)
+    public AnthropicChatCompletionConnector(AnthropicConfig config)
     {
         _client = new AnthropicChatCompletionClient(config);
     }
 
-    public AnthropicChatCompletionAdapter(string apiKey)
+    public AnthropicChatCompletionConnector(string apiKey)
     {
         _client = new AnthropicChatCompletionClient(apiKey);
     }
@@ -235,14 +234,14 @@ public class AnthropicChatCompletionAdapter : IChatCompletionAdapter
 
             if (request.ToolChoice != null)
             {
-                if (request.ToolChoice.Mode == ToolChoiceMode.Manual)
+                if (request.ToolChoice is ManualToolChoice manual)
                 {
                     _request.ToolChoice = new ManualToolChoice
                     {
-                        Name = request.ToolChoice.ToolName,
+                        Name = manual.Name,
                     };
                 }
-                else if (request.ToolChoice.Mode == ToolChoiceMode.Auto)
+                else if (request.ToolChoice is AutoToolChoice)
                 {
                     _request.ToolChoice = new AutoToolChoice();
                 }

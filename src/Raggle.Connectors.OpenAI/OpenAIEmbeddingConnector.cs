@@ -5,16 +5,16 @@ using Raggle.Connectors.OpenAI.Extensions;
 
 namespace Raggle.Connectors.OpenAI;
 
-public class OpenAIEmbeddingAdapter : IEmbeddingAdapter
+public class OpenAIEmbeddingConnector : IEmbeddingConnector
 {
     private readonly OpenAIEmbeddingClient _client;
 
-    public OpenAIEmbeddingAdapter(OpenAIConfig config)
+    public OpenAIEmbeddingConnector(OpenAIConfig config)
     {
         _client = new OpenAIEmbeddingClient(config);
     }
 
-    public OpenAIEmbeddingAdapter(string apiKey)
+    public OpenAIEmbeddingConnector(string apiKey)
     {
         _client = new OpenAIEmbeddingClient(apiKey);
     }

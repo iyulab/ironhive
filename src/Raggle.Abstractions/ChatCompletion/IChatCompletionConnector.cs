@@ -2,7 +2,7 @@
 
 namespace Raggle.Abstractions.ChatCompletion;
 
-public interface IChatCompletionAdapter
+public interface IChatCompletionConnector
 {
     /// <summary>
     /// Retrieves a list of available chat completion models.

@@ -4,7 +4,6 @@ using System.Net.Http.Json;
 using Raggle.Connectors.Anthropic.Configurations;
 using System.Runtime.CompilerServices;
 using Raggle.Connectors.Anthropic.Base;
-using Raggle.Connectors.Anthropic.ChatCompletion;
 
 namespace Raggle.Connectors.Anthropic.ChatCompletion;
 

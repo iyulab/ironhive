@@ -31,25 +31,5 @@ public class ChatCompletionRequest : ChatCompletionParameters
     /// <summary>
     /// Tool execution options.
     /// </summary>
-    public ToolChoice? ToolChoice { get; set; }
-}
-
-public enum ToolChoiceMode
-{
-    None,   // not use any tool
-    Auto,   // use the tool automatically
-    Manual, // use the tool in manual mode
-}
-
-public class ToolChoice
-{
-    /// <summary>
-    /// Tool calling choice
-    /// </summary>
-    public ToolChoiceMode Mode { get; set; } = ToolChoiceMode.Auto;
-
-    /// <summary>
-    /// the tool to must be used in manual mode.
-    /// </summary>
-    public string? ToolName { get; set; }
+    public IToolChoice? ToolChoice { get; set; }
 }
