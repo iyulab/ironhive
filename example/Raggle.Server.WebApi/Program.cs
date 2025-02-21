@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http.Features;
 using Raggle.Core.Extensions;
 using Raggle.Server.Configurations;

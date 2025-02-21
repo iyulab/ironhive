@@ -1,4 +1,4 @@
-﻿namespace Raggle.Connectors.LiteDB;
+﻿namespace Raggle.Storages.LiteDB;
 
 public class LiteDBConfig
 {

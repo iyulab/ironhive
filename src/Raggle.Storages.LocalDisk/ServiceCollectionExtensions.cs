@@ -1,4 +1,4 @@
-﻿using Raggle.Connectors.LocalDisk;
+﻿using Raggle.Storages.LocalDisk;
 
 namespace Microsoft.Extensions.DependencyInjection;
 

@@ -1,14 +1,14 @@
-﻿using Raggle.Connectors.Qdrant;
+﻿using Raggle.Storages.LiteDB;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection SetQdrantVectorStorage(
+    public static IServiceCollection SetLiteDBVectorStorage(
         this IServiceCollection services,
-        QdrantConfig config)
+        LiteDBConfig config)
     {
-        var vectorStorage = new QdrantVectorStorage(config);
+        var vectorStorage = new LiteDBVectorStorage(config);
         return services.SetVectorStorage(vectorStorage);
     }
 }

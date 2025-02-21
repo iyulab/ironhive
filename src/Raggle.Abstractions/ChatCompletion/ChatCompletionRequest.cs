@@ -9,6 +9,11 @@ namespace Raggle.Abstractions.ChatCompletion;
 public class ChatCompletionRequest : ChatCompletionParameters
 {
     /// <summary>
+    /// chat completion model name.
+    /// </summary>
+    public string Model { get; set; } = string.Empty;
+
+    /// <summary>
     /// system message to generate a response to.
     /// </summary>
     public string? System { get; set; }

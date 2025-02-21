@@ -10,13 +10,13 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Raggle.Abstractions\Raggle.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\Raggle.Connectors.Anthropic\Raggle.Connectors.Anthropic.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.Connectors.AzureBlob\Raggle.Connectors.AzureBlob.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.Connectors.LiteDB\Raggle.Connectors.LiteDB.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.Connectors.LocalDisk\Raggle.Connectors.LocalDisk.csproj" />
     <ProjectReference Include="..\..\src\Raggle.Connectors.Ollama\Raggle.Connectors.Ollama.csproj" />
     <ProjectReference Include="..\..\src\Raggle.Connectors.OpenAI\Raggle.Connectors.OpenAI.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.Connectors.Qdrant\Raggle.Connectors.Qdrant.csproj" />
     <ProjectReference Include="..\..\src\Raggle.Core\Raggle.Core.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Storages.AzureBlob\Raggle.Storages.AzureBlob.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Storages.LiteDB\Raggle.Storages.LiteDB.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Storages.LocalDisk\Raggle.Storages.LocalDisk.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Storages.Qdrant\Raggle.Storages.Qdrant.csproj" />
   </ItemGroup>
 
 </Project>

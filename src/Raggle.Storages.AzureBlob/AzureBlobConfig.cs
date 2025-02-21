@@ -2,7 +2,7 @@
 using Azure.Identity;
 using System.Text.Json.Serialization;
 
-namespace Raggle.Connectors.AzureBlob;
+namespace Raggle.Storages.AzureBlob;
 
 /// <summary>
 /// Represents the various authentication types that can be used to connect to Azure Blob storage.

@@ -4,7 +4,7 @@ using static Qdrant.Client.Grpc.Conditions;
 using System.Text.Json;
 using Raggle.Abstractions.Memory;
 
-namespace Raggle.Connectors.Qdrant;
+namespace Raggle.Storages.Qdrant;
 
 public class QdrantVectorStorage : IVectorStorage
 {

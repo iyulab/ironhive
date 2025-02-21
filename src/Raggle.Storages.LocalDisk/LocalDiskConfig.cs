@@ -1,4 +1,4 @@
-﻿namespace Raggle.Connectors.LocalDisk;
+﻿namespace Raggle.Storages.LocalDisk;
 
 public class LocalDiskConfig
 {

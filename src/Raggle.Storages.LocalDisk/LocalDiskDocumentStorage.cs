@@ -1,7 +1,7 @@
 ﻿using System.Runtime.CompilerServices;
 using Raggle.Abstractions.Memory;
 
-namespace Raggle.Connectors.LocalDisk;
+namespace Raggle.Storages.LocalDisk;
 
 public class LocalDiskDocumentStorage : IDocumentStorage
 {

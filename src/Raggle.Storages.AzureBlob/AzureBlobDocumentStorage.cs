@@ -5,7 +5,7 @@ using Azure.Storage.Blobs.Models;
 using Raggle.Abstractions.Memory;
 using System.Runtime.CompilerServices;
 
-namespace Raggle.Connectors.AzureBlob;
+namespace Raggle.Storages.AzureBlob;
 
 public class AzureBlobDocumentStorage : IDocumentStorage
 {

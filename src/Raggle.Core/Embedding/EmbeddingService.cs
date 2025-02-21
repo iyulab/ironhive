@@ -7,10 +7,12 @@ namespace Raggle.Core.Embedding;
 public class EmbeddingService : IEmbeddingService
 {
     private readonly IServiceProvider _service;
+    private readonly IServiceModelConverter _converter;
 
-    public EmbeddingService(IKeyedServiceProvider service)
+    public EmbeddingService(IServiceProvider service)
     {
         _service = service;
+        _converter = service.GetRequiredService<IServiceModelConverter>();
     }
 
     /// <inheritdoc />
@@ -27,7 +29,7 @@ public class EmbeddingService : IEmbeddingService
 
             models.AddRange(serviceModels.Select(x => new EmbeddingModel
             {
-                Model = $"{serviceKey}/{x.Model}",
+                Model = _converter.Format(serviceKey, x.Model),
             }));
         }
 
@@ -55,8 +57,7 @@ public class EmbeddingService : IEmbeddingService
         EmbeddingsRequest request,
         CancellationToken cancellationToken = default)
     {
-        var serviceKey = request.Model.Split('/', 2)[0];
-        var model = request.Model.Split('/', 2)[1];
+        var (serviceKey, model) = _converter.Parse(request.Model);
         var adapter = _service.GetRequiredKeyedService<IEmbeddingAdapter>(serviceKey);
         request.Model = model;
 

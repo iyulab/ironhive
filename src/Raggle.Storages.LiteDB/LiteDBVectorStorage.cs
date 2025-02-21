@@ -2,7 +2,7 @@
 using Raggle.Abstractions.Memory;
 using System.Numerics.Tensors;
 
-namespace Raggle.Connectors.LiteDB;
+namespace Raggle.Storages.LiteDB;
 
 public class LiteDBVectorStorage : IVectorStorage
 {

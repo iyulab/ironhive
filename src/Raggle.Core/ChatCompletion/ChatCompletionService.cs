@@ -9,10 +9,12 @@ namespace Raggle.Core.ChatCompletion;
 public class ChatCompletionService : IChatCompletionService
 {
     private readonly IServiceProvider _service;
+    private readonly IServiceModelConverter _converter;
 
     public ChatCompletionService(IServiceProvider service)
     {
         _service = service;
+        _converter = service.GetRequiredService<IServiceModelConverter>();
     }
 
     /// <inheritdoc />
@@ -29,7 +31,7 @@ public class ChatCompletionService : IChatCompletionService
 
             models.AddRange(serviceModels.Select(x => new ChatCompletionModel
             {
-                Model = $"{serviceKey}/{x.Model}",
+                Model = _converter.Format(serviceKey, x.Model),
             }));
         }
         return models;
@@ -40,8 +42,7 @@ public class ChatCompletionService : IChatCompletionService
         ChatCompletionRequest request,
         CancellationToken cancellationToken = default)
     {
-        var serviceKey = request.Model.Split('/', 2)[0];
-        var model = request.Model.Split('/', 2)[1];
+        var (serviceKey, model) = _converter.Parse(request.Model);
         var adapter = _service.GetRequiredKeyedService<IChatCompletionAdapter>(serviceKey);
         request.Model = model;
 
@@ -53,8 +54,7 @@ public class ChatCompletionService : IChatCompletionService
         ChatCompletionRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var serviceKey = request.Model.Split('/', 2)[0];
-        var model = request.Model.Split('/', 2)[1];
+        var (serviceKey, model) = _converter.Parse(request.Model);
         var adapter = _service.GetRequiredKeyedService<IChatCompletionAdapter>(serviceKey);
         request.Model = model;
 

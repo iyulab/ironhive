@@ -1,4 +1,4 @@
-﻿using Raggle.Connectors.AzureBlob;
+﻿using Raggle.Storages.AzureBlob;
 
 namespace Microsoft.Extensions.DependencyInjection;
 

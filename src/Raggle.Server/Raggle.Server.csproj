@@ -20,13 +20,13 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Raggle.Connectors.Anthropic\Raggle.Connectors.Anthropic.csproj" />
-    <ProjectReference Include="..\Raggle.Connectors.AzureBlob\Raggle.Connectors.AzureBlob.csproj" />
-    <ProjectReference Include="..\Raggle.Connectors.LiteDB\Raggle.Connectors.LiteDB.csproj" />
-    <ProjectReference Include="..\Raggle.Connectors.LocalDisk\Raggle.Connectors.LocalDisk.csproj" />
     <ProjectReference Include="..\Raggle.Connectors.Ollama\Raggle.Connectors.Ollama.csproj" />
     <ProjectReference Include="..\Raggle.Connectors.OpenAI\Raggle.Connectors.OpenAI.csproj" />
-    <ProjectReference Include="..\Raggle.Connectors.Qdrant\Raggle.Connectors.Qdrant.csproj" />
     <ProjectReference Include="..\Raggle.Core\Raggle.Core.csproj" />
+    <ProjectReference Include="..\Raggle.Storages.AzureBlob\Raggle.Storages.AzureBlob.csproj" />
+    <ProjectReference Include="..\Raggle.Storages.LiteDB\Raggle.Storages.LiteDB.csproj" />
+    <ProjectReference Include="..\Raggle.Storages.LocalDisk\Raggle.Storages.LocalDisk.csproj" />
+    <ProjectReference Include="..\Raggle.Storages.Qdrant\Raggle.Storages.Qdrant.csproj" />
   </ItemGroup>
 
 </Project>

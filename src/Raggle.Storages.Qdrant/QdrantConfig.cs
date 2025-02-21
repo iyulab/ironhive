@@ -1,4 +1,4 @@
-﻿namespace Raggle.Connectors.Qdrant;
+﻿namespace Raggle.Storages.Qdrant;
 
 public class QdrantConfig
 {

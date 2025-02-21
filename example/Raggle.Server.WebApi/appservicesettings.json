@@ -56,18 +56,18 @@
   },
   "services": {
     "open_ai": {
-      "end_point": "https://api.openai.com/",
+      "base_url": "",
       "api_key": "",
       "organization": "",
       "project": ""
     },
     "anthropic": {
-      "end_point": "https://api.anthropic.com/",
+      "base_url": "",
       "api_key": "",
       "version": ""
     },
     "ollama": {
-      "end_point": "http://localhost:11434/",
+      "base_url": "",
       "default_request_headers": {}
     }
   }
