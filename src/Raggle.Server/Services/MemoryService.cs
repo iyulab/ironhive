@@ -69,7 +69,6 @@ public class MemoryService
                 _db.Collections.Add(collection);
                 await _memory.CreateCollectionAsync(
                     collection.Id,
-                    collection.EmbedService,
                     collection.EmbedModel);
             }
             await _db.SaveChangesAsync();
@@ -229,8 +228,7 @@ public class MemoryService
 
         return await _memory.SearchSimilarVectorsAsync(
             collectionName: collection.Id,
-            embedServiceKey: collection.EmbedService,
-            embedModelName: collection.EmbedModel,
+            embedModel: collection.EmbedModel,
             query: query);
     }
 
@@ -269,8 +267,7 @@ public class MemoryService
 
         options[DefaultServiceKeys.Embeddings] = new EmbeddingsHandler.Options
         {
-            ServiceKey = collection.EmbedService,
-            ModelName = collection.EmbedModel
+            Model = collection.EmbedModel
         };
 
         return options;

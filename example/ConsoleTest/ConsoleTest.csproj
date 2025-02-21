@@ -9,14 +9,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Raggle.Abstractions\Raggle.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Connectors.Anthropic\Raggle.Connectors.Anthropic.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Connectors.AzureBlob\Raggle.Connectors.AzureBlob.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Connectors.LiteDB\Raggle.Connectors.LiteDB.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Connectors.LocalDisk\Raggle.Connectors.LocalDisk.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Connectors.Ollama\Raggle.Connectors.Ollama.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Connectors.OpenAI\Raggle.Connectors.OpenAI.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Connectors.Qdrant\Raggle.Connectors.Qdrant.csproj" />
     <ProjectReference Include="..\..\src\Raggle.Core\Raggle.Core.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.Driver.Anthropic\Raggle.Driver.Anthropic.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.Driver.AzureBlob\Raggle.Driver.AzureBlob.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.Driver.LiteDB\Raggle.Driver.LiteDB.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.Driver.LocalDisk\Raggle.Driver.LocalDisk.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.Driver.Ollama\Raggle.Driver.Ollama.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.Driver.OpenAI\Raggle.Driver.OpenAI.csproj" />
-    <ProjectReference Include="..\..\src\Raggle.Driver.Qdrant\Raggle.Driver.Qdrant.csproj" />
   </ItemGroup>
 
 </Project>

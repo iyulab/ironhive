@@ -1,6 +1,6 @@
-﻿using Raggle.Driver.Anthropic.Configurations;
-using Raggle.Driver.Ollama.Configurations;
-using Raggle.Driver.OpenAI.Configurations;
+﻿using Raggle.Connectors.Anthropic.Configurations;
+using Raggle.Connectors.Ollama.Configurations;
+using Raggle.Connectors.OpenAI.Configurations;
 
 namespace Raggle.Server.Configurations;
 

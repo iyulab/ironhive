@@ -1,6 +1,6 @@
 ﻿using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
-using Raggle.Core.Tools;
+using Raggle.Core.ChatCompletion;
 using System.ComponentModel;
 
 namespace Raggle.Server.Tools;

@@ -110,7 +110,7 @@ public class DataPipeline
 
         var index = Steps.IndexOf(CurrentStep);
         if (index == -1 || index >= Steps.Count - 1)
-           return null;
+            return null;
 
         return Steps[index + 1];
     }
@@ -120,9 +120,9 @@ public class DataPipeline
         if (Options == null || CurrentStep == null)
             return default;
 
-        if (Options.TryGetValue(CurrentStep, out var obj))
+        if (Options.TryGetValue<T>(CurrentStep, out var obj))
         {
-            return obj.ConvertTo<T>();
+            return obj;
         }
         return default;
     }

@@ -4,12 +4,11 @@ public interface IMemoryService
 {
     Task CreateCollectionAsync(
         string collectionName,
-        string embedServiceKey,
-        string embedModelName,
+        string embedModel,
         CancellationToken cancellationToken = default);
 
     Task DeleteCollectionAsync(
-        string collectionName, 
+        string collectionName,
         CancellationToken cancellationToken = default);
 
     Task UploadDocumentAsync(
@@ -40,8 +39,7 @@ public interface IMemoryService
 
     Task<IEnumerable<ScoredVectorPoint>> SearchSimilarVectorsAsync(
         string collectionName,
-        string embedServiceKey,
-        string embedModelName,
+        string embedModel,
         string query,
         float minScore = 0,
         int limit = 5,

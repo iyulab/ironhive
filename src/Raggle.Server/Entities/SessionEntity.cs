@@ -1,4 +1,4 @@
-﻿using Raggle.Abstractions.Messages;
+﻿using Raggle.Abstractions.ChatCompletion.Messages;
 
 namespace Raggle.Server.Entities;
 

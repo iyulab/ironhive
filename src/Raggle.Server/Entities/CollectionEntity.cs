@@ -10,8 +10,6 @@ public class CollectionEntity
 
     public string? Description { get; set; }
 
-    public string EmbedService { get; set; } = string.Empty;
-
     public string EmbedModel { get; set; } = string.Empty;
 
     public IDictionary<string, object>? HandlerOptions { get; set; }

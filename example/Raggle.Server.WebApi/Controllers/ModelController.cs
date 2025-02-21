@@ -1,9 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Raggle.Abstractions;
-using Raggle.Abstractions.AI;
-using Raggle.Driver.Anthropic;
-using Raggle.Driver.Ollama;
-using Raggle.Driver.OpenAI;
+using Raggle.Abstractions.ChatCompletion;
+using Raggle.Abstractions.Embedding;
 using Raggle.Server.Configurations;
 
 namespace Raggle.Server.WebApi.Controllers;
@@ -22,31 +20,8 @@ public class ModelController : ControllerBase
     [HttpGet("chat")]
     public async Task<ActionResult> GetChatCompletionModelsAsync()
     {
-        var models = new Dictionary<string, string[]>();
-        var services = _services.GetKeyedServices<IChatCompletionService>(KeyedService.AnyKey);
-
-        var serviceKeyMap = new Dictionary<Type, string>
-        {
-            { typeof(OpenAIChatCompletionService), DefaultServiceKeys.OpenAI },
-            { typeof(AnthropicChatCompletionService), DefaultServiceKeys.Anthrophic },
-            { typeof(OllamaChatCompletionService), DefaultServiceKeys.Ollama }
-        };
-
-        foreach (var service in services)
-        {
-            if (serviceKeyMap.TryGetValue(service.GetType(), out var key))
-            {
-                try
-                {
-                    var _models = await service.GetModelsAsync();
-                    models[key] = _models.Select(m => m.Model).ToArray();
-                }
-                catch
-                {
-                    models[key] = [];
-                }
-            }
-        }
+        var service = _services.GetRequiredService<IChatCompletionService>();
+        var models = await service.GetModelsAsync();
 
         return Ok(models);
     }
@@ -54,30 +29,8 @@ public class ModelController : ControllerBase
     [HttpGet("embedding")]
     public async Task<ActionResult> GetEmbeddingModelsAsync()
     {
-        var models = new Dictionary<string, string[]>();
-        var services = _services.GetKeyedServices<IEmbeddingService>(KeyedService.AnyKey);
-
-        var serviceKeyMap = new Dictionary<Type, string>
-        {
-            { typeof(OpenAIEmbeddingService), DefaultServiceKeys.OpenAI },
-            { typeof(OllamaEmbeddingService), DefaultServiceKeys.Ollama }
-        };
-
-        foreach (var service in services)
-        {
-            if (serviceKeyMap.TryGetValue(service.GetType(), out var key))
-            {
-                try
-                {
-                    var _models = await service.GetModelsAsync();
-                    models[key] = _models.Select(m => m.Model).ToArray();
-                }
-                catch
-                {
-                    models[key] = [];
-                }
-            }
-        }
+        var service = _services.GetRequiredService<IEmbeddingService>();
+        var models = await service.GetModelsAsync();
 
         return Ok(models);
     }

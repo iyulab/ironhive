@@ -2,13 +2,13 @@
 
 public interface IQueueClient : IDisposable
 {
-    Task EnqueueAsync(IQueueMessage message, CancellationToken cancellationToken);
+    Task EnqueueAsync(string message, CancellationToken cancellationToken);
 
-    Task<IQueueMessage> DequeueAsync(CancellationToken cancellationToken);
+    Task<string> DequeueAsync(CancellationToken cancellationToken);
 
-    //Task<IQueueMessage> PeekAsync(string id, CancellationToken cancellationToken);
+    //Task<string> PeekAsync(string id, CancellationToken cancellationToken);
 
-    //Task<IQueueMessage[]> ListAsync(int count, CancellationToken cancellationToken);
+    //Task<string[]> ListAsync(int count, CancellationToken cancellationToken);
 
     Task<int> CountAsync();
 

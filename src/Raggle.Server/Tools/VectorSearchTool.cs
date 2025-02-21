@@ -1,10 +1,10 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Raggle.Abstractions.Memory;
-using Raggle.Core.Tools;
+using Raggle.Core.ChatCompletion;
 using Raggle.Server.Services;
 using System.ComponentModel;
 
-namespace Raggle.Server.Tools;
+namespace Raggle.Server.ChatCompletion;
 
 public class VectorSearchTool
 {

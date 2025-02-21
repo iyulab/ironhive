@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using Raggle.Abstractions.AI;
+using Raggle.Abstractions.Embedding;
 using Raggle.Abstractions.Memory;
 using Raggle.Core.Extensions;
 
@@ -12,6 +12,7 @@ public class MemoryService : IMemoryService
     private readonly IServiceProvider _serviceProvider;
     private readonly IDocumentStorage _documentStorage;
     private readonly IVectorStorage _vectorStorage;
+    private readonly IEmbeddingService _embeddingService;
 
     private readonly SemaphoreSlim _semaphore = new(1, 1);
 
@@ -23,19 +24,19 @@ public class MemoryService : IMemoryService
         _serviceProvider = services;
         _documentStorage = services.GetRequiredService<IDocumentStorage>();
         _vectorStorage = services.GetRequiredService<IVectorStorage>();
+        _embeddingService = services.GetRequiredService<IEmbeddingService>();
     }
 
     /// <inheritdoc />
     public async Task CreateCollectionAsync(
         string collectionName,
-        string embedServiceKey,
-        string embedModelName,
+        string embedModel,
         CancellationToken cancellationToken = default)
     {
         try
         {
             var sampleText = "Sample text to determine vector size";
-            var embedding = await GetEmbeddingAsync(embedServiceKey, embedModelName, sampleText, cancellationToken);
+            var embedding = await _embeddingService.EmbedAsync(embedModel, sampleText, cancellationToken);
 
             await _vectorStorage.CreateCollectionAsync(collectionName, embedding.Count(), cancellationToken);
             await _documentStorage.CreateCollectionAsync(collectionName, cancellationToken);
@@ -160,15 +161,14 @@ public class MemoryService : IMemoryService
     /// <inheritdoc />
     public async Task<IEnumerable<ScoredVectorPoint>> SearchSimilarVectorsAsync(
         string collectionName,
-        string embedServiceKey,
-        string embedModelName,
+        string embedModel,
         string query,
         float minScore = 0,
         int limit = 5,
         MemoryFilter? filter = null,
         CancellationToken cancellationToken = default)
     {
-        var embedding = await GetEmbeddingAsync(embedServiceKey, embedModelName, query, cancellationToken);
+        var embedding = await _embeddingService.EmbedAsync(embedModel, query, cancellationToken);
         var results = await _vectorStorage.SearchVectorsAsync(collectionName,embedding, minScore, limit, filter, cancellationToken);
         return results;
     }
@@ -205,17 +205,6 @@ public class MemoryService : IMemoryService
             suffix: _pipelineSuffix,
             value: pipeline,
             cancellationToken: cancellationToken);
-    }
-
-    private async Task<IEnumerable<float>> GetEmbeddingAsync(
-        string embedServiceKey,
-        string embedModelName,
-        string text,
-        CancellationToken cancellationToken)
-    {
-        var embedService = _serviceProvider.GetRequiredKeyedService<IEmbeddingService>(embedServiceKey);
-        var embedding = await embedService.EmbedAsync(embedModelName, text, cancellationToken);
-        return embedding;
     }
 
     #endregion

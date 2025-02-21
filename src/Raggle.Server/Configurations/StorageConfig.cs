@@ -1,7 +1,7 @@
-﻿using Raggle.Driver.AzureBlob;
-using Raggle.Driver.LiteDB;
-using Raggle.Driver.LocalDisk;
-using Raggle.Driver.Qdrant;
+﻿using Raggle.Connectors.AzureBlob;
+using Raggle.Connectors.LiteDB;
+using Raggle.Connectors.LocalDisk;
+using Raggle.Connectors.Qdrant;
 
 namespace Raggle.Server.Configurations;
 

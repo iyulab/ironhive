@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Raggle.Abstractions.AI;
-using Raggle.Abstractions.Messages;
+using Raggle.Abstractions.ChatCompletion;
+using Raggle.Abstractions.ChatCompletion.Messages;
 using Raggle.Server.Entities;
 
 namespace Raggle.Server.Data;
@@ -44,10 +44,6 @@ public class RaggleDbContext : DbContext
             entity.HasKey(e => e.Id);
 
             // 속성 설정
-            entity.Property(e => e.EmbedService)
-                  .IsRequired()
-                  .HasMaxLength(255);
-
             entity.Property(e => e.EmbedModel)
                   .IsRequired()
                   .HasMaxLength(255);

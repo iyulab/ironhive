@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Raggle.Abstractions;
 using Raggle.Abstractions.Memory;
 using Raggle.Core.Memory.Decoders;
 
@@ -18,6 +19,7 @@ public static class ServiceCollectionExtensions
         string serviceKey)
         where T : class, IPipelineHandler
     {
+        ServiceKeyRegistry.Add<T>(serviceKey);
         return services.AddKeyedSingleton<IPipelineHandler, T>(serviceKey);
     }
 
@@ -26,6 +28,7 @@ public static class ServiceCollectionExtensions
         string serviceKey)
         where T : class
     {
+        ServiceKeyRegistry.Add<T>(serviceKey);
         return services.AddKeyedSingleton<T>(serviceKey);
     }
 }

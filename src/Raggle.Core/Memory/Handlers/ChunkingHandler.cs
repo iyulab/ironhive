@@ -1,7 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using Raggle.Abstractions.AI;
 using Raggle.Abstractions.Memory;
-using Raggle.Core.AI;
 using Raggle.Core.Extensions;
 using System.Text;
 

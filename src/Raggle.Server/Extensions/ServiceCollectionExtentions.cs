@@ -1,18 +1,15 @@
 ﻿using Raggle.Core.Memory.Handlers;
-using Raggle.Driver.LiteDB;
-using Raggle.Driver.Qdrant;
-using Raggle.Driver.LocalDisk;
-using Raggle.Driver.AzureBlob;
 using Microsoft.EntityFrameworkCore;
 using Raggle.Core.Memory.Decoders;
 using Raggle.Core.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Raggle.Server.Data;
 using Raggle.Server.Services;
-using Raggle.Abstractions.Memory;
 using Microsoft.AspNetCore.Http;
 using Raggle.Server.Tools;
 using Raggle.Server.Configurations;
+using Raggle.Abstractions.Memory;
+using Raggle.Server.ChatCompletion;
 
 namespace Raggle.Server.Extensions;
 

@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Raggle.Abstractions;
-using Raggle.Abstractions.Messages;
+using Raggle.Abstractions.ChatCompletion.Messages;
 
 namespace Raggle.Server.WebApi.Controllers;
 

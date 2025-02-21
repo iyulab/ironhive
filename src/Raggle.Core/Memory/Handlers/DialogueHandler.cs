@@ -1,8 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using Raggle.Abstractions.AI;
-using Raggle.Abstractions.Json;
+using Raggle.Abstractions.ChatCompletion;
+using Raggle.Abstractions.ChatCompletion.Messages;
 using Raggle.Abstractions.Memory;
-using Raggle.Abstractions.Messages;
 using Raggle.Core.Extensions;
 using System.Text;
 using System.Text.RegularExpressions;

@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using Raggle.Abstractions.AI;
-using Raggle.Abstractions.Json;
+using Raggle.Abstractions.Embedding;
 using Raggle.Abstractions.Memory;
 using Raggle.Core.Extensions;
 
@@ -21,15 +20,14 @@ public class EmbeddingsHandler : IPipelineHandler
 
     public class Options
     {
-        public string ServiceKey { get; set; } = string.Empty;
-        public string ModelName { get; set; } = string.Empty;
+        public string Model { get; set; } = string.Empty;
     }
 
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
         var options = pipeline.GetCurrentOptions<Options>()
             ?? throw new InvalidOperationException("must provide options for embeddings handler");
-        var embedder = _serviceProvider.GetRequiredKeyedService<IEmbeddingService>(options.ServiceKey);
+        var embedder = _serviceProvider.GetRequiredService<IEmbeddingService>();
         
         var points = new List<VectorPoint>();
 
@@ -41,10 +39,10 @@ public class EmbeddingsHandler : IPipelineHandler
         {
             if (section.Content == null)
                 throw new InvalidOperationException($"No content found in the document");
-
+            
             if (section.Content.TryConvertTo<string>(out var str))
             {
-                var embedding = await embedder.EmbedAsync(options.ModelName, str, cancellationToken);
+                var embedding = await embedder.EmbedAsync(options.Model, str, cancellationToken);
                 if (embedding == null)
                     throw new InvalidOperationException($"failed to get embedding for {str}");
 
@@ -62,7 +60,7 @@ public class EmbeddingsHandler : IPipelineHandler
                 var questions = dialogues.Select(x => x.Question).ToArray();
                 var request = new EmbeddingsRequest
                 {
-                    Model = options.ModelName,
+                    Model = options.Model,
                     Input = questions
                 };
 

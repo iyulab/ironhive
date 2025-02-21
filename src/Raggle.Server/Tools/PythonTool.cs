@@ -1,7 +1,7 @@
 ﻿using Docker.DotNet;
 using Docker.DotNet.Models;
 using ICSharpCode.SharpZipLib.Tar;
-using Raggle.Core.Tools;
+using Raggle.Core.ChatCompletion;
 using System.ComponentModel;
 using System.Text;
 

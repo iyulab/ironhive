@@ -9,6 +9,6 @@ public interface IPipelineHandler
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the processed <see cref="DataPipeline"/>.</returns>
     Task<DataPipeline> ProcessAsync(
-        DataPipeline pipeline, 
+        DataPipeline pipeline,
         CancellationToken cancellationToken = default);
 }
