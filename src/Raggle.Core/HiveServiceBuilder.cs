@@ -11,12 +11,12 @@ namespace Raggle.Core;
 public class HiveServiceBuilder : IHiveServiceBuilder
 {
     public IServiceCollection Services { get; }
-    public IHiveServiceRegistry Registry { get; }
+    public IHiveServiceContainer Registry { get; }
 
     public HiveServiceBuilder(IServiceCollection services)
     {
         Services = services;
-        Registry = new HiveServiceRegistry();
+        Registry = new HiveServiceContainer();
         Services.AddSingleton(Registry);
     }
 
@@ -28,21 +28,25 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         return this;
     }
 
-    public IHiveServiceBuilder AddKeyedService<TService>(string serviceKey, TService instance)
+    public IHiveServiceBuilder AddKeyedService<TService, TImplementation>(string serviceKey, TImplementation instance)
         where TService : class
+        where TImplementation : class, TService
     {
-        Registry.RegisterKeyedService(serviceKey, instance);
+        Registry.RegisterKeyedService<TService, TImplementation>(serviceKey, instance);
         return this;
     }
 
-    public IHiveServiceBuilder AddChatCompletionConnector(string serviceKey, IChatCompletionConnector connector)
-        => AddKeyedService(serviceKey, connector);
+    public IHiveServiceBuilder AddChatCompletionConnector<T>(string serviceKey, T connector)
+        where T : class, IChatCompletionConnector
+        => AddKeyedService<IChatCompletionConnector, T>(serviceKey, connector);
 
-    public IHiveServiceBuilder AddEmbeddingConnector(string serviceKey, IEmbeddingConnector connector)
-        => AddKeyedService(serviceKey, connector);
+    public IHiveServiceBuilder AddEmbeddingConnector<T>(string serviceKey, T connector)
+        where T : class, IEmbeddingConnector
+        => AddKeyedService<IEmbeddingConnector, T>(serviceKey, connector);
 
-    public IHiveServiceBuilder AddFileStorage(string serviceKey, IFileStorage storage)
-        => AddKeyedService(serviceKey, storage);
+    public IHiveServiceBuilder AddFileStorage<T>(string serviceKey, T storage)
+        where T : class, IFileStorage
+        => AddKeyedService<IFileStorage, T>(serviceKey, storage);
 }
 
 public static class ServiceCollectionExtensions
@@ -60,7 +64,7 @@ public static class ServiceCollectionExtensions
 
         // 파일 스토리지 ~
 
-        builder.AddService<ITextParser<(string, string)>, ModelIdentifierParser>();
+        builder.AddService<ITextParser<(string, string)>, ServiceModelParser>();
 
         return builder;
     }

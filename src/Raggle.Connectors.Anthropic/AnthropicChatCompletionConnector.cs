@@ -1,11 +1,16 @@
 ﻿using Raggle.Abstractions.AI;
 using Raggle.Abstractions.ChatCompletion;
 using Raggle.Abstractions.ChatCompletion.Messages;
+using Raggle.Abstractions.ChatCompletion.Tools;
 using Raggle.Connectors.Anthropic.ChatCompletion;
 using Raggle.Connectors.Anthropic.Configurations;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using TokenUsage = Raggle.Abstractions.ChatCompletion.TokenUsage;
+using ManualToolChoice = Raggle.Abstractions.ChatCompletion.Tools.ManualToolChoice;
+using AnthropicManualToolChoice = Raggle.Connectors.Anthropic.ChatCompletion.ManualToolChoice;
+using AutoToolChoice = Raggle.Abstractions.ChatCompletion.Tools.AutoToolChoice;
+using AnthropicAutoToolChoice = Raggle.Connectors.Anthropic.ChatCompletion.AutoToolChoice;
 
 namespace Raggle.Connectors.Anthropic;
 
@@ -40,15 +45,16 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
     }
 
     /// <inheritdoc />
-    public async Task<ChatCompletionResponse<IMessage>> GenerateMessageAsync(
-        ChatCompletionRequest request, 
+    public async Task<ChatCompletionResult<IMessage>> GenerateMessageAsync(
+        MessageCollection messages,
+        ChatCompletionOptions options,
         CancellationToken cancellationToken = default)
     {
-        var _request = ConvertToAnthropic(request);
-        var response = await _client.PostMessagesAsync(_request, cancellationToken);
+        var req = BuildRequest(messages, options);
+        var res = await _client.PostMessagesAsync(req, cancellationToken);
 
         var content = new MessageContentCollection();
-        foreach (var item in response.Content)
+        foreach (var item in res.Content)
         {
             if (item is TextMessageContent text)
             {
@@ -56,7 +62,7 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
             }
             else if (item is ToolUseMessageContent tool)
             {
-                content.AddTool(tool.ID, tool.Name, null, null);
+                content.AddTool(tool.ID, tool.Name, new ToolArguments(tool.Input), null);
             }
             else
             {
@@ -64,23 +70,23 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
             }
         }
 
-        var result = new ChatCompletionResponse<IMessage>
+        var result = new ChatCompletionResult<IMessage>
         {
-            EndReason = response.StopReason switch
+            EndReason = res.StopReason switch
             {
-                StopReason.ToolUse => ChatCompletionEndReason.ToolCall,
-                StopReason.EndTurn => ChatCompletionEndReason.EndTurn,
-                StopReason.MaxTokens => ChatCompletionEndReason.MaxTokens,
-                StopReason.StopSequence => ChatCompletionEndReason.StopSequence,
+                StopReason.ToolUse => EndReason.ToolCall,
+                StopReason.EndTurn => EndReason.EndTurn,
+                StopReason.MaxTokens => EndReason.MaxTokens,
+                StopReason.StopSequence => EndReason.StopSequence,
                 _ => null
             },
             TokenUsage = new TokenUsage
             {
-                TotalTokens = response.Usage.InputTokens + response.Usage.OutputTokens,
-                InputTokens = response.Usage.InputTokens,
-                OutputTokens = response.Usage.OutputTokens
+                TotalTokens = res.Usage.InputTokens + res.Usage.OutputTokens,
+                InputTokens = res.Usage.InputTokens,
+                OutputTokens = res.Usage.OutputTokens
             },
-            Content = new AssistantMessage
+            Data = new AssistantMessage
             {
                 Content = content
             }
@@ -90,27 +96,28 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<ChatCompletionResponse<IMessageContent>> GenerateStreamingMessageAsync(
-        ChatCompletionRequest request,
+    public async IAsyncEnumerable<ChatCompletionResult<IMessageContent>> GenerateStreamingMessageAsync(
+        MessageCollection messages,
+        ChatCompletionOptions options,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var _request = ConvertToAnthropic(request);
+        var req = BuildRequest(messages, options);
 
-        await foreach (var response in _client.PostStreamingMessagesAsync(_request, cancellationToken))
+        await foreach (var res in _client.PostStreamingMessagesAsync(req, cancellationToken))
         {
-            if (response is MessageStartEvent)
+            if (res is MessageStartEvent)
             {
                 // 시작 이벤트
             }
-            else if (response is ContentStartEvent cse)
+            else if (res is ContentStartEvent cse)
             {
                 // 컨텐츠 블록 생성 시작 이벤트
 
                 if (cse.ContentBlock is TextMessageContent text)
                 {
-                    yield return new ChatCompletionResponse<IMessageContent>
+                    yield return new ChatCompletionResult<IMessageContent>
                     {
-                        Content = new TextContent
+                        Data = new TextContent
                         {
                             Index = cse.Index,
                             Text = text.Text
@@ -119,9 +126,9 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                 }
                 else if (cse.ContentBlock is ToolUseMessageContent tool)
                 {
-                    yield return new ChatCompletionResponse<IMessageContent>
+                    yield return new ChatCompletionResult<IMessageContent>
                     {
-                        Content = new ToolContent
+                        Data = new ToolContent
                         {
                             Index = cse.Index,
                             Id = tool.ID,
@@ -132,14 +139,14 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                     };
                 }
             }
-            else if (response is ContentDeltaEvent cde)
+            else if (res is ContentDeltaEvent cde)
             {
                 // 컨텐츠 블록 생성 진행 이벤트
                 if (cde.ContentBlock is TextDeltaMessageContent text)
                 {
-                    yield return new ChatCompletionResponse<IMessageContent>
+                    yield return new ChatCompletionResult<IMessageContent>
                     {
-                        Content = new TextContent
+                        Data = new TextContent
                         {
                             Index = cde.Index,
                             Text = text.Text
@@ -148,9 +155,9 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                 }
                 else if (cde.ContentBlock is ToolUseDeltaMessageContent tool)
                 {
-                    yield return new ChatCompletionResponse<IMessageContent>
+                    yield return new ChatCompletionResult<IMessageContent>
                     {
-                        Content = new ToolContent
+                        Data = new ToolContent
                         {
                             Index = cde.Index,
                             Id = null,
@@ -161,21 +168,21 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                     };
                 }
             }
-            else if (response is ContentStopEvent)
+            else if (res is ContentStopEvent)
             {
                 // 컨텐츠 블록 생성 종료 이벤트
             }
-            else if (response is MessageDeltaEvent mde)
+            else if (res is MessageDeltaEvent mde)
             {
                 // 생성 종료 이벤트
-                yield return new ChatCompletionResponse<IMessageContent>
+                yield return new ChatCompletionResult<IMessageContent>
                 {
                     EndReason = mde.Delta?.StopReason switch
                     {
-                        StopReason.ToolUse => ChatCompletionEndReason.ToolCall,
-                        StopReason.EndTurn => ChatCompletionEndReason.EndTurn,
-                        StopReason.StopSequence => ChatCompletionEndReason.StopSequence,
-                        StopReason.MaxTokens => ChatCompletionEndReason.MaxTokens,
+                        StopReason.ToolUse => EndReason.ToolCall,
+                        StopReason.EndTurn => EndReason.EndTurn,
+                        StopReason.StopSequence => EndReason.StopSequence,
+                        StopReason.MaxTokens => EndReason.MaxTokens,
                         _ => null
                     },
                     TokenUsage = new TokenUsage
@@ -186,42 +193,42 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                     },
                 };
             }
-            else if (response is MessageStopEvent)
+            else if (res is MessageStopEvent)
             {
                 // 종료 이벤트
             }
-            else if (response is PingEvent)
+            else if (res is PingEvent)
             {
                 // ping 이벤트
             }
-            else if (response is ErrorEvent error)
+            else if (res is ErrorEvent error)
             {
                 throw new InvalidOperationException(error.Error.ToString());
             }
             else
             {
-                Debug.WriteLine($"Unexpected event: {response.GetType()}");
+                Debug.WriteLine($"Unexpected event: {res.GetType()}");
             }
         }
     }
 
-    private static MessagesRequest ConvertToAnthropic(ChatCompletionRequest request)
+    private static MessagesRequest BuildRequest(MessageCollection messages, ChatCompletionOptions options)
     {
-        var _request = new MessagesRequest
+        var request = new MessagesRequest
         {
-            Model = request.Model,
-            System = request.System,
-            Messages = request.Messages.ToAnthropic(),
-            MaxTokens = request.MaxTokens,
-            Temperature = request.Temperature,
-            TopK = request.TopK,
-            TopP = request.TopP,
-            StopSequences = request.StopSequences,
+            Model = options.Model,
+            System = options.System,
+            Messages = messages.ToAnthropic(),
+            MaxTokens = options.MaxTokens,
+            Temperature = options.Temperature,
+            TopK = options.TopK,
+            TopP = options.TopP,
+            StopSequences = options.StopSequences,
         };
 
-        if (request.Tools != null && request.Tools.Count > 0)
+        if (options.Tools != null && options.Tools.Count > 0)
         {
-            _request.Tools = request.Tools.Select(t => new Tool
+            request.Tools = options.Tools.Select(t => new Tool
             {
                 Name = t.Name,
                 Description = t.Description,
@@ -232,22 +239,22 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                 }
             });
 
-            if (request.ToolChoice != null)
+            if (options.ToolChoice != null)
             {
-                if (request.ToolChoice is ManualToolChoice manual)
+                if (options.ToolChoice is ManualToolChoice manual)
                 {
-                    _request.ToolChoice = new ManualToolChoice
+                    request.ToolChoice = new AnthropicManualToolChoice
                     {
-                        Name = manual.Name,
+                        Name = manual.ToolName,
                     };
                 }
-                else if (request.ToolChoice is AutoToolChoice)
+                else if (options.ToolChoice is AutoToolChoice)
                 {
-                    _request.ToolChoice = new AutoToolChoice();
+                    request.ToolChoice = new AnthropicAutoToolChoice();
                 }
             }
         }
 
-        return _request;
+        return request;
     }
 }

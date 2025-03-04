@@ -37,25 +37,26 @@ public class OllamaChatCompletionConnector : IChatCompletionConnector
     }
 
     /// <inheritdoc />
-    public async Task<ChatCompletionResponse<IMessage>> GenerateMessageAsync(
-        ChatCompletionRequest request, 
+    public async Task<ChatCompletionResult<IMessage>> GenerateMessageAsync(
+        MessageCollection messages,
+        ChatCompletionOptions options,
         CancellationToken cancellationToken = default)
     {
-        var _request = ConvertToOllama(request);
-        var response = await _client.PostChatAsync(_request, cancellationToken);
+        var request = BuildRequest(messages, options);
+        var response = await _client.PostChatAsync(request, cancellationToken);
 
         var content = new MessageContentCollection();
         content.AddText(response.Message?.Content);
 
-        return new ChatCompletionResponse<IMessage>
+        return new ChatCompletionResult<IMessage>
         {
             EndReason = response.DoneReason switch
             {
-                DoneReason.Stop => ChatCompletionEndReason.EndTurn,
+                DoneReason.Stop => EndReason.EndTurn,
                 _ => null
             },
             TokenUsage = null,
-            Content = new AssistantMessage
+            Data = new AssistantMessage
             {
                 Content = content
             },
@@ -63,17 +64,18 @@ public class OllamaChatCompletionConnector : IChatCompletionConnector
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<ChatCompletionResponse<IMessageContent>> GenerateStreamingMessageAsync(
-        ChatCompletionRequest request, 
+    public async IAsyncEnumerable<ChatCompletionResult<IMessageContent>> GenerateStreamingMessageAsync(
+        MessageCollection messages,
+        ChatCompletionOptions options,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var _request = ConvertToOllama(request);
+        var request = BuildRequest(messages, options);
 
-        await foreach (var res in _client.PostSteamingChatAsync(_request, cancellationToken))
+        await foreach (var res in _client.PostSteamingChatAsync(request, cancellationToken))
         {
-            yield return new ChatCompletionResponse<IMessageContent>
+            yield return new ChatCompletionResult<IMessageContent>
             {
-                Content = new TextContent
+                Data = new TextContent
                 {
                     Text = res.Message?.Content
                 },
@@ -81,28 +83,28 @@ public class OllamaChatCompletionConnector : IChatCompletionConnector
         }
     }
 
-    private static ChatRequest ConvertToOllama(ChatCompletionRequest request)
+    private static ChatRequest BuildRequest(MessageCollection messages, ChatCompletionOptions options)
     {
-        var _request = new ChatRequest
+        var request = new ChatRequest
         {
-            Model = request.Model,
-            Messages = request.Messages.ToOllama(request?.System),
+            Model = options.Model,
+            Messages = messages.ToOllama(options?.System),
             Options = new ModelOptions
             {
-                NumPredict = request?.MaxTokens,
-                Temperature = request?.Temperature,
-                TopP = request?.TopP,
-                TopK = request?.TopK,
-                Stop = request?.StopSequences != null
-                    ? string.Join(" ", request.StopSequences)
+                NumPredict = options?.MaxTokens,
+                Temperature = options?.Temperature,
+                TopP = options?.TopP,
+                TopK = options?.TopK,
+                Stop = options?.StopSequences != null
+                    ? string.Join(" ", options.StopSequences)
                     : null,
             },
         };
 
         // 동작하지 않는 모델 존재함
-        //if (request?.Tools != null && request.Tools.Count > 0)
+        //if (options?.Tools != null && options.Tools.Count > 0)
         //{
-        //    _request.Tools = request.Tools.Select(t =>
+        //    request.Tools = options.Tools.Select(t =>
         //    {
         //        return new Tool
         //        {
@@ -120,6 +122,6 @@ public class OllamaChatCompletionConnector : IChatCompletionConnector
         //    });
         //}
 
-        return _request;
+        return request;
     }
 }

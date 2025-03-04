@@ -13,14 +13,16 @@ public interface IChatCompletionService
     /// <summary>
     /// Generates a chat completion message based on the provided request.
     /// </summary>
-    Task<ChatCompletionResponse<IMessage>> GenerateMessageAsync(
-        ChatCompletionRequest request,
+    Task<ChatCompletionResult<IMessage>> InvokeAsync(
+        MessageContext context,
+        ChatCompletionOptions options,
         CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Generates a chat completion streaming message based on the provided request.
     /// </summary>
-    IAsyncEnumerable<ChatCompletionResponse<IMessageContent>> GenerateStreamingMessageAsync(
-        ChatCompletionRequest request,
+    IAsyncEnumerable<ChatCompletionResult<IMessageContent>> InvokeStreamingAsync(
+        MessageContext context, 
+        ChatCompletionOptions options,
         CancellationToken cancellationToken = default);
 }

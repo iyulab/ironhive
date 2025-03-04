@@ -12,6 +12,7 @@ public interface IHiveServiceBuilder
     /// <summary>
     /// Register a keyed service to IHiveServiceRegistry.
     /// </summary>
-    IHiveServiceBuilder AddKeyedService<TService>(string serviceKey, TService instance)
-        where TService : class;
+    IHiveServiceBuilder AddKeyedService<TService, TImplementation>(string serviceKey, TImplementation instance)
+        where TService : class
+        where TImplementation : class, TService;
 }

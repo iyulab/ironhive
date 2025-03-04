@@ -9,13 +9,13 @@ namespace Raggle.Core.Memory.Handlers;
 
 public class SummaryHandler : IPipelineHandler
 {
-    private readonly IServiceProvider _serviceProvider;
-    private readonly IFileStorage _documentStorage;
+    private readonly IChatCompletionService _chat;
+    private readonly IFileStorage _file;
 
-    public SummaryHandler(IServiceProvider service)
+    public SummaryHandler(IChatCompletionService chat, IFileStorage file)
     {
-        _serviceProvider = service;
-        _documentStorage = service.GetRequiredService<IFileStorage>();        
+        _chat = chat;
+        _file = file;
     }
 
     public class Options
@@ -29,7 +29,7 @@ public class SummaryHandler : IPipelineHandler
         var options = pipeline.GetCurrentOptions<Options>()
             ?? throw new InvalidOperationException($"Must provide options for {pipeline.CurrentStep}.");
 
-        await foreach (var section in _documentStorage.GetDocumentJsonAsync<DocumentFragment>(
+        await foreach (var section in _file.GetDocumentJsonAsync<DocumentFragment>(
             collectionName: pipeline.CollectionName,
             documentId: pipeline.DocumentId,
             suffix: pipeline.GetPreviousStep() ?? "unknown",
@@ -48,7 +48,7 @@ public class SummaryHandler : IPipelineHandler
                 Content = content,
             };
 
-            await _documentStorage.UpsertDocumentJsonAsync(
+            await _file.UpsertDocumentJsonAsync(
                 collectionName: pipeline.CollectionName,
                 documentId: pipeline.DocumentId,
                 fileName: Path.GetFileNameWithoutExtension(pipeline.FileName),
@@ -67,22 +67,19 @@ public class SummaryHandler : IPipelineHandler
         Options options, 
         CancellationToken cancellationToken)
     {
-        var request = new ChatCompletionRequest
+        var context = new MessageContext();
+        context.Messages.AddUserMessage(new TextContent
+        {
+            Text = $"Summarize This:\n\n{information}",
+        });
+        var response = await _chat.InvokeAsync(context, new ChatCompletionOptions
         {
             Model = options.ModelName,
             System = GetSystemInstructionPrompt(),
-        };
-        request.Messages.Append<UserMessage>(new TextContent
-        {
-            Index = 0,
-            Text = $"Summarize This:\n\n{information}",
-        });
-
-        var chat = _serviceProvider.GetRequiredKeyedService<IChatCompletionService>(options.ServiceKey);
-        var response = await chat.GenerateMessageAsync(request, cancellationToken);
+        }, cancellationToken);
 
         var sb = new StringBuilder();
-        foreach (var item in response.Content?.Content ?? [])
+        foreach (var item in response.Data?.Content ?? [])
         {
             if (item is TextContent text)
             {

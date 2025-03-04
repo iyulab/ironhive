@@ -9,7 +9,7 @@ public class EmbeddingService : IEmbeddingService
     private readonly ITextParser<(string, string)> _parser;
 
     public EmbeddingService(
-        IHiveServiceRegistry registry,
+        IHiveServiceContainer registry,
         ITextParser<(string, string)> parser)
     {
         _connectors = registry.GetKeyedServices<IEmbeddingConnector>();

@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+	<Version>0.1.0.0</Version>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>9ba96a3e-2136-4a40-8de2-7bc7a3de6f8a</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Raggle.Connectors.Anthropic\Raggle.Connectors.Anthropic.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Connectors.Ollama\Raggle.Connectors.Ollama.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Connectors.OpenAI\Raggle.Connectors.OpenAI.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Core\Raggle.Core.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Storages.AzureBlob\Raggle.Storages.AzureBlob.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Storages.LiteDB\Raggle.Storages.LiteDB.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Storages.LocalDisk\Raggle.Storages.LocalDisk.csproj" />
+    <ProjectReference Include="..\..\src\Raggle.Storages.Qdrant\Raggle.Storages.Qdrant.csproj" />
+    <ProjectReference Include="..\Raggle.Stack.EFCore\Raggle.Stack.EFCore.csproj" />
+  </ItemGroup>
+
+</Project>

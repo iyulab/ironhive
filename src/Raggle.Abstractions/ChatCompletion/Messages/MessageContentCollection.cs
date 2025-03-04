@@ -17,7 +17,6 @@ public class MessageContentCollection : ICollection<IMessageContent>
     {
         Add(new TextContent
         {
-            Index = _items.Count,
             Text = text
         });
     }
@@ -29,7 +28,6 @@ public class MessageContentCollection : ICollection<IMessageContent>
     {
         Add(new ImageContent
         {
-            Index = _items.Count,
             Data = data
         });
     }
@@ -45,12 +43,19 @@ public class MessageContentCollection : ICollection<IMessageContent>
     {
         Add(new ToolContent
         {
-            Index = _items.Count,
             Id = id,
             Name = name,
             Arguments = arguments,
             Result = result
         });
+    }
+
+    public void AddRange(IEnumerable<IMessageContent> collection)
+    {
+        foreach (var item in collection)
+        {
+            Add(item);
+        }
     }
 
     #region ICollection Implementations
@@ -65,9 +70,11 @@ public class MessageContentCollection : ICollection<IMessageContent>
         set => _items[index] = value;
     }
 
-    public void AddRange(IEnumerable<IMessageContent> collection) => _items.AddRange(collection);
-
-    public void Add(IMessageContent item) => _items.Add(item);
+    public void Add(IMessageContent item)
+    {
+        item.Index ??= _items.Count;
+        _items.Add(item);
+    }
 
     public void Clear() => _items.Clear();
 

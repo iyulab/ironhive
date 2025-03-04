@@ -6,36 +6,44 @@ public sealed class MessageCollection : ICollection<IMessage>
 {
     private readonly List<IMessage> _items = [];
 
-    public void Append<T>(IMessageContent content)
-        where T : IMessage
+    public void AddUserMessage(IMessageContent content)
     {
-        if (_items.Last() is T)
-            _items.Last().Content.Add(content);
-        else
-            Add<T>(content);
+        Add<UserMessage>(content);
     }
 
-    public void Append<T>(MessageContentCollection content)
-        where T : IMessage
+    public void AddAssistantMessage(IMessageContent content)
     {
-        if (_items.Last() is T)
-            _items.Last().Content.AddRange(content);
-        else
-            Add<T>(content);
+        Add<AssistantMessage>(content);
     }
 
     public void Add<T>(IMessageContent content)
         where T : IMessage
     {
-        var message = Activator.CreateInstance<T>();
-        message.Content.Add(content);
+        if (_items.Last() is T)
+        {
+            _items.Last().Content.Add(content);
+        }
+        else
+        {
+            var message = Activator.CreateInstance<T>();
+            message.Content.Add(content);
+            _items.Add(message);
+        }
     }
 
     public void Add<T>(MessageContentCollection content)
         where T : IMessage
     {
-        var message = Activator.CreateInstance<T>();
-        message.Content.AddRange(content);
+        if (_items.Last() is T)
+        {
+            _items.Last().Content.AddRange(content);
+        }
+        else
+        {
+            var message = Activator.CreateInstance<T>();
+            message.Content.AddRange(content);
+            Add(message);
+        }
     }
 
     #region ICollection Implementations

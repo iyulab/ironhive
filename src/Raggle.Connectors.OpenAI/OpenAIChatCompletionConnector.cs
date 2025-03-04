@@ -1,10 +1,7 @@
 ﻿using Raggle.Connectors.OpenAI.Configurations;
 using Raggle.Connectors.OpenAI.Extensions;
 using System.Runtime.CompilerServices;
-using ChatCompletionRequest = Raggle.Abstractions.ChatCompletion.ChatCompletionRequest;
-using OpenAIChatCompletionRequest = Raggle.Connectors.OpenAI.ChatCompletion.ChatCompletionRequest;
 using AssistantMessage = Raggle.Abstractions.ChatCompletion.Messages.AssistantMessage;
-using OpenAIAssistantMessage = Raggle.Connectors.OpenAI.ChatCompletion.AssistantMessage;
 using TokenUsage = Raggle.Abstractions.ChatCompletion.TokenUsage;
 using Raggle.Connectors.OpenAI.ChatCompletion;
 using Raggle.Abstractions.ChatCompletion;
@@ -44,12 +41,13 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
     }
 
     /// <inheritdoc />
-    public async Task<ChatCompletionResponse<IMessage>> GenerateMessageAsync(
-        ChatCompletionRequest request,
+    public async Task<ChatCompletionResult<IMessage>> GenerateMessageAsync(
+        MessageCollection messages,
+        ChatCompletionOptions options,
         CancellationToken cancellationToken = default)
     {
-        var _request = ConvertToOpenAI(request);
-        var response = await _client.PostChatCompletionAsync(_request, cancellationToken);
+        var request = BuildRequest(messages, options);
+        var response = await _client.PostChatCompletionAsync(request, cancellationToken);
         var choice = response.Choices?.First();
         var content = new MessageContentCollection();
 
@@ -69,14 +67,14 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
             content.AddText(choice.Message.Content);
         }
 
-        var result = new ChatCompletionResponse<IMessage>
+        var result = new ChatCompletionResult<IMessage>
         {
             EndReason = choice?.FinishReason switch
             {
-                FinishReason.ToolCalls => ChatCompletionEndReason.ToolCall,
-                FinishReason.Stop => ChatCompletionEndReason.EndTurn,
-                FinishReason.Length => ChatCompletionEndReason.MaxTokens,
-                FinishReason.ContentFilter => ChatCompletionEndReason.ContentFilter,
+                FinishReason.ToolCalls => EndReason.ToolCall,
+                FinishReason.Stop => EndReason.EndTurn,
+                FinishReason.Length => EndReason.MaxTokens,
+                FinishReason.ContentFilter => EndReason.ContentFilter,
                 _ => null
             },
             TokenUsage = new TokenUsage
@@ -85,7 +83,7 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
                 InputTokens = response.Usage?.PromptTokens,
                 OutputTokens = response.Usage?.CompletionTokens
             },
-            Content = new AssistantMessage
+            Data = new AssistantMessage
             {
                 Content = content
             }
@@ -95,27 +93,28 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<ChatCompletionResponse<IMessageContent>> GenerateStreamingMessageAsync(
-        ChatCompletionRequest request,
+    public async IAsyncEnumerable<ChatCompletionResult<IMessageContent>> GenerateStreamingMessageAsync(
+        MessageCollection messages,
+        ChatCompletionOptions options,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var _request = ConvertToOpenAI(request);
+        var request = BuildRequest(messages, options);
 
-        await foreach (var response in _client.PostStreamingChatCompletionAsync(_request, cancellationToken))
+        await foreach (var response in _client.PostStreamingChatCompletionAsync(request, cancellationToken))
         {
-            var choice = response.Choices?.First();
+            var choice = response.Choices?.FirstOrDefault();
             if (choice == null) continue;
 
             if (choice.FinishReason != null)
             {
-                yield return new ChatCompletionResponse<IMessageContent>
+                yield return new ChatCompletionResult<IMessageContent>
                 {
                     EndReason = choice.FinishReason switch
                     {
-                        FinishReason.ToolCalls => ChatCompletionEndReason.ToolCall,
-                        FinishReason.Stop => ChatCompletionEndReason.EndTurn,
-                        FinishReason.Length => ChatCompletionEndReason.MaxTokens,
-                        FinishReason.ContentFilter => ChatCompletionEndReason.ContentFilter,
+                        FinishReason.ToolCalls => EndReason.ToolCall,
+                        FinishReason.Stop => EndReason.EndTurn,
+                        FinishReason.Length => EndReason.MaxTokens,
+                        FinishReason.ContentFilter => EndReason.ContentFilter,
                         _ => null
                     },
                     TokenUsage = new TokenUsage
@@ -128,9 +127,9 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
             }
             else if (choice.Delta?.Content != null)
             {
-                yield return new ChatCompletionResponse<IMessageContent>
+                yield return new ChatCompletionResult<IMessageContent>
                 {
-                    Content = new TextContent
+                    Data = new TextContent
                     {
                         Index = null,
                         Text = choice.Delta.Content
@@ -141,9 +140,9 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
             {
                 var t = choice.Delta.ToolCalls.First();
 
-                yield return new ChatCompletionResponse<IMessageContent>
+                yield return new ChatCompletionResult<IMessageContent>
                 {
-                    Content = new ToolContent
+                    Data = new ToolContent
                     {
                         Index = t.Index,
                         Id = t.ID,
@@ -159,25 +158,24 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
         }
     }
 
-    private static OpenAIChatCompletionRequest ConvertToOpenAI(
-        ChatCompletionRequest request)
+    private static ChatCompletionRequest BuildRequest(MessageCollection messages, ChatCompletionOptions options)
     {
         // Reasoning Models, 일부 파라미터 작동 안함
-        var reason = request.Model.Contains("o1") || request.Model.Contains("o3");
+        var reason = options.Model.Contains("o1") || options.Model.Contains("o3");
 
-        var _request = new OpenAIChatCompletionRequest
+        var request = new ChatCompletionRequest
         {
-            Model = request.Model,
-            Messages = request.Messages.ToOpenAI(request.System),
-            MaxCompletionTokens = request.MaxTokens,
-            Temperature = reason ? null : request.Temperature,
-            TopP = reason ? null : request.TopP,
-            Stop = request.StopSequences,
+            Model = options.Model,
+            Messages = messages.ToOpenAI(options.System),
+            MaxCompletionTokens = options.MaxTokens,
+            Temperature = reason ? null : options.Temperature,
+            TopP = reason ? null : options.TopP,
+            Stop = options.StopSequences,
         };
 
-        if (request.Tools != null && request.Tools.Count > 0)
+        if (options.Tools != null && options.Tools.Count > 0)
         {
-            _request.Tools = request.Tools.Select(t => new Tool
+            request.Tools = options.Tools.Select(t => new Tool
             {
                 Function = new Function
                 {
@@ -191,11 +189,11 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
                 }
             });
 
-            if (request.ToolChoice != null)
+            if (options.ToolChoice != null)
             {
-                if (request.ToolChoice is ManualToolChoice manual)
+                if (options.ToolChoice is ManualToolChoice manual)
                 {
-                    _request.ToolChoice = new RequiredToolChoice
+                    request.ToolChoice = new RequiredToolChoice
                     {
                         Function = new FunctionChoice
                         {
@@ -203,17 +201,17 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
                         }
                     };
                 }
-                else if (request.ToolChoice is AutoToolChoice)
+                else if (options.ToolChoice is AutoToolChoice)
                 {
-                    _request.ToolChoice = new OpenAIAutoToolChoice();
+                    request.ToolChoice = new OpenAIAutoToolChoice();
                 }
-                else if (request.ToolChoice is DisabledToolChoice)
+                else if (options.ToolChoice is DisabledToolChoice)
                 {
-                    _request.ToolChoice = new NoneToolChoice();
+                    request.ToolChoice = new NoneToolChoice();
                 }
             }
         }
 
-        return _request;
+        return request;
     }
 }

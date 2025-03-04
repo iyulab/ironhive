@@ -1,0 +1,20 @@
+{
+  "name": "@iyulab/raggle",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "update": "ncu -u -ws && npm install"
+  },
+  "workspaces": [
+    "services/Raggle.Stack.WebComponent",
+    "services/Raggle.Stack.WebApp"
+  ],
+  "devDependencies": {
+    "@types/node": "^22.13.9",
+    "@typescript-eslint/eslint-plugin": "^8.26.0",
+    "@typescript-eslint/parser": "^8.26.0",
+    "eslint": "^9.21.0",
+    "npm-check-updates": "^17.1.15",
+    "typescript": "^5.8.2"
+  }
+}

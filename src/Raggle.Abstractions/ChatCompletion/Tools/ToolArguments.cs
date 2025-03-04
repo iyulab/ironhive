@@ -8,14 +8,13 @@ namespace Raggle.Abstractions.ChatCompletion.Tools;
 public class ToolArguments : IDictionary<string, object>
 {
     private Dictionary<string, object> _inner = new();
-    private string _buffer = string.Empty;
 
     public ToolArguments()
     { }
 
-    public ToolArguments(IDictionary<string, object> dictionary)
+    public ToolArguments(IDictionary<string, object> dic)
     {
-        _inner = new Dictionary<string, object>(dictionary);
+        _inner = new Dictionary<string, object>(dic);
     }
 
     public ToolArguments(string? json)
@@ -24,17 +23,14 @@ public class ToolArguments : IDictionary<string, object>
             _inner = value;
     }
 
-    public void Append(string? partialJson)
+    public ToolArguments(object? obj)
     {
-        if (string.IsNullOrEmpty(partialJson))
-            return;
-
-        _buffer += partialJson;
-        if (_buffer.EndsWith('}') && TryParseJson(_buffer, out var value))
-        {
+        if (obj is IDictionary<string, object> dic)
+            _inner = new Dictionary<string, object>(dic);
+        else if (obj is string json && TryParseJson(json, out var value))
             _inner = value;
-            _buffer = string.Empty;
-        }
+        else
+            throw new ArgumentException("Invalid object type", nameof(obj));
     }
 
     public override string ToString()
@@ -52,13 +48,14 @@ public class ToolArguments : IDictionary<string, object>
 
     private static bool TryParseJson(string? json, [NotNullWhen(true)] out Dictionary<string, object> value)
     {
+        if (string.IsNullOrEmpty(json))
+        {
+            value = new Dictionary<string, object>();
+            return true;
+        }
+
         try
         {
-            if (string.IsNullOrEmpty(json))
-            {
-                value = new Dictionary<string, object>();
-                return true;
-            }
             value = JsonSerializer.Deserialize<Dictionary<string, object>>(json)!;
         }
         catch (Exception ex)
