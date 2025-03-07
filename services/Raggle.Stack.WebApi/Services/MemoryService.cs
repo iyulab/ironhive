@@ -234,17 +234,17 @@ public class MemoryService
     {
         var steps = new List<string>
         {
-            DefaultServiceKeys.Decoding,
-            DefaultServiceKeys.Chunking
+            //ServiceKeysConfig.Decoding,
+            //ServiceKeysConfig.Chunking
         };
 
-        if (collection.HandlerOptions?.ContainsKey(DefaultServiceKeys.Summarizing) == true)
-            steps.Add(DefaultServiceKeys.Summarizing);
+        //if (collection.HandlerOptions?.ContainsKey(ServiceKeysConfig.Summarizing) == true)
+        //    steps.Add(ServiceKeysConfig.Summarizing);
 
-        if (collection.HandlerOptions?.ContainsKey(DefaultServiceKeys.Dialogue) == true)
-            steps.Add(DefaultServiceKeys.Dialogue);
+        //if (collection.HandlerOptions?.ContainsKey(ServiceKeysConfig.Dialogue) == true)
+        //    steps.Add(ServiceKeysConfig.Dialogue);
 
-        steps.Add(DefaultServiceKeys.Embeddings);
+        //steps.Add(ServiceKeysConfig.Embeddings);
         return steps.ToArray();
     }
 
@@ -252,19 +252,19 @@ public class MemoryService
     {
         var options = new Dictionary<string, object>();
 
-        if (collection.HandlerOptions?.ContainsKey(DefaultServiceKeys.Chunking) == true)
-            options[DefaultServiceKeys.Chunking] = collection.HandlerOptions[DefaultServiceKeys.Chunking];
+        //if (collection.HandlerOptions?.ContainsKey(ServiceKeysConfig.Chunking) == true)
+        //    options[ServiceKeysConfig.Chunking] = collection.HandlerOptions[ServiceKeysConfig.Chunking];
 
-        if (collection.HandlerOptions?.ContainsKey(DefaultServiceKeys.Summarizing) == true)
-            options[DefaultServiceKeys.Summarizing] = collection.HandlerOptions[DefaultServiceKeys.Summarizing];
+        //if (collection.HandlerOptions?.ContainsKey(ServiceKeysConfig.Summarizing) == true)
+        //    options[ServiceKeysConfig.Summarizing] = collection.HandlerOptions[ServiceKeysConfig.Summarizing];
 
-        if (collection.HandlerOptions?.ContainsKey(DefaultServiceKeys.Dialogue) == true)
-            options[DefaultServiceKeys.Dialogue] = collection.HandlerOptions[DefaultServiceKeys.Dialogue];
+        //if (collection.HandlerOptions?.ContainsKey(ServiceKeysConfig.Dialogue) == true)
+        //    options[ServiceKeysConfig.Dialogue] = collection.HandlerOptions[ServiceKeysConfig.Dialogue];
 
-        options[DefaultServiceKeys.Embeddings] = new EmbeddingsHandler.Options
-        {
-            Model = collection.EmbedModel
-        };
+        //options[ServiceKeysConfig.Embeddings] = new EmbeddingsHandler.Options
+        //{
+        //    Model = collection.EmbedModel
+        //};
 
         return options;
     }

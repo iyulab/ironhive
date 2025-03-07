@@ -1,12 +1,10 @@
-import { ExecuteOptions, HandlerOptions, ToolOptions } from "./Options";
-
 export interface CollectionEntity {
   id?: string;
   name?: string;
   description?: string;
   embedService?: string;
   embedModel?: string;
-  handlerOptions: HandlerOptions;
+  handlerOptions: any;
   createdAt?: string;
   lastUpdatedAt?: string;
 }
@@ -29,9 +27,9 @@ export interface AssistantEntity {
   name: string;
   description?: string;
   instruction?: string;
-  options: ExecuteOptions;
+  options: any;
   tools: string[];
-  toolOptions?: ToolOptions;
+  toolOptions?: any;
   createdAt?: string;
   lastUpdatedAt?: string;
 }

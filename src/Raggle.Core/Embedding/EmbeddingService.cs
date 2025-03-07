@@ -1,18 +1,19 @@
 ﻿using Raggle.Abstractions;
 using Raggle.Abstractions.Embedding;
+using Raggle.Core.ChatCompletion;
 
 namespace Raggle.Core.Embedding;
 
 public class EmbeddingService : IEmbeddingService
 {
     private readonly IReadOnlyDictionary<string, IEmbeddingConnector> _connectors;
-    private readonly ITextParser<(string, string)> _parser;
+    private readonly IModelParser _parser;
 
     public EmbeddingService(
-        IHiveServiceContainer registry,
-        ITextParser<(string, string)> parser)
+        IHiveServiceContainer container,
+        IModelParser parser)
     {
-        _connectors = registry.GetKeyedServices<IEmbeddingConnector>();
+        _connectors = container.GetKeyedServices<IEmbeddingConnector>();
         _parser = parser;
     }
 

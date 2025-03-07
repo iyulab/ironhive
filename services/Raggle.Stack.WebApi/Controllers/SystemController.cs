@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Raggle.Abstractions;
 using System.Reflection;
 
 namespace Raggle.Stack.WebApi.Controllers;
@@ -8,30 +7,31 @@ namespace Raggle.Stack.WebApi.Controllers;
 [Route("/system")]
 public class SystemController : ControllerBase
 {
+    [HttpGet("healthz")]
+    public async Task<ActionResult> GetHealthAsync()
+    {
+        await Task.CompletedTask;
+        return Ok("ok");
+    }
+
+    [HttpGet("time")]
+    public async Task<ActionResult> GetTimeAsync()
+    {
+        await Task.CompletedTask;
+        return Ok(DateTime.UtcNow);
+    }
+
     [HttpGet("version")]
-    public ActionResult<string> GetApplicationVersion()
+    public async Task<ActionResult> GetVersionAsync()
     {
         var assembly = Assembly.GetEntryAssembly();
         if (assembly == null)
         {
-            return StatusCode(500, "Unable to determine the application version.");
+            return StatusCode(500, "Unable to determine the application.");
         }
 
         var version = assembly.GetName().Version;
+        await Task.CompletedTask;
         return Ok(version);
-    }
-
-    [HttpGet("health")]
-    public async Task<ActionResult> GetHealthAsync()
-    {
-        await Task.Delay(1000);
-        return Ok("");
-    }
-
-    [HttpGet("time")]
-    public ActionResult<DateTime> GetCurrentServerTime()
-    {
-        var serverTimeUtc = DateTime.UtcNow;
-        return Ok(serverTimeUtc);
     }
 }

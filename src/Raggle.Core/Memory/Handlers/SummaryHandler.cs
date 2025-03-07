@@ -67,7 +67,7 @@ public class SummaryHandler : IPipelineHandler
         Options options, 
         CancellationToken cancellationToken)
     {
-        var context = new MessageContext();
+        var context = new MessageContext([]);
         context.Messages.AddUserMessage(new TextContent
         {
             Text = $"Summarize This:\n\n{information}",

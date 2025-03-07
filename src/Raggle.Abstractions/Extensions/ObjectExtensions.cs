@@ -82,7 +82,7 @@ public static class ObjectExtensions
     /// <summary>
     /// perform a deep copy of the object
     /// </summary>
-    public static T DeepCopy<T>(this T obj)
+    public static T Clone<T>(this T obj)
     {
         // if obj is null, a value type, or a string, return the object
         if (obj == null || obj.GetType().IsValueType || obj is string)

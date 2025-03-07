@@ -1,36 +1,25 @@
 {
   "name": "@iyulab/hive-app",
-  "version": "0.1.0",
-  "author": {
-    "name": "iyulab",
-    "url": "https://www.iyulab.com"
-  },
-  "license": "MIT",
-  "description": "this package is webcomponent library for use raggle service",
+  "version": "1.0.0",
+  "private": true,
   "type": "module",
   "main": "src/index.js",
   "scripts": {
-    "start": "vite --open -d --port 3000",
+    "start": "vite --open test --port 3000",
     "build": "vite build"
   },
+  "workspaces": [
+    "../Raggle.Stack.Client"
+  ],
   "devDependencies": {
-    "@iyulab/hive-components": "^0.1.0",
+    "@iyulab/hive-stack": "^0.1.0",
     "@lit-labs/router": "^0.1.4",
     "@shoelace-style/shoelace": "^2.20.0",
-    "@types/express": "^5.0.0",
-    "@types/node": "^22.13.9",
-    "axios": "^1.8.1",
-    "dompurify": "^3.2.4",
+    "@types/node": "^22.13.9",    
     "eslint": "^9.21.0",
-    "jsdom": "^26.0.0",
-    "lit": "^3.2.1",
     "marked": "^15.0.7",
-    "mobx": "^6.13.6",
     "typescript": "^5.8.2",
     "vite": "^6.2.0",
     "vite-plugin-dts": "^4.5.3"
-  },
-  "dependencies": {
-    "express": "^4.21.2"
   }
 }

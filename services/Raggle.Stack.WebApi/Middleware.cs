@@ -2,6 +2,9 @@
 
 namespace Raggle.Stack.WebApi;
 
+/// <summary>
+/// 개발 디버그 && 추적용 미들웨어
+/// </summary>
 public class Middleware
 {
     private readonly RequestDelegate _next;

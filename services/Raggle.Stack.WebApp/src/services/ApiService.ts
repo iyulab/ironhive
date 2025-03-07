@@ -1,17 +1,5 @@
-import { 
-  AssistantApi,
-  GuestApi,
-  MemoryApi,
-  SystemApi
-} from './api';
-import { 
-  HttpController 
-} from './http';
-
 export class Api {
-  private static readonly controller: HttpController = new HttpController({
-    baseUrl: Api.getBaseUrl(),
-  });
+  private static readonly controller: any;
 
   private static getBaseUrl(): string {
     const host: string = import.meta.env.DEV
@@ -21,12 +9,12 @@ export class Api {
     return new URL(`${version}`, host).toString();
   }
 
-  public static readonly System = new SystemApi(Api.controller);
+  public static readonly System: any;
 
-  public static readonly Assistant = new AssistantApi(Api.controller);
+  public static readonly Assistant: any;
 
-  public static readonly Memory = new MemoryApi(Api.controller);
+  public static readonly Memory: any;
 
-  public static readonly Guest = new GuestApi(Api.controller);
+  public static readonly Guest: any;
 
 }

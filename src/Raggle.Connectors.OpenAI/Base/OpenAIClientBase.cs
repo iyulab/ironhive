@@ -28,7 +28,7 @@ internal abstract class OpenAIClientBase
     public async Task<IEnumerable<OpenAIModel>> GetModelsAsync(CancellationToken cancellationToken)
     {
         var jsonDocument = await _client.GetFromJsonAsync<JsonDocument>(
-            OpenAIConstants.GetModelListPath, cancellationToken);
+            OpenAIConstants.GetModelListPath.RemovePreffix('/'), cancellationToken);
         var models = jsonDocument?.RootElement.GetProperty("data").Deserialize<IEnumerable<OpenAIModel>>();
 
         return models?.OrderByDescending(m => m.Created).ToArray() ?? [];

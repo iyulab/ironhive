@@ -1,0 +1,55 @@
+{
+  "name": "@iyulab/hive-stack",
+  "description": "hive ui components",
+  "version": "0.1.0",
+  "author": {
+    "name": "iyulab",
+    "url": "https://www.iyulab.com"
+  },
+  "license": "MIT",
+  "type": "module",
+  "main": "./src/index.js",
+  "module": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "scripts": {
+    "build": "vite build",
+    "publish": "npm publish"
+  },
+  "exports": {
+    ".": {
+      "require": "./src/index.js",
+      "import": "./src/index.js",
+      "types": "./src/index.d.ts"
+    },
+    "./common": {
+      "require": "./src/common/index.js",
+      "import": "./src/common/index.js",
+      "types": "./src/common/index.d.ts"
+    },
+    "./components": {
+      "require": "./src/components/index.js",
+      "import": "./src/components/index.js",
+      "types": "./src/components/index.d.ts"
+    },
+    "./components/*": {
+      "require": "./src/components/*/index.js",
+      "import": "./src/components/*/index.js",
+      "types": "./src/components/*/index.d.ts"
+    }
+  },
+  "dependencies": {
+    "dompurify": "^3.2.4",
+    "lit": "^3.2.1",
+    "mobx": "^6.13.6"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.9",
+    "postcss": "^8.5.3",
+    "postcss-nesting": "^13.0.1",
+    "sass": "^1.85.1",
+    "sass-loader": "^16.0.5",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.0",
+    "vite-plugin-dts": "^4.5.3"
+  }
+}

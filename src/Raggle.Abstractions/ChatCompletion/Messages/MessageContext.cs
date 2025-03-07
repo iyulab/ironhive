@@ -16,4 +16,9 @@ public class MessageContext
     public int MaxLoopCount { get; set; } = 3;
 
     public int TokenUsageCount { get; set; } = 0;
+
+    public MessageContext(IEnumerable<IMessage> messages)
+    {
+        Messages = new(messages);
+    }
 }

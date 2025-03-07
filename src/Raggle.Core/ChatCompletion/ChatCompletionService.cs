@@ -9,14 +9,17 @@ namespace Raggle.Core.ChatCompletion;
 public class ChatCompletionService : IChatCompletionService
 {
     private readonly IReadOnlyDictionary<string, IChatCompletionConnector> _connectors;
-    private readonly ITextParser<(string, string)> _parser;
+    private readonly IModelParser _parser;
+    private readonly IMessageReducer _reducer;
 
     public ChatCompletionService(
         IHiveServiceContainer container,
-        ITextParser<(string, string)> parser)
+        //IMessageReducer reducer,
+        IModelParser parser)
     {
         _connectors = container.GetKeyedServices<IChatCompletionConnector>();
         _parser = parser;
+        //_reducer = reducer;
     }
 
     /// <inheritdoc />
@@ -48,7 +51,7 @@ public class ChatCompletionService : IChatCompletionService
         options.Model = model;
 
         var count = 0;
-        var messages = context.Messages.DeepCopy();
+        var messages = context.Messages.Clone();
         EndReason? reason = null;
         IMessage? message = new AssistantMessage();
         TokenUsage? usage = new TokenUsage();
@@ -100,19 +103,30 @@ public class ChatCompletionService : IChatCompletionService
             throw new KeyNotFoundException($"Service key '{serviceKey}' not found.");
         options.Model = model;
 
-        await foreach (var res in connector.GenerateStreamingMessageAsync(context.Messages, options, cancellationToken))
+        var count = 0;
+        var messages = context.Messages.Clone();
+
+        EndReason? reason = null;
+        IMessage? message = new AssistantMessage();
+        TokenUsage? usage = new TokenUsage();
+
+        while(true)
         {
-            if (res.EndReason == EndReason.ToolCall)
+            await foreach (var res in connector.GenerateStreamingMessageAsync(messages, options, cancellationToken))
             {
-                yield return res;
-            }
-            else if (res.EndReason == EndReason.MaxTokens)
-            {
-                yield return res;
-            }
-            else
-            {
-                yield return res;
+                message.Content.Add(res.Data);
+                if (res.EndReason == EndReason.ToolCall)
+                {
+                    yield return res;
+                }
+                else if (res.EndReason == EndReason.MaxTokens)
+                {
+                    yield return res;
+                }
+                else
+                {
+                    yield return res;
+                }
             }
         }
     }

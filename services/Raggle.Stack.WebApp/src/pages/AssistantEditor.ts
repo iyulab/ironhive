@@ -3,7 +3,8 @@ import { customElement, property, state } from "lit/decorators.js";
 import { until } from "lit/directives/until.js";
 
 import type { AssistantEntity } from "../models";
-import { Api, App, formatDate, goTo } from "../services";
+import { Api, App, goTo } from "../services";
+import { format } from "@iyulab/hive-stack/common";
 
 @customElement('assistant-editor')
 export class AssistantEditor extends LitElement {
@@ -59,7 +60,7 @@ export class AssistantEditor extends LitElement {
               <span>Updating...</span>`
             : this.status === 'updated'
             ? html`<sl-icon name="check-lg"></sl-icon>
-              <span>Updated ${formatDate(this.assistant.lastUpdatedAt)}</span>`
+              <span>Updated ${format(this.assistant.lastUpdatedAt)}</span>`
             : this.status === 'error'
             ? html`<sl-icon name="exclamation-octagon"></sl-icon>
               <span>${this.error}</span>`

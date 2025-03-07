@@ -6,8 +6,8 @@ namespace Raggle.Abstractions.ChatCompletion.Messages;
 /// 메시지의 기본 인터페이스입니다.
 /// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "role")]
-[JsonDerivedType(typeof(TextContent), "user")]
-[JsonDerivedType(typeof(ImageContent), "assistant")]
+[JsonDerivedType(typeof(UserMessage), "user")]
+[JsonDerivedType(typeof(AssistantMessage), "assistant")]
 public interface IMessage
 {
     MessageContentCollection Content { get; set; }

@@ -86,7 +86,8 @@ internal static class MessageCollectionExtensions
                         }
                     }
                     _messages.Add(am);
-                    _messages.Add(um);
+                    if (um.Content.Count != 0)
+                        _messages.Add(um);
                 }
             }
         }

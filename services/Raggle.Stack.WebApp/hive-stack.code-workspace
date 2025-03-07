@@ -1,0 +1,13 @@
+{
+  "folders": [
+    {
+      "name": "WEB_Client",
+      "path": "../Raggle.Stack.Client"
+    },
+    {
+      "name": "WEB_APP",
+      "path": "."
+    }
+  ],
+  "settings": {},
+}

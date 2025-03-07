@@ -62,7 +62,8 @@ internal static class MessageCollectionExtensions
                     {
                         if (item is TextContent text)
                         {
-                            am.Content = text.Text ?? string.Empty;
+                            am.Content ??= string.Empty;
+                            am.Content += text.Text ?? string.Empty;
                         }
                         else if (item is ToolContent tool)
                         {

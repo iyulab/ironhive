@@ -4,7 +4,7 @@
     "target": "ESNext",
     "module": "ESNext",
     "lib": ["ESNext","DOM","DOM.Iterable"],
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "types": ["vite/client"],
 
     // 엄격한 타입 체킹
@@ -45,8 +45,6 @@
     "vite-env.d.ts",
     "src/**/*.ts",
     "src/**/*.d.ts",
-    "server/**/*.ts",
-    "server/**/*.d.ts"
   ],
   "exclude": [
     "node_modules"

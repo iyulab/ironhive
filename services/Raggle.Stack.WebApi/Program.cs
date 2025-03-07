@@ -1,20 +1,12 @@
 using Microsoft.AspNetCore.Http.Features;
-using Raggle.Stack.EFCore.Extensions;
 using Raggle.Stack.WebApi;
-using Raggle.Stack.WebApi.Configurations;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 # region For Raggle
-var cm = new JsonConfigManager(Path.Combine(Directory.GetCurrentDirectory(),"appservicesettings.json"));
-if (cm.Config == null)
-    throw new Exception("Failed to load raggle_settings.json");
-Directory.CreateDirectory("/var/db");
-
-//builder.Services.AddDefaultServices(cm.Config);
-//builder.Services.AddToolService<DatabaseTool>("database_search");
+builder.AddHiveMind();
 #endregion
 
 builder.Services.AddHttpContextAccessor();
@@ -25,6 +17,10 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
     });
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 10_737_418_240; // 10GB
+});
 
 if (builder.Environment.IsDevelopment())
 {
@@ -33,20 +29,11 @@ if (builder.Environment.IsDevelopment())
 }
 else
 {
-    //builder.Services.AddAuthentication();
-    //builder.Services.AddAuthorization();
+    builder.Services.AddAuthentication();
+    builder.Services.AddAuthorization();
 }
 
-builder.Services.Configure<FormOptions>(options =>
-{
-    options.MultipartBodyLengthLimit = 10_737_418_240; // 10GB
-});
-
 var app = builder.Build();
-
-# region For Raggle
-app.Services.EnsureRaggleServices();
-#endregion
 
 app.UseRouting();
 app.UseStaticFiles();
@@ -69,11 +56,11 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
-    //app.UseAuthentication();
-    //app.UseAuthorization();
+    app.UseAuthentication();
+    app.UseAuthorization();
 
-    //app.UseHttpsRedirection();
-    //app.UseHsts();
+    app.UseHttpsRedirection();
+    app.UseHsts();
 
     app.Urls.Clear();
     app.Urls.Add("http://*:80");

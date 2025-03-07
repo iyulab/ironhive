@@ -78,7 +78,7 @@ public class DialogueHandler : IPipelineHandler
         Options options,
         CancellationToken cancellationToken)
     {
-        var context = new MessageContext();
+        var context = new MessageContext([]);
         context.Messages.AddAssistantMessage(new TextContent
         {
             Text = $"Generate QA pairs In This:\n\n{information}"

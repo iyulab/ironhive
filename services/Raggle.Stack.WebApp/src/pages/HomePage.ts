@@ -11,9 +11,7 @@ export class HomePage extends LitElement {
         <p>Raggle is an app that combines the Rag system with a chatbot.</p>
       </div>
       <div class="input">
-        <message-input
-          
-        ></message-input>
+        
       </div>
     `;
   }

@@ -1,5 +1,5 @@
 export * from './cards';
 export * from './inputs';
-export * from './messages';
 
+export * from './MainLayout';
 export * from './LoadingOvelay';

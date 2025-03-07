@@ -4,7 +4,17 @@ namespace Raggle.Abstractions.ChatCompletion.Messages;
 
 public sealed class MessageCollection : ICollection<IMessage>
 {
-    private readonly List<IMessage> _items = [];
+    private readonly List<IMessage> _items;
+
+    public MessageCollection()
+    {
+        _items = new();
+    }
+
+    public MessageCollection(IEnumerable<IMessage> messages)
+    {
+        _items = new(messages);
+    }
 
     public void AddUserMessage(IMessageContent content)
     {
