@@ -1,75 +1,54 @@
-import { LitElement, css, html } from "lit";
+import { LitElement, css, html, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
+import type { ToolContent } from "../../models";
 
 @customElement('tool-block')
 export class ToolBlock extends LitElement {
 
-  @property({ type: String }) name: string = '';
-  @property({ type: Object }) result: any;
+  @property({ type: Object }) 
+  value?: ToolContent;
 
   render() {
-    console.log(this.result);
+    if (!this.value) return nothing;
+    
     return html`
-      <div class="name">
-        Tool: ${this.name}
-      </div>
-      <div class="result">
-      ${this.result
-        ? html`  
-        ${this.result.result.map((item: any) => html`
-          <div class="question">${item.payload.content.question}</div>
-          <div class="answer">${item.payload.content.answer}</div>
-        `)}`
-        : html`
-          <sl-spinner></sl-spinner>
-        `
-      }
+      <div class="container">
+        <h2>${this.value.name ?? 'Unknown tool'}</h2>
+        ${this.value.arguments ? 
+          html`<p><strong>Arguments:</strong> ${this.value.arguments}</p>` 
+          : nothing}
+        ${this.value.result ? 
+          html`<pre><strong>Result:</strong>${JSON.stringify(this.value.result, null, 2)}</pre>` 
+          : nothing}
       </div>
     `;
   }
 
   static styles = css`
-    :host {
+    .container {
       display: flex;
       flex-direction: column;
-      width: 100%;
-      background-color: #f0f0f0;
-      border-radius: 8px;
-      padding: 8px;
-      box-sizing: border-box;
+      gap: 0.5rem;
     }
 
-    .name {
-      width: 100%;
-      font-weight: 600;
-      font-size: 18px;
+    h2 {
+      margin: 0;
+      font-size: 1.2rem;
+      color: #333;
     }
 
-    .result {
-      width: 100%;
-      margin-top: 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+    p {
+      margin: 0;
+      color: #555;
+    }
 
-      .question {
-        font-weight: 600;
-        font-size: 16px;
-      }
-
-      .answer {
-        font-size: 14px;
-      }
-
-      .question, .answer {
-        padding: 8px;
-        border-radius: 8px;
-        background-color: #fff;
-      }
-
-      .question {
-        background-color: #f0f0f0;
-      }
+    pre {
+      background-color: #eee;
+      padding: 0.5rem;
+      border-radius: 4px;
+      overflow: auto;
+      margin: 0;
+      white-space: pre-wrap;
     }
   `;
 }

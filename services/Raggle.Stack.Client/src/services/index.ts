@@ -1,2 +1,1 @@
-export * from './AssistantApi';
-
+export * from './HiveClient';

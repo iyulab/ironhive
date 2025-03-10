@@ -2,6 +2,7 @@
 using Raggle.Abstractions.ChatCompletion;
 using Raggle.Abstractions.ChatCompletion.Messages;
 using Raggle.Abstractions.ChatCompletion.Tools;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace Raggle.Core.ChatCompletion;
@@ -29,9 +30,8 @@ public class ChatCompletionService : IChatCompletionService
         var models = new List<ChatCompletionModel>();
         foreach (var (key, connector) in _connectors)
         {
-            var serviceModels = await connector.GetModelsAsync(cancellationToken);
-
-            models.AddRange(serviceModels.Select(x => new ChatCompletionModel
+            var sModels = await connector.GetModelsAsync(cancellationToken);
+            models.AddRange(sModels.Select(x => new ChatCompletionModel
             {
                 Model = _parser.Stringify((key, x.Model)),
             }));
@@ -76,11 +76,21 @@ public class ChatCompletionService : IChatCompletionService
             }
             else if (reason == EndReason.MaxTokens)
             {
-
+                return new ChatCompletionResult<IMessage>
+                {
+                    EndReason = reason,
+                    Data = res.Data,
+                    TokenUsage = res.TokenUsage,
+                };
             }
             else
             {
-
+                return new ChatCompletionResult<IMessage>
+                {
+                    EndReason = reason,
+                    Data = res.Data,
+                    TokenUsage = res.TokenUsage,
+                };
             }
         }
 

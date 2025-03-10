@@ -1,4 +1,4 @@
-import { HttpController } from '../common';
+import { HttpController } from '../internal';
 
 export interface HiveStackConfig {
   baseUrl: string;
@@ -14,12 +14,20 @@ export class HiveStack {
     });
   }
 
-  public async getChatCompletionModelsAysnc() {
+  public async getChatModelsAysnc() {
     return this.controller.get('/chat/models');
+  }
+
+  public async chatCompletionAsync() {
+    return this.controller.post('/chat/completion');
   }
 
   public async getEmbeddingModelsAysnc() {
     return this.controller.get('/embedding/models');
+  }
+
+  public async getEmbeddingAsync() {
+    return this.controller.get('/embedding');
   }
 
 }

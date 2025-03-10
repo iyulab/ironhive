@@ -1,98 +1,125 @@
 import { LitElement, css, html, nothing } from "lit";
-import { customElement, property, query, queryAll } from "lit/decorators.js";
+import { customElement, property } from "lit/decorators.js";
 
-import type { Message } from "../../models";
-import type { AssistantMessage, UserMessage } from ".";
+import type { Message, MessageContent } from "../../models";
 
 @customElement('chat-room')
 export class ChatRoom extends LitElement {
 
-  @query('.messages') messagesEl!: HTMLDivElement;
-  @queryAll('user-message') userMsgs!: NodeListOf<UserMessage>;
-  @queryAll('assistant-message') assistantMsgs!: NodeListOf<AssistantMessage>;
-
-  @property({ type: String }) key: string = '';
-  @property({ type: String }) assistantId: string = '';
-  @property({ type: Array }) messages: Message[] = [];
+  @property({ type: Boolean }) loading: boolean = false;
+  @property({ type: Array }) messages: Message[] = [
+    {
+      "name": "bot",
+      "role": "assistant",
+      "timestamp": "2021-09-25T10:00:00Z",
+      "content": [
+        {
+          "type": "text",
+          "text": "Hello! How can I help you today?"
+        }
+      ]
+    },
+    {
+      "name": "user",
+      "role": "user",
+      "timestamp": "2021-09-25T10:01:00Z",
+      "content": [
+        {
+          "type": "text",
+          "text": "I have a question about my order."
+        }
+      ]
+    },
+    {
+      "name": "bot",
+      "role": "assistant",
+      "timestamp": "2021-09-25T10:02:00Z",
+      "content": [
+        {
+          "type": "text",
+          "text": "Sure! What is your order number?"
+        }
+      ],
+    }
+  ];
 
   render() {
     return html`
-      <div class="messages">
-        ${this.messages.map(msg => {
-          if (msg.role === 'user') {
-            return html`
-              <user-message
-                .message=${msg}
-              ></user-message>
-            `;
-          } else if (msg.role === 'assistant') {
-            return html`
-              <assistant-message
-                .message=${msg}
-              ></assistant-message>
-            `;
-          } else {
-            return nothing;
-          }
-        })}
-      </div>
-      <div class="input">
-        <message-input
-          placeholder="Type a message..."
-          rows="1"
-          @send=${this.onSend}
-        ></message-input>
+      <div class="container">
+        <div class="message-area">
+          ${this.messages.map(msg => html`
+            <message-card
+              .name=${msg.role}
+              .avatar=${''}
+              .timestamp=${msg.timestamp}>
+                ${msg.content?.map(msg.role === 'user' 
+                  ? this.renderUserContent 
+                  : this.renderBotContent)}
+              })}
+            </message-card>
+          `)}
+        </div>
+
+        <div class="input-area">
+          <message-input
+            placeholder="Type a message...">
+          ></message-input>
+        </div>
       </div>
     `;
   }
 
-  private onSend = async (event: CustomEvent<string>) => {
-    const value = event.detail;
+  public updateMessages(messages: Message[]) {
+    this.messages = messages;
+  }
 
-    if (value) {
-      this.messages = [ 
-        ...this.messages, 
-        { role: 'user', content: [
-          { type: 'text', index: 0,  text: value }
-        ]},
-        { role: 'assistant', content: [] }
-      ];
-      await this.updateComplete;
-      this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
-      
-      await Api.Assistant.message(this.assistantId, this.messages, async (data) => {
-        if(data.endReason) {
-          console.log(`Elapsed time:`);
-        }
-        if (!data.content) return;
-        this.assistantMsgs[this.assistantMsgs.length - 1].appendContent(data.content);
-        this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
-      });
+  public updateMessage(message: Message) {
+    this.messages = [...this.messages, message];
+  }
+
+  private renderUserContent = (content: MessageContent) => {
+    if (content.type === 'text') {
+      return html`<text-block .value="${content.text}"></text-block>`;
+    } else {
+      return nothing;
+    }
+  }
+
+  private renderBotContent = (content: MessageContent) => {
+    if (content.type === 'text') {
+      return html`<marked-block .value="${content.text}"></marked-block>`;
+    } else if (content.type === 'tool') {
+      return html`<tool-block .value="${content}"></tool-block>`;
+    } else {
+      return nothing;
     }
   }
 
   static styles = css`
-    :host {
+    .container {
       position: relative;
       display: flex;
       flex-direction: column;
       width: 100%;
       height: 100%;
+      min-width: 320px;
+      min-height: 480px;
       padding: 16px;
       box-sizing: border-box;
     }
 
-    .messages {
-      flex: 1;
+    .message-area {
+      width: 100%;
       display: flex;
+      flex: 1;
       flex-direction: column;
       gap: 16px;
-      overflow-y: auto;
-      padding: 32px 16px;
+      padding: 8px 0px;
       box-sizing: border-box;
+      overflow-y: auto;
     }
 
-    .input {
+    .input-area {
       width: 100%;
     }
   `;

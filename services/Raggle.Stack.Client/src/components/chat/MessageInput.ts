@@ -2,118 +2,126 @@ import { LitElement, css, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { ifDefined } from 'lit/directives/if-defined.js';
 
+import { send } from "../IconData";
+import { SendMessageEvent } from "../../events";
+
 @customElement('message-input')
 export class MessageInput extends LitElement {
 
-  @property({ type: String }) placeholder = '';
-  @property({ type: Number }) rows = 1;
+  @property({ type: String }) placeholder?: string;
+  @property({ type: Number }) rows?: number;
   @property({ type: Number }) maxlength?: number;
-  @property({ type: Boolean }) disabled = false;
+  @property({ type: Boolean }) disabled = true;
   @property({ type: String }) value = '';
 
   render() {
     return html`
       <div class="container">
         <!-- Input -->
-        <div class="input">
+        <div class="input-area">
           <textarea
             spellcheck="false"
-            placeholder=${this.placeholder}
-            rows=${this.rows}
+            placeholder=${ifDefined(this.placeholder)}
+            rows=${ifDefined(this.rows)}
             maxlength=${ifDefined(this.maxlength)}
             .value=${this.value}
-            @input=${this.onInput}
-            @keydown=${this.onKeydown}
+            @input=${this.handleInput}
+            @keydown=${this.handleKeydown}
           ></textarea>
+          <div class="filler">${this.value}</div>
         </div>
 
         <!-- Button Control -->
-        <div class="control">
-          <sl-icon-button
-            name="paperclip"
-          ></sl-icon-button>
+        <div class="control-area">
+          <slot name="control"></slot>
           <div class="flex"></div>
-          <sl-button
-            size="small"
-            variant="primary"
-            ?circle=${true}
-            ?disabled=${this.disabled || !this.value.trim()}
-            @click=${this.onSend}>
-            <sl-icon name="send"></sl-icon>
-          </sl-button>
+          <div class="send-button"
+            ?disabled=${this.disabled}
+            @click=${this.invokeSendEvent}>
+            <hive-icon 
+              .data=${send}
+            ></hive-icon>
+          </div>
         </div>
-
       </div>
     `;
   }
 
-  private onKeydown = (event: KeyboardEvent) => {
+  private handleInput = (event: InputEvent) => {
+    const target = event.target as HTMLTextAreaElement;
+    this.value = target.value;
+    this.disabled = !target.value.trim();
+  }
+
+  private handleKeydown = (event: KeyboardEvent) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
-      this.onSend();
+      this.invokeSendEvent();
     }
   }
 
-  private onInput = (event: Event) => {
-    const textarea = event.target as HTMLTextAreaElement;
-    textarea.style.height = 'auto';
-    textarea.style.height = `${textarea.scrollHeight}px`;
-    this.value = textarea.value;
-
-    this.dispatchEvent(new CustomEvent('input', {
-      detail: this.value,
-    }));
-  }
-
-  private onSend = () => {
+  private invokeSendEvent = () => {
     const value = this.value.trim();
     if (!value) return;
-    this.dispatchEvent(new CustomEvent('send', {
-      detail: value,
-    }));
-    this.value = '';
+    this.dispatchEvent(new SendMessageEvent(value));
   }
 
   static styles = css`
     :host {
       display: block;
-      width: 100%;
+      font-size: 16px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 28px;
     }
 
     .container {
       display: flex;
       flex-direction: column;
       gap: 4px;
-      padding: 8px;
-      background-color: var(--sl-panel-background-color);
-      border: 1px solid var(--sl-panel-border-color);
+      padding: 8px 16px;
+      border: 1px solid hsl(240 5.9% 90%);
       border-radius: 4px;
       box-sizing: border-box;
-      overflow: hidden;
     }
 
-    .input {
-      display: flex;
-      padding: 8px;
+    .input-area {
+      position: relative;
       box-sizing: border-box;
       max-height: 200px;
-      overflow-y: auto;
 
       textarea {
+        position: absolute;
         width: 100%;
-        height: auto;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+        padding: 0;
+        margin: 0;
         border: none;
         resize: none;
         outline: none;
         background-color: transparent;
-        font-size: 14px;
+        font-size: inherit;
+        line-height: inherit;
         font-family: inherit;
-        overflow: hidden;
+        overflow: auto;
+      }
+
+      .filler {
+        visibility: hidden;
+        pointer-events: none;
+        min-height: 56px;
+        font-size: inherit;
+        line-height: inherit;
+        word-break: break-word;
+        white-space: pre-wrap;
+        display: block;
+        overflow: auto;
       }
     }
 
-    .control {
-      grid-area: control;
+    .control-area {
       display: flex;
       flex-direction: row;
       align-items: center;
@@ -122,6 +130,30 @@ export class MessageInput extends LitElement {
 
       .flex {
         flex: 1;
+      }
+
+      .send-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        padding: 4px;
+        box-sizing: border-box;
+        background-color: hsl(240 5.9% 90%);
+        width: 40px;
+        height: 30px;
+        cursor: pointer;
+      }
+
+      .send-button:active {
+        background-color: hsl(240 5.9% 80%);
+      }
+      .send-button[disabled] {
+        background-color: hsl(240 5.9% 95%);
+        cursor: not-allowed;
+      }
+      .send-button[disabled]:active {
+        background-color: hsl(240 5.9% 95%);
       }
     }
   `;

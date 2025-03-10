@@ -1,4 +1,4 @@
-import { since } from '@iyulab/hive-stack/common';
+import { since } from '@iyulab/hive-stack/internal';
 
 /**
  * 엔티티의 마지막 업데이트 날짜 또는 생성날짜를 현지 시간으로 비교

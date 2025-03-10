@@ -24,8 +24,9 @@ export type MessageContent = TextContent | ImageContent | ToolContent;
 export type MessageRole = "user" | "assistant";
 
 export interface Message {
-  role?: MessageRole;
+  role: MessageRole;
+  avatar?: string;
   name?: string;
   content?: MessageContent[];
-  timeStamp?: Date;
+  timestamp?: string;
 }

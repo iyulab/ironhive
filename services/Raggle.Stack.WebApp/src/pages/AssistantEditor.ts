@@ -4,7 +4,7 @@ import { until } from "lit/directives/until.js";
 
 import type { AssistantEntity } from "../models";
 import { Api, App, goTo } from "../services";
-import { format } from "@iyulab/hive-stack/common";
+import { format } from "@iyulab/hive-stack/internal";
 
 @customElement('assistant-editor')
 export class AssistantEditor extends LitElement {

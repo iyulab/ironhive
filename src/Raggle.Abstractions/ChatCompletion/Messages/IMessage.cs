@@ -11,7 +11,7 @@ namespace Raggle.Abstractions.ChatCompletion.Messages;
 public interface IMessage
 {
     MessageContentCollection Content { get; set; }
-    DateTime TimeStamp { get; set; }
+    DateTime Timestamp { get; set; }
 }
 
 /// <summary>
@@ -20,7 +20,7 @@ public interface IMessage
 public abstract class MessageBase : IMessage
 {
     public MessageContentCollection Content { get; set; } = new();
-    public DateTime TimeStamp { get; set; } = DateTime.UtcNow;
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 }
 
 /// <summary>
