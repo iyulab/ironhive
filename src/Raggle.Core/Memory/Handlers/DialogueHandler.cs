@@ -81,7 +81,7 @@ public class DialogueHandler : IPipelineHandler
         var context = new MessageContext([]);
         context.Messages.AddAssistantMessage(new TextContent
         {
-            Text = $"Generate QA pairs In This:\n\n{information}"
+            Value = $"Generate QA pairs In This:\n\n{information}"
         });
         var response = await _chat.InvokeAsync(context, new ChatCompletionOptions
         {
@@ -94,7 +94,7 @@ public class DialogueHandler : IPipelineHandler
         {
             if (item is TextContent text)
             {
-                sb.AppendLine(text.Text);
+                sb.AppendLine(text.Value);
             }
         }
         var answer = sb.ToString();

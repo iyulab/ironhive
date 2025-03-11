@@ -40,7 +40,7 @@ public class ChatCompletionService : IChatCompletionService
     }
 
     /// <inheritdoc />
-    public async Task<ChatCompletionResult<IMessage>> InvokeAsync(
+    public async Task<ChatCompletionResult<Message>> InvokeAsync(
         MessageContext context,
         ChatCompletionOptions options,
         CancellationToken cancellationToken = default)
@@ -53,7 +53,7 @@ public class ChatCompletionService : IChatCompletionService
         var count = 0;
         var messages = context.Messages.Clone();
         EndReason? reason = null;
-        IMessage? message = new AssistantMessage();
+        Message? message = new Message();
         TokenUsage? usage = new TokenUsage();
         while (count < context.MaxLoopCount)
         {
@@ -76,7 +76,7 @@ public class ChatCompletionService : IChatCompletionService
             }
             else if (reason == EndReason.MaxTokens)
             {
-                return new ChatCompletionResult<IMessage>
+                return new ChatCompletionResult<Message>
                 {
                     EndReason = reason,
                     Data = res.Data,
@@ -85,7 +85,7 @@ public class ChatCompletionService : IChatCompletionService
             }
             else
             {
-                return new ChatCompletionResult<IMessage>
+                return new ChatCompletionResult<Message>
                 {
                     EndReason = reason,
                     Data = res.Data,
@@ -94,7 +94,7 @@ public class ChatCompletionService : IChatCompletionService
             }
         }
 
-        return new ChatCompletionResult<IMessage>
+        return new ChatCompletionResult<Message>
         {
             EndReason = EndReason.ToolFailed,
             Data = message,
@@ -115,15 +115,18 @@ public class ChatCompletionService : IChatCompletionService
 
         var count = 0;
         var messages = context.Messages.Clone();
-
         EndReason? reason = null;
-        IMessage? message = new AssistantMessage();
+        Message? message = new Message();
         TokenUsage? usage = new TokenUsage();
 
-        while(true)
+        while (count < 3)
         {
+            count++;
             await foreach (var res in connector.GenerateStreamingMessageAsync(messages, options, cancellationToken))
             {
+                if (res.Data == null)
+                    continue;
+
                 message.Content.Add(res.Data);
                 if (res.EndReason == EndReason.ToolCall)
                 {

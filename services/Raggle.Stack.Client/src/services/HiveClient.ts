@@ -1,4 +1,5 @@
 import { HttpController } from '../internal';
+import { ChatCompletionRequest } from '../models';
 
 export interface HiveStackConfig {
   baseUrl: string;
@@ -18,8 +19,13 @@ export class HiveStack {
     return this.controller.get('/chat/models');
   }
 
-  public async chatCompletionAsync() {
-    return this.controller.post('/chat/completion');
+  public async chatCompletionAsync(request: ChatCompletionRequest) {
+    const res = await this.controller.post('/chat/completion', request, {
+      // onReceive(data) {
+      //   console.log(JSON.stringify(data));
+      // },
+    });
+    return res;
   }
 
   public async getEmbeddingModelsAysnc() {

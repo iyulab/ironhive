@@ -11,6 +11,10 @@ using ManualToolChoice = Raggle.Abstractions.ChatCompletion.Tools.ManualToolChoi
 using AnthropicManualToolChoice = Raggle.Connectors.Anthropic.ChatCompletion.ManualToolChoice;
 using AutoToolChoice = Raggle.Abstractions.ChatCompletion.Tools.AutoToolChoice;
 using AnthropicAutoToolChoice = Raggle.Connectors.Anthropic.ChatCompletion.AutoToolChoice;
+using Message = Raggle.Abstractions.ChatCompletion.Messages.Message;
+using AnthropicMessage = Raggle.Connectors.Anthropic.ChatCompletion.Message;
+using MessageRole = Raggle.Abstractions.ChatCompletion.Messages.MessageRole;
+using AnthropicMessageRole = Raggle.Connectors.Anthropic.ChatCompletion.MessageRole;
 
 namespace Raggle.Connectors.Anthropic;
 
@@ -45,7 +49,7 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
     }
 
     /// <inheritdoc />
-    public async Task<ChatCompletionResult<IMessage>> GenerateMessageAsync(
+    public async Task<ChatCompletionResult<Message>> GenerateMessageAsync(
         MessageCollection messages,
         ChatCompletionOptions options,
         CancellationToken cancellationToken = default)
@@ -70,7 +74,7 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
             }
         }
 
-        var result = new ChatCompletionResult<IMessage>
+        var result = new ChatCompletionResult<Message>
         {
             EndReason = res.StopReason switch
             {
@@ -86,8 +90,9 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                 InputTokens = res.Usage.InputTokens,
                 OutputTokens = res.Usage.OutputTokens
             },
-            Data = new AssistantMessage
+            Data = new Message
             {
+                Role = MessageRole.Assistant,
                 Content = content
             }
         };
@@ -120,7 +125,7 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                         Data = new TextContent
                         {
                             Index = cse.Index,
-                            Text = text.Text
+                            Value = text.Text
                         }
                     };
                 }
@@ -149,7 +154,7 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                         Data = new TextContent
                         {
                             Index = cde.Index,
-                            Text = text.Text
+                            Value = text.Text
                         }
                     };
                 }

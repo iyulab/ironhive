@@ -13,11 +13,11 @@ public class MessageContentCollection : ICollection<IMessageContent>
     /// <summary>
     /// TextContent를 추가합니다.
     /// </summary>
-    public void AddText(string? text)
+    public void AddText(string? value)
     {
         Add(new TextContent
         {
-            Text = text
+            Value = value
         });
     }
 

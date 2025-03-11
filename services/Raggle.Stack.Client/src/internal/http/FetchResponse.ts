@@ -1,59 +1,59 @@
 import { HttpResponse } from "./HttpResponse";
 
 export class FetchResponse implements HttpResponse {
-  private readonly response: Response;
-  private readonly controller: AbortController;
+  private readonly _response: Response;
+  private readonly _abort: AbortController;
 
-  constructor(response: Response, controller: AbortController) {
-    this.response = response;
-    this.controller = controller;
+  constructor(response: Response, abort: AbortController) {
+    this._response = response;
+    this._abort = abort;
   }
 
   public get ok(): boolean {
-    return this.response.ok;
+    return this._response.ok;
   }
 
   public get status(): number {
-    return this.response.status;
+    return this._response.status;
   }
 
   public get headers(): Headers {
-    return this.response.headers;
+    return this._response.headers;
   }
 
   public get url(): string {
-    return this.response.url;
+    return this._response.url;
   }
 
   public get redirected(): boolean {
-    return this.response.redirected;
+    return this._response.redirected;
   }
 
   public text(): Promise<string> {
-    return this.response.text();
+    return this._response.text();
   }
 
   public bytes(): Promise<Uint8Array> {
-    return this.response.bytes();
+    return this._response.bytes();
   }
 
   public blob(): Promise<Blob> {
-    return this.response.blob();
+    return this._response.blob();
   }
 
   public arrayBuffer(): Promise<ArrayBuffer> {
-    return this.response.arrayBuffer();
+    return this._response.arrayBuffer();
   }
 
   public formData(): Promise<FormData> {
-    return this.response.formData();
+    return this._response.formData();
   }
 
   public json<T>(): Promise<T> {
-    return this.response.json();
+    return this._response.json();
   }
 
   public cancel(): void {
-    this.controller.abort();
+    this._abort.abort();
   }
 }

@@ -52,7 +52,6 @@ public class ServiceController : ControllerBase
             if (request.Stream)
             {
                 Response.ContentType = "application/stream+json";
-
                 await foreach (var result in _hive.ChatCompletion.InvokeStreamingAsync(context, request, cancellationToken))
                 {
                     var json = JsonSerializer.Serialize(result, _jsonOptions);
@@ -64,21 +63,18 @@ public class ServiceController : ControllerBase
             }
             else
             {
-                Response.ContentType = "application/json";
-
                 var result = await _hive.ChatCompletion.InvokeAsync(context, request, cancellationToken);
-
-                var json = JsonSerializer.Serialize(result, _jsonOptions);
-                var data = Encoding.UTF8.GetBytes(json);
-
-                await Response.Body.WriteAsync(data, cancellationToken);
-                await Response.Body.FlushAsync(cancellationToken);
+                await Response.WriteAsJsonAsync(result, _jsonOptions, cancellationToken);
             }
         }
-        catch (Exception ex)
+        catch(Exception ex)
         {
-            Response.StatusCode = 500;
-            Debug.WriteLine(ex);
+            Debug.Write(ex.Message);
+            throw;
+        }
+        finally
+        {
+            await Response.CompleteAsync();
         }
     }
 

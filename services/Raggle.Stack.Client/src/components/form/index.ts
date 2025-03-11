@@ -1,1 +1,5 @@
-console.log('form/index.ts');
+export class TheForm {
+  public none() {
+    return 'none';
+  }
+}

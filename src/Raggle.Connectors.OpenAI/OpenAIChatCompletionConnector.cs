@@ -1,7 +1,6 @@
 ﻿using Raggle.Connectors.OpenAI.Configurations;
 using Raggle.Connectors.OpenAI.Extensions;
 using System.Runtime.CompilerServices;
-using AssistantMessage = Raggle.Abstractions.ChatCompletion.Messages.AssistantMessage;
 using TokenUsage = Raggle.Abstractions.ChatCompletion.TokenUsage;
 using Raggle.Connectors.OpenAI.ChatCompletion;
 using Raggle.Abstractions.ChatCompletion;
@@ -9,6 +8,8 @@ using Raggle.Abstractions.ChatCompletion.Messages;
 using Raggle.Abstractions.ChatCompletion.Tools;
 using AutoToolChoice = Raggle.Abstractions.ChatCompletion.Tools.AutoToolChoice;
 using OpenAIAutoToolChoice = Raggle.Connectors.OpenAI.ChatCompletion.AutoToolChoice;
+using Message = Raggle.Abstractions.ChatCompletion.Messages.Message;
+using OpenAIMessage = Raggle.Connectors.OpenAI.ChatCompletion.Message;
 
 namespace Raggle.Connectors.OpenAI;
 
@@ -41,7 +42,7 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
     }
 
     /// <inheritdoc />
-    public async Task<ChatCompletionResult<IMessage>> GenerateMessageAsync(
+    public async Task<ChatCompletionResult<Message>> GenerateMessageAsync(
         MessageCollection messages,
         ChatCompletionOptions options,
         CancellationToken cancellationToken = default)
@@ -67,7 +68,7 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
             content.AddText(choice.Message.Content);
         }
 
-        var result = new ChatCompletionResult<IMessage>
+        var result = new ChatCompletionResult<Message>
         {
             EndReason = choice?.FinishReason switch
             {
@@ -83,8 +84,9 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
                 InputTokens = response.Usage?.PromptTokens,
                 OutputTokens = response.Usage?.CompletionTokens
             },
-            Data = new AssistantMessage
+            Data = new Message
             {
+                Role = MessageRole.Assistant,
                 Content = content
             }
         };
@@ -132,7 +134,7 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
                     Data = new TextContent
                     {
                         Index = null,
-                        Text = choice.Delta.Content
+                        Value = choice.Delta.Content
                     }
                 };
             }

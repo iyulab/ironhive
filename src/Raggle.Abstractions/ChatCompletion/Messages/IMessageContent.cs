@@ -12,6 +12,8 @@ namespace Raggle.Abstractions.ChatCompletion.Messages;
 [JsonDerivedType(typeof(ToolContent), "tool")]
 public interface IMessageContent
 {
+    string? Id { get; set; }
+
     int? Index { get; set; }
 }
 
@@ -20,34 +22,32 @@ public interface IMessageContent
 /// </summary>
 public abstract class MessageContentBase : IMessageContent
 {
+    public string? Id { get; set; }
+
     public int? Index { get; set; }
 }
 
 /// <summary>
-/// 텍스트 콘텐츠 블록을 나타냅니다.(For User && Assistant Role)
+/// 텍스트 콘텐츠 블록을 나타냅니다
 /// </summary>
 public class TextContent : MessageContentBase
 {
-    public string? Text { get; set; }
+    public string? Value { get; set; }
 }
 
 /// <summary>
-/// 이미지 콘텐츠 블록을 나타냅니다.(For Assistant Role)
+/// 이미지 콘텐츠 블록을 나타냅니다
 /// </summary>
 public class ImageContent : MessageContentBase
 {
-    public string? Id { get; set; }
-
     public string? Data { get; set; }
 }
 
 /// <summary>
-/// 도구 콘텐츠 블록을 나타냅니다.(For Assistant Role)
+/// 도구 콘텐츠 블록을 나타냅니다
 /// </summary>
 public class ToolContent : MessageContentBase
 {
-    public string? Id { get; set; }
-
     public string? Name { get; set; }
 
     public ToolArguments? Arguments { get; set; }

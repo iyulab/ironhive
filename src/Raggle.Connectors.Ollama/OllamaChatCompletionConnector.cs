@@ -5,6 +5,8 @@ using Raggle.Connectors.Ollama.ChatCompletion;
 using Raggle.Connectors.Ollama.Configurations;
 using Raggle.Connectors.Ollama.Extensions;
 using System.Runtime.CompilerServices;
+using Message = Raggle.Abstractions.ChatCompletion.Messages.Message;
+using OllamaMessage = Raggle.Connectors.Ollama.ChatCompletion.Message;
 
 namespace Raggle.Connectors.Ollama;
 
@@ -37,7 +39,7 @@ public class OllamaChatCompletionConnector : IChatCompletionConnector
     }
 
     /// <inheritdoc />
-    public async Task<ChatCompletionResult<IMessage>> GenerateMessageAsync(
+    public async Task<ChatCompletionResult<Message>> GenerateMessageAsync(
         MessageCollection messages,
         ChatCompletionOptions options,
         CancellationToken cancellationToken = default)
@@ -48,7 +50,7 @@ public class OllamaChatCompletionConnector : IChatCompletionConnector
         var content = new MessageContentCollection();
         content.AddText(response.Message?.Content);
 
-        return new ChatCompletionResult<IMessage>
+        return new ChatCompletionResult<Message>
         {
             EndReason = response.DoneReason switch
             {
@@ -56,8 +58,9 @@ public class OllamaChatCompletionConnector : IChatCompletionConnector
                 _ => null
             },
             TokenUsage = null,
-            Data = new AssistantMessage
+            Data = new Message
             {
+
                 Content = content
             },
         };
@@ -77,7 +80,7 @@ public class OllamaChatCompletionConnector : IChatCompletionConnector
             {
                 Data = new TextContent
                 {
-                    Text = res.Message?.Content
+                    Value = res.Message?.Content
                 },
             };
         }

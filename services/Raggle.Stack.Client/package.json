@@ -35,6 +35,11 @@
       "require": "./src/components/*/index.js",
       "import": "./src/components/*/index.js",
       "types": "./src/components/*/index.d.ts"
+    },
+    "./components/styles/*": {
+      "require": "./src/components/styles/*",
+      "import": "./src/components/styles/*",
+      "types": "./src/components/styles/*"
     }
   },
   "dependencies": {

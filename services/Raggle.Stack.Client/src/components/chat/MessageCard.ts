@@ -14,9 +14,7 @@ export class MessageCard extends LitElement {
       <div class="container">
         <div class="side">
           ${this.avatar ? html`
-            <img class="avatar" src="${this.avatar
-              || '/assets/images/bot-avatar.png'
-            }" alt="Avatar"/>
+            <img class="avatar" src="${this.avatar}" alt="Avatar"/>
           ` : html`
             <div class="avatar holder" aria-hidden="true"></div>
           `}
@@ -58,7 +56,7 @@ export class MessageCard extends LitElement {
     }
 
     .avatar.holder {
-      background-color: #ccc;
+      background-color: var(--hs-secondary-color);
     }
 
     .content {
@@ -76,7 +74,7 @@ export class MessageCard extends LitElement {
     }
 
     .body {
-      background-color: #f5f5f5;
+      background-color: var(--hs-panel-background-color);
       padding: 8px;
       box-sizing: border-box;
       border-radius: 4px;
@@ -92,7 +90,7 @@ export class MessageCard extends LitElement {
 
     .timestamp {
       font-size: 0.7em;
-      color: #666;
+      opacity: 0.7;
     }
   `;
 }

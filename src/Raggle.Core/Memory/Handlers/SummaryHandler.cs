@@ -70,7 +70,7 @@ public class SummaryHandler : IPipelineHandler
         var context = new MessageContext([]);
         context.Messages.AddUserMessage(new TextContent
         {
-            Text = $"Summarize This:\n\n{information}",
+            Value = $"Summarize This:\n\n{information}",
         });
         var response = await _chat.InvokeAsync(context, new ChatCompletionOptions
         {
@@ -83,7 +83,7 @@ public class SummaryHandler : IPipelineHandler
         {
             if (item is TextContent text)
             {
-                sb.AppendLine(text.Text);
+                sb.AppendLine(text.Value);
             }
         }
         var answer = sb.ToString();

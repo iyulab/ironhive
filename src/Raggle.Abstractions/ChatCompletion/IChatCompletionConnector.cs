@@ -13,7 +13,7 @@ public interface IChatCompletionConnector
     /// <summary>
     /// Generates a chat completion message based on the provided request.
     /// </summary>
-    Task<ChatCompletionResult<IMessage>> GenerateMessageAsync(
+    Task<ChatCompletionResult<Message>> GenerateMessageAsync(
         MessageCollection messages,
         ChatCompletionOptions options,
         CancellationToken cancellationToken = default);

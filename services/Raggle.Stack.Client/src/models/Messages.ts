@@ -1,30 +1,29 @@
-export interface TextContent {
-  type: "text";
+export interface MessageContentBase {
+  id?: string;
   index?: number;
-  text?: string;
 }
 
-export interface ImageContent {
+export interface TextContent extends MessageContentBase {
+  type: "text";
+  value?: string;
+}
+
+export interface ImageContent extends MessageContentBase {
   type: "image";
-  index?: number;
   data?: string;
 }
 
-export interface ToolContent {
+export interface ToolContent extends MessageContentBase {
   type: "tool";
-  index?: number;
-  id?: string;
   name?: string;
-  arguments?: string;
-  result?: object;
+  arguments?: any;
+  result?: any;
 }
 
 export type MessageContent = TextContent | ImageContent | ToolContent;
 
-export type MessageRole = "user" | "assistant";
-
 export interface Message {
-  role: MessageRole;
+  role: "user" | "assistant";
   avatar?: string;
   name?: string;
   content?: MessageContent[];

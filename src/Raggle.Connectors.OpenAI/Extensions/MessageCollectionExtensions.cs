@@ -1,9 +1,7 @@
 ﻿using Raggle.Connectors.OpenAI.ChatCompletion;
 using System.Text.Json;
 using OpenAIMessage = Raggle.Connectors.OpenAI.ChatCompletion.Message;
-using UserMessage = Raggle.Abstractions.ChatCompletion.Messages.UserMessage;
 using OpenAIUserMessage = Raggle.Connectors.OpenAI.ChatCompletion.UserMessage;
-using AssistantMessage = Raggle.Abstractions.ChatCompletion.Messages.AssistantMessage;
 using OpenAIAssistantMessage = Raggle.Connectors.OpenAI.ChatCompletion.AssistantMessage;
 using Raggle.Abstractions.ChatCompletion.Messages;
 
@@ -24,7 +22,7 @@ internal static class MessageCollectionExtensions
             if (message.Content == null || message.Content.Count == 0)
                 continue;
 
-            if (message.GetType() == typeof(UserMessage))
+            if (message.Role == MessageRole.User)
             {
                 var um = new OpenAIUserMessage
                 { 
@@ -36,7 +34,7 @@ internal static class MessageCollectionExtensions
                     {
                         um.Content.Add(new TextMessageContent 
                         { 
-                            Text = text.Text ?? string.Empty 
+                            Text = text.Value ?? string.Empty 
                         });
                     }
                     else if (item is ImageContent image)
@@ -52,7 +50,7 @@ internal static class MessageCollectionExtensions
                 }
                 _messages.Add(um);
             }
-            else if (message.GetType() == typeof(AssistantMessage))
+            else if (message.Role == MessageRole.Assistant)
             {
                 foreach (var content in message.Content.SplitContent())
                 {
@@ -63,7 +61,7 @@ internal static class MessageCollectionExtensions
                         if (item is TextContent text)
                         {
                             am.Content ??= string.Empty;
-                            am.Content += text.Text ?? string.Empty;
+                            am.Content += text.Value ?? string.Empty;
                         }
                         else if (item is ToolContent tool)
                         {

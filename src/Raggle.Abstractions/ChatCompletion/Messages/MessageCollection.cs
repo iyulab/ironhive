@@ -2,55 +2,53 @@
 
 namespace Raggle.Abstractions.ChatCompletion.Messages;
 
-public sealed class MessageCollection : ICollection<IMessage>
+public sealed class MessageCollection : ICollection<Message>
 {
-    private readonly List<IMessage> _items;
+    private readonly List<Message> _items;
 
     public MessageCollection()
     {
         _items = new();
     }
 
-    public MessageCollection(IEnumerable<IMessage> messages)
+    public MessageCollection(IEnumerable<Message> messages)
     {
         _items = new(messages);
     }
 
     public void AddUserMessage(IMessageContent content)
     {
-        Add<UserMessage>(content);
+        Add(MessageRole.User, content);
     }
 
     public void AddAssistantMessage(IMessageContent content)
     {
-        Add<AssistantMessage>(content);
+        Add(MessageRole.Assistant, content);
     }
 
-    public void Add<T>(IMessageContent content)
-        where T : IMessage
+    public void Add(MessageRole role, IMessageContent content)
     {
-        if (_items.Last() is T)
+        if (_items.Last().Role == role)
         {
             _items.Last().Content.Add(content);
         }
         else
         {
-            var message = Activator.CreateInstance<T>();
+            var message = new Message { Role = role };
             message.Content.Add(content);
             _items.Add(message);
         }
     }
 
-    public void Add<T>(MessageContentCollection content)
-        where T : IMessage
+    public void Add(MessageRole role, IEnumerable<IMessageContent> content)
     {
-        if (_items.Last() is T)
+        if (_items.Last().Role == role)
         {
             _items.Last().Content.AddRange(content);
         }
         else
         {
-            var message = Activator.CreateInstance<T>();
+            var message = new Message { Role = role };
             message.Content.AddRange(content);
             Add(message);
         }
@@ -62,23 +60,23 @@ public sealed class MessageCollection : ICollection<IMessage>
 
     public bool IsReadOnly => false;
 
-    public IMessage this[int index]
+    public Message this[int index]
     {
         get => _items[index];
         set => _items[index] = value;
     }
 
-    public void Add(IMessage message) => _items.Add(message);
+    public void Add(Message message) => _items.Add(message);
 
-    public bool Remove(IMessage message) => _items.Remove(message);
+    public bool Remove(Message message) => _items.Remove(message);
 
-    public bool Contains(IMessage message) => _items.Contains(message);
+    public bool Contains(Message message) => _items.Contains(message);
 
-    public void CopyTo(IMessage[] array, int arrayIndex) => _items.CopyTo(array, arrayIndex);
+    public void CopyTo(Message[] array, int arrayIndex) => _items.CopyTo(array, arrayIndex);
 
     public void Clear() => _items.Clear();
 
-    public IEnumerator<IMessage> GetEnumerator() => _items.GetEnumerator();
+    public IEnumerator<Message> GetEnumerator() => _items.GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 

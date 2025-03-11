@@ -7,41 +7,7 @@ import type { Message, MessageContent } from "../../models";
 export class ChatRoom extends LitElement {
 
   @property({ type: Boolean }) loading: boolean = false;
-  @property({ type: Array }) messages: Message[] = [
-    {
-      "name": "bot",
-      "role": "assistant",
-      "timestamp": "2021-09-25T10:00:00Z",
-      "content": [
-        {
-          "type": "text",
-          "text": "Hello! How can I help you today?"
-        }
-      ]
-    },
-    {
-      "name": "user",
-      "role": "user",
-      "timestamp": "2021-09-25T10:01:00Z",
-      "content": [
-        {
-          "type": "text",
-          "text": "I have a question about my order."
-        }
-      ]
-    },
-    {
-      "name": "bot",
-      "role": "assistant",
-      "timestamp": "2021-09-25T10:02:00Z",
-      "content": [
-        {
-          "type": "text",
-          "text": "Sure! What is your order number?"
-        }
-      ],
-    }
-  ];
+  @property({ type: Array }) messages: Message[] = [];
 
   render() {
     return html`
@@ -50,12 +16,11 @@ export class ChatRoom extends LitElement {
           ${this.messages.map(msg => html`
             <message-card
               .name=${msg.role}
-              .avatar=${''}
+              .avatar=${'/assets/images/user-avatar.png'}
               .timestamp=${msg.timestamp}>
                 ${msg.content?.map(msg.role === 'user' 
                   ? this.renderUserContent 
                   : this.renderBotContent)}
-              })}
             </message-card>
           `)}
         </div>
@@ -79,7 +44,7 @@ export class ChatRoom extends LitElement {
 
   private renderUserContent = (content: MessageContent) => {
     if (content.type === 'text') {
-      return html`<text-block .value="${content.text}"></text-block>`;
+      return html`<text-block .value="${content.value}"></text-block>`;
     } else {
       return nothing;
     }
@@ -87,7 +52,7 @@ export class ChatRoom extends LitElement {
 
   private renderBotContent = (content: MessageContent) => {
     if (content.type === 'text') {
-      return html`<marked-block .value="${content.text}"></marked-block>`;
+      return html`<marked-block .value="${content.value}"></marked-block>`;
     } else if (content.type === 'tool') {
       return html`<tool-block .value="${content}"></tool-block>`;
     } else {
@@ -104,23 +69,23 @@ export class ChatRoom extends LitElement {
       height: 100%;
       min-width: 320px;
       min-height: 480px;
-      padding: 16px;
-      box-sizing: border-box;
+      color: var(--hs-text-color);
+      background-color: var(--hs-background-color);
     }
 
     .message-area {
-      width: 100%;
-      display: flex;
       flex: 1;
+      display: flex;
       flex-direction: column;
       gap: 16px;
-      padding: 8px 0px;
+      padding: 16px;
       box-sizing: border-box;
       overflow-y: auto;
     }
 
     .input-area {
       width: 100%;
+      height: auto;
     }
   `;
 }

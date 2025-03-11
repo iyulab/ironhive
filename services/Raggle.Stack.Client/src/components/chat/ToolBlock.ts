@@ -1,54 +1,82 @@
 import { LitElement, css, html, nothing } from "lit";
-import { customElement, property } from "lit/decorators.js";
+import { customElement, property, state } from "lit/decorators.js";
 import type { ToolContent } from "../../models";
 
 @customElement('tool-block')
 export class ToolBlock extends LitElement {
 
-  @property({ type: Object }) 
-  value?: ToolContent;
+  @property({ type: Object }) value?: ToolContent;
+
+  @state() status: 'success' | 'failed' | 'process' = 'process';
+  @state() collapsed = true;
 
   render() {
     if (!this.value) return nothing;
     
     return html`
       <div class="container">
-        <h2>${this.value.name ?? 'Unknown tool'}</h2>
-        ${this.value.arguments ? 
-          html`<p><strong>Arguments:</strong> ${this.value.arguments}</p>` 
-          : nothing}
-        ${this.value.result ? 
-          html`<pre><strong>Result:</strong>${JSON.stringify(this.value.result, null, 2)}</pre>` 
-          : nothing}
+        <div class="header">
+          <div class="status">
+            ${this.status}
+          </div>
+          <div class="name">
+            ${this.value.name}
+          </div>
+          <div class="collapse-or-expand-button"
+            @click=${this.toggle}>
+            ${this.collapsed ? '펼치기' : '접기'}
+          </div>
+        </div>
+        <div class="body ${this.collapsed ? 'collapsed' : ''}">
+          <marked-block
+            .value=${`\`\`\`json\n${JSON.stringify(this.value, null, 2)}\n\`\`\``}
+          ></marked-block>
+        </div>
       </div>
     `;
   }
 
+  private toggle() {
+    this.collapsed = !this.collapsed
+  }
+
   static styles = css`
     .container {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-
-    h2 {
-      margin: 0;
-      font-size: 1.2rem;
-      color: #333;
-    }
-
-    p {
-      margin: 0;
-      color: #555;
-    }
-
-    pre {
-      background-color: #eee;
-      padding: 0.5rem;
+      border: 1px solid var(--hs-border-color);
       border-radius: 4px;
-      overflow: auto;
-      margin: 0;
-      white-space: pre-wrap;
+      padding: 4px;
+      box-sizing: border-box;
     }
+
+    .header {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+      justify-content: space-between;
+    }
+
+    .status {
+      width: 30px;
+    }
+
+    .name {
+      flex: 1;
+      font-weight: 600;
+    }
+
+    .collapse-or-expand-button {
+      cursor: pointer;
+    }
+
+    .body {
+      max-height: 1000px;
+      transition: max-height 0.3s ease-out;
+    }
+    .body.collapsed {
+      max-height: 0;
+      overflow: hidden;
+    }
+
   `;
 }

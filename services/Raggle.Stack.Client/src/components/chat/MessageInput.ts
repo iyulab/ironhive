@@ -3,7 +3,7 @@ import { customElement, property } from "lit/decorators.js";
 import { ifDefined } from 'lit/directives/if-defined.js';
 
 import { send } from "../IconData";
-import { SendMessageEvent } from "../../events";
+import { SendMessageEvent } from "../events";
 
 @customElement('message-input')
 export class MessageInput extends LitElement {
@@ -11,8 +11,8 @@ export class MessageInput extends LitElement {
   @property({ type: String }) placeholder?: string;
   @property({ type: Number }) rows?: number;
   @property({ type: Number }) maxlength?: number;
-  @property({ type: Boolean }) disabled = true;
-  @property({ type: String }) value = '';
+  @property({ type: Boolean, reflect: true }) disabled = true;
+  @property({ type: String, reflect: true }) value = '';
 
   render() {
     return html`
@@ -64,6 +64,8 @@ export class MessageInput extends LitElement {
     const value = this.value.trim();
     if (!value) return;
     this.dispatchEvent(new SendMessageEvent(value));
+    this.value = '';
+    this.disabled = true;
   }
 
   static styles = css`
@@ -79,7 +81,7 @@ export class MessageInput extends LitElement {
       flex-direction: column;
       gap: 4px;
       padding: 8px 16px;
-      border: 1px solid hsl(240 5.9% 90%);
+      border: 1px solid var(--hs-border-color);
       border-radius: 4px;
       box-sizing: border-box;
     }
@@ -87,7 +89,7 @@ export class MessageInput extends LitElement {
     .input-area {
       position: relative;
       box-sizing: border-box;
-      max-height: 200px;
+      max-height: 240px;
 
       textarea {
         position: absolute;
@@ -101,6 +103,7 @@ export class MessageInput extends LitElement {
         border: none;
         resize: none;
         outline: none;
+        color: currentColor;
         background-color: transparent;
         font-size: inherit;
         line-height: inherit;
@@ -109,15 +112,14 @@ export class MessageInput extends LitElement {
       }
 
       .filler {
+        min-height: 56px;
+        display: block;
         visibility: hidden;
         pointer-events: none;
-        min-height: 56px;
         font-size: inherit;
         line-height: inherit;
         word-break: break-word;
         white-space: pre-wrap;
-        display: block;
-        overflow: auto;
       }
     }
 
@@ -137,23 +139,18 @@ export class MessageInput extends LitElement {
         align-items: center;
         justify-content: center;
         border-radius: 4px;
-        padding: 4px;
+        padding: 8px;
         box-sizing: border-box;
-        background-color: hsl(240 5.9% 90%);
-        width: 40px;
-        height: 30px;
+        background-color: var(--hs-primary-color);
         cursor: pointer;
       }
 
       .send-button:active {
-        background-color: hsl(240 5.9% 80%);
+        opacity: 0.8;
       }
       .send-button[disabled] {
-        background-color: hsl(240 5.9% 95%);
+        opacity: 0.5; 
         cursor: not-allowed;
-      }
-      .send-button[disabled]:active {
-        background-color: hsl(240 5.9% 95%);
       }
     }
   `;

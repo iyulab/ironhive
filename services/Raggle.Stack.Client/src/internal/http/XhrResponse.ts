@@ -1,10 +1,10 @@
 import { HttpResponse } from "./HttpResponse";
 
 export class XhrResponse implements HttpResponse {
-  private readonly xhr: XMLHttpRequest;
+  private readonly _xhr: XMLHttpRequest;
 
   constructor(xhr: XMLHttpRequest) {
-    this.xhr = xhr;
+    this._xhr = xhr;
   }
 
   public get ok(): boolean {
@@ -12,12 +12,12 @@ export class XhrResponse implements HttpResponse {
   }
 
   public get status(): number {
-    return this.xhr.status;
+    return this._xhr.status;
   }
 
   public get headers(): Headers {
     const headers = new Headers();
-    const headerLines = this.xhr.getAllResponseHeaders().trim().split(/[\r\n]+/);
+    const headerLines = this._xhr.getAllResponseHeaders().trim().split(/[\r\n]+/);
     headerLines.forEach((line) => {
       const parts = line.split(': ');
       const header = parts.shift();
@@ -30,7 +30,7 @@ export class XhrResponse implements HttpResponse {
   }
 
   public get url(): string {
-    return this.xhr.responseURL;
+    return this._xhr.responseURL;
   }
 
   public get redirected(): boolean {
@@ -39,30 +39,30 @@ export class XhrResponse implements HttpResponse {
   }
 
   public text(): Promise<string> {
-    return Promise.resolve(this.xhr.responseText);
+    return Promise.resolve(this._xhr.responseText);
   }
 
   public bytes(): Promise<Uint8Array> {
-    return Promise.resolve(new Uint8Array(this.xhr.response as ArrayBuffer));
+    return Promise.resolve(new Uint8Array(this._xhr.response as ArrayBuffer));
   }
 
   public blob(): Promise<Blob> {
-    return Promise.resolve(this.xhr.response as Blob);
+    return Promise.resolve(this._xhr.response as Blob);
   }
 
   public arrayBuffer(): Promise<ArrayBuffer> {
-    return Promise.resolve(this.xhr.response as ArrayBuffer);
+    return Promise.resolve(this._xhr.response as ArrayBuffer);
   }
 
   public formData(): Promise<FormData> {
-    return Promise.resolve(this.xhr.response as FormData);
+    return Promise.resolve(this._xhr.response as FormData);
   }
 
   public json<T>(): Promise<T> {
-    return Promise.resolve(JSON.parse(this.xhr.responseText));
+    return Promise.resolve(JSON.parse(this._xhr.responseText));
   }
 
   public cancel(): void {
-    this.xhr.abort();
+    this._xhr.abort();
   }
 }

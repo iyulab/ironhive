@@ -2,6 +2,8 @@
 using Raggle.Connectors.Ollama.ChatCompletion;
 using System.Text.Json;
 using OllamaMessage = Raggle.Connectors.Ollama.ChatCompletion.Message;
+using MessageRole = Raggle.Abstractions.ChatCompletion.Messages.MessageRole;
+using OllamaMessageRole = Raggle.Connectors.Ollama.ChatCompletion.MessageRole;
 
 namespace Raggle.Connectors.Ollama.Extensions;
 
@@ -15,7 +17,7 @@ internal static class MessageCollectionExtensions
         {
             _messages.Add(new OllamaMessage
             {
-                Role = MessageRole.System,
+                Role = OllamaMessageRole.System,
                 Content = system
             });
         }
@@ -25,15 +27,18 @@ internal static class MessageCollectionExtensions
             if (message.Content == null || message.Content.Count == 0)
                 continue;
 
-            if (message.GetType() == typeof(UserMessage))
+            if (message.Role == MessageRole.User)
             {
-                var um = new OllamaMessage { Role = MessageRole.User };
+                var um = new OllamaMessage 
+                { 
+                    Role = OllamaMessageRole.User 
+                };
                 foreach (var item in message.Content)
                 {
                     if (item is TextContent text)
                     {
                         um.Content ??= string.Empty;
-                        um.Content += text.Text;
+                        um.Content += text.Value;
                     }
                     else if (item is ImageContent image)
                     {
@@ -43,17 +48,23 @@ internal static class MessageCollectionExtensions
                 }
                 _messages.Add(um);
             }
-            else if (message.GetType() == typeof(AssistantMessage))
+            else if (message.Role == MessageRole.Assistant)
             {
                 foreach (var item in message.Content)
                 {
-                    var am = new OllamaMessage { Role = MessageRole.Assistant };
-                    var tm = new OllamaMessage { Role = MessageRole.Tool };
+                    var am = new OllamaMessage 
+                    { 
+                        Role = OllamaMessageRole.Assistant 
+                    };
+                    var tm = new OllamaMessage 
+                    {
+                        Role = OllamaMessageRole.Tool 
+                    };
 
                     if (item is TextContent text)
                     {
                         am.Content ??= string.Empty;
-                        am.Content += text.Text;
+                        am.Content += text.Value;
                     }
                     else if (item is ToolContent tool)
                     {

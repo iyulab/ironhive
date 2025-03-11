@@ -1,2 +1,0 @@
-export { SendMessageEvent } from './SendMessageEvent';
-

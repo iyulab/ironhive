@@ -2,6 +2,8 @@
 using Raggle.Connectors.Anthropic.ChatCompletion;
 using AnthropicMessage = Raggle.Connectors.Anthropic.ChatCompletion.Message;
 using Raggle.Abstractions.ChatCompletion.Messages;
+using MessageRole = Raggle.Abstractions.ChatCompletion.Messages.MessageRole;
+using AnthropicMessageRole = Raggle.Connectors.Anthropic.ChatCompletion.MessageRole;
 
 namespace Raggle.Abstractions.AI;
 
@@ -16,11 +18,11 @@ internal static class MessageCollectionExtensions
             if (message.Content == null || message.Content.Count == 0)
                 continue;
 
-            if (message.GetType() == typeof(UserMessage))
+            if (message.Role == MessageRole.User)
             {
                 var um = new AnthropicMessage
                 {
-                    Role = MessageRole.User,
+                    Role = AnthropicMessageRole.User,
                     Content = new List<MessageContent>()
                 };
                 foreach (var item in message.Content)
@@ -29,7 +31,7 @@ internal static class MessageCollectionExtensions
                     {
                         um.Content.Add(new TextMessageContent
                         {
-                            Text = text.Text ?? string.Empty
+                            Text = text.Value ?? string.Empty
                         });
                     }
                     else if (item is ImageContent image)
@@ -46,18 +48,18 @@ internal static class MessageCollectionExtensions
                 }
                 _messages.Add(um);
             }
-            else if (message.GetType() == typeof(AssistantMessage))
+            else if (message.Role == MessageRole.Assistant)
             {
                 foreach (var content in message.Content.SplitContent())
                 {
                     var am = new AnthropicMessage
                     {
-                        Role = MessageRole.Assistant,
+                        Role = AnthropicMessageRole.Assistant,
                         Content = new List<MessageContent>()
                     };
                     var um = new AnthropicMessage
                     {
-                        Role = MessageRole.User,
+                        Role = AnthropicMessageRole.User,
                         Content = new List<MessageContent>()
                     };
                     foreach (var item in content)
@@ -66,7 +68,7 @@ internal static class MessageCollectionExtensions
                         {
                             am.Content.Add(new TextMessageContent
                             {
-                                Text = text.Text ?? string.Empty
+                                Text = text.Value ?? string.Empty
                             });
                         }
                         else if (item is ToolContent tool)
