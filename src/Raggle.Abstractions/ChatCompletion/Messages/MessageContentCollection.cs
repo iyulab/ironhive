@@ -1,5 +1,5 @@
-﻿using Raggle.Abstractions.ChatCompletion.Tools;
-using System.Collections;
+﻿using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Raggle.Abstractions.ChatCompletion.Messages;
 
@@ -35,11 +35,7 @@ public class MessageContentCollection : ICollection<IMessageContent>
     /// <summary>
     /// ToolContent를 추가합니다.
     /// </summary>
-    public void AddTool(
-        string? id,
-        string? name,
-        ToolArguments? arguments,
-        ToolResult? result)
+    public void AddTool(string? id, string? name, string? arguments, string? result)
     {
         Add(new ToolContent
         {
@@ -50,12 +46,30 @@ public class MessageContentCollection : ICollection<IMessageContent>
         });
     }
 
+    /// <summary>
+    /// 배열을 추가합니다.
+    /// </summary>
     public void AddRange(IEnumerable<IMessageContent> collection)
     {
         foreach (var item in collection)
         {
             Add(item);
         }
+    }
+
+    /// <summary>
+    /// 해당 인덱스의 아이템을 가져옵니다.
+    /// </summary>
+    public bool TryGetAt<T>(int index, [MaybeNullWhen(false)] out T item) 
+        where T : IMessageContent
+    {
+        if (index >= 0 && index < _items.Count && _items[index] is T typedItem)
+        {
+            item = typedItem;
+            return true;
+        }
+        item = default;
+        return false;
     }
 
     #region ICollection Implementations
@@ -72,7 +86,8 @@ public class MessageContentCollection : ICollection<IMessageContent>
 
     public void Add(IMessageContent item)
     {
-        item.Index ??= _items.Count;
+        // 인덱스 번호를 자동으로 설정합니다.
+        item.Index = _items.Count;
         _items.Add(item);
     }
 

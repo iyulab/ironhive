@@ -43,15 +43,17 @@ export class TestPage extends LitElement {
       content: [{ type: 'text', value: value }]
     }
     this.messages = [...this.messages, user_msg];
+    const anth = "anthropic/claude-3-5-haiku-latest";
+    const open = "openai/gpt-4o-mini";
     const res = await this._client.chatCompletionAsync({
-      model: 'openai/gpt-4o-mini',
+      model: anth,
       messages: this.messages,
-      system: "you are the best assistant ever",
-      stream: false
+      system: "you are a chatbot politely responding to user messages",
+      stream: true
     });
-    const bot_msg = (await res.json() as any).data as Message;
-    this.messages = [...this.messages, bot_msg];
-    console.log(this.messages);
+    // const bot_msg = (await res.json() as any).data as Message;
+    // this.messages = [...this.messages, bot_msg];
+    // console.log(this.messages);
   }
 
   static styles = css`

@@ -1,5 +1,4 @@
 ﻿using Raggle.Connectors.OpenAI.ChatCompletion;
-using System.Text.Json;
 using OpenAIMessage = Raggle.Connectors.OpenAI.ChatCompletion.Message;
 using OpenAIUserMessage = Raggle.Connectors.OpenAI.ChatCompletion.UserMessage;
 using OpenAIAssistantMessage = Raggle.Connectors.OpenAI.ChatCompletion.AssistantMessage;
@@ -34,7 +33,7 @@ internal static class MessageCollectionExtensions
                     {
                         um.Content.Add(new TextMessageContent 
                         { 
-                            Text = text.Value ?? string.Empty 
+                            Text = text.Value ?? string.Empty
                         });
                     }
                     else if (item is ImageContent image)
@@ -42,7 +41,7 @@ internal static class MessageCollectionExtensions
                         um.Content.Add(new ImageMessageContent 
                         {
                             ImageURL = new ImageURL 
-                            { 
+                            {
                                 URL = image.Data ?? string.Empty,
                             } 
                         });
@@ -73,14 +72,14 @@ internal static class MessageCollectionExtensions
                                 Function = new FunctionCall
                                 {
                                     Name = tool.Name,
-                                    Arguments = tool.Arguments?.ToString()
+                                    Arguments = tool.Arguments
                                 }
                             });
 
                             tms.Add(new ToolMessage
                             {
                                 ID = tool.Id ?? string.Empty,
-                                Content = JsonSerializer.Serialize(tool.Result)
+                                Content = tool.Result ?? string.Empty,
                             });
                         }
                     }

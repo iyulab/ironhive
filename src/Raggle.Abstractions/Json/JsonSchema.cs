@@ -32,7 +32,7 @@ public class StringJsonSchema : JsonSchema
     public int? MaxLength { get; set; }
 
     [JsonPropertyName("enum")]
-    public string[]? Enum { get; set; }
+    public IEnumerable<string>? Enum { get; set; }
 
     public StringJsonSchema(string? description = null) : base(description) { }
 }
@@ -40,7 +40,7 @@ public class StringJsonSchema : JsonSchema
 public class IntegerJsonSchema : JsonSchema
 {
     [JsonPropertyName("format")]
-    public required string Format { get; set; }
+    public string? Format { get; set; }
 
     public IntegerJsonSchema(string? description = null) : base(description) { }
 }
@@ -48,7 +48,7 @@ public class IntegerJsonSchema : JsonSchema
 public class NumberJsonSchema : JsonSchema
 {
     [JsonPropertyName("format")]
-    public required string Format { get; set; }
+    public string? Format { get; set; }
 
     public NumberJsonSchema(string? description = null) : base(description) { }
 }
@@ -86,7 +86,7 @@ public class ObjectJsonSchema : JsonSchema
     public IDictionary<string, JsonSchema>? Properties { get; set; }
 
     [JsonPropertyName("required")]
-    public string[]? Required { get; set; }
+    public IEnumerable<string>? Required { get; set; }
 
     [JsonPropertyName("additionalProperties")]
     public JsonSchema? AdditionalProperties { get; set; }

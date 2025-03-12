@@ -8,7 +8,7 @@ internal class MessagesRequest
     public required string Model { get; set; }
 
     [JsonPropertyName("max_tokens")]
-    public int? MaxTokens { get; set; }
+    public required int MaxTokens { get; set; }
 
     [JsonPropertyName("messages")]
     public required IEnumerable<Message> Messages { get; set; }

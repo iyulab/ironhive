@@ -15,6 +15,7 @@ using Message = Raggle.Abstractions.ChatCompletion.Messages.Message;
 using AnthropicMessage = Raggle.Connectors.Anthropic.ChatCompletion.Message;
 using MessageRole = Raggle.Abstractions.ChatCompletion.Messages.MessageRole;
 using AnthropicMessageRole = Raggle.Connectors.Anthropic.ChatCompletion.MessageRole;
+using System.Text.Json;
 
 namespace Raggle.Connectors.Anthropic;
 
@@ -66,11 +67,11 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
             }
             else if (item is ToolUseMessageContent tool)
             {
-                content.AddTool(tool.ID, tool.Name, new ToolArguments(tool.Input), null);
+                content.AddTool(tool.ID, tool.Name, JsonSerializer.Serialize(tool.Input), null);
             }
             else
             {
-                Debug.WriteLine($"Unexpected message content type: {item.GetType()}");
+                throw new InvalidOperationException($"Unexpected content type: {item.GetType()}");
             }
         }
 
@@ -86,7 +87,6 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
             },
             TokenUsage = new TokenUsage
             {
-                TotalTokens = res.Usage.InputTokens + res.Usage.OutputTokens,
                 InputTokens = res.Usage.InputTokens,
                 OutputTokens = res.Usage.OutputTokens
             },
@@ -110,9 +110,17 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
 
         await foreach (var res in _client.PostStreamingMessagesAsync(req, cancellationToken))
         {
-            if (res is MessageStartEvent)
+            if (res is MessageStartEvent mse)
             {
                 // 시작 이벤트
+                yield return new ChatCompletionResult<IMessageContent>
+                {
+                    TokenUsage = new TokenUsage
+                    {
+                        InputTokens = mse.Message?.Usage.InputTokens,
+                        OutputTokens = mse.Message?.Usage.OutputTokens
+                    }
+                };
             }
             else if (res is ContentStartEvent cse)
             {
@@ -137,9 +145,7 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                         {
                             Index = cse.Index,
                             Id = tool.ID,
-                            Name = tool.Name,
-                            Arguments = null,
-                            Result = null
+                            Name = tool.Name
                         }
                     };
                 }
@@ -165,10 +171,7 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                         Data = new ToolContent
                         {
                             Index = cde.Index,
-                            Id = null,
-                            Name = null,
-                            Arguments = null,
-                            Result = null
+                            Arguments = tool.PartialJson,
                         }
                     };
                 }
@@ -192,7 +195,6 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                     },
                     TokenUsage = new TokenUsage
                     {
-                        TotalTokens = mde.Usage?.InputTokens + mde.Usage?.OutputTokens,
                         InputTokens = mde.Usage?.InputTokens,
                         OutputTokens = mde.Usage?.OutputTokens
                     },
@@ -212,7 +214,7 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
             }
             else
             {
-                Debug.WriteLine($"Unexpected event: {res.GetType()}");
+                throw new InvalidOperationException($"Unexpected event type: {res.GetType()}");
             }
         }
     }
@@ -224,7 +226,7 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
             Model = options.Model,
             System = options.System,
             Messages = messages.ToAnthropic(),
-            MaxTokens = options.MaxTokens,
+            MaxTokens = options.MaxTokens ?? 8192,
             Temperature = options.Temperature,
             TopK = options.TopK,
             TopP = options.TopP,
@@ -237,7 +239,7 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
             {
                 Name = t.Name,
                 Description = t.Description,
-                InputSchema = new
+                InputSchema = new ToolInputSchema
                 {
                     Properties = t.Parameters,
                     Required = t.Required,

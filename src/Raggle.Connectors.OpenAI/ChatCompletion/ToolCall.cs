@@ -4,14 +4,14 @@ namespace Raggle.Connectors.OpenAI.ChatCompletion;
 
 internal class ToolCall
 {
+    [JsonPropertyName("type")]
+    public string Type { get; } = "function";
+
     [JsonPropertyName("index")]
     public int? Index { get; set; }
 
     [JsonPropertyName("id")]
     public string? ID { get; set; }
-
-    [JsonPropertyName("type")]
-    public string Type { get; } = "function";
 
     [JsonPropertyName("function")]
     public FunctionCall? Function { get; set; }

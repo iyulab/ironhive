@@ -7,10 +7,12 @@ namespace Raggle.Abstractions.ChatCompletion.Tools;
 
 public class ToolArguments : IDictionary<string, object>
 {
-    private Dictionary<string, object> _inner = new();
+    private Dictionary<string, object> _inner;
 
     public ToolArguments()
-    { }
+    {
+        _inner = new Dictionary<string, object>();
+    }
 
     public ToolArguments(IDictionary<string, object> dic)
     {
@@ -21,6 +23,8 @@ public class ToolArguments : IDictionary<string, object>
     {
         if (TryParseJson(json, out var value))
             _inner = value;
+        else
+            _inner = new Dictionary<string, object>();
     }
 
     public ToolArguments(object? obj)

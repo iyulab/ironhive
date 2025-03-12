@@ -10,77 +10,37 @@ namespace Raggle.Core;
 
 public class HiveMindBuilder : IHiveMindBuilder
 {
-    public IServiceCollection Services { get; }
-    public IHiveServiceContainer Container { get; }
+    public IHiveServiceContainer Services { get; }
 
     public HiveMindBuilder()
     {
-        Services = new ServiceCollection();
-        Container = new HiveServiceContainer();
+        Services = new HiveServiceContainer();
     }
 
-    public HiveMindBuilder(IServiceCollection services)
-    {
-        Services = services;
-        Container = new HiveServiceContainer();
-        Services.AddSingleton(Container);
-    }
-
-    public IHiveMindBuilder AddService<TService, TImplementation>()
+    public IHiveMindBuilder AddKeyedService<TService>(string serviceKey, TService instance)
         where TService : class
-        where TImplementation : class, TService
     {
-        Services.AddSingleton<TService, TImplementation>();
+        Services.RegisterKeyedService(serviceKey, instance);
         return this;
     }
 
-    public IHiveMindBuilder AddKeyedService<TService, TImplementation>(string serviceKey, TImplementation instance)
-        where TService : class
-        where TImplementation : class, TService
-    {
-        Container.RegisterKeyedService<TService, TImplementation>(serviceKey, instance);
-        return this;
-    }
+    public IHiveMindBuilder AddChatCompletionConnector(string serviceKey, IChatCompletionConnector connector)
+        => AddKeyedService(serviceKey, connector);
 
-    public IHiveMindBuilder AddChatCompletionConnector<T>(string serviceKey, T connector)
-        where T : class, IChatCompletionConnector
-        => AddKeyedService<IChatCompletionConnector, T>(serviceKey, connector);
+    public IHiveMindBuilder AddEmbeddingConnector(string serviceKey, IEmbeddingConnector connector)
+        => AddKeyedService(serviceKey, connector);
 
-    public IHiveMindBuilder AddEmbeddingConnector<T>(string serviceKey, T connector)
-        where T : class, IEmbeddingConnector
-        => AddKeyedService<IEmbeddingConnector, T>(serviceKey, connector);
-
-    public IHiveMindBuilder AddFileStorage<T>(string serviceKey, T storage)
-        where T : class, IFileStorage
-        => AddKeyedService<IFileStorage, T>(serviceKey, storage);
-
-    public IHiveMind Build()
-    {
-        Services.AddSingleton<IModelParser, ServiceModelParser>();
-        Services.AddSingleton<IChatCompletionService, ChatCompletionService>();
-        Services.AddSingleton<IEmbeddingService, EmbeddingService>();
-        var provider = Services.BuildServiceProvider();
-        return new HiveMind(provider);
-    }
+    public IHiveMindBuilder AddFileStorage(string serviceKey, IFileStorage storage)
+        => AddKeyedService(serviceKey, storage);
 }
 
 public static class ServiceCollectionExtensions
 {
-    public static IHiveMindBuilder AddHiveServices(this IServiceCollection services)
+    public static IServiceCollection AddHiveServices(this IServiceCollection services)
     {
-        var builder = new HiveMindBuilder(services);
-
-        builder.AddService<IChatCompletionService, ChatCompletionService>();
-        builder.AddService<IEmbeddingService, EmbeddingService>();
-
-        // 메모리 서비스(벡터 스토리지) ~
-
-        // AI 서비스 ~
-
-        // 파일 스토리지 ~
-
-        builder.AddService<IModelParser, ServiceModelParser>();
-
-        return builder;
+        services.AddSingleton<IChatCompletionService, ChatCompletionService>();
+        services.AddSingleton<IEmbeddingService, EmbeddingService>();
+        services.AddSingleton<IModelParser, ServiceModelParser>();
+        return services;
     }
 }

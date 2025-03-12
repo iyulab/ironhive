@@ -1,10 +1,13 @@
+<title>
+  good
+</title>
+
 # STRUCTURE
 
 ## Core
 
 ```yaml
 - IHive
-
 
 - ChatAgent : IAgent<MessageRequest, MessageRespone>
   - ID

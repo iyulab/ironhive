@@ -1,9 +1,9 @@
-﻿using System.Text.Json;
-using Raggle.Connectors.Anthropic.ChatCompletion;
+﻿using Raggle.Connectors.Anthropic.ChatCompletion;
 using AnthropicMessage = Raggle.Connectors.Anthropic.ChatCompletion.Message;
 using Raggle.Abstractions.ChatCompletion.Messages;
 using MessageRole = Raggle.Abstractions.ChatCompletion.Messages.MessageRole;
 using AnthropicMessageRole = Raggle.Connectors.Anthropic.ChatCompletion.MessageRole;
+using Raggle.Abstractions.ChatCompletion.Tools;
 
 namespace Raggle.Abstractions.AI;
 
@@ -77,16 +77,18 @@ internal static class MessageCollectionExtensions
                             {
                                 ID = tool.Id,
                                 Name = tool.Name,
-                                Input = tool.Arguments
+                                Input = new ToolArguments(tool.Arguments)
                             });
+
                             um.Content.Add(new ToolResultMessageContent
                             {
-                                IsError = tool.Result?.IsSuccess != true,
+                                IsError = ToolStatus.Failed == tool.Status,
                                 ToolUseID = tool.Id,
-                                Content = JsonSerializer.Serialize(tool.Result)
+                                Content = tool.Result ?? string.Empty
                             });
                         }
                     }
+
                     _messages.Add(am);
                     if (um.Content.Count != 0)
                         _messages.Add(um);

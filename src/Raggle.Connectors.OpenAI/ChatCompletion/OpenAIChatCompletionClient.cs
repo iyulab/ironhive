@@ -49,6 +49,7 @@ internal class OpenAIChatCompletionClient : OpenAIClientBase
             var line = await reader.ReadLineAsync(cancellationToken);
             if (string.IsNullOrWhiteSpace(line) || !line.StartsWith("data"))
                 continue;
+            Console.WriteLine(line);
 
             var data = line.Substring("data:".Length).Trim();
             if (!data.StartsWith('{') || !data.EndsWith('}'))

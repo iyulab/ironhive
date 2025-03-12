@@ -50,56 +50,58 @@ public class ChatCompletionService : IChatCompletionService
             throw new KeyNotFoundException($"Service key '{serviceKey}' not found.");
         options.Model = model;
 
-        var count = 0;
+        bool doLoop = true;
         var messages = context.Messages.Clone();
-        EndReason? reason = null;
-        Message? message = new Message();
-        TokenUsage? usage = new TokenUsage();
-        while (count < context.MaxLoopCount)
+
+        while (doLoop)
         {
             var res = await connector.GenerateMessageAsync(messages, options, cancellationToken);
-            reason = res.EndReason;
 
-            if (reason == EndReason.ToolCall)
+            if (res.EndReason == EndReason.ToolCall)
             {
-                var tc = res.Data?.Content.OfType<ToolContent>() ?? [];
-                foreach (var t in tc)
+                var toolContents = res.Data?.Content.OfType<ToolContent>() ?? [];
+                foreach (var content in toolContents)
                 {
-                    if (options.Tools == null || string.IsNullOrEmpty(t.Name))
+                    if (options.Tools == null || string.IsNullOrEmpty(content.Name))
                         continue;
-
-                    t.Result = options.Tools.TryGetValue(t.Name, out var tool)
-                        ? await tool.InvokeAsync(t.Arguments)
-                        : ToolResult.Failed($"Tool '{t.Name}' not found.");
+                    if (options.Tools.TryGetValue(content.Name, out var tool))
+                    {
+                        var args = new ToolArguments(content.Arguments);
+                        var result = await tool.InvokeAsync(args);
+                        content.Status = result.IsSuccess ? ToolStatus.Completed : ToolStatus.Failed;
+                        content.Result = result.ToString();
+                    }
+                    else
+                    {
+                        content.Status = ToolStatus.Failed;
+                        content.Result = $"Tool '{content.Name}' not found.";
+                    }
                 }
-                message = res.Data;
+
+                if (res.Data == null)
+                    throw new InvalidOperationException("Tool call end reason without data.");
+
+                messages.Add(res.Data);
+                doLoop = true;
             }
-            else if (reason == EndReason.MaxTokens)
+            else if (res.EndReason == EndReason.MaxTokens)
             {
-                return new ChatCompletionResult<Message>
-                {
-                    EndReason = reason,
-                    Data = res.Data,
-                    TokenUsage = res.TokenUsage,
-                };
+                doLoop = true;
+                throw new NotImplementedException("Max tokens reached. not supported yet.");
             }
             else
             {
+                doLoop = false;
                 return new ChatCompletionResult<Message>
                 {
-                    EndReason = reason,
+                    EndReason = res.EndReason,
                     Data = res.Data,
                     TokenUsage = res.TokenUsage,
                 };
             }
         }
 
-        return new ChatCompletionResult<Message>
-        {
-            EndReason = EndReason.ToolFailed,
-            Data = message,
-            TokenUsage = usage,
-        };
+        throw new InvalidOperationException("Unexpected end of loop.");
     }
 
     /// <inheritdoc />
@@ -108,39 +110,125 @@ public class ChatCompletionService : IChatCompletionService
         ChatCompletionOptions options,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        #region Tool Test
+        options.Tools ??= new ToolCollection();
+        var tt = FunctionToolFactory.CreateFromObject(this);
+        options.Tools.AddRange(tt);
+        #endregion
+
         var (serviceKey, model) = _parser.Parse(options.Model);
         if (!_connectors.TryGetValue(serviceKey, out var connector))
             throw new KeyNotFoundException($"Service key '{serviceKey}' not found.");
         options.Model = model;
 
-        var count = 0;
+        bool doLoop = true;
         var messages = context.Messages.Clone();
-        EndReason? reason = null;
-        Message? message = new Message();
-        TokenUsage? usage = new TokenUsage();
 
-        while (count < 3)
+        while (doLoop)
         {
-            count++;
+            var message = new Message(MessageRole.Assistant);
+            EndReason? reason = null;
+            TokenUsage? usage = null;
             await foreach (var res in connector.GenerateStreamingMessageAsync(messages, options, cancellationToken))
             {
-                if (res.Data == null)
-                    continue;
+                yield return res;
 
-                message.Content.Add(res.Data);
-                if (res.EndReason == EndReason.ToolCall)
+                if (res.Data != null)
                 {
-                    yield return res;
+                    if (res.Data is TextContent text)
+                    {
+                        if (message.Content.LastOrDefault() is TextContent last)
+                            last.Value += text.Value;
+                        else
+                            message.Content.Add(text);
+                    }
+
+                    if (res.Data is ToolContent tool)
+                    {
+                        if (tool.Index != null && message.Content.TryGetAt<ToolContent>((int)tool.Index, out var last))
+                            last.Arguments += tool.Arguments;
+                        else
+                            message.Content.Add(tool);
+                    }
                 }
-                else if (res.EndReason == EndReason.MaxTokens)
+                if (res.EndReason != null)
                 {
-                    yield return res;
+                    reason = res.EndReason;
                 }
-                else
+                if (res.TokenUsage != null)
                 {
-                    yield return res;
+                    usage = res.TokenUsage;
                 }
             }
+
+            if (reason == EndReason.ToolCall)
+            {
+                var toolContents = message.Content.OfType<ToolContent>();
+                foreach (var content in toolContents)
+                {
+                    if (content.Name == null || options.Tools == null)
+                        continue;
+
+                    if (options.Tools.TryGetValue(content.Name, out var tool))
+                    {
+                        content.Status = ToolStatus.Running;
+                        yield return new ChatCompletionResult<IMessageContent>
+                        {
+                            Data = content,
+                        };
+
+                        var args = new ToolArguments(content.Arguments);
+                        var result = await tool.InvokeAsync(args);
+                        content.Status = result.IsSuccess ? ToolStatus.Completed : ToolStatus.Failed;
+                        content.Result = result.ToString();
+
+                        yield return new ChatCompletionResult<IMessageContent>
+                        {
+                            Data = content,
+                        };
+                    }
+                    else
+                    {
+                        content.Status = ToolStatus.Failed;
+                        content.Result = $"Tool '{content.Name}' not found.";
+
+                        yield return new ChatCompletionResult<IMessageContent>
+                        {
+                            Data = content,
+                        };
+                    }
+
+                    messages.Add(message);
+                    doLoop = true;
+                }
+            }
+            else if (reason == EndReason.MaxTokens)
+            {
+                doLoop = true;
+                throw new NotImplementedException("Max tokens reached. not supported yet.");
+            }
+            else
+            {
+                doLoop = false;
+            }
         }
+    }
+
+    [FunctionTool("date-previous")]
+    public DateTime GetPreviousTime(int days)
+    {
+        return DateTime.UtcNow.AddDays(-days);
+    }
+
+    [FunctionTool("date-now")]
+    public DateTime GetNow()
+    {
+        return DateTime.UtcNow;
+    }
+
+    [FunctionTool("date-next")]
+    public DateTime GetNextTime(int days)
+    {
+        return DateTime.UtcNow.AddDays(days);
     }
 }

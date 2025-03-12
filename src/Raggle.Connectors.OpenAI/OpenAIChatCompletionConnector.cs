@@ -56,11 +56,7 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
         {
             foreach (var t in choice.Message.ToolCalls)
             {
-                content.AddTool(
-                    t.ID,
-                    t.Function?.Name,
-                    new ToolArguments(t.Function?.Arguments),
-                    null);
+                content.AddTool(t.ID, t.Function?.Name, t.Function?.Arguments, null);
             }
         }
         if (!string.IsNullOrWhiteSpace(choice?.Message?.Content))
@@ -80,7 +76,7 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
             },
             TokenUsage = new TokenUsage
             {
-                TotalTokens = response.Usage?.TotalTokens,
+                //TotalTokens = response.Usage?.TotalTokens,
                 InputTokens = response.Usage?.PromptTokens,
                 OutputTokens = response.Usage?.CompletionTokens
             },
@@ -109,6 +105,7 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
 
             if (choice.FinishReason != null)
             {
+                // 메시지 종료
                 yield return new ChatCompletionResult<IMessageContent>
                 {
                     EndReason = choice.FinishReason switch
@@ -121,7 +118,7 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
                     },
                     TokenUsage = new TokenUsage
                     {
-                        TotalTokens = response.Usage?.TotalTokens,
+                        //TotalTokens = response.Usage?.TotalTokens,
                         InputTokens = response.Usage?.PromptTokens,
                         OutputTokens = response.Usage?.CompletionTokens
                     },
@@ -129,6 +126,7 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
             }
             else if (choice.Delta?.Content != null)
             {
+                // 텍스트 생성
                 yield return new ChatCompletionResult<IMessageContent>
                 {
                     Data = new TextContent
@@ -140,6 +138,7 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
             }
             else if (choice.Delta?.ToolCalls?.First() != null)
             {
+                // 툴 사용
                 var t = choice.Delta.ToolCalls.First();
 
                 yield return new ChatCompletionResult<IMessageContent>
@@ -149,13 +148,9 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
                         Index = t.Index,
                         Id = t.ID,
                         Name = t.Function?.Name,
-                        Arguments = new ToolArguments(t.Function?.Arguments)
+                        Arguments = t.Function?.Arguments
                     }
                 };
-            }
-            else
-            {
-                continue;
             }
         }
     }
@@ -183,11 +178,11 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
                 {
                     Name = t.Name,
                     Description = t.Description,
-                    Parameters = new
+                    Parameters = t.Parameters != null ? new FunctionParameters
                     {
                         Properties = t.Parameters,
-                        t.Required,
-                    }
+                        Required = t.Required,
+                    }: null
                 }
             });
 

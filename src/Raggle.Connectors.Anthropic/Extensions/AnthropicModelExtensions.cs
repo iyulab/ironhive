@@ -6,6 +6,6 @@ internal static class AnthropicModelExtensions
 {
     internal static bool IsChatCompletion(this AnthropicModel model)
     {
-        return model.ID.Contains("claude-3-5");
+        return model.ID.Contains("claude-3");
     }
 }

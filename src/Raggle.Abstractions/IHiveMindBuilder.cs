@@ -1,23 +1,25 @@
-﻿namespace Raggle.Abstractions;
+﻿using Raggle.Abstractions.ChatCompletion;
+using Raggle.Abstractions.Embedding;
+using Raggle.Abstractions.Memory;
+
+namespace Raggle.Abstractions;
 
 public interface IHiveMindBuilder
 {
     /// <summary>
-    /// Register a service as a singleton.
-    /// </summary>
-    IHiveMindBuilder AddService<TService, TImplementation>()
-        where TService : class
-        where TImplementation : class, TService;
-
-    /// <summary>
     /// Register a keyed service to IHiveServiceRegistry.
     /// </summary>
-    IHiveMindBuilder AddKeyedService<TService, TImplementation>(string serviceKey, TImplementation instance)
-        where TService : class
-        where TImplementation : class, TService;
+    IHiveMindBuilder AddKeyedService<TService>(string serviceKey, TService instance)
+        where TService : class;
+
+    IHiveMindBuilder AddChatCompletionConnector(string serviceKey, IChatCompletionConnector connector);
+
+    IHiveMindBuilder AddEmbeddingConnector(string serviceKey, IEmbeddingConnector connector);
+
+    IHiveMindBuilder AddFileStorage(string serviceKey, IFileStorage storage);
 
     /// <summary>
     /// Build the IHiveMind.
     /// </summary>
-    IHiveMind Build();
+    //IHiveMind Build();
 }

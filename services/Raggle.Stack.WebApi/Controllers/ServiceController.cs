@@ -14,14 +14,17 @@ namespace Raggle.Stack.WebApi.Controllers;
 [Route("/v1")]
 public class ServiceController : ControllerBase
 {
-    private readonly IHiveMind _hive;
+    private readonly IChatCompletionService _chat;
+    private readonly IEmbeddingService _embedding;
     private readonly JsonSerializerOptions _jsonOptions;
 
     public ServiceController(
-        IHiveMind hive, 
+        IChatCompletionService chat,
+        IEmbeddingService embedding,
         IOptions<JsonOptions> jsonOptions)
     {
-        _hive = hive;
+        _chat = chat;
+        _embedding = embedding;
         _jsonOptions = jsonOptions.Value.JsonSerializerOptions;
     }
 
@@ -31,7 +34,7 @@ public class ServiceController : ControllerBase
     {
         try
         {
-            var models = await _hive.ChatCompletion.GetModelsAsync(cancellationToken);
+            var models = await _chat.GetModelsAsync(cancellationToken);
             return Ok(models);
         }
         catch (Exception ex)
@@ -52,7 +55,7 @@ public class ServiceController : ControllerBase
             if (request.Stream)
             {
                 Response.ContentType = "application/stream+json";
-                await foreach (var result in _hive.ChatCompletion.InvokeStreamingAsync(context, request, cancellationToken))
+                await foreach (var result in _chat.InvokeStreamingAsync(context, request, cancellationToken))
                 {
                     var json = JsonSerializer.Serialize(result, _jsonOptions);
                     var data = Encoding.UTF8.GetBytes(json + "\n");
@@ -63,7 +66,7 @@ public class ServiceController : ControllerBase
             }
             else
             {
-                var result = await _hive.ChatCompletion.InvokeAsync(context, request, cancellationToken);
+                var result = await _chat.InvokeAsync(context, request, cancellationToken);
                 await Response.WriteAsJsonAsync(result, _jsonOptions, cancellationToken);
             }
         }
@@ -84,7 +87,7 @@ public class ServiceController : ControllerBase
     {
         try
         {
-            var models = await _hive.Embedding.GetModelsAsync(cancellationToken);
+            var models = await _embedding.GetModelsAsync(cancellationToken);
             return Ok(models);
         }
         catch (Exception ex)
@@ -100,7 +103,7 @@ public class ServiceController : ControllerBase
     {
         try
         {
-            var result = await _hive.Embedding.EmbedBatchAsync(request, cancellationToken);
+            var result = await _embedding.EmbedBatchAsync(request, cancellationToken);
             return Ok(result);
         }
         catch (Exception ex)

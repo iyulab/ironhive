@@ -1,6 +1,4 @@
-﻿using System.Text.Json.Serialization;
-
-namespace Raggle.Abstractions.ChatCompletion.Messages;
+﻿namespace Raggle.Abstractions.ChatCompletion.Messages;
 
 public enum MessageRole
 {
@@ -17,4 +15,12 @@ public class Message
     public MessageContentCollection Content { get; set; } = new();
 
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+
+    public Message()
+    { }
+
+    public Message(MessageRole role)
+    {
+        Role = role;
+    }
 }

@@ -20,7 +20,7 @@ internal class AnthropicChatCompletionClient : AnthropicClientBase
         request.Stream = false;
         var json = JsonSerializer.Serialize(request, _jsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        using var response = await _client.PostAsync(AnthropicConstants.PostMessagesPath, content, cancellationToken);
+        using var response = await _client.PostAsync(AnthropicConstants.PostMessagesPath.RemovePreffix('/'), content, cancellationToken);
         response.EnsureSuccessStatusCode();
         var message = await response.Content.ReadFromJsonAsync<MessagesResponse>(_jsonOptions, cancellationToken)
             ?? throw new InvalidOperationException("Failed to deserialize response.");
@@ -34,7 +34,7 @@ internal class AnthropicChatCompletionClient : AnthropicClientBase
         request.Stream = true;
         var json = JsonSerializer.Serialize(request, _jsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        using var _request = new HttpRequestMessage(HttpMethod.Post, AnthropicConstants.PostMessagesPath);
+        using var _request = new HttpRequestMessage(HttpMethod.Post, AnthropicConstants.PostMessagesPath.RemovePreffix('/'));
         _request.Content = content;
         using var response = await _client.SendAsync(_request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         response.EnsureSuccessStatusCode();
@@ -49,6 +49,7 @@ internal class AnthropicChatCompletionClient : AnthropicClientBase
             var line = await reader.ReadLineAsync(cancellationToken);
             if (string.IsNullOrWhiteSpace(line) || !line.StartsWith("data"))
                 continue;
+            Console.WriteLine(line);
 
             var data = line.Substring("data:".Length).Trim();
             if (!data.StartsWith('{') || !data.EndsWith('}'))

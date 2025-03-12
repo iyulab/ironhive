@@ -37,9 +37,8 @@ public class HiveServiceContainer : IHiveServiceContainer
     }
 
     /// <inheritdoc />
-    public void RegisterKeyedService<TService, TImplementation>(string serviceKey, TImplementation instance)
+    public void RegisterKeyedService<TService>(string serviceKey, TService instance)
         where TService : class
-        where TImplementation : class, TService
     {
         if (string.IsNullOrEmpty(serviceKey))
             throw new ArgumentNullException(nameof(serviceKey));

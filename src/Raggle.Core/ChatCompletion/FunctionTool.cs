@@ -121,8 +121,8 @@ public class FunctionTool : ITool
 
         return new ObjectJsonSchema
         {
-            Properties = properties,
-            Required = required.Count != 0 ? required.ToArray() : null
+            Properties = properties.Count != 0 ? properties : null,
+            Required = required.Count != 0 ? required : null
         };
     }
 

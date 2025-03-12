@@ -27,7 +27,7 @@ internal abstract class AnthropicClientBase
     /// </summary>
     public async Task<IEnumerable<AnthropicModel>> GetModelsAsync(CancellationToken cancellationToken)
     {
-        var jsonDocument = await _client.GetFromJsonAsync<JsonDocument>(AnthropicConstants.GetModelListPath, cancellationToken);
+        var jsonDocument = await _client.GetFromJsonAsync<JsonDocument>(AnthropicConstants.GetModelListPath.RemovePreffix('/'), cancellationToken);
         var models = jsonDocument?.RootElement.GetProperty("data").Deserialize<IEnumerable<AnthropicModel>>(_jsonOptions);
         return models?.OrderByDescending(m => m.CreatedAt).ToArray() ?? [];
     }

@@ -1,5 +1,4 @@
-﻿using Raggle.Abstractions.ChatCompletion.Tools;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 
 namespace Raggle.Abstractions.ChatCompletion.Messages;
 
@@ -40,6 +39,8 @@ public class TextContent : MessageContentBase
 /// </summary>
 public class ImageContent : MessageContentBase
 {
+    public string? ContentType { get; set; }
+
     public string? Data { get; set; }
 }
 
@@ -48,9 +49,37 @@ public class ImageContent : MessageContentBase
 /// </summary>
 public class ToolContent : MessageContentBase
 {
+    public ToolStatus Status { get; set; } = ToolStatus.Pending;
+
     public string? Name { get; set; }
 
-    public ToolArguments? Arguments { get; set; }
+    public string? Arguments { get; set; }
 
-    public ToolResult? Result { get; set; }
+    public string? Result { get; set; }
+}
+
+/// <summary>
+/// Tool Status
+/// </summary>
+public enum ToolStatus
+{
+    /// <summary>
+    /// 도구가 대기 중인 상태
+    /// </summary>
+    Pending,
+
+    /// <summary>
+    /// 도구가 실행 중인 상태
+    /// </summary>
+    Running,
+
+    /// <summary>
+    /// 도구가 완료된 상태
+    /// </summary>
+    Completed,
+
+    /// <summary>
+    /// 도구가 실패한 상태
+    /// </summary>
+    Failed
 }

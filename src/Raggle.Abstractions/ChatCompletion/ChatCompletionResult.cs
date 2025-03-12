@@ -41,12 +41,7 @@ public enum EndReason
     /// <summary>
     /// Tool Calling 
     /// </summary>
-    ToolCall,
-
-    /// <summary>
-    /// Tool Failure
-    /// </summary>
-    ToolFailed,
+    ToolCall
 }
 
 /// <summary>
@@ -55,17 +50,20 @@ public enum EndReason
 public class TokenUsage
 {
     /// <summary>
-    /// Gets or sets the total number of tokens used.
+    /// the total number of tokens used.
     /// </summary>
-    public int? TotalTokens { get; set; }
+    public int? TotalTokens
+    {
+        get => InputTokens + OutputTokens;
+    }
 
     /// <summary>
-    /// Gets or sets the number of input tokens used.
+    /// the number of input tokens used.
     /// </summary>
     public int? InputTokens { get; set; }
 
     /// <summary>
-    /// Gets or sets the number of output tokens used.
+    /// the number of output tokens used.
     /// </summary>
     public int? OutputTokens { get; set; }
 }
