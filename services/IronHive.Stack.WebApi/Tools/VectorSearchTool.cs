@@ -3,6 +3,7 @@ using IronHive.Abstractions.Memory;
 using IronHive.Core.ChatCompletion;
 using IronHive.Stack.WebApi.Services;
 using System.ComponentModel;
+using IronHive.Abstractions.ChatCompletion.Tools;
 
 namespace IronHive.Stack.WebApi.ChatCompletion;
 

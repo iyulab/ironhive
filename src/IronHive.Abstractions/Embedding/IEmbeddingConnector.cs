@@ -9,6 +9,13 @@ public interface IEmbeddingConnector
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets the embedding model.
+    /// </summary>
+    Task<EmbeddingModel> GetModelAsync(
+        string model,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Generates multiple embeddings for the given request.
     /// </summary>
     Task<IEnumerable<EmbeddingResult>> EmbedBatchAsync(

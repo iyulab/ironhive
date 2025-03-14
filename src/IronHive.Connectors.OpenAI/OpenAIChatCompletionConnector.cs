@@ -6,8 +6,6 @@ using IronHive.Connectors.OpenAI.ChatCompletion;
 using IronHive.Abstractions.ChatCompletion;
 using IronHive.Abstractions.ChatCompletion.Messages;
 using IronHive.Abstractions.ChatCompletion.Tools;
-using AutoToolChoice = IronHive.Abstractions.ChatCompletion.Tools.AutoToolChoice;
-using OpenAIAutoToolChoice = IronHive.Connectors.OpenAI.ChatCompletion.AutoToolChoice;
 using Message = IronHive.Abstractions.ChatCompletion.Messages.Message;
 using OpenAIMessage = IronHive.Connectors.OpenAI.ChatCompletion.Message;
 
@@ -42,6 +40,15 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
     }
 
     /// <inheritdoc />
+    public async Task<ChatCompletionModel> GetModelAsync(
+        string model,
+        CancellationToken cancellationToken = default)
+    {
+        var models = await GetModelsAsync(cancellationToken);
+        return models.First(m => m.Model == model);
+    }
+
+    /// <inheritdoc />
     public async Task<ChatCompletionResult<Message>> GenerateMessageAsync(
         MessageCollection messages,
         ChatCompletionOptions options,
@@ -72,7 +79,7 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
 
         return new ChatCompletionResult<Message>
         {
-            Id = res.Id,
+            MessageId = res.Id,
             EndReason = choice?.FinishReason switch
             {
                 FinishReason.ToolCalls => EndReason.ToolCall,
@@ -142,7 +149,7 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
             {
                 yield return new ChatCompletionResult<IMessageContent>
                 {
-                    Id = id,
+                    MessageId = id,
                     Data = new ToolContent
                     {
                         Id = tool.Id,
@@ -159,7 +166,7 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
             {
                 yield return new ChatCompletionResult<IMessageContent>
                 {
-                    Id = id,
+                    MessageId = id,
                     Data = new TextContent
                     {
                         Index = null,
@@ -172,7 +179,7 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
         // 종료
         yield return new ChatCompletionResult<IMessageContent>
         {
-            Id = id,
+            MessageId = id,
             EndReason = reason,
             TokenUsage = usage,
         };
@@ -203,33 +210,11 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
                     Description = t.Description,
                     Parameters = t.Parameters != null ? new FunctionParameters
                     {
-                        Properties = t.Parameters,
-                        Required = t.Required,
+                        Properties = t.Parameters.Properties,
+                        Required = t.Parameters.Required,
                     }: null
                 }
             });
-
-            if (options.ToolChoice != null)
-            {
-                if (options.ToolChoice is ManualToolChoice manual)
-                {
-                    request.ToolChoice = new RequiredToolChoice
-                    {
-                        Function = new FunctionChoice
-                        {
-                            Name = manual.ToolName,
-                        }
-                    };
-                }
-                else if (options.ToolChoice is AutoToolChoice)
-                {
-                    request.ToolChoice = new OpenAIAutoToolChoice();
-                }
-                else if (options.ToolChoice is DisabledToolChoice)
-                {
-                    request.ToolChoice = new NoneToolChoice();
-                }
-            }
         }
 
         return request;

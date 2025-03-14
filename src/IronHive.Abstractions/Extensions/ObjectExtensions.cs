@@ -28,6 +28,16 @@ public static class ObjectExtensions
     }
 
     /// <summary>
+    /// Try to convert the object to the target type.
+    /// If the conversion fails, the null value is returned.
+    /// </summary>
+    public static bool TryConvertTo(this object? obj, Type target, [MaybeNullWhen(false)] out object value, JsonSerializerOptions? options = null)
+    {
+        value = obj.ConvertTo(target, options);
+        return value != null;
+    }
+
+    /// <summary>
     /// Convert the object to the target type. If the conversion fails, the default value is returned.
     /// </summary>
     public static object? ConvertTo(this object? obj, Type target, JsonSerializerOptions? options = null)

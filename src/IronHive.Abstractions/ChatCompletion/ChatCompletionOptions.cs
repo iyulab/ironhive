@@ -17,12 +17,7 @@ public class ChatCompletionOptions
     /// <summary>
     /// the tool list to use in the model.
     /// </summary>
-    public ToolCollection? Tools { get; set; }
-
-    /// <summary>
-    /// Tool execution options.
-    /// </summary>
-    public IToolChoice? ToolChoice { get; set; }
+    public FunctionToolCollection? Tools { get; set; }
 
     /// <summary>
     /// the maximum number of tokens to generate.

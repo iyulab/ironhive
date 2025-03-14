@@ -4,6 +4,7 @@ using IronHive.Abstractions.ChatCompletion.Messages;
 using MessageRole = IronHive.Abstractions.ChatCompletion.Messages.MessageRole;
 using AnthropicMessageRole = IronHive.Connectors.Anthropic.ChatCompletion.MessageRole;
 using IronHive.Abstractions.ChatCompletion.Tools;
+using System.Text.Json;
 
 namespace IronHive.Abstractions.AI;
 
@@ -70,7 +71,9 @@ internal static class MessageCollectionExtensions
                             {
                                 Id = tool.Id,
                                 Name = tool.Name,
-                                Input = new ToolArguments(tool.Arguments)
+                                Input = !string.IsNullOrWhiteSpace(tool.Arguments)
+                                    ? JsonSerializer.Deserialize<IDictionary<string, object>>(tool.Arguments)
+                                    : null
                             });
 
                             um.Content.Add(new ToolResultMessageContent

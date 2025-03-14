@@ -35,10 +35,18 @@ public class OllamaChatCompletionConnector : IChatCompletionConnector
         return models.Select(m => new ChatCompletionModel
         {
             Model = m.Name,
+            CreatedAt = m.ModifiedAt,
             Owner = null,
-            CreatedAt = null,
-            ModifiedAt = m.ModifiedAt,
         });
+    }
+
+    /// <inheritdoc />
+    public async Task<ChatCompletionModel> GetModelAsync(
+        string model,
+        CancellationToken cancellationToken = default)
+    {
+        var models = await GetModelsAsync(cancellationToken);
+        return models.First(m => m.Model == model);
     }
 
     /// <inheritdoc />

@@ -4,23 +4,15 @@ import { customElement, state } from "lit/decorators.js";
 import "@iyulab/ironhive/components/chat";
 import "@iyulab/ironhive/components/styles/hivestack-light.css";
 import "@iyulab/ironhive/components/styles/hivestack-dark.css";
-import { SendMessageEvent } from '@iyulab/ironhive/components';
-import { HiveStack, Message } from '@iyulab/ironhive';
 
 @customElement('test-page')
 export class TestPage extends LitElement {
-  private _client: HiveStack = new HiveStack({
-    baseUrl: 'http://172.30.1.26:5075/v1/'
-  });
-
-  @state() messages: Message[] = [];
 
   render() {
     return html`
       <div class="flexible-box">
         <chat-room
-          .messages=${this.messages}
-          @send=${this.send}
+          baseUri="http://172.30.1.26:5075/v1/"
         ></chat-room>
       </div>
       <div @click=${this.toggle} class="toggler">T</div>
@@ -36,36 +28,11 @@ export class TestPage extends LitElement {
     }
   }
 
-  private send = async (e: SendMessageEvent) => {
-    const value = e.detail;
-    const user_msg: Message = {
-      role: 'user',
-      content: [{ type: 'text', value: value }]
-    }
-    this.messages = [...this.messages, user_msg];
-    const anth = "anthropic/claude-3-5-haiku-latest";
-    const open = "openai/gpt-4o-mini";
-    const res = await this._client.chatCompletionAsync({
-      model: open,
-      messages: this.messages,
-      system: "you are a chatbot politely responding to user messages",
-      stream: true
-    });
-
-    // setTimeout(() => {
-    //   res.cancel();
-    // }, 1000);
-    
-    // const bot_msg = (await res.json() as any).data as Message;
-    // this.messages = [...this.messages, bot_msg];
-    // console.log(this.messages);
-  }
-
   static styles = css`
     :host {
       position: relative;
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       justify-content: center;
       width: 100%;
       height: 100%;
@@ -73,8 +40,8 @@ export class TestPage extends LitElement {
 
     .flexible-box {
       display: block;
-      width: 400px;
-      height: 90%;
+      width: 800px;
+      height: 80%;
       border: 0.5px solid gray;
       resize: both;
       overflow: auto;

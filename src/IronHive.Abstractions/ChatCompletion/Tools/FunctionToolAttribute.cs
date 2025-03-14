@@ -1,4 +1,4 @@
-﻿namespace IronHive.Core.ChatCompletion;
+﻿namespace IronHive.Abstractions.ChatCompletion.Tools;
 
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
 public class FunctionToolAttribute : Attribute

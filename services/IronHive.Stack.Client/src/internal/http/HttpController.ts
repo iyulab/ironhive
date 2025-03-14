@@ -99,7 +99,7 @@ export class HttpController {
         let buffer = '';
 
         const read = async () => {
-          while (true) {
+          while (signal.aborted === false) {
             const { done, value } = await reader.read();
             if (done) break;
 
@@ -232,7 +232,7 @@ export class HttpController {
     path: string,
     body?: any,
     config?: HttpRequestConfig
-): HttpRequest {
+  ): HttpRequest {
     return {
       method,
       path,

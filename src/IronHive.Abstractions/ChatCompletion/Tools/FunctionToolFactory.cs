@@ -3,7 +3,7 @@ using System.ComponentModel;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace IronHive.Core.ChatCompletion;
+namespace IronHive.Abstractions.ChatCompletion.Tools;
 
 public static class FunctionToolFactory
 {
@@ -56,7 +56,11 @@ public static class FunctionToolFactory
                 : Expression.GetFuncType([.. parameterTypes, returnType]);
             var function = method.CreateDelegate(functionType, instance);
 
-            var tool = new FunctionTool(function, name, description);
+            var tool = new FunctionTool(function)
+            { 
+                Name = name, 
+                Description = description 
+            };
             tools.Add(tool);
         }
 

@@ -11,18 +11,25 @@ public interface IChatCompletionService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Retrieves a list of available chat completion models.
+    /// </summary>
+    Task<ChatCompletionModel> GetModelAsync(
+        string model,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Generates a chat completion message based on the provided request.
     /// </summary>
-    Task<ChatCompletionResult<Message>> InvokeAsync(
-        MessageContext context,
+    Task<ChatCompletionResult<Message>> ExecuteAsync(
+        MessageSession session,
         ChatCompletionOptions options,
         CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Generates a chat completion streaming message based on the provided request.
     /// </summary>
-    IAsyncEnumerable<ChatCompletionResult<IMessageContent>> InvokeStreamingAsync(
-        MessageContext context, 
+    IAsyncEnumerable<ChatCompletionResult<IMessageContent>> ExecuteStreamingAsync(
+        MessageSession session, 
         ChatCompletionOptions options,
         CancellationToken cancellationToken = default);
 }

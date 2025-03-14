@@ -27,9 +27,17 @@ public class OllamaEmbeddingConnector : IEmbeddingConnector
         {
             Model = m.Name,
             Owner = null,
-            CreatedAt = null,
-            ModifiedAt = m.ModifiedAt,
+            CreatedAt = m.ModifiedAt,
         });
+    }
+
+    /// <inheritdoc />
+    public async Task<EmbeddingModel> GetModelAsync(
+        string model,
+        CancellationToken cancellationToken = default)
+    {
+        var models = await GetModelsAsync(cancellationToken);
+        return models.First(m => m.Model == model);
     }
 
     /// <inheritdoc />

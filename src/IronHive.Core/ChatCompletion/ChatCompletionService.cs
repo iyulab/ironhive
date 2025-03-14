@@ -4,6 +4,7 @@ using IronHive.Abstractions.ChatCompletion.Messages;
 using IronHive.Abstractions.ChatCompletion.Tools;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 
 namespace IronHive.Core.ChatCompletion;
 
@@ -11,16 +12,13 @@ public class ChatCompletionService : IChatCompletionService
 {
     private readonly IReadOnlyDictionary<string, IChatCompletionConnector> _connectors;
     private readonly IModelParser _parser;
-    private readonly IMessageReducer _reducer;
 
     public ChatCompletionService(
         IHiveServiceContainer container,
-        //IMessageReducer reducer,
         IModelParser parser)
     {
         _connectors = container.GetKeyedServices<IChatCompletionConnector>();
         _parser = parser;
-        //_reducer = reducer;
     }
 
     /// <inheritdoc />
@@ -28,9 +26,9 @@ public class ChatCompletionService : IChatCompletionService
         CancellationToken cancellationToken = default)
     {
         var models = new List<ChatCompletionModel>();
-        foreach (var (key, connector) in _connectors)
+        foreach (var (key, conn) in _connectors)
         {
-            var sModels = await connector.GetModelsAsync(cancellationToken);
+            var sModels = await conn.GetModelsAsync(cancellationToken);
             models.AddRange(sModels.Select(x => new ChatCompletionModel
             {
                 Model = _parser.Stringify((key, x.Model)),
@@ -40,22 +38,34 @@ public class ChatCompletionService : IChatCompletionService
     }
 
     /// <inheritdoc />
-    public async Task<ChatCompletionResult<Message>> InvokeAsync(
-        MessageContext context,
+    public async Task<ChatCompletionModel> GetModelAsync(
+        string model,
+        CancellationToken cancellationToken = default)
+    {
+        var (key, id) = _parser.Parse(model);
+        if (!_connectors.TryGetValue(key, out var conn))
+            throw new KeyNotFoundException($"Service key '{key}' not found.");
+
+        return await conn.GetModelAsync(id, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<ChatCompletionResult<Message>> ExecuteAsync(
+        MessageSession session,
         ChatCompletionOptions options,
         CancellationToken cancellationToken = default)
     {
-        var (serviceKey, model) = _parser.Parse(options.Model);
-        if (!_connectors.TryGetValue(serviceKey, out var connector))
-            throw new KeyNotFoundException($"Service key '{serviceKey}' not found.");
+        var (key, model) = _parser.Parse(options.Model);
+        if (!_connectors.TryGetValue(key, out var conn))
+            throw new KeyNotFoundException($"Service key '{key}' not found.");
         options.Model = model;
 
         bool doLoop = true;
-        var messages = context.Messages.Clone();
+        var messages = session.Messages.Clone();
 
         while (doLoop)
         {
-            var res = await connector.GenerateMessageAsync(messages, options, cancellationToken);
+            var res = await conn.GenerateMessageAsync(messages, options, cancellationToken);
 
             if (res.EndReason == EndReason.ToolCall)
             {
@@ -66,10 +76,9 @@ public class ChatCompletionService : IChatCompletionService
                         continue;
                     if (options.Tools.TryGetValue(content.Name, out var tool))
                     {
-                        var args = new ToolArguments(content.Arguments);
-                        var result = await tool.InvokeAsync(args);
+                        var result = await tool.InvokeAsync(content.Arguments);
                         content.Status = result.IsSuccess ? ToolStatus.Completed : ToolStatus.Failed;
-                        content.Result = result.ToString();
+                        content.Result = JsonSerializer.Serialize(result.Data);
                     }
                     else
                     {
@@ -105,34 +114,40 @@ public class ChatCompletionService : IChatCompletionService
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<ChatCompletionResult<IMessageContent>> InvokeStreamingAsync(
-        MessageContext context,
+    public async IAsyncEnumerable<ChatCompletionResult<IMessageContent>> ExecuteStreamingAsync(
+        MessageSession session,
         ChatCompletionOptions options,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         #region Tool Test
-        options.Tools ??= new ToolCollection();
-        var tt = FunctionToolFactory.CreateFromObject(this);
+        options.Tools ??= new FunctionToolCollection();
+        var tt = FunctionToolFactory.CreateFromObject<TestTool>();
         options.Tools.AddRange(tt);
         #endregion
 
-        var (serviceKey, model) = _parser.Parse(options.Model);
-        if (!_connectors.TryGetValue(serviceKey, out var connector))
-            throw new KeyNotFoundException($"Service key '{serviceKey}' not found.");
+        var (key, model) = _parser.Parse(options.Model);
+        if (!_connectors.TryGetValue(key, out var conn))
+            throw new KeyNotFoundException($"Service key '{key}' not found.");
         options.Model = model;
 
         bool doLoop = true;
-        var messages = context.Messages.Clone();
+        var messages = session.Messages.Clone();
 
         while (doLoop)
         {
             var message = new Message(MessageRole.Assistant);
             EndReason? reason = null;
             TokenUsage? usage = null;
-            await foreach (var res in connector.GenerateStreamingMessageAsync(messages, options, cancellationToken))
+            await foreach (var res in conn.GenerateStreamingMessageAsync(messages, options, cancellationToken))
             {
-                yield return res;
-
+                if (res.EndReason != null)
+                {
+                    reason = res.EndReason;
+                }
+                if (res.TokenUsage != null)
+                {
+                    usage = res.TokenUsage;
+                }
                 if (res.Data != null)
                 {
                     if (res.Data is TextContent text)
@@ -150,16 +165,16 @@ public class ChatCompletionService : IChatCompletionService
                         else
                             message.Content.Add(tool);
                     }
-                }
-                if (res.EndReason != null)
-                {
-                    reason = res.EndReason;
-                }
-                if (res.TokenUsage != null)
-                {
-                    usage = res.TokenUsage;
+
+                    yield return res;
                 }
             }
+
+            yield return new ChatCompletionResult<IMessageContent>
+            {
+                EndReason = reason,
+                TokenUsage = usage,
+            };
 
             if (reason == EndReason.ToolCall)
             {
@@ -177,10 +192,9 @@ public class ChatCompletionService : IChatCompletionService
                             Data = content,
                         };
 
-                        var args = new ToolArguments(content.Arguments);
-                        var result = await tool.InvokeAsync(args);
+                        var result = await tool.InvokeAsync(content.Arguments);
                         content.Status = result.IsSuccess ? ToolStatus.Completed : ToolStatus.Failed;
-                        content.Result = result.ToString();
+                        content.Result = JsonSerializer.Serialize(result.Data);
 
                         yield return new ChatCompletionResult<IMessageContent>
                         {
@@ -213,11 +227,21 @@ public class ChatCompletionService : IChatCompletionService
             }
         }
     }
+}
 
+public class TestTool
+{
     [FunctionTool("date-previous")]
     public DateTime GetPreviousTime(int days)
     {
-        return DateTime.UtcNow.AddDays(-days);
+        if (days > 0)
+        {
+            throw new Exception("Input value is positive. Please provide a negative value to calculate a previous date.");
+        }
+        else
+        {
+            return DateTime.UtcNow.AddDays(days);
+        }
     }
 
     [FunctionTool("date-now")]

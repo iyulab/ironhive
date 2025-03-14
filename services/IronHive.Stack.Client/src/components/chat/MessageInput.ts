@@ -3,15 +3,15 @@ import { customElement, property } from "lit/decorators.js";
 import { ifDefined } from 'lit/directives/if-defined.js';
 
 import { send } from "../IconData";
-import { SendMessageEvent } from "../events";
+import { SubmitMessageEvent, StopMessageEvent } from "../events";
 
 @customElement('message-input')
 export class MessageInput extends LitElement {
 
+  @property({ type: String }) status: 'unavailable' | 'process' | 'available' = 'unavailable';
+
   @property({ type: String }) placeholder?: string;
   @property({ type: Number }) rows?: number;
-  @property({ type: Number }) maxlength?: number;
-  @property({ type: Boolean, reflect: true }) disabled = true;
   @property({ type: String, reflect: true }) value = '';
 
   render() {
@@ -23,7 +23,6 @@ export class MessageInput extends LitElement {
             spellcheck="false"
             placeholder=${ifDefined(this.placeholder)}
             rows=${ifDefined(this.rows)}
-            maxlength=${ifDefined(this.maxlength)}
             .value=${this.value}
             @input=${this.handleInput}
             @keydown=${this.handleKeydown}
@@ -36,7 +35,7 @@ export class MessageInput extends LitElement {
           <slot name="control"></slot>
           <div class="flex"></div>
           <div class="send-button"
-            ?disabled=${this.disabled}
+            ?disabled=${this.status == 'unavailable'}
             @click=${this.invokeSendEvent}>
             <hive-icon 
               .data=${send}
@@ -50,7 +49,7 @@ export class MessageInput extends LitElement {
   private handleInput = (event: InputEvent) => {
     const target = event.target as HTMLTextAreaElement;
     this.value = target.value;
-    this.disabled = !target.value.trim();
+    this.status = !target.value.trim() ? 'unavailable' : 'available';
   }
 
   private handleKeydown = (event: KeyboardEvent) => {
@@ -63,9 +62,9 @@ export class MessageInput extends LitElement {
   private invokeSendEvent = () => {
     const value = this.value.trim();
     if (!value) return;
-    this.dispatchEvent(new SendMessageEvent(value));
+    this.dispatchEvent(new SubmitMessageEvent(value));
     this.value = '';
-    this.disabled = true;
+    this.status = !value.trim() ? 'unavailable' : 'available';
   }
 
   static styles = css`

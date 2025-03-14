@@ -34,6 +34,15 @@ public class OpenAIEmbeddingConnector : IEmbeddingConnector
     }
 
     /// <inheritdoc />
+    public async Task<EmbeddingModel> GetModelAsync(
+        string model,
+        CancellationToken cancellationToken = default)
+    {
+        var models = await GetModelsAsync(cancellationToken);
+        return models.First(m => m.Model == model);
+    }
+
+    /// <inheritdoc />
     public async Task<IEnumerable<EmbeddingResult>> EmbedBatchAsync(
         string model,
         IEnumerable<string> inputs,

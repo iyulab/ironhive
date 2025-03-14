@@ -78,12 +78,12 @@ public class DialogueHandler : IPipelineHandler
         Options options,
         CancellationToken cancellationToken)
     {
-        var context = new MessageContext([]);
+        var context = new MessageSession([]);
         context.Messages.AddAssistantMessage(new TextContent
         {
             Value = $"Generate QA pairs In This:\n\n{information}"
         });
-        var response = await _chat.InvokeAsync(context, new ChatCompletionOptions
+        var response = await _chat.ExecuteAsync(context, new ChatCompletionOptions
         {
             Model = options.ModelName,
             System = GetSystemInstruction()

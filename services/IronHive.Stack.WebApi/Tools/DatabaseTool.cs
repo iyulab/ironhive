@@ -1,6 +1,7 @@
 ﻿using Microsoft.Data.SqlClient;
 using IronHive.Core.ChatCompletion;
 using System.ComponentModel;
+using IronHive.Abstractions.ChatCompletion.Tools;
 
 namespace IronHive.Stack.WebApi.Tools;
 

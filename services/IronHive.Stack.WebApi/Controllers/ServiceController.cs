@@ -50,12 +50,12 @@ public class ServiceController : ControllerBase
     {
         try
         {
-            var context = new MessageContext(request.Messages);
+            var context = new MessageSession(request.Messages);
 
             if (request.Stream)
             {
                 Response.ContentType = "application/stream+json";
-                await foreach (var result in _chat.InvokeStreamingAsync(context, request, cancellationToken))
+                await foreach (var result in _chat.ExecuteStreamingAsync(context, request, cancellationToken))
                 {
                     var json = JsonSerializer.Serialize(result, _jsonOptions);
                     var data = Encoding.UTF8.GetBytes(json + "\n");
@@ -66,7 +66,7 @@ public class ServiceController : ControllerBase
             }
             else
             {
-                var result = await _chat.InvokeAsync(context, request, cancellationToken);
+                var result = await _chat.ExecuteAsync(context, request, cancellationToken);
                 await Response.WriteAsJsonAsync(result, _jsonOptions, cancellationToken);
             }
         }

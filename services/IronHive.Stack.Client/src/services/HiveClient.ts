@@ -19,12 +19,9 @@ export class HiveStack {
     return this.controller.get('/chat/models');
   }
 
-  public async chatCompletionAsync(request: ChatCompletionRequest
-  ) {
+  public async chatCompletionAsync(request: ChatCompletionRequest, onReceive?: (data: any) => void) {
     const res = await this.controller.post('/chat/completion', request, {
-      onReceive(data) {
-        console.log(JSON.stringify(data));
-      },
+      onReceive: onReceive
     });
     return res;
   }

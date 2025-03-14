@@ -6,7 +6,7 @@
 /// <typeparam name="T"></typeparam>
 public class ChatCompletionResult<T>
 {
-    public string? Id { get; set; }
+    public string? MessageId { get; set; }
 
     public EndReason? EndReason { get; set; }
 

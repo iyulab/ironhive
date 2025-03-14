@@ -5,10 +5,6 @@ using IronHive.Connectors.Anthropic.ChatCompletion;
 using IronHive.Connectors.Anthropic.Configurations;
 using System.Runtime.CompilerServices;
 using TokenUsage = IronHive.Abstractions.ChatCompletion.TokenUsage;
-using ManualToolChoice = IronHive.Abstractions.ChatCompletion.Tools.ManualToolChoice;
-using AnthropicManualToolChoice = IronHive.Connectors.Anthropic.ChatCompletion.ManualToolChoice;
-using AutoToolChoice = IronHive.Abstractions.ChatCompletion.Tools.AutoToolChoice;
-using AnthropicAutoToolChoice = IronHive.Connectors.Anthropic.ChatCompletion.AutoToolChoice;
 using Message = IronHive.Abstractions.ChatCompletion.Messages.Message;
 using AnthropicMessage = IronHive.Connectors.Anthropic.ChatCompletion.Message;
 using MessageRole = IronHive.Abstractions.ChatCompletion.Messages.MessageRole;
@@ -41,10 +37,18 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
         return models.Select(m => new ChatCompletionModel
         {
             Model = m.Id,
-            Owner = "Anthropic",
             CreatedAt = m.CreatedAt,
-            ModifiedAt = null,
+            Owner = "Anthropic",
         });
+    }
+
+    /// <inheritdoc />
+    public async Task<ChatCompletionModel> GetModelAsync(
+        string model,
+        CancellationToken cancellationToken = default)
+    {
+        var models = await GetModelsAsync(cancellationToken);
+        return models.First(m => m.Model == model);
     }
 
     /// <inheritdoc />
@@ -77,7 +81,7 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
 
         return new ChatCompletionResult<Message>
         {
-            Id = res.Id,
+            MessageId = res.Id,
             EndReason = res.StopReason switch
             {
                 StopReason.ToolUse => EndReason.ToolCall,
@@ -123,7 +127,7 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                     // 텍스트 생성
                     yield return new ChatCompletionResult<IMessageContent>
                     {
-                        Id = id,
+                        MessageId = id,
                         Data = new TextContent
                         {
                             Index = cse.Index,
@@ -136,7 +140,7 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                     // 툴 사용
                     yield return new ChatCompletionResult<IMessageContent>
                     {
-                        Id = id,
+                        MessageId = id,
                         Data = new ToolContent
                         {
                             Index = cse.Index,
@@ -155,7 +159,7 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                     // 텍스트 생성
                     yield return new ChatCompletionResult<IMessageContent>
                     {
-                        Id = id,
+                        MessageId = id,
                         Data = new TextContent
                         {
                             Index = cde.Index,
@@ -168,7 +172,7 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                     // 툴 사용
                     yield return new ChatCompletionResult<IMessageContent>
                     {
-                        Id = id,
+                        MessageId = id,
                         Data = new ToolContent
                         {
                             Index = cde.Index,
@@ -216,7 +220,7 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
 
         yield return new ChatCompletionResult<IMessageContent>
         {
-            Id = id,
+            MessageId = id,
             EndReason = reason,
             TokenUsage = usage
         };
@@ -244,25 +248,10 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                 Description = t.Description,
                 InputSchema = new ToolInputSchema
                 {
-                    Properties = t.Parameters,
-                    Required = t.Required,
+                    Properties = t.Parameters?.Properties,
+                    Required = t.Parameters?.Required,
                 }
             });
-
-            if (options.ToolChoice != null)
-            {
-                if (options.ToolChoice is ManualToolChoice manual)
-                {
-                    request.ToolChoice = new AnthropicManualToolChoice
-                    {
-                        Name = manual.ToolName,
-                    };
-                }
-                else if (options.ToolChoice is AutoToolChoice)
-                {
-                    request.ToolChoice = new AnthropicAutoToolChoice();
-                }
-            }
         }
 
         return request;
