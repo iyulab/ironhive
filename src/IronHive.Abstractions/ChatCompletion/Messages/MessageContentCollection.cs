@@ -58,18 +58,47 @@ public class MessageContentCollection : ICollection<IMessageContent>
     }
 
     /// <summary>
-    /// 해당 인덱스의 아이템을 가져옵니다.
+    /// 아이템을 동일한 타입에 따라 분리합니다.
+    /// 예) [ToolContent, ToolContent, TextContent, ToolContent]
+    ///  => [ToolContent, ToolContent], [TextContent], [ToolContent]
     /// </summary>
-    public bool TryGetAt<T>(int index, [MaybeNullWhen(false)] out T item) 
-        where T : IMessageContent
+    public IEnumerable<(Type, MessageContentCollection)> Split()
     {
-        if (index >= 0 && index < _items.Count && _items[index] is T typedItem)
+        var result = new List<(Type, MessageContentCollection)>();
+        var group = new MessageContentCollection();
+        Type? groupType = null;
+
+        foreach (var item in _items)
         {
-            item = typedItem;
-            return true;
+            var currentType = item.GetType();
+            if (group.Count == 0)
+            {
+                // 그룹이 비어있으면 현재 아이템 타입을 기준으로 그룹 시작
+                groupType = currentType;
+                group.Add(item);
+            }
+            else if (currentType != groupType)
+            {
+                // 현재 아이템 타입과 이전 그룹의 타입이 다르면 그룹 분리 
+                result.Add((groupType!, group));
+                group = new MessageContentCollection();
+                groupType = currentType;
+                group.Add(item);
+            }
+            else
+            {
+                // 현재 아이템 타입과 이전 그룹의 타입이 같으면 그룹에 추가
+                group.Add(item);
+            }
         }
-        item = default;
-        return false;
+
+        // 마지막 그룹이 있다면 추가합니다.
+        if (group.Count > 0)
+        {
+            result.Add((groupType!, group));
+        }
+
+        return result;
     }
 
     #region ICollection Implementations
@@ -84,9 +113,12 @@ public class MessageContentCollection : ICollection<IMessageContent>
         set => _items[index] = value;
     }
 
+    /// <summary>
+    /// 아이템을 추가합니다.
+    /// 아이템의 인덱스 번호는 자동으로 재할당됩니다.
+    /// </summary>
     public void Add(IMessageContent item)
     {
-        // 인덱스 번호를 자동으로 설정합니다.
         item.Index = _items.Count;
         _items.Add(item);
     }

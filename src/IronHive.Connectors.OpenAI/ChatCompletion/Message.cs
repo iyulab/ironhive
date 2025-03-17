@@ -35,7 +35,7 @@ internal class UserMessage : Message
     public string? Name { get; set; }
 
     [JsonPropertyName("content")]
-    public required ICollection<MessageContent> Content { get; set; }
+    public ICollection<MessageContent> Content { get; set; } = new List<MessageContent>();
 }
 
 internal class AssistantMessage : Message

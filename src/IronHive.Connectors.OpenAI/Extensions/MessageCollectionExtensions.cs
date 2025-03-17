@@ -18,117 +18,97 @@ internal static class MessageCollectionExtensions
 
         foreach (var message in messages)
         {
+            // 건너뛰기
             if (message.Content == null || message.Content.Count == 0)
                 continue;
 
             if (message.Role == MessageRole.User)
             {
-                var um = new OpenAIUserMessage
-                { 
-                    Content = new List<MessageContent>() 
-                };
+                // 사용자 메시지
+                var um = new OpenAIUserMessage();
                 foreach (var item in message.Content)
                 {
                     if (item is TextContent text)
                     {
-                        um.Content.Add(new TextMessageContent 
-                        { 
+                        // 텍스트 메시지
+                        um.Content.Add(new TextMessageContent
+                        {
                             Text = text.Value ?? string.Empty
                         });
                     }
                     else if (item is ImageContent image)
                     {
-                        um.Content.Add(new ImageMessageContent 
+                        // 이미지 메시지
+                        um.Content.Add(new ImageMessageContent
                         {
-                            ImageURL = new ImageURL 
+                            ImageURL = new ImageURL
                             {
                                 URL = image.Data ?? string.Empty,
-                            } 
+                            }
                         });
+                    }
+                    else
+                    {
+                        throw new NotImplementedException("not supported yet");
                     }
                 }
                 _messages.Add(um);
             }
             else if (message.Role == MessageRole.Assistant)
             {
-                foreach (var content in message.Content.SplitContent())
+                // AI 메시지
+                foreach (var (type, group) in message.Content.Split())
                 {
-                    var am = new OpenAIAssistantMessage();
-                    var tms = new List<ToolMessage>();
-                    foreach (var item in content)
+                    if (type == typeof(TextContent))
                     {
-                        if (item is TextContent text)
+                        // 텍스트 메시지
+                        var am = new OpenAIAssistantMessage();
+                        foreach (var item in group.Cast<TextContent>())
                         {
                             am.Content ??= string.Empty;
-                            am.Content += text.Value ?? string.Empty;
+                            am.Content += item.Value ?? string.Empty;
                         }
-                        else if (item is ToolContent tool)
+                        _messages.Add(am);
+                    }
+                    else if (type == typeof(ToolContent))
+                    {
+                        // 도구 메시지
+                        var am = new OpenAIAssistantMessage();
+                        var tms = new List<ToolMessage>();
+                        foreach (var item in group.Cast<ToolContent>())
                         {
                             am.ToolCalls ??= new List<ToolCall>();
                             am.ToolCalls.Add(new ToolCall
                             {
-                                Index = tool.Index,
-                                Id = tool.Id,
+                                Index = item.Index,
+                                Id = item.Id,
                                 Function = new FunctionCall
                                 {
-                                    Name = tool.Name,
-                                    Arguments = tool.Arguments
+                                    Name = item.Name,
+                                    Arguments = item.Arguments
                                 }
                             });
-
                             tms.Add(new ToolMessage
                             {
-                                ID = tool.Id ?? string.Empty,
-                                Content = tool.Result ?? string.Empty,
+                                ID = item.Id ?? string.Empty,
+                                Content = item.Result ?? string.Empty,
                             });
                         }
-                    }
-
-                    _messages.Add(am);
-                    if (tms.Count > 0)
+                        _messages.Add(am);
                         _messages.AddRange(tms);
+                    }
+                    else
+                    {
+                        throw new NotImplementedException("not supported yet");
+                    }
                 }
+            }
+            else
+            {
+                throw new NotImplementedException("not supported yet");
             }
         }
 
         return _messages;
-    }
-
-    /// <summary>
-    /// 동일한 종류의 content끼리 묶습니다.
-    /// 예) ToolContent, ToolContent, ToolContent, TextContent, TextContent, ToolContent, ToolContent
-    ///     => [ToolContent, ToolContent, ToolContent], [TextContent, TextContent], [ToolContent, ToolContent]
-    /// </summary>
-    internal static IEnumerable<MessageContentCollection> SplitContent(this MessageContentCollection content)
-    {
-        var result = new List<MessageContentCollection>();
-        var group = new MessageContentCollection();
-        Type? currentType = null;
-
-        foreach (var item in content)
-        {
-            // 그룹이 비어있으면 현재 아이템 타입을 기준으로 그룹 시작
-            if (group.Count == 0)
-            {
-                currentType = item.GetType();
-            }
-            // 현재 아이템 타입과 이전 그룹의 타입이 다르면 그룹 분리
-            else if (item.GetType() != currentType)
-            {
-                result.Add(group);
-                group = new MessageContentCollection();
-                currentType = item.GetType();
-            }
-
-            group.Add(item);
-        }
-
-        // 마지막 그룹이 있다면 추가합니다.
-        if (group.Count > 0)
-        {
-            result.Add(group);
-        }
-
-        return result;
     }
 }

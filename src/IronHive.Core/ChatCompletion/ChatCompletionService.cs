@@ -1,8 +1,10 @@
-﻿using IronHive.Abstractions;
+﻿using DocumentFormat.OpenXml.Office.CustomUI;
+using IronHive.Abstractions;
 using IronHive.Abstractions.ChatCompletion;
 using IronHive.Abstractions.ChatCompletion.Messages;
 using IronHive.Abstractions.ChatCompletion.Tools;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 
@@ -50,7 +52,7 @@ public class ChatCompletionService : IChatCompletionService
     }
 
     /// <inheritdoc />
-    public async Task<ChatCompletionResult<Message>> ExecuteAsync(
+    public async Task<Message> ExecuteAsync(
         MessageSession session,
         ChatCompletionOptions options,
         CancellationToken cancellationToken = default)
@@ -60,17 +62,47 @@ public class ChatCompletionService : IChatCompletionService
             throw new KeyNotFoundException($"Service key '{key}' not found.");
         options.Model = model;
 
-        bool doLoop = true;
-        var messages = session.Messages.Clone();
+        if (!string.IsNullOrEmpty(session.Summary))
+        {
+            options.System = $"\n### Conversation Summary\n{session.Summary}\n";
+        }
 
-        while (doLoop)
+        int failedCount = 0;
+        var messages = session.Messages.Clone();
+        var message = new Message(MessageRole.Assistant);
+
+        while (failedCount < session.MaxToolAttempts)
         {
             var res = await conn.GenerateMessageAsync(messages, options, cancellationToken);
 
+            // 메시지 정리 및 재시도
+            if (res.EndReason == EndReason.MaxTokens)
+            {
+                session.LastTruncatedIndex = messages.Count - 1;
+                throw new NotImplementedException("Max tokens reached. not supported yet.");
+                continue;
+            }
+
+            // 토큰 사용량 업데이트
+            if (res.TokenUsage != null)
+            {
+                session.TotalTokens = res.TokenUsage.TotalTokens;
+            }
+
+            // 메시지 컨텐츠 추가
+            message.Content.AddRange(res.Data?.Content ?? []);
+
+            // 메시지 추가
+            if (messages.LastOrDefault()?.Role != MessageRole.Assistant)
+            {
+                messages.Add(message);
+            }
+
+            // 도구 호출
             if (res.EndReason == EndReason.ToolCall)
             {
-                var toolContents = res.Data?.Content.OfType<ToolContent>() ?? [];
-                foreach (var content in toolContents)
+                var toolGroup = message.Content.OfType<ToolContent>() ?? [];
+                foreach (var content in toolGroup)
                 {
                     if (options.Tools == null || string.IsNullOrEmpty(content.Name))
                         continue;
@@ -87,34 +119,23 @@ public class ChatCompletionService : IChatCompletionService
                     }
                 }
 
-                if (res.Data == null)
-                    throw new InvalidOperationException("Tool call end reason without data.");
-
-                messages.Add(res.Data);
-                doLoop = true;
+                if (toolGroup.Any(x => x.Status == ToolStatus.Failed))
+                {
+                    failedCount++;
+                }
             }
-            else if (res.EndReason == EndReason.MaxTokens)
-            {
-                doLoop = true;
-                throw new NotImplementedException("Max tokens reached. not supported yet.");
-            }
+            // 종료
             else
             {
-                doLoop = false;
-                return new ChatCompletionResult<Message>
-                {
-                    EndReason = res.EndReason,
-                    Data = res.Data,
-                    TokenUsage = res.TokenUsage,
-                };
+                break;
             }
         }
 
-        throw new InvalidOperationException("Unexpected end of loop.");
+        return message;
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<ChatCompletionResult<IMessageContent>> ExecuteStreamingAsync(
+    public async IAsyncEnumerable<IMessageContent> ExecuteStreamingAsync(
         MessageSession session,
         ChatCompletionOptions options,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -130,14 +151,22 @@ public class ChatCompletionService : IChatCompletionService
             throw new KeyNotFoundException($"Service key '{key}' not found.");
         options.Model = model;
 
-        bool doLoop = true;
-        var messages = session.Messages.Clone();
-
-        while (doLoop)
+        if(!string.IsNullOrEmpty(session.Summary))
         {
-            var message = new Message(MessageRole.Assistant);
+            options.System = $"\n### Conversation Summary\n{session.Summary}\n";
+        }
+
+        int failedCount = 0;
+        var messages = session.Messages.Clone();
+        var message = new Message(MessageRole.Assistant);
+
+        while (failedCount < session.MaxToolAttempts)
+        {
+            var stack = new MessageContentCollection();
             EndReason? reason = null;
             TokenUsage? usage = null;
+            
+            // 메시지 생성
             await foreach (var res in conn.GenerateStreamingMessageAsync(messages, options, cancellationToken))
             {
                 if (res.EndReason != null)
@@ -152,78 +181,115 @@ public class ChatCompletionService : IChatCompletionService
                 {
                     if (res.Data is TextContent text)
                     {
-                        if (message.Content.LastOrDefault() is TextContent last)
-                            last.Value += text.Value;
-                        else
-                            message.Content.Add(text);
-                    }
+                        var last = stack.LastOrDefault();
+                        var value = text.Value;
 
-                    if (res.Data is ToolContent tool)
+                        if (last is TextContent lastText)
+                        {
+                            lastText.Value ??= string.Empty;
+                            lastText.Value += value;
+                        }
+                        else
+                        {
+                            stack.Add(text);
+                            last = stack.Last();
+                        }
+
+                        yield return new TextContent
+                        {
+                            Index = message.Content.Count + last.Index,
+                            Value = value,
+                        };
+                    }
+                    else if (res.Data is ToolContent tool)
                     {
-                        if (tool.Index != null && message.Content.TryGetAt<ToolContent>((int)tool.Index, out var last))
-                            last.Arguments += tool.Arguments;
-                        else
-                            message.Content.Add(tool);
-                    }
+                        var index = stack.ElementAtOrDefault(tool.Index ?? 0);
 
-                    yield return res;
+                        if (index is ToolContent indexTool)
+                        {
+                            indexTool.Arguments ??= string.Empty;
+                            indexTool.Arguments += tool.Arguments;
+                        }
+                        else
+                        {
+                            stack.Add(tool);
+                            yield return new ToolContent
+                            {
+                                Index = message.Content.Count + tool.Index,
+                                Id = tool.Id,
+                                Name = tool.Name,
+                                Arguments = tool.Arguments
+                            };
+                        }
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Unexpected content type.");
+                    }
                 }
             }
 
-            yield return new ChatCompletionResult<IMessageContent>
+            // 메시지 정리 및 재시도
+            if (reason == EndReason.MaxTokens)
             {
-                EndReason = reason,
-                TokenUsage = usage,
-            };
+                session.LastTruncatedIndex = messages.Count - 1;
+                throw new NotImplementedException("Max tokens reached. not supported yet.");
+                continue;
+            }
 
+            // 토큰 사용량 업데이트
+            if (usage != null)
+            {
+                session.TotalTokens = usage.TotalTokens;
+            }
+
+            // 메시지 컨텐츠 추가
+            message.Content.AddRange(stack);
+            
+            // 메시지 추가
+            if (messages.LastOrDefault()?.Role != MessageRole.Assistant)
+            {
+                messages.Add(message);
+            }
+
+            // 도구 호출
             if (reason == EndReason.ToolCall)
             {
-                var toolContents = message.Content.OfType<ToolContent>();
-                foreach (var content in toolContents)
+                var toolGroup = message.Content.OfType<ToolContent>();
+                foreach (var content in toolGroup)
                 {
-                    if (content.Name == null || options.Tools == null)
+                    if (content.Name == null || options.Tools == null || content.Result != null)
                         continue;
 
                     if (options.Tools.TryGetValue(content.Name, out var tool))
                     {
                         content.Status = ToolStatus.Running;
-                        yield return new ChatCompletionResult<IMessageContent>
-                        {
-                            Data = content,
-                        };
+                        yield return content;
 
                         var result = await tool.InvokeAsync(content.Arguments);
                         content.Status = result.IsSuccess ? ToolStatus.Completed : ToolStatus.Failed;
                         content.Result = JsonSerializer.Serialize(result.Data);
 
-                        yield return new ChatCompletionResult<IMessageContent>
-                        {
-                            Data = content,
-                        };
+                        yield return content;
                     }
                     else
                     {
                         content.Status = ToolStatus.Failed;
                         content.Result = $"Tool '{content.Name}' not found.";
 
-                        yield return new ChatCompletionResult<IMessageContent>
-                        {
-                            Data = content,
-                        };
+                        yield return content;
                     }
+                }
 
-                    messages.Add(message);
-                    doLoop = true;
+                if (toolGroup.Any(x => x.Status == ToolStatus.Failed))
+                {
+                    failedCount++;
                 }
             }
-            else if (reason == EndReason.MaxTokens)
-            {
-                doLoop = true;
-                throw new NotImplementedException("Max tokens reached. not supported yet.");
-            }
+            // 종료
             else
             {
-                doLoop = false;
+                break;
             }
         }
     }

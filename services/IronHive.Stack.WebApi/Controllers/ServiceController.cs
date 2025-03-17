@@ -130,3 +130,18 @@ public class EmbeddingsRequest
 
     public required IEnumerable<string> Input { get; set; }
 }
+
+public class ChatCompletionStreamResponse
+{
+    public enum Status
+    {
+        Begin,
+        Continue,
+        End
+    }
+
+    public Status State { get; set; }
+    public IMessageContent? Content { get; set; }
+    public int? TotalTokens { get; set; }
+    public string? SystemMessage { get; set; }
+}

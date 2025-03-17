@@ -8,29 +8,34 @@ public class MessageSession
     public MessageCollection Messages { get; set; } = new();
 
     /// <summary>
-    /// 대화의 제목입니다.
+    /// 현재 세션의 제목 입니다.
     /// </summary>
     public string? Title { get; set; }
 
     /// <summary>
-    /// 전체 메시지에 대한 요약 정보입니다.
+    /// 토큰수 제한으로 대화 메시지를 요약한 정보 입니다.
     /// </summary>
     public string? Summary { get; set; }
 
     /// <summary>
-    /// 최대 반복 실행(루프) 횟수입니다.
+    /// 실패한 도구 사용에 대한 최대 시도 횟수입니다.
     /// </summary>
-    public int MaxIterationCount { get; set; } = 5;
+    public int MaxToolAttempts { get; set; } = 3;
 
     /// <summary>
-    /// 대화 내 모든 메시지의 총 토큰 수입니다.
+    /// 메시지 전체의 총 토큰 수입니다.
     /// </summary>
-    public int TotalTokens { get; set; } = 0;
+    public int? TotalTokens { get; set; }
 
     /// <summary>
-    /// 토큰 수 제한으로 인해 잘린 마지막 메시지의 인덱스입니다.
+    /// 요약이된 메시지의 마지막 인덱스 입니다.
     /// </summary>
-    public int? LastTruncatedMessageIndex { get; set; }
+    public int? LastTruncatedIndex { get; set; }
+
+    /// <summary>
+    /// 현재 객체의 값을 업데이트 합니다.
+    /// </summary>
+    public bool AutoUpdate { get; set; } = true;
 
     public MessageSession()
     { }

@@ -79,7 +79,7 @@ public class SummaryHandler : IPipelineHandler
         }, cancellationToken);
 
         var sb = new StringBuilder();
-        foreach (var item in response.Data?.Content ?? [])
+        foreach (var item in response.Content ?? [])
         {
             if (item is TextContent text)
             {

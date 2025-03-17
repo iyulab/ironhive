@@ -14,8 +14,16 @@ internal class Message
     /// "user" or "assistant"
     /// </summary>
     [JsonPropertyName("role")]
-    public required MessageRole Role { get; set; }
+    public MessageRole Role { get; set; }
 
     [JsonPropertyName("content")]
-    public required ICollection<MessageContent> Content { get; set; }
+    public ICollection<MessageContent> Content { get; set; } = new List<MessageContent>();
+
+    public Message()
+    { }
+
+    public Message(MessageRole role)
+    {
+        Role = role;
+    }
 }

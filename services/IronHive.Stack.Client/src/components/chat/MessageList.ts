@@ -1,14 +1,13 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
-import { customElement, property, query } from 'lit/decorators.js';
+import { customElement, property, query, queryAll } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { Message } from '../../models';
 
 @customElement('message-list')
 export class MessageList extends LitElement {
 
-  @query('.container') container!: HTMLElement;
-  @query('.padding') padding!: HTMLElement;
-
+  @queryAll('bot-message') botMsgEl!: NodeListOf<HTMLElement>;
+  @query('.padding') padEl!: HTMLDivElement;
   @property({ type: Array }) messages: Message[] = [];
 
   protected async updated(changedProperties: PropertyValues) {
@@ -46,16 +45,22 @@ export class MessageList extends LitElement {
     `;
   }
   
-  private focusOnNewMessage() {
-    // 패딩 요소 직전의 마지막 메시지로 스크롤
-    this.padding.style.height = '800px';
-    const lastMessage = this.container.querySelector('user-message:last-of-type, bot-message:last-of-type');
-    
-    if (lastMessage) {
-      lastMessage.scrollIntoView({ 
+  private async focusOnNewMessage() {
+    // 1. 컴포넌트 업데이트
+    await this.updateComplete;
+
+    // 2. 마지막 메시지 끝으로 스크롤
+    if (this.botMsgEl.length > 0) {
+      this.padEl.style.height = `600px`;
+      await this.updateComplete;
+      const last = this.botMsgEl[this.botMsgEl.length - 1];
+      last.scrollIntoView({ 
         behavior: 'smooth', 
-        block: 'center',
+        block: 'start',
+        inline: 'start' 
       });
+      await this.updateComplete;
+      this.padEl.style.height = '0px';
     }
   }
 
@@ -63,7 +68,6 @@ export class MessageList extends LitElement {
     :host {
       width: 100%;
       height: 100%;
-      display: block;
       overflow-y: auto;
     }
 
@@ -88,7 +92,6 @@ export class MessageList extends LitElement {
       }
 
       .padding {
-        height: 100%;
         display: block;
         visibility: hidden;
         pointer-events: none;

@@ -17,7 +17,7 @@ export class ToolBlock extends LitElement {
       <div class="container">
         <div class="header">
           <div class="status">
-            ${this.status}
+            ${this.value.status}
           </div>
           <div class="name">
             ${this.value.name}

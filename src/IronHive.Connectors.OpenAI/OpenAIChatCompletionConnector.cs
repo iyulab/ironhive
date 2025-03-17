@@ -59,6 +59,13 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
         var choice = res.Choices?.FirstOrDefault();
         var message = new Message(MessageRole.Assistant);
 
+        // 텍스트 생성
+        var text = choice?.Message?.Content;
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            message.Content.AddText(text);
+        }
+
         // 툴 사용
         var tools = choice?.Message?.ToolCalls;
         if (tools != null && tools.Count > 0)
@@ -68,13 +75,6 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
             {
                 message.Content.AddTool(t.Id, t.Function?.Name, t.Function?.Arguments, null);
             }
-        }
-
-        // 텍스트 생성
-        var text = choice?.Message?.Content;
-        if (!string.IsNullOrWhiteSpace(text))
-        {
-            message.Content.AddText(text);
         }
 
         return new ChatCompletionResult<Message>
@@ -105,6 +105,9 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
     {
         var req = BuildRequest(messages, options);
 
+        // index 지정 용도: OpenAI는 텍스트컨텐츠에 인덱스 속성이 없음, 임의로 생성
+        // tool의 index를 정확히 하여 찾을 수 있게 하기 위함
+        bool txtgen = false;
         string? id = null;
         EndReason? reason = null;
         TokenUsage? usage = null;
@@ -153,7 +156,7 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
                     Data = new ToolContent
                     {
                         Id = tool.Id,
-                        Index = tool.Index,
+                        Index = txtgen ? tool.Index +1 : tool.Index,
                         Name = tool.Function?.Name,
                         Arguments = tool.Function?.Arguments
                     }
@@ -164,12 +167,13 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
             var text = choice.Delta?.Content;
             if (text != null)
             {
+                txtgen = true;
                 yield return new ChatCompletionResult<IMessageContent>
                 {
                     MessageId = id,
                     Data = new TextContent
                     {
-                        Index = null,
+                        Index = 0,
                         Value = text
                     }
                 };

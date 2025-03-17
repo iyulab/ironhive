@@ -771,7 +771,7 @@ export class MarkedBlock extends LitElement {
       padding: 0;
       margin: 0;
       word-break: normal;
-      white-space: pre;
+      white-space: pre-wrap;
       background: transparent;
       border: 0;
     }
