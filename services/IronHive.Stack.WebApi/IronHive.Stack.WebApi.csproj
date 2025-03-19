@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <PackageReference Include="Tavily" Version="1.0.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -17,9 +18,10 @@
     <ProjectReference Include="..\..\src\IronHive.Connectors.Ollama\IronHive.Connectors.Ollama.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Connectors.OpenAI\IronHive.Connectors.OpenAI.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Core\IronHive.Core.csproj" />
+    <ProjectReference Include="..\..\src\IronHive.Storages.AmazonS3\IronHive.Storages.AmazonS3.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Storages.AzureBlob\IronHive.Storages.AzureBlob.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Storages.LiteDB\IronHive.Storages.LiteDB.csproj" />
-    <ProjectReference Include="..\..\src\IronHive.Storages.LocalDisk\IronHive.Storages.LocalDisk.csproj" />
+    <ProjectReference Include="..\..\src\IronHive.Storages.Local\IronHive.Storages.Local.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Storages.Qdrant\IronHive.Storages.Qdrant.csproj" />
     <ProjectReference Include="..\IronHive.Stack.EFCore\IronHive.Stack.EFCore.csproj" />
   </ItemGroup>

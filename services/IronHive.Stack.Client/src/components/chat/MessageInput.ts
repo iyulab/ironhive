@@ -1,17 +1,17 @@
 import { LitElement, css, html } from "lit";
-import { customElement, property } from "lit/decorators.js";
+import { customElement, property, state } from "lit/decorators.js";
 import { ifDefined } from 'lit/directives/if-defined.js';
 
-import { send } from "../IconData";
 import { SubmitMessageEvent, StopMessageEvent } from "../events";
 
 @customElement('message-input')
 export class MessageInput extends LitElement {
 
-  @property({ type: String }) status: 'unavailable' | 'process' | 'available' = 'unavailable';
+  @state() disabled: boolean = true;
 
-  @property({ type: String }) placeholder?: string;
-  @property({ type: Number }) rows?: number;
+  @property({ type: String, reflect: true }) mode: 'input' | 'control' = 'input';
+  @property({ type: String, reflect: true }) placeholder?: string;
+  @property({ type: Number, reflect: true }) rows?: number;
   @property({ type: String, reflect: true }) value = '';
 
   render() {
@@ -34,13 +34,14 @@ export class MessageInput extends LitElement {
         <div class="control-area">
           <slot name="control"></slot>
           <div class="flex"></div>
-          <div class="send-button"
-            ?disabled=${this.status == 'unavailable'}
+          
+          <hive-button
+            ?disabled=${this.disabled}
             @click=${this.invokeSendEvent}>
             <hive-icon 
-              .data=${send}
+              name=${this.mode === 'input' ? 'send' : 'stop'}
             ></hive-icon>
-          </div>
+          </hive-button>
         </div>
       </div>
     `;
@@ -49,7 +50,7 @@ export class MessageInput extends LitElement {
   private handleInput = (event: InputEvent) => {
     const target = event.target as HTMLTextAreaElement;
     this.value = target.value;
-    this.status = !target.value.trim() ? 'unavailable' : 'available';
+    this.disabled = !target.value.trim();
   }
 
   private handleKeydown = (event: KeyboardEvent) => {
@@ -64,7 +65,7 @@ export class MessageInput extends LitElement {
     if (!value) return;
     this.dispatchEvent(new SubmitMessageEvent(value));
     this.value = '';
-    this.status = !value.trim() ? 'unavailable' : 'available';
+    this.disabled = !this.value.trim();
   }
 
   static styles = css`
@@ -131,25 +132,6 @@ export class MessageInput extends LitElement {
 
       .flex {
         flex: 1;
-      }
-
-      .send-button {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 4px;
-        padding: 8px;
-        box-sizing: border-box;
-        background-color: var(--hs-primary-color);
-        cursor: pointer;
-      }
-
-      .send-button:active {
-        opacity: 0.8;
-      }
-      .send-button[disabled] {
-        opacity: 0.5; 
-        cursor: not-allowed;
       }
     }
   `;

@@ -11,8 +11,6 @@ public class HiveStackConfig
 
     public ServiceKeysConfig ServiceKeys { get; set; } = new ServiceKeysConfig();
 
-    public StoragesConfig Storages { get; set; } = new StoragesConfig();
-
     public ConnectorsConfig Connectors { get; set; } = new ConnectorsConfig();
 }
 

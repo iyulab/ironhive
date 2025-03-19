@@ -33,6 +33,20 @@ public static class Extensions
         };
         container.RegisterKeyedService<IChatCompletionConnector>("anthropic", new AnthropicChatCompletionConnector(a_config));
 
+        var g_config = new OpenAIConfig
+        {
+            BaseUrl = "https://generativelanguage.googleapis.com/v1beta/openai/",
+            ApiKey = ""
+        };
+        container.RegisterKeyedService<IChatCompletionConnector>("gemini", new OpenAIChatCompletionConnector(g_config));
+
+        var l_config = new OpenAIConfig
+        {
+            BaseUrl = "http://172.30.1.53:8080/v1-openai/",
+            ApiKey = ""
+        };
+        container.RegisterKeyedService<IChatCompletionConnector>("iyulab", new OpenAIChatCompletionConnector(l_config));
+
         builder.Services.AddSingleton<IHiveServiceContainer>(container);
     }
 }

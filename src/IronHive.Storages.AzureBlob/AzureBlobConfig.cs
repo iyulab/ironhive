@@ -76,4 +76,9 @@ public class AzureBlobConfig
     /// </summary>
     [JsonIgnore]
     public TokenCredential TokenCredential { get; set; } = new DefaultAzureCredential();
+
+    /// <summary>
+    /// Container name in the Azure Blob storage.
+    /// </summary>
+    public string ContainerName { get; set; } = string.Empty;
 }

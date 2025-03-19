@@ -3,9 +3,11 @@ using IronHive.Abstractions;
 using IronHive.Abstractions.ChatCompletion;
 using IronHive.Abstractions.ChatCompletion.Messages;
 using IronHive.Abstractions.ChatCompletion.Tools;
+using IronHive.Abstractions.Json;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 
 namespace IronHive.Core.ChatCompletion;
@@ -109,13 +111,19 @@ public class ChatCompletionService : IChatCompletionService
                     if (options.Tools.TryGetValue(content.Name, out var tool))
                     {
                         var result = await tool.InvokeAsync(content.Arguments);
-                        content.Status = result.IsSuccess ? ToolStatus.Completed : ToolStatus.Failed;
-                        content.Result = JsonSerializer.Serialize(result.Data);
+                        var data = JsonSerializer.Serialize(result.Data, JsonDefaultOptions.Options);
+
+                        if (!result.IsSuccess)
+                            content.FailedError(data);
+                        else if (data.Length > 20_000)
+                            content.FailedLargeResult();
+                        else
+                            content.Completed(data);
+                            
                     }
                     else
                     {
-                        content.Status = ToolStatus.Failed;
-                        content.Result = $"Tool '{content.Name}' not found.";
+                        content.FailedNotFound();
                     }
                 }
 
@@ -140,12 +148,6 @@ public class ChatCompletionService : IChatCompletionService
         ChatCompletionOptions options,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        #region Tool Test
-        options.Tools ??= new FunctionToolCollection();
-        var tt = FunctionToolFactory.CreateFromObject<TestTool>();
-        options.Tools.AddRange(tt);
-        #endregion
-
         var (key, model) = _parser.Parse(options.Model);
         if (!_connectors.TryGetValue(key, out var conn))
             throw new KeyNotFoundException($"Service key '{key}' not found.");
@@ -267,17 +269,16 @@ public class ChatCompletionService : IChatCompletionService
                         yield return content;
 
                         var result = await tool.InvokeAsync(content.Arguments);
-                        content.Status = result.IsSuccess ? ToolStatus.Completed : ToolStatus.Failed;
-                        content.Result = JsonSerializer.Serialize(result.Data);
-
-                        yield return content;
+                        var data = JsonSerializer.Serialize(result.Data, JsonDefaultOptions.Options);
+                        yield return !result.IsSuccess
+                            ? content.FailedError(data)
+                            : data.Length > 20_000
+                            ? content.FailedLargeResult()
+                            : content.Completed(data);
                     }
                     else
                     {
-                        content.Status = ToolStatus.Failed;
-                        content.Result = $"Tool '{content.Name}' not found.";
-
-                        yield return content;
+                        yield return content.FailedNotFound();
                     }
                 }
 
@@ -292,33 +293,5 @@ public class ChatCompletionService : IChatCompletionService
                 break;
             }
         }
-    }
-}
-
-public class TestTool
-{
-    [FunctionTool("date-previous")]
-    public DateTime GetPreviousTime(int days)
-    {
-        if (days > 0)
-        {
-            throw new Exception("Input value is positive. Please provide a negative value to calculate a previous date.");
-        }
-        else
-        {
-            return DateTime.UtcNow.AddDays(days);
-        }
-    }
-
-    [FunctionTool("date-now")]
-    public DateTime GetNow()
-    {
-        return DateTime.UtcNow;
-    }
-
-    [FunctionTool("date-next")]
-    public DateTime GetNextTime(int days)
-    {
-        return DateTime.UtcNow.AddDays(days);
     }
 }

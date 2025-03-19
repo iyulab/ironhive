@@ -56,7 +56,7 @@ export class MarkedBlock extends LitElement {
       -webkit-text-size-adjust: 100%;
       margin: 0;
       color: var(--fgColor-default);
-      background-color: var(--bgColor-default);
+      background-color: transparent;
       font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji";
       font-size: 16px;
       line-height: 1.5;
@@ -178,7 +178,7 @@ export class MarkedBlock extends LitElement {
       height: .25em;
       padding: 0;
       margin: var(--base-size-24) 0;
-      background-color: var(--borderColor-default);
+      background-color: transparent;
       border: 0;
     }
 
@@ -770,7 +770,7 @@ export class MarkedBlock extends LitElement {
     .markdown-body pre>code {
       padding: 0;
       margin: 0;
-      word-break: normal;
+      word-break: break-word;
       white-space: pre-wrap;
       background: transparent;
       border: 0;

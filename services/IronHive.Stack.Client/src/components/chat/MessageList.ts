@@ -1,19 +1,18 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
-import { customElement, property, query, queryAll } from 'lit/decorators.js';
+import { customElement, property, query } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { Message } from '../../models';
 
 @customElement('message-list')
 export class MessageList extends LitElement {
 
-  @queryAll('bot-message') botMsgEl!: NodeListOf<HTMLElement>;
-  @query('.padding') padEl!: HTMLDivElement;
+  @query('.container') containerEl!: HTMLDivElement;  
   @property({ type: Array }) messages: Message[] = [];
 
   protected async updated(changedProperties: PropertyValues) {
     super.updated(changedProperties);
     if (changedProperties.has('messages')) {
-      this.focusOnNewMessage();
+      this.changedMessage();
     }
   }
 
@@ -40,27 +39,24 @@ export class MessageList extends LitElement {
                   : nothing)}
               </bot-message>
             `)}
-        <div class="padding"></div>
       </div>
     `;
   }
   
-  private async focusOnNewMessage() {
-    // 1. 컴포넌트 업데이트
+  private async changedMessage() {
+    // 컴포넌트 업데이트
     await this.updateComplete;
 
-    // 2. 마지막 메시지 끝으로 스크롤
-    if (this.botMsgEl.length > 0) {
-      this.padEl.style.height = `600px`;
-      await this.updateComplete;
-      const last = this.botMsgEl[this.botMsgEl.length - 1];
-      last.scrollIntoView({ 
-        behavior: 'smooth', 
+    // 마지막 메시지 포커스
+    const msgEl = this.containerEl.querySelectorAll('user-message, bot-message');
+    if (msgEl.length > 0) {
+      const lastMsgEl = msgEl[msgEl.length - 1];
+      lastMsgEl.scrollIntoView({
+        behavior: 'smooth',
         block: 'start',
-        inline: 'start' 
+        inline: 'start'
       });
       await this.updateComplete;
-      this.padEl.style.height = '0px';
     }
   }
 
@@ -89,12 +85,6 @@ export class MessageList extends LitElement {
         width: 100%;
         height: auto;
         align-self: flex-start;
-      }
-
-      .padding {
-        display: block;
-        visibility: hidden;
-        pointer-events: none;
       }
     }
   `;

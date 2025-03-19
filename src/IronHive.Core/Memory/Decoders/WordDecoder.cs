@@ -3,7 +3,7 @@ using DocumentFormat.OpenXml.Wordprocessing;
 
 namespace IronHive.Core.Memory.Decoders;
 
-public class WordDecoder : IDocumentDecoder
+public class WordDecoder : IFileDecoder
 {
     /// <inheritdoc />
     public bool IsSupportMimeType(string mimeType)
@@ -18,7 +18,7 @@ public class WordDecoder : IDocumentDecoder
     {
         return await Task.Run(() =>
         {
-            var contents = new List<string>();
+            var content = new List<string>();
 
             using var word = WordprocessingDocument.Open(data, false)
                 ?? throw new InvalidOperationException("Failed to open the Word document.");
@@ -33,11 +33,11 @@ public class WordDecoder : IDocumentDecoder
                 var text = TextCleaner.Clean(p.InnerText);
                 if (string.IsNullOrWhiteSpace(text))
                     continue;
-                contents.Add(text);
+                content.Add(text);
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            return contents;
+            return content;
         }, cancellationToken).ConfigureAwait(false);
     }
 }

@@ -1,6 +1,6 @@
 ﻿namespace IronHive.Core.Memory.Decoders;
 
-public interface IDocumentDecoder
+public interface IFileDecoder
 {
     /// <summary>
     /// Extract text content from the given file.

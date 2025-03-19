@@ -1,3 +1,5 @@
+export * from '../base';
+
 export * from './ErrorBlock';
 export * from './MarkedBlock';
 export * from './TextBlock';
@@ -9,5 +11,3 @@ export * from './MessageList';
 export * from './MessageInput';
 
 export * from './ChatRoom';
-
-export * from '../HiveIcon';

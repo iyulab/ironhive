@@ -19,7 +19,7 @@ public class LiteDBVectorStorage : IVectorStorage
         GC.SuppressFinalize(this);
     }
 
-    public Task<IEnumerable<string>> GetCollectionListAsync(
+    public Task<IEnumerable<string>> ListCollectionsAsync(
         CancellationToken cancellationToken = default)
     {
         var collections = _db.GetCollectionNames();
@@ -36,7 +36,7 @@ public class LiteDBVectorStorage : IVectorStorage
 
     public async Task CreateCollectionAsync(
         string collectionName,
-        int vectorSize,
+        int dimensions,
         CancellationToken cancellationToken = default)
     {
         if (await CollectionExistsAsync(collectionName, cancellationToken))

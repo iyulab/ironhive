@@ -1,54 +1,32 @@
-<title>
-  good
-</title>
-
 # STRUCTURE
+
+## Abstraction
+
+```yaml
+- IHiveMind
+  - CreateSession()
+  - 
+
+- IHiveSession
+  - Title
+  - Summary
+  - TokenUsage
+  - InvokeAsync()
+  - InvokeStreamingAsync()
+
+- IHiveServiceContainer
+  - Connectors
+  - StorageManager
+
+```
 
 ## Core
 
 ```yaml
-- IHive
-
-- ChatAgent : IAgent<MessageRequest, MessageRespone>
-  - ID
-  - Name
-  - Description
-  - Instruction
-  - InvokeAsync()
-  - InvokeStreamingAsync()
-
-- SummaryAgent : IAgent<string,string>
-  - ID
-  - Name
-  - Description
-  - Instruction
-  - InvokeAsync()
-
-- IMessageSession
-  - Title
-  - CondensationStrategy
-  - TokenUsage
-  - ToolRetryPolicy
-  - InvokeAsync()
-  - InvokeStreamingAsync()
-
-- Workflow
-  - ID
-  - Node[]
-    - ID
-    - Execute()
-  - Edge[]
-    - Source
-    - Target
-```
-
-## Basic
-
-```yaml
-- IChatCompletionService
-  - GenerateMessageAsync()
-  - GenerateStreamingMessageAsync()
-- IEmbeddingService
+- ChatCompletionService
+  - ExecuteAsync()
+  - ExecuteStreamingAsync()
+- EmbeddingService
   - EmbedAsync()
   - EmbedBatchAsync()
 ```

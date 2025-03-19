@@ -3,7 +3,7 @@ using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 
 namespace IronHive.Core.Memory.Decoders;
 
-public class PDFDecoder : IDocumentDecoder
+public class PDFDecoder : IFileDecoder
 {
     /// <inheritdoc />
     public bool IsSupportMimeType(string mimeType)

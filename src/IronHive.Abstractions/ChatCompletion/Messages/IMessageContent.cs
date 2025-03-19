@@ -56,6 +56,26 @@ public class ToolContent : MessageContentBase
     public string? Arguments { get; set; }
 
     public string? Result { get; set; }
+
+    public ToolContent Completed(string data)
+    {
+        Status = ToolStatus.Completed;
+        Result = data;
+        return this;
+    }
+
+    public ToolContent FailedError(string error)
+    {
+        Status = ToolStatus.Failed;
+        Result = error;
+        return this;
+    }
+
+    public ToolContent FailedNotFound()
+        => FailedError($"Tool [{Name}] not found.");
+
+    public ToolContent FailedLargeResult()
+        => FailedError("Result contains too much information to process.");
 }
 
 /// <summary>

@@ -2,7 +2,7 @@
 
 namespace IronHive.Core.Memory.Decoders;
 
-public class TextDecoder : IDocumentDecoder
+public class TextDecoder : IFileDecoder
 {
     /// <inheritdoc />
     public bool IsSupportMimeType(string mimeType)

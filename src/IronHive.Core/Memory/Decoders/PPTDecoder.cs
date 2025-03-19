@@ -3,7 +3,7 @@ using DocumentFormat.OpenXml.Presentation;
 
 namespace IronHive.Core.Memory.Decoders;
 
-public class PPTDecoder : IDocumentDecoder
+public class PPTDecoder : IFileDecoder
 {
     /// <inheritdoc />
     public bool IsSupportMimeType(string mimeType)

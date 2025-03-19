@@ -7,6 +7,11 @@ using IronHive.Abstractions.Embedding;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using IronHive.Abstractions.ChatCompletion.Tools;
+using System.ComponentModel;
+using Tavily;
+using System.Threading.Tasks;
+using IronHive.Stack.WebApi.Tools;
 
 namespace IronHive.Stack.WebApi.Controllers;
 
@@ -48,6 +53,12 @@ public class ServiceController : ControllerBase
         [FromBody] ChatCompletionRequest request,
         CancellationToken cancellationToken)
     {
+        #region =========================== Tool Test =============================
+        request.Tools ??= new FunctionToolCollection();
+        var tt = FunctionToolFactory.CreateFromObject<TestTool>();
+        request.Tools.AddRange(tt);
+        #endregion
+
         try
         {
             var context = new MessageSession(request.Messages);

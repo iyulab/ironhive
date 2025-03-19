@@ -22,7 +22,7 @@ public class QdrantVectorStorage : IVectorStorage
         GC.SuppressFinalize(this);
     }
 
-    public async Task<IEnumerable<string>> GetCollectionListAsync(
+    public async Task<IEnumerable<string>> ListCollectionsAsync(
         CancellationToken cancellationToken = default)
     {
         return await _client.ListCollectionsAsync(cancellationToken);
@@ -37,7 +37,7 @@ public class QdrantVectorStorage : IVectorStorage
 
     public async Task CreateCollectionAsync(
         string collectionName,
-        int vectorSize,
+        int dimensions,
         CancellationToken cancellationToken = default)
     {
         if (await CollectionExistsAsync(collectionName, cancellationToken))
@@ -48,7 +48,7 @@ public class QdrantVectorStorage : IVectorStorage
             Datatype = Datatype.Float32,
             Distance = Distance.Cosine,
             OnDisk = true,
-            Size = (ulong)vectorSize
+            Size = (ulong)dimensions
         };
         var vectorConfig = new VectorParamsMap { Map = { [DefaultVectorsName] = vectorParams } };
         await _client.CreateCollectionAsync(

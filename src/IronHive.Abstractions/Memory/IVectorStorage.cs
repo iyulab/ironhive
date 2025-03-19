@@ -2,7 +2,7 @@
 
 public interface IVectorStorage : IDisposable
 {
-    Task<IEnumerable<string>> GetCollectionListAsync(
+    Task<IEnumerable<string>> ListCollectionsAsync(
         CancellationToken cancellationToken = default);
 
     Task<bool> CollectionExistsAsync(
@@ -11,7 +11,7 @@ public interface IVectorStorage : IDisposable
 
     Task CreateCollectionAsync(
         string collectionName,
-        int vectorSize,
+        int dimensions,
         CancellationToken cancellationToken = default);
 
     Task DeleteCollectionAsync(
