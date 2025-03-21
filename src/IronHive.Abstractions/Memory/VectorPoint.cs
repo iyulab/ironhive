@@ -16,7 +16,7 @@ public class VectorPoint
     public IEnumerable<float> Vectors { get; set; } = [];
 
     /// <summary>
-    /// Gets or sets the document ID.
+    /// Gets or sets the source ID.
     /// </summary>
     public string? DocumentId { get; set; }
 

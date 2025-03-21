@@ -1,19 +1,18 @@
 ﻿using IronHive.Abstractions;
 using IronHive.Abstractions.Embedding;
-using IronHive.Core.ChatCompletion;
 
 namespace IronHive.Core.Embedding;
 
 public class EmbeddingService : IEmbeddingService
 {
     private readonly IReadOnlyDictionary<string, IEmbeddingConnector> _connectors;
-    private readonly IModelParser _parser;
+    private readonly IServiceModelParser _parser;
 
     public EmbeddingService(
-        IHiveServiceContainer container,
-        IModelParser parser)
+        IReadOnlyDictionary<string, IEmbeddingConnector> connectors,
+        IServiceModelParser parser)
     {
-        _connectors = container.GetKeyedServices<IEmbeddingConnector>();
+        _connectors = connectors;
         _parser = parser;
     }
 

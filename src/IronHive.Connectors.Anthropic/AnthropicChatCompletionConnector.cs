@@ -1,8 +1,6 @@
-﻿using IronHive.Abstractions.AI;
-using IronHive.Abstractions.ChatCompletion;
+﻿using IronHive.Abstractions.ChatCompletion;
 using IronHive.Abstractions.ChatCompletion.Messages;
 using IronHive.Connectors.Anthropic.ChatCompletion;
-using IronHive.Connectors.Anthropic.Configurations;
 using System.Runtime.CompilerServices;
 using TokenUsage = IronHive.Abstractions.ChatCompletion.TokenUsage;
 using Message = IronHive.Abstractions.ChatCompletion.Messages.Message;

@@ -1,13 +1,9 @@
-﻿using IronHive.Core;
-using IronHive.Storages.AmazonS3;
-using IronHive.Storages.LocalDisk;
+﻿using IronHive.Storages.AmazonS3;
+using IronHive.Storages.AzureBlob;
+using IronHive.Storages.Local;
+using IronHive.Storages.Redis;
+using System.Text;
 
-var storage = new LocalFileStorage();
-
-var files = await storage.ListAsync("/");
-foreach (var file in files)
-{
-    Console.WriteLine(file);
-}
+Console.WriteLine("Hello, World!");
 
 return;

@@ -19,6 +19,8 @@ public enum PipelineStatus
 
 public class DataPipeline
 {
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+
     [JsonInclude]
     public PipelineStatus Status { get; private set; } = PipelineStatus.Queued;
 

@@ -1,13 +1,9 @@
-﻿using DocumentFormat.OpenXml.Office.CustomUI;
-using IronHive.Abstractions;
+﻿using IronHive.Abstractions;
 using IronHive.Abstractions.ChatCompletion;
 using IronHive.Abstractions.ChatCompletion.Messages;
 using IronHive.Abstractions.ChatCompletion.Tools;
 using IronHive.Abstractions.Json;
-using System.Diagnostics;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text.Encodings.Web;
 using System.Text.Json;
 
 namespace IronHive.Core.ChatCompletion;
@@ -15,13 +11,16 @@ namespace IronHive.Core.ChatCompletion;
 public class ChatCompletionService : IChatCompletionService
 {
     private readonly IReadOnlyDictionary<string, IChatCompletionConnector> _connectors;
-    private readonly IModelParser _parser;
+    private readonly IReadOnlyDictionary<string, FunctionToolCollection> _tools;
+    private readonly IServiceModelParser _parser;
 
     public ChatCompletionService(
-        IHiveServiceContainer container,
-        IModelParser parser)
+        IReadOnlyDictionary<string, IChatCompletionConnector> connectors,
+        IReadOnlyDictionary<string, FunctionToolCollection> tools,
+        IServiceModelParser parser)
     {
-        _connectors = container.GetKeyedServices<IChatCompletionConnector>();
+        _connectors = connectors;
+        _tools = tools;
         _parser = parser;
     }
 

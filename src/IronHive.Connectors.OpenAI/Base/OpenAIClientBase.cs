@@ -1,6 +1,5 @@
 ﻿using System.Net.Http.Json;
 using System.Text.Json;
-using IronHive.Connectors.OpenAI.Configurations;
 
 namespace IronHive.Connectors.OpenAI.Base;
 

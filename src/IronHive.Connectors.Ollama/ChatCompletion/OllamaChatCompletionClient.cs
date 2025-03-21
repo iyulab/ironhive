@@ -1,5 +1,4 @@
 ﻿using IronHive.Connectors.Ollama.Base;
-using IronHive.Connectors.Ollama.Configurations;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text;

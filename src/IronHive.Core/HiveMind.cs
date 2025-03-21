@@ -20,4 +20,14 @@ public class HiveMind : IHiveMind
         ChatCompletion = services.GetRequiredService<IChatCompletionService>();
         Embedding = services.GetRequiredService<IEmbeddingService>();
     }
+
+    public IHiveSession CreateSession()
+    {
+        return new HiveSession();
+    }
+
+    public HiveAgent CreateAgent()
+    {
+        throw new NotImplementedException();
+    }
 }

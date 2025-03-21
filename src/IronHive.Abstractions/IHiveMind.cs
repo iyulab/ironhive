@@ -5,9 +5,5 @@ namespace IronHive.Abstractions;
 
 public interface IHiveMind
 {
-    IServiceProvider Services { get; }
-
-    IChatCompletionService ChatCompletion { get; }
-
-    IEmbeddingService Embedding { get; }
+    // TODO: Add properties and methods
 }

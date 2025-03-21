@@ -1,6 +1,4 @@
-﻿using IronHive.Connectors.OpenAI.Configurations;
-using IronHive.Connectors.OpenAI.Extensions;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using TokenUsage = IronHive.Abstractions.ChatCompletion.TokenUsage;
 using IronHive.Connectors.OpenAI.ChatCompletion;
 using IronHive.Abstractions.ChatCompletion;

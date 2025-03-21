@@ -1,13 +1,14 @@
-﻿using IronHive.Abstractions.Memory;
+﻿using IronHive.Abstractions.Files;
 using System.Runtime.InteropServices;
 
-namespace IronHive.Storages.LocalDisk;
+namespace IronHive.Storages.Local;
 
 public class LocalFileStorage : IFileStorage
 {
-    private const int _defaultBufferSize = 81_920; // 기본 80KB
-    private const int _maxBufferSize = 1_048_576;   // 최대 1MB
-    private const int _minBufferSize = 4_096;      // 최소 4KB
+    private readonly bool _isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+    private readonly int _defaultBufferSize = 81_920;  // 기본 80KB
+    private readonly int _maxBufferSize = 1_048_576;   // 최대 1MB
+    private readonly int _minBufferSize = 4_096;       // 최소 4KB
 
     public void Dispose()
     {
@@ -19,49 +20,45 @@ public class LocalFileStorage : IFileStorage
         string? prefix = null,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(prefix))
+        prefix = NormalizePath(prefix);
+
+        // Windows의 경우 루트 디렉토리를 드라이브 목록으로 대체
+        if (prefix == "/" && _isWindows)
         {
-            // 플랫폼에 따른 처리: Windows면 드라이브 목록, 그 외는 루트만 반환
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                var items = DriveInfo.GetDrives().Select(drive => drive.Name);
-                cancellationToken.ThrowIfCancellationRequested();
-                return Task.FromResult(items);
-            }
-            else
-            {
-                // Linux/Unix 환경에서는 루트("/")만 반환합니다.
-                var items = (IEnumerable<string>)new[] { "/" };
-                cancellationToken.ThrowIfCancellationRequested();
-                return Task.FromResult(items);
-            }
+            var drives = DriveInfo.GetDrives()
+                .Select(drive => drive.Name.Replace('\\', '/'));
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(drives);
         }
-        else
+
+        var options = new EnumerationOptions
         {
-            var options = new EnumerationOptions
+            AttributesToSkip = FileAttributes.Hidden | FileAttributes.System,   // 숨김, 시스템 파일 제외
+            RecurseSubdirectories = false,                                      // 1depth만 탐색
+            IgnoreInaccessible = true,                                          // 접근 불가능한 파일 제외
+            MatchCasing = MatchCasing.PlatformDefault,                          // 플랫폼 기본 대소문자 구분
+            MatchType = MatchType.Simple,                                       // 단순 일치
+            ReturnSpecialDirectories = false,                                   // 특수 디렉터리 제외
+        };
+
+        // 파일 목록을 가져옵니다.
+        var files = Directory.GetFiles(prefix, "*", options)
+            .Select(file => file.Replace('\\', '/'));
+        cancellationToken.ThrowIfCancellationRequested();
+
+        // 폴더 목록을 가져오고, 각 폴더 경로 끝에 구분자를 추가합니다.
+        var directories = Directory.GetDirectories(prefix, "*", options)
+            .Select(dir => 
             {
-                AttributesToSkip = FileAttributes.Hidden | FileAttributes.System,   // 숨김, 시스템 파일 제외
-                RecurseSubdirectories = false,                                      // 1depth만 탐색
-                IgnoreInaccessible = true,                                          // 접근 불가능한 파일 제외
-                MatchCasing = MatchCasing.PlatformDefault,                          // 플랫폼 기본 대소문자 구분
-                MatchType = MatchType.Simple,                                       // 단순 일치
-                ReturnSpecialDirectories = false,                                   // 특수 디렉터리 제외
-            };
+                var dic = Path.EndsInDirectorySeparator(dir) ? dir : dir + Path.DirectorySeparatorChar;
+                return _isWindows ? dic.Replace('\\', '/') : dic;
+            });
+        cancellationToken.ThrowIfCancellationRequested();
 
-            // 파일 목록을 가져옵니다.
-            var files = Directory.GetFiles(prefix, "*", options);
-            cancellationToken.ThrowIfCancellationRequested();
+        // 파일과 폴더를 합칩니다.
+        var items = files.Concat(directories);
 
-            // 폴더 목록을 가져오고, 각 폴더 경로 끝에 구분자를 추가합니다.
-            var directories = Directory.GetDirectories(prefix, "*", options)
-                .Select(dir => Path.EndsInDirectorySeparator(dir) ? dir : dir + Path.DirectorySeparatorChar);
-            cancellationToken.ThrowIfCancellationRequested();
-
-            // 파일과 폴더를 합칩니다.
-            var items = files.Concat(directories);
-
-            return Task.FromResult(items);
-        }
+        return Task.FromResult(items);
     }
 
     /// <inheritdoc />
@@ -69,6 +66,7 @@ public class LocalFileStorage : IFileStorage
         string path, 
         CancellationToken cancellationToken = default)
     {
+        path = NormalizePath(path);
         var isExists = IsDirectory(path)
             ? Directory.Exists(path)
             : File.Exists(path);
@@ -81,6 +79,7 @@ public class LocalFileStorage : IFileStorage
         string filePath, 
         CancellationToken cancellationToken = default)
     {
+        filePath = NormalizePath(filePath);
         if (!await ExistsAsync(filePath, cancellationToken))
             throw new FileNotFoundException($"파일을 찾을 수 없습니다: {filePath}");
         if (IsDirectory(filePath))
@@ -100,6 +99,7 @@ public class LocalFileStorage : IFileStorage
         bool overwrite = true, 
         CancellationToken cancellationToken = default)
     {
+        filePath = NormalizePath(filePath);
         if (IsDirectory(filePath))
             throw new ArgumentException("디렉토리 경로로 파일을 쓸 수 없습니다.", nameof(filePath));
 
@@ -128,24 +128,53 @@ public class LocalFileStorage : IFileStorage
         string path,
         CancellationToken cancellationToken = default)
     {
+        path = NormalizePath(path);
         if (IsDirectory(path))
-            Directory.Delete(path, true);
+        {
+            // 디렉토리 삭제
+            Directory.Delete(path, recursive: true);
+        }
         else
+        {
+            // 파일 삭제
             File.Delete(path);
 
+            // 상위 디렉터리 확인 후, 비어있으면 삭제
+            var dicInfo = Directory.GetParent(path);
+            if (dicInfo != null && !dicInfo.EnumerateFileSystemInfos().Any())
+            {
+                Directory.Delete(dicInfo.FullName);
+            }
+        }
         return Task.CompletedTask;
     }
 
-    /// <summary>
-    /// 지정한 경로가 디렉토리 경로인지 확인합니다.
-    /// </summary>
-    public static bool IsDirectory(string path)
+    // 지정한 경로가 디렉토리 경로인지 확인합니다.
+    private static bool IsDirectory(string path)
     {
-        return path.EndsWith(Path.DirectorySeparatorChar);
+        return path.EndsWith('/');
+    }
+
+    // 경로를 플랫폼에 맞게 변환합니다.
+    private string NormalizePath(string? path = null)
+    {
+        // null 또는 빈 문자열인 경우 "/"를 루트 경로로 반환
+        if (string.IsNullOrWhiteSpace(path))
+            return "/";
+
+        // Windows의 경우 '/' -> '\'로 변환
+        if (_isWindows)
+            path = path.Replace('/', '\\');
+
+        // 상대경로의 경우 절대경로로 변환
+        //if (!path.StartsWith('/'))
+        //    path = '/' + path;
+
+        return path;
     }
 
     // 스트림 크기에 따라 최적의 버퍼 크기를 반환합니다.
-    private static int GetOptimalBufferSize(long length)
+    private int GetOptimalBufferSize(long length)
     {
         if (length <= 0) return _defaultBufferSize;
 

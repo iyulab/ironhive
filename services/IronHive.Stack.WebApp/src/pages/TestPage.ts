@@ -12,7 +12,7 @@ export class TestPage extends LitElement {
     return html`
       <div class="flexible-box">
         <chat-room
-          baseUri="http://172.30.1.26:5075/v1/"
+          baseUri=${import.meta.env.VITE_SERVER_URL}
         ></chat-room>
       </div>
       <div @click=${this.toggle} class="toggler">T</div>

@@ -1,6 +1,6 @@
-﻿using IronHive.Connectors.Anthropic.Configurations;
-using IronHive.Connectors.Ollama.Configurations;
-using IronHive.Connectors.OpenAI.Configurations;
+﻿using IronHive.Connectors.Anthropic;
+using IronHive.Connectors.Ollama;
+using IronHive.Connectors.OpenAI;
 
 namespace IronHive.Stack.WebApi.Configurations;
 

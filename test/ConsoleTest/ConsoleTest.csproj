@@ -18,6 +18,7 @@
     <ProjectReference Include="..\..\src\IronHive.Storages.LiteDB\IronHive.Storages.LiteDB.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Storages.Local\IronHive.Storages.Local.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Storages.Qdrant\IronHive.Storages.Qdrant.csproj" />
+    <ProjectReference Include="..\..\src\IronHive.Storages.Redis\IronHive.Storages.Redis.csproj" />
   </ItemGroup>
 
 </Project>

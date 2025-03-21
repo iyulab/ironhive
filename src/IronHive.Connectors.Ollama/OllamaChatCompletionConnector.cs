@@ -2,8 +2,6 @@
 using IronHive.Abstractions.ChatCompletion.Messages;
 using IronHive.Connectors.Ollama.Base;
 using IronHive.Connectors.Ollama.ChatCompletion;
-using IronHive.Connectors.Ollama.Configurations;
-using IronHive.Connectors.Ollama.Extensions;
 using System.Runtime.CompilerServices;
 using Message = IronHive.Abstractions.ChatCompletion.Messages.Message;
 using OllamaMessage = IronHive.Connectors.Ollama.ChatCompletion.Message;

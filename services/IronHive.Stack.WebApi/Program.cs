@@ -6,8 +6,8 @@ using System.Text.Encodings.Web;
 
 var builder = WebApplication.CreateBuilder(args);
 
-# region For Raggle
-builder.AddHiveMind();
+# region For IronHive
+builder.Services.AddHiveSerivces();
 #endregion
 
 builder.Services.AddHttpContextAccessor();

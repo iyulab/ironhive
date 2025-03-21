@@ -1,5 +1,4 @@
 ﻿using IronHive.Abstractions.Embedding;
-using IronHive.Connectors.Ollama.Configurations;
 using IronHive.Connectors.Ollama.Embeddings;
 
 namespace IronHive.Connectors.Ollama;

@@ -1,5 +1,4 @@
-﻿using IronHive.Connectors.Anthropic.Configurations;
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
 using System.Text.Json;
 
 namespace IronHive.Connectors.Anthropic.Base;

@@ -1,7 +1,5 @@
 ﻿using IronHive.Abstractions.Embedding;
-using IronHive.Connectors.OpenAI.Configurations;
 using IronHive.Connectors.OpenAI.Embeddings;
-using IronHive.Connectors.OpenAI.Extensions;
 
 namespace IronHive.Connectors.OpenAI;
 

@@ -7,6 +7,14 @@ public class FunctionToolCollection : ICollection<FunctionTool>
 {
     private readonly Dictionary<string, FunctionTool> _items = [];
 
+    public FunctionToolCollection() 
+    { }
+
+    public FunctionToolCollection(IEnumerable<FunctionTool> items)
+    {
+        _items = items.ToDictionary(t  => t.Name, t => t);
+    }
+
     public bool TryGetValue(string name, [MaybeNullWhen(false)] out FunctionTool tool)
     {
         return _items.TryGetValue(name, out tool);

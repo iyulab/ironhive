@@ -11,19 +11,7 @@ public interface IMemoryService
         string collectionName,
         CancellationToken cancellationToken = default);
 
-    Task UploadDocumentAsync(
-        string collectionName,
-        string documentId,
-        string fileName,
-        Stream data,
-        CancellationToken cancellationToken = default);
-
-    Task DeleteDocumentAsync(
-        string collectionName,
-        string documentId,
-        CancellationToken cancellationToken = default);
-
-    Task MemorizeDocumentAsync(
+    Task MemorizeFileAsync(
         string collectionName,
         string documentId,
         string fileName,
@@ -32,7 +20,7 @@ public interface IMemoryService
         string[]? tags = null,
         CancellationToken cancellationToken = default);
 
-    Task UnMemorizeDocumentAsync(
+    Task UnMemorizeFileAsync(
         string collectionName,
         string documentId,
         CancellationToken cancellationToken = default);

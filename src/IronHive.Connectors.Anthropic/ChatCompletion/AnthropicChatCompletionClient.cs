@@ -1,7 +1,6 @@
 ﻿using System.Text.Json;
 using System.Text;
 using System.Net.Http.Json;
-using IronHive.Connectors.Anthropic.Configurations;
 using System.Runtime.CompilerServices;
 using IronHive.Connectors.Anthropic.Base;
 
