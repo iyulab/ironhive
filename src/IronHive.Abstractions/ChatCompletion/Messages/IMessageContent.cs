@@ -6,6 +6,7 @@ namespace IronHive.Abstractions.ChatCompletion.Messages;
 /// 콘텐츠 블록의 기본 인터페이스입니다.
 /// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
+[JsonDerivedType(typeof(SystemContent), "system")]
 [JsonDerivedType(typeof(TextContent), "text")]
 [JsonDerivedType(typeof(ImageContent), "image")]
 [JsonDerivedType(typeof(ToolContent), "tool")]
@@ -24,6 +25,15 @@ public abstract class MessageContentBase : IMessageContent
     public string? Id { get; set; }
 
     public int? Index { get; set; }
+}
+
+/// <summary>
+/// 서비스의 시스템 메시지를 나타냅니다
+/// </summary>
+public class SystemContent : MessageContentBase
+{
+    public string? Code { get; set; }
+    public string? Value { get; set; }
 }
 
 /// <summary>
@@ -72,10 +82,10 @@ public class ToolContent : MessageContentBase
     }
 
     public ToolContent FailedNotFound()
-        => FailedError($"Tool [{Name}] not found.");
+        => FailedError($"Tool [{Name}] not found. Please check the tool name for any typos or consult the documentation for available tools.");
 
     public ToolContent FailedLargeResult()
-        => FailedError("Result contains too much information to process.");
+        => FailedError("The result contains too much information. Please change the parameters or specify additional filters to obtain a smaller result set.");
 }
 
 /// <summary>

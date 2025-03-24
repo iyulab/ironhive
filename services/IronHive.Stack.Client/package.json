@@ -46,6 +46,7 @@
     "dompurify": "^3.2.4",
     "lit": "^3.2.1",
     "marked": "^15.0.7",
+    "marked-katex-extension": "^5.1.4",
     "mobx": "^6.13.7"
   },
   "devDependencies": {

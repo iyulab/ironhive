@@ -7,7 +7,7 @@ public class FunctionToolCollection : ICollection<FunctionTool>
 {
     private readonly Dictionary<string, FunctionTool> _items = [];
 
-    public FunctionToolCollection() 
+    public FunctionToolCollection()
     { }
 
     public FunctionToolCollection(IEnumerable<FunctionTool> items)

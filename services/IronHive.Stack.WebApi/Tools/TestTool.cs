@@ -1,11 +1,12 @@
-﻿using IronHive.Abstractions.ChatCompletion.Tools;
+﻿using IronHive.Abstractions.ChatCompletion;
+using IronHive.Abstractions.ChatCompletion.Tools;
 using System.ComponentModel;
 using System.Diagnostics;
 using Tavily;
 
 namespace IronHive.Stack.WebApi.Tools;
 
-public class TestTool
+public class TestTool : IToolService
 {
     [FunctionTool("utc-now")]
     [Description("Get the current UTC time")]
@@ -58,5 +59,15 @@ public class TestTool
         await process.WaitForExitAsync();
 
         return string.IsNullOrWhiteSpace(error) ? output : throw new Exception(error);
+    }
+
+    public Task InitializeToolExecutionAsync(object? options)
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task FinalizeToolExecutionAsync(object? options)
+    {
+        return Task.CompletedTask;
     }
 }

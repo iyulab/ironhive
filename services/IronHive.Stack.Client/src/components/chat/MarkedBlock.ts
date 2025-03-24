@@ -5,6 +5,7 @@ import { until } from 'lit/directives/until.js';
 
 import DOMPurify from "dompurify";
 import { marked } from "marked";
+import markedKatex from "marked-katex-extension";
 
 @customElement('marked-block')
 export class MarkedBlock extends LitElement {
@@ -22,6 +23,7 @@ export class MarkedBlock extends LitElement {
 
   private parse = async (value: string) => {
     value = value.replace(/^[\u200B\u200C\u200D\u200E\u200F\uFEFF]/,"");
+    marked.use(markedKatex({throwOnError: false}));
     value = await marked.parse(value, {
       async: true,
       gfm: true,

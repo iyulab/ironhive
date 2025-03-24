@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace IronHive.Stack.EFCore.Entities;
 
-public class AssistantEntity : ChatCompletionOptions
+public class AssistantEntity : ChatCompletionRequest
 {
     public string Id { get; set; } = $"{Guid.NewGuid():N}";
 

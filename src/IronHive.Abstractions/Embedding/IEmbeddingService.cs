@@ -12,6 +12,7 @@ public interface IEmbeddingService
     /// Generates an embedding for the given input using the specified model.
     /// </summary>
     Task<IEnumerable<float>> EmbedAsync(
+        string provider,
         string model,
         string input,
         CancellationToken cancellationToken = default);
@@ -20,6 +21,7 @@ public interface IEmbeddingService
     /// Generates multiple embeddings for the given request.
     /// </summary>
     Task<IEnumerable<EmbeddingResult>> EmbedBatchAsync(
+        string provider,
         string model,
         IEnumerable<string> inputs,
         CancellationToken cancellationToken = default);

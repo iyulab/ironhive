@@ -6,14 +6,10 @@ namespace IronHive.Core.Embedding;
 public class EmbeddingService : IEmbeddingService
 {
     private readonly IReadOnlyDictionary<string, IEmbeddingConnector> _connectors;
-    private readonly IServiceModelParser _parser;
 
-    public EmbeddingService(
-        IReadOnlyDictionary<string, IEmbeddingConnector> connectors,
-        IServiceModelParser parser)
+    public EmbeddingService(IReadOnlyDictionary<string, IEmbeddingConnector> connectors)
     {
         _connectors = connectors;
-        _parser = parser;
     }
 
     /// <inheritdoc />
@@ -21,13 +17,14 @@ public class EmbeddingService : IEmbeddingService
         CancellationToken cancellationToken = default)
     {
         var models = new List<EmbeddingModel>();
-        foreach (var (key, con) in _connectors)
-        {
-            var serviceModels = await con.GetModelsAsync(cancellationToken);
 
-            models.AddRange(serviceModels.Select(x => new EmbeddingModel
+        foreach (var kvp in _connectors)
+        {
+            var providerModels = await kvp.Value.GetModelsAsync(cancellationToken);
+            models.AddRange(providerModels.Select(m =>
             {
-                Model = _parser.Stringify((key, x.Model)),
+                m.Provider = kvp.Key;
+                return m;
             }));
         }
 
@@ -36,11 +33,12 @@ public class EmbeddingService : IEmbeddingService
 
     /// <inheritdoc />
     public async Task<IEnumerable<float>> EmbedAsync(
+        string provider,
         string model,
         string input,
         CancellationToken cancellationToken = default)
     {
-        var res = await EmbedBatchAsync(model, [input], cancellationToken);
+        var res = await EmbedBatchAsync(provider, model, [input], cancellationToken);
         var result = res.FirstOrDefault()?.Embedding
             ?? throw new InvalidOperationException("Failed to embedding");
 
@@ -49,14 +47,14 @@ public class EmbeddingService : IEmbeddingService
 
     /// <inheritdoc />
     public async Task<IEnumerable<EmbeddingResult>> EmbedBatchAsync(
+        string provider,
         string model,
         IEnumerable<string> inputs,
         CancellationToken cancellationToken = default)
     {
-        var (k, v) = _parser.Parse(model);
-        if (!_connectors.TryGetValue(k, out var connector))
-            throw new KeyNotFoundException($"Service key '{k}' not found.");
+        if (!_connectors.TryGetValue(provider, out var connector))
+            throw new KeyNotFoundException($"Service key '{provider}' not found.");
 
-        return await connector.EmbedBatchAsync(v, inputs, cancellationToken);
+        return await connector.EmbedBatchAsync(provider, inputs, cancellationToken);
     }
 }

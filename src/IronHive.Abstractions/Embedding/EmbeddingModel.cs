@@ -6,6 +6,11 @@
 public class EmbeddingModel
 {
     /// <summary>
+    /// 모델 제공자의 키 값입니다.
+    /// </summary>
+    public string? Provider { get; set; }
+
+    /// <summary>
     /// 임베딩 모델의 이름(또는 식별자)입니다.
     /// </summary>
     public required string Model { get; set; }

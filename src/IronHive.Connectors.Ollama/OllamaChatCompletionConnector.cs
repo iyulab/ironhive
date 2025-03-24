@@ -34,7 +34,6 @@ public class OllamaChatCompletionConnector : IChatCompletionConnector
         {
             Model = m.Name,
             CreatedAt = m.ModifiedAt,
-            Owner = null,
         });
     }
 
@@ -48,12 +47,11 @@ public class OllamaChatCompletionConnector : IChatCompletionConnector
     }
 
     /// <inheritdoc />
-    public async Task<ChatCompletionResult<Message>> GenerateMessageAsync(
-        MessageCollection messages,
-        ChatCompletionOptions options,
+    public async Task<ChatCompletionResponse<Message>> GenerateMessageAsync(
+        ChatCompletionRequest request,
         CancellationToken cancellationToken = default)
     {
-        var req = BuildRequest(messages, options);
+        var req = ConvertRequest(request);
         var res = await _client.PostChatAsync(req, cancellationToken);
         var message = new Message(MessageRole.Assistant);
         
@@ -74,7 +72,7 @@ public class OllamaChatCompletionConnector : IChatCompletionConnector
             }
         }
 
-        return new ChatCompletionResult<Message>
+        return new ChatCompletionResponse<Message>
         {
             EndReason = res.DoneReason switch
             {
@@ -87,12 +85,11 @@ public class OllamaChatCompletionConnector : IChatCompletionConnector
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<ChatCompletionResult<IMessageContent>> GenerateStreamingMessageAsync(
-        MessageCollection messages,
-        ChatCompletionOptions options,
+    public async IAsyncEnumerable<ChatCompletionResponse<IMessageContent>> GenerateStreamingMessageAsync(
+        ChatCompletionRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var req = BuildRequest(messages, options);
+        var req = ConvertRequest(request);
 
         await foreach (var res in _client.PostSteamingChatAsync(req, cancellationToken))
         {
@@ -100,7 +97,7 @@ public class OllamaChatCompletionConnector : IChatCompletionConnector
             var text = res.Message?.Content;
             if (text != null)
             {
-                yield return new ChatCompletionResult<IMessageContent>
+                yield return new ChatCompletionResponse<IMessageContent>
                 {
                     Data = new TextContent
                     {
@@ -112,7 +109,7 @@ public class OllamaChatCompletionConnector : IChatCompletionConnector
             // 종료 메시지
             if (res.DoneReason != null)
             {
-                yield return new ChatCompletionResult<IMessageContent>
+                yield return new ChatCompletionResponse<IMessageContent>
                 {
                     EndReason = res.DoneReason switch
                     {
@@ -124,45 +121,42 @@ public class OllamaChatCompletionConnector : IChatCompletionConnector
         }
     }
 
-    private static ChatRequest BuildRequest(MessageCollection messages, ChatCompletionOptions options)
+    private static ChatRequest ConvertRequest(ChatCompletionRequest request)
     {
-        var request = new ChatRequest
+        var _req = new ChatRequest
         {
-            Model = options.Model,
-            Messages = messages.ToOllama(options?.System),
+            Model = request.Model,
+            Messages = request.Messages.ToOllama(request?.System),
             Options = new ModelOptions
             {
-                NumPredict = options?.MaxTokens,
-                Temperature = options?.Temperature,
-                TopP = options?.TopP,
-                TopK = options?.TopK,
-                Stop = options?.StopSequences != null
-                    ? string.Join(" ", options.StopSequences)
+                NumPredict = request?.MaxTokens,
+                Temperature = request?.Temperature,
+                TopP = request?.TopP,
+                TopK = request?.TopK,
+                Stop = request?.StopSequences != null
+                    ? string.Join(" ", request.StopSequences)
                     : null,
             },
         };
 
-        // 동작하지 않는 모델 존재함
-        //if (options?.Tools != null && options.Tools.Count > 0)
-        //{
-        //    request.Tools = options.Tools.Select(t =>
-        //    {
-        //        return new Tool
-        //        {
-        //            Function = new FunctionTool
-        //            {
-        //                Name = t.Name,
-        //                Description = t.Description,
-        //                Parameters = new ParametersSchema
-        //                {
-        //                    Properties = t.Parameters,
-        //                    Required = t.Required,
-        //                }
-        //            }
-        //        };
-        //    });
-        //}
+        // 동작하지 않는 모델 존재
+        _req.Tools = request?.Tools.Select(t =>
+        {
+            return new Tool
+            {
+                Function = new FunctionTool
+                {
+                    Name = t.Name,
+                    Description = t.Description,
+                    Parameters = new ParametersSchema
+                    {
+                        Properties = t.Parameters?.Properties,
+                        Required = t.Parameters?.Required,
+                    }
+                }
+            };
+        });
 
-        return request;
+        return _req;
     }
 }

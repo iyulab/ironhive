@@ -3,11 +3,9 @@
 /// <summary>
 /// Represents the result of message response
 /// </summary>
-/// <typeparam name="T"></typeparam>
-public class ChatCompletionResult<T>
+/// <typeparam name="T">Type of Data property</typeparam>
+public class ChatCompletionResponse<T>
 {
-    public string? MessageId { get; set; }
-
     public EndReason? EndReason { get; set; }
 
     public TokenUsage? TokenUsage { get; set; }

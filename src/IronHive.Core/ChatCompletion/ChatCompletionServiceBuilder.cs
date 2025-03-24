@@ -7,8 +7,8 @@ namespace IronHive.Core.ChatCompletion;
 public class ChatCompletionServiceBuilder : IChatCompletionServiceBuilder
 {
     private readonly Dictionary<string, IChatCompletionConnector> _connectors = new();
-    private readonly Dictionary<string, FunctionToolCollection> _tools = new();
-    private IServiceModelParser _parser = new ServiceModelParser();
+    private readonly Dictionary<string, IToolService> _tools = new();
+    private readonly Dictionary<string, Action<ChatCompletionRequest, object>> _toolOptions = new();
 
     public IChatCompletionServiceBuilder AddConnector(string key, IChatCompletionConnector connector)
     {
@@ -16,28 +16,16 @@ public class ChatCompletionServiceBuilder : IChatCompletionServiceBuilder
         return this;
     }
 
-    public IChatCompletionServiceBuilder AddTool<TService>(string key, TService? implementation = null)
-        where TService : class
+    public IChatCompletionServiceBuilder AddTool(string key, IToolService service)
     {
-        var collection = implementation == null
-                ? FunctionToolFactory.CreateFromObject<TService>()
-                : FunctionToolFactory.CreateFromObject(implementation);
-
-        _tools.Add(key, new FunctionToolCollection(collection));
-        return this;
-    }
-
-    public IChatCompletionServiceBuilder WithParser(IServiceModelParser parser)
-    {
-        _parser = parser;
+        _tools.Add(key, service);
         return this;
     }
 
     public IChatCompletionService Build()
     {
         return new ChatCompletionService(
-            connectors: _connectors, 
-            tools: _tools,
-            parser: _parser);
+            connectors: _connectors,
+            tools: _tools);
     }
 }

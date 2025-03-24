@@ -58,15 +58,17 @@ export class ChatRoom extends LitElement {
       timestamp: new Date().toISOString()
     }
     this.messages = [...this.messages, user_msg];
-    const anth = "anthropic/claude-3-5-haiku-latest";
-    const open = "openai/gpt-4o-mini";
-    const gemini = "gemini/gemini-2.0-flash";
-    const iyulab = "iyulab/exaone-3.5";
+    const anth = { provider: "anthropic", model: "claude-3-5-haiku-latest" };
+    const open = { provider: "openai", model: "gpt-4o-mini" };
+    const gemini = { provider: "gemini", model: "gemini-2.0-flash-lite" };
+    const iyulab = { provider: "iyulab", model: "exaone-3.5" };
 
     this._res = await this._client?.chatCompletionAsync({
-      model: open,
+      provider: open.provider,
+      model: open.model,
       messages: this.messages,
-      system: "you are a chatbot politely responding to user messages",
+      tools: { "test": {} },
+      system: "you are a agent which can control user window computer",
       stream: true
     }, (item) => {
       let last = this.messages[this.messages.length - 1];

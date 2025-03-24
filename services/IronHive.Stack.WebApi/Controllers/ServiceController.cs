@@ -53,20 +53,12 @@ public class ServiceController : ControllerBase
         [FromBody] ChatCompletionRequest request,
         CancellationToken cancellationToken)
     {
-        #region =========================== Tool Test =============================
-        request.Tools ??= new FunctionToolCollection();
-        var tt = FunctionToolFactory.CreateFromObject<TestTool>();
-        request.Tools.AddRange(tt);
-        #endregion
-
         try
         {
-            var context = new MessageSession(request.Messages);
-
             if (request.Stream)
             {
                 Response.ContentType = "application/stream+json";
-                await foreach (var result in _chat.ExecuteStreamingAsync(context, request, cancellationToken))
+                await foreach (var result in _chat.ExecuteStreamingAsync(request.Messages, request, cancellationToken))
                 {
                     var json = JsonSerializer.Serialize(result, _jsonOptions);
                     var data = Encoding.UTF8.GetBytes(json + "\n");
@@ -77,7 +69,7 @@ public class ServiceController : ControllerBase
             }
             else
             {
-                var result = await _chat.ExecuteAsync(context, request, cancellationToken);
+                var result = await _chat.ExecuteAsync(request.Messages, request, cancellationToken);
                 await Response.WriteAsJsonAsync(result, _jsonOptions, cancellationToken);
             }
         }
@@ -118,7 +110,11 @@ public class ServiceController : ControllerBase
     {
         try
         {
-            var result = await _embedding.EmbedBatchAsync(request.Model, request.Input, cancellationToken);
+            var result = await _embedding.EmbedBatchAsync(
+                request.Provider,
+                request.Model, 
+                request.Input, 
+                cancellationToken);
             return Ok(result);
         }
         catch (Exception ex)
@@ -137,6 +133,8 @@ public class ChatCompletionRequest : ChatCompletionOptions
 
 public class EmbeddingsRequest
 {
+    public required string Provider { get; set; }
+
     public required string Model { get; set; }
 
     public required IEnumerable<string> Input { get; set; }

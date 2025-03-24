@@ -2,6 +2,7 @@
 using IronHive.Connectors.OpenAI;
 using IronHive.Core.ChatCompletion;
 using IronHive.Core.Embedding;
+using IronHive.Stack.WebApi.Tools;
 
 namespace IronHive.Stack.WebApi;
 
@@ -40,6 +41,10 @@ public static class Extensions
             ApiKey = ""
         };
         cb.AddConnector("iyulab", new OpenAIChatCompletionConnector(l_config));
+
+        #region ============= TestTool =============
+        cb.AddTool("test", new TestTool());
+        #endregion
 
         var cs = cb.Build();
         var es = eb.Build();

@@ -6,6 +6,11 @@
 public class ChatCompletionModel
 {
     /// <summary>
+    /// 모델 제공자의 키 값입니다.
+    /// </summary>
+    public string? Provider { get; set; }
+
+    /// <summary>
     /// 모델의 이름(또는 식별자)입니다.
     /// </summary>
     public required string Model { get; set; }
@@ -39,11 +44,6 @@ public class ChatCompletionModel
     /// 모델의 생성 일자입니다.
     /// </summary>
     public DateTime? CreatedAt { get; set; }
-
-    /// <summary>
-    /// 모델의 소유자입니다.
-    /// </summary>
-    public string? Owner { get; set; }
 }
 
 /// <summary>

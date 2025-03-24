@@ -4,6 +4,8 @@ using IronHive.Connectors.OpenAI.ChatCompletion;
 using IronHive.Abstractions.ChatCompletion;
 using IronHive.Abstractions.ChatCompletion.Messages;
 using IronHive.Abstractions.ChatCompletion.Tools;
+using ChatCompletionRequest = IronHive.Abstractions.ChatCompletion.ChatCompletionRequest;
+using OpenAIChatCompletionRequest = IronHive.Connectors.OpenAI.ChatCompletion.ChatCompletionRequest;
 using Message = IronHive.Abstractions.ChatCompletion.Messages.Message;
 using OpenAIMessage = IronHive.Connectors.OpenAI.ChatCompletion.Message;
 
@@ -32,7 +34,6 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
                     .Select(m => new ChatCompletionModel
                     {
                         Model = m.Id,
-                        Owner = m.OwnedBy,
                         CreatedAt = m.Created,
                     });
     }
@@ -47,12 +48,11 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
     }
 
     /// <inheritdoc />
-    public async Task<ChatCompletionResult<Message>> GenerateMessageAsync(
-        MessageCollection messages,
-        ChatCompletionOptions options,
+    public async Task<ChatCompletionResponse<Message>> GenerateMessageAsync(
+        ChatCompletionRequest request,
         CancellationToken cancellationToken = default)
     {
-        var req = BuildRequest(messages, options);
+        var req = ConvertRequest(request);
         var res = await _client.PostChatCompletionAsync(req, cancellationToken);
         var choice = res.Choices?.FirstOrDefault();
         var message = new Message(MessageRole.Assistant);
@@ -75,9 +75,8 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
             }
         }
 
-        return new ChatCompletionResult<Message>
+        return new ChatCompletionResponse<Message>
         {
-            MessageId = res.Id,
             EndReason = choice?.FinishReason switch
             {
                 FinishReason.ToolCalls => EndReason.ToolCall,
@@ -96,24 +95,19 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<ChatCompletionResult<IMessageContent>> GenerateStreamingMessageAsync(
-        MessageCollection messages,
-        ChatCompletionOptions options,
+    public async IAsyncEnumerable<ChatCompletionResponse<IMessageContent>> GenerateStreamingMessageAsync(
+        ChatCompletionRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var req = BuildRequest(messages, options);
+        var req = ConvertRequest(request);
 
         // index 지정 용도: OpenAI는 텍스트컨텐츠에 인덱스 속성이 없음, 임의로 생성
         // tool의 index를 정확히 하여 찾을 수 있게 하기 위함
         bool txtgen = false;
-        string? id = null;
         EndReason? reason = null;
         TokenUsage? usage = null;
         await foreach (var res in _client.PostStreamingChatCompletionAsync(req, cancellationToken))
         {
-            // id 설정
-            id ??= res.Id;
-
             // 토큰 사용량(FinishReason 다음 호출)
             if (res.Usage != null)
             {
@@ -148,9 +142,8 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
             var tool = choice.Delta?.ToolCalls?.FirstOrDefault();
             if (tool != null)
             {
-                yield return new ChatCompletionResult<IMessageContent>
+                yield return new ChatCompletionResponse<IMessageContent>
                 {
-                    MessageId = id,
                     Data = new ToolContent
                     {
                         Id = tool.Id,
@@ -166,9 +159,8 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
             if (text != null)
             {
                 txtgen = true;
-                yield return new ChatCompletionResult<IMessageContent>
+                yield return new ChatCompletionResponse<IMessageContent>
                 {
-                    MessageId = id,
                     Data = new TextContent
                     {
                         Index = 0,
@@ -179,46 +171,42 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
         }
 
         // 종료
-        yield return new ChatCompletionResult<IMessageContent>
+        yield return new ChatCompletionResponse<IMessageContent>
         {
-            MessageId = id,
             EndReason = reason,
             TokenUsage = usage,
         };
     }
 
-    private static ChatCompletionRequest BuildRequest(MessageCollection messages, ChatCompletionOptions options)
+    private static OpenAIChatCompletionRequest ConvertRequest(ChatCompletionRequest request)
     {
         // Reasoning Models, 일부 파라미터 작동 안함
-        var reason = options.Model.Contains("o1") || options.Model.Contains("o3");
+        var reason = request.Model.Contains("o1") || request.Model.Contains("o3");
 
-        var request = new ChatCompletionRequest
+        var _req = new OpenAIChatCompletionRequest
         {
-            Model = options.Model,
-            Messages = messages.ToOpenAI(options.System),
-            MaxCompletionTokens = options.MaxTokens,
-            Temperature = reason ? null : options.Temperature,
-            TopP = reason ? null : options.TopP,
-            Stop = options.StopSequences,
+            Model = request.Model,
+            Messages = request.Messages.ToOpenAI(request.System),
+            MaxCompletionTokens = request.MaxTokens,
+            Temperature = reason ? null : request.Temperature,
+            TopP = reason ? null : request.TopP,
+            Stop = request.StopSequences,
         };
 
-        if (options.Tools != null && options.Tools.Count > 0)
+        _req.Tools = request.Tools.Select(t => new Tool
         {
-            request.Tools = options.Tools.Select(t => new Tool
+            Function = new Function
             {
-                Function = new Function
+                Name = t.Name,
+                Description = t.Description,
+                Parameters = t.Parameters != null ? new FunctionParameters
                 {
-                    Name = t.Name,
-                    Description = t.Description,
-                    Parameters = t.Parameters != null ? new FunctionParameters
-                    {
-                        Properties = t.Parameters.Properties,
-                        Required = t.Parameters.Required,
-                    }: null
-                }
-            });
-        }
+                    Properties = t.Parameters.Properties,
+                    Required = t.Parameters.Required,
+                } : null
+            }
+        });
 
-        return request;
+        return _req;
     }
 }

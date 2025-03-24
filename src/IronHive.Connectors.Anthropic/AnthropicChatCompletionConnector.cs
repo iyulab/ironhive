@@ -36,7 +36,6 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
         {
             Model = m.Id,
             CreatedAt = m.CreatedAt,
-            Owner = "Anthropic",
         });
     }
 
@@ -50,12 +49,11 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
     }
 
     /// <inheritdoc />
-    public async Task<ChatCompletionResult<Message>> GenerateMessageAsync(
-        MessageCollection messages,
-        ChatCompletionOptions options,
+    public async Task<ChatCompletionResponse<Message>> GenerateMessageAsync(
+        ChatCompletionRequest request,
         CancellationToken cancellationToken = default)
     {
-        var req = BuildRequest(messages, options);
+        var req = ConvertRequest(request);
         var res = await _client.PostMessagesAsync(req, cancellationToken);
         var message = new Message(MessageRole.Assistant);
 
@@ -77,9 +75,8 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
             }
         }
 
-        return new ChatCompletionResult<Message>
+        return new ChatCompletionResponse<Message>
         {
-            MessageId = res.Id,
             EndReason = res.StopReason switch
             {
                 StopReason.ToolUse => EndReason.ToolCall,
@@ -98,14 +95,12 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<ChatCompletionResult<IMessageContent>> GenerateStreamingMessageAsync(
-        MessageCollection messages,
-        ChatCompletionOptions options,
+    public async IAsyncEnumerable<ChatCompletionResponse<IMessageContent>> GenerateStreamingMessageAsync(
+        ChatCompletionRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var req = BuildRequest(messages, options);
+        var req = ConvertRequest(request);
 
-        string? id = null;
         EndReason? reason = null;
         TokenUsage usage = new TokenUsage();
         await foreach (var res in _client.PostStreamingMessagesAsync(req, cancellationToken))
@@ -113,7 +108,6 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
             if (res is MessageStartEvent mse)
             {
                 // 1. 메시지 시작 이벤트
-                id = mse.Message?.Id;
                 usage.InputTokens = mse.Message?.Usage.InputTokens;
             }
             else if (res is ContentStartEvent cse)
@@ -123,9 +117,8 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                 if (cse.ContentBlock is TextMessageContent text)
                 {
                     // 텍스트 생성
-                    yield return new ChatCompletionResult<IMessageContent>
+                    yield return new ChatCompletionResponse<IMessageContent>
                     {
-                        MessageId = id,
                         Data = new TextContent
                         {
                             Index = cse.Index,
@@ -136,9 +129,8 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                 else if (cse.ContentBlock is ToolUseMessageContent tool)
                 {
                     // 툴 사용
-                    yield return new ChatCompletionResult<IMessageContent>
+                    yield return new ChatCompletionResponse<IMessageContent>
                     {
-                        MessageId = id,
                         Data = new ToolContent
                         {
                             Index = cse.Index,
@@ -155,9 +147,8 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                 if (cde.ContentBlock is TextDeltaMessageContent text)
                 {
                     // 텍스트 생성
-                    yield return new ChatCompletionResult<IMessageContent>
+                    yield return new ChatCompletionResponse<IMessageContent>
                     {
-                        MessageId = id,
                         Data = new TextContent
                         {
                             Index = cde.Index,
@@ -168,9 +159,8 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                 else if (cde.ContentBlock is ToolUseDeltaMessageContent tool)
                 {
                     // 툴 사용
-                    yield return new ChatCompletionResult<IMessageContent>
+                    yield return new ChatCompletionResponse<IMessageContent>
                     {
-                        MessageId = id,
                         Data = new ToolContent
                         {
                             Index = cde.Index,
@@ -216,42 +206,38 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
             }
         }
 
-        yield return new ChatCompletionResult<IMessageContent>
+        yield return new ChatCompletionResponse<IMessageContent>
         {
-            MessageId = id,
             EndReason = reason,
             TokenUsage = usage
         };
     }
 
-    private static MessagesRequest BuildRequest(MessageCollection messages, ChatCompletionOptions options)
+    private static MessagesRequest ConvertRequest(ChatCompletionRequest request)
     {
-        var request = new MessagesRequest
+        var _req = new MessagesRequest
         {
-            Model = options.Model,
-            System = options.System,
-            Messages = messages.ToAnthropic(),
-            MaxTokens = options.MaxTokens ?? 8192, // MaxToken이 필수요청사항으로 "8192"값을 기본으로 함
-            Temperature = options.Temperature,
-            TopK = options.TopK,
-            TopP = options.TopP,
-            StopSequences = options.StopSequences,
+            Model = request.Model,
+            System = request.System,
+            Messages = request.Messages.ToAnthropic(),
+            MaxTokens = request.MaxTokens ?? 8192, // MaxToken이 필수요청사항으로 "8192"값을 기본으로 함
+            Temperature = request.Temperature,
+            TopK = request.TopK,
+            TopP = request.TopP,
+            StopSequences = request.StopSequences,
         };
 
-        if (options.Tools != null && options.Tools.Count > 0)
+        _req.Tools = request.Tools.Select(t => new Tool
         {
-            request.Tools = options.Tools.Select(t => new Tool
+            Name = t.Name,
+            Description = t.Description,
+            InputSchema = new ToolInputSchema
             {
-                Name = t.Name,
-                Description = t.Description,
-                InputSchema = new ToolInputSchema
-                {
-                    Properties = t.Parameters?.Properties,
-                    Required = t.Parameters?.Required,
-                }
-            });
-        }
+                Properties = t.Parameters?.Properties,
+                Required = t.Parameters?.Required,
+            }
+        });
 
-        return request;
+        return _req;
     }
 }

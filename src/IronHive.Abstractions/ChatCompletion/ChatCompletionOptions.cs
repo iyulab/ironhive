@@ -1,46 +1,31 @@
-﻿using IronHive.Abstractions.ChatCompletion.Tools;
+﻿namespace IronHive.Abstractions.ChatCompletion;
 
-namespace IronHive.Abstractions.ChatCompletion;
-
-public class ChatCompletionOptions
+public class ChatCompletionOptions : ChatCompletionParameters
 {
     /// <summary>
-    /// chat completion model name.
+    /// 모델 제공자의 키 값입니다.
+    /// </summary>
+    public required string Provider { get; set; }
+
+    /// <summary>
+    /// 모델의 이름(또는 식별자)입니다.
     /// </summary>
     public required string Model { get; set; }
 
     /// <summary>
-    /// system message to generate a response to.
+    /// 시스템 메시지로 사용할 텍스트입니다.
     /// </summary>
-    public string? System { get; set; }
+    public string? Instructions { get; set; }
 
     /// <summary>
-    /// the tool list to use in the model.
+    /// 사용할 툴의 이름과 옵션입니다.
     /// </summary>
-    public FunctionToolCollection? Tools { get; set; }
+    public IDictionary<string, object?>? Tools { get; set; }
 
     /// <summary>
-    /// the maximum number of tokens to generate.
+    /// 툴 실패시 최대 재시도 횟수 입니다.
     /// </summary>
-    public int? MaxTokens { get; set; }
+    public int MaxToolAttempts { get; set; } = 10;
 
-    /// <summary>
-    /// Value ranges from 0.0 to 1.0.
-    /// </summary>
-    public float? Temperature { get; set; }
 
-    /// <summary>
-    /// Value ranges from 0 to 100.
-    /// </summary>
-    public int? TopK { get; set; }
-
-    /// <summary>
-    /// Value ranges from 0.0 to 1.0.
-    /// </summary>
-    public float? TopP { get; set; }
-
-    /// <summary>
-    /// the sequences to stop text generation
-    /// </summary>
-    public ICollection<string>? StopSequences { get; set; }
 }
