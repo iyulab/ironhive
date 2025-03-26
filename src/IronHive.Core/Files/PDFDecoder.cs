@@ -1,5 +1,4 @@
 ﻿using IronHive.Abstractions.Files;
-using IronHive.Core.Memory;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 

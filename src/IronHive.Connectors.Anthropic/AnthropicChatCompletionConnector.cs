@@ -1,13 +1,15 @@
 ﻿using IronHive.Abstractions.ChatCompletion;
-using IronHive.Abstractions.ChatCompletion.Messages;
 using IronHive.Connectors.Anthropic.ChatCompletion;
 using System.Runtime.CompilerServices;
 using TokenUsage = IronHive.Abstractions.ChatCompletion.TokenUsage;
-using Message = IronHive.Abstractions.ChatCompletion.Messages.Message;
+using Message = IronHive.Abstractions.Messages.Message;
 using AnthropicMessage = IronHive.Connectors.Anthropic.ChatCompletion.Message;
-using MessageRole = IronHive.Abstractions.ChatCompletion.Messages.MessageRole;
+using MessageRole = IronHive.Abstractions.Messages.MessageRole;
 using AnthropicMessageRole = IronHive.Connectors.Anthropic.ChatCompletion.MessageRole;
 using System.Text.Json;
+using IronHive.Abstractions.Json;
+using System.Reflection;
+using IronHive.Abstractions.Messages;
 
 namespace IronHive.Connectors.Anthropic;
 
@@ -29,14 +31,32 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
     public async Task<IEnumerable<ChatCompletionModel>> GetModelsAsync(
         CancellationToken cancellationToken = default)
     {
-        var models = await _client.GetModelsAsync(cancellationToken);
-        cancellationToken.ThrowIfCancellationRequested();
-
-        return models.Select(m => new ChatCompletionModel
+        if (_client.Client.BaseAddress?.ToString() == AnthropicConstants.DefaultBaseUrl)
         {
-            Model = m.Id,
-            CreatedAt = m.CreatedAt,
-        });
+            // Anthropic 모델을 호출하는 경우 내장 리소스를 사용
+            var assembly = Assembly.GetExecutingAssembly();
+            var resource = await JsonResourceLoader.LoadAsync<IEnumerable<ChatCompletionModel>>(
+                assembly: assembly,
+                resourceName: $"{assembly.GetName().Name}.Resources.AnthropicChatModels.json",
+                options: _client.JsonOptions,
+                cancellationToken: cancellationToken);
+            if (resource.Data == null)
+                throw new InvalidOperationException("Failed to load Anthropic models.");
+
+            return resource.Data;
+        }
+        else
+        {
+            // 다른 Anthropic 서버를 호출하는 경우 API를 사용
+            var models = await _client.GetModelsAsync(cancellationToken);
+            return models.Where(m => m.IsChatCompletion())
+                        .Select(m => new ChatCompletionModel
+                        {
+                            Model = m.Id,
+                            DisplayName = m.DisplayName,
+                            CreatedAt = m.CreatedAt,
+                        });
+        }
     }
 
     /// <inheritdoc />

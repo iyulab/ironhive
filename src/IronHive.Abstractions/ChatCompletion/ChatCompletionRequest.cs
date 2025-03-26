@@ -1,5 +1,5 @@
-﻿using IronHive.Abstractions.ChatCompletion.Messages;
-using IronHive.Abstractions.ChatCompletion.Tools;
+﻿using IronHive.Abstractions.Messages;
+using IronHive.Abstractions.Tools;
 
 namespace IronHive.Abstractions.ChatCompletion;
 
@@ -23,6 +23,6 @@ public class ChatCompletionRequest : ChatCompletionParameters
     /// <summary>
     /// the tool list to use in the model.
     /// </summary>
-    public FunctionToolCollection Tools { get; set; } = [];
+    public ToolCollection Tools { get; set; } = [];
 
 }

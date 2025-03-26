@@ -15,17 +15,17 @@ internal class OpenAIEmbeddingClient : OpenAIClientBase
         EmbeddingRequest request,
         CancellationToken cancellationToken)
     {
-        var json = JsonSerializer.Serialize(request, _jsonOptions);
+        var json = JsonSerializer.Serialize(request, JsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        using var response = await _client.PostAsync(OpenAIConstants.PostEmbeddingPath.RemovePreffix('/'), content, cancellationToken);
+        using var response = await Client.PostAsync(OpenAIConstants.PostEmbeddingPath.RemovePreffix('/'), content, cancellationToken);
         response.EnsureSuccessStatusCode();
 
         var jsonDocument = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken) 
             ?? throw new InvalidOperationException("Failed to deserialize response.");
 
-        var embeddings = jsonDocument.RootElement.GetProperty("data").EnumerateArray().Select(e =>
+        var embeddings = jsonDocument.RootElement.GetProperty("data").EnumerateArray().Select(el =>
         {
-            return JsonSerializer.Deserialize<EmbeddingResponse>(e, _jsonOptions)
+            return JsonSerializer.Deserialize<EmbeddingResponse>(el, JsonOptions)
                 ?? throw new InvalidOperationException("Failed to deserialize response.");
         });
 

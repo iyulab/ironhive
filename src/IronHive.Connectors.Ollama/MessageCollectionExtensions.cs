@@ -1,9 +1,9 @@
-﻿using IronHive.Abstractions.ChatCompletion.Messages;
-using IronHive.Connectors.Ollama.ChatCompletion;
+﻿using IronHive.Connectors.Ollama.ChatCompletion;
 using System.Text.Json;
 using OllamaMessage = IronHive.Connectors.Ollama.ChatCompletion.Message;
-using MessageRole = IronHive.Abstractions.ChatCompletion.Messages.MessageRole;
+using MessageRole = IronHive.Abstractions.Messages.MessageRole;
 using OllamaMessageRole = IronHive.Connectors.Ollama.ChatCompletion.MessageRole;
+using IronHive.Abstractions.Messages;
 
 namespace IronHive.Connectors.Ollama;
 

@@ -1,0 +1,15 @@
+{
+  "profiles": {
+    "Windows": {
+      "commandName": "Project"
+    },
+    "Debian-Linux": {
+      "commandName": "WSL2",
+      "distributionName": "Ubuntu"
+    },
+    "RedHat-Linux": {
+      "commandName": "WSL2",
+      "distributionName": "OracleLinux_9_1"
+    }
+  }
+}

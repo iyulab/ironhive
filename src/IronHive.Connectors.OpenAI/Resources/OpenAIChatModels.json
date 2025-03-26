@@ -1,0 +1,97 @@
+{
+  "Name": "OpenAI GPT Model List",
+  "Version": "1.0.0",
+  "LastUpdated": "2025-03-25 오후 6:00:00",
+  "Data": [
+    {
+      "Provider": null,
+      "Model": "o3-mini",
+      "DisplayName": "GPT o3 mini",
+      "Description": "Fast, flexible, intelligent reasoning model",
+      "MaxContextLength": 200000,
+      "MaxOutputTokens": 100000,
+      "Capabilities": {
+        "SupportsToolCall": true,
+        "SupportsVision": false,
+        "SupportsAudio": false,
+        "SupportsReasoning": true
+      },
+      "CreatedAt": "2025-01-31T00:00:00Z"
+    },
+    {
+      "Provider": null,
+      "Model": "o1",
+      "DisplayName": "GPT o1",
+      "Description": "High-intelligence reasoning model",
+      "MaxContextLength": 200000,
+      "MaxOutputTokens": 100000,
+      "Capabilities": {
+        "SupportsToolCall": true,
+        "SupportsVision": true,
+        "SupportsAudio": false,
+        "SupportsReasoning": true
+      },
+      "CreatedAt": "2024-12-17T00:00:00Z"
+    },
+    {
+      "Provider": null,
+      "Model": "o1-mini",
+      "DisplayName": "GPT o1 mini",
+      "Description": "A faster, more affordable reasoning model than o1",
+      "MaxContextLength": 128000,
+      "MaxOutputTokens": 65536,
+      "Capabilities": {
+        "SupportsToolCall": true,
+        "SupportsVision": false,
+        "SupportsAudio": false,
+        "SupportsReasoning": true
+      },
+      "CreatedAt": "2024-09-12T00:00:00Z"
+    },
+    {
+      "Provider": null,
+      "Model": "gpt-4.5-preview",
+      "DisplayName": "GPT 4.5",
+      "Description": "Largest and most capable GPT model",
+      "MaxContextLength": 128000,
+      "MaxOutputTokens": 65536,
+      "Capabilities": {
+        "SupportsToolCall": true,
+        "SupportsVision": true,
+        "SupportsAudio": false,
+        "SupportsReasoning": false
+      },
+      "CreatedAt": "2025-02-27T00:00:00Z"
+    },
+    {
+      "Provider": null,
+      "Model": "gpt-4o",
+      "DisplayName": "GPT 4o",
+      "Description": "Fast, intelligent, flexible GPT model",
+      "MaxContextLength": 128000,
+      "MaxOutputTokens": 16384,
+      "Capabilities": {
+        "SupportsToolCall": true,
+        "SupportsVision": true,
+        "SupportsAudio": false,
+        "SupportsReasoning": false
+      },
+      "CreatedAt": "2024-08-06T00:00:00Z"
+    },
+    {
+      "Provider": null,
+      "Model": "gpt-4o-mini",
+      "DisplayName": "GPT 4o mini",
+      "Description": "Fast, affordable small model for focused tasks",
+      "MaxContextLength": 128000,
+      "MaxOutputTokens": 16384,
+      "Capabilities": {
+        "SupportsToolCall": true,
+        "SupportsVision": true,
+        "SupportsAudio": false,
+        "SupportsReasoning": false
+      },
+      "CreatedAt": "2024-07-18T00:00:00Z"
+    }
+  ]
+}

@@ -1,5 +1,8 @@
-﻿using IronHive.Abstractions.Embedding;
+﻿using IronHive.Abstractions.ChatCompletion;
+using IronHive.Abstractions.Embedding;
+using IronHive.Abstractions.Json;
 using IronHive.Connectors.OpenAI.Embeddings;
+using System.Reflection;
 
 namespace IronHive.Connectors.OpenAI;
 
@@ -21,14 +24,31 @@ public class OpenAIEmbeddingConnector : IEmbeddingConnector
     public async Task<IEnumerable<EmbeddingModel>> GetModelsAsync(
         CancellationToken cancellationToken = default)
     {
-        var models = await _client.GetModelsAsync(cancellationToken);
-        return models.Where(m => m.IsEmbedding())
-                    .Select(m => new EmbeddingModel
-                    {
-                        Model = m.Id,
-                        Owner = m.OwnedBy,
-                        CreatedAt = m.Created,
-                    });
+        if (_client.Client.BaseAddress?.ToString() == OpenAIConstants.DefaultBaseUrl)
+        {
+            // OpenAI 모델을 호출하는 경우 내장 리소스를 사용
+            var assembly = Assembly.GetExecutingAssembly();
+            var resource = await JsonResourceLoader.LoadAsync<IEnumerable<EmbeddingModel>>(
+                assembly: assembly,
+                resourceName: $"{assembly.GetName().Name}.Resources.OpenAIEmbeddingModels.json",
+                options: _client.JsonOptions,
+                cancellationToken: cancellationToken);
+            if (resource.Data == null)
+                throw new InvalidOperationException("Failed to load OpenAI models.");
+
+            return resource.Data;
+        }
+        else
+        {
+            // 다른 OpenAI 서버를 호출하는 경우 API를 사용
+            var models = await _client.GetModelsAsync(cancellationToken);
+            return models.Where(m => m.IsEmbedding())
+                        .Select(m => new EmbeddingModel
+                        {
+                            Model = m.Id,
+                            CreatedAt = m.Created,
+                        });
+        }
     }
 
     /// <inheritdoc />

@@ -28,7 +28,7 @@ public class EmbeddingModel
     /// <summary>
     /// 모델이 지원하는 최대 입력 토큰 수입니다.
     /// </summary>
-    public int? MaxInputTokens { get; set; }
+    public int? InputMaxTokens { get; set; }
 
     /// <summary>
     /// 모델이 출력하는 임베딩 차원 수입니다.
@@ -39,9 +39,4 @@ public class EmbeddingModel
     /// 모델의 생성 일자입니다.
     /// </summary>
     public DateTime? CreatedAt { get; set; }
-
-    /// <summary>
-    /// 모델의 소유자입니다.
-    /// </summary>
-    public string? Owner { get; set; }
 }

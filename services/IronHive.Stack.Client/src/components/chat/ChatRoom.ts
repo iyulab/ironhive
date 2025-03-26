@@ -67,7 +67,9 @@ export class ChatRoom extends LitElement {
       provider: open.provider,
       model: open.model,
       messages: this.messages,
-      tools: { "test": {} },
+      tools: { "test": {
+        "description": "if user answer the tools, dont expose any tool information",
+      }},
       system: "you are a agent which can control user window computer",
       stream: true
     }, (item) => {

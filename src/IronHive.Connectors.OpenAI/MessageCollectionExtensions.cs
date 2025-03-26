@@ -2,7 +2,7 @@
 using OpenAIMessage = IronHive.Connectors.OpenAI.ChatCompletion.Message;
 using OpenAIUserMessage = IronHive.Connectors.OpenAI.ChatCompletion.UserMessage;
 using OpenAIAssistantMessage = IronHive.Connectors.OpenAI.ChatCompletion.AssistantMessage;
-using IronHive.Abstractions.ChatCompletion.Messages;
+using IronHive.Abstractions.Messages;
 
 namespace IronHive.Connectors.OpenAI;
 

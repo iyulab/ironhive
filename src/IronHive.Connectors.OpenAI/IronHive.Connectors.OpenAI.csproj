@@ -7,7 +7,19 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Resources\OpenAIChatModels.json" />
+    <None Remove="Resources\OpenAIEmbeddingModels.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\OpenAIChatModels.json" />
+    <EmbeddedResource Include="Resources\OpenAIEmbeddingModels.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\IronHive.Abstractions\IronHive.Abstractions.csproj" />
   </ItemGroup>
+
+  <ProjectExtensions><VisualStudio><UserProperties /></VisualStudio></ProjectExtensions>
 
 </Project>

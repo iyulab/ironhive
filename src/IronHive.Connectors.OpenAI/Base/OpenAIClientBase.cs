@@ -5,20 +5,20 @@ namespace IronHive.Connectors.OpenAI.Base;
 
 internal abstract class OpenAIClientBase
 {
-    protected readonly HttpClient _client;
-    protected readonly JsonSerializerOptions _jsonOptions;
+    public HttpClient Client { get; init; }
+    public JsonSerializerOptions JsonOptions { get; init; }
 
     protected OpenAIClientBase(OpenAIConfig config)
     {
-        _client = CreateHttpClient(config);
-        _jsonOptions = config.JsonOptions;
+        Client = CreateHttpClient(config);
+        JsonOptions = config.JsonOptions;
     }
 
     protected OpenAIClientBase(string apiKey)
     {
         var config = new OpenAIConfig { ApiKey = apiKey };
-        _client = CreateHttpClient(config);
-        _jsonOptions = config.JsonOptions;
+        Client = CreateHttpClient(config);
+        JsonOptions = config.JsonOptions;
     }
 
     /// <summary>
@@ -26,7 +26,7 @@ internal abstract class OpenAIClientBase
     /// </summary>
     public async Task<IEnumerable<OpenAIModel>> GetModelsAsync(CancellationToken cancellationToken)
     {
-        var jsonDocument = await _client.GetFromJsonAsync<JsonDocument>(
+        var jsonDocument = await Client.GetFromJsonAsync<JsonDocument>(
             OpenAIConstants.GetModelListPath.RemovePreffix('/'), cancellationToken);
         var models = jsonDocument?.RootElement.GetProperty("data").Deserialize<IEnumerable<OpenAIModel>>();
 

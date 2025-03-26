@@ -1,4 +1,4 @@
-﻿using IronHive.Abstractions.ChatCompletion.Messages;
+﻿using IronHive.Abstractions.Messages;
 
 namespace IronHive.Abstractions.ChatCompletion;
 

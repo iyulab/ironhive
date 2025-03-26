@@ -25,7 +25,6 @@ public class OllamaEmbeddingConnector : IEmbeddingConnector
         return models.Select(m => new EmbeddingModel
         {
             Model = m.Name,
-            Owner = null,
             CreatedAt = m.ModifiedAt,
         });
     }

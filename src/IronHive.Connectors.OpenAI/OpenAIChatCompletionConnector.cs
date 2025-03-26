@@ -2,12 +2,14 @@
 using TokenUsage = IronHive.Abstractions.ChatCompletion.TokenUsage;
 using IronHive.Connectors.OpenAI.ChatCompletion;
 using IronHive.Abstractions.ChatCompletion;
-using IronHive.Abstractions.ChatCompletion.Messages;
-using IronHive.Abstractions.ChatCompletion.Tools;
 using ChatCompletionRequest = IronHive.Abstractions.ChatCompletion.ChatCompletionRequest;
 using OpenAIChatCompletionRequest = IronHive.Connectors.OpenAI.ChatCompletion.ChatCompletionRequest;
-using Message = IronHive.Abstractions.ChatCompletion.Messages.Message;
+using Message = IronHive.Abstractions.Messages.Message;
 using OpenAIMessage = IronHive.Connectors.OpenAI.ChatCompletion.Message;
+using IronHive.Abstractions.Json;
+using IronHive.Abstractions.Embedding;
+using System.Reflection;
+using IronHive.Abstractions.Messages;
 
 namespace IronHive.Connectors.OpenAI;
 
@@ -29,13 +31,31 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
     public async Task<IEnumerable<ChatCompletionModel>> GetModelsAsync(
         CancellationToken cancellationToken = default)
     {
-        var models = await _client.GetModelsAsync(cancellationToken);
-        return models.Where(m => m.IsChatCompletion())
-                    .Select(m => new ChatCompletionModel
-                    {
-                        Model = m.Id,
-                        CreatedAt = m.Created,
-                    });
+        if (_client.Client.BaseAddress?.ToString() == OpenAIConstants.DefaultBaseUrl)
+        {
+            // OpenAI 모델을 호출하는 경우 내장 리소스를 사용
+            var assembly = Assembly.GetExecutingAssembly();
+            var resource = await JsonResourceLoader.LoadAsync<IEnumerable<ChatCompletionModel>>(
+                assembly: assembly,
+                resourceName: $"{assembly.GetName().Name}.Resources.OpenAIChatModels.json",
+                options: _client.JsonOptions,
+                cancellationToken: cancellationToken);
+            if (resource.Data == null)
+                throw new InvalidOperationException("Failed to load OpenAI models.");
+
+            return resource.Data;
+        }
+        else
+        {
+            // 다른 OpenAI 서버를 호출하는 경우 API를 사용
+            var models = await _client.GetModelsAsync(cancellationToken);
+            return models.Where(m => m.IsChatCompletion())
+                        .Select(m => new ChatCompletionModel
+                        {
+                            Model = m.Id,
+                            CreatedAt = m.Created,
+                        });
+        }
     }
 
     /// <inheritdoc />

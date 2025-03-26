@@ -1,0 +1,34 @@
+{
+  "Name": "OpenAI Embedding Model List",
+  "Version": "1.0.0",
+  "LastUpdated": "2025-03-26 오후 6:00:00",
+  "Data": [
+    {
+      "Provider": null,
+      "Model": "text-embedding-3-small",
+      "DisplayName": "Text Embedding 3 Small",
+      "Description": "Small embedding model",
+      "InputMaxTokens": 8191,
+      "OutputDimensions": 1536,
+      "CreatedAt": null
+    },
+    {
+      "Provider": null,
+      "Model": "text-embedding-3-large",
+      "DisplayName": "Text Embedding 3 Large",
+      "Description": "Most capable embedding model",
+      "InputMaxTokens": 8191,
+      "OutputDimensions": 3072,
+      "CreatedAt": null
+    },
+    {
+      "Provider": null,
+      "Model": "text-embedding-ada-002",
+      "DisplayName": "Text Embedding ADA",
+      "Description": "Older embedding model",
+      "InputMaxTokens": 8191,
+      "OutputDimensions": 1536,
+      "CreatedAt": null
+    }
+  ]
+}

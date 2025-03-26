@@ -38,7 +38,7 @@ public class ChatCompletionModel
     /// <summary>
     /// 모델의 기능들입니다.
     /// </summary>
-    public ChatCompletionCapabilities? Capabilities { get; set; }
+    public ChatCompletionCapabilities Capabilities { get; set; } = new();
 
     /// <summary>
     /// 모델의 생성 일자입니다.

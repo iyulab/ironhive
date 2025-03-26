@@ -1,6 +1,6 @@
 ﻿using IronHive.Abstractions;
 using IronHive.Abstractions.ChatCompletion;
-using IronHive.Abstractions.ChatCompletion.Messages;
+using IronHive.Abstractions.Messages;
 using System.Runtime.CompilerServices;
 
 namespace IronHive.Core;
@@ -8,6 +8,7 @@ namespace IronHive.Core;
 public class HiveSession : IHiveSession
 {
     private readonly IChatCompletionService _serivce;
+    private readonly IHiveAgent _master;
     private readonly Dictionary<string, IHiveAgent> _agents;
 
     public string? Title { get; set; }
@@ -22,17 +23,14 @@ public class HiveSession : IHiveSession
 
     public int MaxToolAttempts { get; set; } = 3;
 
-    public HiveSession(IChatCompletionService service)
-    {
-        _serivce = service;
-        _agents = new Dictionary<string, IHiveAgent>();
-    }
-
     public HiveSession(IChatCompletionService service,
-        IEnumerable<IHiveAgent> agents)
+        IHiveAgent master,
+        IEnumerable<IHiveAgent>? agents = null)
     {
         _serivce = service;
-        _agents = agents.ToDictionary(a => a.Name, a => a);
+        _master = master;
+        _agents = agents?.ToDictionary(a => a.Name, a => a)
+            ?? new Dictionary<string, IHiveAgent>();
     }
 
     public Task<Message> InvokeAsync(

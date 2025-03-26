@@ -5,20 +5,20 @@ namespace IronHive.Connectors.Anthropic.Base;
 
 internal abstract class AnthropicClientBase
 {
-    protected readonly HttpClient _client;
-    protected readonly JsonSerializerOptions _jsonOptions;
+    public HttpClient Client { get; init; }
+    public JsonSerializerOptions JsonOptions { get; init; }
 
     protected AnthropicClientBase(AnthropicConfig config)
     {
-        _client = CreateHttpClient(config);
-        _jsonOptions = config.JsonOptions;
+        Client = CreateHttpClient(config);
+        JsonOptions = config.JsonOptions;
     }
 
     protected AnthropicClientBase(string apiKey)
     {
         var config = new AnthropicConfig { ApiKey = apiKey };
-        _client = CreateHttpClient(config);
-        _jsonOptions = config.JsonOptions;
+        Client = CreateHttpClient(config);
+        JsonOptions = config.JsonOptions;
     }
 
     /// <summary>
@@ -26,8 +26,8 @@ internal abstract class AnthropicClientBase
     /// </summary>
     public async Task<IEnumerable<AnthropicModel>> GetModelsAsync(CancellationToken cancellationToken)
     {
-        var jsonDocument = await _client.GetFromJsonAsync<JsonDocument>(AnthropicConstants.GetModelListPath.RemovePreffix('/'), cancellationToken);
-        var models = jsonDocument?.RootElement.GetProperty("data").Deserialize<IEnumerable<AnthropicModel>>(_jsonOptions);
+        var jsonDocument = await Client.GetFromJsonAsync<JsonDocument>(AnthropicConstants.GetModelListPath.RemovePreffix('/'), cancellationToken);
+        var models = jsonDocument?.RootElement.GetProperty("data").Deserialize<IEnumerable<AnthropicModel>>(JsonOptions);
         return models?.OrderByDescending(m => m.CreatedAt).ToArray() ?? [];
     }
 

@@ -1,14 +1,21 @@
-﻿using IronHive.Abstractions.ChatCompletion;
-using IronHive.Abstractions.ChatCompletion.Tools;
+﻿using IronHive.Abstractions.Tools;
+using IronHive.Core.Tools;
 using System.ComponentModel;
 using System.Diagnostics;
 using Tavily;
 
 namespace IronHive.Stack.WebApi.Tools;
 
-public class TestTool : IToolService
+public class TestTool : ToolHandlerBase
 {
-    [FunctionTool("utc-now")]
+    private readonly HttpContext _context;
+
+    public TestTool(IHttpContextAccessor accessor)
+    {
+        _context = accessor.HttpContext;
+    }
+
+    [FunctionTool(Name = "utc")]
     [Description("Get the current UTC time")]
     public DateTime Now()
     {
@@ -61,13 +68,18 @@ public class TestTool : IToolService
         return string.IsNullOrWhiteSpace(error) ? output : throw new Exception(error);
     }
 
-    public Task InitializeToolExecutionAsync(object? options)
+    public override Task<string> HandleSetInstructionsAsync(object? options)
     {
-        return Task.CompletedTask;
-    }
-
-    public Task FinalizeToolExecutionAsync(object? options)
-    {
-        return Task.CompletedTask;
+        if (options.TryConvertTo<TestToolOptions>(out var option))
+        {
+            return Task.FromResult(option.Description);
+        }
+        return base.HandleSetInstructionsAsync(options);
     }
 }
+
+public class TestToolOptions
+{
+    public string Description { get; set; }
+}
+

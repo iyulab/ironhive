@@ -1,11 +1,22 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using IronHive.Abstractions.ChatCompletion;
 
 namespace IronHive.Core;
 
 public class HiveAgent
 {
+    public required string Name { get; set; }
+
+    public required string Description { get; set; }
+
+    public required string Provider { get; set; }
+
+    public required string Model { get; set; }
+
+    public string? Instructions { get; set; }
+
+    public IDictionary<string, object>? Tools { get; set; }
+
+    public ChatCompletionParameters? Parameters { get; set; }
+
+
 }

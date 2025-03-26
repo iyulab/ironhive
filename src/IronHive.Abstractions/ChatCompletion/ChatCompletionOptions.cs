@@ -26,6 +26,4 @@ public class ChatCompletionOptions : ChatCompletionParameters
     /// 툴 실패시 최대 재시도 횟수 입니다.
     /// </summary>
     public int MaxToolAttempts { get; set; } = 10;
-
-
 }

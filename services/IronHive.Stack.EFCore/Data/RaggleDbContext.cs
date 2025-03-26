@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using IronHive.Abstractions.ChatCompletion.Messages;
 using IronHive.Stack.EFCore.Data;
 using IronHive.Stack.EFCore.Entities;
+using IronHive.Abstractions.Messages;
 
 namespace IronHive.Stack.WebApi.Data;
 

@@ -2,16 +2,15 @@
 using Microsoft.Extensions.Options;
 using IronHive.Abstractions;
 using IronHive.Abstractions.ChatCompletion;
-using IronHive.Abstractions.ChatCompletion.Messages;
 using IronHive.Abstractions.Embedding;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
-using IronHive.Abstractions.ChatCompletion.Tools;
 using System.ComponentModel;
 using Tavily;
 using System.Threading.Tasks;
 using IronHive.Stack.WebApi.Tools;
+using IronHive.Abstractions.Messages;
 
 namespace IronHive.Stack.WebApi.Controllers;
 

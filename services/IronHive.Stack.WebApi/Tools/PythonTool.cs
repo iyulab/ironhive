@@ -1,14 +1,13 @@
 ﻿//using Docker.DotNet;
 //using Docker.DotNet.Models;
 //using ICSharpCode.SharpZipLib.Tar;
-using IronHive.Core.ChatCompletion;
-using System.ComponentModel;
-using System.Text;
+//using System.ComponentModel;
+//using System.Text;
 
-namespace IronHive.Stack.WebApi.Tools;
+//namespace IronHive.Stack.WebApi.Tools;
 
-public class PythonTool
-{
+//public class PythonTool
+//{
 //    private readonly DockerClient _client = new DockerClientConfiguration().CreateClient();
 
 //    [FunctionTool]
@@ -191,4 +190,4 @@ public class PythonTool
 //                string.IsNullOrEmpty(currentFolder) ? dirName : Path.Combine(currentFolder, dirName));
 //        }
 //    }
-}
+//}

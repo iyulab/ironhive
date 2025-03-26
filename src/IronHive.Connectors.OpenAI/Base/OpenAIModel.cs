@@ -26,4 +26,34 @@ internal class OpenAIModel
     [JsonPropertyName("created")]
     [JsonConverter(typeof(DateTimeJsonConverter))]
     public DateTime Created { get; set; }
+
+    public bool IsChatCompletion()
+    {
+        // 최신 모델 및 Alias 모델만 추가
+        return Id.Equals("o3-mini")
+            || Id.Equals("o1")
+            || Id.Equals("o1-mini")
+            || Id.Equals("gpt-4o-mini")
+            || Id.Equals("gpt-4o");
+    }
+
+    public bool IsEmbedding()
+    {
+        return Id.Contains("embedding");
+    }
+
+    public bool IsTextToImage()
+    {
+        return Id.Contains("dall-e");
+    }
+
+    public bool IsTextToSpeech()
+    {
+        return Id.Contains("tts");
+    }
+
+    public bool IsAudioToText()
+    {
+        return Id.Contains("whisper");
+    }
 }

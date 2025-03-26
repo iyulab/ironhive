@@ -47,6 +47,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IronHive.Storages.Local", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IronHive.Storages.Redis", "src\IronHive.Storages.Redis\IronHive.Storages.Redis.csproj", "{88B97038-663B-41ED-AE00-DECA6D9D0B6E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IronHive.Storages.RabbitMQ", "src\IronHive.Storages.RabbitMQ\IronHive.Storages.RabbitMQ.csproj", "{AEE472F3-8D28-4A59-A5EA-43F37891C4D9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -109,6 +111,10 @@ Global
 		{88B97038-663B-41ED-AE00-DECA6D9D0B6E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{88B97038-663B-41ED-AE00-DECA6D9D0B6E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{88B97038-663B-41ED-AE00-DECA6D9D0B6E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AEE472F3-8D28-4A59-A5EA-43F37891C4D9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AEE472F3-8D28-4A59-A5EA-43F37891C4D9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AEE472F3-8D28-4A59-A5EA-43F37891C4D9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AEE472F3-8D28-4A59-A5EA-43F37891C4D9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -130,6 +136,7 @@ Global
 		{5B394EDB-4B49-452C-8586-45452F5DEA7C} = {0E0B40CA-1316-4A75-89E7-41DF7B8D2BE0}
 		{4F9CA43F-C63B-4D3F-3F3E-CE705EB7AA0E} = {0E0B40CA-1316-4A75-89E7-41DF7B8D2BE0}
 		{88B97038-663B-41ED-AE00-DECA6D9D0B6E} = {0E0B40CA-1316-4A75-89E7-41DF7B8D2BE0}
+		{AEE472F3-8D28-4A59-A5EA-43F37891C4D9} = {0E0B40CA-1316-4A75-89E7-41DF7B8D2BE0}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {D53D41CC-8B85-4816-A6CC-C1161061E791}

@@ -1,10 +1,9 @@
 ﻿using IronHive.Connectors.Anthropic.ChatCompletion;
 using AnthropicMessage = IronHive.Connectors.Anthropic.ChatCompletion.Message;
-using IronHive.Abstractions.ChatCompletion.Messages;
-using MessageRole = IronHive.Abstractions.ChatCompletion.Messages.MessageRole;
+using MessageRole = IronHive.Abstractions.Messages.MessageRole;
 using AnthropicMessageRole = IronHive.Connectors.Anthropic.ChatCompletion.MessageRole;
-using IronHive.Abstractions.ChatCompletion.Tools;
 using System.Text.Json;
+using IronHive.Abstractions.Messages;
 
 namespace IronHive.Connectors.Anthropic;
 
