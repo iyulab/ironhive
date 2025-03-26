@@ -32,11 +32,11 @@ public static class Extensions
         };
 
         services.AddHiveServiceCore()
-            .AddConnector("openai", new OpenAIChatCompletionConnector(o_config))
-            .AddConnector("openai", new OpenAIEmbeddingConnector(o_config))
-            .AddConnector("anthropic", new AnthropicChatCompletionConnector(a_config))
-            .AddConnector("gemini", new OpenAIChatCompletionConnector(g_config))
-            .AddConnector("iyulab", new OpenAIChatCompletionConnector(l_config))
-            .AddTool<TestTool>("test", ServiceLifetime.Scoped);
+            .AddChatCompletionConnector("openai", new OpenAIChatCompletionConnector(o_config))
+            .AddEmbeddingConnector("openai", new OpenAIEmbeddingConnector(o_config))
+            .AddChatCompletionConnector("anthropic", new AnthropicChatCompletionConnector(a_config))
+            .AddChatCompletionConnector("gemini", new OpenAIChatCompletionConnector(g_config))
+            .AddChatCompletionConnector("iyulab", new OpenAIChatCompletionConnector(l_config))
+            .AddToolHandler<TestTool>("test", ServiceLifetime.Scoped);
     }
 }

@@ -1,8 +1,6 @@
 ﻿using IronHive.Connectors.Ollama.ChatCompletion;
 using System.Text.Json;
 using OllamaMessage = IronHive.Connectors.Ollama.ChatCompletion.Message;
-using MessageRole = IronHive.Abstractions.Messages.MessageRole;
-using OllamaMessageRole = IronHive.Connectors.Ollama.ChatCompletion.MessageRole;
 using IronHive.Abstractions.Messages;
 
 namespace IronHive.Connectors.Ollama;
@@ -17,30 +15,27 @@ internal static class MessageCollectionExtensions
         {
             _messages.Add(new OllamaMessage
             {
-                Role = OllamaMessageRole.System,
+                Role = MessageRole.System,
                 Content = system
             });
         }
 
         foreach (var message in messages)
         {
-            if (message.Content == null || message.Content.Count == 0)
-                continue;
-
-            if (message.Role == MessageRole.User)
+            if (message is UserMessage user)
             {
                 var um = new OllamaMessage 
                 { 
-                    Role = OllamaMessageRole.User 
+                    Role = MessageRole.User 
                 };
-                foreach (var item in message.Content)
+                foreach (var item in user.Content)
                 {
-                    if (item is TextContent text)
+                    if (item is UserTextContent text)
                     {
                         um.Content ??= string.Empty;
                         um.Content += text.Value;
                     }
-                    else if (item is ImageContent image)
+                    else if (item is UserImageContent image)
                     {
                         um.Images ??= [];
                         um.Images.Add(image.Data!);
@@ -48,25 +43,25 @@ internal static class MessageCollectionExtensions
                 }
                 _messages.Add(um);
             }
-            else if (message.Role == MessageRole.Assistant)
+            else if (message is AssistantMessage assistant)
             {
-                foreach (var item in message.Content)
+                foreach (var item in assistant.Content)
                 {
                     var am = new OllamaMessage 
                     { 
-                        Role = OllamaMessageRole.Assistant 
+                        Role = MessageRole.Assistant 
                     };
                     var tm = new OllamaMessage 
                     {
-                        Role = OllamaMessageRole.Tool 
+                        Role = MessageRole.Tool 
                     };
 
-                    if (item is TextContent text)
+                    if (item is AssistantTextContent text)
                     {
                         am.Content ??= string.Empty;
                         am.Content += text.Value;
                     }
-                    else if (item is ToolContent tool)
+                    else if (item is AssistantToolContent tool)
                     {
                         am.ToolCalls ??= new List<ToolCall>();
                         am.ToolCalls.Add(new ToolCall

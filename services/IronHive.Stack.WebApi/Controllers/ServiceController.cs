@@ -57,7 +57,7 @@ public class ServiceController : ControllerBase
             if (request.Stream)
             {
                 Response.ContentType = "application/stream+json";
-                await foreach (var result in _chat.ExecuteStreamingAsync(request.Messages, request, cancellationToken))
+                await foreach (var result in _chat.GenerateStreamingMessageAsync(request.Messages, request, cancellationToken))
                 {
                     var json = JsonSerializer.Serialize(result, _jsonOptions);
                     var data = Encoding.UTF8.GetBytes(json + "\n");
@@ -68,7 +68,7 @@ public class ServiceController : ControllerBase
             }
             else
             {
-                var result = await _chat.ExecuteAsync(request.Messages, request, cancellationToken);
+                var result = await _chat.GenerateMessageAsync(request.Messages, request, cancellationToken);
                 await Response.WriteAsJsonAsync(result, _jsonOptions, cancellationToken);
             }
         }
@@ -149,7 +149,7 @@ public class ChatCompletionStreamResponse
     }
 
     public Status State { get; set; }
-    public IMessageContent? Content { get; set; }
+    public IAssistantContent? Content { get; set; }
     public int? TotalTokens { get; set; }
     public string? SystemMessage { get; set; }
 }

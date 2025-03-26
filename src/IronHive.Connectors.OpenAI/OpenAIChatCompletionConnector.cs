@@ -4,12 +4,14 @@ using IronHive.Connectors.OpenAI.ChatCompletion;
 using IronHive.Abstractions.ChatCompletion;
 using ChatCompletionRequest = IronHive.Abstractions.ChatCompletion.ChatCompletionRequest;
 using OpenAIChatCompletionRequest = IronHive.Connectors.OpenAI.ChatCompletion.ChatCompletionRequest;
-using Message = IronHive.Abstractions.Messages.Message;
+using IMessage = IronHive.Abstractions.Messages.IMessage;
 using OpenAIMessage = IronHive.Connectors.OpenAI.ChatCompletion.Message;
 using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Embedding;
 using System.Reflection;
 using IronHive.Abstractions.Messages;
+using AssistantMessage = IronHive.Abstractions.Messages.AssistantMessage;
+using OpenAIAssistantMessage = IronHive.Connectors.OpenAI.ChatCompletion.AssistantMessage;
 
 namespace IronHive.Connectors.OpenAI;
 
@@ -68,14 +70,14 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
     }
 
     /// <inheritdoc />
-    public async Task<ChatCompletionResponse<Message>> GenerateMessageAsync(
+    public async Task<ChatCompletionResponse<AssistantMessage>> GenerateMessageAsync(
         ChatCompletionRequest request,
         CancellationToken cancellationToken = default)
     {
         var req = ConvertRequest(request);
         var res = await _client.PostChatCompletionAsync(req, cancellationToken);
         var choice = res.Choices?.FirstOrDefault();
-        var message = new Message(MessageRole.Assistant);
+        var message = new AssistantMessage();
 
         // 텍스트 생성
         var text = choice?.Message?.Content;
@@ -95,7 +97,7 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
             }
         }
 
-        return new ChatCompletionResponse<Message>
+        return new ChatCompletionResponse<AssistantMessage>
         {
             EndReason = choice?.FinishReason switch
             {
@@ -115,7 +117,7 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<ChatCompletionResponse<IMessageContent>> GenerateStreamingMessageAsync(
+    public async IAsyncEnumerable<ChatCompletionResponse<IAssistantContent>> GenerateStreamingMessageAsync(
         ChatCompletionRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
@@ -162,9 +164,9 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
             var tool = choice.Delta?.ToolCalls?.FirstOrDefault();
             if (tool != null)
             {
-                yield return new ChatCompletionResponse<IMessageContent>
+                yield return new ChatCompletionResponse<IAssistantContent>
                 {
-                    Data = new ToolContent
+                    Data = new AssistantToolContent
                     {
                         Id = tool.Id,
                         Index = txtgen ? tool.Index +1 : tool.Index,
@@ -179,9 +181,9 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
             if (text != null)
             {
                 txtgen = true;
-                yield return new ChatCompletionResponse<IMessageContent>
+                yield return new ChatCompletionResponse<IAssistantContent>
                 {
-                    Data = new TextContent
+                    Data = new AssistantTextContent
                     {
                         Index = 0,
                         Value = text
@@ -191,7 +193,7 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
         }
 
         // 종료
-        yield return new ChatCompletionResponse<IMessageContent>
+        yield return new ChatCompletionResponse<IAssistantContent>
         {
             EndReason = reason,
             TokenUsage = usage,

@@ -15,26 +15,25 @@ public class ToolManager : IToolManager
         _services = services;
     }
 
-    public IToolHandler GetToolService(string key)
+    public async Task<string> HandleSetInstructionsAsync(string serviceKey, object? options)
     {
-        using var scope = _services.CreateScope();
-        return scope.ServiceProvider.GetRequiredKeyedService<IToolHandler>(key);
+        var handler = GetToolHandler(serviceKey);
+        return await handler.HandleSetInstructionsAsync(options);
     }
 
-    public ICollection<ITool> CreateFromObject<T>(params object[] parameters)
-        where T : class
+    public async Task HandleInitializedAsync(string serviceKey, object? options)
     {
-        Activator.CreateInstance(typeof(T));
-        var instance = ActivatorUtilities.CreateInstance<T>(_services, parameters);
-        return CreateFromObject(instance);
+        var handler = GetToolHandler(serviceKey);
+        await handler.HandleInitializedAsync(options);
     }
 
-    public ICollection<ITool> CreateFromObject(object instance)
+    public ICollection<ITool> CreateToolCollection(string serviceKey)
     {
-        var tools = new List<ITool>();
-        var methods = instance.GetType().GetMethods(
+        var handler = GetToolHandler(serviceKey);
+        var methods = handler.GetType().GetMethods(
             BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
 
+        var tools = new List<ITool>();
         foreach (var method in methods)
         {
             var attr = method.GetCustomAttribute<FunctionToolAttribute>();
@@ -48,21 +47,23 @@ public class ToolManager : IToolManager
             var functionType = returnType == typeof(void)
                 ? Expression.GetActionType(parameterTypes)
                 : Expression.GetFuncType([.. parameterTypes, returnType]);
-            var function = method.CreateDelegate(functionType, instance);
+            var function = method.CreateDelegate(functionType, handler);
 
-            var tool = CreateFromFunction(name, description, function);
+            var tool = new FunctionTool(function)
+            {
+                Name = name,
+                Description = description
+            };
             tools.Add(tool);
         }
 
         return tools;
     }
 
-    public ITool CreateFromFunction(string name, string? description, Delegate function)
+    private IToolHandler GetToolHandler(string serviceKey)
     {
-        return new FunctionTool(function)
-        {
-            Name = name,
-            Description = description
-        };
+        // 등록된 서비스의 라이프 타임을 알 수 없으므로 Scope를 생성하여 서비스를 가져옵니다.
+        using var scope = _services.CreateScope();
+        return scope.ServiceProvider.GetRequiredKeyedService<IToolHandler>(serviceKey);
     }
 }

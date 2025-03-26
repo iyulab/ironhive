@@ -2,10 +2,8 @@
 using IronHive.Connectors.Anthropic.ChatCompletion;
 using System.Runtime.CompilerServices;
 using TokenUsage = IronHive.Abstractions.ChatCompletion.TokenUsage;
-using Message = IronHive.Abstractions.Messages.Message;
+using IMessage = IronHive.Abstractions.Messages.IMessage;
 using AnthropicMessage = IronHive.Connectors.Anthropic.ChatCompletion.Message;
-using MessageRole = IronHive.Abstractions.Messages.MessageRole;
-using AnthropicMessageRole = IronHive.Connectors.Anthropic.ChatCompletion.MessageRole;
 using System.Text.Json;
 using IronHive.Abstractions.Json;
 using System.Reflection;
@@ -69,13 +67,13 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
     }
 
     /// <inheritdoc />
-    public async Task<ChatCompletionResponse<Message>> GenerateMessageAsync(
+    public async Task<ChatCompletionResponse<AssistantMessage>> GenerateMessageAsync(
         ChatCompletionRequest request,
         CancellationToken cancellationToken = default)
     {
         var req = ConvertRequest(request);
         var res = await _client.PostMessagesAsync(req, cancellationToken);
-        var message = new Message(MessageRole.Assistant);
+        var message = new AssistantMessage();
 
         foreach (var item in res.Content ?? [])
         {
@@ -95,7 +93,7 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
             }
         }
 
-        return new ChatCompletionResponse<Message>
+        return new ChatCompletionResponse<AssistantMessage>
         {
             EndReason = res.StopReason switch
             {
@@ -115,7 +113,7 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<ChatCompletionResponse<IMessageContent>> GenerateStreamingMessageAsync(
+    public async IAsyncEnumerable<ChatCompletionResponse<IAssistantContent>> GenerateStreamingMessageAsync(
         ChatCompletionRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
@@ -137,9 +135,9 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                 if (cse.ContentBlock is TextMessageContent text)
                 {
                     // 텍스트 생성
-                    yield return new ChatCompletionResponse<IMessageContent>
+                    yield return new ChatCompletionResponse<IAssistantContent>
                     {
-                        Data = new TextContent
+                        Data = new AssistantTextContent
                         {
                             Index = cse.Index,
                             Value = text.Text
@@ -149,9 +147,9 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                 else if (cse.ContentBlock is ToolUseMessageContent tool)
                 {
                     // 툴 사용
-                    yield return new ChatCompletionResponse<IMessageContent>
+                    yield return new ChatCompletionResponse<IAssistantContent>
                     {
-                        Data = new ToolContent
+                        Data = new AssistantToolContent
                         {
                             Index = cse.Index,
                             Id = tool.Id,
@@ -167,9 +165,9 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                 if (cde.ContentBlock is TextDeltaMessageContent text)
                 {
                     // 텍스트 생성
-                    yield return new ChatCompletionResponse<IMessageContent>
+                    yield return new ChatCompletionResponse<IAssistantContent>
                     {
-                        Data = new TextContent
+                        Data = new AssistantTextContent
                         {
                             Index = cde.Index,
                             Value = text.Text
@@ -179,9 +177,9 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                 else if (cde.ContentBlock is ToolUseDeltaMessageContent tool)
                 {
                     // 툴 사용
-                    yield return new ChatCompletionResponse<IMessageContent>
+                    yield return new ChatCompletionResponse<IAssistantContent>
                     {
-                        Data = new ToolContent
+                        Data = new AssistantToolContent
                         {
                             Index = cde.Index,
                             Arguments = tool.PartialJson,
@@ -226,7 +224,7 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
             }
         }
 
-        yield return new ChatCompletionResponse<IMessageContent>
+        yield return new ChatCompletionResponse<IAssistantContent>
         {
             EndReason = reason,
             TokenUsage = usage

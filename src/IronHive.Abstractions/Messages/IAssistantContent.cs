@@ -6,10 +6,9 @@ namespace IronHive.Abstractions.Messages;
 /// 콘텐츠 블록의 기본 인터페이스입니다.
 /// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
-[JsonDerivedType(typeof(TextContent), "text")]
-[JsonDerivedType(typeof(ImageContent), "image")]
-[JsonDerivedType(typeof(ToolContent), "tool")]
-public interface IMessageContent
+[JsonDerivedType(typeof(AssistantTextContent), "text")]
+[JsonDerivedType(typeof(AssistantToolContent), "tool")]
+public interface IAssistantContent
 {
     string? Id { get; set; }
 
@@ -19,7 +18,7 @@ public interface IMessageContent
 /// <summary>
 /// 콘텐츠 블록의 기본 클래스입니다.
 /// </summary>
-public abstract class MessageContentBase : IMessageContent
+public abstract class AssistantContentBase : IAssistantContent
 {
     public string? Id { get; set; }
 
@@ -29,25 +28,15 @@ public abstract class MessageContentBase : IMessageContent
 /// <summary>
 /// 텍스트 콘텐츠 블록을 나타냅니다
 /// </summary>
-public class TextContent : MessageContentBase
+public class AssistantTextContent : AssistantContentBase
 {
     public string? Value { get; set; }
 }
 
 /// <summary>
-/// 이미지 콘텐츠 블록을 나타냅니다
-/// </summary>
-public class ImageContent : MessageContentBase
-{
-    public string? ContentType { get; set; }
-
-    public string? Data { get; set; }
-}
-
-/// <summary>
 /// 도구 콘텐츠 블록을 나타냅니다
 /// </summary>
-public class ToolContent : MessageContentBase
+public class AssistantToolContent : AssistantContentBase
 {
     public ToolStatus Status { get; set; } = ToolStatus.Pending;
 
@@ -57,24 +46,24 @@ public class ToolContent : MessageContentBase
 
     public string? Result { get; set; }
 
-    public ToolContent Completed(string data)
+    public AssistantToolContent Completed(string data)
     {
         Status = ToolStatus.Completed;
         Result = data;
         return this;
     }
 
-    public ToolContent Failed(string error)
+    public AssistantToolContent Failed(string error)
     {
         Status = ToolStatus.Failed;
         Result = error;
         return this;
     }
 
-    public ToolContent NotFoundTool()
+    public AssistantToolContent NotFoundTool()
         => Failed($"Tool [{Name}] not found. Please check the tool name for any typos or consult the documentation for available tools.");
 
-    public ToolContent TooMuchResult()
+    public AssistantToolContent TooMuchResult()
         => Failed("The result contains too much information. Please change the parameters or specify additional filters to obtain a smaller result set.");
 }
 

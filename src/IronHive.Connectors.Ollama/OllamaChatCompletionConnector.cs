@@ -2,10 +2,8 @@
 using IronHive.Connectors.Ollama.Base;
 using IronHive.Connectors.Ollama.ChatCompletion;
 using System.Runtime.CompilerServices;
-using Message = IronHive.Abstractions.Messages.Message;
+using IMessage = IronHive.Abstractions.Messages.IMessage;
 using OllamaMessage = IronHive.Connectors.Ollama.ChatCompletion.Message;
-using MessageRole = IronHive.Abstractions.Messages.MessageRole;
-using OllamaMessageRole = IronHive.Connectors.Ollama.ChatCompletion.Message;
 using System.Text.Json;
 using IronHive.Abstractions.Messages;
 
@@ -47,13 +45,13 @@ public class OllamaChatCompletionConnector : IChatCompletionConnector
     }
 
     /// <inheritdoc />
-    public async Task<ChatCompletionResponse<Message>> GenerateMessageAsync(
+    public async Task<ChatCompletionResponse<AssistantMessage>> GenerateMessageAsync(
         ChatCompletionRequest request,
         CancellationToken cancellationToken = default)
     {
         var req = ConvertRequest(request);
         var res = await _client.PostChatAsync(req, cancellationToken);
-        var message = new Message(MessageRole.Assistant);
+        var message = new AssistantMessage();
         
         // 텍스트 생성
         var text = res.Message?.Content;
@@ -72,7 +70,7 @@ public class OllamaChatCompletionConnector : IChatCompletionConnector
             }
         }
 
-        return new ChatCompletionResponse<Message>
+        return new ChatCompletionResponse<AssistantMessage>
         {
             EndReason = res.DoneReason switch
             {
@@ -85,7 +83,7 @@ public class OllamaChatCompletionConnector : IChatCompletionConnector
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<ChatCompletionResponse<IMessageContent>> GenerateStreamingMessageAsync(
+    public async IAsyncEnumerable<ChatCompletionResponse<IAssistantContent>> GenerateStreamingMessageAsync(
         ChatCompletionRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
@@ -97,9 +95,9 @@ public class OllamaChatCompletionConnector : IChatCompletionConnector
             var text = res.Message?.Content;
             if (text != null)
             {
-                yield return new ChatCompletionResponse<IMessageContent>
+                yield return new ChatCompletionResponse<IAssistantContent>
                 {
-                    Data = new TextContent
+                    Data = new AssistantTextContent
                     {
                         Value = text
                     },
@@ -109,7 +107,7 @@ public class OllamaChatCompletionConnector : IChatCompletionConnector
             // 종료 메시지
             if (res.DoneReason != null)
             {
-                yield return new ChatCompletionResponse<IMessageContent>
+                yield return new ChatCompletionResponse<IAssistantContent>
                 {
                     EndReason = res.DoneReason switch
                     {

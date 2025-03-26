@@ -54,7 +54,25 @@ public class ChatCompletionService : IChatCompletionService
     }
 
     /// <inheritdoc />
-    public async Task<Message> ExecuteAsync(
+    public Task<AssistantMessage> GenerateMessageAsync(
+        UserMessage message, 
+        ChatCompletionOptions options, 
+        CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc />
+    public IAsyncEnumerable<IAssistantContent> GenerateStreamingMessageAsync(
+        UserMessage message, 
+        ChatCompletionOptions options, 
+        CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc />
+    public async Task<IMessage> GenerateMessageAsync(
         MessageCollection messages,
         ChatCompletionOptions options,
         CancellationToken cancellationToken = default)
@@ -65,8 +83,8 @@ public class ChatCompletionService : IChatCompletionService
         var model = await GetModelAsync(options.Provider, options.Model, cancellationToken);
         if(model.Capabilities.SupportsVision == false)
         {
-            var users = messages.Where(x => x.Role == MessageRole.User).ToList();
-            var anyImg = users.Any(x => x.Content.Any(c => c is ImageContent));
+            var users = messages.OfType<UserMessage>();
+            var anyImg = users.Any(x => x.Content.Any(c => c is UserImageContent));
             if (anyImg)
             {
                 throw new NotSupportedException("Vision is not supported by the model.");
@@ -93,7 +111,7 @@ public class ChatCompletionService : IChatCompletionService
         }
 
         int failedCount = 0;
-        var message = new Message(MessageRole.Assistant);
+        var message = new AssistantMessage();
         var request = await CreateChatCompletionRequest(messages, options);
 
         while (failedCount < options.MaxToolAttempts)
@@ -118,7 +136,7 @@ public class ChatCompletionService : IChatCompletionService
             message.Content.AddRange(res.Data?.Content ?? []);
 
             // 메시지 추가
-            if (request.Messages.LastOrDefault()?.Role != MessageRole.Assistant)
+            if (request.Messages.LastOrDefault() is AssistantMessage)
             {
                 request.Messages.Add(message);
             }
@@ -126,7 +144,7 @@ public class ChatCompletionService : IChatCompletionService
             // 도구 호출
             if (res.EndReason == EndReason.ToolCall)
             {
-                var toolGroup = message.Content.OfType<ToolContent>() ?? [];
+                var toolGroup = message.Content.OfType<AssistantToolContent>() ?? [];
                 foreach (var content in toolGroup)
                 {
                     if (request.Tools == null || string.IsNullOrEmpty(content.Name))
@@ -165,7 +183,7 @@ public class ChatCompletionService : IChatCompletionService
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<IMessageContent> ExecuteStreamingAsync(
+    public async IAsyncEnumerable<IAssistantContent> GenerateStreamingMessageAsync(
         MessageCollection messages,
         ChatCompletionOptions options,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -179,12 +197,12 @@ public class ChatCompletionService : IChatCompletionService
         //}
 
         int failedCount = 0;
-        var message = new Message(MessageRole.Assistant);
+        var message = new AssistantMessage();
         var request = await CreateChatCompletionRequest(messages, options);
 
         while (failedCount < options.MaxToolAttempts)
         {
-            var stack = new MessageContentCollection();
+            var stack = new AssistantContentCollection();
             EndReason? reason = null;
             TokenUsage? usage = null;
             
@@ -206,12 +224,12 @@ public class ChatCompletionService : IChatCompletionService
                 // 메시지 컨텐츠 추가
                 if (res.Data != null)
                 {
-                    if (res.Data is TextContent text)
+                    if (res.Data is AssistantTextContent text)
                     {
                         var last = stack.LastOrDefault();
                         var value = text.Value;
 
-                        if (last is TextContent lastText)
+                        if (last is AssistantTextContent lastText)
                         {
                             lastText.Value ??= string.Empty;
                             lastText.Value += value;
@@ -222,17 +240,17 @@ public class ChatCompletionService : IChatCompletionService
                             last = stack.Last();
                         }
 
-                        yield return new TextContent
+                        yield return new AssistantTextContent
                         {
                             Index = message.Content.Count + last.Index,
                             Value = value,
                         };
                     }
-                    else if (res.Data is ToolContent tool)
+                    else if (res.Data is AssistantToolContent tool)
                     {
                         var index = stack.ElementAtOrDefault(tool.Index ?? 0);
 
-                        if (index is ToolContent indexTool)
+                        if (index is AssistantToolContent indexTool)
                         {
                             indexTool.Arguments ??= string.Empty;
                             indexTool.Arguments += tool.Arguments;
@@ -240,7 +258,7 @@ public class ChatCompletionService : IChatCompletionService
                         else
                         {
                             stack.Add(tool);
-                            yield return new ToolContent
+                            yield return new AssistantToolContent
                             {
                                 Index = message.Content.Count + tool.Index,
                                 Id = tool.Id,
@@ -274,7 +292,7 @@ public class ChatCompletionService : IChatCompletionService
             message.Content.AddRange(stack);
             
             // 어시스턴트 메시지 추가
-            if (request.Messages.LastOrDefault()?.Role != MessageRole.Assistant)
+            if (request.Messages.LastOrDefault() is AssistantMessage)
             {
                 request.Messages.Add(message);
             }
@@ -282,7 +300,7 @@ public class ChatCompletionService : IChatCompletionService
             // 도구 호출
             if (reason == EndReason.ToolCall)
             {
-                var toolGroup = message.Content.OfType<ToolContent>();
+                var toolGroup = message.Content.OfType<AssistantToolContent>();
                 foreach (var content in toolGroup)
                 {
                     if (content.Name == null || request.Tools == null || content.Result != null)
@@ -328,10 +346,9 @@ public class ChatCompletionService : IChatCompletionService
         {
             foreach (var (key, value) in options.Tools)
             {
-                var service = _manager.GetToolService(key);
-                await service.HandleInitializedAsync(value);
-                instructions += await service.HandleSetInstructionsAsync(value);
-                var coll = _manager.CreateFromObject(service);
+                await _manager.HandleInitializedAsync(key, value);
+                instructions += await _manager.HandleSetInstructionsAsync(key, value);
+                var coll = _manager.CreateToolCollection(key);
                 tools.AddRange(coll);
             }
         }

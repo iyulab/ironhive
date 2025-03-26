@@ -33,26 +33,26 @@ public class HiveSession : IHiveSession
             ?? new Dictionary<string, IHiveAgent>();
     }
 
-    public Task<Message> InvokeAsync(
+    public Task<IMessage> InvokeAsync(
         string text,
         IEnumerable<string> files,
         ChatCompletionOptions options,
         CancellationToken cancellationToken = default)
     {
-        var message = new Message(MessageRole.User);
-        message.Content.Add(new TextContent { Value = text });
-        return _serivce.ExecuteAsync(Messages, options, cancellationToken);
+        var message = new UserMessage();
+        message.Content.Add(new UserTextContent { Value = text });
+        return _serivce.GenerateMessageAsync(Messages, options, cancellationToken);
     }
 
-    public IAsyncEnumerable<IMessageContent> InvokeStreamingAsync(
+    public IAsyncEnumerable<IAssistantContent> InvokeStreamingAsync(
         string text,
         IEnumerable<string>? files,
         ChatCompletionOptions options,
         CancellationToken cancellationToken = default)
     {
-        var message = new Message(MessageRole.User);
-        message.Content.Add(new TextContent { Value = text });
-        return _serivce.ExecuteStreamingAsync(Messages, options, cancellationToken);
+        var message = new UserMessage();
+        message.Content.Add(new UserTextContent { Value = text });
+        return _serivce.GenerateStreamingMessageAsync(Messages, options, cancellationToken);
     }
 
     public void AddAgent(IHiveAgent agent)

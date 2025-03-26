@@ -1,34 +1,22 @@
 ﻿using System.Collections;
-using System.Diagnostics.CodeAnalysis;
 
 namespace IronHive.Abstractions.Messages;
 
 /// <summary>
-/// IMessageContent를 담는 컬렉션 구현입니다.
+/// IAssistantContent를 담는 컬렉션 구현입니다.
 /// </summary>
-public class MessageContentCollection : ICollection<IMessageContent>
+public class AssistantContentCollection : ICollection<IAssistantContent>
 {
-    private readonly List<IMessageContent> _items = new();
+    private readonly List<IAssistantContent> _items = new();
 
     /// <summary>
     /// TextContent를 추가합니다.
     /// </summary>
     public void AddText(string? value)
     {
-        Add(new TextContent
+        Add(new AssistantTextContent
         {
             Value = value
-        });
-    }
-
-    /// <summary>
-    /// ImageContent를 추가합니다.
-    /// </summary>
-    public void AddImage(string? data)
-    {
-        Add(new ImageContent
-        {
-            Data = data
         });
     }
 
@@ -37,7 +25,7 @@ public class MessageContentCollection : ICollection<IMessageContent>
     /// </summary>
     public void AddTool(string? id, string? name, string? arguments, string? result)
     {
-        Add(new ToolContent
+        Add(new AssistantToolContent
         {
             Id = id,
             Name = name,
@@ -49,7 +37,7 @@ public class MessageContentCollection : ICollection<IMessageContent>
     /// <summary>
     /// 배열을 추가합니다.
     /// </summary>
-    public void AddRange(IEnumerable<IMessageContent> collection)
+    public void AddRange(IEnumerable<IAssistantContent> collection)
     {
         foreach (var item in collection)
         {
@@ -62,10 +50,10 @@ public class MessageContentCollection : ICollection<IMessageContent>
     /// 예) [ToolContent, ToolContent, TextContent, ToolContent]
     ///  => [ToolContent, ToolContent], [TextContent], [ToolContent]
     /// </summary>
-    public IEnumerable<(Type, MessageContentCollection)> Split()
+    public IEnumerable<(Type, AssistantContentCollection)> Split()
     {
-        var result = new List<(Type, MessageContentCollection)>();
-        var group = new MessageContentCollection();
+        var result = new List<(Type, AssistantContentCollection)>();
+        var group = new AssistantContentCollection();
         Type? groupType = null;
 
         foreach (var item in _items)
@@ -81,7 +69,7 @@ public class MessageContentCollection : ICollection<IMessageContent>
             {
                 // 현재 아이템 타입과 이전 그룹의 타입이 다르면 그룹 분리 
                 result.Add((groupType!, group));
-                group = new MessageContentCollection();
+                group = new AssistantContentCollection();
                 groupType = currentType;
                 group.Add(item);
             }
@@ -107,7 +95,7 @@ public class MessageContentCollection : ICollection<IMessageContent>
 
     public bool IsReadOnly => false;
 
-    public IMessageContent this[int index]
+    public IAssistantContent this[int index]
     {
         get => _items[index];
         set => _items[index] = value;
@@ -117,7 +105,7 @@ public class MessageContentCollection : ICollection<IMessageContent>
     /// 아이템을 추가합니다.
     /// 아이템의 인덱스 번호는 자동으로 재할당됩니다.
     /// </summary>
-    public void Add(IMessageContent item)
+    public void Add(IAssistantContent item)
     {
         item.Index = _items.Count;
         _items.Add(item);
@@ -125,13 +113,13 @@ public class MessageContentCollection : ICollection<IMessageContent>
 
     public void Clear() => _items.Clear();
 
-    public bool Contains(IMessageContent item) => _items.Contains(item);
+    public bool Contains(IAssistantContent item) => _items.Contains(item);
 
-    public void CopyTo(IMessageContent[] array, int arrayIndex) => _items.CopyTo(array, arrayIndex);
+    public void CopyTo(IAssistantContent[] array, int arrayIndex) => _items.CopyTo(array, arrayIndex);
 
-    public bool Remove(IMessageContent item) => _items.Remove(item);
+    public bool Remove(IAssistantContent item) => _items.Remove(item);
 
-    public IEnumerator<IMessageContent> GetEnumerator() => _items.GetEnumerator();
+    public IEnumerator<IAssistantContent> GetEnumerator() => _items.GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 

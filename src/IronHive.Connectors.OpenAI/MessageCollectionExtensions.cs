@@ -1,6 +1,8 @@
 ﻿using IronHive.Connectors.OpenAI.ChatCompletion;
 using OpenAIMessage = IronHive.Connectors.OpenAI.ChatCompletion.Message;
+using UserMessage = IronHive.Abstractions.Messages.UserMessage;
 using OpenAIUserMessage = IronHive.Connectors.OpenAI.ChatCompletion.UserMessage;
+using AssistantMessage = IronHive.Abstractions.Messages.AssistantMessage;
 using OpenAIAssistantMessage = IronHive.Connectors.OpenAI.ChatCompletion.AssistantMessage;
 using IronHive.Abstractions.Messages;
 
@@ -18,17 +20,13 @@ internal static class MessageCollectionExtensions
 
         foreach (var message in messages)
         {
-            // 건너뛰기
-            if (message.Content == null || message.Content.Count == 0)
-                continue;
-
-            if (message.Role == MessageRole.User)
+            if (message is UserMessage user)
             {
                 // 사용자 메시지
                 var um = new OpenAIUserMessage();
-                foreach (var item in message.Content)
+                foreach (var item in user.Content)
                 {
-                    if (item is TextContent text)
+                    if (item is UserTextContent text)
                     {
                         // 텍스트 메시지
                         um.Content.Add(new TextMessageContent
@@ -36,7 +34,7 @@ internal static class MessageCollectionExtensions
                             Text = text.Value ?? string.Empty
                         });
                     }
-                    else if (item is ImageContent image)
+                    else if (item is UserImageContent image)
                     {
                         // 이미지 메시지
                         um.Content.Add(new ImageMessageContent
@@ -54,28 +52,28 @@ internal static class MessageCollectionExtensions
                 }
                 _messages.Add(um);
             }
-            else if (message.Role == MessageRole.Assistant)
+            else if (message is AssistantMessage assistant)
             {
                 // AI 메시지
-                foreach (var (type, group) in message.Content.Split())
+                foreach (var (type, group) in assistant.Content.Split())
                 {
-                    if (type == typeof(TextContent))
+                    if (type == typeof(AssistantTextContent))
                     {
                         // 텍스트 메시지
                         var am = new OpenAIAssistantMessage();
-                        foreach (var item in group.Cast<TextContent>())
+                        foreach (var item in group.Cast<AssistantTextContent>())
                         {
                             am.Content ??= string.Empty;
                             am.Content += item.Value ?? string.Empty;
                         }
                         _messages.Add(am);
                     }
-                    else if (type == typeof(ToolContent))
+                    else if (type == typeof(AssistantToolContent))
                     {
                         // 도구 메시지
                         var am = new OpenAIAssistantMessage();
                         var tms = new List<ToolMessage>();
-                        foreach (var item in group.Cast<ToolContent>())
+                        foreach (var item in group.Cast<AssistantToolContent>())
                         {
                             am.ToolCalls ??= new List<ToolCall>();
                             am.ToolCalls.Add(new ToolCall

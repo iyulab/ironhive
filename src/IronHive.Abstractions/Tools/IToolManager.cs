@@ -2,11 +2,9 @@
 
 public interface IToolManager
 {
-    IToolHandler GetToolService(string key);
+    Task<string> HandleSetInstructionsAsync(string serviceKey, object? options);
 
-    ICollection<ITool> CreateFromObject<T>(params object[] parameters) where T : class;
+    Task HandleInitializedAsync(string serviceKey, object? options);
 
-    ICollection<ITool> CreateFromObject(object instance);
-
-    ITool CreateFromFunction(string name, string? description, Delegate function);
+    ICollection<ITool> CreateToolCollection(string serviceKey);
 }

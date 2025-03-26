@@ -1,7 +1,5 @@
 ﻿using IronHive.Connectors.Anthropic.ChatCompletion;
 using AnthropicMessage = IronHive.Connectors.Anthropic.ChatCompletion.Message;
-using MessageRole = IronHive.Abstractions.Messages.MessageRole;
-using AnthropicMessageRole = IronHive.Connectors.Anthropic.ChatCompletion.MessageRole;
 using System.Text.Json;
 using IronHive.Abstractions.Messages;
 
@@ -15,24 +13,20 @@ internal static class MessageCollectionExtensions
 
         foreach (var message in messages)
         {
-            // 건너뛰기
-            if (message.Content == null || message.Content.Count == 0)
-                continue;
-
-            if (message.Role == MessageRole.User)
+            if (message is UserMessage user)
             {
                 // 사용자 메시지
-                var um = new AnthropicMessage(AnthropicMessageRole.User);
-                foreach (var item in message.Content)
+                var um = new AnthropicMessage(MessageRole.User);
+                foreach (var item in user.Content)
                 {
-                    if (item is TextContent text)
+                    if (item is UserTextContent text)
                     {
                         um.Content.Add(new TextMessageContent
                         {
                             Text = text.Value ?? string.Empty
                         });
                     }
-                    else if (item is ImageContent image)
+                    else if (item is UserImageContent image)
                     {
                         throw new NotImplementedException("not supported yet");
                     }
@@ -41,18 +35,19 @@ internal static class MessageCollectionExtensions
                         throw new NotImplementedException("not supported yet");
                     }
                 }
+
                 _messages.Add(um);
             }
-            else if (message.Role == MessageRole.Assistant)
+            else if (message is AssistantMessage assistant)
             {
                 // AI 메시지
-                foreach (var (type, group) in message.Content.Split())
+                foreach (var (type, group) in assistant.Content.Split())
                 {
-                    if (type == typeof(TextContent))
+                    if (type == typeof(AssistantTextContent))
                     {
                         // 텍스트 메시지
-                        var am = new AnthropicMessage(AnthropicMessageRole.Assistant);
-                        foreach (var item in group.Cast<TextContent>())
+                        var am = new AnthropicMessage(MessageRole.Assistant);
+                        foreach (var item in group.Cast<AssistantTextContent>())
                         {
                             am.Content.Add(new TextMessageContent
                             {
@@ -61,12 +56,12 @@ internal static class MessageCollectionExtensions
                         }
                         _messages.Add(am);
                     }
-                    else if (type == typeof(ToolContent))
+                    else if (type == typeof(AssistantToolContent))
                     {
                         // 도구 메시지
-                        var am = new AnthropicMessage(AnthropicMessageRole.Assistant);
-                        var um = new AnthropicMessage(AnthropicMessageRole.User);
-                        foreach (var tool in group.Cast<ToolContent>())
+                        var am = new AnthropicMessage(MessageRole.Assistant);
+                        var um = new AnthropicMessage(MessageRole.User);
+                        foreach (var tool in group.Cast<AssistantToolContent>())
                         {
                             am.Content.Add(new ToolUseMessageContent
                             {

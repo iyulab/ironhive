@@ -2,55 +2,73 @@
 
 namespace IronHive.Abstractions.Messages;
 
-public sealed class MessageCollection : ICollection<Message>
+public sealed class MessageCollection : ICollection<IMessage>
 {
-    private readonly List<Message> _items;
+    private readonly List<IMessage> _items;
 
     public MessageCollection()
     {
         _items = new();
     }
 
-    public MessageCollection(IEnumerable<Message> messages)
+    public MessageCollection(IEnumerable<IMessage> messages)
     {
         _items = new(messages);
     }
 
-    public void AddUserMessage(IMessageContent content)
+    public void AddUserContent(IUserContent content)
     {
-        Add(MessageRole.User, content);
-    }
-
-    public void AddAssistantMessage(IMessageContent content)
-    {
-        Add(MessageRole.Assistant, content);
-    }
-
-    public void Add(MessageRole role, IMessageContent content)
-    {
-        if (_items.Last().Role == role)
+        if (_items.Last() is UserMessage user)
         {
-            _items.Last().Content.Add(content);
+            user.Content.Add(content);
         }
         else
         {
-            var message = new Message { Role = role };
+            var message = new UserMessage();
             message.Content.Add(content);
             _items.Add(message);
         }
     }
 
-    public void Add(MessageRole role, IEnumerable<IMessageContent> content)
+    public void AddUserContent(IEnumerable<IUserContent> content)
     {
-        if (_items.Last().Role == role)
+        if (_items.Last() is UserMessage user)
         {
-            _items.Last().Content.AddRange(content);
+            user.Content.AddRange(content);
         }
         else
         {
-            var message = new Message { Role = role };
+            var message = new UserMessage();
             message.Content.AddRange(content);
-            Add(message);
+            _items.Add(message);
+        }
+    }
+
+    public void AddAssistantContent(IAssistantContent content)
+    {
+        if (_items.Last() is AssistantMessage assistant)
+        {
+            assistant.Content.Add(content);
+        }
+        else
+        {
+            var message = new AssistantMessage();
+            message.Content.Add(content);
+            _items.Add(message);
+        }
+    }
+
+    public void AddAssistantContent(IEnumerable<IAssistantContent> content)
+    {
+        if (_items.Last() is AssistantMessage assistant)
+        {
+            assistant.Content.AddRange(content);
+        }
+        else
+        {
+            var message = new AssistantMessage();
+            message.Content.AddRange(content);
+            _items.Add(message);
         }
     }
 
@@ -60,23 +78,23 @@ public sealed class MessageCollection : ICollection<Message>
 
     public bool IsReadOnly => false;
 
-    public Message this[int index]
+    public IMessage this[int index]
     {
         get => _items[index];
         set => _items[index] = value;
     }
 
-    public void Add(Message message) => _items.Add(message);
+    public void Add(IMessage message) => _items.Add(message);
 
-    public bool Remove(Message message) => _items.Remove(message);
+    public bool Remove(IMessage message) => _items.Remove(message);
 
-    public bool Contains(Message message) => _items.Contains(message);
+    public bool Contains(IMessage message) => _items.Contains(message);
 
-    public void CopyTo(Message[] array, int arrayIndex) => _items.CopyTo(array, arrayIndex);
+    public void CopyTo(IMessage[] array, int arrayIndex) => _items.CopyTo(array, arrayIndex);
 
     public void Clear() => _items.Clear();
 
-    public IEnumerator<Message> GetEnumerator() => _items.GetEnumerator();
+    public IEnumerator<IMessage> GetEnumerator() => _items.GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
