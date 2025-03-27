@@ -14,7 +14,7 @@ public class FileManager : IFileManager
     }
 
     /// <inheritdoc />
-    public Task<string> DecodeAsync(
+    public async Task<string> DecodeAsync(
         string fileName,
         Stream data,
         CancellationToken cancellationToken = default)
@@ -24,10 +24,17 @@ public class FileManager : IFileManager
             var decoder = _decoders.FirstOrDefault(x => x.SupportsMimeType(type));
             if (decoder is not null)
             {
-                return decoder.DecodeAsync(data, cancellationToken);
+                return await decoder.DecodeAsync(data, cancellationToken);
+            }
+            else
+            {
+                throw new NotSupportedException("Unsupported file type.");
             }
         }
-
-        throw new NotSupportedException($"The file type of '{fileName}' is not supported.");
+        else
+        {
+            var text = new StreamReader(data).ReadToEnd();
+            return text;
+        }
     }
 }

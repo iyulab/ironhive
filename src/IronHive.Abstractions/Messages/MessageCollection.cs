@@ -16,7 +16,7 @@ public sealed class MessageCollection : ICollection<IMessage>
         _items = new(messages);
     }
 
-    public void AddUserContent(IUserContent content)
+    public void Append(IUserContent content)
     {
         if (_items.Last() is UserMessage user)
         {
@@ -30,7 +30,7 @@ public sealed class MessageCollection : ICollection<IMessage>
         }
     }
 
-    public void AddUserContent(IEnumerable<IUserContent> content)
+    public void Append(IEnumerable<IUserContent> content)
     {
         if (_items.Last() is UserMessage user)
         {
@@ -44,7 +44,7 @@ public sealed class MessageCollection : ICollection<IMessage>
         }
     }
 
-    public void AddAssistantContent(IAssistantContent content)
+    public void Append(IAssistantContent content)
     {
         if (_items.Last() is AssistantMessage assistant)
         {
@@ -58,7 +58,7 @@ public sealed class MessageCollection : ICollection<IMessage>
         }
     }
 
-    public void AddAssistantContent(IEnumerable<IAssistantContent> content)
+    public void Append(IEnumerable<IAssistantContent> content)
     {
         if (_items.Last() is AssistantMessage assistant)
         {

@@ -24,5 +24,5 @@ public interface ITool
     /// </summary>
     /// <param name="args"></param>
     /// <returns></returns>
-    Task<ToolResult> InvokeAsync(object? args);
+    Task<ToolResult> InvokeAsync(object? args, CancellationToken cancellationToken = default);
 }

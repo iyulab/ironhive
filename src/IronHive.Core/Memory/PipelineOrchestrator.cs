@@ -1,18 +1,17 @@
 ﻿using IronHive.Abstractions.Memory;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace IronHive.Core.Memory;
 
 public class PipelineOrchestrator : IPipelineOrchestrator
 {
-    private readonly IReadOnlyDictionary<string, IPipelineHandler> _handlers;
+    private readonly IServiceProvider _services;
     private readonly IPipelineStorage _store;
-    private readonly SemaphoreSlim _semaphore = new(1, 1);
+    public SemaphoreSlim _semaphore = new(1, 1);
 
-    public PipelineOrchestrator(
-        IReadOnlyDictionary<string, IPipelineHandler> handlers, 
-        IPipelineStorage store)
+    public PipelineOrchestrator(IServiceProvider provider, IPipelineStorage store)
     {
-        _handlers = handlers;
+        _services = provider;
         _store = store;
     }
 
@@ -21,6 +20,14 @@ public class PipelineOrchestrator : IPipelineOrchestrator
     {
         var keys = await _store.GetKeysAsync(cancellationToken);
         return keys;
+    }
+
+    public async Task<DataPipeline> GetPipelineAsync(
+        string pipelineId,
+        CancellationToken cancellationToken = default)
+    {
+        var pipeline = await _store.GetValueAsync<DataPipeline>(pipelineId, cancellationToken);
+        return pipeline;
     }
 
     public async Task RunPipelineAsync(
@@ -44,7 +51,7 @@ public class PipelineOrchestrator : IPipelineOrchestrator
                 }
                 else
                 {
-                    var handler = _handlers[currentStep];
+                    var handler = GetHandler(currentStep);
                     pipeline = await handler.ProcessAsync(pipeline, cancellationToken);
                     pipeline = pipeline.Next();
                     await _store.SetValueAsync(pipeline.Id, pipeline, cancellationToken);
@@ -60,5 +67,12 @@ public class PipelineOrchestrator : IPipelineOrchestrator
         {
             _semaphore.Release();
         }
+    }
+
+    private IPipelineHandler GetHandler(string serviceKey)
+    {
+        using var scope = _services.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredKeyedService<IPipelineHandler>(serviceKey);
+        return handler;
     }
 }

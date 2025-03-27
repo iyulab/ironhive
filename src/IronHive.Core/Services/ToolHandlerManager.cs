@@ -1,32 +1,36 @@
 ﻿using IronHive.Abstractions.Tools;
+using IronHive.Core.Tools;
 using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace IronHive.Core.Tools;
+namespace IronHive.Core.Services;
 
-public class ToolManager : IToolManager
+public class ToolHandlerManager : IToolHandlerManager
 {
     private readonly IServiceProvider _services;
 
-    public ToolManager(IServiceProvider services)
+    public ToolHandlerManager(IServiceProvider services)
     {
         _services = services;
     }
 
+    /// <inheritdoc />
     public async Task<string> HandleSetInstructionsAsync(string serviceKey, object? options)
     {
         var handler = GetToolHandler(serviceKey);
         return await handler.HandleSetInstructionsAsync(options);
     }
 
+    /// <inheritdoc />
     public async Task HandleInitializedAsync(string serviceKey, object? options)
     {
         var handler = GetToolHandler(serviceKey);
         await handler.HandleInitializedAsync(options);
     }
 
+    /// <inheritdoc />
     public ICollection<ITool> CreateToolCollection(string serviceKey)
     {
         var handler = GetToolHandler(serviceKey);

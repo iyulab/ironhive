@@ -96,10 +96,6 @@ export class ChatRoom extends LitElement {
         last.content?.push(data);
       }
       this.messageEl.requestUpdate();
-      // this.messageEl.scrollTo({
-      //   top: this.messageEl.scrollHeight,
-      //   behavior: 'instant'
-      // });
     });
   }
 

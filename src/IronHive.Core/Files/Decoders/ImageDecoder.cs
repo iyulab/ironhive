@@ -1,6 +1,6 @@
 ﻿using IronHive.Abstractions.Files;
 
-namespace IronHive.Core.Files;
+namespace IronHive.Core.Files.Decoders;
 
 public class ImageDecoder : IFileDecoder
 {

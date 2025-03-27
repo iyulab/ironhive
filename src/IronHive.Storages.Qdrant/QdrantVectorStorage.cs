@@ -1,13 +1,14 @@
-﻿using Qdrant.Client;
+﻿using System.Text.Json;
+using IronHive.Abstractions.Memory;
+using Qdrant.Client;
 using Qdrant.Client.Grpc;
 using static Qdrant.Client.Grpc.Conditions;
-using System.Text.Json;
-using IronHive.Abstractions.Memory;
 
 namespace IronHive.Storages.Qdrant;
 
 public class QdrantVectorStorage : IVectorStorage
 {
+    // Qdrant에서 사용할 기본 텍스트용 벡터의 이름입니다.
     private const string DefaultVectorsName = "text_vector";
     private readonly QdrantClient _client;
 
@@ -22,12 +23,14 @@ public class QdrantVectorStorage : IVectorStorage
         GC.SuppressFinalize(this);
     }
 
+    /// <inheritdoc />
     public async Task<IEnumerable<string>> ListCollectionsAsync(
         CancellationToken cancellationToken = default)
     {
         return await _client.ListCollectionsAsync(cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task<bool> CollectionExistsAsync(
         string collectionName,
         CancellationToken cancellationToken = default)
@@ -35,6 +38,7 @@ public class QdrantVectorStorage : IVectorStorage
         return await _client.CollectionExistsAsync(collectionName, cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task CreateCollectionAsync(
         string collectionName,
         int dimensions,
@@ -43,20 +47,21 @@ public class QdrantVectorStorage : IVectorStorage
         if (await CollectionExistsAsync(collectionName, cancellationToken))
             throw new InvalidOperationException($"collection {collectionName} already exist");
 
-        var vectorParams = new VectorParams
+        var param = new VectorParams
         {
             Datatype = Datatype.Float32,
             Distance = Distance.Cosine,
             OnDisk = true,
             Size = (ulong)dimensions
         };
-        var vectorConfig = new VectorParamsMap { Map = { [DefaultVectorsName] = vectorParams } };
+        var config = new VectorParamsMap { Map = { [DefaultVectorsName] = param } };
         await _client.CreateCollectionAsync(
             collectionName: collectionName,
-            vectorsConfig: vectorConfig,
+            vectorsConfig: config,
             cancellationToken: cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task DeleteCollectionAsync(
         string collectionName,
         CancellationToken cancellationToken = default)
@@ -69,107 +74,106 @@ public class QdrantVectorStorage : IVectorStorage
             cancellationToken: cancellationToken);
     }
 
-    public async Task<IEnumerable<VectorPoint>> FindVectorsAsync(
+    /// <inheritdoc />
+    public async Task<IEnumerable<VectorRecord>> FindVectorsAsync(
         string collectionName,
-        MemoryFilter? filter = null,
+        int limit = 20,
+        VectorRecordFilter? filter = null,
         CancellationToken cancellationToken = default)
     {
+        var condition = BuildFilter(filter);
+        var orderBy = new OrderBy { Key = "lastUpdatedAt", Direction = Direction.Desc };
         var response = await _client.ScrollAsync(
             collectionName: collectionName,
+            limit: (uint)limit,
+            filter: condition,
+            orderBy: orderBy,
             cancellationToken: cancellationToken);
 
-        var points = new List<VectorPoint>();
-
+        var records = new List<VectorRecord>();
         foreach (var point in response.Result)
         {
-            var documentId = point.Payload.GetValueOrDefault("documentId")?.StringValue;
-            var tags = point.Payload.GetValueOrDefault("tags")?.ListValue.Values.Select(v => v.StringValue);
-            var jsonPayload = point.Payload.GetValueOrDefault("payload");
-            var payload = jsonPayload != null ? JsonSerializer.Deserialize<object>(jsonPayload.StringValue) : null;
             var vectors = point.Vectors.Vectors_.Vectors[DefaultVectorsName].Data.ToArray();
 
-            points.Add(new VectorPoint
+            var vectorId = point.Payload.GetValueOrDefault("vectorId")?.StringValue ?? string.Empty;
+            var source = JsonSerializer.Deserialize<IMemorySource>(point.Payload.GetValueOrDefault("source")?.StringValue ?? string.Empty)
+                ?? throw new InvalidOperationException("source is not found");
+            var payload = JsonSerializer.Deserialize<object>(point.Payload.GetValueOrDefault("payload")?.StringValue ?? string.Empty);
+            var lastUpdatedAt = DateTime.Parse(point.Payload.GetValueOrDefault("lastUpdatedAt")?.StringValue ?? string.Empty);
+            
+            records.Add(new VectorRecord
             {
-                VectorId = Guid.Parse(point.Id.Uuid),
+                Id = vectorId,
                 Vectors = vectors,
-                DocumentId = documentId,
-                Tags = tags?.ToArray(),
-                Payload = payload
+                Source = source,
+                Payload = payload,
+                LastUpdatedAt = lastUpdatedAt
             });
         }
-        return points;
+        return records;
     }
 
+    /// <inheritdoc />
     public async Task UpsertVectorsAsync(
         string collectionName,
-        IEnumerable<VectorPoint> points,
+        IEnumerable<VectorRecord> records,
         CancellationToken cancellationToken = default)
     {
-        var pointStructs = new List<PointStruct>();
-        foreach (var point in points)
+        var points = new List<PointStruct>();
+        foreach (var record in records)
         {
-            var jsonPayload = JsonSerializer.Serialize(point.Payload);
-            pointStructs.Add(new PointStruct
+            points.Add(new PointStruct
             {
-                Id = point.VectorId,
                 Vectors = new Dictionary<string, float[]>
                 {
-                    [DefaultVectorsName] = point.Vectors.ToArray(),
+                    [DefaultVectorsName] = record.Vectors.ToArray(),
                 },
                 Payload =
                 {
-                    ["documentId"] = point.DocumentId,
-                    ["tags"] = point.Tags?.ToArray() ?? [],
-                    ["payload"] = jsonPayload
+                    ["vectorId"] = record.Id,
+                    ["sourceId"] = record.Source.Id,
+                    ["source"] = JsonSerializer.Serialize(record.Source),
+                    ["payload"] = JsonSerializer.Serialize(record.Payload),
+                    ["lastUpdatedAt"] = record.LastUpdatedAt.ToString("O"),
                 }
             });
         }
 
         await _client.UpsertAsync(
             collectionName: collectionName,
-            points: pointStructs,
+            points: points,
             cancellationToken: cancellationToken);
     }
 
-    public async Task DeleteVectorsAsync(string collectionName, string documentId, CancellationToken cancellationToken = default)
-    {
-        await _client.DeleteAsync(
-            collectionName: collectionName,
-            filter: MatchKeyword("documentId", documentId),
-            cancellationToken: cancellationToken);
-    }
-
-    public async Task<IEnumerable<ScoredVectorPoint>> SearchVectorsAsync(
+    /// <inheritdoc />
+    public async Task DeleteVectorsAsync(
         string collectionName,
-        IEnumerable<float> input,
-        float minScore = 0.0f,
-        int limit = 5,
-        MemoryFilter? filter = null,
+        VectorRecordFilter filter,
         CancellationToken cancellationToken = default)
     {
-        Filter? condition = null;
-        if (filter != null)
-        {
-            var conditions = new List<Condition>();
-            if (filter.DocumentIds.Count != 0)
-            {
-                conditions.Add(Match("documentId", filter.DocumentIds));
-            }
-            if (filter.Tags.Count != 0)
-            {
-                var tagsFilters = filter.Tags.Select(tag => MatchKeyword("tags", tag));
-                var tagsCondition = tagsFilters.Aggregate((current, next) => current & next);
-                conditions.Add(tagsCondition);
-            }
-            if (conditions.Count != 0)
-            {
-                condition = conditions.Aggregate((current, next) => current & next);
-            }
-        }
+        var condition = BuildFilter(filter)
+            ?? throw new InvalidOperationException("filter is required");
 
-        var results = await _client.SearchAsync(
+        await _client.DeleteAsync(
             collectionName: collectionName,
-            vector: input.ToArray(),
+            filter: condition,
+            cancellationToken: cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<IEnumerable<ScoredVectorRecord>> SearchVectorsAsync(
+        string collectionName,
+        IEnumerable<float> vector,
+        float minScore = 0.0f,
+        int limit = 5,
+        VectorRecordFilter? filter = null,
+        CancellationToken cancellationToken = default)
+    {
+        var condition = BuildFilter(filter);
+
+        var scoredPoints = await _client.SearchAsync(
+            collectionName: collectionName,
+            vector: vector.ToArray(),
             filter: condition,
             limit: (ulong)limit,
             payloadSelector: true,
@@ -178,30 +182,48 @@ public class QdrantVectorStorage : IVectorStorage
             vectorName: DefaultVectorsName,
             cancellationToken: cancellationToken);
 
-        var rankedPoints = new List<ScoredVectorPoint>();
-        foreach (var result in results)
+        var records = new List<ScoredVectorRecord>();
+        foreach (var point in scoredPoints)
         {
-            var documentId = result.Payload.GetValueOrDefault("documentId")?.StringValue;
-            var tags = result.Payload.GetValueOrDefault("tags")?.ListValue.Values.Select(v => v.StringValue);
-            var jsonPayload = result.Payload.GetValueOrDefault("payload");
-            var payload = jsonPayload != null ? JsonSerializer.Deserialize<object>(jsonPayload.StringValue) : null;
-            if (documentId == null)
-                continue;
+            var vectorId = point.Payload.GetValueOrDefault("vectorId")?.StringValue ?? string.Empty;
+            var source = JsonSerializer.Deserialize<IMemorySource>(point.Payload.GetValueOrDefault("source")?.StringValue ?? string.Empty)
+                ?? throw new InvalidOperationException("source is not found");
+            var payload = JsonSerializer.Deserialize<object>(point.Payload.GetValueOrDefault("payload")?.StringValue ?? string.Empty);
+            var lastUpdatedAt = DateTime.Parse(point.Payload.GetValueOrDefault("lastUpdatedAt")?.StringValue ?? string.Empty);
 
-            rankedPoints.Add(new ScoredVectorPoint
+            records.Add(new ScoredVectorRecord
             {
-                VectorId = Guid.Parse(result.Id.Uuid),
-                Score = result.Score,
-                DocumentId = documentId,
-                Tags = tags?.ToArray(),
-                Payload = payload
+                VectorId = vectorId,
+                Score = point.Score,
+                Source = source,
+                LastUpdatedAt = lastUpdatedAt,
             });
         }
-        return rankedPoints.OrderByDescending(p => p.Score);
+
+        return records;
     }
 
-    #region Private Methods
+    // 필터링 조건을 생성합니다.
+    private Filter? BuildFilter(VectorRecordFilter? filter)
+    {
+        if (filter == null || filter.Any())
+            return null;
 
+        var conditions = new List<Condition>();
+        if (filter.VectorIds.Count > 0)
+        {
+            conditions.Add(Match("vectorId", filter.VectorIds.ToArray()));
+        }
+        if (filter.SourceIds.Count > 0)
+        {
+            conditions.Add(Match("sourceId", filter.SourceIds.ToArray()));
+        }
+
+        // 모든 조건을 OR 연산으로 결합합니다.
+        return conditions.Aggregate((current, next) => current | next);
+    }
+
+    // QdrantClient 인스턴스를 생성합니다.
     private QdrantClient CreateQdrantClient(QdrantConfig config)
     {
         return new QdrantClient(
@@ -211,6 +233,4 @@ public class QdrantVectorStorage : IVectorStorage
             apiKey: config.ApiKey,
             grpcTimeout: config.GrpcTimeout);
     }
-
-    #endregion
 }

@@ -14,7 +14,7 @@ public interface IMessage
 
 public abstract class MessageBase : IMessage
 {
-    public string? Name { get; set; }
+    public string? Name { get; set; } = "Yam";
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 }
 

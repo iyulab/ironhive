@@ -20,11 +20,12 @@ public class FunctionTool : ITool
         Parameters = GetParametersJsonSchema(_function.Method.GetParameters());
     }
 
-    public async Task<ToolResult> InvokeAsync(object? args)
+    public async Task<ToolResult> InvokeAsync(object? args, CancellationToken cancellationToken = default)
     {
         try
         {
             var result = _function.DynamicInvoke(PrepareArguments(args));
+            cancellationToken.ThrowIfCancellationRequested();
             if (result is Task task)
             {
                 await task;

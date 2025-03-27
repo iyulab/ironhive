@@ -2,7 +2,7 @@
 using DocumentFormat.OpenXml.Wordprocessing;
 using IronHive.Abstractions.Files;
 
-namespace IronHive.Core.Files;
+namespace IronHive.Core.Files.Decoders;
 
 public class WordDecoder : IFileDecoder
 {

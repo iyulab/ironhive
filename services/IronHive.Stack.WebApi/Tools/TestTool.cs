@@ -68,6 +68,15 @@ public class TestTool : ToolHandlerBase
         return string.IsNullOrWhiteSpace(error) ? output : throw new Exception(error);
     }
 
+    [FunctionTool("write_file")]
+    [Description("save text file to user computer, if dont know where save path, question to user")]
+    public async Task WriteFIleAsync(
+        [Description("full absolute file path to save user computer contains file extensions")] string filePath,
+        [Description("text content of file")] string text)
+    {
+        await File.WriteAllTextAsync(filePath, text);
+    }
+
     public override Task<string> HandleSetInstructionsAsync(object? options)
     {
         if (options.TryConvertTo<TestToolOptions>(out var option))

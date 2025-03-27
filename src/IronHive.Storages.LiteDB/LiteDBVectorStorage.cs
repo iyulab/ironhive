@@ -19,13 +19,16 @@ public class LiteDBVectorStorage : IVectorStorage
         GC.SuppressFinalize(this);
     }
 
+    /// <inheritdoc />
     public Task<IEnumerable<string>> ListCollectionsAsync(
         CancellationToken cancellationToken = default)
     {
-        var collections = _db.GetCollectionNames();
+        var collections = _db.GetCollectionNames() 
+            ?? Enumerable.Empty<string>();
         return Task.FromResult(collections);
     }
 
+    /// <inheritdoc />
     public Task<bool> CollectionExistsAsync(
         string collectionName,
         CancellationToken cancellationToken = default)
@@ -34,6 +37,7 @@ public class LiteDBVectorStorage : IVectorStorage
         return Task.FromResult(isExist);
     }
 
+    /// <inheritdoc />
     public async Task CreateCollectionAsync(
         string collectionName,
         int dimensions,
@@ -42,12 +46,19 @@ public class LiteDBVectorStorage : IVectorStorage
         if (await CollectionExistsAsync(collectionName, cancellationToken))
             throw new InvalidOperationException($"Collection '{collectionName}' already exists.");
 
-        var coll = _db.GetCollection<VectorPoint>(collectionName);
-        var emptyPoint = new VectorPoint();
-        coll.Upsert(emptyPoint);
-        coll.Delete(emptyPoint.VectorId);
+        var coll = _db.GetCollection<VectorRecord>(collectionName);
+
+        // LiteDB does not support creating an empty collection.
+        var empty = new VectorRecord
+        { 
+            Source = new TextMemorySource { Text = string.Empty },
+            Vectors = new float[dimensions]
+        };
+        coll.Upsert(empty);
+        coll.Delete(empty.Id);
     }
 
+    /// <inheritdoc />
     public async Task DeleteCollectionAsync(
         string collectionName,
         CancellationToken cancellationToken = default)
@@ -58,86 +69,96 @@ public class LiteDBVectorStorage : IVectorStorage
         _db.DropCollection(collectionName);
     }
 
-    public Task<IEnumerable<VectorPoint>> FindVectorsAsync(
+    /// <inheritdoc />
+    public Task<IEnumerable<VectorRecord>> FindVectorsAsync(
         string collectionName,
-        MemoryFilter? filter = null,
+        int limit = 20,
+        VectorRecordFilter? filter = null,
         CancellationToken cancellationToken = default)
     {
-        var collection = _db.GetCollection<VectorPoint>(collectionName);
-        var query = collection.Query();
+        var coll = _db.GetCollection<VectorRecord>(collectionName);
+        var query = coll.Query();
 
         if (filter != null)
         {
-            if (filter.DocumentIds.Count > 0)
-                query = query.Where(p => filter.DocumentIds.Contains(p.DocumentId));
-            if (filter.Tags.Count > 0)
-                query = query.Where(p => p.Tags != null && p.Tags.Any(t => filter.Tags.Contains(t)));
-        }
-
-        var results = query.ToList();
-        return Task.FromResult(results.AsEnumerable());
-    }
-
-    public Task UpsertVectorsAsync(
-        string collectionName,
-        IEnumerable<VectorPoint> points,
-        CancellationToken cancellationToken = default)
-    {
-        collectionName = $"{collectionName}";
-        var collection = _db.GetCollection<VectorPoint>(collectionName);
-        collection.Upsert(points);
-        return Task.CompletedTask;
-    }
-
-    public Task DeleteVectorsAsync(
-        string collectionName,
-        string documentId,
-        CancellationToken cancellationToken = default)
-    {
-        var collection = _db.GetCollection<VectorPoint>(collectionName);
-        collection.DeleteMany(p => p.DocumentId == documentId);
-        return Task.CompletedTask;
-    }
-
-    public Task<IEnumerable<ScoredVectorPoint>> SearchVectorsAsync(
-        string collectionName,
-        IEnumerable<float> input,
-        float minScore = 0,
-        int limit = 5,
-        MemoryFilter? filter = null,
-        CancellationToken cancellationToken = default)
-    {
-        var collection = _db.GetCollection<VectorPoint>(collectionName);
-        var query = collection.Query();
-
-        if (filter != null)
-        {
-            if (filter.DocumentIds.Count > 0)
-                query = query.Where(p => filter.DocumentIds.Contains(p.DocumentId));
-            if (filter.Tags.Count > 0)
-                query = query.Where(p => p.Tags != null && p.Tags.Any(t => filter.Tags.Contains(t)));
+            if (filter.SourceIds.Count > 0)
+                query = query.Where(p => filter.SourceIds.Contains(p.Source.Id));
+            if (filter.VectorIds.Count > 0)
+                query = query.Where(p => filter.VectorIds.Contains(p.Id));
         }
 
         var results = query
+            .OrderByDescending(p => p.LastUpdatedAt)
+            .Limit(limit)
+            .ToEnumerable();
+        return Task.FromResult(results);
+    }
+
+    /// <inheritdoc />
+    public Task UpsertVectorsAsync(
+        string collectionName,
+        IEnumerable<VectorRecord> records,
+        CancellationToken cancellationToken = default)
+    {
+        collectionName = $"{collectionName}";
+        var coll = _db.GetCollection<VectorRecord>(collectionName);
+        coll.Upsert(records);
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public Task DeleteVectorsAsync(
+        string collectionName,
+        VectorRecordFilter filter,
+        CancellationToken cancellationToken = default)
+    {
+        var coll = _db.GetCollection<VectorRecord>(collectionName);
+
+        if (filter.SourceIds.Count > 0)
+            coll.DeleteMany(p => filter.SourceIds.Contains(p.Source.Id));
+        if (filter.VectorIds.Count > 0)
+            coll.DeleteMany(p => filter.VectorIds.Contains(p.Id));
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public Task<IEnumerable<ScoredVectorRecord>> SearchVectorsAsync(
+        string collectionName,
+        IEnumerable<float> vector,
+        float minScore = 0,
+        int limit = 5,
+        VectorRecordFilter? filter = null,
+        CancellationToken cancellationToken = default)
+    {
+        var coll = _db.GetCollection<VectorRecord>(collectionName);
+        var query = coll.Query();
+
+        if (filter != null)
+        {
+            if (filter.SourceIds.Count > 0)
+                query = query.Where(p => filter.SourceIds.Contains(p.Source.Id));
+            if (filter.VectorIds.Count > 0)
+                query = query.Where(p => filter.VectorIds.Contains(p.Id));
+        }
+
+        var records = query
             .ToList()
-            .Select(p => new ScoredVectorPoint
+            .Select(p => new ScoredVectorRecord
             {
-                VectorId = p.VectorId,
-                Score = TensorPrimitives.CosineSimilarity(input.ToArray(), p.Vectors.ToArray()),
-                DocumentId = p.DocumentId,
-                Tags = p.Tags?.ToArray(),
-                Payload = p.Payload,
+                VectorId = p.Id,
+                Score = TensorPrimitives.CosineSimilarity(vector.ToArray(), p.Vectors.ToArray()),
+                Source = p.Source,
+                LastUpdatedAt = p.LastUpdatedAt 
             })
             .Where(p => p.Score >= minScore)
             .OrderByDescending(p => p.Score)
             .Take(limit)
             .AsEnumerable();
 
-        return Task.FromResult(results.Any() ? results : []);
+        return Task.FromResult(records);
     }
 
-    #region Private Methods
-
+    // LiteDB 인스턴스를 생성합니다.
     private static LiteDatabase CreateLiteDatabase(LiteDBConfig config)
     {
         var connectionString = new ConnectionString
@@ -150,11 +171,9 @@ public class LiteDBVectorStorage : IVectorStorage
             ReadOnly = false,
         };
         var mapper = new BsonMapper();
-        mapper.Entity<VectorPoint>()
-              .Id(p => p.VectorId);
+        mapper.Entity<VectorRecord>()
+              .Id(p => p.Id);
 
         return new LiteDatabase(connectionString, mapper);
     }
-
-    #endregion
 }

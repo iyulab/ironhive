@@ -9,6 +9,14 @@ public interface IEmbeddingService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Get embedding model.
+    /// </summary>
+    Task<EmbeddingModel> GetModelAsync(
+        string provider,
+        string model,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Generates an embedding for the given input using the specified model.
     /// </summary>
     Task<IEnumerable<float>> EmbedAsync(

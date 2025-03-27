@@ -1,5 +1,4 @@
-﻿using IronHive.Abstractions.Json;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 
 namespace IronHive.Abstractions.Memory;
 
@@ -7,12 +6,16 @@ public enum PipelineStatus
 {
     // 대기
     Pending,
+
     // 준비
     Queued,
+    
     // 처리 중
     Processing,
+    
     // 완료
     Completed,
+    
     // 실패
     Failed
 }
@@ -24,34 +27,22 @@ public class DataPipeline
     [JsonInclude]
     public PipelineStatus Status { get; private set; } = PipelineStatus.Queued;
 
-    public required string CollectionName { get; set; }
-
-    public required string DocumentId { get; set; }
-
-    public required string FileName { get; set; }
-
-    public required string MimeType { get; set; }
-
     [JsonInclude]
     public string? CurrentStep { get; private set; }
 
     public required List<string> Steps { get; set; } = [];
 
-    public IDictionary<string, object>? Options { get; set; }
+    public IDictionary<string, object>? HandlerOptions { get; set; }
 
-    public IEnumerable<string>? Tags { get; set; }
+    public IMemorySource? Source { get; set; }
 
-    [JsonInclude]
-    public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
+    public object? Payload { get; set; }
 
     [JsonInclude]
     public DateTime? StartedAt { get; private set; }
 
     [JsonInclude]
-    public DateTime? CompletedAt { get; private set; }
-
-    [JsonInclude]
-    public DateTime? FailedAt { get; private set; }
+    public DateTime? EndedAt { get; private set; }
 
     [JsonInclude]
     public string? ErrorMessage { get; private set; }
@@ -81,14 +72,14 @@ public class DataPipeline
     {
         CurrentStep = null;
         Status = PipelineStatus.Completed;
-        CompletedAt = DateTime.UtcNow;
+        EndedAt = DateTime.UtcNow;
         return this;
     }
 
     public DataPipeline Failed(string message)
     {
         Status = PipelineStatus.Failed;
-        FailedAt = DateTime.UtcNow;
+        EndedAt = DateTime.UtcNow;
         ErrorMessage = message;
         return this;
     }
@@ -119,10 +110,10 @@ public class DataPipeline
 
     public T? GetCurrentOptions<T>()
     {
-        if (Options == null || CurrentStep == null)
+        if (HandlerOptions == null || CurrentStep == null)
             return default;
 
-        if (Options.TryGetValue<T>(CurrentStep, out var obj))
+        if (HandlerOptions.TryGetValue<T>(CurrentStep, out var obj))
         {
             return obj;
         }

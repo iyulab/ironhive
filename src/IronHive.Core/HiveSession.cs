@@ -33,7 +33,7 @@ public class HiveSession : IHiveSession
             ?? new Dictionary<string, IHiveAgent>();
     }
 
-    public Task<IMessage> InvokeAsync(
+    public Task<AssistantMessage> InvokeAsync(
         string text,
         IEnumerable<string> files,
         ChatCompletionOptions options,

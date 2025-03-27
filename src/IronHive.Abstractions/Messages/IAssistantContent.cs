@@ -46,24 +46,22 @@ public class AssistantToolContent : AssistantContentBase
 
     public string? Result { get; set; }
 
-    public AssistantToolContent Completed(string data)
+    public void Completed(string data)
     {
         Status = ToolStatus.Completed;
         Result = data;
-        return this;
     }
 
-    public AssistantToolContent Failed(string error)
+    public void Failed(string error)
     {
         Status = ToolStatus.Failed;
         Result = error;
-        return this;
     }
 
-    public AssistantToolContent NotFoundTool()
+    public void NotFoundTool()
         => Failed($"Tool [{Name}] not found. Please check the tool name for any typos or consult the documentation for available tools.");
 
-    public AssistantToolContent TooMuchResult()
+    public void TooMuchResult()
         => Failed("The result contains too much information. Please change the parameters or specify additional filters to obtain a smaller result set.");
 }
 

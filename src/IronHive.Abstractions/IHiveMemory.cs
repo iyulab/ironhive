@@ -1,9 +1,12 @@
-﻿namespace IronHive.Abstractions.Memory;
+﻿using IronHive.Abstractions.Memory;
 
-public interface IMemoryService
+namespace IronHive.Abstractions;
+
+public interface IHiveMemory
 {
     Task CreateCollectionAsync(
         string collectionName,
+        string embedProvider,
         string embedModel,
         CancellationToken cancellationToken = default);
 
@@ -11,26 +14,25 @@ public interface IMemoryService
         string collectionName,
         CancellationToken cancellationToken = default);
 
-    Task MemorizeFileAsync(
+    Task<DataPipeline> MemorizeAsync(
         string collectionName,
-        string documentId,
-        string fileName,
-        string[] steps,
-        IDictionary<string, object>? options = null,
-        string[]? tags = null,
+        IMemorySource source,
+        IEnumerable<string> steps,
+        IDictionary<string, object>? handlerOptions = null,
         CancellationToken cancellationToken = default);
 
-    Task UnMemorizeFileAsync(
+    Task UnMemorizeAsync(
         string collectionName,
-        string documentId,
+        string sourceId,
         CancellationToken cancellationToken = default);
 
-    Task<IEnumerable<ScoredVectorPoint>> SearchSimilarVectorsAsync(
+    Task<VectorSearchResult> SearchAsync(
         string collectionName,
+        string embedProvider,
         string embedModel,
         string query,
         float minScore = 0,
         int limit = 5,
-        MemoryFilter? filter = null,
+        IEnumerable<string>? sourceIds = null,
         CancellationToken cancellationToken = default);
 }

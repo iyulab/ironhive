@@ -33,6 +33,18 @@ public class EmbeddingService : IEmbeddingService
     }
 
     /// <inheritdoc />
+    public async Task<EmbeddingModel> GetModelAsync(
+        string provider,
+        string model,
+        CancellationToken cancellationToken = default)
+    {
+        var conn = _store.GetService<IEmbeddingConnector>(provider);
+        var providerModel = await conn.GetModelAsync(model, cancellationToken);
+        providerModel.Provider = provider;
+        return providerModel;
+    }
+
+    /// <inheritdoc />
     public async Task<IEnumerable<float>> EmbedAsync(
         string provider,
         string model,
