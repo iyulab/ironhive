@@ -1,10 +1,18 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+	<!-- Package Settings -->
+	<Authors>Iyulab</Authors>
+	<Description>ironhive core</Description>
+	<PackageVersion>0.0.1</PackageVersion>
+	<PackageLicenseExpression>MIT</PackageLicenseExpression>
+	<PackageProjectUrl>https://github.com/iyulab-rnd/ironhive</PackageProjectUrl>
+	<PackageTags>Iyulab;AI;LLM;RAG;Agent</PackageTags>
+	
+	<!-- Project Settings -->
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <UserSecretsId>56f86118-ab07-47f0-83ec-5873326138fc</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,7 +24,6 @@
   <ItemGroup>
     <ProjectReference Include="..\IronHive.Abstractions\IronHive.Abstractions.csproj" />
     <ProjectReference Include="..\IronHive.Storages.LiteDB\IronHive.Storages.LiteDB.csproj" />
-    <ProjectReference Include="..\IronHive.Storages.Local\IronHive.Storages.Local.csproj" />
   </ItemGroup>
 
 </Project>

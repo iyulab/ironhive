@@ -9,10 +9,10 @@ using IronHive.Abstractions.Files;
 using IronHive.Core.Files;
 using IronHive.Core.Memory;
 using IronHive.Core.Services;
-using IronHive.Storages.Local;
 using IronHive.Core.Files.Decoders;
 using IronHive.Core.Memory.Handlers;
 using IronHive.Storages.LiteDB;
+using IronHive.Core.Storages;
 
 namespace IronHive.Core;
 
@@ -54,10 +54,10 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         // 테스트용
         WithQueueStorage(new LocalQueueStorage());
         WithPipelineStorage(new LocalPipelineStorage());
-        WithVectorStorage(new LiteDBVectorStorage(new LiteDBConfig
-        {
-            DatabasePath = "c:\\temp\\vector.db"
-        }));
+        //WithVectorStorage(new LiteDBVectorStorage(new LiteDBConfig
+        //{
+        //    DatabasePath = "c:\\temp\\vector.db"
+        //}));
 
         AddFileDecoder(new TextDecoder());
         AddFileDecoder(new WordDecoder());
@@ -65,18 +65,22 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         AddFileDecoder(new PPTDecoder());
         AddFileDecoder(new ImageDecoder());
 
-        AddPipelineHandler<DecodeHandler>("decode");
+        AddPipelineHandler<DecodeHandler>("decode", ServiceLifetime.Transient, (sp, key) =>
+        {
+            var manager = sp.GetRequiredService<IFileManager>();
+            return new DecodeHandler(manager);
+        });
         AddPipelineHandler<ChunkHandler>("chunk");
         AddPipelineHandler<QnAGenHandler>("qnagen");
         AddPipelineHandler<EmbedHandler>("embed");
 
         // Memory Service Validation
         if (!ContainsService<IQueueStorage>())
-            throw new InvalidOperationException("Queue storage is not required");
+            throw new InvalidOperationException("Queue storage is required");
         if (!ContainsService<IPipelineStorage>())
-            throw new InvalidOperationException("Pipeline storage is not required");
+            throw new InvalidOperationException("Pipeline storage is required");
         if (!ContainsService<IVectorStorage>())
-            throw new InvalidOperationException("Vector storage is not required");
+            throw new InvalidOperationException("Vector storage is required");
 
         return this;
     }

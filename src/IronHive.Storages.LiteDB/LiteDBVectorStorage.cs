@@ -1,11 +1,13 @@
 ﻿using LiteDB;
 using IronHive.Abstractions.Memory;
 using System.Numerics.Tensors;
+using System.Text.RegularExpressions;
 
 namespace IronHive.Storages.LiteDB;
 
-public class LiteDBVectorStorage : IVectorStorage
+public partial class LiteDBVectorStorage : IVectorStorage
 {
+    private static readonly Regex _pattern = new Regex(@"^[A-Za-z][A-Za-z0-9_]*$", RegexOptions.Compiled);
     private readonly LiteDatabase _db;
 
     public LiteDBVectorStorage(LiteDBConfig config)
@@ -33,6 +35,8 @@ public class LiteDBVectorStorage : IVectorStorage
         string collectionName,
         CancellationToken cancellationToken = default)
     {
+        collectionName = EnsureCollectionName(collectionName);
+
         var isExist = _db.CollectionExists(collectionName);
         return Task.FromResult(isExist);
     }
@@ -43,10 +47,16 @@ public class LiteDBVectorStorage : IVectorStorage
         int dimensions,
         CancellationToken cancellationToken = default)
     {
+        collectionName = EnsureCollectionName(collectionName);
+
         if (await CollectionExistsAsync(collectionName, cancellationToken))
             throw new InvalidOperationException($"Collection '{collectionName}' already exists.");
 
         var coll = _db.GetCollection<VectorRecord>(collectionName);
+
+        // 인덱스 생성
+        coll.EnsureIndex(p => p.Id);
+        coll.EnsureIndex(p => p.Source.Id);
 
         // LiteDB does not support creating an empty collection.
         var empty = new VectorRecord
@@ -63,9 +73,17 @@ public class LiteDBVectorStorage : IVectorStorage
         string collectionName,
         CancellationToken cancellationToken = default)
     {
+        collectionName = EnsureCollectionName(collectionName);
+
         if (!await CollectionExistsAsync(collectionName, cancellationToken))
             throw new InvalidOperationException($"Collection '{collectionName}' not found.");
 
+        // 인덱스 삭제
+        var coll = _db.GetCollection<VectorRecord>(collectionName);
+        coll.DropIndex(nameof(VectorRecord.Id));
+        coll.DropIndex(nameof(VectorRecord.Source.Id));
+
+        // 컬렉션 삭제
         _db.DropCollection(collectionName);
     }
 
@@ -76,15 +94,16 @@ public class LiteDBVectorStorage : IVectorStorage
         VectorRecordFilter? filter = null,
         CancellationToken cancellationToken = default)
     {
+        collectionName = EnsureCollectionName(collectionName);
+
         var coll = _db.GetCollection<VectorRecord>(collectionName);
         var query = coll.Query();
 
-        if (filter != null)
+        if (filter != null && (filter.SourceIds.Count > 0 || filter.VectorIds.Count > 0))
         {
-            if (filter.SourceIds.Count > 0)
-                query = query.Where(p => filter.SourceIds.Contains(p.Source.Id));
-            if (filter.VectorIds.Count > 0)
-                query = query.Where(p => filter.VectorIds.Contains(p.Id));
+            query = query.Where(p =>
+                (filter.SourceIds.Count > 0 && filter.SourceIds.Contains(p.Source.Id)) ||
+                (filter.VectorIds.Count > 0 && filter.VectorIds.Contains(p.Id)));
         }
 
         var results = query
@@ -100,7 +119,9 @@ public class LiteDBVectorStorage : IVectorStorage
         IEnumerable<VectorRecord> records,
         CancellationToken cancellationToken = default)
     {
-        collectionName = $"{collectionName}";
+        collectionName = EnsureCollectionName(collectionName);
+        //collectionName = $"{collectionName}"; // 왜? 기억이 안남
+
         var coll = _db.GetCollection<VectorRecord>(collectionName);
         coll.Upsert(records);
         return Task.CompletedTask;
@@ -112,6 +133,8 @@ public class LiteDBVectorStorage : IVectorStorage
         VectorRecordFilter filter,
         CancellationToken cancellationToken = default)
     {
+        collectionName = EnsureCollectionName(collectionName);
+
         var coll = _db.GetCollection<VectorRecord>(collectionName);
 
         if (filter.SourceIds.Count > 0)
@@ -130,15 +153,16 @@ public class LiteDBVectorStorage : IVectorStorage
         VectorRecordFilter? filter = null,
         CancellationToken cancellationToken = default)
     {
+        collectionName = EnsureCollectionName(collectionName);
+
         var coll = _db.GetCollection<VectorRecord>(collectionName);
         var query = coll.Query();
 
-        if (filter != null)
+        if (filter != null && (filter.SourceIds.Count > 0 || filter.VectorIds.Count > 0))
         {
-            if (filter.SourceIds.Count > 0)
-                query = query.Where(p => filter.SourceIds.Contains(p.Source.Id));
-            if (filter.VectorIds.Count > 0)
-                query = query.Where(p => filter.VectorIds.Contains(p.Id));
+            query = query.Where(p =>
+                (filter.SourceIds.Count > 0 && filter.SourceIds.Contains(p.Source.Id)) ||
+                (filter.VectorIds.Count > 0 && filter.VectorIds.Contains(p.Id)));
         }
 
         var records = query
@@ -148,6 +172,7 @@ public class LiteDBVectorStorage : IVectorStorage
                 VectorId = p.Id,
                 Score = TensorPrimitives.CosineSimilarity(vector.ToArray(), p.Vectors.ToArray()),
                 Source = p.Source,
+                Payload = p.Payload,
                 LastUpdatedAt = p.LastUpdatedAt 
             })
             .Where(p => p.Score >= minScore)
@@ -161,6 +186,10 @@ public class LiteDBVectorStorage : IVectorStorage
     // LiteDB 인스턴스를 생성합니다.
     private static LiteDatabase CreateLiteDatabase(LiteDBConfig config)
     {
+        var dic = Path.GetDirectoryName(config.DatabasePath);
+        if (!string.IsNullOrWhiteSpace(dic) && !Directory.Exists(dic))
+            Directory.CreateDirectory(dic);
+
         var connectionString = new ConnectionString
         {
             Connection = ConnectionType.Shared,
@@ -175,5 +204,24 @@ public class LiteDBVectorStorage : IVectorStorage
               .Id(p => p.Id);
 
         return new LiteDatabase(connectionString, mapper);
+    }
+
+    // 컬렉션 이름의 유효성을 검사하고, 소문자로 변환하여 표준화합니다.
+    // LiteDB 규칙: 
+    // 1. 영문자, 숫자, 밑줄(_)만 허용됩니다.
+    // 2. 이름의 앞 첫글자는 영문자만 허용됩니다.
+    // 3. 대소문자는 구분하지 않으므로 소문자로 통일합니다.
+    private static string EnsureCollectionName(string collectionName)
+    {
+        if (string.IsNullOrWhiteSpace(collectionName))
+            throw new ArgumentNullException(nameof(collectionName));
+
+        // 유효성 검사
+        if (!_pattern.IsMatch(collectionName))
+            throw new ArgumentException("Invalid collection name. The name must contain only English letters, numbers, and underscores, and must start with an English letter.");
+
+        // 소문자 변환
+        collectionName = collectionName.ToLowerInvariant();
+        return collectionName;
     }
 }

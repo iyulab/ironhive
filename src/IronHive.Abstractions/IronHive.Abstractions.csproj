@@ -1,6 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+	<!-- Package Settings -->
+	<Authors>Iyulab</Authors>
+	<Description>ironhive interfaces</Description>
+	<PackageVersion>0.0.1</PackageVersion>
+	<PackageLicenseExpression>MIT</PackageLicenseExpression>
+	<PackageProjectUrl>https://github.com/iyulab-rnd/ironhive</PackageProjectUrl>
+	<PackageTags>Iyulab;AI;LLM;RAG;Agent</PackageTags>
+	
+	<!-- Project Settings -->
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>

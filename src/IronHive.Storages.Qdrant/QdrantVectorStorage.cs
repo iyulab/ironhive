@@ -1,4 +1,6 @@
 ﻿using System.Text.Json;
+using Google.Protobuf.Collections;
+using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Memory;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
@@ -9,7 +11,7 @@ namespace IronHive.Storages.Qdrant;
 public class QdrantVectorStorage : IVectorStorage
 {
     // Qdrant에서 사용할 기본 텍스트용 벡터의 이름입니다.
-    private const string DefaultVectorsName = "text_vector";
+    private const string DefaultVectorsName = "text";
     private readonly QdrantClient _client;
 
     public QdrantVectorStorage(QdrantConfig config)
@@ -44,6 +46,8 @@ public class QdrantVectorStorage : IVectorStorage
         int dimensions,
         CancellationToken cancellationToken = default)
     {
+        collectionName = EnsureCollectionName(collectionName);
+
         if (await CollectionExistsAsync(collectionName, cancellationToken))
             throw new InvalidOperationException($"collection {collectionName} already exist");
 
@@ -54,10 +58,33 @@ public class QdrantVectorStorage : IVectorStorage
             OnDisk = true,
             Size = (ulong)dimensions
         };
+
+        // 벡터 설정은 컬렉션 생성 이후 수정이 불가능.
         var config = new VectorParamsMap { Map = { [DefaultVectorsName] = param } };
+
+        // 컬렉션 생성
         await _client.CreateCollectionAsync(
             collectionName: collectionName,
             vectorsConfig: config,
+            cancellationToken: cancellationToken);
+
+        // 인덱스 생성
+        await _client.CreatePayloadIndexAsync(
+            collectionName: collectionName,
+            "lastUpdatedAt",
+            schemaType: PayloadSchemaType.Integer,
+            cancellationToken: cancellationToken);
+
+        await _client.CreatePayloadIndexAsync(
+            collectionName: collectionName,
+            "vectorId",
+            schemaType: PayloadSchemaType.Keyword,
+            cancellationToken: cancellationToken);
+
+        await _client.CreatePayloadIndexAsync(
+            collectionName: collectionName,
+            "sourceId",
+            schemaType: PayloadSchemaType.Keyword,
             cancellationToken: cancellationToken);
     }
 
@@ -69,6 +96,23 @@ public class QdrantVectorStorage : IVectorStorage
         if (!await CollectionExistsAsync(collectionName, cancellationToken))
             throw new InvalidOperationException($"collection {collectionName} is not exist");
 
+        // 인덱스 삭제
+        await _client.DeletePayloadIndexAsync(
+            collectionName: collectionName,
+            "lastUpdatedAt",
+            cancellationToken: cancellationToken);
+
+        await _client.DeletePayloadIndexAsync(
+            collectionName: collectionName,
+            "vectorId",
+            cancellationToken: cancellationToken);
+
+        await _client.DeletePayloadIndexAsync(
+            collectionName: collectionName,
+            "sourceId",
+            cancellationToken: cancellationToken);
+
+        // 컬렉션 삭제
         await _client.DeleteCollectionAsync(
             collectionName: collectionName,
             cancellationToken: cancellationToken);
@@ -85,8 +129,10 @@ public class QdrantVectorStorage : IVectorStorage
         var orderBy = new OrderBy { Key = "lastUpdatedAt", Direction = Direction.Desc };
         var response = await _client.ScrollAsync(
             collectionName: collectionName,
-            limit: (uint)limit,
             filter: condition,
+            limit: (uint)limit,
+            payloadSelector: true,
+            vectorsSelector: true,
             orderBy: orderBy,
             cancellationToken: cancellationToken);
 
@@ -94,20 +140,14 @@ public class QdrantVectorStorage : IVectorStorage
         foreach (var point in response.Result)
         {
             var vectors = point.Vectors.Vectors_.Vectors[DefaultVectorsName].Data.ToArray();
-
-            var vectorId = point.Payload.GetValueOrDefault("vectorId")?.StringValue ?? string.Empty;
-            var source = JsonSerializer.Deserialize<IMemorySource>(point.Payload.GetValueOrDefault("source")?.StringValue ?? string.Empty)
-                ?? throw new InvalidOperationException("source is not found");
-            var payload = JsonSerializer.Deserialize<object>(point.Payload.GetValueOrDefault("payload")?.StringValue ?? string.Empty);
-            var lastUpdatedAt = DateTime.Parse(point.Payload.GetValueOrDefault("lastUpdatedAt")?.StringValue ?? string.Empty);
-            
+            var record = ConvertRecordToPayload(point.Payload);
             records.Add(new VectorRecord
             {
-                Id = vectorId,
+                Id = record.Id,
                 Vectors = vectors,
-                Source = source,
-                Payload = payload,
-                LastUpdatedAt = lastUpdatedAt
+                Source = record.Source,
+                Payload = record.Payload,
+                LastUpdatedAt = record.LastUpdatedAt,
             });
         }
         return records;
@@ -122,20 +162,23 @@ public class QdrantVectorStorage : IVectorStorage
         var points = new List<PointStruct>();
         foreach (var record in records)
         {
+            var payload = ConvertRecordToPayload(record);
+
             points.Add(new PointStruct
             {
+                Id = Guid.NewGuid(),
                 Vectors = new Dictionary<string, float[]>
                 {
                     [DefaultVectorsName] = record.Vectors.ToArray(),
                 },
                 Payload =
                 {
-                    ["vectorId"] = record.Id,
-                    ["sourceId"] = record.Source.Id,
-                    ["source"] = JsonSerializer.Serialize(record.Source),
-                    ["payload"] = JsonSerializer.Serialize(record.Payload),
-                    ["lastUpdatedAt"] = record.LastUpdatedAt.ToString("O"),
-                }
+                    ["vectorId"] = payload["vectorId"],
+                    ["sourceId"] = payload["sourceId"],
+                    ["source"] = payload["source"],
+                    ["payload"] = payload["payload"],
+                    ["lastUpdatedAt"] = payload["lastUpdatedAt"],
+                },
             });
         }
 
@@ -170,7 +213,6 @@ public class QdrantVectorStorage : IVectorStorage
         CancellationToken cancellationToken = default)
     {
         var condition = BuildFilter(filter);
-
         var scoredPoints = await _client.SearchAsync(
             collectionName: collectionName,
             vector: vector.ToArray(),
@@ -185,18 +227,15 @@ public class QdrantVectorStorage : IVectorStorage
         var records = new List<ScoredVectorRecord>();
         foreach (var point in scoredPoints)
         {
-            var vectorId = point.Payload.GetValueOrDefault("vectorId")?.StringValue ?? string.Empty;
-            var source = JsonSerializer.Deserialize<IMemorySource>(point.Payload.GetValueOrDefault("source")?.StringValue ?? string.Empty)
-                ?? throw new InvalidOperationException("source is not found");
-            var payload = JsonSerializer.Deserialize<object>(point.Payload.GetValueOrDefault("payload")?.StringValue ?? string.Empty);
-            var lastUpdatedAt = DateTime.Parse(point.Payload.GetValueOrDefault("lastUpdatedAt")?.StringValue ?? string.Empty);
+            var record = ConvertRecordToPayload(point.Payload);
 
             records.Add(new ScoredVectorRecord
             {
-                VectorId = vectorId,
+                VectorId = record.Id,
                 Score = point.Score,
-                Source = source,
-                LastUpdatedAt = lastUpdatedAt,
+                Source = record.Source,
+                Payload = record.Payload,
+                LastUpdatedAt = record.LastUpdatedAt,
             });
         }
 
@@ -204,9 +243,9 @@ public class QdrantVectorStorage : IVectorStorage
     }
 
     // 필터링 조건을 생성합니다.
-    private Filter? BuildFilter(VectorRecordFilter? filter)
+    private static Filter? BuildFilter(VectorRecordFilter? filter)
     {
-        if (filter == null || filter.Any())
+        if (filter == null || !filter.Any())
             return null;
 
         var conditions = new List<Condition>();
@@ -223,8 +262,44 @@ public class QdrantVectorStorage : IVectorStorage
         return conditions.Aggregate((current, next) => current | next);
     }
 
+    // VectorRecord를 Qdrant에서 사용하는 Payload로 변환합니다.
+    private static MapField<string, Value> ConvertRecordToPayload(VectorRecord record)
+    {
+        var payload = new MapField<string, Value>
+        {
+            ["vectorId"] = record.Id,
+            ["sourceId"] = record.Source.Id,
+            ["source"] = JsonSerializer.Serialize(record.Source, JsonDefaultOptions.Options),
+            ["payload"] = JsonSerializer.Serialize(record.Payload, JsonDefaultOptions.Options),
+            ["lastUpdatedAt"] = new DateTimeOffset(record.LastUpdatedAt).ToUnixTimeMilliseconds(),
+        };
+        return payload;
+    }
+
+    // Qdrant에서 반환된 Point의 Payload를 VectorRecord로 변환합니다.
+    private static VectorRecord ConvertRecordToPayload(MapField<string, Value> payload)
+    {
+        var vectorId = payload.GetValueOrDefault("vectorId")?.StringValue ?? string.Empty;
+        var source = JsonSerializer.Deserialize<IMemorySource>(
+            payload.GetValueOrDefault("source")?.StringValue ?? string.Empty)
+            ?? throw new InvalidOperationException("source is not found");
+        var recordPayload = JsonSerializer.Deserialize<object>(
+            payload.GetValueOrDefault("payload")?.StringValue ?? string.Empty);
+        var lastUpdatedAt = DateTimeOffset.FromUnixTimeMilliseconds(
+            payload.GetValueOrDefault("lastUpdatedAt")?.IntegerValue ?? 0).UtcDateTime;
+
+        return new VectorRecord
+        {
+            Id = vectorId,
+            Vectors = Array.Empty<float>(),
+            Source = source,
+            Payload = recordPayload,
+            LastUpdatedAt = lastUpdatedAt
+        };
+    }
+
     // QdrantClient 인스턴스를 생성합니다.
-    private QdrantClient CreateQdrantClient(QdrantConfig config)
+    private static QdrantClient CreateQdrantClient(QdrantConfig config)
     {
         return new QdrantClient(
             host: config.Host,
@@ -232,5 +307,23 @@ public class QdrantVectorStorage : IVectorStorage
             https: config.Https,
             apiKey: config.ApiKey,
             grpcTimeout: config.GrpcTimeout);
+    }
+
+    // 컬렉션 이름의 유효성 검사
+    // Qdrant 규칙:
+    // 1. 영문자, 숫자, 한글, 공백, 허용
+    // 2. 대소문자 구분
+    // 3. 1~255자 제한
+    // 4. 특수문자 일부 제한(*, <, >, /, :, ...etc)
+    private static string EnsureCollectionName(string collectionName)
+    {
+        if (string.IsNullOrWhiteSpace(collectionName))
+            throw new ArgumentException("collection name is required", nameof(collectionName));
+
+        if (collectionName.Length < 1 || collectionName.Length > 255)
+            throw new ArgumentException("collection name must be from 1 to 255 characters", nameof(collectionName));
+
+        // 이외 유효성 검사는 Qdrant에서 수행
+        return collectionName;
     }
 }

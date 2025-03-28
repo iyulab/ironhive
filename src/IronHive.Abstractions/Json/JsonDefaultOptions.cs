@@ -11,11 +11,11 @@ public static class JsonDefaultOptions
 {
     public static JsonSerializerOptions Options { get; set; } = new()
     {
-        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         PropertyNameCaseInsensitive = true,
-        NumberHandling = JsonNumberHandling.AllowReadingFromString,
-        MaxDepth = 32,
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower) },
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,          // Avoids escaping slashes
+        NumberHandling = JsonNumberHandling.AllowReadingFromString,     // Allows reading numbers from strings
+        MaxDepth = 32,                                                  // Maximum depth of JSON to process
         WriteIndented = true,
     };
 

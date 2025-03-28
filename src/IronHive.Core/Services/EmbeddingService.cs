@@ -68,6 +68,6 @@ public class EmbeddingService : IEmbeddingService
         if (!_store.TryGetService<IEmbeddingConnector>(provider, out var connector))
             throw new KeyNotFoundException($"Service key '{provider}' not found.");
 
-        return await connector.EmbedBatchAsync(provider, inputs, cancellationToken);
+        return await connector.EmbedBatchAsync(model, inputs, cancellationToken);
     }
 }

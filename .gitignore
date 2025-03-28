@@ -17,7 +17,7 @@ obj/
 # NuGet packages
 *.nuget.props
 *.nuget.targets
-packages/
+# packages/
 
 # Node.js
 node_modules/

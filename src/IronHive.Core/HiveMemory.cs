@@ -7,13 +7,14 @@ namespace IronHive.Core;
 public class HiveMemory : IHiveMemory
 {
     private readonly IEmbeddingService _service;
-    private readonly IVectorStorage _storage;
     private readonly IPipelineOrchestrator _orchestrator;
+
+    public IVectorStorage Storage { get; }
 
     public HiveMemory(IEmbeddingService embedding, IVectorStorage storage, IPipelineOrchestrator orchestrator)
     {
         _service = embedding;
-        _storage = storage;
+        Storage = storage;
         _orchestrator = orchestrator;
     }
 
@@ -24,13 +25,13 @@ public class HiveMemory : IHiveMemory
         string embedModel, 
         CancellationToken cancellationToken = default)
     {
-        if (await _storage.CollectionExistsAsync(collectionName, cancellationToken))
-            throw new InvalidOperationException($"Collection '{collectionName}' already exists.");
+        //if (await Storage.CollectionExistsAsync(collectionName, cancellationToken))
+        //    throw new InvalidOperationException($"Collection '{collectionName}' already exists.");
 
         var dummy = "this text is used to calculate the embedding dimensions";
         var embedding = await _service.EmbedAsync(embedProvider, embedModel, dummy, cancellationToken);
         var dimensions = embedding.Count();
-        await _storage.CreateCollectionAsync(collectionName, dimensions, cancellationToken);
+        await Storage.CreateCollectionAsync(collectionName, dimensions, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -38,10 +39,10 @@ public class HiveMemory : IHiveMemory
         string collectionName, 
         CancellationToken cancellationToken = default)
     {
-        if (!await _storage.CollectionExistsAsync(collectionName, cancellationToken))
+        if (!await Storage.CollectionExistsAsync(collectionName, cancellationToken))
             throw new InvalidOperationException($"Collection '{collectionName}' does not exist.");
 
-        await _storage.DeleteCollectionAsync(collectionName, cancellationToken);
+        await Storage.DeleteCollectionAsync(collectionName, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -63,7 +64,7 @@ public class HiveMemory : IHiveMemory
     {
         var filter = new VectorRecordFilter();
         filter.AddSourceId(sourceId);
-        await _storage.DeleteVectorsAsync(collectionName, filter, cancellationToken);
+        await Storage.DeleteVectorsAsync(collectionName, filter, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -85,7 +86,7 @@ public class HiveMemory : IHiveMemory
         }
         
         var vector = await _service.EmbedAsync(embedProvider, embedModel, query, cancellationToken);
-        var records = await _storage.SearchVectorsAsync(
+        var records = await Storage.SearchVectorsAsync(
             collectionName: collectionName,
             vector: vector, 
             minScore: minScore, 

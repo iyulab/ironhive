@@ -4,6 +4,8 @@ namespace IronHive.Abstractions;
 
 public interface IHiveMemory
 {
+    IVectorStorage Storage { get; }
+
     Task CreateCollectionAsync(
         string collectionName,
         string embedProvider,

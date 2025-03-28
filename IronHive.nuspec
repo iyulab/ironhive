@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+  <metadata>
+    <id>IronHive</id>
+    <version>0.0.1</version>
+    <authors>Iyulab</authors>
+    <description>ironhive minimum packages</description>
+    <license type="expression">MIT</license>
+    <projectUrl>https://github.com/iyulab-rnd/ironhive</projectUrl>
+    <tags>Iyulab;AI;LLM;RAG;Agent</tags>
+    <dependencies>
+      <dependency id="Ironhive.Core" version="1.0.0" />
+      <dependency id="Ironhive.Abstraction" version="1.0.0" />
+      <dependency id="Ironhive.Connectors.OpenAI" version="1.0.0" />
+      <dependency id="Ironhive.Storages.LiteDB" version="1.0.0" />
+    </dependencies>
+  </metadata>
+  <files>
+     <file src="src\Ironhive.Core\bin\Release\net8.0\Ironhive.Core.dll" target="lib\net8.0\" />
+     <file src="src\Ironhive.Abstractions\bin\Release\net8.0\Ironhive.Abstractions.dll" target="lib\net8.0\" />
+     <file src="src\Ironhive.Connectors.OpenAI\bin\Release\net8.0\Ironhive.Connectors.OpenAI.dll" target="lib\net8.0\" />
+     <file src="src\Ironhive.Storages.LiteDB\bin\Release\net8.0\Ironhive.Storages.LiteDB.dll" target="lib\net8.0\" />
+  </files>
+</package>
