@@ -7,7 +7,7 @@ public static class ServiceCollectionExtensions
     public static IHiveServiceBuilder AddHiveServiceCore(this IServiceCollection services)
     {
         var builder = new HiveServiceBuilder(services);
-        builder.AddDefaultServices();
+        //builder.AddDefaultServices();
         return builder;
     }
 }

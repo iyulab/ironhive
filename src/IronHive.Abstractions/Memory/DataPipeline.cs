@@ -22,7 +22,7 @@ public enum PipelineStatus
 
 public class DataPipeline
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public required string Id { get; set; }
 
     [JsonInclude]
     public PipelineStatus Status { get; private set; } = PipelineStatus.Queued;

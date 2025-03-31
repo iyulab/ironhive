@@ -29,11 +29,11 @@ public interface IHiveServiceBuilder
     /// <summary>
     /// Adds a tool handler to the service collection.
     /// </summary>
-    IHiveServiceBuilder AddToolHandler<TService>(
+    IHiveServiceBuilder AddToolHandler<TImplementation>(
         string serviceKey, 
         ServiceLifetime lifetime = ServiceLifetime.Singleton, 
-        Func<IServiceProvider, object?, TService>? implementationFactory = null)
-        where TService : class, IToolHandler;
+        Func<IServiceProvider, object?, TImplementation>? implementationFactory = null)
+        where TImplementation : class, IToolHandler;
 
     /// <summary>
     /// Adds a queue storage to the service collection as a singleton.
@@ -53,19 +53,38 @@ public interface IHiveServiceBuilder
     /// <summary>
     /// Adds a pipline handler to the service collection.
     /// </summary>
-    IHiveServiceBuilder AddPipelineHandler<TService>(
+    IHiveServiceBuilder AddPipelineHandler<TImplementation>(
         string serviceKey, 
         ServiceLifetime lifetime = ServiceLifetime.Singleton, 
-        Func<IServiceProvider, object?, TService>? implementationFactory = null) 
-        where TService : class, IPipelineHandler;
+        Func<IServiceProvider, object?, TImplementation>? implementationFactory = null)
+        where TImplementation : class, IPipelineHandler;
 
+    /// <summary>
+    /// Adds a file storage factory to the service collection as a singleton.
+    /// </summary>
+    IHiveServiceBuilder AddFileStorage<TImplementation>(
+        string serviceKey,
+        Func<IServiceProvider, object?, TImplementation> implementationFactory)
+        where TImplementation : class, IFileStorage;
+    
     /// <summary>
     /// Adds multiple file decoders to the service collection as a singleton.
     /// </summary>
     IHiveServiceBuilder AddFileDecoder(IFileDecoder decoder);
 
+
+
+
+
+
+
     /// <summary>
     /// Create the hive mind object.
     /// </summary>
     IHiveMind BuildHiveMind();
+
+    /// <summary>
+    /// Create the hive memory object.
+    /// </summary>
+    IHiveMemory BuildHiveMemory();
 }

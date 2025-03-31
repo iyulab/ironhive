@@ -5,9 +5,9 @@ namespace IronHive.Core.Memory.Handlers;
 
 public class DecodeHandler : IPipelineHandler
 {
-    private readonly IFileManager _manager;
+    private readonly IFileStorageManager _manager;
 
-    public DecodeHandler(IFileManager manager)
+    public DecodeHandler(IFileStorageManager manager)
     {
         _manager = manager;
     }
@@ -23,11 +23,9 @@ public class DecodeHandler : IPipelineHandler
         }
         else if (source is FileMemorySource fileSource)
         {
-            var data = fileSource.Data;
             var text = await _manager.DecodeAsync(
-                fileName: Path.GetFileName(fileSource.FilPath),
-                data: data, 
-                cancellationToken: cancellationToken);
+                fileSource,
+                cancellationToken: cancellationToken);            
             pipeline.Payload = text;
             return pipeline;
         }

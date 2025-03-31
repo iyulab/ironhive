@@ -3,73 +3,68 @@ using System.Collections.Concurrent;
 
 namespace IronHive.Core.Storages;
 
-public class LocalPipelineStorage : PipelineStorageBase
+public class LocalPipelineStorage : IPipelineStorage
 {
     // 스레드 세이프 컬렉션을 사용합니다.
-    private readonly ConcurrentDictionary<string, object?> _storage = new();
+    private readonly ConcurrentDictionary<string, object?> _dic = new();
 
     /// <inheritdoc />
-    public override void Dispose()
+    public void Dispose()
     {
-        _storage.Clear();
+        _dic.Clear();
         GC.SuppressFinalize(this);
     }
 
     /// <inheritdoc />
-    public override Task<bool> ContainsKeyAsync(
+    public Task<IEnumerable<string>> GetKeysAsync(
+        string? prefix = null,
+        CancellationToken cancellationToken = default)
+    {
+        prefix ??= string.Empty;
+        var keys = _dic.Keys.Where(k => k.StartsWith(prefix)).AsEnumerable();
+        return Task.FromResult(keys);
+    }
+
+    /// <inheritdoc />
+    public Task<bool> ContainsKeyAsync(
         string key, 
         CancellationToken cancellationToken = default)
     {
-        var isExists = _storage.ContainsKey(key);
+        var isExists = _dic.ContainsKey(key);
         return Task.FromResult(isExists);
     }
 
     /// <inheritdoc />
-    public override async Task<IEnumerable<string>> GetKeysAsync(
-        CancellationToken cancellationToken = default)
-    {
-        return await Task.FromResult(_storage.Keys);
-    }
-
-    /// <inheritdoc />
-    public override Task<T> GetValueAsync<T>(
+    public Task<T> GetValueAsync<T>(
         string key, 
         CancellationToken cancellationToken = default)
     {
-        if (_storage.TryGetValue(key, out var obj))
+        if (_dic.TryGetValue(key, out var obj))
         {
-            if (obj is T t)
-            {
-                return Task.FromResult(t);
-            }
-            else if (obj is byte[] bytes)
-            {
-                var value = Deserialize<T>(bytes, cancellationToken);
-                return Task.FromResult(value);
-            }
+            return Task.FromResult((T)obj!);
         }
 
         return Task.FromResult(default(T)!);
     }
 
     /// <inheritdoc />
-    public override Task SetValueAsync<T>(
+    public Task SetValueAsync<T>(
         string key, 
         T value, 
         CancellationToken cancellationToken = default)
     {
-        if (_storage.ContainsKey(key))
+        if (_dic.ContainsKey(key))
             throw new InvalidOperationException($"Key '{key}' already exists.");
-        _storage[key] = Serialize(value, cancellationToken);
+        _dic[key] = value;
         return Task.CompletedTask;
     }
 
     /// <inheritdoc />
-    public override Task DeleteKeyAsync(
+    public Task DeleteKeyAsync(
         string key, 
         CancellationToken cancellationToken = default)
     {
-        _storage.TryRemove(key, out _);
+        _dic.TryRemove(key, out _);
         return Task.CompletedTask;
     }
 }

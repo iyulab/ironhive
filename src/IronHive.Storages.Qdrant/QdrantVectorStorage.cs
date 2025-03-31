@@ -27,9 +27,12 @@ public class QdrantVectorStorage : IVectorStorage
 
     /// <inheritdoc />
     public async Task<IEnumerable<string>> ListCollectionsAsync(
+        string? prefix = null,
         CancellationToken cancellationToken = default)
     {
-        return await _client.ListCollectionsAsync(cancellationToken);
+        prefix ??= string.Empty;
+        var colls = await _client.ListCollectionsAsync(cancellationToken);
+        return colls.Where(c => c.StartsWith(prefix));
     }
 
     /// <inheritdoc />

@@ -7,10 +7,12 @@
 public interface IVectorStorage : IDisposable
 {
     /// <summary>
-    /// 모든 벡터 컬렉션의 이름을 비동기적으로 반환합니다.
+    /// 해당하는 벡터 컬렉션의 이름을 비동기적으로 반환합니다.
     /// </summary>
+    /// <param name="prefix">컬렉션 이름의 접두어 (옵션)</param>
     /// <returns>컬렉션 이름의 나열</returns>
     Task<IEnumerable<string>> ListCollectionsAsync(
+        string? prefix = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

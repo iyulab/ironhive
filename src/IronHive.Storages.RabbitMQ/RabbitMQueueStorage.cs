@@ -5,17 +5,16 @@ using IronHive.Abstractions.Memory;
 
 namespace IronHive.Storages.RabbitMQ;
 
-public class RabbitQueueStorage : IQueueStorage
+public class RabbitMQueueStorage : IQueueStorage
 {
     private readonly IConnection _connection;
     private readonly IChannel _channel;
-    private readonly RabbitConfig _config;
     private readonly string _queueName;
 
-    public RabbitQueueStorage(RabbitConfig config)
+    public RabbitMQueueStorage(RabbitMQConfig config)
     {
-        _config = config ?? throw new ArgumentNullException(nameof(config));
-        _queueName = config.QueueName ?? throw new ArgumentNullException(nameof(config.QueueName));
+        _queueName = config.QueueName 
+            ?? throw new ArgumentNullException("Queue name is required", nameof(config.QueueName));
 
         (_connection, _channel) = CreateAsync(config).GetAwaiter().GetResult();
     }
@@ -36,13 +35,13 @@ public class RabbitQueueStorage : IQueueStorage
 
         var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(item));
 
-        //await _channel.BasicPublishAsync<T>(
-        //    exchange: "",
-        //    routingKey: _queueName,
-        //    mandatory: false,
-        //    basicProperties: item,
-        //    body: body,
-        //    cancellationToken: cancellationToken);
+        await _channel.BasicPublishAsync(
+            exchange: "",
+            routingKey: _queueName,
+            mandatory: false,
+            body: body,
+            cancellationToken: cancellationToken
+        );
     }
 
     /// <inheritdoc />
@@ -58,31 +57,17 @@ public class RabbitQueueStorage : IQueueStorage
             var message = Encoding.UTF8.GetString(body);
             var item = JsonSerializer.Deserialize<T>(message);
 
-            // Acknowledge the message
+            // 메시지 확인 응답
             await _channel.BasicAckAsync(result.DeliveryTag, multiple: false, cancellationToken);
 
             return item;
         }
         catch
         {
-            // Negative acknowledge with requeue
+            // 처리 실패 시 메시지 재입력
             await _channel.BasicNackAsync(result.DeliveryTag, multiple: false, requeue: true, cancellationToken);
             return default;
         }
-    }
-
-    /// <inheritdoc />
-    public async Task<T?> PeekAsync<T>(CancellationToken cancellationToken = default)
-    {
-        var result = await _channel.BasicGetAsync(_queueName, autoAck: true, cancellationToken);
-        if (result == null)
-            return default;
-
-        var body = result.Body.ToArray();
-        var message = Encoding.UTF8.GetString(body);
-        var item = JsonSerializer.Deserialize<T>(message);
-
-        return item;
     }
 
     /// <inheritdoc />
@@ -98,10 +83,10 @@ public class RabbitQueueStorage : IQueueStorage
         await _channel.QueuePurgeAsync(_queueName, cancellationToken);
     }
 
-    // 생성
-    private async Task<(IConnection, IChannel)> CreateAsync(RabbitConfig config)
+    // 큐 생성
+    private async Task<(IConnection, IChannel)> CreateAsync(RabbitMQConfig config)
     {
-        // Create connection factory with configuration
+        // 설정을 이용해 ConnectionFactory 생성
         var factory = new ConnectionFactory
         {
             HostName = config.Host,
@@ -110,44 +95,25 @@ public class RabbitQueueStorage : IQueueStorage
             Password = config.Password,
             VirtualHost = config.VirtualHost,
             Ssl = {
-                Enabled = config.SslEnabled
+                Enabled = config.SslEnabled,
             }
         };
 
-        // Establish connection and channel asynchronously
+        // 비동기로 연결 및 채널 생성
         var connection = await factory.CreateConnectionAsync();
         var channel = await connection.CreateChannelAsync();
 
-        // Declare queue with retry and poison queue configurations
-        var arguments = new Dictionary<string, object>
-        {
-            { "x-message-ttl", config.MessageTTLSecs * 1000 }, // Convert to milliseconds
-            { "x-dead-letter-exchange", "" },
-            { "x-dead-letter-routing-key", $"{config.QueueName}{config.PoisonQueueSuffix}" }
-        };
-
-        // Declare main queue
+        // 메인 큐 선언
         await channel.QueueDeclareAsync(
             queue: config.QueueName,
             durable: true,
             exclusive: false,
             autoDelete: false,
-            arguments: arguments!
-        );
-
-        // Declare poison queue
-        await channel.QueueDeclareAsync(
-            queue: $"{config.QueueName}{config.PoisonQueueSuffix}",
-            durable: true,
-            exclusive: false,
-            autoDelete: false
-        );
-
-        // Set prefetch count to control message flow
-        await channel.BasicQosAsync(
-            prefetchSize: 0,
-            prefetchCount: config.PrefetchCount,
-            global: false
+            arguments: new Dictionary<string, object?>
+            {
+                { "x-message-ttl", config.MessageTTLSecs * 1000 } // 밀리초 단위로 변환
+            },
+            noWait: false
         );
 
         return (connection, channel);

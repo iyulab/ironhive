@@ -7,19 +7,20 @@
 public interface IPipelineStorage : IDisposable
 {
     /// <summary>
+    /// 저장된 키 목록을 불러옵니다.
+    /// </summary>
+    /// <returns>저장된 키 목록</returns>
+    Task<IEnumerable<string>> GetKeysAsync(
+        string? prefix = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// 지정된 키에 데이터가 존재하는지 확인합니다.
     /// </summary>
     /// <param name="key">데이터 식별을 위한 키</param>
     /// <returns>데이터가 존재하면 true, 아니면 false</returns>
     Task<bool> ContainsKeyAsync(
         string key,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 저장된 키 목록을 불러옵니다.
-    /// </summary>
-    /// <returns>저장된 키 목록</returns>
-    Task<IEnumerable<string>> GetKeysAsync(
         CancellationToken cancellationToken = default);
 
     /// <summary>

@@ -15,21 +15,6 @@ public class PipelineOrchestrator : IPipelineOrchestrator
         _store = store;
     }
 
-    public async Task<IEnumerable<string>> GetPipelinesAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var keys = await _store.GetKeysAsync(cancellationToken);
-        return keys;
-    }
-
-    public async Task<DataPipeline> GetPipelineAsync(
-        string pipelineId,
-        CancellationToken cancellationToken = default)
-    {
-        var pipeline = await _store.GetValueAsync<DataPipeline>(pipelineId, cancellationToken);
-        return pipeline;
-    }
-
     public async Task RunPipelineAsync(
         DataPipeline pipeline,
         CancellationToken cancellationToken = default)

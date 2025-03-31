@@ -2,10 +2,16 @@
 
 namespace IronHive.Abstractions.Memory;
 
+/// <summary>
+/// "text", "file", "web" 중 하나의 소스를 나타내는 인터페이스입니다.
+/// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(TextMemorySource), "text")]
-//[JsonDerivedType(typeof(WebMemorySource), "web")]
 [JsonDerivedType(typeof(FileMemorySource), "file")]
+[JsonDerivedType(typeof(WebMemorySource), "web")]
+[MessagePack.Union(0, typeof(TextMemorySource))]
+[MessagePack.Union(1, typeof(FileMemorySource))]
+[MessagePack.Union(2, typeof(WebMemorySource))]
 public interface IMemorySource
 {
     string Id { get; set; }
@@ -16,32 +22,34 @@ public abstract class MemorySourceBase : IMemorySource
     public string Id { get; set; } = Guid.NewGuid().ToString();
 }
 
+/// <summary>
+/// 텍스트 데이터를 나타내는 소스입니다.
+/// </summary>
 public class TextMemorySource : MemorySourceBase
 {
     public required string Text { get; set; }
 }
 
-//public class WebMemorySource : MemorySourceBase
-//{
-//    public required HttpMethod Method { get; set; }
-//    public required string Url { get; set; }
-//    public IDictionary<string, string>? Query { get; set; }
-//    public IDictionary<string, string>? Headers { get; set; }
-//    public string? Body { get; set; }
-//}
-
+/// <summary>
+/// 지정된 파일 스토리지의 데이터를 나타내는 소스입니다.
+/// </summary>
 public class FileMemorySource : MemorySourceBase
 {
-    public required string StorageType { get; set; }
+    public required string Provider { get; set; }
 
-    public required object StorageConfig { get; set; }
+    public object? ProviderConfig { get; set; }
 
-    public required string FilPath { get; set; }
+    public required string FilePath { get; set; }
 
     public string? MimeType { get; set; }
 
     public long? Size { get; set; }
+}
 
-    // TODO: This should be removed
-    public Stream? Data { get; set; }
+/// <summary>
+/// 지정된 URL을 나타내는 소스입니다.
+/// </summary>
+public class WebMemorySource : MemorySourceBase
+{
+    public required string Url { get; set; }
 }

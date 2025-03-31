@@ -23,11 +23,14 @@ public partial class LiteDBVectorStorage : IVectorStorage
 
     /// <inheritdoc />
     public Task<IEnumerable<string>> ListCollectionsAsync(
+        string? prefix = null,
         CancellationToken cancellationToken = default)
     {
-        var collections = _db.GetCollectionNames() 
+        prefix ??= string.Empty;
+        var colls = _db.GetCollectionNames()
+            .Where(p => p.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             ?? Enumerable.Empty<string>();
-        return Task.FromResult(collections);
+        return Task.FromResult(colls);
     }
 
     /// <inheritdoc />

@@ -4,7 +4,13 @@ namespace IronHive.Abstractions;
 
 public interface IHiveMemory
 {
-    IVectorStorage Storage { get; }
+    Task<IEnumerable<string>> ListCollectionsAsync(
+        string? prefix = null,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> CollectionExistsAsync(
+        string collectionName,
+        CancellationToken cancellationToken = default);
 
     Task CreateCollectionAsync(
         string collectionName,
@@ -16,7 +22,12 @@ public interface IHiveMemory
         string collectionName,
         CancellationToken cancellationToken = default);
 
-    Task<DataPipeline> MemorizeAsync(
+    Task<DataPipeline> GetIngestionStatusAsync(
+        string collectionName,
+        string sourceId,
+        CancellationToken cancellationToken = default);
+
+    Task MemorizeAsync(
         string collectionName,
         IMemorySource source,
         IEnumerable<string> steps,

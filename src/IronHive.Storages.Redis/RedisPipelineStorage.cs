@@ -1,13 +1,16 @@
 ﻿using IronHive.Abstractions.Memory;
+using MessagePack.Resolvers;
+using MessagePack;
 using StackExchange.Redis;
 
 namespace IronHive.Storages.Redis;
 
-public class RedisPipelineStorage : PipelineStorageBase
+public class RedisPipelineStorage : IPipelineStorage
 {
-    private readonly string _keyPrefix = "pipeline:";
     private readonly ConnectionMultiplexer _connection;
     private readonly IDatabase _db;
+    private readonly MessagePackSerializerOptions _options = ContractlessStandardResolver.Options
+        .WithCompression(MessagePackCompression.Lz4Block);
 
     public RedisPipelineStorage(RedisConfig config)
     {
@@ -15,7 +18,7 @@ public class RedisPipelineStorage : PipelineStorageBase
         _db = _connection.GetDatabase();
     }
 
-    public override void Dispose()
+    public void Dispose()
     {
         _connection.Close();
         _connection.Dispose();
@@ -23,59 +26,55 @@ public class RedisPipelineStorage : PipelineStorageBase
     }
 
     /// <inheritdoc />
-    public override async Task<bool> ContainsKeyAsync(
-        string key,
+    public async Task<IEnumerable<string>> GetKeysAsync(
+        string? prefix = null,
         CancellationToken cancellationToken = default)
     {
-        var rKey = CreateKey(key);
-        return await _db.KeyExistsAsync(rKey);
-    }
-
-    /// <inheritdoc />
-    public override async Task<IEnumerable<string>> GetKeysAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var output = await _db.ExecuteAsync("KEYS", $"{_keyPrefix}*");
-        var keys = ((string?[]?)output)?.ToArray()
-            .Select(x => x!.Substring(_keyPrefix.Length))
-            ?? Array.Empty<string>();
+        prefix ??= string.Empty;
+        var output = await _db.ExecuteAsync("KEYS", $"{prefix}*");
+        var keys = ((string?[]?)output)?.ToList()
+            .Where(k => !string.IsNullOrEmpty(k))
+            .Select(k => k!)
+            ?? Enumerable.Empty<string>();
         return keys;
     }
 
     /// <inheritdoc />
-    public override async Task<T> GetValueAsync<T>(
+    public async Task<bool> ContainsKeyAsync(
         string key,
         CancellationToken cancellationToken = default)
     {
-        var rKey = CreateKey(key);
-        var value = await _db.StringGetAsync(rKey);
-        if (value.IsNullOrEmpty)
-            throw new KeyNotFoundException($"Value not found for key: {key}");
-        var bytes = (byte[]?)value ?? Array.Empty<byte>();
-        return Deserialize<T>(bytes, cancellationToken);
+        return await _db.KeyExistsAsync(key);
     }
 
     /// <inheritdoc />
-    public override async Task SetValueAsync<T>(
+    public async Task<T> GetValueAsync<T>(
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        var value = await _db.StringGetAsync(key);
+        if (value.IsNullOrEmpty)
+            throw new KeyNotFoundException($"Value not found for key: {key}");
+        var bytes = (byte[]?)value ?? Array.Empty<byte>();
+
+        var result = MessagePackSerializer.Deserialize<T>(bytes, _options, cancellationToken);
+        return result;
+    }
+
+    /// <inheritdoc />
+    public async Task SetValueAsync<T>(
         string key,
         T value,
         CancellationToken cancellationToken = default)
     {
-        var rKey = CreateKey(key);
-        var bytes = Serialize(value, cancellationToken);
-        await _db.StringSetAsync(rKey, bytes);
+        var bytes = MessagePackSerializer.Serialize(value, _options, cancellationToken);
+        await _db.StringSetAsync(key, bytes);
     }
 
     /// <inheritdoc />
-    public override async Task DeleteKeyAsync(string key, CancellationToken cancellationToken = default)
+    public async Task DeleteKeyAsync(string key, CancellationToken cancellationToken = default)
     {
-        var rKey = CreateKey(key);
-        await _db.KeyDeleteAsync(rKey);
-    }
-
-    private RedisKey CreateKey(string key)
-    {
-        return new(_keyPrefix + key);
+        await _db.KeyDeleteAsync(key);
     }
 
     private static ConnectionMultiplexer CreateConnection(RedisConfig config)

@@ -23,13 +23,6 @@ public interface IQueueStorage : IDisposable
     Task<int> GetCountAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Returns the first item of specified type without removing it
-    /// </summary>
-    /// <typeparam name="T">Type of item to peek</typeparam>
-    /// <returns>The first item of specified type</returns>
-    Task<T?> PeekAsync<T>(CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Clears all items from the queue
     /// </summary>
     Task ClearAsync(CancellationToken cancellationToken = default);
