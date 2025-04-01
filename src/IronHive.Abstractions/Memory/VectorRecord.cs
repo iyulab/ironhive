@@ -23,7 +23,7 @@ public class VectorRecord
     /// <summary>
     /// the payload information associated with the vector values.
     /// </summary>
-    public object? Payload { get; set; }
+    public object? Content { get; set; }
 
     /// <summary>
     /// the date and time when the record was created or last updated.

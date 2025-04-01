@@ -1,7 +1,7 @@
 ﻿using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Files;
 
-namespace IronHive.Core.Memory.Handlers;
+namespace IronHive.Core.Handlers;
 
 public class DecodeHandler : IPipelineHandler
 {
@@ -18,7 +18,7 @@ public class DecodeHandler : IPipelineHandler
         if (source is TextMemorySource textSource)
         {
             var text = textSource.Text;
-            pipeline.Payload = text;
+            pipeline.Content = text;
             return pipeline;
         }
         else if (source is FileMemorySource fileSource)
@@ -26,7 +26,7 @@ public class DecodeHandler : IPipelineHandler
             var text = await _manager.DecodeAsync(
                 fileSource,
                 cancellationToken: cancellationToken);            
-            pipeline.Payload = text;
+            pipeline.Content = text;
             return pipeline;
         }
         else

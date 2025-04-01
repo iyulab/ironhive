@@ -4,6 +4,10 @@ namespace IronHive.Abstractions;
 
 public interface IHiveMemory
 {
+    Task StartWorkerAsync();
+
+    Task StopWorkerAsync();
+
     Task<IEnumerable<string>> ListCollectionsAsync(
         string? prefix = null,
         CancellationToken cancellationToken = default);

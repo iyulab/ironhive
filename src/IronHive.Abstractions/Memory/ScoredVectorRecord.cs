@@ -23,7 +23,7 @@ public class ScoredVectorRecord
     /// <summary>
     /// the payload information associated with the vector.
     /// </summary>
-    public object? Payload { get; set; }
+    public object? Content { get; set; }
 
     /// <summary>
     /// the date and time when the vector was last updated.

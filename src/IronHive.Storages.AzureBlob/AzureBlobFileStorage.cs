@@ -25,12 +25,13 @@ public class AzureBlobFileStorage : IFileStorage
     /// <inheritdoc />
     public async Task<IEnumerable<string>> ListAsync(
         string? prefix = null,
+        int depth = 1,
         CancellationToken cancellationToken = default)
     {
         prefix ??= string.Empty;
         var result = new List<string>();
 
-        // delimiter "/"를 사용해 1depth 계층 구조로 조회합니다.
+        // prefix ~ delimiter 사이의 객체만 가져옵니다.
         await foreach (var item in _client.GetBlobsByHierarchyAsync(
             delimiter: "/",
             prefix: prefix,
@@ -38,12 +39,22 @@ public class AzureBlobFileStorage : IFileStorage
         {
             if (item.IsPrefix)
             {
-                // 가상의 디렉토리 (폴더)
-                result.Add(item.Prefix);
+                if (depth == 1)
+                {
+                    // depth가 1인 경우는 현재 폴더만 추가
+                    result.Add(item.Prefix);
+                }
+                else
+                {
+                    // depth가 0 이하이면 무제한, 그렇지 않으면 depth 감소
+                    int nextDepth = depth > 1 ? depth - 1 : depth;
+                    var subItems = await ListAsync(item.Prefix, nextDepth, cancellationToken);
+                    result.AddRange(subItems);
+                }
             }
             else if (item.Blob != null)
             {
-                // 파일
+                // 파일 이름 추가
                 result.Add(item.Blob.Name);
             }
         }
@@ -74,7 +85,7 @@ public class AzureBlobFileStorage : IFileStorage
     }
 
     /// <inheritdoc />
-    public async Task<Stream> ReadAsync(
+    public async Task<Stream> ReadFileAsync(
         string filePath, 
         CancellationToken cancellationToken = default)
     {
@@ -91,10 +102,10 @@ public class AzureBlobFileStorage : IFileStorage
     }
 
     /// <inheritdoc />
-    public async Task WriteAsync(
-        string filePath, 
-        Stream data, 
-        bool overwrite = true, 
+    public async Task WriteFileAsync(
+        string filePath,
+        Stream data,
+        bool overwrite = true,
         CancellationToken cancellationToken = default)
     {
         if (IsDirectory(filePath))
@@ -130,7 +141,7 @@ public class AzureBlobFileStorage : IFileStorage
     }
 
     // azure blob에서 경로끝에 '/'가 있으면 디렉토리로 간주합니다.
-    private bool IsDirectory(string path)
+    private static bool IsDirectory(string path)
     {
         return path.EndsWith('/');
     }

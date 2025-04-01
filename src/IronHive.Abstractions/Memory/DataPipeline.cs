@@ -36,7 +36,7 @@ public class DataPipeline
 
     public IMemorySource? Source { get; set; }
 
-    public object? Payload { get; set; }
+    public object? Content { get; set; }
 
     [JsonInclude]
     public DateTime? StartedAt { get; private set; }

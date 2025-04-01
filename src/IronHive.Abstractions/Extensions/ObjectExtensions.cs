@@ -4,11 +4,16 @@ using System.Diagnostics;
 using System.Runtime.Serialization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using MessagePack;
+using MessagePack.Resolvers;
 
 namespace System;
 
 public static class ObjectExtensions
 {
+    private static readonly MessagePackSerializerOptions _options = ContractlessStandardResolver.Options
+        .WithCompression(MessagePackCompression.Lz4Block);
+
     /// <summary>
     /// Try to convert the object to the target type. 
     /// If the conversion fails, the null value is returned.
@@ -20,14 +25,6 @@ public static class ObjectExtensions
     }
 
     /// <summary>
-    /// Convert the object to the target type. If the conversion fails, the default value is returned.
-    /// </summary>
-    public static T? ConvertTo<T>(this object? obj, JsonSerializerOptions? options = null)
-    {
-        return (T?)obj.ConvertTo(typeof(T), options);
-    }
-
-    /// <summary>
     /// Try to convert the object to the target type.
     /// If the conversion fails, the null value is returned.
     /// </summary>
@@ -35,6 +32,14 @@ public static class ObjectExtensions
     {
         value = obj.ConvertTo(target, options);
         return value != null;
+    }
+
+    /// <summary>
+    /// Convert the object to the target type. If the conversion fails, the default value is returned.
+    /// </summary>
+    public static T? ConvertTo<T>(this object? obj, JsonSerializerOptions? options = null)
+    {
+        return (T?)obj.ConvertTo(typeof(T), options);
     }
 
     /// <summary>
@@ -90,7 +95,7 @@ public static class ObjectExtensions
     }
 
     /// <summary>
-    /// perform a deep copy of the object
+    /// perform a deep copy of the object using JSON serialization
     /// </summary>
     public static T Clone<T>(this T obj)
     {
@@ -112,5 +117,29 @@ public static class ObjectExtensions
             Debug.WriteLine(ex.Message);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Serialize the object to bytes using MessagePack
+    /// </summary>
+    public static byte[]? Serialize<T>(this T obj, MessagePackSerializerOptions? options = null)
+    {
+        if (obj == null)
+        {
+            return null;
+        }
+        return MessagePackSerializer.Serialize(obj, options ?? _options);
+    }
+
+    /// <summary>
+    /// Deserialize the bytes to an object using MessagePack
+    /// </summary>
+    public static T? Deserialize<T>(this byte[] bytes, MessagePackSerializerOptions? options = null)
+    {
+        if (bytes == null || bytes.Length == 0)
+        {
+            return default;
+        }
+        return MessagePackSerializer.Deserialize<T>(bytes, options ?? _options);
     }
 }

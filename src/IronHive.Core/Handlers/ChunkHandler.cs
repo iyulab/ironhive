@@ -2,7 +2,7 @@
 using System.Text;
 using Tiktoken;
 
-namespace IronHive.Core.Memory.Handlers;
+namespace IronHive.Core.Handlers;
 
 public class ChunkHandler : IPipelineHandler
 {
@@ -15,7 +15,7 @@ public class ChunkHandler : IPipelineHandler
 
     public Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
-        if(pipeline.Payload.TryConvertTo<string>(out var content))
+        if(pipeline.Content.TryConvertTo<string>(out var content))
         {
             var fragments = content.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
             var options = pipeline.GetCurrentOptions<Options>() ?? new Options();
@@ -41,7 +41,7 @@ public class ChunkHandler : IPipelineHandler
                 chunks.Add(sb.ToString());
             }
 
-            pipeline.Payload = chunks;
+            pipeline.Content = chunks;
             return Task.FromResult(pipeline);
         }
         else

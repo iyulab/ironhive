@@ -1,7 +1,7 @@
 ﻿using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Memory;
 
-namespace IronHive.Core.Memory.Handlers;
+namespace IronHive.Core.Handlers;
 
 public class EmbedHandler : IPipelineHandler
 {
@@ -23,7 +23,7 @@ public class EmbedHandler : IPipelineHandler
 
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
-        if (pipeline.Payload.TryConvertTo<IEnumerable<Dialogue>>(out var dialogues))
+        if (pipeline.Content.TryConvertTo<IEnumerable<Dialogue>>(out var dialogues))
         {
             var options = pipeline.GetCurrentOptions<Options>()
                 ?? throw new InvalidOperationException("must provide options for embeddings handler");
@@ -52,13 +52,13 @@ public class EmbedHandler : IPipelineHandler
                     Id = Guid.NewGuid().ToString(),
                     Source = pipeline.Source,
                     Vectors = vector,
-                    Payload = content,
+                    Content = content,
                     LastUpdatedAt = DateTime.UtcNow,
                 });
             }
 
             await _storage.UpsertVectorsAsync(options.Collection, points, cancellationToken);
-            pipeline.Payload = null;
+            pipeline.Content = null;
             return pipeline;
         }
         else

@@ -1,6 +1,4 @@
 ﻿using IronHive.Abstractions.Memory;
-using MessagePack.Resolvers;
-using MessagePack;
 using StackExchange.Redis;
 
 namespace IronHive.Storages.Redis;
@@ -9,8 +7,6 @@ public class RedisPipelineStorage : IPipelineStorage
 {
     private readonly ConnectionMultiplexer _connection;
     private readonly IDatabase _db;
-    private readonly MessagePackSerializerOptions _options = ContractlessStandardResolver.Options
-        .WithCompression(MessagePackCompression.Lz4Block);
 
     public RedisPipelineStorage(RedisConfig config)
     {
@@ -26,57 +22,62 @@ public class RedisPipelineStorage : IPipelineStorage
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<string>> GetKeysAsync(
-        string? prefix = null,
+    public async Task<IEnumerable<DataPipeline>> ListAsync(
         CancellationToken cancellationToken = default)
     {
-        prefix ??= string.Empty;
-        var output = await _db.ExecuteAsync("KEYS", $"{prefix}*");
-        var keys = ((string?[]?)output)?.ToList()
-            .Where(k => !string.IsNullOrEmpty(k))
-            .Select(k => k!)
-            ?? Enumerable.Empty<string>();
-        return keys;
+        var cr = await _db.ExecuteAsync("keys", "*");
+        var keys = (string[]?)cr ?? Array.Empty<string>();
+
+        var results = new List<DataPipeline>();
+        foreach (var key in keys)
+        {
+            var value = await GetAsync(key, cancellationToken);
+            results.Add(value);
+        }
+        return results;
     }
 
     /// <inheritdoc />
-    public async Task<bool> ContainsKeyAsync(
-        string key,
+    public async Task<bool> ContainsAsync(
+        string id, 
         CancellationToken cancellationToken = default)
     {
-        return await _db.KeyExistsAsync(key);
+        return await _db.KeyExistsAsync(id);
     }
 
     /// <inheritdoc />
-    public async Task<T> GetValueAsync<T>(
-        string key,
+    public async Task<DataPipeline> GetAsync(
+        string id, 
         CancellationToken cancellationToken = default)
     {
-        var value = await _db.StringGetAsync(key);
+        var value = await _db.StringGetAsync(id);
         if (value.IsNullOrEmpty)
-            throw new KeyNotFoundException($"Value not found for key: {key}");
+            throw new KeyNotFoundException($"Value not found for key: {id}");
         var bytes = (byte[]?)value ?? Array.Empty<byte>();
 
-        var result = MessagePackSerializer.Deserialize<T>(bytes, _options, cancellationToken);
+        var result = bytes.Deserialize<DataPipeline>()
+            ?? throw new InvalidOperationException("Failed to deserialize pipeline.");
         return result;
     }
 
     /// <inheritdoc />
-    public async Task SetValueAsync<T>(
-        string key,
-        T value,
+    public async Task SetAsync(
+        DataPipeline pipeline, 
         CancellationToken cancellationToken = default)
     {
-        var bytes = MessagePackSerializer.Serialize(value, _options, cancellationToken);
-        await _db.StringSetAsync(key, bytes);
+        var bytes = pipeline.Serialize();
+        await _db.StringSetAsync(pipeline.Id, bytes);
     }
 
     /// <inheritdoc />
-    public async Task DeleteKeyAsync(string key, CancellationToken cancellationToken = default)
+    public async Task DeleteAsync(
+        string id, 
+        CancellationToken cancellationToken = default)
     {
-        await _db.KeyDeleteAsync(key);
+        await _db.KeyDeleteAsync(id);
     }
 
+    // Redis 연결을 생성합니다.
     private static ConnectionMultiplexer CreateConnection(RedisConfig config)
     {
         if (!string.IsNullOrWhiteSpace(config.ConnectionString))

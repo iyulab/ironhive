@@ -31,11 +31,13 @@ public class AmazonS3FileStorage : IFileStorage
     /// <inheritdoc />
     public async Task<IEnumerable<string>> ListAsync(
         string? prefix = null,
+        int depth = 1,
         CancellationToken cancellationToken = default)
     {
         // S3에서는 디렉터리 개념이 가상의 prefix로 표현됩니다.
         // prefix가 null 또는 공백이면 빈 문자열로 처리합니다.
         prefix ??= string.Empty;
+        var result = new List<string>();
 
         // Prefix ~ Delimiter 사이의 객체만 가져옵니다.
         var request = new ListObjectsV2Request
@@ -45,13 +47,10 @@ public class AmazonS3FileStorage : IFileStorage
             Delimiter = "/",
         };
 
-        var result = new List<string>();
         ListObjectsV2Response response;
-
         do
         {
             response = await _client.ListObjectsV2Async(request, cancellationToken).ConfigureAwait(false);
-            cancellationToken.ThrowIfCancellationRequested();
 
             // 파일 목록 추가
             if (response.S3Objects != null)
@@ -59,10 +58,24 @@ public class AmazonS3FileStorage : IFileStorage
                 result.AddRange(response.S3Objects.Select(obj => obj.Key));
             }
 
-            // "디렉터리" 목록 추가 (CommonPrefixes에는 접미사 "/"가 포함되어 있습니다.)
+            // "디렉터리" 목록 처리
             if (response.CommonPrefixes != null)
             {
-                result.AddRange(response.CommonPrefixes);
+                foreach (var commonPrefix in response.CommonPrefixes)
+                {
+                    // depth가 1인 경우 현재 폴더의 항목만 추가
+                    if (depth == 1)
+                    {
+                        result.Add(commonPrefix);
+                    }
+                    else
+                    {
+                        // depth가 0 이하이면 무제한 재귀, 그렇지 않으면 depth 감소
+                        int nextDepth = depth > 1 ? depth - 1 : depth;
+                        var subResults = await ListAsync(commonPrefix, nextDepth, cancellationToken);
+                        result.AddRange(subResults);
+                    }
+                }
             }
 
             // 다음 페이지가 있는 경우, ContinuationToken을 설정하여 다음 페이지를 요청합니다.
@@ -107,7 +120,7 @@ public class AmazonS3FileStorage : IFileStorage
     }
 
     /// <inheritdoc />
-    public async Task<Stream> ReadAsync(
+    public async Task<Stream> ReadFileAsync(
         string filePath,
         CancellationToken cancellationToken = default)
     {
@@ -126,7 +139,7 @@ public class AmazonS3FileStorage : IFileStorage
     }
 
     /// <inheritdoc />
-    public async Task WriteAsync(
+    public async Task WriteFileAsync(
         string filePath,
         Stream data,
         bool overwrite = true,

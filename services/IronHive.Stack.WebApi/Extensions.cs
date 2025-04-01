@@ -1,6 +1,5 @@
 ﻿using IronHive.Connectors.Anthropic;
 using IronHive.Connectors.OpenAI;
-using IronHive.Core;
 using IronHive.Stack.WebApi.Tools;
 
 namespace IronHive.Stack.WebApi;

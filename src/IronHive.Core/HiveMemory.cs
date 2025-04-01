@@ -1,22 +1,47 @@
 ﻿using IronHive.Abstractions;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Memory;
+using IronHive.Core.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace IronHive.Core;
 
 public class HiveMemory : IHiveMemory
 {
+    private readonly IServiceProvider _services;
     private readonly IQueueStorage _queue;
     private readonly IPipelineStorage _pipeline;
     private readonly IVectorStorage _vector;
     private readonly IEmbeddingService _embedding;
-    
-    public HiveMemory(IQueueStorage queue, IPipelineStorage pipeline, IVectorStorage vector, IEmbeddingService embedding)
+
+    private CancellationTokenSource _cts = new();
+
+    public required string QueueName { get; init; }
+
+    public HiveMemory(IServiceProvider services)
     {
-        _queue = queue;
-        _pipeline = pipeline;
-        _vector = vector;
-        _embedding = embedding;
+        _services = services;
+        _queue = services.GetRequiredService<IQueueStorage>();
+        _pipeline = services.GetRequiredService<IPipelineStorage>();
+        _vector = services.GetRequiredService<IVectorStorage>();
+        _embedding = services.GetRequiredService<IEmbeddingService>();
+    }
+
+    /// <inheritdoc />
+    public async Task StartWorkerAsync()
+    {
+        await _queue.CreateQueueAsync(QueueName);
+        var worker = new PipelineWorker(_services) { QueueName = QueueName };
+        _ = worker.StartAsync(_cts.Token);
+    }
+
+    /// <inheritdoc />
+    public async Task StopWorkerAsync()
+    {
+        _cts.Cancel();
+        await Task.Delay(1_000);
+        _cts.Dispose();
+        _cts = new CancellationTokenSource();
     }
 
     /// <inheritdoc />
@@ -68,7 +93,7 @@ public class HiveMemory : IHiveMemory
         string sourceId, 
         CancellationToken cancellationToken = default)
     {
-        return _pipeline.GetValueAsync<DataPipeline>(sourceId, cancellationToken);
+        return _pipeline.GetAsync(sourceId, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -87,8 +112,9 @@ public class HiveMemory : IHiveMemory
             Steps = steps.ToList(),
             HandlerOptions = handlerOptions,
         };
-        await _queue.EnqueueAsync(id, cancellationToken);
-        await _pipeline.SetValueAsync(id, pipeline, cancellationToken);
+
+        await _queue.EnqueueAsync(QueueName, id, cancellationToken);
+        await _pipeline.SetAsync(pipeline, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -97,8 +123,8 @@ public class HiveMemory : IHiveMemory
         string sourceId, 
         CancellationToken cancellationToken = default)
     {
-        if (await _pipeline.ContainsKeyAsync(sourceId, cancellationToken))
-            await _pipeline.DeleteKeyAsync(sourceId, cancellationToken);
+        if (await _pipeline.ContainsAsync(sourceId, cancellationToken))
+            await _pipeline.DeleteAsync(sourceId, cancellationToken);
 
         var filter = new VectorRecordFilter();
         filter.AddSourceId(sourceId);

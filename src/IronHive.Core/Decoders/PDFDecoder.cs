@@ -1,8 +1,9 @@
 ﻿using IronHive.Abstractions.Files;
+using IronHive.Core.Utilities;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 
-namespace IronHive.Core.Files.Decoders;
+namespace IronHive.Core.Decoders;
 
 public class PDFDecoder : IFileDecoder
 {

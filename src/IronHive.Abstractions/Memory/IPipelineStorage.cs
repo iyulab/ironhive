@@ -7,48 +7,36 @@
 public interface IPipelineStorage : IDisposable
 {
     /// <summary>
-    /// 저장된 키 목록을 불러옵니다.
+    /// 모든 파이프라인을 불러옵니다.
     /// </summary>
-    /// <returns>저장된 키 목록</returns>
-    Task<IEnumerable<string>> GetKeysAsync(
-        string? prefix = null,
+    Task<IEnumerable<DataPipeline>> ListAsync(
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 지정된 키에 데이터가 존재하는지 확인합니다.
+    /// 지정된 id에 해당하는 파이프라인이 존재하는지 확인합니다.
     /// </summary>
-    /// <param name="key">데이터 식별을 위한 키</param>
-    /// <returns>데이터가 존재하면 true, 아니면 false</returns>
-    Task<bool> ContainsKeyAsync(
-        string key,
+    Task<bool> ContainsAsync(
+        string id,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 지정된 키에 해당하는 데이터를 불러옵니다.
+    /// 지정된 id에 해당하는 파이프라인을 불러옵니다.
     /// </summary>
-    /// <typeparam name="T">불러올 데이터의 타입</typeparam>
-    /// <param name="key">데이터 식별을 위한 키</param>
-    /// <returns>저장된 값</returns>
-    Task<T> GetValueAsync<T>(
-        string key,
+    Task<DataPipeline> GetAsync(
+        string id,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 지정된 키를 사용하여 데이터를 저장합니다.
+    /// 파이프라인을 저장합니다.
     /// </summary>
-    /// <typeparam name="T">저장할 데이터의 타입</typeparam>
-    /// <param name="key">데이터 식별을 위한 키</param>
-    /// <param name="value">저장할 값</param>
-    Task SetValueAsync<T>(
-        string key, 
-        T value, 
+    Task SetAsync(
+        DataPipeline pipeline,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 지정된 키에 해당하는 데이터를 삭제합니다.
+    /// 지정된 id에 해당하는 파이프라인을 삭제합니다.
     /// </summary>
-    /// <param name="key">데이터 식별을 위한 키</param>
-    Task DeleteKeyAsync(
-        string key,
+    Task DeleteAsync(
+        string id,
         CancellationToken cancellationToken = default);
 }

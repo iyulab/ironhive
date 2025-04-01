@@ -149,7 +149,7 @@ public class QdrantVectorStorage : IVectorStorage
                 Id = record.Id,
                 Vectors = vectors,
                 Source = record.Source,
-                Payload = record.Payload,
+                Content = record.Content,
                 LastUpdatedAt = record.LastUpdatedAt,
             });
         }
@@ -179,7 +179,7 @@ public class QdrantVectorStorage : IVectorStorage
                     ["vectorId"] = payload["vectorId"],
                     ["sourceId"] = payload["sourceId"],
                     ["source"] = payload["source"],
-                    ["payload"] = payload["payload"],
+                    ["content"] = payload["content"],
                     ["lastUpdatedAt"] = payload["lastUpdatedAt"],
                 },
             });
@@ -237,7 +237,7 @@ public class QdrantVectorStorage : IVectorStorage
                 VectorId = record.Id,
                 Score = point.Score,
                 Source = record.Source,
-                Payload = record.Payload,
+                Content = record.Content,
                 LastUpdatedAt = record.LastUpdatedAt,
             });
         }
@@ -273,7 +273,7 @@ public class QdrantVectorStorage : IVectorStorage
             ["vectorId"] = record.Id,
             ["sourceId"] = record.Source.Id,
             ["source"] = JsonSerializer.Serialize(record.Source, JsonDefaultOptions.Options),
-            ["payload"] = JsonSerializer.Serialize(record.Payload, JsonDefaultOptions.Options),
+            ["content"] = JsonSerializer.Serialize(record.Content, JsonDefaultOptions.Options),
             ["lastUpdatedAt"] = new DateTimeOffset(record.LastUpdatedAt).ToUnixTimeMilliseconds(),
         };
         return payload;
@@ -286,8 +286,8 @@ public class QdrantVectorStorage : IVectorStorage
         var source = JsonSerializer.Deserialize<IMemorySource>(
             payload.GetValueOrDefault("source")?.StringValue ?? string.Empty)
             ?? throw new InvalidOperationException("source is not found");
-        var recordPayload = JsonSerializer.Deserialize<object>(
-            payload.GetValueOrDefault("payload")?.StringValue ?? string.Empty);
+        var content = JsonSerializer.Deserialize<object>(
+            payload.GetValueOrDefault("content")?.StringValue ?? string.Empty);
         var lastUpdatedAt = DateTimeOffset.FromUnixTimeMilliseconds(
             payload.GetValueOrDefault("lastUpdatedAt")?.IntegerValue ?? 0).UtcDateTime;
 
@@ -296,7 +296,7 @@ public class QdrantVectorStorage : IVectorStorage
             Id = vectorId,
             Vectors = Array.Empty<float>(),
             Source = source,
-            Payload = recordPayload,
+            Content = content,
             LastUpdatedAt = lastUpdatedAt
         };
     }

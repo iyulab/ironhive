@@ -15,6 +15,11 @@ public class RabbitMQConfig
     public int Port { get; set; } = 5672;
 
     /// <summary>
+    /// 작업 관리 인터페이스를 위한 TCP 포트, 예: 15672
+    /// </summary>
+    public int ManagementPort { get; set; } = 15672;
+
+    /// <summary>
     /// 인증에 사용할 사용자 이름
     /// </summary>
     public string Username { get; set; } = "guest";
@@ -23,11 +28,6 @@ public class RabbitMQConfig
     /// 인증에 사용할 비밀번호
     /// </summary>
     public string Password { get; set; } = "guest";
-
-    /// <summary>
-    /// 큐 이름, default: "ironhive"
-    /// </summary>
-    public string QueueName { get; set; } = "memory";
 
     /// <summary>
     /// RabbitMQ 가상 호스트 이름, 예: "/"

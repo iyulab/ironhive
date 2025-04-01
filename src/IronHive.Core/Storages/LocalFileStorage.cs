@@ -18,12 +18,13 @@ public class LocalFileStorage : IFileStorage
     /// <inheritdoc />
     public Task<IEnumerable<string>> ListAsync(
         string? prefix = null,
+        int depth = 1,
         CancellationToken cancellationToken = default)
     {
-        prefix = NormalizePath(prefix);
+        prefix = EnsurePath(prefix);
 
-        // Windows의 경우 루트 디렉토리를 드라이브 목록으로 대체
-        if (prefix == "/" && _isWindows)
+        // Windows의 경우 루트 디렉토리를 드라이브 목록으로 대체 (0 depth only)
+        if (_isWindows && prefix == "/")
         {
             var drives = DriveInfo.GetDrives()
                 .Select(drive => drive.Name.Replace('\\', '/'));
@@ -33,17 +34,18 @@ public class LocalFileStorage : IFileStorage
 
         var options = new EnumerationOptions
         {
-            AttributesToSkip = FileAttributes.Hidden | FileAttributes.System,   // 숨김, 시스템 파일 제외
-            RecurseSubdirectories = false,                                      // 1depth만 탐색
-            IgnoreInaccessible = true,                                          // 접근 불가능한 파일 제외
-            MatchCasing = MatchCasing.PlatformDefault,                          // 플랫폼 기본 대소문자 구분
+            MatchCasing = MatchCasing.PlatformDefault,                          // 대소문자 구분 플랫폼에 따름
             MatchType = MatchType.Simple,                                       // 단순 일치
-            ReturnSpecialDirectories = false,                                   // 특수 디렉터리 제외
+            AttributesToSkip = FileAttributes.Hidden | FileAttributes.System,   // 숨김, 시스템 파일 제외
+            IgnoreInaccessible = true,                                          // 접근 불가능한 파일 제외
+            ReturnSpecialDirectories = false,                                   // 특수 디렉터리 제외 (prefix ".", "..")
+            RecurseSubdirectories = true,                                       // 하위 디렉토리 재귀적 탐색 여부
+            MaxRecursionDepth = depth > 0 ? depth : int.MaxValue,               // 재귀적 탐색 깊이
         };
 
         // 파일 목록을 가져옵니다.
         var files = Directory.GetFiles(prefix, "*", options)
-            .Select(file => file.Replace('\\', '/'));
+                .Select(file => file.Replace('\\', '/'));
         cancellationToken.ThrowIfCancellationRequested();
 
         // 폴더 목록을 가져오고, 각 폴더 경로 끝에 구분자를 추가합니다.
@@ -66,7 +68,7 @@ public class LocalFileStorage : IFileStorage
         string path, 
         CancellationToken cancellationToken = default)
     {
-        path = NormalizePath(path);
+        path = EnsurePath(path);
         var isExists = IsDirectory(path)
             ? Directory.Exists(path)
             : File.Exists(path);
@@ -75,11 +77,11 @@ public class LocalFileStorage : IFileStorage
     }
 
     /// <inheritdoc />
-    public async Task<Stream> ReadAsync(
+    public async Task<Stream> ReadFileAsync(
         string filePath, 
         CancellationToken cancellationToken = default)
     {
-        filePath = NormalizePath(filePath);
+        filePath = EnsurePath(filePath);
         if (!await ExistsAsync(filePath, cancellationToken))
             throw new FileNotFoundException($"파일을 찾을 수 없습니다: {filePath}");
         if (IsDirectory(filePath))
@@ -93,13 +95,13 @@ public class LocalFileStorage : IFileStorage
     }
 
     /// <inheritdoc />
-    public async Task WriteAsync(
+    public async Task WriteFileAsync(
         string filePath,
         Stream data,
         bool overwrite = true, 
         CancellationToken cancellationToken = default)
     {
-        filePath = NormalizePath(filePath);
+        filePath = EnsurePath(filePath);
         if (IsDirectory(filePath))
             throw new ArgumentException("디렉토리 경로로 파일을 쓸 수 없습니다.", nameof(filePath));
 
@@ -128,7 +130,7 @@ public class LocalFileStorage : IFileStorage
         string path,
         CancellationToken cancellationToken = default)
     {
-        path = NormalizePath(path);
+        path = EnsurePath(path);
         if (IsDirectory(path))
         {
             // 디렉토리 삭제
@@ -152,11 +154,11 @@ public class LocalFileStorage : IFileStorage
     // 지정한 경로가 디렉토리 경로인지 확인합니다.
     private static bool IsDirectory(string path)
     {
-        return path.EndsWith('/');
+        return Path.EndsInDirectorySeparator(path);
     }
 
     // 경로를 플랫폼에 맞게 변환합니다.
-    private string NormalizePath(string? path = null)
+    private string EnsurePath(string? path = null)
     {
         // null 또는 빈 문자열인 경우 "/"를 루트 경로로 반환
         if (string.IsNullOrWhiteSpace(path))

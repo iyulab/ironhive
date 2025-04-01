@@ -3,7 +3,7 @@ using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Messages;
 using System.Text.RegularExpressions;
 
-namespace IronHive.Core.Memory.Handlers;
+namespace IronHive.Core.Handlers;
 
 public class Dialogue
 {
@@ -32,7 +32,7 @@ public class QnAGenHandler : IPipelineHandler
 
     public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
     {
-        if (pipeline.Payload.TryConvertTo<IEnumerable<string>>(out var chunks))
+        if (pipeline.Content.TryConvertTo<IEnumerable<string>>(out var chunks))
         {
             var options = pipeline.GetCurrentOptions<Options>()
                 ?? throw new InvalidOperationException($"Must provide options for {pipeline.CurrentStep}.");
@@ -57,7 +57,7 @@ public class QnAGenHandler : IPipelineHandler
                     ?? throw new InvalidOperationException("No response from the chat completion service.");
                 dialogues.AddRange(ParseFrom(text));
             }
-            pipeline.Payload = dialogues;
+            pipeline.Content = dialogues;
 
             return pipeline;
         }

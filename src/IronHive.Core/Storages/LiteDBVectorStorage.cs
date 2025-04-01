@@ -2,6 +2,7 @@
 using IronHive.Abstractions.Memory;
 using System.Numerics.Tensors;
 using System.Text.RegularExpressions;
+using IronHive.Core.Storages;
 
 namespace IronHive.Storages.LiteDB;
 
@@ -10,9 +11,10 @@ public partial class LiteDBVectorStorage : IVectorStorage
     private static readonly Regex _pattern = new Regex(@"^[A-Za-z][A-Za-z0-9_]*$", RegexOptions.Compiled);
     private readonly LiteDatabase _db;
 
-    public LiteDBVectorStorage(LiteDBConfig config)
+    public LiteDBVectorStorage(string? databasePath = null)
     {
-        _db = CreateLiteDatabase(config);
+        databasePath ??= LocalStorageConfig.DefaultVectorStoragePath;
+        _db = CreateLiteDatabase(databasePath);
     }
 
     public void Dispose()
@@ -123,7 +125,6 @@ public partial class LiteDBVectorStorage : IVectorStorage
         CancellationToken cancellationToken = default)
     {
         collectionName = EnsureCollectionName(collectionName);
-        //collectionName = $"{collectionName}"; // 왜? 기억이 안남
 
         var coll = _db.GetCollection<VectorRecord>(collectionName);
         coll.Upsert(records);
@@ -175,7 +176,7 @@ public partial class LiteDBVectorStorage : IVectorStorage
                 VectorId = p.Id,
                 Score = TensorPrimitives.CosineSimilarity(vector.ToArray(), p.Vectors.ToArray()),
                 Source = p.Source,
-                Payload = p.Payload,
+                Content = p.Content,
                 LastUpdatedAt = p.LastUpdatedAt 
             })
             .Where(p => p.Score >= minScore)
@@ -187,17 +188,17 @@ public partial class LiteDBVectorStorage : IVectorStorage
     }
 
     // LiteDB 인스턴스를 생성합니다.
-    private static LiteDatabase CreateLiteDatabase(LiteDBConfig config)
+    private static LiteDatabase CreateLiteDatabase(string databasePath)
     {
-        var dic = Path.GetDirectoryName(config.DatabasePath);
+        var dic = Path.GetDirectoryName(databasePath);
         if (!string.IsNullOrWhiteSpace(dic) && !Directory.Exists(dic))
             Directory.CreateDirectory(dic);
 
         var connectionString = new ConnectionString
         {
             Connection = ConnectionType.Shared,
-            Filename = config.DatabasePath,
-            Password = string.IsNullOrWhiteSpace(config.Password) ? null : config.Password,
+            Filename = databasePath,
+            Password = null,
             AutoRebuild = false,
             Upgrade = false,
             ReadOnly = false,

@@ -1,18 +1,51 @@
 ﻿using IronHive.Abstractions.Memory;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace IronHive.Core.Memory;
+namespace IronHive.Core.Services;
 
-public class PipelineOrchestrator : IPipelineOrchestrator
+public class PipelineWorker : IPipelineWorker
 {
+    private readonly SemaphoreSlim _semaphore = new(1, 1);
     private readonly IServiceProvider _services;
-    private readonly IPipelineStorage _store;
-    public SemaphoreSlim _semaphore = new(1, 1);
 
-    public PipelineOrchestrator(IServiceProvider provider, IPipelineStorage store)
+    private readonly IPipelineStorage _store;
+    private readonly IQueueStorage _queue;
+
+    public bool IsWorking 
+    {
+        get => _semaphore.CurrentCount == 0;
+    }
+
+    public required string QueueName { get; init; }
+
+    public PipelineWorker(IServiceProvider provider)
     {
         _services = provider;
-        _store = store;
+        _store = provider.GetRequiredService<IPipelineStorage>();
+        _queue = provider.GetRequiredService<IQueueStorage>();
+    }
+
+    public async Task StartAsync(CancellationToken cancellationToken)
+    {
+        if (IsWorking)
+        {
+            return;
+        }
+
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            var id = await _queue.DequeueAsync<string>(QueueName, cancellationToken);
+            if (string.IsNullOrEmpty(id))
+            {
+                await Task.Delay(1_000, cancellationToken);
+                continue;
+            }
+            else
+            {
+                var pipeline = await _store.GetAsync(id, cancellationToken);
+                await RunPipelineAsync(pipeline, cancellationToken);
+            }
+        }
     }
 
     public async Task RunPipelineAsync(
@@ -23,7 +56,7 @@ public class PipelineOrchestrator : IPipelineOrchestrator
         {
             await _semaphore.WaitAsync(cancellationToken);
             pipeline = pipeline.Start();
-            await _store.SetValueAsync(pipeline.Id, pipeline, cancellationToken);
+            await _store.SetAsync(pipeline, cancellationToken);
 
             while (pipeline.Status == PipelineStatus.Processing)
             {
@@ -31,7 +64,7 @@ public class PipelineOrchestrator : IPipelineOrchestrator
                 if (currentStep == null)
                 {
                     pipeline = pipeline.Complete();
-                    await _store.SetValueAsync(pipeline.Id, pipeline, cancellationToken);
+                    await _store.SetAsync(pipeline, cancellationToken);
                     break;
                 }
                 else
@@ -39,14 +72,14 @@ public class PipelineOrchestrator : IPipelineOrchestrator
                     var handler = GetHandler(currentStep);
                     pipeline = await handler.ProcessAsync(pipeline, cancellationToken);
                     pipeline = pipeline.Next();
-                    await _store.SetValueAsync(pipeline.Id, pipeline, cancellationToken);
+                    await _store.SetAsync(pipeline, cancellationToken);
                 }
             }
         }
         catch (Exception ex)
         {
             pipeline = pipeline.Failed(ex.Message);
-            await _store.SetValueAsync(pipeline.Id, pipeline, cancellationToken);
+            await _store.SetAsync(pipeline, cancellationToken);
         }
         finally
         {

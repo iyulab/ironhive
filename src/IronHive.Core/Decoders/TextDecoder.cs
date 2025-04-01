@@ -1,7 +1,8 @@
 ﻿using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Memory;
+using IronHive.Core.Utilities;
 
-namespace IronHive.Core.Files.Decoders;
+namespace IronHive.Core.Decoders;
 
 public class TextDecoder : IFileDecoder
 {

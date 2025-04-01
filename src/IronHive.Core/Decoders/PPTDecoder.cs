@@ -1,8 +1,9 @@
 ﻿using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Presentation;
 using IronHive.Abstractions.Files;
+using IronHive.Core.Utilities;
 
-namespace IronHive.Core.Files.Decoders;
+namespace IronHive.Core.Decoders;
 
 public class PPTDecoder : IFileDecoder
 {

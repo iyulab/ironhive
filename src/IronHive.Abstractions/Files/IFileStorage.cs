@@ -14,8 +14,13 @@ public interface IFileStorage : IDisposable
     /// 나열하기 원하는 파일 또는 디렉토리 경로의 접두어입니다.
     /// null 또는 빈 문자열일 경우, 루트 항목을 나열합니다.
     /// </param>
+    /// <param name="depth">
+    /// 탐색하기 원하는 디렉토리의 깊이입니다. 기본값은 1입니다.
+    /// 0 이하는 모든 하위 디렉토리를 탐색합니다.
+    /// </param>
     Task<IEnumerable<string>> ListAsync(
         string? prefix = null,
+        int depth = 1,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -30,7 +35,7 @@ public interface IFileStorage : IDisposable
     /// 지정한 경로의 파일을 비동기적으로 읽어들입니다.
     /// </summary>
     /// <param name="filePath">읽을 파일의 경로입니다.</param>
-    Task<Stream> ReadAsync(
+    Task<Stream> ReadFileAsync(
         string filePath,
         CancellationToken cancellationToken = default);
 
@@ -42,7 +47,7 @@ public interface IFileStorage : IDisposable
     /// <param name="overwrite">
     /// 파일이 이미 존재하는 경우 덮어쓸지 여부입니다. 기본값은 true입니다.
     /// </param>
-    Task WriteAsync(
+    Task WriteFileAsync(
         string filePath,
         Stream data,
         bool overwrite = true,

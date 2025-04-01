@@ -1,6 +1,6 @@
 ﻿namespace IronHive.Abstractions.Memory;
 
-public interface IPipelineOrchestrator
+public interface IPipelineWorker
 {
     Task RunPipelineAsync(
         DataPipeline pipeline,

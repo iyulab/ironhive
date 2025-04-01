@@ -3,7 +3,7 @@ using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Memory;
 using Microsoft.AspNetCore.StaticFiles;
 
-namespace IronHive.Core.Files;
+namespace IronHive.Core.Services;
 
 public class FileStorageManager : IFileStorageManager
 {
@@ -78,7 +78,7 @@ public class FileStorageManager : IFileStorageManager
         CancellationToken cancellationToken = default)
     {
         var storage = CreateStorage(source.Provider, source.ProviderConfig);
-        var data = await storage.ReadAsync(source.FilePath, cancellationToken);
+        var data = await storage.ReadFileAsync(source.FilePath, cancellationToken);
         return await DecodeAsync(source.FilePath, data, cancellationToken);
     }
 }

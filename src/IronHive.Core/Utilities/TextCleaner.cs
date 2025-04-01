@@ -1,6 +1,6 @@
 ﻿using System.Text.RegularExpressions;
 
-namespace IronHive.Core.Files;
+namespace IronHive.Core.Utilities;
 
 public static class TextCleaner
 {
