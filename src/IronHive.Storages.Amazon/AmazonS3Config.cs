@@ -1,4 +1,4 @@
-﻿namespace IronHive.Storages.AmazonS3;
+﻿namespace IronHive.Storages.Amazon;
 
 /// <summary>
 /// Amazon S3 스토리지에 연결하기 위한 구성 클래스입니다.

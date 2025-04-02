@@ -1,84 +1,98 @@
 ﻿using IronHive.Abstractions;
 using IronHive.Abstractions.Files;
-using IronHive.Abstractions.Memory;
-using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace IronHive.Core.Services;
 
 public class FileStorageManager : IFileStorageManager
 {
-    private readonly FileExtensionContentTypeProvider _detector = new();
-    private readonly IServiceProvider _provider;
+    private readonly IServiceProvider _services;
     private readonly IReadOnlyDictionary<string, Func<IServiceProvider, object?, IFileStorage>> _factories;
-    private readonly IEnumerable<IFileDecoder> _decoders;
+    private readonly IFileDecoderResolver _resolver;
 
-    public FileStorageManager(IServiceProvider provider,IHiveServiceStore store, IEnumerable<IFileDecoder> decoders)
+    public FileStorageManager(IServiceProvider services)
     {
-        _provider = provider;
-        _factories = store.GetFactories<IFileStorage>();
-        _decoders = decoders;
+        _services = services;
+        _factories = services.GetRequiredService<IHiveServiceStore>().GetFactories<IFileStorage>();
+        _resolver = services.GetRequiredService<IFileDecoderResolver>();
     }
 
     /// <inheritdoc />
-    public IFileStorage CreateStorage(string provider, object? config)
+    public IEnumerable<string> GetDecodableExtensions()
+        => _resolver.GetSupportedExtensions();
+
+    /// <inheritdoc />
+    public string? GetMimeType(string fileName)
+        => _resolver.GetMimeType(fileName);
+
+    /// <inheritdoc />
+    public async Task<string> DecodeFileAsync(
+        string provider,
+        string filePath,
+        object? providerConfig = null,
+        CancellationToken cancellationToken = default)
+    {
+        var fileName = Path.GetFileName(filePath);
+        if (_resolver.TryGetDecoderByName(fileName, out var decoder))
+        {
+            await using var stream = await ReadFileAsync(provider, filePath, providerConfig, cancellationToken);
+            return await decoder.DecodeAsync(stream, cancellationToken);
+        }
+        else
+        {
+            throw new NotSupportedException($"Unsupported file {fileName}");
+        }
+    }
+
+    /// <inheritdoc />
+    public IFileStorage CreateFileStorage(string provider, object? providerConfig = null)
     {
         if (_factories.TryGetValue(provider, out var factory))
-        {
-            return factory(_provider, config);
-        }
+            return factory(_services, providerConfig);
         else
-        {
-            throw new InvalidOperationException($"dont know {provider}");
-        }
+            throw new InvalidOperationException($"Unknown file storage provider: {provider}");
     }
 
     /// <inheritdoc />
-    public string GetMimeType(
-        string fileName, 
+    public Task<IEnumerable<string>> ListAsync(
+        string provider,
+        string? prefix = null,
+        int depth = 1,
+        object? providerConfig = null,
         CancellationToken cancellationToken = default)
-    {
-        if (_detector.TryGetContentType(fileName, out var type))
-        {
-            return type;
-        }
-        else
-        {
-            throw new NotSupportedException("Unsupported file type.");
-        }
-    }
+        => CreateFileStorage(provider, providerConfig).ListAsync(prefix, depth, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<string> DecodeAsync(
-        string fileName,
+    public Task<bool> ExistsAsync(
+        string provider,
+        string path,
+        object? providerConfig = null,
+        CancellationToken cancellationToken = default)
+        => CreateFileStorage(provider, providerConfig).ExistsAsync(path, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<Stream> ReadFileAsync(
+        string provider,
+        string filePath,
+        object? providerConfig = null,
+        CancellationToken cancellationToken = default)
+        => CreateFileStorage(provider, providerConfig).ReadFileAsync(filePath, cancellationToken);
+
+    /// <inheritdoc />
+    public Task WriteFileAsync(
+        string provider,
+        string filePath,
         Stream data,
+        bool overwrite = true,
+        object? providerConfig = null,
         CancellationToken cancellationToken = default)
-    {
-        if (_detector.TryGetContentType(fileName, out var type))
-        {
-            var decoder = _decoders.FirstOrDefault(x => x.SupportsMimeType(type));
-            if (decoder is not null)
-            {
-                return await decoder.DecodeAsync(data, cancellationToken);
-            }
-            else
-            {
-                throw new NotSupportedException("Unsupported file type.");
-            }
-        }
-        else
-        {
-            var text = new StreamReader(data).ReadToEnd();
-            return text;
-        }
-    }
+        => CreateFileStorage(provider, providerConfig).WriteFileAsync(filePath, data, overwrite, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<string> DecodeAsync(
-        FileMemorySource source, 
+    public Task DeleteAsync(
+        string provider,
+        string path,
+        object? providerConfig = null,
         CancellationToken cancellationToken = default)
-    {
-        var storage = CreateStorage(source.Provider, source.ProviderConfig);
-        var data = await storage.ReadFileAsync(source.FilePath, cancellationToken);
-        return await DecodeAsync(source.FilePath, data, cancellationToken);
-    }
+        => CreateFileStorage(provider, providerConfig).DeleteAsync(path, cancellationToken);
 }

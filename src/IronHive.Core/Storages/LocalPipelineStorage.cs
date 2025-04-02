@@ -6,7 +6,7 @@ namespace IronHive.Core.Storages;
 public class LocalPipelineStorage : IPipelineStorage
 {
     // 스레드 세이프 컬렉션을 사용합니다.
-    private readonly ConcurrentDictionary<string, DataPipeline> _dic = new();
+    private readonly ConcurrentDictionary<string, PipelineContext> _dic = new();
 
     /// <inheritdoc />
     public void Dispose()
@@ -16,7 +16,7 @@ public class LocalPipelineStorage : IPipelineStorage
     }
 
     /// <inheritdoc />
-    public Task<IEnumerable<DataPipeline>> ListAsync(
+    public Task<IEnumerable<PipelineContext>> ListAsync(
         CancellationToken cancellationToken = default)
     {
         var pipelines = _dic.Values.AsEnumerable();
@@ -37,7 +37,7 @@ public class LocalPipelineStorage : IPipelineStorage
     }
 
     /// <inheritdoc />
-    public Task<DataPipeline> GetAsync(
+    public Task<PipelineContext> GetAsync(
         string id,
         CancellationToken cancellationToken = default)
     {
@@ -50,7 +50,7 @@ public class LocalPipelineStorage : IPipelineStorage
 
     /// <inheritdoc />
     public Task SetAsync(
-        DataPipeline pipeline,
+        PipelineContext pipeline,
         CancellationToken cancellationToken = default)
     {
         _dic[pipeline.Id] = pipeline;    

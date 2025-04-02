@@ -5,7 +5,7 @@ using IronHive.Abstractions.Files;
 using System.Net;
 using AmazonS3ClientConfig = Amazon.S3.AmazonS3Config;
 
-namespace IronHive.Storages.AmazonS3;
+namespace IronHive.Storages.Amazon;
 
 public class AmazonS3FileStorage : IFileStorage
 {

@@ -20,21 +20,25 @@ public enum PipelineStatus
     Failed
 }
 
-public class DataPipeline
+public class PipelineContext
 {
-    public required string Id { get; set; }
+    [JsonInclude]
+    public PipelineStatus Status { get; private set; } = PipelineStatus.Pending;
 
     [JsonInclude]
-    public PipelineStatus Status { get; private set; } = PipelineStatus.Queued;
+    public required string Id { get; init; }
 
     [JsonInclude]
     public string? CurrentStep { get; private set; }
 
-    public required List<string> Steps { get; set; } = [];
+    [JsonInclude]
+    public required List<string> Steps { get; init; } = [];
 
-    public IDictionary<string, object>? HandlerOptions { get; set; }
+    [JsonInclude]
+    public IDictionary<string, object>? HandlerOptions { get; init; }
 
-    public IMemorySource? Source { get; set; }
+    [JsonInclude]
+    public required IMemorySource Source { get; init; }
 
     public object? Content { get; set; }
 
@@ -47,7 +51,7 @@ public class DataPipeline
     [JsonInclude]
     public string? ErrorMessage { get; private set; }
 
-    public DataPipeline Next()
+    public PipelineContext Next()
     {
         var nextStep = GetNextStep();
         if (nextStep == null)
@@ -57,7 +61,7 @@ public class DataPipeline
         return this;
     }
 
-    public DataPipeline Start()
+    public PipelineContext Start()
     {
         if (Steps.Count == 0)
             throw new InvalidOperationException("파이프라인을 시작할 단계가 없습니다.");
@@ -68,7 +72,7 @@ public class DataPipeline
         return this;
     }
 
-    public DataPipeline Complete()
+    public PipelineContext Complete()
     {
         CurrentStep = null;
         Status = PipelineStatus.Completed;
@@ -76,7 +80,7 @@ public class DataPipeline
         return this;
     }
 
-    public DataPipeline Failed(string message)
+    public PipelineContext Failed(string message)
     {
         Status = PipelineStatus.Failed;
         EndedAt = DateTime.UtcNow;

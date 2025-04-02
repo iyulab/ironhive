@@ -21,11 +21,11 @@ public class EmbedHandler : IPipelineHandler
         public required string Model { get; set; }
     }
 
-    public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
+    public async Task<PipelineContext> ProcessAsync(PipelineContext context, CancellationToken cancellationToken)
     {
-        if (pipeline.Content.TryConvertTo<IEnumerable<Dialogue>>(out var dialogues))
+        if (context.Content.TryConvertTo<IEnumerable<Dialogue>>(out var dialogues))
         {
-            var options = pipeline.GetCurrentOptions<Options>()
+            var options = context.GetCurrentOptions<Options>()
                 ?? throw new InvalidOperationException("must provide options for embeddings handler");
 
             var embeddings = await _service.EmbedBatchAsync(
@@ -50,7 +50,7 @@ public class EmbedHandler : IPipelineHandler
                 points.Add(new VectorRecord
                 {
                     Id = Guid.NewGuid().ToString(),
-                    Source = pipeline.Source,
+                    Source = context.Source,
                     Vectors = vector,
                     Content = content,
                     LastUpdatedAt = DateTime.UtcNow,
@@ -58,8 +58,8 @@ public class EmbedHandler : IPipelineHandler
             }
 
             await _storage.UpsertVectorsAsync(options.Collection, points, cancellationToken);
-            pipeline.Content = null;
-            return pipeline;
+            context.Content = null;
+            return context;
         }
         else
         {

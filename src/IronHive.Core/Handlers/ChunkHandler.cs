@@ -13,12 +13,12 @@ public class ChunkHandler : IPipelineHandler
         public int ChunkSize { get; set; } = 2048;
     }
 
-    public Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
+    public Task<PipelineContext> ProcessAsync(PipelineContext context, CancellationToken cancellationToken)
     {
-        if(pipeline.Content.TryConvertTo<string>(out var content))
+        if(context.Content.TryConvertTo<string>(out var content))
         {
             var fragments = content.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-            var options = pipeline.GetCurrentOptions<Options>() ?? new Options();
+            var options = context.GetCurrentOptions<Options>() ?? new Options();
             var chunks = new List<string>();
 
             long total = 0;
@@ -41,8 +41,8 @@ public class ChunkHandler : IPipelineHandler
                 chunks.Add(sb.ToString());
             }
 
-            pipeline.Content = chunks;
-            return Task.FromResult(pipeline);
+            context.Content = chunks;
+            return Task.FromResult(context);
         }
         else
         {

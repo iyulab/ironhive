@@ -14,13 +14,17 @@ using IronHive.Storages.Qdrant;
 using IronHive.Storages.RabbitMQ;
 using IronHive.Storages.Redis;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
 var text = "Hello, World!";
 Console.WriteLine(text);
 var coll = "test";
 
-var memory = Create();
+var hive = Create();
+var worker = hive.Services.GetRequiredService<IPipelineWorker>();
+_ = worker.StartAsync(default);
+var memory = hive.Services.GetRequiredService<IMemoryService>();
 //var queue = new RabbitMQueueStorage(new RabbitMQConfig());
 
 //await queue.CreateQueueAsync("test");
@@ -42,8 +46,6 @@ var memory = Create();
 //await queue.DeleteQueueAsync("test2");
 //await queue.DeleteQueueAsync("test3");
 
-_ = memory.StartWorkerAsync();
-
 //await memory.CreateCollectionAsync(coll, "openai", "text-embedding-3-large");
 
 //await memory.MemorizeAsync(coll, new FileMemorySource
@@ -62,7 +64,7 @@ _ = memory.StartWorkerAsync();
 //{
 //    { "decode", null },
 //    { "chunk", new ChunkHandler.Options
-//    { 
+//    {
 //        ChunkSize = 8_000,
 //    }},
 //    { "qnagen", new QnAGenHandler.Options
@@ -80,13 +82,13 @@ _ = memory.StartWorkerAsync();
 
 //await Task.Delay(60_000 * 5);
 
-var docs = await memory.SearchAsync(coll, "openai", "text-embedding-3-large", "Hello, World!");
+//var docs = await memory.SearchAsync(coll, "openai", "text-embedding-3-large", "Hello, World!");
 
 await memory.DeleteCollectionAsync(coll);
 
 return;
 
-IHiveMemory Create()
+IHiveMind Create()
 {
     var o_config = new OpenAIConfig
     {
@@ -107,17 +109,22 @@ IHiveMemory Create()
         ApiKey = ""
     };
 
-    var memory = new HiveServiceBuilder()
+    var services = new ServiceCollection();
+    services.AddLogging();
+
+    var mind = new HiveServiceBuilder(services)
+        .AddDefaultFileStorages()
+        .AddDefaultFileDecoders()
+        .AddDefaultPipelineHandlers()
         .AddChatCompletionConnector("openai", new OpenAIChatCompletionConnector(o_config))
         .AddEmbeddingConnector("openai", new OpenAIEmbeddingConnector(o_config))
         .AddChatCompletionConnector("anthropic", new AnthropicChatCompletionConnector(a_config))
         .AddChatCompletionConnector("gemini", new OpenAIChatCompletionConnector(g_config))
         .AddChatCompletionConnector("iyulab", new OpenAIChatCompletionConnector(l_config))
-        .AddFileStorage("local", (sp, config) => new LocalFileStorage())
-        .WithVectorStorage(new QdrantVectorStorage(new QdrantConfig()))
         .WithQueueStorage(new RabbitMQueueStorage(new RabbitMQConfig()))
         .WithPipelineStorage(new RedisPipelineStorage(new RedisConfig()))
-        .BuildHiveMemory();
+        .WithVectorStorage(new QdrantVectorStorage(new QdrantConfig()))
+        .BuildHiveMind();
 
-    return memory;
+    return mind;
 }

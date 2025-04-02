@@ -1,90 +1,134 @@
-﻿using IronHive.Abstractions;
+﻿using Microsoft.Extensions.DependencyInjection;
 using IronHive.Abstractions.ChatCompletion;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Tools;
 
-namespace Microsoft.Extensions.DependencyInjection;
+namespace IronHive.Abstractions;
 
 /// <summary>
-/// Represents a builder for configuring the hive services.
+/// Builder interface for registering Hive services and creating a HiveMind instance.
 /// </summary>
 public interface IHiveServiceBuilder
 {
+    #region AI Services
+
     /// <summary>
-    /// Adds a chat completion connector to the hive service store.
+    /// Registers a chat completion connector in the Hive service store.
     /// </summary>
+    /// <param name="serviceKey">
+    /// A unique key used to identify the service provider for chat completion.
+    /// </param>
+    /// <param name="connector">The chat completion connector implementation.</param>
     IHiveServiceBuilder AddChatCompletionConnector(
-        string serviceKey, 
+        string serviceKey,
         IChatCompletionConnector connector);
 
     /// <summary>
-    /// Adds an embedding connector to the hive service store.
+    /// Registers an embedding connector in the Hive service store.
     /// </summary>
+    /// <param name="serviceKey">
+    /// A unique key used to identify the service provider for embedding.
+    /// </param>
+    /// <param name="connector">The embedding connector implementation.</param>
     IHiveServiceBuilder AddEmbeddingConnector(
-        string serviceKey, 
+        string serviceKey,
         IEmbeddingConnector connector);
 
     /// <summary>
     /// Adds a tool handler to the service collection.
     /// </summary>
+    /// <param name="serviceKey">
+    /// A unique key used to invoke the tool service within the chat completion service.
+    /// </param>
+    /// <param name="lifetime">
+    /// The service's lifetime. Ensure compatibility with other registered services.
+    /// </param>
+    /// <param name="implementationFactory">
+    /// A factory method to create the tool handler.
+    /// The first parameter is the service provider and the second is the service key.
+    /// If null, the default implementation is used.
+    /// </param>
     IHiveServiceBuilder AddToolHandler<TImplementation>(
-        string serviceKey, 
-        ServiceLifetime lifetime = ServiceLifetime.Singleton, 
+        string serviceKey,
+        ServiceLifetime lifetime = ServiceLifetime.Singleton,
         Func<IServiceProvider, object?, TImplementation>? implementationFactory = null)
         where TImplementation : class, IToolHandler;
 
+    #endregion
+
+    #region Memory Services
+
     /// <summary>
-    /// Adds a queue storage to the service collection as a singleton.
+    /// Registers a queue storage as a singleton in the service collection.
+    /// Only one queue storage can be registered; a new registration replaces the previous one.
     /// </summary>
     IHiveServiceBuilder WithQueueStorage(IQueueStorage storage);
 
     /// <summary>
-    /// Adds a cache storage to the service collection as a singleton.
+    /// Registers a pipeline storage as a singleton in the service collection.
+    /// Only one pipeline storage can be registered; a new registration replaces the previous one.
     /// </summary>
     IHiveServiceBuilder WithPipelineStorage(IPipelineStorage storage);
 
     /// <summary>
-    /// Adds a vector storage to the service collection as a singleton.
+    /// Registers a vector storage as a singleton in the service collection.
+    /// Only one vector storage can be registered; a new registration replaces the previous one.
     /// </summary>
     IHiveServiceBuilder WithVectorStorage(IVectorStorage storage);
 
     /// <summary>
-    /// Adds a pipline handler to the service collection.
+    /// Adds a pipeline handler to the service collection.
     /// </summary>
+    /// <param name="serviceKey">
+    /// A unique key used as the pipeline step name in the memory service.
+    /// </param>
+    /// <param name="lifetime">
+    /// The service's lifetime. Ensure compatibility with other registered services.
+    /// </param>
+    /// <param name="implementationFactory">
+    /// A factory method to create the pipeline handler.
+    /// The first parameter is the service provider and the second is the service key.
+    /// If null, the default implementation is used.
+    /// </param>
     IHiveServiceBuilder AddPipelineHandler<TImplementation>(
-        string serviceKey, 
-        ServiceLifetime lifetime = ServiceLifetime.Singleton, 
+        string serviceKey,
+        ServiceLifetime lifetime = ServiceLifetime.Singleton,
         Func<IServiceProvider, object?, TImplementation>? implementationFactory = null)
         where TImplementation : class, IPipelineHandler;
 
+    #endregion
+
+    #region File Services
+
     /// <summary>
-    /// Adds a file storage factory to the service collection as a singleton.
+    /// Registers a file storage factory as a singleton in the service collection.
     /// </summary>
+    /// <param name="serviceKey">
+    /// A unique key used to identify the file storage provider in the file service.
+    /// </param>
+    /// <param name="implementationFactory">
+    /// A factory method to create the file storage.
+    /// The first parameter is the service provider and the second is a user-defined configuration object.
+    /// If null, the default implementation is used.
+    /// </param>
     IHiveServiceBuilder AddFileStorage<TImplementation>(
         string serviceKey,
-        Func<IServiceProvider, object?, TImplementation> implementationFactory)
+        Func<IServiceProvider, object?, TImplementation>? implementationFactory = null)
         where TImplementation : class, IFileStorage;
-    
+
     /// <summary>
-    /// Adds multiple file decoders to the service collection as a singleton.
+    /// Registers one or more file decoders as a singleton in the service collection.
+    /// Note: The order of decoders matters; the first decoder that supports the file type will be used.
     /// </summary>
     IHiveServiceBuilder AddFileDecoder(IFileDecoder decoder);
 
-
-
-
-
-
+    #endregion
 
     /// <summary>
-    /// Create the hive mind object.
+    /// Creates a standalone HiveMind instance.
+    /// Use this method when not employing the service collection.
     /// </summary>
     IHiveMind BuildHiveMind();
-
-    /// <summary>
-    /// Create the hive memory object.
-    /// </summary>
-    IHiveMemory BuildHiveMemory();
 }

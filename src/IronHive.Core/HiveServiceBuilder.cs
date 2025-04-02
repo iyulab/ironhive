@@ -9,11 +9,11 @@ using IronHive.Abstractions.Files;
 using IronHive.Core.Services;
 using IronHive.Core.Storages;
 using IronHive.Storages.LiteDB;
-using IronHive.Core.Handlers;
-using IronHive.Core.Decoders;
+using System.Diagnostics;
 
 namespace IronHive.Core;
 
+/// <inheritdoc />
 public class HiveServiceBuilder : IHiveServiceBuilder
 {
     private readonly IServiceCollection _services;
@@ -23,7 +23,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     {
         _services = services ?? new ServiceCollection();
         _store = store ?? new HiveServiceStore();
-        _services.AddSingleton<IHiveServiceStore>(_store);
+        AddRequiredServices();
     }
 
     /// <inheritdoc />
@@ -93,10 +93,11 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     /// <inheritdoc />
     public IHiveServiceBuilder AddFileStorage<TImplementation>(
         string serviceKey, 
-        Func<IServiceProvider, object?, TImplementation> storageFactory)
+        Func<IServiceProvider, object?, TImplementation>? implementationFactory = null)
         where TImplementation : class, IFileStorage
     {
-        _store.AddFactory<IFileStorage>(serviceKey, storageFactory);
+        implementationFactory ??= (sp, _) => ActivatorUtilities.CreateInstance<TImplementation>(sp);
+        _store.AddFactory<IFileStorage>(serviceKey, implementationFactory);
         return this;
     }
 
@@ -107,74 +108,47 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         return this;
     }
 
-    /*********************************************************************************
-     * 
-     *  메서드 테스트 코드
-     * 
-     *********************************************************************************/
-
     /// <inheritdoc />
     public IHiveMind BuildHiveMind()
     {
-        // 기본 서비스 등록
-        _services.TryAddSingleton<IChatCompletionService, ChatCompletionService>();
-        _services.TryAddSingleton<IEmbeddingService, EmbeddingService>();
-        _services.TryAddSingleton<IToolHandlerManager, ToolHandlerManager>();
+        // 선택 서비스 등록 확인
+        if (!ContainsAny<IChatCompletionConnector>())
+            Debug.WriteLine("ChatCompletionConnector is not registered. Chat Completion will not work.");
+        if (!ContainsAny<IEmbeddingConnector>())
+            Debug.WriteLine("EmbeddingConnector is not registered. Embedding will not work.");
+        if (!ContainsAny<IFileStorage>())
+            Debug.WriteLine("FileStorage is not registered. File Service will not work.");
+        if (!ContainsAny<IToolHandler>())
+            Debug.WriteLine("ToolHandler is not registered. Chat Completion Tool Service will not work.");
+        if (!ContainsAny<IFileDecoder>())
+            Debug.WriteLine("FileDecoder is not registered. File Service will not work.");
+        if (!ContainsAny<IPipelineHandler>())
+            Debug.WriteLine("PipelineHandler is not registered. Memory Pipeline will not work.");
 
         var provider = _services.BuildServiceProvider();
         return new HiveMind(provider);
     }
 
-    /// <inheritdoc />
-    public IHiveMemory BuildHiveMemory()
+    // 기본 필수 서비스 등록
+    private void AddRequiredServices()
     {
-        // 기본 서비스
+        // Connectors, FileStorage 인스턴스 컨테이너
+        _services.AddSingleton<IHiveServiceStore>(_store);
+        // AI 서비스
         _services.TryAddSingleton<IChatCompletionService, ChatCompletionService>();
         _services.TryAddSingleton<IEmbeddingService, EmbeddingService>();
         _services.TryAddSingleton<IToolHandlerManager, ToolHandlerManager>();
+        // File 서비스
         _services.TryAddSingleton<IFileStorageManager, FileStorageManager>();
-
-        // Storage Services
-        if (!EnsureService<IQueueStorage>())
-            WithQueueStorage(new LocalQueueStorage());
-        if (!EnsureService<IPipelineStorage>())
-            WithPipelineStorage(new LocalPipelineStorage());
-        if (!EnsureService<IVectorStorage>())
-            WithVectorStorage(new LiteDBVectorStorage());
-
-        // File Decoders
-        AddFileDecoder(new TextDecoder());
-        AddFileDecoder(new WordDecoder());
-        AddFileDecoder(new PDFDecoder());
-        AddFileDecoder(new PPTDecoder());
-        AddFileDecoder(new ImageDecoder());
-
-        // Pipeline Handlers
-        AddPipelineHandler<DecodeHandler>("decode");
-        AddPipelineHandler<ChunkHandler>("chunk");
-        AddPipelineHandler<QnAGenHandler>("qnagen");
-        AddPipelineHandler<EmbedHandler>("embed");
-
-        var provider = _services.BuildServiceProvider();
-        return new HiveMemory(provider)
-        { 
-            QueueName = "pipeline"
-        };
-    }
-
-    // 필요 서비스 나열 (사용 X, 확인용)
-    public IHiveServiceBuilder ListBaseServices()
-    {
-        _services.TryAddSingleton<IHiveMind, HiveMind>();
-        _services.TryAddSingleton<IChatCompletionService, ChatCompletionService>();
-        _services.TryAddSingleton<IEmbeddingService, EmbeddingService>();
-        _services.TryAddSingleton<IToolHandlerManager, ToolHandlerManager>();
-
-        _services.TryAddSingleton<IHiveMemory, HiveMemory>();
-        _services.TryAddSingleton<IFileStorageManager, FileStorageManager>();
+        _services.TryAddSingleton<IFileDecoderResolver, FileDecoderResolver>();
+        // 메모리 서비스
+        _services.TryAddSingleton<IMemoryService, MemoryService>();
+        _services.TryAddSingleton<IQueueStorage, LocalQueueStorage>();
+        _services.TryAddSingleton<IPipelineStorage, LocalPipelineStorage>();
+        _services.TryAddSingleton<IVectorStorage, LocalVectorStorage>();
+        // 메모리 파이프라인 서비스
         _services.TryAddSingleton<IPipelineWorker, PipelineWorker>();
-
-        return this;
+        _services.TryAddSingleton<IPipelineEventHandler, PipelineEventHandler>();
     }
 
     // Keyed Service 등록 로직 처리
@@ -213,7 +187,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     }
 
     // 서비스 등록 확인
-    private bool EnsureService<TService>()
+    private bool ContainsAny<TService>()
     {
         var serviceType = typeof(TService);
 

@@ -6,12 +6,12 @@ using IronHive.Core.Storages;
 
 namespace IronHive.Storages.LiteDB;
 
-public partial class LiteDBVectorStorage : IVectorStorage
+public partial class LocalVectorStorage : IVectorStorage
 {
     private static readonly Regex _pattern = new Regex(@"^[A-Za-z][A-Za-z0-9_]*$", RegexOptions.Compiled);
     private readonly LiteDatabase _db;
 
-    public LiteDBVectorStorage(string? databasePath = null)
+    public LocalVectorStorage(string? databasePath = null)
     {
         databasePath ??= LocalStorageConfig.DefaultVectorStoragePath;
         _db = CreateLiteDatabase(databasePath);

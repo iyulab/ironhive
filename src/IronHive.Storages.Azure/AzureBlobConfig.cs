@@ -2,7 +2,7 @@
 using Azure.Identity;
 using System.Text.Json.Serialization;
 
-namespace IronHive.Storages.AzureBlob;
+namespace IronHive.Storages.Azure;
 
 /// <summary>
 /// Represents the various authentication types that can be used to connect to Azure Blob storage.

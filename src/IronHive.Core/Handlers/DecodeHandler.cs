@@ -12,26 +12,35 @@ public class DecodeHandler : IPipelineHandler
         _manager = manager;
     }
 
-    public async Task<DataPipeline> ProcessAsync(DataPipeline pipeline, CancellationToken cancellationToken)
+    public async Task<PipelineContext> ProcessAsync(PipelineContext context, CancellationToken cancellationToken)
     {
-        var source = pipeline.Source;
+        var source = context.Source;
         if (source is TextMemorySource textSource)
         {
             var text = textSource.Text;
-            pipeline.Content = text;
-            return pipeline;
+            context.Content = text;
+            return context;
         }
         else if (source is FileMemorySource fileSource)
         {
-            var text = await _manager.DecodeAsync(
-                fileSource,
+            var text = await _manager.DecodeFileAsync(
+                provider: fileSource.Provider,
+                filePath: fileSource.FilePath,
+                providerConfig: fileSource.ProviderConfig,
                 cancellationToken: cancellationToken);            
-            pipeline.Content = text;
-            return pipeline;
+            context.Content = text;
+            return context;
+        }
+        else if (source is WebMemorySource webSource)
+        {
+            using var client = new HttpClient();
+            var text = await client.GetStringAsync(webSource.Url, cancellationToken);
+            context.Content = text;
+            return context;
         }
         else
         {
-            throw new InvalidOperationException("Unsupported source type.");
+            throw new NotSupportedException($"Unsupported source type: {source.GetType().Name}");
         }
     }
 }

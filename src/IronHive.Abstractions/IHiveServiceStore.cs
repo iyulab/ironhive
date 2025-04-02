@@ -7,7 +7,7 @@ namespace IronHive.Abstractions;
 /// </summary>
 public interface IHiveServiceStore
 {
-    // Service 인스턴스 관련 메서드들
+    #region Service 인스턴스 관련 메서드들
 
     /// <summary>
     /// 등록된 모든 서비스 인스턴스를 반환합니다.
@@ -52,8 +52,9 @@ public interface IHiveServiceStore
     /// </summary>
     bool ContainsService<TService>(string key);
 
+    #endregion
 
-    // Factory 함수 관련 메서드들
+    #region Factory 함수 관련 메서드들
 
     /// <summary>
     /// 등록된 모든 서비스 팩토리를 반환합니다.
@@ -97,4 +98,6 @@ public interface IHiveServiceStore
     /// 지정한 키로 등록된 서비스 팩토리가 존재하는지 확인합니다.
     /// </summary>
     bool ContainsFactory<TService>(string key);
+
+    #endregion
 }

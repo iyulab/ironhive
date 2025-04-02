@@ -5,10 +5,10 @@ public interface IPipelineHandler
     /// <summary>
     /// Process the given pipeline asynchronously.
     /// </summary>
-    /// <param name="pipeline">The data pipeline to be processed.</param>
+    /// <param name="context">The data pipeline to be processed.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>A task that represents the asynchronous operation. The task result contains the processed <see cref="DataPipeline"/>.</returns>
-    Task<DataPipeline> ProcessAsync(
-        DataPipeline pipeline,
+    /// <returns>A task that represents the asynchronous operation. The task result contains the processed <see cref="PipelineContext"/>.</returns>
+    Task<PipelineContext> ProcessAsync(
+        PipelineContext context,
         CancellationToken cancellationToken = default);
 }

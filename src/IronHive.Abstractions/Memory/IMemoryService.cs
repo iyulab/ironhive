@@ -1,13 +1,7 @@
-﻿using IronHive.Abstractions.Memory;
+﻿namespace IronHive.Abstractions.Memory;
 
-namespace IronHive.Abstractions;
-
-public interface IHiveMemory
+public interface IMemoryService
 {
-    Task StartWorkerAsync();
-
-    Task StopWorkerAsync();
-
     Task<IEnumerable<string>> ListCollectionsAsync(
         string? prefix = null,
         CancellationToken cancellationToken = default);
@@ -24,11 +18,6 @@ public interface IHiveMemory
 
     Task DeleteCollectionAsync(
         string collectionName,
-        CancellationToken cancellationToken = default);
-
-    Task<DataPipeline> GetIngestionStatusAsync(
-        string collectionName,
-        string sourceId,
         CancellationToken cancellationToken = default);
 
     Task MemorizeAsync(

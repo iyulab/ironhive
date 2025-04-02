@@ -3,7 +3,7 @@ using Azure.Storage;
 using Azure.Storage.Blobs;
 using IronHive.Abstractions.Files;
 
-namespace IronHive.Storages.AzureBlob;
+namespace IronHive.Storages.Azure;
 
 public class AzureBlobFileStorage : IFileStorage
 {

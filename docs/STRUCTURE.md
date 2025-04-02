@@ -1,20 +1,43 @@
 # STRUCTURE
 
-## Class Map
+## Service Classification
 
-- IChatCompletionService        => Singleton
-- IEmbeddingService             => Singleton
-- IHiveServiceStore             => Singleton
-  - IChatCompletionConnector[]  => Instance
-  - IEmbeddingConnector[]       => Instance
-- IToolManager                  => Singleton
-  - ITool[]                     => Singleton | Scoped | Transient
+### Root Service
+- IHiveMind
 
-- IMemoryService                => Singleton
-- IVectorStorage                => Singleton
-- IQueueStorage                 => Singleton
-- IFileStorageManger            => Singleton
-  - IFileReader                 => Singleton
-  - IFileStorage                => Scoped | Transient
-- IPipelineOrchestrator         => Singleton
-  - IPipelineHandler            => Singleton | Scoped | Transient
+### Common Services(Important)
+- IHiveServiceStore             => Singleton!                                     => Required
+  - IChatCompletionConnector[]  => Instance                                       => Optional
+  - IEmbeddingConnector[]       => Instance                                       => Optional
+  - IFileStorage[]              => Factory Instance                               => Optional
+
+### AI Services
+- IChatCompletionService        => Singleton!                                     => Required
+  - IHiveServiceStore           => Singleton!                                     => Required
+  - IToolHandlerManager         => Singleton!                                     => Required
+    - IServiceProvider          => SYSTEM                                         => For Handler
+    - IToolHandler[]            => Singleton | Scoped | Transient                 => Optional
+- IEmbeddingService             => Singleton!                                     => Required
+  - IHiveServiceStore           => Singleton!                                     => Required
+
+### File Services
+- IFileStorageManger            => Singleton!                                     => Required
+  - IServiceProvider            => SYSTEM                                         => For Factory Store
+  - IHiveServiceStore           => Singleton!                                     => Required
+  - IFileDecoderResolver        => Singleton!                                     => Required
+    - IFileDecoder[]            => Singleton!                                     => Optional
+  
+### Memory Services
+- IMemoryService                => Singleton!                                     => Required
+  - IQueueStorage               => Singleton!                                     => Required
+  - IPipelineStorage            => Singleton!                                     => Required
+  - IVectorStorage              => Singleton!                                     => Required
+  - IEmbeddingService           => Singleton!                                     => Required
+
+### Memory Worker Services
+- IPipelineWorker               => Instance
+  - IServiceProvider            => SYSTEM                                         => For Handler
+  - IPipelineHandler[]          => Singleton | Scoped | Transient                 => Optional
+  - IQueueStorage               => Singleton!                                     => Required
+  - IPipelineStorage            => Singleton!                                     => Required
+  - IPipelineEventHandler       => Singleton!                                     => Required

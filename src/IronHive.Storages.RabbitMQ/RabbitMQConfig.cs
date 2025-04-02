@@ -1,6 +1,4 @@
-﻿using System.Text;
-
-namespace IronHive.Storages.RabbitMQ;
+﻿namespace IronHive.Storages.RabbitMQ;
 
 public class RabbitMQConfig
 {
@@ -13,11 +11,6 @@ public class RabbitMQConfig
     /// 연결을 위한 TCP 포트, 예: 5672
     /// </summary>
     public int Port { get; set; } = 5672;
-
-    /// <summary>
-    /// 작업 관리 인터페이스를 위한 TCP 포트, 예: 15672
-    /// </summary>
-    public int ManagementPort { get; set; } = 15672;
 
     /// <summary>
     /// 인증에 사용할 사용자 이름
@@ -45,4 +38,9 @@ public class RabbitMQConfig
     /// SSL 사용 여부
     /// </summary>
     public bool SslEnabled { get; set; }
+
+    /// <summary>
+    /// 사용할 Queue 이름
+    /// </summary>
+    public string QueueName { get; set; } = "memory";
 }

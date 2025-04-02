@@ -1,4 +1,7 @@
-﻿namespace IronHive.Storages.Redis;
+﻿using System.Text.Json;
+using System.Text.Json.Serialization;
+
+namespace IronHive.Storages.Redis;
 
 /// <summary>
 /// Redis 연결을 위한 설정 클래스입니다.
@@ -70,4 +73,14 @@ public class RedisConfig
     /// 연결에 사용할 클라이언트 이름입니다.
     /// </summary>
     public string? ClientName { get; set; }
+
+    /// <summary>
+    /// 값 시리얼라이즈시 사용하는 JsonSerializerOptions입니다.
+    /// <summary>
+    public JsonSerializerOptions JsonOptions { get; set; } = new JsonSerializerOptions
+    {
+        WriteIndented = false,
+        PropertyNameCaseInsensitive = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
 }

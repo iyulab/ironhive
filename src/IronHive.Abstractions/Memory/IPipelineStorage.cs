@@ -9,7 +9,7 @@ public interface IPipelineStorage : IDisposable
     /// <summary>
     /// 모든 파이프라인을 불러옵니다.
     /// </summary>
-    Task<IEnumerable<DataPipeline>> ListAsync(
+    Task<IEnumerable<PipelineContext>> ListAsync(
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -22,7 +22,7 @@ public interface IPipelineStorage : IDisposable
     /// <summary>
     /// 지정된 id에 해당하는 파이프라인을 불러옵니다.
     /// </summary>
-    Task<DataPipeline> GetAsync(
+    Task<PipelineContext> GetAsync(
         string id,
         CancellationToken cancellationToken = default);
 
@@ -30,7 +30,7 @@ public interface IPipelineStorage : IDisposable
     /// 파이프라인을 저장합니다.
     /// </summary>
     Task SetAsync(
-        DataPipeline pipeline,
+        PipelineContext pipeline,
         CancellationToken cancellationToken = default);
 
     /// <summary>

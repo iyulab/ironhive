@@ -13,6 +13,8 @@ public class HiveServiceStore : IHiveServiceStore
     // 서비스 팩토리 함수를 저장하는 ConcurrentDictionary입니다.
     private readonly ConcurrentDictionary<Type, ConcurrentDictionary<string, Delegate>> _factories = new();
 
+    #region Service 인스턴스 관련 메서드들
+
     /// <inheritdoc />
     public IReadOnlyDictionary<string, TService> GetServices<TService>()
     {
@@ -21,16 +23,6 @@ public class HiveServiceStore : IHiveServiceStore
             return serviceDict.ToDictionary(kvp => kvp.Key, kvp => (TService)kvp.Value);
         }
         return new Dictionary<string, TService>();
-    }
-
-    /// <inheritdoc />
-    public IReadOnlyDictionary<string, Func<IServiceProvider, object?, TService>> GetFactories<TService>()
-    {
-        if (_factories.TryGetValue(typeof(TService), out var factoryDict))
-        {
-            return factoryDict.ToDictionary(kvp => kvp.Key, kvp => (Func<IServiceProvider, object?, TService>)kvp.Value);
-        }
-        return new Dictionary<string, Func<IServiceProvider, object?, TService>>();
     }
 
     /// <inheritdoc />
@@ -48,6 +40,70 @@ public class HiveServiceStore : IHiveServiceStore
     }
 
     /// <inheritdoc />
+    public TService GetService<TService>(string key)
+    {
+        ValidateKey(key);
+        if (TryGetService<TService>(key, out var service))
+            return service;
+
+        throw new KeyNotFoundException($"타입 {typeof(TService).FullName}의 '{key}' 서비스가 존재하지 않습니다.");
+    }
+
+    /// <inheritdoc />
+    public bool TryAddService<TService>(string key, TService instance)
+    {
+        if (instance == null)
+            throw new ArgumentNullException(nameof(instance));
+
+        ValidateKey(key);
+        var serviceDict = GetOrAddDictionary(_instances, typeof(TService));
+        return serviceDict.TryAdd(key, instance);
+    }
+
+    /// <inheritdoc />
+    public void AddService<TService>(string key, TService instance)
+    {
+        if (!TryAddService(key, instance))
+            throw new ArgumentException($"타입 {typeof(TService).FullName}의 '{key}' 서비스는 이미 등록되어 있습니다.", nameof(key));
+    }
+
+    /// <inheritdoc />
+    public bool TryRemoveService<TService>(string key)
+    {
+        ValidateKey(key);
+        if (_instances.TryGetValue(typeof(TService), out var serviceDict))
+            return serviceDict.TryRemove(key, out _);
+        return false;
+    }
+
+    /// <inheritdoc />
+    public void RemoveService<TService>(string key)
+    {
+        TryRemoveService<TService>(key);
+    }
+
+    /// <inheritdoc />
+    public bool ContainsService<TService>(string key)
+    {
+        ValidateKey(key);
+        return _instances.TryGetValue(typeof(TService), out var serviceDict) && serviceDict.ContainsKey(key);
+    }
+
+    #endregion
+
+    #region Factory 함수 관련 메서드들
+
+    /// <inheritdoc />
+    public IReadOnlyDictionary<string, Func<IServiceProvider, object?, TService>> GetFactories<TService>()
+    {
+        if (_factories.TryGetValue(typeof(TService), out var factoryDict))
+        {
+            return factoryDict.ToDictionary(kvp => kvp.Key, kvp => (Func<IServiceProvider, object?, TService>)kvp.Value);
+        }
+        return new Dictionary<string, Func<IServiceProvider, object?, TService>>();
+    }
+
+    /// <inheritdoc />
     public bool TryGetFactory<TService>(string key, [MaybeNullWhen(false)] out Func<IServiceProvider, object?, TService> factory)
     {
         ValidateKey(key);
@@ -59,16 +115,6 @@ public class HiveServiceStore : IHiveServiceStore
             return true;
         }
         return false;
-    }
-
-    /// <inheritdoc />
-    public TService GetService<TService>(string key)
-    {
-        ValidateKey(key);
-        if (TryGetService<TService>(key, out var service))
-            return service;
-
-        throw new KeyNotFoundException($"타입 {typeof(TService).FullName}의 '{key}' 서비스가 존재하지 않습니다.");
     }
 
     /// <inheritdoc />
@@ -84,17 +130,6 @@ public class HiveServiceStore : IHiveServiceStore
     }
 
     /// <inheritdoc />
-    public bool TryAddService<TService>(string key, TService instance)
-    {
-        if (instance == null)
-            throw new ArgumentNullException(nameof(instance));
-
-        ValidateKey(key);
-        var serviceDict = GetOrAddDictionary(_instances, typeof(TService));
-        return serviceDict.TryAdd(key, instance);
-    }
-
-    /// <inheritdoc />
     public bool TryAddFactory<TService>(string key, Func<IServiceProvider, object?, TService> factory)
     {
         if (factory == null)
@@ -106,26 +141,10 @@ public class HiveServiceStore : IHiveServiceStore
     }
 
     /// <inheritdoc />
-    public void AddService<TService>(string key, TService instance)
-    {
-        if (!TryAddService(key, instance))
-            throw new ArgumentException($"타입 {typeof(TService).FullName}의 '{key}' 서비스는 이미 등록되어 있습니다.", nameof(key));
-    }
-
-    /// <inheritdoc />
     public void AddFactory<TService>(string key, Func<IServiceProvider, object?, TService> factory)
     {
         if (!TryAddFactory(key, factory))
             throw new ArgumentException($"타입 {typeof(TService).FullName}의 '{key}' 서비스 팩토리는 이미 등록되어 있습니다.", nameof(key));
-    }
-
-    /// <inheritdoc />
-    public bool TryRemoveService<TService>(string key)
-    {
-        ValidateKey(key);
-        if (_instances.TryGetValue(typeof(TService), out var serviceDict))
-            return serviceDict.TryRemove(key, out _);
-        return false;
     }
 
     /// <inheritdoc />
@@ -138,22 +157,9 @@ public class HiveServiceStore : IHiveServiceStore
     }
 
     /// <inheritdoc />
-    public void RemoveService<TService>(string key)
-    {
-        TryRemoveService<TService>(key);
-    }
-
-    /// <inheritdoc />
     public void RemoveFactory<TService>(string key)
     {
         TryRemoveFactory<TService>(key);
-    }
-
-    /// <inheritdoc />
-    public bool ContainsService<TService>(string key)
-    {
-        ValidateKey(key);
-        return _instances.TryGetValue(typeof(TService), out var serviceDict) && serviceDict.ContainsKey(key);
     }
 
     /// <inheritdoc />
@@ -162,6 +168,8 @@ public class HiveServiceStore : IHiveServiceStore
         ValidateKey(key);
         return _factories.TryGetValue(typeof(TService), out var factoryDict) && factoryDict.ContainsKey(key);
     }
+
+    #endregion
 
     // 키 값에 대해 공통된 검증 로직을 수행합니다.
     private static void ValidateKey(string key)
