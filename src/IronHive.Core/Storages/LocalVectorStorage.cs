@@ -2,9 +2,8 @@
 using IronHive.Abstractions.Memory;
 using System.Numerics.Tensors;
 using System.Text.RegularExpressions;
-using IronHive.Core.Storages;
 
-namespace IronHive.Storages.LiteDB;
+namespace IronHive.Core.Storages;
 
 public partial class LocalVectorStorage : IVectorStorage
 {
@@ -107,8 +106,8 @@ public partial class LocalVectorStorage : IVectorStorage
         if (filter != null && (filter.SourceIds.Count > 0 || filter.VectorIds.Count > 0))
         {
             query = query.Where(p =>
-                (filter.SourceIds.Count > 0 && filter.SourceIds.Contains(p.Source.Id)) ||
-                (filter.VectorIds.Count > 0 && filter.VectorIds.Contains(p.Id)));
+                filter.SourceIds.Count > 0 && filter.SourceIds.Contains(p.Source.Id) ||
+                filter.VectorIds.Count > 0 && filter.VectorIds.Contains(p.Id));
         }
 
         var results = query
@@ -126,6 +125,11 @@ public partial class LocalVectorStorage : IVectorStorage
     {
         collectionName = EnsureCollectionName(collectionName);
 
+        records = records.Select(p =>
+        {
+            p.LastUpdatedAt = DateTime.UtcNow;
+            return p;
+        });
         var coll = _db.GetCollection<VectorRecord>(collectionName);
         coll.Upsert(records);
         return Task.CompletedTask;
@@ -165,8 +169,8 @@ public partial class LocalVectorStorage : IVectorStorage
         if (filter != null && (filter.SourceIds.Count > 0 || filter.VectorIds.Count > 0))
         {
             query = query.Where(p =>
-                (filter.SourceIds.Count > 0 && filter.SourceIds.Contains(p.Source.Id)) ||
-                (filter.VectorIds.Count > 0 && filter.VectorIds.Contains(p.Id)));
+                filter.SourceIds.Count > 0 && filter.SourceIds.Contains(p.Source.Id) ||
+                filter.VectorIds.Count > 0 && filter.VectorIds.Contains(p.Id));
         }
 
         var records = query

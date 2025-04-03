@@ -1,42 +1,46 @@
-﻿using System.Text;
-using System.Text.Json;
+﻿using System.Text.Json;
 using RabbitMQ.Client;
 using IronHive.Abstractions.Memory;
-using System.Net.Http.Headers;
-using System.Threading;
-using System.Xml.Linq;
 
 namespace IronHive.Storages.RabbitMQ;
 
+/// <summary>
+/// RabbitMQ를 사용하여 큐 스토리지를 구현한 클래스입니다.
+/// </summary>
 public class RabbitMQueueStorage : IQueueStorage
 {
-    private readonly IConnection _conn;
+    private IConnection _conn;
+    private IChannel _channel;
+    private bool _isOpen => (_conn.IsOpen && _channel.IsOpen);
+
     private readonly RabbitMQConfig _config;
     private readonly string _queueName;
+    private readonly JsonSerializerOptions _jsonOptions;
 
     public RabbitMQueueStorage(RabbitMQConfig config)
     {
         _config = config;
         _queueName = config.QueueName;
-        _conn = CreateConnection(config);
+        _jsonOptions = config.JsonOptions;
+        _conn = CreateConnectionAsync(config).Result;
+        _channel = CreateChannelAsync(_conn, _config).Result;
     }
 
-    /// <inheritdoc />
     public void Dispose()
     {
         _conn?.Dispose();
+        _channel?.Dispose();
         GC.SuppressFinalize(this);
     }
 
     /// <inheritdoc />
-    public async Task EnqueueAsync(string message, CancellationToken cancellationToken = default)
+    public async Task EnqueueAsync<T>(T message, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(message))
-            throw new ArgumentNullException(nameof(message));
+        if (!_isOpen)
+            await ReConnectAsync();
 
-        var body = Encoding.UTF8.GetBytes(message);
-        using var channel = await _conn.CreateChannelAsync(cancellationToken: cancellationToken);
-        await channel.BasicPublishAsync(
+        var body = JsonSerializer.SerializeToUtf8Bytes(message, _jsonOptions);
+        await _channel.BasicPublishAsync(
             exchange: "",
             routingKey: _queueName,
             mandatory: false,
@@ -46,48 +50,77 @@ public class RabbitMQueueStorage : IQueueStorage
     }
 
     /// <inheritdoc />
-    public async Task<string?> DequeueAsync(CancellationToken cancellationToken = default)
+    public async Task<TaggedMessage<T>?> DequeueAsync<T>(CancellationToken cancellationToken = default)
     {
-        using var channel = await _conn.CreateChannelAsync(cancellationToken: cancellationToken);
-        var result = await channel.BasicGetAsync(_queueName, autoAck: false, cancellationToken);
+        if (!_isOpen)
+            await ReConnectAsync();
+
+        var result = await _channel.BasicGetAsync(_queueName, autoAck: false, cancellationToken);
         if (result == null)
-            return default;
-
-        try
         {
-            var body = result.Body.ToArray();
-            var item = Encoding.UTF8.GetString(body);
-
-            // 메시지 확인 응답
-            await channel.BasicAckAsync(result.DeliveryTag, multiple: false, cancellationToken);
-
-            return item;
+            return null;
         }
-        catch
+
+        // 큐 안에 다른 타입의 메시지가 있을 경우 일단 Throw
+        // IQueueStorage<T>로 구현 변경, 생각 해보기
+        var body = result.Body.ToArray();
+        var message = JsonSerializer.Deserialize<T>(body, _jsonOptions)
+            ?? throw new JsonException("Failed to deserialize message.");
+
+        return new TaggedMessage<T>
         {
-            // 처리 실패 시 메시지 재입력
-            await channel.BasicNackAsync(result.DeliveryTag, multiple: false, requeue: true, cancellationToken);
-            return default;
-        }
+            Message = message,
+            AckTag = result.DeliveryTag
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task AckAsync(object ackTag, CancellationToken cancellationToken = default)
+    {
+        if (!_isOpen)
+            await ReConnectAsync();
+
+        if (ackTag is not ulong rabbitTag)
+            throw new InvalidOperationException("Invalid ack tag.");
+
+        // 동일 채널의 Tag에 대해서만 Ack 처리 가능
+        await _channel.BasicAckAsync(rabbitTag, false, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task NackAsync(object ackTag, bool requeue = false, CancellationToken cancellationToken = default)
+    {
+        if (!_isOpen)
+            await ReConnectAsync();
+
+        if (ackTag is not ulong rabbitTag)
+            throw new InvalidOperationException("Invalid ack tag.");
+
+        // 동일 채널의 Tag에 대해서만 Ack 처리 가능
+        await _channel.BasicNackAsync(rabbitTag, false, requeue, cancellationToken);
     }
 
     /// <inheritdoc />
     public async Task<int> CountAsync(CancellationToken cancellationToken = default)
     {
-        using var channel = await _conn.CreateChannelAsync(cancellationToken: cancellationToken);
-        var count = await channel.MessageCountAsync(_queueName, cancellationToken);
+        if (!_isOpen)
+            await ReConnectAsync();
+
+        var count = await _channel.MessageCountAsync(_queueName, cancellationToken);
         return (int)count;
     }
 
     /// <inheritdoc />
     public async Task ClearAsync(CancellationToken cancellationToken = default)
     {
-        using var channel = await _conn.CreateChannelAsync(cancellationToken: cancellationToken);
-        await channel.QueuePurgeAsync(_queueName, cancellationToken);
+        if (!_isOpen)
+            await ReConnectAsync();
+
+        await _channel.QueuePurgeAsync(_queueName, cancellationToken);
     }
 
-    // RabbitMQ 연결 및 채널 생성
-    private IConnection CreateConnection(RabbitMQConfig config)
+    // RabbitMQ 커넥션 생성
+    private async Task<IConnection> CreateConnectionAsync(RabbitMQConfig config)
     {
         var factory = new ConnectionFactory
         {
@@ -96,25 +129,49 @@ public class RabbitMQueueStorage : IQueueStorage
             UserName = config.Username,
             Password = config.Password,
             VirtualHost = config.VirtualHost,
-            Ssl = {
-                Enabled = config.SslEnabled,
-            }
+            Ssl = { Enabled = config.SslEnabled }
         };
 
-        // 동기로 연결 및 큐 생성
-        var conn = factory.CreateConnectionAsync().GetAwaiter().GetResult();
-        var channel = conn.CreateChannelAsync().GetAwaiter().GetResult();
+        var conn = await factory.CreateConnectionAsync();
+        return conn;
+    }
+
+    // RabbitMQ 채널 생성
+    private async Task<IChannel> CreateChannelAsync(IConnection conn, RabbitMQConfig config)
+    {
+        var channel = await conn.CreateChannelAsync();
+        var args = new Dictionary<string, object?>();
+        
+        if (_config.MessageTTLSecs.HasValue && _config.MessageTTLSecs > 0)
+        {
+            // 메시지 TTL 설정, ms 단위로 변환
+            args.Add("x-message-ttl", _config.MessageTTLSecs.Value * 1_000);
+        }
+
         channel.QueueDeclareAsync(
-            queue: config.QueueName,
+            queue: _queueName,
             durable: true,
             exclusive: false,
             autoDelete: false,
-            arguments: new Dictionary<string, object?>
-            {
-                { "x-message-ttl", _config.MessageTTLSecs * 1000 } // 밀리초 단위로 변환
-            }
+            arguments: args
         ).Wait();
+        return channel;
+    }
 
-        return conn;
+    // RabbitMQ 커넥션 및 채널 재연결
+    private async Task ReConnectAsync()
+    {
+        if (!_conn.IsOpen)
+        {
+            _channel.Dispose();
+            _conn.Dispose();
+            _conn = await CreateConnectionAsync(_config);
+        }
+
+        if (!_channel.IsOpen)
+        {
+            _channel.Dispose();
+            _channel = await CreateChannelAsync(_conn, _config);
+        }
     }
 }

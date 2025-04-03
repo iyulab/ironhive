@@ -1,22 +1,43 @@
-﻿using IronHive.Abstractions.Embedding;
+﻿using IronHive.Abstractions;
+using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Memory;
 
 namespace IronHive.Core.Services;
 
-public class MemoryService : IMemoryService
+public class HiveMemory : IHiveMemory
 {
     private readonly IQueueStorage _queue;
-    private readonly IPipelineStorage _pipeline;
     private readonly IVectorStorage _vector;
     private readonly IEmbeddingService _embedding;
+    private readonly IEnumerable<IPipelineEventHandler> _events;
 
-    public MemoryService(IQueueStorage queue, IPipelineStorage pipeline, IVectorStorage vector, IEmbeddingService embedding)
+    private readonly int _dimensions;
+
+    public required string EmbedProvider { get; init; }
+    public required string EmbedModel { get; init; }
+
+    public HiveMemory(IQueueStorage queue, IVectorStorage vector, 
+        IEmbeddingService embedding,
+        IEnumerable<IPipelineEventHandler> events)
     {
         _queue = queue;
-        _pipeline = pipeline;
         _vector = vector;
         _embedding = embedding;
+        _events = events;
+        _dimensions = GetDimensions();
     }
+
+    /// <inheritdoc />
+    public async Task<IEnumerable<float>> EmbedAsync(
+        string input,
+        CancellationToken cancellationToken = default)
+        => await _embedding.EmbedAsync(EmbedProvider, EmbedModel, input, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<IEnumerable<EmbeddingResult>> EmbedBatchAsync(
+        IEnumerable<string> input, 
+        CancellationToken cancellationToken = default)
+        => _embedding.EmbedBatchAsync(EmbedProvider, EmbedModel, input, cancellationToken);
 
     /// <inheritdoc />
     public async Task<IEnumerable<string>> ListCollectionsAsync(
@@ -36,18 +57,13 @@ public class MemoryService : IMemoryService
 
     /// <inheritdoc />
     public async Task CreateCollectionAsync(
-        string collectionName, 
-        string embedProvider, 
-        string embedModel, 
+        string collectionName,
         CancellationToken cancellationToken = default)
     {
         if (await _vector.CollectionExistsAsync(collectionName, cancellationToken))
             throw new InvalidOperationException($"Collection '{collectionName}' already exists.");
 
-        var dummy = "this text is used to calculate the embedding dimensions";
-        var embedding = await _embedding.EmbedAsync(embedProvider, embedModel, dummy, cancellationToken);
-        var dimensions = embedding.Count();
-        await _vector.CreateCollectionAsync(collectionName, dimensions, cancellationToken);
+        await _vector.CreateCollectionAsync(collectionName, _dimensions, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -66,20 +82,19 @@ public class MemoryService : IMemoryService
         string collectionName, 
         IMemorySource source, 
         IEnumerable<string> steps, 
-        IDictionary<string, object>? handlerOptions = null, 
+        IDictionary<string, object?>? handlerOptions = null, 
         CancellationToken cancellationToken = default)
     {
-        var id = source.Id;
-        var pipeline = new PipelineContext
+        var request = new PipelineRequest
         {
-            Id = id,
+            Id = source.Id,
             Source = source,
             Steps = steps.ToList(),
             HandlerOptions = handlerOptions,
         };
 
-        await _queue.EnqueueAsync(id, cancellationToken);
-        await _pipeline.SetAsync(pipeline, cancellationToken);
+        await _queue.EnqueueAsync(request, cancellationToken);
+        await Task.WhenAll(_events.Select(e => e.OnQueuedAsync(request.Id)));
     }
 
     /// <inheritdoc />
@@ -88,9 +103,6 @@ public class MemoryService : IMemoryService
         string sourceId, 
         CancellationToken cancellationToken = default)
     {
-        if (await _pipeline.ContainsAsync(sourceId, cancellationToken))
-            await _pipeline.DeleteAsync(sourceId, cancellationToken);
-
         var filter = new VectorRecordFilter();
         filter.AddSourceId(sourceId);
         await _vector.DeleteVectorsAsync(collectionName, filter, cancellationToken);
@@ -98,12 +110,10 @@ public class MemoryService : IMemoryService
 
     /// <inheritdoc />
     public async Task<VectorSearchResult> SearchAsync(
-        string collectionName, 
-        string embedProvider, 
-        string embedModel, 
-        string query, 
-        float minScore = 0, 
-        int limit = 5, 
+        string collectionName,
+        string query,
+        float minScore = 0,
+        int limit = 5,
         IEnumerable<string>? sourceIds = null,
         CancellationToken cancellationToken = default)
     {
@@ -114,7 +124,7 @@ public class MemoryService : IMemoryService
             filter.AddSourceIds(sourceIds);
         }
         
-        var vector = await _embedding.EmbedAsync(embedProvider, embedModel, query, cancellationToken);
+        var vector = await EmbedAsync(query, cancellationToken);
         var records = await _vector.SearchVectorsAsync(
             collectionName: collectionName,
             vector: vector,
@@ -129,5 +139,13 @@ public class MemoryService : IMemoryService
             SearchQuery = query,
             ScoredVectors = records,
         };
+    }
+
+    // 지정된 모델의 차원을 계산합니다.
+    private int GetDimensions()
+    {
+        var dummy = "this text is used to calculate the embedding dimensions";
+        var embedding = EmbedAsync(dummy).Result;
+        return embedding.Count();
     }
 }

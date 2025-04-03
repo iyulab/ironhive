@@ -67,16 +67,15 @@ public interface IHiveServiceBuilder
     IHiveServiceBuilder WithQueueStorage(IQueueStorage storage);
 
     /// <summary>
-    /// Registers a pipeline storage as a singleton in the service collection.
-    /// Only one pipeline storage can be registered; a new registration replaces the previous one.
-    /// </summary>
-    IHiveServiceBuilder WithPipelineStorage(IPipelineStorage storage);
-
-    /// <summary>
     /// Registers a vector storage as a singleton in the service collection.
     /// Only one vector storage can be registered; a new registration replaces the previous one.
     /// </summary>
     IHiveServiceBuilder WithVectorStorage(IVectorStorage storage);
+
+    /// <summary>
+    /// Registers one or more event handlers as a singleton in the service collection.
+    /// </summary>
+    IHiveServiceBuilder AddPipelineEventHandler(IPipelineEventHandler handler);
 
     /// <summary>
     /// Adds a pipeline handler to the service collection.

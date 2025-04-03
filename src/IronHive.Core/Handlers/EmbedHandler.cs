@@ -23,9 +23,9 @@ public class EmbedHandler : IPipelineHandler
 
     public async Task<PipelineContext> ProcessAsync(PipelineContext context, CancellationToken cancellationToken)
     {
-        if (context.Content.TryConvertTo<IEnumerable<Dialogue>>(out var dialogues))
+        if (context.Payload.TryConvertTo<IEnumerable<Dialogue>>(out var dialogues))
         {
-            var options = context.GetCurrentOptions<Options>()
+            var options = context.Options.ConvertTo<Options>()
                 ?? throw new InvalidOperationException("must provide options for embeddings handler");
 
             var embeddings = await _service.EmbedBatchAsync(
@@ -58,7 +58,7 @@ public class EmbedHandler : IPipelineHandler
             }
 
             await _storage.UpsertVectorsAsync(options.Collection, points, cancellationToken);
-            context.Content = null;
+            context.Payload = null;
             return context;
         }
         else

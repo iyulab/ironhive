@@ -6,22 +6,27 @@
 public interface IPipelineEventHandler
 {
     /// <summary>
-    /// 파이프라인 시작 시 호출됩니다.
+    /// 파이프 라인이 대기 중일 때 호출됩니다.
     /// </summary>
-    Task OnStartedAsync(PipelineContext context);
+    Task OnQueuedAsync(string pipelineId);
 
     /// <summary>
-    /// 파이프라인의 각 단계에서 호출됩니다.
+    /// 파이프라인의 데이터를 처리하기 전 호출됩니다.
     /// </summary>
-    Task OnStepedAsync(PipelineContext context);
+    Task OnProcessBeforeAsync(string pipelineId, string step, PipelineContext context);
+
+    /// <summary>
+    /// 파이프라인의 데이터를 처리한 후 호출됩니다.
+    /// </summary>
+    Task OnProcessAfterAsync(string pipelineId, string step, PipelineContext context);
 
     /// <summary>
     /// 파이프라인 완료 시 호출됩니다.
     /// </summary>
-    Task OnCompletedAsync(PipelineContext context);
+    Task OnCompletedAsync(string pipelineId);
 
     /// <summary>
     /// 파이프라인 실패 시 호출됩니다.
     /// </summary>
-    Task OnFailedAsync(PipelineContext context, Exception exception);
+    Task OnFailedAsync(string pipelineId, Exception exception);
 }

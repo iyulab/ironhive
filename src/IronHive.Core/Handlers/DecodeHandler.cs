@@ -18,7 +18,7 @@ public class DecodeHandler : IPipelineHandler
         if (source is TextMemorySource textSource)
         {
             var text = textSource.Text;
-            context.Content = text;
+            context.Payload = text;
             return context;
         }
         else if (source is FileMemorySource fileSource)
@@ -28,19 +28,19 @@ public class DecodeHandler : IPipelineHandler
                 filePath: fileSource.FilePath,
                 providerConfig: fileSource.ProviderConfig,
                 cancellationToken: cancellationToken);            
-            context.Content = text;
+            context.Payload = text;
             return context;
         }
         else if (source is WebMemorySource webSource)
         {
             using var client = new HttpClient();
             var text = await client.GetStringAsync(webSource.Url, cancellationToken);
-            context.Content = text;
+            context.Payload = text;
             return context;
         }
         else
         {
-            throw new NotSupportedException($"Unsupported source type: {source.GetType().Name}");
+            throw new NotSupportedException($"Unsupported source type: {source?.GetType().Name}");
         }
     }
 }

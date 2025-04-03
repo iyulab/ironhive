@@ -4,7 +4,7 @@ namespace System.Collections.Generic;
 
 public static class DictionaryExtensions
 {
-    public static bool TryGetValue<T>(this IDictionary<string, object> dic, 
+    public static bool TryGetValue<T>(this IDictionary<string, object?> dic, 
         string key, 
         [MaybeNullWhen(false)] out T value)
     {

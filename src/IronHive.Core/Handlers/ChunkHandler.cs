@@ -15,10 +15,10 @@ public class ChunkHandler : IPipelineHandler
 
     public Task<PipelineContext> ProcessAsync(PipelineContext context, CancellationToken cancellationToken)
     {
-        if(context.Content.TryConvertTo<string>(out var content))
+        if(context.Payload.TryConvertTo<string>(out var content))
         {
             var fragments = content.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-            var options = context.GetCurrentOptions<Options>() ?? new Options();
+            var options = context.Options.ConvertTo<Options>() ?? new Options();
             var chunks = new List<string>();
 
             long total = 0;
@@ -41,7 +41,7 @@ public class ChunkHandler : IPipelineHandler
                 chunks.Add(sb.ToString());
             }
 
-            context.Content = chunks;
+            context.Payload = chunks;
             return Task.FromResult(context);
         }
         else

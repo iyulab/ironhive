@@ -6,42 +6,60 @@
 public interface IQueueStorage : IDisposable
 {
     /// <summary>
-    /// Adds an message to the queue
+    /// Adds a message to the queue
     /// </summary>
-    /// <param name="message">Message to enqueue</param>
-    Task EnqueueAsync(
-        string message,
+    Task EnqueueAsync<T>(
+        T message,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Removes and returns the first message from the queue
+    /// Attempts to dequeue a message and marks it as pending.
+    /// The message must be acknowledged to be removed permanently.
     /// </summary>
-    /// <returns>The dequeued message, or null if the queue is empty</returns>
-    Task<string?> DequeueAsync(
+    /// <returns>A pending message with a unique ID, or null if the queue is empty</returns>
+    Task<TaggedMessage<T>?> DequeueAsync<T>(
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets the current number of messages in the queue
+    /// Acknowledges a previously dequeued message, removing it from the pending state.
     /// </summary>
-    /// <returns>Number of messages in the queue</returns>
+    Task AckAsync(
+        object ackTag,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Rejects a previously dequeued message, leaving it in the queue.
+    /// </summary>
+    Task NackAsync(
+        object ackTag,
+        bool requeue = false,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the number of messages in the queue (excluding pending ones)
+    /// </summary>
     Task<int> CountAsync(
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Clears all messages from the queue
+    /// Clears all messages, including pending ones
     /// </summary>
     Task ClearAsync(
         CancellationToken cancellationToken = default);
 }
 
-//public class MessageEnqueuedEventArgs : EventArgs
-//{
-//    public string QueueName { get; }
-//    public string Message { get; }
+/// <summary>
+/// Represents a message in the queue
+/// </summary>
+public class TaggedMessage<T>
+{
+    /// <summary>
+    /// Actual message payload
+    /// </summary>
+    public required T Message { get; set; }
 
-//    public MessageEnqueuedEventArgs(string queueName, string message)
-//    {
-//        QueueName = queueName;
-//        Message = message;
-//    }
-//}
+    /// <summary>
+    /// Acknowledgment tag for the message
+    /// </summary>
+    public object? AckTag { get; set; }
+}

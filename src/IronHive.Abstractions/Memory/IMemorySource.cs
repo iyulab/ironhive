@@ -43,7 +43,7 @@ public class FileMemorySource : MemorySourceBase
 
     public string? MimeType { get; set; }
 
-    public long? Size { get; set; }
+    public long? FileSize { get; set; }
 }
 
 /// <summary>

@@ -1,0 +1,126 @@
+﻿using IronHive.Abstractions;
+using IronHive.Abstractions.Memory;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace IronHive.Core.Services;
+
+public class HivePipelineWorker : IHiveWorker<PipelineRequest>
+{
+    private readonly IServiceProvider _services;
+    private readonly IQueueStorage _queue;
+    private readonly IEnumerable<IPipelineEventHandler> _events;
+
+    private int _runningFlag = 0;
+    private readonly SemaphoreSlim _semaphore;
+
+    public bool IsActive => _runningFlag == 1;
+
+    public required int MaxExecutionSlots { get; init; } = 5;
+
+    public int AvailableExecutionSlots => _semaphore.CurrentCount;
+
+    public required int PollingInterval { get; init; } = 1_000;
+
+    public HivePipelineWorker(IServiceProvider provider)
+    {
+        _services = provider;
+        _queue = provider.GetRequiredService<IQueueStorage>();
+        _events = provider.GetServices<IPipelineEventHandler>();
+
+        if (MaxExecutionSlots < 1)
+            throw new ArgumentOutOfRangeException(nameof(MaxExecutionSlots));
+
+        _semaphore = new SemaphoreSlim(MaxExecutionSlots, MaxExecutionSlots);
+    }
+
+    /// <inheritdoc />
+    public async Task StartAsync(CancellationToken cancellationToken)
+    {
+        if (Interlocked.Exchange(ref _runningFlag, 1) == 1)
+            return;
+
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                // 실행 가능한 슬롯이 없으면 PollingInterval 만큼 대기
+                if (_semaphore.CurrentCount == 0)
+                {
+                    await Task.Delay(PollingInterval, cancellationToken);
+                    continue;
+                }
+
+                var result = await _queue.DequeueAsync<PipelineRequest>(cancellationToken);
+                if (result == null)
+                {
+                    // 폴링 말고 구독 이벤트 방법 확인
+                    await Task.Delay(PollingInterval, cancellationToken);
+                    continue;
+                }
+
+                _ = Task.Run(async () =>
+                {
+                    await ExecuteAsync(result.Message, cancellationToken);
+                    if (result.AckTag != null)
+                    {
+                        // 처리 확인 아웃
+                        await _queue.AckAsync(result.AckTag, cancellationToken);
+                    }
+                }, cancellationToken);
+            }
+        }
+        finally
+        {
+            // 필요하면 실행 상태 해제 가능 (ex. 재시작 허용 시)
+             Interlocked.Exchange(ref _runningFlag, 0);
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task ExecuteAsync(PipelineRequest request, CancellationToken cancellationToken = default)
+    {
+        await _semaphore.WaitAsync(cancellationToken);
+        try
+        {
+            var steps = new Queue<string>(request.Steps);
+            var context = new PipelineContext(request.Source);
+            var handlerOptions = request.HandlerOptions ?? new Dictionary<string, object?>();
+
+            while (!cancellationToken.IsCancellationRequested && steps.TryDequeue(out var step))
+            {
+                if (string.IsNullOrWhiteSpace(step))
+                    continue;
+
+                using var scope = _services.CreateScope();
+                var handler = scope.ServiceProvider.GetRequiredKeyedService<IPipelineHandler>(step);
+
+                if (handlerOptions.TryGetValue(step, out var options))
+                {
+                    context.Options = options;
+                }
+
+                await InvokeAllAsync(e => e.OnProcessBeforeAsync(request.Id, step, context));
+
+                context = await handler.ProcessAsync(context, cancellationToken);
+
+                await InvokeAllAsync(e => e.OnProcessAfterAsync(request.Id, step, context));
+            }
+
+            await InvokeAllAsync(e => e.OnCompletedAsync(request.Id));
+        }
+        catch (Exception ex)
+        {
+            await InvokeAllAsync(e => e.OnFailedAsync(request.Id, ex));
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    // 이벤트들을 모두 인보크 해주는 메서드
+    private Task InvokeAllAsync(Func<IPipelineEventHandler, Task> action)
+    {
+        return Task.WhenAll(_events.Select(e => action(e)));
+    }
+}

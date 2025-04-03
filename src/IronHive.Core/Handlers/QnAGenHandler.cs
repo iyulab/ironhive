@@ -32,10 +32,10 @@ public class QnAGenHandler : IPipelineHandler
 
     public async Task<PipelineContext> ProcessAsync(PipelineContext context, CancellationToken cancellationToken)
     {
-        if (context.Content.TryConvertTo<IEnumerable<string>>(out var chunks))
+        if (context.Payload.TryConvertTo<IEnumerable<string>>(out var chunks))
         {
-            var options = context.GetCurrentOptions<Options>()
-                ?? throw new InvalidOperationException($"Must provide options for {context.CurrentStep}.");
+            var options = context.Options.ConvertTo<Options>()
+                ?? throw new InvalidOperationException($"Must provide options for {nameof(QnAGenHandler)}");
 
             var serviceOptions = new ChatCompletionOptions
             {
@@ -57,7 +57,7 @@ public class QnAGenHandler : IPipelineHandler
                     ?? throw new InvalidOperationException("No response from the chat completion service.");
                 dialogues.AddRange(ParseFrom(text));
             }
-            context.Content = dialogues;
+            context.Payload = dialogues;
 
             return context;
         }

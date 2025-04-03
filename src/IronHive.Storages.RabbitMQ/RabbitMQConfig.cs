@@ -1,26 +1,33 @@
-﻿namespace IronHive.Storages.RabbitMQ;
+﻿using System.Text.Json;
+
+namespace IronHive.Storages.RabbitMQ;
 
 public class RabbitMQConfig
 {
     /// <summary>
-    /// RabbitMQ 호스트 이름, 예: "127.0.0.1"
+    /// RabbitMQ 호스트 이름, Default: "127.0.0.1"
     /// </summary>
     public string Host { get; set; } = "localhost";
 
     /// <summary>
-    /// 연결을 위한 TCP 포트, 예: 5672
+    /// 연결을 위한 TCP 포트, Default: 5672
     /// </summary>
     public int Port { get; set; } = 5672;
 
     /// <summary>
-    /// 인증에 사용할 사용자 이름
+    /// 인증에 사용할 사용자 이름, Default: "guest"
     /// </summary>
     public string Username { get; set; } = "guest";
 
     /// <summary>
-    /// 인증에 사용할 비밀번호
+    /// 인증에 사용할 비밀번호, Default: "guest"
     /// </summary>
     public string Password { get; set; } = "guest";
+
+    /// <summary>
+    /// 사용할 Queue 이름, Default: "pipeline"
+    /// </summary>
+    public string QueueName { get; set; } = "pipeline";
 
     /// <summary>
     /// RabbitMQ 가상 호스트 이름, 예: "/"
@@ -29,18 +36,22 @@ public class RabbitMQConfig
     public string VirtualHost { get; set; } = "/";
 
     /// <summary>
-    /// 메시지의 TTL(Time-To-Live) (초 단위)
-    /// 기본값: 3600초 (1시간)
+    /// 메시지의 TTL(Time-To-Live) (초 단위 설정)    
     /// </summary>
-    public int MessageTTLSecs { get; set; } = 3_600;
+    public int? MessageTTLSecs { get; set; }
 
     /// <summary>
     /// SSL 사용 여부
     /// </summary>
-    public bool SslEnabled { get; set; }
+    public bool SslEnabled { get; set; } = false;
 
     /// <summary>
-    /// 사용할 Queue 이름
+    /// Queue 메시지를 JSON으로 직렬화할 때 사용할 옵션
     /// </summary>
-    public string QueueName { get; set; } = "memory";
+    public JsonSerializerOptions JsonOptions { get; set; } = new JsonSerializerOptions
+    {
+        PropertyNameCaseInsensitive = true,
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+        WriteIndented = false,
+    };
 }

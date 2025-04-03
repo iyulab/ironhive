@@ -5,6 +5,12 @@
 ### Root Service
 - IHiveMind
 
+### 파생 서비스
+- IHiveSession
+  - IHiveAgent[]
+- IHiveMemory
+- IHiveWorker<T>
+
 ### Common Services(Important)
 - IHiveServiceStore             => Singleton!                                     => Required
   - IChatCompletionConnector[]  => Instance                                       => Optional
@@ -28,16 +34,8 @@
     - IFileDecoder[]            => Singleton!                                     => Optional
   
 ### Memory Services
-- IMemoryService                => Singleton!                                     => Required
-  - IQueueStorage               => Singleton!                                     => Required
-  - IPipelineStorage            => Singleton!                                     => Required
-  - IVectorStorage              => Singleton!                                     => Required
-  - IEmbeddingService           => Singleton!                                     => Required
-
-### Memory Worker Services
-- IPipelineWorker               => Instance
-  - IServiceProvider            => SYSTEM                                         => For Handler
-  - IPipelineHandler[]          => Singleton | Scoped | Transient                 => Optional
-  - IQueueStorage               => Singleton!                                     => Required
-  - IPipelineStorage            => Singleton!                                     => Required
-  - IPipelineEventHandler       => Singleton!                                     => Required
+- IQueueStorage               => Singleton!                                     => Required
+- IVectorStorage              => Singleton!                                     => Required
+- IEmbeddingService           => Singleton!                                     => Required
+- IPipelineEventHandler       => Singleton!                                     => Required??
+- IPipelineHandler[]          => Singleton | Scoped | Transient                 => Optional

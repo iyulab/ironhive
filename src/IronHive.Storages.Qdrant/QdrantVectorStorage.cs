@@ -165,6 +165,7 @@ public class QdrantVectorStorage : IVectorStorage
         var points = new List<PointStruct>();
         foreach (var record in records)
         {
+            record.LastUpdatedAt = DateTime.UtcNow;
             var payload = ConvertRecordToPayload(record);
 
             points.Add(new PointStruct

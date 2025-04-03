@@ -1,50 +1,26 @@
-﻿using ConsoleTest;
-using IronHive.Abstractions;
-using IronHive.Abstractions.ChatCompletion;
-using IronHive.Abstractions.Embedding;
-using IronHive.Abstractions.Files;
+﻿using IronHive.Abstractions;
 using IronHive.Abstractions.Memory;
-using IronHive.Abstractions.Messages;
 using IronHive.Connectors.Anthropic;
 using IronHive.Connectors.OpenAI;
 using IronHive.Core;
-using IronHive.Core.Handlers;
 using IronHive.Core.Storages;
 using IronHive.Storages.Qdrant;
 using IronHive.Storages.RabbitMQ;
-using IronHive.Storages.Redis;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using System.Text.Json;
 
 var text = "Hello, World!";
 Console.WriteLine(text);
 var coll = "test";
 
 var hive = Create();
-var worker = hive.Services.GetRequiredService<IPipelineWorker>();
-_ = worker.StartAsync(default);
-var memory = hive.Services.GetRequiredService<IMemoryService>();
-//var queue = new RabbitMQueueStorage(new RabbitMQConfig());
-
-//await queue.CreateQueueAsync("test");
-//await queue.CreateQueueAsync("test2");
-//await queue.CreateQueueAsync("test3");
-
-//var queues = await queue.ListQueuesAsync();
-//foreach (var q in queues)
+//var worker = new PipelineWorker(hive.Services)
 //{
-//    Console.WriteLine(q);
-//}
+//    MaxConcurrent = 3,
+//    DelayMilliseconds = 1_000,
+//};
 
-//Console.WriteLine(await queue.ExistsQueueAsync("test"));
-//Console.WriteLine(await queue.ExistsQueueAsync("test2"));
-//Console.WriteLine(await queue.ExistsQueueAsync("test3"));
-//Console.WriteLine(await queue.ExistsQueueAsync("test4"));
-
-//await queue.DeleteQueueAsync("test");
-//await queue.DeleteQueueAsync("test2");
-//await queue.DeleteQueueAsync("test3");
+//_ = worker.StartAsync(default);
+//var memory = hive.Services.GetRequiredService<IMemoryService>();
 
 //await memory.CreateCollectionAsync(coll, "openai", "text-embedding-3-large");
 
@@ -60,7 +36,7 @@ var memory = hive.Services.GetRequiredService<IMemoryService>();
 //    "qnagen",
 //    "embed",
 //],
-//handlerOptions: new Dictionary<string, object>
+//handlerOptions: new Dictionary<string, object?>
 //{
 //    { "decode", null },
 //    { "chunk", new ChunkHandler.Options
@@ -80,11 +56,45 @@ var memory = hive.Services.GetRequiredService<IMemoryService>();
 //    }},
 //});
 
-//await Task.Delay(60_000 * 5);
+//await Task.Delay(60_000);
 
 //var docs = await memory.SearchAsync(coll, "openai", "text-embedding-3-large", "Hello, World!");
 
-await memory.DeleteCollectionAsync(coll);
+//await memory.DeleteCollectionAsync(coll);
+
+var queue = hive.Services.GetRequiredService<IQueueStorage>();
+
+await queue.EnqueueAsync("test");
+await queue.EnqueueAsync("test2");
+await queue.EnqueueAsync("test3");
+await queue.EnqueueAsync("test4");
+await queue.EnqueueAsync("test5");
+
+var count = await queue.CountAsync();
+Console.WriteLine($"Count: {count}");
+
+for (var i = 0; i < count; i++)
+{
+    var item = await queue.DequeueAsync<string>();
+    if (i == 1)
+    {
+        await queue.NackAsync(item.AckTag, requeue: true);
+        Console.WriteLine($"Nack: {item.Message}");
+    }
+    else if (i == 2)
+    {
+        await queue.NackAsync(item.AckTag, requeue: false);
+        Console.WriteLine($"Nack: {item.Message}");
+    }
+    else
+    {
+        await queue.AckAsync(item.AckTag);
+        Console.WriteLine($"Ack: {item.Message}");
+    }
+    await Task.Delay(5_000);
+}
+
+await queue.ClearAsync();
 
 return;
 
@@ -111,6 +121,7 @@ IHiveMind Create()
 
     var services = new ServiceCollection();
     services.AddLogging();
+    services.AddSingleton<IPipelineEventHandler, LogConsole>();
 
     var mind = new HiveServiceBuilder(services)
         .AddDefaultFileStorages()
@@ -122,9 +133,41 @@ IHiveMind Create()
         .AddChatCompletionConnector("gemini", new OpenAIChatCompletionConnector(g_config))
         .AddChatCompletionConnector("iyulab", new OpenAIChatCompletionConnector(l_config))
         .WithQueueStorage(new RabbitMQueueStorage(new RabbitMQConfig()))
-        .WithPipelineStorage(new RedisPipelineStorage(new RedisConfig()))
         .WithVectorStorage(new QdrantVectorStorage(new QdrantConfig()))
         .BuildHiveMind();
 
     return mind;
+}
+
+public class LogConsole : IPipelineEventHandler
+{
+    public Task OnCompletedAsync(string pipelineId)
+    {
+        Console.WriteLine($"Completed: {pipelineId}");
+        return Task.CompletedTask;
+    }
+
+    public Task OnFailedAsync(string pipelineId, Exception exception)
+    {
+        Console.WriteLine($"Failed: {pipelineId} - {exception.Message}");
+        return Task.CompletedTask;
+    }
+
+    public Task OnProcessAfterAsync(string pipelineId, string step, PipelineContext context)
+    {
+        Console.WriteLine($"After: {pipelineId} - {step}");
+        return Task.CompletedTask;
+    }
+
+    public Task OnProcessBeforeAsync(string pipelineId, string step, PipelineContext context)
+    {
+        Console.WriteLine($"Before: {pipelineId} - {step}");
+        return Task.CompletedTask;
+    }
+
+    public Task OnQueuedAsync(string pipelineId)
+    {
+        Console.WriteLine($"Queued: {pipelineId}");
+        return Task.CompletedTask;
+    }
 }

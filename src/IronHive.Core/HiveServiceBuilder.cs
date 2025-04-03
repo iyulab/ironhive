@@ -8,7 +8,6 @@ using IronHive.Abstractions;
 using IronHive.Abstractions.Files;
 using IronHive.Core.Services;
 using IronHive.Core.Storages;
-using IronHive.Storages.LiteDB;
 using System.Diagnostics;
 
 namespace IronHive.Core;
@@ -64,18 +63,17 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     }
 
     /// <inheritdoc />
-    public IHiveServiceBuilder WithPipelineStorage(IPipelineStorage storage)
+    public IHiveServiceBuilder WithVectorStorage(IVectorStorage storage)
     {
-        _services.RemoveAll<IPipelineStorage>();
+        _services.RemoveAll<IVectorStorage>();
         _services.AddSingleton(storage);
         return this;
     }
 
     /// <inheritdoc />
-    public IHiveServiceBuilder WithVectorStorage(IVectorStorage storage)
+    public IHiveServiceBuilder AddPipelineEventHandler(IPipelineEventHandler handler)
     {
-        _services.RemoveAll<IVectorStorage>();
-        _services.AddSingleton(storage);
+        _services.AddSingleton(handler);
         return this;
     }
 
@@ -116,14 +114,18 @@ public class HiveServiceBuilder : IHiveServiceBuilder
             Debug.WriteLine("ChatCompletionConnector is not registered. Chat Completion will not work.");
         if (!ContainsAny<IEmbeddingConnector>())
             Debug.WriteLine("EmbeddingConnector is not registered. Embedding will not work.");
-        if (!ContainsAny<IFileStorage>())
-            Debug.WriteLine("FileStorage is not registered. File Service will not work.");
         if (!ContainsAny<IToolHandler>())
             Debug.WriteLine("ToolHandler is not registered. Chat Completion Tool Service will not work.");
+
+        if (!ContainsAny<IFileStorage>())
+            Debug.WriteLine("FileStorage is not registered. File Service will not work.");
         if (!ContainsAny<IFileDecoder>())
             Debug.WriteLine("FileDecoder is not registered. File Service will not work.");
+
         if (!ContainsAny<IPipelineHandler>())
             Debug.WriteLine("PipelineHandler is not registered. Memory Pipeline will not work.");
+        if (!ContainsAny<IPipelineEventHandler>())
+            Debug.WriteLine("PipelineEventHandler is not registered. You can't check the pipeline work.");
 
         var provider = _services.BuildServiceProvider();
         return new HiveMind(provider);
@@ -142,13 +144,8 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         _services.TryAddSingleton<IFileStorageManager, FileStorageManager>();
         _services.TryAddSingleton<IFileDecoderResolver, FileDecoderResolver>();
         // 메모리 서비스
-        _services.TryAddSingleton<IMemoryService, MemoryService>();
         _services.TryAddSingleton<IQueueStorage, LocalQueueStorage>();
-        _services.TryAddSingleton<IPipelineStorage, LocalPipelineStorage>();
         _services.TryAddSingleton<IVectorStorage, LocalVectorStorage>();
-        // 메모리 파이프라인 서비스
-        _services.TryAddSingleton<IPipelineWorker, PipelineWorker>();
-        _services.TryAddSingleton<IPipelineEventHandler, PipelineEventHandler>();
     }
 
     // Keyed Service 등록 로직 처리

@@ -1,5 +1,4 @@
 ﻿using IronHive.Abstractions;
-using IronHive.Abstractions.Memory;
 
 namespace IronHive.Core;
 
@@ -28,23 +27,8 @@ public class HiveMind : IHiveMind
         throw new NotImplementedException();
     }
 
-    // 파이프라인 백그라운드 워커 생성
-    public IPipelineWorker CreatePipelineWorker(
-        int maxConcurrent = 1)
-    {
-        // TODO: Implement memory worker creation
-        throw new NotImplementedException();
-    }
-
-    // 벡터 DB 컬렉션 리스트
-    public IEnumerable<string> ListMemoryCollection()
-    {
-        throw new NotImplementedException();
-    }
-
-    // 메모리 서비스 반환, 컬렉션이 없으면 새로 생성
-    public IMemoryService GetMemoryCollection(
-        string collectionName,
+    // 메모리 서비스 반환
+    public IHiveMemory CreateMemory(
         string embedProvider,
         string embedModel)
     {
@@ -52,9 +36,10 @@ public class HiveMind : IHiveMind
         throw new NotImplementedException();
     }
 
-    // 벡터 DB 컬렉션 삭제
-    public Task DeleteMemoryCollection(string collectionName)
+    // 파이프라인 백그라운드 워커 생성
+    public IHiveWorker<T> CreateWorker<T>()
     {
+        // TODO: Implement memory worker creation
         throw new NotImplementedException();
     }
 }
