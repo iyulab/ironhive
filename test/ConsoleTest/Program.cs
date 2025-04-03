@@ -76,6 +76,9 @@ Console.WriteLine($"Count: {count}");
 for (var i = 0; i < count; i++)
 {
     var item = await queue.DequeueAsync<string>();
+    if (item == null)
+        break;
+
     if (i == 1)
     {
         await queue.NackAsync(item.AckTag, requeue: true);
@@ -141,6 +144,11 @@ IHiveMind Create()
 
 public class LogConsole : IPipelineEventHandler
 {
+    public Task OnStartedAsync(string sourceId)
+    {
+        throw new NotImplementedException();
+    }
+
     public Task OnCompletedAsync(string pipelineId)
     {
         Console.WriteLine($"Completed: {pipelineId}");
@@ -162,12 +170,6 @@ public class LogConsole : IPipelineEventHandler
     public Task OnProcessBeforeAsync(string pipelineId, string step, PipelineContext context)
     {
         Console.WriteLine($"Before: {pipelineId} - {step}");
-        return Task.CompletedTask;
-    }
-
-    public Task OnQueuedAsync(string pipelineId)
-    {
-        Console.WriteLine($"Queued: {pipelineId}");
         return Task.CompletedTask;
     }
 }

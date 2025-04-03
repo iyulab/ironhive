@@ -72,7 +72,7 @@ public class ServiceController : ControllerBase
             // When Canceled
             Debug.WriteLine("Canceled");
         }
-        catch(Exception ex)
+        catch(Exception)
         {
             throw;
         }

@@ -9,21 +9,17 @@ public class HiveMemory : IHiveMemory
     private readonly IQueueStorage _queue;
     private readonly IVectorStorage _vector;
     private readonly IEmbeddingService _embedding;
-    private readonly IEnumerable<IPipelineEventHandler> _events;
 
     private readonly int _dimensions;
 
     public required string EmbedProvider { get; init; }
     public required string EmbedModel { get; init; }
 
-    public HiveMemory(IQueueStorage queue, IVectorStorage vector, 
-        IEmbeddingService embedding,
-        IEnumerable<IPipelineEventHandler> events)
+    public HiveMemory(IQueueStorage queue, IVectorStorage vector, IEmbeddingService embedding)
     {
         _queue = queue;
         _vector = vector;
         _embedding = embedding;
-        _events = events;
         _dimensions = GetDimensions();
     }
 
@@ -79,22 +75,25 @@ public class HiveMemory : IHiveMemory
 
     /// <inheritdoc />
     public async Task MemorizeAsync(
-        string collectionName, 
-        IMemorySource source, 
-        IEnumerable<string> steps, 
+        string collectionName,
+        IMemorySource source,
+        IEnumerable<string> steps,
         IDictionary<string, object?>? handlerOptions = null, 
         CancellationToken cancellationToken = default)
     {
         var request = new PipelineRequest
         {
-            Id = source.Id,
             Source = source,
+            Target = new MemoryTarget
+            {
+                CollectionName = collectionName,
+                EmbedProvider = EmbedProvider,
+                EmbedModel = EmbedModel,
+            },
             Steps = steps.ToList(),
             HandlerOptions = handlerOptions,
         };
-
         await _queue.EnqueueAsync(request, cancellationToken);
-        await Task.WhenAll(_events.Select(e => e.OnQueuedAsync(request.Id)));
     }
 
     /// <inheritdoc />

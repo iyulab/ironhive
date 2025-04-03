@@ -27,6 +27,8 @@ public class LocalQueueStorage : IQueueStorage
         _pendingDirectory = Path.Combine(_queueDirectory, "pending");
         Directory.CreateDirectory(_pendingDirectory);
 
+        _timeToLive = timeToLive;
+
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
@@ -43,10 +45,10 @@ public class LocalQueueStorage : IQueueStorage
     /// <inheritdoc />
     public async Task EnqueueAsync<T>(T message, CancellationToken cancellationToken = default)
     {
-        var enqueueTicks = DateTime.UtcNow.Ticks.ToString();
-        var expirationTicks = _timeToLive.HasValue
-            ? DateTime.UtcNow.Add(_timeToLive.Value).Ticks.ToString()
-            : "infinite";
+        // 현재 UTC 시간을 기준으로 enqueueTicks를 생성합니다.
+        var enqueueTicks = DateTime.UtcNow.Ticks;
+        // TTL이 설정된 경우, 만료 시간을 계산합니다. 설정 되지 않은 경우 0으로 설정합니다.
+        var expirationTicks = _timeToLive.HasValue ? DateTime.UtcNow.Add(_timeToLive.Value).Ticks : 0;
 
         var fileName = $"{enqueueTicks}_{expirationTicks}.msg";
         var filePath = Path.Combine(_queueDirectory, fileName);
@@ -90,22 +92,20 @@ public class LocalQueueStorage : IQueueStorage
             }
 
             var expirationInfo = parts[1];
-            if (expirationInfo != "infinite")
+            if (long.TryParse(expirationInfo, out long expirationTicks))
             {
-                if (!long.TryParse(expirationInfo, out long expirationTicks))
-                {
-                    // 만료 정보가 잘못된 파일인 경우(숫자X) 삭제합니다.
-                    File.Delete(pendingFilePath);
-                    continue;
-                }
-
-                DateTime expirationTime = new DateTime(expirationTicks, DateTimeKind.Utc);
-                if (DateTime.UtcNow > expirationTime)
+                if (expirationTicks != 0 && (DateTime.UtcNow.Ticks > expirationTicks))
                 {
                     // TTL이 만료된 파일인 경우 삭제합니다.
                     File.Delete(pendingFilePath);
                     continue;
                 }
+            }
+            else
+            {
+                // 만료 정보가 잘못된 파일인 경우(숫자X) 삭제합니다.
+                File.Delete(pendingFilePath);
+                continue;
             }
 
             // 큐 안에 다른 타입의 메시지가 있을 경우 일단 Throw

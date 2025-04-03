@@ -6,9 +6,14 @@
 public class PipelineContext
 {
     /// <summary>
-    /// 파이프라인 데이터의 메인 소스입니다.
+    /// 파이프라인 데이터의 원본 소스입니다.
     /// </summary>
-    public IMemorySource? Source { get; set; }
+    public required IMemorySource Source { get; init; }
+
+    /// <summary>
+    /// 파이프라인 데이터의 저장경로입니다.
+    /// </summary>
+    public required MemoryTarget Target { get; init; }
 
     /// <summary>
     /// 파이프라인의 중간경유 데이터 입니다.
@@ -19,12 +24,4 @@ public class PipelineContext
     /// 핸들러의 옵션입니다.
     /// </summary>
     public object? Options { get; set; }
-
-    public PipelineContext()
-    { }
-
-    public PipelineContext(IMemorySource source)
-    {
-        Source = source;
-    }
 }

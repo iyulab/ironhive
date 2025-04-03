@@ -61,5 +61,5 @@ public class TaggedMessage<T>
     /// <summary>
     /// Acknowledgment tag for the message
     /// </summary>
-    public object? AckTag { get; set; }
+    public required object AckTag { get; set; }
 }

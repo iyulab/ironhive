@@ -12,7 +12,8 @@ public class TestTool : ToolHandlerBase
 
     public TestTool(IHttpContextAccessor accessor)
     {
-        _context = accessor.HttpContext;
+        _context = accessor.HttpContext
+            ?? throw new InvalidOperationException("HttpContext is not available.");
     }
 
     [FunctionTool(Name = "utc")]
@@ -89,6 +90,6 @@ public class TestTool : ToolHandlerBase
 
 public class TestToolOptions
 {
-    public string Description { get; set; }
+    public string Description { get; set; } = string.Empty;
 }
 

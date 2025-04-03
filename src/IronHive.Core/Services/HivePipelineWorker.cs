@@ -1,10 +1,9 @@
-﻿using IronHive.Abstractions;
-using IronHive.Abstractions.Memory;
+﻿using IronHive.Abstractions.Memory;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace IronHive.Core.Services;
 
-public class HivePipelineWorker : IHiveWorker<PipelineRequest>
+public class HivePipelineWorker : IPipelineWorker
 {
     private readonly IServiceProvider _services;
     private readonly IQueueStorage _queue;
@@ -80,11 +79,19 @@ public class HivePipelineWorker : IHiveWorker<PipelineRequest>
     public async Task ExecuteAsync(PipelineRequest request, CancellationToken cancellationToken = default)
     {
         await _semaphore.WaitAsync(cancellationToken);
+
+        var sourceId = request.Source.Id;
+        var steps = new Queue<string>(request.Steps);
+        var context = new PipelineContext
+        {
+            Source = request.Source,
+            Target = request.Target
+        };
+        var handlerOptions = request.HandlerOptions ?? new Dictionary<string, object?>();
+
         try
         {
-            var steps = new Queue<string>(request.Steps);
-            var context = new PipelineContext(request.Source);
-            var handlerOptions = request.HandlerOptions ?? new Dictionary<string, object?>();
+            await InvokeAllAsync(e => e.OnStartedAsync(sourceId));
 
             while (!cancellationToken.IsCancellationRequested && steps.TryDequeue(out var step))
             {
@@ -99,18 +106,18 @@ public class HivePipelineWorker : IHiveWorker<PipelineRequest>
                     context.Options = options;
                 }
 
-                await InvokeAllAsync(e => e.OnProcessBeforeAsync(request.Id, step, context));
+                await InvokeAllAsync(e => e.OnProcessBeforeAsync(sourceId, step, context));
 
                 context = await handler.ProcessAsync(context, cancellationToken);
 
-                await InvokeAllAsync(e => e.OnProcessAfterAsync(request.Id, step, context));
+                await InvokeAllAsync(e => e.OnProcessAfterAsync(sourceId, step, context));
             }
 
-            await InvokeAllAsync(e => e.OnCompletedAsync(request.Id));
+            await InvokeAllAsync(e => e.OnCompletedAsync(sourceId));
         }
         catch (Exception ex)
         {
-            await InvokeAllAsync(e => e.OnFailedAsync(request.Id, ex));
+            await InvokeAllAsync(e => e.OnFailedAsync(sourceId, ex));
         }
         finally
         {
