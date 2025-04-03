@@ -8,7 +8,12 @@ public class VectorRecord
     /// <summary>
     /// the unique identifier for the vector in Guid format.
     /// </summary>
-    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public required string Id { get; set; }
+
+    /// <summary>
+    /// the source identifier for the vector.
+    /// </summary>
+    public required string SourceId { get; set; }
 
     /// <summary>
     /// the vector values. 

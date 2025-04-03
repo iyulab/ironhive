@@ -14,23 +14,14 @@ public class EmbedHandler : IPipelineHandler
         _storage = storage;
     }
 
-    public class Options
-    {
-        public required string Collection { get; set; }
-        public required string Provider { get; set; }
-        public required string Model { get; set; }
-    }
-
     public async Task<PipelineContext> ProcessAsync(PipelineContext context, CancellationToken cancellationToken)
     {
+        var target = context.Target;
         if (context.Payload.TryConvertTo<IEnumerable<Dialogue>>(out var dialogues))
         {
-            var options = context.Options.ConvertTo<Options>()
-                ?? throw new InvalidOperationException("must provide options for embeddings handler");
-
             var embeddings = await _service.EmbedBatchAsync(
-                options.Provider,
-                options.Model,
+                target.EmbedProvider,
+                target.EmbedModel,
                 dialogues.Select(x => x.Question),
                 cancellationToken);
 
@@ -38,7 +29,6 @@ public class EmbedHandler : IPipelineHandler
                 throw new InvalidOperationException("failed to get embeddings for dialogues");
 
             var points = new List<VectorRecord>();
-
             for (var i = 0; i < embeddings.Count(); i++)
             {
                 var content = dialogues.ElementAt(i);
@@ -50,6 +40,42 @@ public class EmbedHandler : IPipelineHandler
                 points.Add(new VectorRecord
                 {
                     Id = Guid.NewGuid().ToString(),
+                    SourceId = context.Source.Id,
+                    Vectors = vector,
+                    Source = context.Source,
+                    Content = content,
+                    LastUpdatedAt = DateTime.UtcNow,
+                });
+            }
+
+            await _storage.UpsertVectorsAsync(target.CollectionName, points, cancellationToken);
+            context.Payload = null;
+            return context;
+        }
+        else if (context.Payload.TryConvertTo<IEnumerable<string>>(out var chunks))
+        {
+            var embeddings = await _service.EmbedBatchAsync(
+                target.EmbedProvider,
+                target.EmbedModel,
+                chunks,
+                cancellationToken);
+
+            if (embeddings == null || embeddings.Count() != chunks.Count())
+                throw new InvalidOperationException("failed to get embeddings for chunks");
+
+            var points = new List<VectorRecord>();
+            for (var i = 0; i < embeddings.Count(); i++)
+            {
+                var content = chunks.ElementAt(i);
+                var vector = embeddings.ElementAt(i).Embedding;
+
+                if (vector == null || content == null)
+                    throw new InvalidOperationException("failed to get embedding for chunk");
+
+                points.Add(new VectorRecord
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    SourceId = context.Source.Id,
                     Source = context.Source,
                     Vectors = vector,
                     Content = content,
@@ -57,13 +83,13 @@ public class EmbedHandler : IPipelineHandler
                 });
             }
 
-            await _storage.UpsertVectorsAsync(options.Collection, points, cancellationToken);
+            await _storage.UpsertVectorsAsync(target.CollectionName, points, cancellationToken);
             context.Payload = null;
             return context;
         }
         else
         {
-            throw new InvalidOperationException("The document content is not a dialogue.");
+            throw new NotSupportedException($"Unsupported payload type: {context.Payload?.GetType().Name}.");
         }
     }
 }

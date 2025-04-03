@@ -147,6 +147,7 @@ public class QdrantVectorStorage : IVectorStorage
             records.Add(new VectorRecord
             {
                 Id = record.Id,
+                SourceId = record.SourceId,
                 Vectors = vectors,
                 Source = record.Source,
                 Content = record.Content,
@@ -295,6 +296,7 @@ public class QdrantVectorStorage : IVectorStorage
         return new VectorRecord
         {
             Id = vectorId,
+            SourceId = source.Id,
             Vectors = Array.Empty<float>(),
             Source = source,
             Content = content,

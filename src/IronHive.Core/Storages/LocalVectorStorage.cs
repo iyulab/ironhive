@@ -64,7 +64,9 @@ public partial class LocalVectorStorage : IVectorStorage
 
         // LiteDB does not support creating an empty collection.
         var empty = new VectorRecord
-        { 
+        {
+            Id = string.Empty,
+            SourceId = string.Empty,
             Source = new TextMemorySource { Text = string.Empty },
             Vectors = new float[dimensions]
         };

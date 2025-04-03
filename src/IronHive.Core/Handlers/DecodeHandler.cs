@@ -1,5 +1,6 @@
 ﻿using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Files;
+using HtmlAgilityPack;
 
 namespace IronHive.Core.Handlers;
 
@@ -34,7 +35,12 @@ public class DecodeHandler : IPipelineHandler
         else if (source is WebMemorySource webSource)
         {
             using var client = new HttpClient();
-            var text = await client.GetStringAsync(webSource.Url, cancellationToken);
+            var html = await client.GetStringAsync(webSource.Url, cancellationToken);
+
+            var doc = new HtmlDocument();
+            doc.LoadHtml(html);
+            var text = doc.DocumentNode.InnerText;
+
             context.Payload = text;
             return context;
         }

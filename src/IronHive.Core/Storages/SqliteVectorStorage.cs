@@ -158,6 +158,7 @@ public class SQLiteVectorStorage : IVectorStorage
                 var record = new VectorRecord
                 {
                     Id = reader.GetString(0),
+                    SourceId = reader.GetString(1),
                     Source = new TextMemorySource
                     {
                         Id = reader.GetString(1),
@@ -334,6 +335,7 @@ public class SQLiteVectorStorage : IVectorStorage
                 var rec = new VectorRecord
                 {
                     Id = reader.GetString(0),
+                    SourceId = reader.GetString(1),
                     Source = source,
                     Vectors = vectors,
                     Content = reader.IsDBNull(4) ? null : reader.GetString(4),
