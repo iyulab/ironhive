@@ -79,7 +79,7 @@ export class ChatRoom extends LitElement {
         last = this.messages[this.messages.length - 1];
       }
 
-      const data = item as MessageContent;
+      const data = item.data as MessageContent;
       const index = data.index || 0;
       last.content ||= [];
       const content = last.content?.at(index);

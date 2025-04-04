@@ -169,7 +169,7 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
                     Data = new AssistantToolContent
                     {
                         Id = tool.Id,
-                        Index = txtgen ? tool.Index +1 : tool.Index,
+                        Index = txtgen ? tool.Index + 1 : tool.Index,
                         Name = tool.Function?.Name,
                         Arguments = tool.Function?.Arguments
                     }
@@ -221,11 +221,13 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
             {
                 Name = t.Name,
                 Description = t.Description,
-                Parameters = t.Parameters != null ? new FunctionParameters
+                Parameters = t.Parameters != null 
+                ? new FunctionParameters
                 {
-                    Properties = t.Parameters.Properties,
-                    Required = t.Parameters.Required,
-                } : null
+                    Properties = t.Parameters.JsonSchema.Properties,
+                    Required = t.Parameters.JsonSchema.Required,
+                }
+                : null
             }
         });
 

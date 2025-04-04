@@ -2,6 +2,9 @@
 
 namespace IronHive.Abstractions.Messages;
 
+/// <summary>
+/// 유저 콘텐츠 블록을 나타냅니다.
+/// </summary>
 public class UserContentCollection : ICollection<IUserContent>
 {
     private readonly List<IUserContent> _items = new();

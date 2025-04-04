@@ -28,11 +28,11 @@ internal static class MessageCollectionExtensions
                     }
                     else if (item is UserImageContent image)
                     {
-                        throw new NotImplementedException("not supported yet");
+                        throw new NotSupportedException("not supported image yet");
                     }
                     else
                     {
-                        throw new NotImplementedException("not supported yet");
+                        throw new NotSupportedException($"not supported type {item.GetType()}");
                     }
                 }
 
@@ -45,7 +45,7 @@ internal static class MessageCollectionExtensions
                 {
                     if (type == typeof(AssistantTextContent))
                     {
-                        // 텍스트 메시지
+                        // 텍스트 메시지 (어시스턴트 메시지)
                         var am = new AnthropicMessage(MessageRole.Assistant);
                         foreach (var item in group.Cast<AssistantTextContent>())
                         {
@@ -73,9 +73,9 @@ internal static class MessageCollectionExtensions
                             });
                             um.Content.Add(new ToolResultMessageContent
                             {
-                                IsError = ToolStatus.Failed == tool.Status,
+                                IsError = (tool.Status == ToolStatus.Failed),
                                 ToolUseId = tool.Id,
-                                Content = tool.Result ?? string.Empty
+                                Content = tool.Result ?? string.Empty,
                             });
                         }
                         _messages.Add(am);

@@ -1,5 +1,6 @@
 ﻿using IronHive.Abstractions;
 using IronHive.Abstractions.Memory;
+using IronHive.Core.Services;
 
 namespace IronHive.Core;
 
@@ -12,25 +13,33 @@ public class HiveMind : IHiveMind
         Services = services;
     }
 
-    // 세션 생성 (싱글 or 멀티 에이전트)
-    // 채팅 세션 Or 작업 세션
-    public IHiveSession CreateSession()
+    /// <inheritdoc />
+    public IHiveSession CreateHiveSession(IHiveAgent master, IDictionary<string, IHiveAgent>? agents)
     {
-        // TODO: Implement session creation
-        throw new NotImplementedException();
+        return new HiveSession(Services)
+        {
+            Master = master,
+            Agents = agents ?? new Dictionary<string, IHiveAgent>(),
+        };
     }
 
-    // 메모리 서비스 반환
-    public IHiveMemory CreateMemory(string embedProvider, string embedModel)
+    /// <inheritdoc />
+    public IHiveMemory CreateHiveMemory(string embedProvider, string embedModel)
     {
-        // TODO: Implement memory collection creation
-        throw new NotImplementedException();
+        return new HiveMemory(Services)
+        {
+            EmbedProvider = embedProvider,
+            EmbedModel = embedModel
+        };
     }
 
-    // 메모리 파이프라인 백그라운드 워커 생성
-    public IPipelineWorker CreatePipelineWorker()
+    /// <inheritdoc />
+    public IPipelineWorker CreatePipelineWorker(int maxExecutionSlots, TimeSpan pollingInterval)
     {
-        // TODO: Implement memory worker creation
-        throw new NotImplementedException();
+        return new PipelineWorker(Services)
+        {
+            MaxExecutionSlots = maxExecutionSlots,
+            PollingInterval = pollingInterval
+        };
     }
 }

@@ -9,7 +9,7 @@
 - IHiveSession
   - IHiveAgent[]
 - IHiveMemory
-- IHiveWorker<T>
+- IPipelineWorker
 
 ### Common Services(Important)
 - IHiveServiceStore             => Singleton!                                     => Required

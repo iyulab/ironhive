@@ -2,6 +2,10 @@
 
 namespace IronHive.Abstractions.Messages;
 
+/// <summary>
+/// 메시지를 담는 컬렉션 구현입니다.
+/// 아직 별다른 기능은 없습니다.
+/// </summary>
 public sealed class MessageCollection : ICollection<IMessage>
 {
     private readonly List<IMessage> _items;
@@ -14,62 +18,6 @@ public sealed class MessageCollection : ICollection<IMessage>
     public MessageCollection(IEnumerable<IMessage> messages)
     {
         _items = new(messages);
-    }
-
-    public void Append(IUserContent content)
-    {
-        if (_items.Last() is UserMessage user)
-        {
-            user.Content.Add(content);
-        }
-        else
-        {
-            var message = new UserMessage();
-            message.Content.Add(content);
-            _items.Add(message);
-        }
-    }
-
-    public void Append(IEnumerable<IUserContent> content)
-    {
-        if (_items.Last() is UserMessage user)
-        {
-            user.Content.AddRange(content);
-        }
-        else
-        {
-            var message = new UserMessage();
-            message.Content.AddRange(content);
-            _items.Add(message);
-        }
-    }
-
-    public void Append(IAssistantContent content)
-    {
-        if (_items.Last() is AssistantMessage assistant)
-        {
-            assistant.Content.Add(content);
-        }
-        else
-        {
-            var message = new AssistantMessage();
-            message.Content.Add(content);
-            _items.Add(message);
-        }
-    }
-
-    public void Append(IEnumerable<IAssistantContent> content)
-    {
-        if (_items.Last() is AssistantMessage assistant)
-        {
-            assistant.Content.AddRange(content);
-        }
-        else
-        {
-            var message = new AssistantMessage();
-            message.Content.AddRange(content);
-            _items.Add(message);
-        }
     }
 
     #region ICollection Implementations

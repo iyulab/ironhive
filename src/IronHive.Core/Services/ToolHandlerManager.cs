@@ -44,6 +44,7 @@ public class ToolHandlerManager : IToolHandlerManager
             if (attr is null) continue;
 
             var name = attr.Name ?? method.Name;
+            var approval = attr.RequiresApproval;
             var description = method.GetCustomAttribute<DescriptionAttribute>()?.Description;
 
             var parameterTypes = method.GetParameters().Select(p => p.ParameterType).ToArray();
@@ -56,7 +57,8 @@ public class ToolHandlerManager : IToolHandlerManager
             var tool = new FunctionTool(function)
             {
                 Name = name,
-                Description = description
+                Description = description,
+                RequiresApproval = approval,
             };
             tools.Add(tool);
         }

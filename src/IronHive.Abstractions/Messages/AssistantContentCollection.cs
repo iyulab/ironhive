@@ -11,6 +11,7 @@ public class AssistantContentCollection : ICollection<IAssistantContent>
 
     /// <summary>
     /// TextContent를 추가합니다.
+    /// 인덱스 번호는 자동으로 재할당됩니다.
     /// </summary>
     public void AddText(string? value)
     {
@@ -22,6 +23,7 @@ public class AssistantContentCollection : ICollection<IAssistantContent>
 
     /// <summary>
     /// ToolContent를 추가합니다.
+    /// 인덱스 번호는 자동으로 재할당됩니다.
     /// </summary>
     public void AddTool(string? id, string? name, string? arguments, string? result)
     {
@@ -35,7 +37,8 @@ public class AssistantContentCollection : ICollection<IAssistantContent>
     }
 
     /// <summary>
-    /// 배열을 추가합니다.
+    /// 배열을 추가합니다. 
+    /// 인덱스 번호는 자동으로 재할당됩니다.
     /// </summary>
     public void AddRange(IEnumerable<IAssistantContent> collection)
     {

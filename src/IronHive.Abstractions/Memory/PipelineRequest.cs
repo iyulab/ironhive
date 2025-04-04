@@ -14,10 +14,10 @@ public class PipelineRequest
     /// <summary>
     /// 작업 결과를 저장할 대상 메모리 타겟을 지정합니다.
     /// </summary>
-    public required MemoryTarget Target { get; set; }
+    public required IMemoryTarget Target { get; set; }
 
     /// <summary>
-    /// 작업 수행 시 실행할 단계들의 목록입니다.
+    /// 작업 수행 시 실행할 단계들의 목록입니다. 실행 순서대로 정렬되어야 합니다.
     /// </summary>
     public required IEnumerable<string> Steps { get; set; }
 

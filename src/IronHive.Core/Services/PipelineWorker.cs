@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace IronHive.Core.Services;
 
-public class HivePipelineWorker : IPipelineWorker
+public class PipelineWorker : IPipelineWorker
 {
     private readonly IServiceProvider _services;
     private readonly IQueueStorage _queue;
@@ -13,14 +13,13 @@ public class HivePipelineWorker : IPipelineWorker
     private readonly SemaphoreSlim _semaphore;
 
     public bool IsActive => _runningFlag == 1;
-
-    public required int MaxExecutionSlots { get; init; } = 5;
-
     public int AvailableExecutionSlots => _semaphore.CurrentCount;
 
-    public required int PollingInterval { get; init; } = 1_000;
+    public required int MaxExecutionSlots { get; init; }
 
-    public HivePipelineWorker(IServiceProvider provider)
+    public required TimeSpan PollingInterval { get; init; }
+
+    public PipelineWorker(IServiceProvider provider)
     {
         _services = provider;
         _queue = provider.GetRequiredService<IQueueStorage>();

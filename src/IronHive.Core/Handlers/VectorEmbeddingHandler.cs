@@ -3,12 +3,12 @@ using IronHive.Abstractions.Memory;
 
 namespace IronHive.Core.Handlers;
 
-public class EmbedHandler : IPipelineHandler
+public class VectorEmbeddingHandler : IPipelineHandler
 {
     private readonly IEmbeddingService _service;
     private readonly IVectorStorage _storage;
 
-    public EmbedHandler(IEmbeddingService emeddings, IVectorStorage storage)
+    public VectorEmbeddingHandler(IEmbeddingService emeddings, IVectorStorage storage)
     {
         _service = emeddings;
         _storage = storage;
@@ -16,7 +16,9 @@ public class EmbedHandler : IPipelineHandler
 
     public async Task<PipelineContext> ProcessAsync(PipelineContext context, CancellationToken cancellationToken)
     {
-        var target = context.Target;
+        var target = context.Target.ConvertTo<VectorMemoryTarget>()
+            ?? throw new InvalidOperationException("target is not a VectorMemoryTarget");
+
         if (context.Payload.TryConvertTo<IEnumerable<Dialogue>>(out var dialogues))
         {
             var embeddings = await _service.EmbedBatchAsync(

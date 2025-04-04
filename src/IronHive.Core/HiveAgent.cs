@@ -15,7 +15,7 @@ public class HiveAgent : IHiveAgent
 
     public string? Instructions { get; set; }
 
-    public IDictionary<string, object>? Tools { get; set; }
+    public IDictionary<string, object?>? Tools { get; set; }
 
     public ChatCompletionParameters? Parameters { get; set; }
 }

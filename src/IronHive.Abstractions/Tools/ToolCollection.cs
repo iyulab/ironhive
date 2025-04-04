@@ -3,6 +3,9 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace IronHive.Abstractions.Tools;
 
+/// <summary>
+/// A collection of tools.
+/// </summary>
 public class ToolCollection : ICollection<ITool>
 {
     private readonly Dictionary<string, ITool> _items = [];
@@ -15,16 +18,23 @@ public class ToolCollection : ICollection<ITool>
         _items = items.ToDictionary(t  => t.Name, t => t);
     }
 
+    /// <summary>
+    /// Get the tool by name.
+    /// </summary>
     public bool TryGetValue(string name, [MaybeNullWhen(false)] out ITool tool)
     {
         return _items.TryGetValue(name, out tool);
     }
 
+    /// <summary>
+    /// tools is a collection of tools to add to the collection.
+    /// </summary>
+    /// <param name="tools"></param>
     public void AddRange(IEnumerable<ITool> tools)
     {
         foreach (var tool in tools)
         {
-            Add(tool);
+            _items.Add(tool.Name, tool);
         }
     }
 

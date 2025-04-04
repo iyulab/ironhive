@@ -21,14 +21,14 @@ public static class HiveServiceBuilderExtensions
     }
 
     /// <summary>
-    /// "decode", "chunk", "qnagen", "embed" handlers are registered by default.
+    /// "extract_text", "split_text", "gen_QnA", "gen_vectors" handlers are registered by default.
     /// </summary>
     public static IHiveServiceBuilder AddDefaultPipelineHandlers(this IHiveServiceBuilder builder)
     {
-        builder.AddPipelineHandler<DecodeHandler>("decode");
-        builder.AddPipelineHandler<ChunkHandler>("chunk");
-        builder.AddPipelineHandler<QnAGenHandler>("qnagen");
-        builder.AddPipelineHandler<EmbedHandler>("embed");
+        builder.AddPipelineHandler<TextExtractionHandler>("extract_text");
+        builder.AddPipelineHandler<TextChunkerHandler>("split_text");
+        builder.AddPipelineHandler<QnAExtractionHandler>("gen_QnA");
+        builder.AddPipelineHandler<VectorEmbeddingHandler>("gen_vectors");
         return builder;
     }
 

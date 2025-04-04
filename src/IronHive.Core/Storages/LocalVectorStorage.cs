@@ -60,7 +60,7 @@ public partial class LocalVectorStorage : IVectorStorage
 
         // 인덱스 생성
         coll.EnsureIndex(p => p.Id);
-        coll.EnsureIndex(p => p.Source.Id);
+        coll.EnsureIndex(p => p.SourceId);
 
         // LiteDB does not support creating an empty collection.
         var empty = new VectorRecord
@@ -87,7 +87,7 @@ public partial class LocalVectorStorage : IVectorStorage
         // 인덱스 삭제
         var coll = _db.GetCollection<VectorRecord>(collectionName);
         coll.DropIndex(nameof(VectorRecord.Id));
-        coll.DropIndex(nameof(VectorRecord.Source.Id));
+        coll.DropIndex(nameof(VectorRecord.SourceId));
 
         // 컬렉션 삭제
         _db.DropCollection(collectionName);
@@ -108,7 +108,7 @@ public partial class LocalVectorStorage : IVectorStorage
         if (filter != null && (filter.SourceIds.Count > 0 || filter.VectorIds.Count > 0))
         {
             query = query.Where(p =>
-                filter.SourceIds.Count > 0 && filter.SourceIds.Contains(p.Source.Id) ||
+                filter.SourceIds.Count > 0 && filter.SourceIds.Contains(p.SourceId) ||
                 filter.VectorIds.Count > 0 && filter.VectorIds.Contains(p.Id));
         }
 
@@ -148,7 +148,7 @@ public partial class LocalVectorStorage : IVectorStorage
         var coll = _db.GetCollection<VectorRecord>(collectionName);
 
         if (filter.SourceIds.Count > 0)
-            coll.DeleteMany(p => filter.SourceIds.Contains(p.Source.Id));
+            coll.DeleteMany(p => filter.SourceIds.Contains(p.SourceId));
         if (filter.VectorIds.Count > 0)
             coll.DeleteMany(p => filter.VectorIds.Contains(p.Id));
         return Task.CompletedTask;
@@ -171,7 +171,7 @@ public partial class LocalVectorStorage : IVectorStorage
         if (filter != null && (filter.SourceIds.Count > 0 || filter.VectorIds.Count > 0))
         {
             query = query.Where(p =>
-                filter.SourceIds.Count > 0 && filter.SourceIds.Contains(p.Source.Id) ||
+                filter.SourceIds.Count > 0 && filter.SourceIds.Contains(p.SourceId) ||
                 filter.VectorIds.Count > 0 && filter.VectorIds.Contains(p.Id));
         }
 

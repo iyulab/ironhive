@@ -1,6 +1,7 @@
 ﻿using IronHive.Abstractions;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Memory;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace IronHive.Core.Services;
 
@@ -15,11 +16,11 @@ public class HiveMemory : IHiveMemory
     public required string EmbedProvider { get; init; }
     public required string EmbedModel { get; init; }
 
-    public HiveMemory(IQueueStorage queue, IVectorStorage vector, IEmbeddingService embedding)
+    public HiveMemory(IServiceProvider services)
     {
-        _queue = queue;
-        _vector = vector;
-        _embedding = embedding;
+        _queue = services.GetRequiredService<IQueueStorage>();
+        _vector = services.GetRequiredService<IVectorStorage>();
+        _embedding = services.GetRequiredService<IEmbeddingService>();
         _dimensions = GetDimensions();
     }
 
@@ -84,13 +85,13 @@ public class HiveMemory : IHiveMemory
         var request = new PipelineRequest
         {
             Source = source,
-            Target = new MemoryTarget
+            Target = new VectorMemoryTarget
             {
                 CollectionName = collectionName,
                 EmbedProvider = EmbedProvider,
                 EmbedModel = EmbedModel,
             },
-            Steps = steps.ToList(),
+            Steps = steps,
             HandlerOptions = handlerOptions,
         };
         await _queue.EnqueueAsync(request, cancellationToken);

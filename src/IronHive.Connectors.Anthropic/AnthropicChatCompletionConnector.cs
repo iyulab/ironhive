@@ -2,8 +2,6 @@
 using IronHive.Connectors.Anthropic.ChatCompletion;
 using System.Runtime.CompilerServices;
 using TokenUsage = IronHive.Abstractions.ChatCompletion.TokenUsage;
-using IMessage = IronHive.Abstractions.Messages.IMessage;
-using AnthropicMessage = IronHive.Connectors.Anthropic.ChatCompletion.Message;
 using System.Text.Json;
 using IronHive.Abstractions.Json;
 using System.Reflection;
@@ -251,8 +249,8 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
             Description = t.Description,
             InputSchema = new ToolInputSchema
             {
-                Properties = t.Parameters?.Properties,
-                Required = t.Parameters?.Required,
+                Properties = t.Parameters?.JsonSchema.Properties,
+                Required = t.Parameters?.JsonSchema.Required,
             }
         });
 

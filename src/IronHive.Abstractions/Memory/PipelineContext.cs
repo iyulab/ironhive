@@ -13,7 +13,7 @@ public class PipelineContext
     /// <summary>
     /// 파이프라인 데이터의 저장경로입니다.
     /// </summary>
-    public required MemoryTarget Target { get; init; }
+    public required IMemoryTarget Target { get; init; }
 
     /// <summary>
     /// 파이프라인의 중간경유 데이터 입니다.

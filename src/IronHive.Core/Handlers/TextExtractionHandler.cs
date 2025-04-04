@@ -4,11 +4,11 @@ using HtmlAgilityPack;
 
 namespace IronHive.Core.Handlers;
 
-public class DecodeHandler : IPipelineHandler
+public class TextExtractionHandler : IPipelineHandler
 {
     private readonly IFileStorageManager _manager;
 
-    public DecodeHandler(IFileStorageManager manager)
+    public TextExtractionHandler(IFileStorageManager manager)
     {
         _manager = manager;
     }

@@ -5,10 +5,16 @@ public class FunctionToolAttribute : Attribute
 {
     public string? Name { get; set; }
 
-    public FunctionToolAttribute() { }
+    public bool RequiresApproval { get; set; }
 
-    public FunctionToolAttribute(string? name = null)
+    public FunctionToolAttribute() 
+    {
+        RequiresApproval = false;
+    }
+
+    public FunctionToolAttribute(string? name = null, bool requiresApproval = false)
     {
         Name = name;
+        RequiresApproval = requiresApproval;
     }
 }

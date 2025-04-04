@@ -3,12 +3,11 @@ using IronHive.Abstractions.Memory;
 
 namespace IronHive.Abstractions;
 
+/// <summary>
+/// Interface for Hive Memory Service
+/// </summary>
 public interface IHiveMemory
 {
-    string EmbedProvider { get; init; }
-
-    string EmbedModel { get; init; }
-
     Task<IEnumerable<float>> EmbedAsync(
         string input,
         CancellationToken cancellationToken = default);
@@ -33,6 +32,8 @@ public interface IHiveMemory
         string collectionName,
         CancellationToken cancellationToken = default);
 
+    #region 재설계 필요.
+
     Task MemorizeAsync(
         string collectionName,
         IMemorySource source,
@@ -52,4 +53,6 @@ public interface IHiveMemory
         int limit = 5,
         IEnumerable<string>? sourceIds = null,
         CancellationToken cancellationToken = default);
+
+    #endregion
 }

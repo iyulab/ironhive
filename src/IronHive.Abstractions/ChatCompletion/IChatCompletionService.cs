@@ -21,7 +21,7 @@ public interface IChatCompletionService
     /// <summary>
     /// Generates a chat completion message based on the provided request.
     /// </summary>
-    Task<AssistantMessage> GenerateMessageAsync(
+    Task<ChatCompletionResponse<AssistantMessage>> GenerateMessageAsync(
         UserMessage message,
         ChatCompletionOptions options,
         CancellationToken cancellationToken = default);
@@ -29,7 +29,7 @@ public interface IChatCompletionService
     /// <summary>
     /// Generates a chat completion streaming message based on the provided request.
     /// </summary>
-    IAsyncEnumerable<IAssistantContent> GenerateStreamingMessageAsync(
+    IAsyncEnumerable<ChatCompletionResponse<IAssistantContent>> GenerateStreamingMessageAsync(
         UserMessage message,
         ChatCompletionOptions options,
         CancellationToken cancellationToken = default);
@@ -37,7 +37,7 @@ public interface IChatCompletionService
     /// <summary>
     /// Generates a chat completion message based on the provided request.
     /// </summary>
-    Task<AssistantMessage> GenerateMessageAsync(
+    Task<ChatCompletionResponse<AssistantMessage>> GenerateMessageAsync(
         MessageCollection messages,
         ChatCompletionOptions options,
         CancellationToken cancellationToken = default);
@@ -45,7 +45,7 @@ public interface IChatCompletionService
     /// <summary>
     /// Generates a chat completion streaming message based on the provided request.
     /// </summary>
-    IAsyncEnumerable<IAssistantContent> GenerateStreamingMessageAsync(
+    IAsyncEnumerable<ChatCompletionResponse<IAssistantContent>> GenerateStreamingMessageAsync(
         MessageCollection messages, 
         ChatCompletionOptions options,
         CancellationToken cancellationToken = default);

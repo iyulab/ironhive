@@ -1,5 +1,8 @@
 ﻿namespace IronHive.Abstractions.Tools;
 
+/// <summary>
+/// 툴 핸들러 매니저 인터페이스
+/// </summary>
 public interface IToolHandlerManager
 {
     /// <summary>

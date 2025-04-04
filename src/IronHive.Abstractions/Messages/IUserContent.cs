@@ -10,8 +10,9 @@ namespace IronHive.Abstractions.Messages;
 [JsonDerivedType(typeof(UserImageContent), "image")]
 public interface IUserContent
 {
-    string? Id { get; set; }
-
+    /// <summary>
+    /// 콘텐츠 블록의 순서를 나타냅니다.
+    /// </summary>
     int? Index { get; set; }
 }
 
@@ -20,8 +21,7 @@ public interface IUserContent
 /// </summary>
 public abstract class UserContentBase : IUserContent
 {
-    public string? Id { get; set; }
-
+    /// <inheritdoc />
     public int? Index { get; set; }
 }
 
@@ -30,6 +30,9 @@ public abstract class UserContentBase : IUserContent
 /// </summary>
 public class UserTextContent : UserContentBase
 {
+    /// <summary>
+    /// 텍스트 내용을 나타냅니다
+    /// </summary>
     public string? Value { get; set; }
 }
 
@@ -38,7 +41,13 @@ public class UserTextContent : UserContentBase
 /// </summary>
 public class UserImageContent : UserContentBase
 {
+    /// <summary>
+    /// 이미지의 MIME 타입을 나타냅니다
+    /// </summary>
     public string? ContentType { get; set; }
 
+    /// <summary>
+    /// 이미지의 데이터 URL or Base64 인코딩된 문자열을 나타냅니다
+    /// </summary>
     public string? Data { get; set; }
 }

@@ -22,6 +22,8 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     {
         _services = services ?? new ServiceCollection();
         _store = store ?? new HiveServiceStore();
+
+        // 필수 서비스 없을 경우 등록
         AddRequiredServices();
     }
 

@@ -11,7 +11,7 @@ public class Dialogue
     public string Answer { get; set; } = string.Empty;
 }
 
-public class QnAGenHandler : IPipelineHandler
+public class QnAExtractionHandler : IPipelineHandler
 {
     private static readonly Regex DialogueRegex = new Regex(
         @"<qa>\s*<q>\s*(.*?)\s*</q>\s*<a>\s*(.*?)\s*</a>\s*</qa>",
@@ -25,7 +25,7 @@ public class QnAGenHandler : IPipelineHandler
         public required string Model { get; set; }
     }
 
-    public QnAGenHandler(IChatCompletionService chat)
+    public QnAExtractionHandler(IChatCompletionService chat)
     {
         _service = chat;
     }
@@ -35,7 +35,7 @@ public class QnAGenHandler : IPipelineHandler
         if (context.Payload.TryConvertTo<IEnumerable<string>>(out var chunks))
         {
             var options = context.Options.ConvertTo<Options>()
-                ?? throw new InvalidOperationException($"Must provide options for {nameof(QnAGenHandler)}");
+                ?? throw new InvalidOperationException($"Must provide options for {nameof(QnAExtractionHandler)}");
 
             var serviceOptions = new ChatCompletionOptions
             {
@@ -53,7 +53,7 @@ public class QnAGenHandler : IPipelineHandler
                 var message = new UserMessage();
                 message.Content.AddText($"generate QnA pairs in this information:\n\n{chunk}");
                 var result = await _service.GenerateMessageAsync(message, serviceOptions, cancellationToken);
-                var text = result.Content.OfType<AssistantTextContent>().FirstOrDefault()?.Value
+                var text = result.Data?.Content.OfType<AssistantTextContent>().FirstOrDefault()?.Value
                     ?? throw new InvalidOperationException("No response from the chat completion service.");
                 dialogues.AddRange(ParseFrom(text));
             }
@@ -67,6 +67,7 @@ public class QnAGenHandler : IPipelineHandler
         }
     }
 
+    // 결과 텍스트를 정규식으로 파싱하여 QnA 쌍을 추출합니다.
     private static List<Dialogue> ParseFrom(string text)
     {
         var dialogues = new List<Dialogue>();
@@ -97,6 +98,7 @@ public class QnAGenHandler : IPipelineHandler
         return dialogues;
     }
 
+    // QnA를 생성하기 위한 지침입니다.
     private static string GetInstructions()
     {
         return """

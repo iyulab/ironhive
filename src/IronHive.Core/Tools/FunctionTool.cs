@@ -1,52 +1,45 @@
-﻿using IronHive.Abstractions.Json;
+﻿using System.Reflection;
 using IronHive.Abstractions.Tools;
-using System.ComponentModel;
-using System.Reflection;
-using System.Text.Json;
 
 namespace IronHive.Core.Tools;
 
+/// <summary>
+/// Represents a tool that invokes a dotnet function.
+/// </summary>
 public class FunctionTool : ITool
 {
     private readonly Delegate _function;
 
+    /// <inheritdoc />
     public required string Name { get; set; }
+
+    /// <inheritdoc />
     public string? Description { get; set; }
-    public ObjectJsonSchema? Parameters { get; set; }
+
+    /// <inheritdoc />
+    public ToolParameters? Parameters { get; set; }
+
+    /// <inheritdoc />
+    public required bool RequiresApproval { get; set; }
 
     public FunctionTool(Delegate function)
     {
         _function = function;
-        Parameters = GetParametersJsonSchema(_function.Method.GetParameters());
+        Parameters = _function.Method.GetParameters() is var parameters && parameters.Length > 0
+            ? new ToolParameters(parameters)
+            : null;
     }
 
+    /// <inheritdoc />
     public async Task<ToolResult> InvokeAsync(object? args, CancellationToken cancellationToken = default)
     {
         try
         {
-            var result = _function.DynamicInvoke(PrepareArguments(args));
+            var arguments = Parameters?.BuildArguments(args);
+            var result = _function.DynamicInvoke(arguments);
             cancellationToken.ThrowIfCancellationRequested();
-            if (result is Task task)
-            {
-                await task;
-                result = task.GetType().GetProperty("Result")?.GetValue(task);
-            }
-            else if (result is ValueTask valueTask)
-            {
-                await valueTask;
-                result = valueTask.GetType().GetProperty("Result")?.GetValue(valueTask);
-            }
-            else if (_function.Method.ReturnType == typeof(IAsyncEnumerable<>))
-            {
-                var enumerable = result as IAsyncEnumerable<object?>
-                    ?? throw new InvalidOperationException("Expected IAsyncEnumerable but got null.");
-                var list = new List<object?>();
-                await foreach (var item in enumerable)
-                {
-                    list.Add(item);
-                }
-                result = list;
-            }
+
+            result = await HandleResultAsync(result, _function.Method.ReturnType, cancellationToken);
 
             return ToolResult.Success(result);
         }
@@ -60,86 +53,66 @@ public class FunctionTool : ITool
         }
     }
 
-    private object?[]? PrepareArguments(object? args)
+    // 비동기 메서드를 적절히 처리합니다.
+    private static async Task<object?> HandleResultAsync(object? result, Type returnType, CancellationToken cancellationToken)
     {
-        var parameters = _function.Method.GetParameters();
-        if (parameters.Length == 0) return null;
+        // Void 인 경우
+        if (result == null || returnType == typeof(void))
+        {
+            return "completed function";
+        }
 
-        IDictionary<string, object> dict;
-        if (args is string str)
+        // Task 인 경우
+        if (returnType == typeof(Task))
         {
-            dict = JsonSerializer.Deserialize<IDictionary<string, object>>(str)
-                ?? throw new ArgumentException("Arguments must be a valid JSON object.");
+            await ((Task)result).ConfigureAwait(false);
+            return "completed function";
         }
-        else if (args is IDictionary<string, object> dictionary)
+        // ValueTask 인 경우
+        else if (returnType == typeof(ValueTask))
         {
-            dict = dictionary;
+            await ((ValueTask)result).ConfigureAwait(false);
+            return "completed function";
         }
+        // Task<T>인 경우
+        else if (returnType.IsGenericType == true &&
+            returnType.GetGenericTypeDefinition() == typeof(Task<>))
+        {
+            dynamic dynTask = result;
+            var taskResult = await dynTask.ConfigureAwait(false);
+            return taskResult;
+        }
+        // ValueTask<T>인 경우
+        else if (returnType.IsGenericType == true &&
+            returnType.GetGenericTypeDefinition() == typeof(ValueTask<>))
+        {
+            dynamic dynValueTask = result;
+            var valueTaskResult = await dynValueTask.ConfigureAwait(false);
+            return valueTaskResult;
+        }
+        // IAsyncEnumerable<T>인 경우
+        else if (returnType.IsGenericType == true &&
+            returnType.GetGenericTypeDefinition() == typeof(IAsyncEnumerable<>))
+        {
+            var enumerableResult = new List<object?>();
+            var enumerator = ((IAsyncEnumerable<object?>)result).GetAsyncEnumerator(cancellationToken);
+            while (await enumerator.MoveNextAsync().ConfigureAwait(false))
+            {
+                enumerableResult.Add(enumerator.Current);
+            }
+            return enumerableResult;
+        }
+        // 커스텀 awaitable 인 경우
+        else if (returnType.GetMethod("GetAwaiter") != null)
+        {
+            dynamic dynResult = result;
+            var awaited = await dynResult;
+            return awaited;
+        }
+        // 이외 의 경우 그대로 반환
         else
         {
-            throw new ArgumentException("Arguments must be a valid JSON object.");
-        }
-        
-        var arguments = new object?[parameters.Length];
-        for (int i = 0; i < parameters.Length; i++)
-        {
-            var param = parameters[i];
-            var name = param.Name ?? throw new InvalidOperationException("Parameter name cannot be null.");
-            var type = param.ParameterType;
-
-            if (dict.TryGetValue(name, out var value))
-            {
-                arguments[i] = value.ConvertTo(type);
-            }
-            else if (param.HasDefaultValue)
-            {
-                arguments[i] = param.DefaultValue;
-            }
-            else if (param.IsOptional)
-            {
-                arguments[i] = null;
-            }
-            else
-            {
-                throw new ArgumentException($"Parameter '{name}' is required");
-            }
-        }
-
-        return arguments;
-    }
-
-    private static ObjectJsonSchema? GetParametersJsonSchema(ParameterInfo[] parameters)
-    {
-        if (parameters.Length == 0)
-        {
-            return null;
-        }
-        else
-        {
-            var props = new Dictionary<string, JsonSchema>();
-            var required = new List<string>();
-
-            foreach (var pram in parameters)
-            {
-                if (string.IsNullOrEmpty(pram.Name))
-                    continue;
-
-                var type = pram.ParameterType;
-                var name = pram.Name;
-                var description = pram.GetCustomAttribute<DescriptionAttribute>()?.Description;
-                var schema = JsonSchemaConverter.ConvertFrom(type, description);
-                props.Add(name, schema);
-
-                if (!pram.IsOptional)
-                    required.Add(name);
-            }
-
-            return new ObjectJsonSchema
-            {
-                Properties = props,
-                Required = required.Count != 0 ? required : null
-            };
+            return result;
         }
     }
-
 }

@@ -4,7 +4,7 @@ using Tiktoken;
 
 namespace IronHive.Core.Handlers;
 
-public class ChunkHandler : IPipelineHandler
+public class TextChunkerHandler : IPipelineHandler
 {
     private readonly Tiktoken.Encoder _tokenizer = ModelToEncoder.For("gpt-4o");
 

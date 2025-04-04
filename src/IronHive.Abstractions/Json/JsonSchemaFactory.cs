@@ -5,9 +5,23 @@ using System.Runtime.CompilerServices;
 
 namespace IronHive.Abstractions.Json;
 
-public static class JsonSchemaConverter
+/// <summary>
+/// Factory class for creating JSON schemas from .NET types.
+/// </summary>
+public static class JsonSchemaFactory
 {
-    public static JsonSchema ConvertFrom(Type type, string? description = null)
+    /// <summary>
+    /// Creates a JSON schema from a .NET type.
+    /// </summary>
+    public static JsonSchema CreateFrom<T>(string? description = null)
+    {
+        return CreateFrom(typeof(T), description);
+    }
+
+    /// <summary>
+    /// Creates a JSON schema from a .NET type.
+    /// </summary>
+    public static JsonSchema CreateFrom(Type type, string? description = null)
     {
         // boolean type
         if (type == typeof(bool))
@@ -60,19 +74,19 @@ public static class JsonSchemaConverter
         {
             var genericType = type.GetElementType()
                 ?? throw new ArgumentException("Array type must have an element type.", nameof(type));
-            var items = ConvertFrom(genericType);
+            var items = CreateFrom(genericType);
             return new ArrayJsonSchema(description) { Items = items };
         }
         if (IsGenericArray(type))
         {
             var genericType = type.GetGenericArguments()[0];
-            var items = ConvertFrom(genericType);
+            var items = CreateFrom(genericType);
             return new ArrayJsonSchema(description) { Items = items };
         }
         if (IsTuple(type))
         {
             var genericTypes = type.GetGenericArguments();
-            var items = genericTypes.Select(t => ConvertFrom(t)).ToArray();
+            var items = genericTypes.Select(t => CreateFrom(t)).ToArray();
             return new ArrayJsonSchema(description) { Items = items };
         }
 
@@ -80,7 +94,7 @@ public static class JsonSchemaConverter
         if (IsDictionary(type))
         {
             var valueType = type.GetGenericArguments()[1];
-            var additionalProperties = ConvertFrom(valueType);
+            var additionalProperties = CreateFrom(valueType);
             return new ObjectJsonSchema
             {
                 Description = description,
@@ -96,7 +110,7 @@ public static class JsonSchemaConverter
             {
                 var propType = prop.PropertyType;
                 var propDescription = prop.GetCustomAttribute<DescriptionAttribute>()?.Description;
-                var propSchema = ConvertFrom(propType, propDescription);
+                var propSchema = CreateFrom(propType, propDescription);
                 properties.Add(prop.Name, propSchema);
 
                 if (IsRequiredProperty(prop))
