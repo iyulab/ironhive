@@ -4,7 +4,7 @@
 	<!-- Package Settings -->
 	<Authors>Iyulab</Authors>
 	<Description>ironhive interfaces</Description>
-	<PackageVersion>0.0.1</PackageVersion>
+	<PackageVersion>1.0.0</PackageVersion>
 	<PackageLicenseExpression>MIT</PackageLicenseExpression>
 	<PackageProjectUrl>https://github.com/iyulab-rnd/ironhive</PackageProjectUrl>
 	<PackageTags>Iyulab;AI;LLM;RAG;Agent</PackageTags>

@@ -24,22 +24,14 @@ public class HiveMind : IHiveMind
     }
 
     /// <inheritdoc />
-    public IHiveMemory CreateHiveMemory(string embedProvider, string embedModel)
+    public IVectorMemory CreateVectorMemory(VectorMemoryConfig config)
     {
-        return new HiveMemory(Services)
-        {
-            EmbedProvider = embedProvider,
-            EmbedModel = embedModel
-        };
+        return new VectorMemory(Services, config);
     }
 
     /// <inheritdoc />
-    public IPipelineWorker CreatePipelineWorker(int maxExecutionSlots, TimeSpan pollingInterval)
+    public IPipelineWorker CreatePipelineWorker(PipelineWorkerConfig config)
     {
-        return new PipelineWorker(Services)
-        {
-            MaxExecutionSlots = maxExecutionSlots,
-            PollingInterval = pollingInterval
-        };
+        return new PipelineWorker(Services, config);
     }
 }

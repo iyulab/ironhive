@@ -1,0 +1,23 @@
+{
+  "Services": {
+    "BaseDirectory": "C:\\Users\\jhcj9\\.hivemind-sample",
+    "OpenAI": {
+      "BaseUrl": "",
+      "ApiKey": "",
+      "Organization": "",
+      "Project": ""
+    },
+    "LMStudio": {
+      "BaseUrl": "",
+      "ApiKey": "",
+      "Organization": "",
+      "Project": ""
+    },
+    "GPUStack": {
+      "BaseUrl": "",
+      "ApiKey": "",
+      "Organization": "",
+      "Project": ""
+    }
+  }
+}

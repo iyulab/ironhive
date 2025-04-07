@@ -15,21 +15,25 @@ public class PipelineWorker : IPipelineWorker
     public bool IsActive => _runningFlag == 1;
     public int AvailableExecutionSlots => _semaphore.CurrentCount;
 
-    public required int MaxExecutionSlots { get; init; }
-
-    public required TimeSpan PollingInterval { get; init; }
-
-    public PipelineWorker(IServiceProvider provider)
+    public PipelineWorker(IServiceProvider provider, PipelineWorkerConfig config)
     {
-        _services = provider;
-        _queue = provider.GetRequiredService<IQueueStorage>();
-        _events = provider.GetServices<IPipelineEventHandler>();
+        MaxExecutionSlots = config.MaxExecutionSlots;
+        PollingInterval = config.PollingInterval;
 
         if (MaxExecutionSlots < 1)
             throw new ArgumentOutOfRangeException(nameof(MaxExecutionSlots));
-
+        if (PollingInterval < TimeSpan.FromMilliseconds(100))
+            throw new ArgumentOutOfRangeException(nameof(PollingInterval));
+        
+        _services = provider;
+        _queue = provider.GetRequiredService<IQueueStorage>();
+        _events = provider.GetServices<IPipelineEventHandler>();
         _semaphore = new SemaphoreSlim(MaxExecutionSlots, MaxExecutionSlots);
     }
+
+    public int MaxExecutionSlots { get; }
+
+    public TimeSpan PollingInterval { get; }
 
     /// <inheritdoc />
     public async Task StartAsync(CancellationToken cancellationToken)

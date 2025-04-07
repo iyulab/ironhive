@@ -1,12 +1,11 @@
 ﻿using IronHive.Abstractions.Embedding;
-using IronHive.Abstractions.Memory;
 
-namespace IronHive.Abstractions;
+namespace IronHive.Abstractions.Memory;
 
 /// <summary>
 /// Interface for Hive Memory Service
 /// </summary>
-public interface IHiveMemory
+public interface IVectorMemory
 {
     Task<IEnumerable<float>> EmbedAsync(
         string input,
@@ -32,27 +31,35 @@ public interface IHiveMemory
         string collectionName,
         CancellationToken cancellationToken = default);
 
-    #region 재설계 필요.
+    Task<IEnumerable<VectorRecord>> FindVectorsAsync(
+        string collectionName,
+        string sourceId,
+        int limit = 20,
+        CancellationToken cancellationToken = default);
 
-    Task MemorizeAsync(
+    Task UpdateVectorContentAsync(
+        string collectionName,
+        string vectorId,
+        object? content,
+        CancellationToken cancellationToken = default);
+
+    Task DeleteVectorsAsync(
+        string collectionName,
+        string sourceId,
+        CancellationToken cancellationToken = default);
+
+    Task ScheduleVectorizationAsync(
         string collectionName,
         IMemorySource source,
         IEnumerable<string> steps,
         IDictionary<string, object?>? handlerOptions = null,
         CancellationToken cancellationToken = default);
 
-    Task UnMemorizeAsync(
-        string collectionName,
-        string sourceId,
-        CancellationToken cancellationToken = default);
-
-    Task<VectorSearchResult> SearchAsync(
+    Task<VectorSearchResult> SearchVectorsAsync(
         string collectionName,
         string query,
         float minScore = 0,
         int limit = 5,
         IEnumerable<string>? sourceIds = null,
         CancellationToken cancellationToken = default);
-
-    #endregion
 }

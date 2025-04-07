@@ -12,7 +12,7 @@ public partial class LocalVectorStorage : IVectorStorage
 
     public LocalVectorStorage(string? databasePath = null)
     {
-        databasePath ??= LocalStorageConfig.DefaultVectorStoragePath;
+        databasePath ??= LocalStorageDefaultConfig.VectorStoragePath;
         _db = CreateLiteDatabase(databasePath);
     }
 

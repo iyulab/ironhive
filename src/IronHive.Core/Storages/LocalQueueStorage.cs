@@ -20,7 +20,7 @@ public class LocalQueueStorage : IQueueStorage
     /// </summary>
     public LocalQueueStorage(string? directoryPath = null, TimeSpan? timeToLive = null)
     {
-        _queueDirectory = directoryPath ?? LocalStorageConfig.DefaultQueueStoragePath;
+        _queueDirectory = directoryPath ?? LocalStorageDefaultConfig.QueueStoragePath;
         Directory.CreateDirectory(_queueDirectory);
 
         // pending 전용 폴더 생성 (동시 접근 및 Ack/Nack 처리를 위해)

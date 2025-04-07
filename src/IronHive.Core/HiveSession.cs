@@ -2,6 +2,7 @@
 using IronHive.Abstractions.ChatCompletion;
 using IronHive.Abstractions.Messages;
 using Microsoft.Extensions.DependencyInjection;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 
 namespace IronHive.Core;
@@ -49,14 +50,18 @@ public class HiveSession : IHiveSession
         throw new NotImplementedException();
     }
 
-    public async IAsyncEnumerable<SessionResult> InvokeStreamingAsync(MessageContext context, CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<SessionResult> InvokeStreamingAsync(MessageContext context, 
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         if (context.Title == null)
         {
             context.Title = await GenerateTitleAsync(context.Messages, cancellationToken);
         }
 
-        throw new NotImplementedException();
+        await foreach (var result in _serivce.GenerateStreamingMessageAsync(context.Messages, BuildOptions(Master), cancellationToken))
+        {
+            yield return new SessionResult();
+        }
     }
 
     private async Task<string> GenerateTitleAsync(MessageCollection messages, CancellationToken cancellationToken = default)

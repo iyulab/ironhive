@@ -1,11 +1,10 @@
-﻿using IronHive.Abstractions;
-using IronHive.Abstractions.Embedding;
+﻿using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Memory;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace IronHive.Core.Services;
 
-public class HiveMemory : IHiveMemory
+public class VectorMemory : IVectorMemory
 {
     private readonly IQueueStorage _queue;
     private readonly IVectorStorage _vector;
@@ -13,16 +12,19 @@ public class HiveMemory : IHiveMemory
 
     private readonly int _dimensions;
 
-    public required string EmbedProvider { get; init; }
-    public required string EmbedModel { get; init; }
-
-    public HiveMemory(IServiceProvider services)
+    public VectorMemory(IServiceProvider services, VectorMemoryConfig config)
     {
+        EmbedProvider = config.EmbedProvider;
+        EmbedModel = config.EmbedModel;
         _queue = services.GetRequiredService<IQueueStorage>();
         _vector = services.GetRequiredService<IVectorStorage>();
         _embedding = services.GetRequiredService<IEmbeddingService>();
-        _dimensions = GetDimensions();
+        _dimensions = GetEmbeddingDimensions();
     }
+
+    public string EmbedProvider { get; }
+
+    public string EmbedModel { get; }
 
     /// <inheritdoc />
     public async Task<IEnumerable<float>> EmbedAsync(
@@ -75,32 +77,45 @@ public class HiveMemory : IHiveMemory
     }
 
     /// <inheritdoc />
-    public async Task MemorizeAsync(
+    public async Task<IEnumerable<VectorRecord>> FindVectorsAsync(
         string collectionName,
-        IMemorySource source,
-        IEnumerable<string> steps,
-        IDictionary<string, object?>? handlerOptions = null, 
+        string sourceId,
+        int limit = 20,
         CancellationToken cancellationToken = default)
     {
-        var request = new PipelineRequest
-        {
-            Source = source,
-            Target = new VectorMemoryTarget
-            {
-                CollectionName = collectionName,
-                EmbedProvider = EmbedProvider,
-                EmbedModel = EmbedModel,
-            },
-            Steps = steps,
-            HandlerOptions = handlerOptions,
-        };
-        await _queue.EnqueueAsync(request, cancellationToken);
+        if (!await _vector.CollectionExistsAsync(collectionName, cancellationToken))
+            throw new InvalidOperationException($"Collection '{collectionName}' does not exist.");
+
+        var filter = new VectorRecordFilter();
+        filter.AddSourceId(sourceId);
+        var records = await _vector.FindVectorsAsync(collectionName, limit, filter, cancellationToken);
+        return records;
     }
 
     /// <inheritdoc />
-    public async Task UnMemorizeAsync(
+    public async Task UpdateVectorContentAsync(
+        string collectionName,
+        string vectorId,
+        object? content,
+        CancellationToken cancellationToken = default)
+    {
+        var filter = new VectorRecordFilter();
+        filter.AddVectorId(vectorId);
+        var vectors = await _vector.FindVectorsAsync(collectionName, 1, filter, cancellationToken);
+        var vector = vectors.FirstOrDefault();
+
+        if (vector == null)
+            throw new InvalidOperationException($"Vector '{vectorId}' not found in collection '{collectionName}'.");
+
+        // 업데이트 합니다.
+        vector.Content = content;
+        await _vector.UpsertVectorsAsync(collectionName, [vector], cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task DeleteVectorsAsync(
         string collectionName, 
-        string sourceId, 
+        string sourceId,
         CancellationToken cancellationToken = default)
     {
         var filter = new VectorRecordFilter();
@@ -109,7 +124,7 @@ public class HiveMemory : IHiveMemory
     }
 
     /// <inheritdoc />
-    public async Task<VectorSearchResult> SearchAsync(
+    public async Task<VectorSearchResult> SearchVectorsAsync(
         string collectionName,
         string query,
         float minScore = 0,
@@ -117,13 +132,7 @@ public class HiveMemory : IHiveMemory
         IEnumerable<string>? sourceIds = null,
         CancellationToken cancellationToken = default)
     {
-        VectorRecordFilter? filter = null;
-        if (sourceIds != null && !sourceIds.Any())
-        {
-            filter = new VectorRecordFilter();
-            filter.AddSourceIds(sourceIds);
-        }
-        
+        var filter = GetVectorRecordFilter(sourceIds);
         var vector = await EmbedAsync(query, cancellationToken);
         var records = await _vector.SearchVectorsAsync(
             collectionName: collectionName,
@@ -141,8 +150,46 @@ public class HiveMemory : IHiveMemory
         };
     }
 
+    /// <inheritdoc />
+    public async Task ScheduleVectorizationAsync(
+        string collectionName,
+        IMemorySource source,
+        IEnumerable<string> steps,
+        IDictionary<string, object?>? handlerOptions = null,
+        CancellationToken cancellationToken = default)
+    {
+        var request = new PipelineRequest
+        {
+            Source = source,
+            Target = new VectorMemoryTarget
+            {
+                CollectionName = collectionName,
+                EmbedProvider = EmbedProvider,
+                EmbedModel = EmbedModel,
+            },
+            Steps = steps,
+            HandlerOptions = handlerOptions,
+        };
+        await _queue.EnqueueAsync(request, cancellationToken);
+    }
+
+    // 필터 생성
+    private VectorRecordFilter? GetVectorRecordFilter(IEnumerable<string>? sourceIds = null)
+    {
+        if (sourceIds != null && sourceIds.Any())
+        {
+            var filter = new VectorRecordFilter();
+            filter.AddSourceIds(sourceIds);
+            return filter;
+        }
+        else
+        {
+            return null;
+        }
+    }
+
     // 지정된 모델의 차원을 계산합니다.
-    private int GetDimensions()
+    private int GetEmbeddingDimensions()
     {
         var dummy = "this text is used to calculate the embedding dimensions";
         var embedding = EmbedAsync(dummy).Result;
