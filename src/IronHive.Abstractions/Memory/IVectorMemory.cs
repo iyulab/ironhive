@@ -7,6 +7,10 @@ namespace IronHive.Abstractions.Memory;
 /// </summary>
 public interface IVectorMemory
 {
+    //string EmbedProvider { get; }
+
+    //string EmbedModel { get; }
+
     Task<IEnumerable<float>> EmbedAsync(
         string input,
         CancellationToken cancellationToken = default);

@@ -9,11 +9,6 @@ using IronHive.Abstractions.Files;
 using IronHive.Core.Services;
 using IronHive.Core.Storages;
 using System.Diagnostics;
-using ModelContextProtocol;
-using ModelContextProtocol.Client;
-using System.Net.Sockets;
-using System.Threading.Tasks;
-using ModelContextProtocol.Protocol.Transport;
 
 namespace IronHive.Core;
 
@@ -78,9 +73,12 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     }
 
     /// <inheritdoc />
-    public IHiveServiceBuilder AddPipelineEventHandler(IPipelineEventHandler handler)
+    public IHiveServiceBuilder AddPipelineObserver<TImplementation>(
+        ServiceLifetime lifetime = ServiceLifetime.Singleton,
+        Func<IServiceProvider, TImplementation>? implementationFactory = null)
+        where TImplementation : class, IPipelineObserver
     {
-        _services.AddSingleton(handler);
+        AddService<IPipelineObserver, TImplementation>(lifetime, implementationFactory);
         return this;
     }
 
@@ -131,14 +129,14 @@ public class HiveServiceBuilder : IHiveServiceBuilder
 
         if (!ContainsAny<IPipelineHandler>())
             Debug.WriteLine("PipelineHandler is not registered. Memory Pipeline will not work.");
-        if (!ContainsAny<IPipelineEventHandler>())
-            Debug.WriteLine("PipelineEventHandler is not registered. You can't check the pipeline work.");
+        if (!ContainsAny<IPipelineObserver>())
+            Debug.WriteLine("PipelineObserver is not registered. You can't check the pipeline work.");
 
         var provider = _services.BuildServiceProvider();
         return new HiveMind(provider);
     }
 
-    // 기본 필수 서비스 등록
+    // 필수 서비스 등록
     private void AddRequiredServices()
     {
         // Connectors, FileStorage 인스턴스 컨테이너
@@ -153,6 +151,40 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         // 메모리 서비스
         _services.TryAddSingleton<IQueueStorage, LocalQueueStorage>();
         _services.TryAddSingleton<IVectorStorage, LocalVectorStorage>();
+    }
+
+    // Service 등록 로직 처리
+    private void AddService<TService, TImplementation>(
+        ServiceLifetime? lifetime,
+        Func<IServiceProvider, TImplementation>? implementationFactory = null)
+        where TService : class
+        where TImplementation : class, TService
+    {
+        if (lifetime == ServiceLifetime.Singleton)
+        {
+            if (implementationFactory != null)
+                _services.AddSingleton<TService, TImplementation>(implementationFactory);
+            else
+                _services.AddSingleton<TService, TImplementation>();
+        }
+        else if (lifetime == ServiceLifetime.Scoped)
+        {
+            if (implementationFactory != null)
+                _services.AddScoped<TService, TImplementation>(implementationFactory);
+            else
+                _services.AddScoped<TService, TImplementation>();
+        }
+        else if (lifetime == ServiceLifetime.Transient)
+        {
+            if (implementationFactory != null)
+                _services.AddTransient<TService, TImplementation>(implementationFactory);
+            else
+                _services.AddTransient<TService, TImplementation>();
+        }
+        else
+        {
+            throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, null);
+        }
     }
 
     // Keyed Service 등록 로직 처리

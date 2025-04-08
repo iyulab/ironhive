@@ -1,55 +1,145 @@
 ﻿using IronHive.Abstractions;
+using IronHive.Abstractions.ChatCompletion;
+using IronHive.Abstractions.Embedding;
+using IronHive.Abstractions.Memory;
 using IronHive.Connectors.OpenAI;
-using IronHive.Core;
-using IronHive.Core.Storages;
 using Microsoft.Extensions.Options;
-using WebApiSample.Entities;
+using WebApiSample.Data;
+using WebApiSample.Settings;
 
 namespace WebApiSample.Services;
 
-public enum AppStatus
-{
-    NotReady,
-    Ready,
-    Configuring,
-}
-
 public class AppService
 {
-    private readonly IOptionsMonitor<ServicesSettings> _monitor;
+    private readonly IHiveMind _hive;
+    private readonly AppDbContext _db;
+    private readonly IOptionsMonitor<AppServicesSettings> _monitor;
 
-    public AppService(IOptionsMonitor<ServicesSettings> monitor)
+    public AppService(IHiveMind hive, AppDbContext db, IOptionsMonitor<AppServicesSettings> monitor)
     {
-        _monitor = monitor;
+        CurrentState = AppState.NotReady("Initializing...");
         CurrentSettings = monitor.CurrentValue;
-        monitor.OnChange(HandleChangeSettings);
+
+        _hive = hive;
+        _db = db;
+        _db.Database.EnsureCreated();
+        _monitor = monitor;
+        _monitor.OnChange(OnChangedSettings);
+
+        Memory = CreateMemoryService(CurrentSettings.Memory);
     }
 
-    public AppStatus Status { get; private set; } = AppStatus.Configuring;
+    public AppState CurrentState { get; private set; } = AppState.NotReady("");
 
-    public ServicesSettings CurrentSettings { get; private set; }
-    
-    // Changed될때 이벤트 핸들러
-    public EventHandler<ServicesSettings>? OnSettingsChanged;
+    public AppServicesSettings CurrentSettings { get; private set; }
 
-    private void HandleChangeSettings(ServicesSettings settings)
+    public MemoryService? Memory { get; private set; } = null;
+
+    private void OnChangedSettings(AppServicesSettings settings)
     {
-        Status = AppStatus.Configuring;
+        AppState.Loading("settings changed");
+
+        // 메모리 서비스 변경
+        if (CurrentSettings.Memory != settings.Memory)
+        {
+            Memory = CreateMemoryService(settings.Memory);
+        }
+
+        // AI 서비스 변경
+        if (CurrentSettings.Connectors.OpenAI != settings.Connectors.OpenAI)
+        {
+            var store = _hive.Services.GetRequiredService<IHiveServiceStore>();
+            store.RemoveService<IChatCompletionConnector>(AppConstants.OpenAIProvider);
+            store.RemoveService<IEmbeddingConnector>(AppConstants.OpenAIProvider);
+
+            var config = new OpenAIConfig
+            {
+                ApiKey = settings.Connectors.OpenAI.ApiKey,
+                Organization = settings.Connectors.OpenAI.Organization,
+                Project = settings.Connectors.OpenAI.Project,
+            };
+            store.AddService<IChatCompletionConnector>(AppConstants.OpenAIProvider, new OpenAIChatCompletionConnector(config));
+            store.AddService<IEmbeddingConnector>(AppConstants.OpenAIProvider, new OpenAIEmbeddingConnector(config));
+        }
+
+        // LM Studio 서비스 변경
+        if (CurrentSettings.Connectors.LMStudio != settings.Connectors.LMStudio)
+        {
+            var store = _hive.Services.GetRequiredService<IHiveServiceStore>();
+            store.RemoveService<IChatCompletionConnector>(AppConstants.LMStudioProvider);
+            store.RemoveService<IEmbeddingConnector>(AppConstants.LMStudioProvider);
+
+            var config = new OpenAIConfig
+            {
+                BaseUrl = settings.Connectors.LMStudio.BaseUrl,
+                ApiKey = settings.Connectors.LMStudio.ApiKey,
+            };
+            store.AddService<IChatCompletionConnector>(AppConstants.LMStudioProvider, new OpenAIChatCompletionConnector(config));
+            store.AddService<IEmbeddingConnector>(AppConstants.LMStudioProvider, new OpenAIEmbeddingConnector(config));
+        }
+
+        // GPU Stack 서비스 변경
+        if (CurrentSettings.Connectors.GPUStack != settings.Connectors.GPUStack)
+        {
+            var store = _hive.Services.GetRequiredService<IHiveServiceStore>();
+            store.RemoveService<IChatCompletionConnector>(AppConstants.GPUStackProvider);
+            store.RemoveService<IEmbeddingConnector>(AppConstants.GPUStackProvider);
+
+            var config = new OpenAIConfig
+            {
+                BaseUrl = settings.Connectors.GPUStack.BaseUrl,
+                ApiKey = settings.Connectors.GPUStack.ApiKey,
+            };
+            store.AddService<IChatCompletionConnector>(AppConstants.GPUStackProvider, new OpenAIChatCompletionConnector(config));
+            store.AddService<IEmbeddingConnector>(AppConstants.GPUStackProvider, new OpenAIEmbeddingConnector(config));
+        }
+
+        // 교환
+        CurrentSettings = settings;
+        AppState.Ready();
     }
 
-    private IHiveMind BuildService()
+    private MemoryService CreateMemoryService(MemorySettings settings)
     {
-        var service = new HiveServiceBuilder()
-            .AddOpenAIConnectors("openai", CurrentSettings.Connectors.OpenAI)
-            .AddOpenAIConnectors("lm-studio", CurrentSettings.Connectors.LMStudio)
-            .AddOpenAIConnectors("gpu-stack", CurrentSettings.Connectors.GPUStack)
-            .AddFileStorage<LocalFileStorage>("local")
-            .AddDefaultFileDecoders()
-            .AddDefaultPipelineHandlers()
-            .WithQueueStorage(new LocalQueueStorage())
-            .WithVectorStorage(new LocalVectorStorage())
-            .BuildHiveMind();
+        var (provider, model) = AppUtility.ParseModelIdentifier(settings.EmbeddingModel);
+        var config = new VectorMemoryConfig
+        {
+            EmbedProvider = provider,
+            EmbedModel = model,
+        };
+        var memory = _hive.CreateVectorMemory(config);
+        return new MemoryService(memory, _db, settings);
+    }
 
-        return service;
+    public enum AppStatus
+    {
+        NotReady,
+        Ready,
+        Loading,
+    }
+
+    public class AppState
+    {
+        public AppStatus Status { get; set; } = AppStatus.NotReady;
+
+        public string Message { get; set; } = "";
+
+        public AppState()
+        { }
+
+        public AppState(AppStatus status, string message)
+        {
+            Status = status;
+            Message = message;
+        }
+
+        public static AppState Ready()
+            => new(AppStatus.Ready, "");
+
+        public static AppState Loading(string message)
+            => new(AppStatus.Loading, message);
+
+        public static AppState NotReady(string message)
+            => new(AppStatus.NotReady, message);
     }
 }

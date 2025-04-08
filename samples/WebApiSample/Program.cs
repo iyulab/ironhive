@@ -10,10 +10,9 @@ using WebApiSample;
 
 var builder = WebApplication.CreateBuilder(args);
 
-#region 서비스 샘플 설정
+#region 서비스 설정
 
-builder.Configuration.EnsureConfiguration();
-builder.Services.AddSampleServices();
+builder.UseSampleServices();
 
 #endregion
 

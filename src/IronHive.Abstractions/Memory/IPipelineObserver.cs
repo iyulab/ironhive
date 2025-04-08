@@ -3,7 +3,7 @@
 /// <summary>
 /// 파이프라인 이벤트를 처리하는 핸들러 인터페이스입니다.
 /// </summary>
-public interface IPipelineEventHandler
+public interface IPipelineObserver
 {
     /// <summary>
     /// 파이프라인 시작 시 호출됩니다.

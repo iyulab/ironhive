@@ -7,7 +7,7 @@ public class PipelineWorker : IPipelineWorker
 {
     private readonly IServiceProvider _services;
     private readonly IQueueStorage _queue;
-    private readonly IEnumerable<IPipelineEventHandler> _events;
+    private readonly IEnumerable<IPipelineObserver> _events;
 
     private int _runningFlag = 0;
     private readonly SemaphoreSlim _semaphore;
@@ -27,13 +27,19 @@ public class PipelineWorker : IPipelineWorker
         
         _services = provider;
         _queue = provider.GetRequiredService<IQueueStorage>();
-        _events = provider.GetServices<IPipelineEventHandler>();
+        _events = provider.GetServices<IPipelineObserver>();
         _semaphore = new SemaphoreSlim(MaxExecutionSlots, MaxExecutionSlots);
     }
 
     public int MaxExecutionSlots { get; }
 
     public TimeSpan PollingInterval { get; }
+
+    public void Dispose()
+    {
+        _semaphore.Dispose();
+        GC.SuppressFinalize(this);
+    }
 
     /// <inheritdoc />
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -129,7 +135,7 @@ public class PipelineWorker : IPipelineWorker
     }
 
     // 이벤트들을 모두 인보크 해주는 메서드
-    private Task InvokeAllAsync(Func<IPipelineEventHandler, Task> action)
+    private Task InvokeAllAsync(Func<IPipelineObserver, Task> action)
     {
         return Task.WhenAll(_events.Select(e => action(e)));
     }

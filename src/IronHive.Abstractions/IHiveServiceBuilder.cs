@@ -73,9 +73,19 @@ public interface IHiveServiceBuilder
     IHiveServiceBuilder WithVectorStorage(IVectorStorage storage);
 
     /// <summary>
-    /// Registers one or more event handlers as a singleton in the service collection.
+    /// Registers one or more pipeline event observers to the service collection.
     /// </summary>
-    IHiveServiceBuilder AddPipelineEventHandler(IPipelineEventHandler handler);
+    /// <param name="lifetime">
+    /// The service's lifetime. Ensure compatibility with other registered services.
+    /// </param>
+    /// <param name="implementationFactory">
+    /// A factory method to create the pipeline observer.
+    /// The first parameter is the service provider, If null, the default implementation is used.
+    /// </param>
+    IHiveServiceBuilder AddPipelineObserver<TImplementation>(
+        ServiceLifetime lifetime = ServiceLifetime.Singleton,
+        Func<IServiceProvider, TImplementation>? implementationFactory = null)
+        where TImplementation : class, IPipelineObserver;
 
     /// <summary>
     /// Adds a pipeline handler to the service collection.

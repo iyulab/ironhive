@@ -3,7 +3,7 @@
 /// <summary>
 /// 작업 수행을 담당하는 인터페이스입니다.
 /// </summary>
-public interface IPipelineWorker
+public interface IPipelineWorker : IDisposable
 {
     /// <summary>
     /// 지속적으로 작업을 수행하는 메서드입니다.

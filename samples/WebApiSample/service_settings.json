@@ -1,0 +1,24 @@
+{
+  "Services": {
+    "Connectors": {
+      "OpenAI": {
+        "ApiKey": "sk-dotnet",
+        "Organization": "",
+        "Project": ""
+      },
+      "LMStudio": {
+        "BaseUrl": "",
+        "ApiKey": ""
+      },
+      "GPUStack": {
+        "BaseUrl": "",
+        "ApiKey": ""
+      }
+    },
+    "Memory": {
+      "EmbeddingModel": "",
+      "ChunkSize": 800,
+      "QnAGenerationModel": ""
+    }
+  }
+}

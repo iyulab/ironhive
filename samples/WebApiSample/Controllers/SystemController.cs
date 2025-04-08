@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using WebApiSample.Entities;
 using WebApiSample.Services;
+using WebApiSample.Settings;
+using static WebApiSample.Services.AppService;
 
 namespace WebApiSample.Controllers;
 
@@ -15,24 +16,33 @@ public class SystemController : ControllerBase
         _service = service;
     }
 
-    [HttpGet("status")]
-    public async Task<IActionResult> GetStatusAsync()
+    [HttpGet("info")]
+    public async Task<IActionResult> GetSystemInfoAsync()
     {
-        await Task.Delay(10);
-        return Ok(_service.Status);
+        // 서비스가 준비되지 않은 경우 잠깐 대기
+        if (_service.CurrentState.Status == AppStatus.Loading)
+        {
+            await Task.Delay(1_000);
+        }
+
+        return Ok(new
+        {
+            State = _service.CurrentState,
+            Settings = _service.CurrentSettings,
+        });
     }
 
-    [HttpGet("settings")]
-    public async Task<IActionResult> GetSettingsAsync()
+    [HttpPost("update")]
+    public async Task<IActionResult> UpdateSettingsAsync(AppServicesSettings settings)
     {
-        await Task.Delay(10);
-        return Ok();
-    }
-
-    [HttpPost("settings")]
-    public async Task<IActionResult> UpdateSettingsAsync(ServicesSettings settings)
-    {
-        await Task.Delay(10);
-        return Ok();
+        try
+        {
+            await settings.SaveAsync(AppConstants.SettingsFilePath);
+            return Ok();
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 }
