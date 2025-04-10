@@ -10,9 +10,10 @@ public class PipelineWorker : IPipelineWorker
     private readonly IEnumerable<IPipelineObserver> _events;
 
     private int _runningFlag = 0;
+    private CancellationTokenSource _cts = new();
     private readonly SemaphoreSlim _semaphore;
 
-    public bool IsActive => _runningFlag == 1;
+    public bool IsRunning => _runningFlag == 1;
     public int AvailableExecutionSlots => _semaphore.CurrentCount;
 
     public PipelineWorker(IServiceProvider provider, PipelineWorkerConfig config)
@@ -37,44 +38,47 @@ public class PipelineWorker : IPipelineWorker
 
     public void Dispose()
     {
+        StopAsync().Wait();
         _semaphore.Dispose();
+        _cts.Dispose();
+
         GC.SuppressFinalize(this);
     }
 
     /// <inheritdoc />
-    public async Task StartAsync(CancellationToken cancellationToken)
+    public async Task StartAsync()
     {
         if (Interlocked.Exchange(ref _runningFlag, 1) == 1)
             return;
 
         try
         {
-            while (!cancellationToken.IsCancellationRequested)
+            while (!_cts.Token.IsCancellationRequested)
             {
                 // 실행 가능한 슬롯이 없으면 PollingInterval 만큼 대기
                 if (_semaphore.CurrentCount == 0)
                 {
-                    await Task.Delay(PollingInterval, cancellationToken);
+                    await Task.Delay(PollingInterval, _cts.Token);
                     continue;
                 }
 
-                var result = await _queue.DequeueAsync<PipelineRequest>(cancellationToken);
+                var result = await _queue.DequeueAsync<PipelineRequest>(_cts.Token);
                 if (result == null)
                 {
                     // 폴링 말고 구독 이벤트 방법 확인
-                    await Task.Delay(PollingInterval, cancellationToken);
+                    await Task.Delay(PollingInterval, _cts.Token);
                     continue;
                 }
 
                 _ = Task.Run(async () =>
                 {
-                    await ExecuteAsync(result.Message, cancellationToken);
+                    await ExecuteAsync(result.Message, _cts.Token);
                     if (result.AckTag != null)
                     {
                         // 처리 확인 아웃
-                        await _queue.AckAsync(result.AckTag, cancellationToken);
+                        await _queue.AckAsync(result.AckTag, _cts.Token);
                     }
-                }, cancellationToken);
+                }, _cts.Token);
             }
         }
         finally
@@ -85,7 +89,24 @@ public class PipelineWorker : IPipelineWorker
     }
 
     /// <inheritdoc />
-    public async Task ExecuteAsync(PipelineRequest request, CancellationToken cancellationToken = default)
+    public async Task StopAsync()
+    {
+        if (Interlocked.Exchange(ref _runningFlag, 0) == 0)
+            return;
+
+        _cts.Cancel();
+        _cts.Dispose();
+        _cts = new CancellationTokenSource();
+
+        // 대기 중인 작업이 있으면 모두 취소될 때까지 대기
+        while (_semaphore.CurrentCount < MaxExecutionSlots)
+        {
+            await Task.Delay(100);
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task ExecuteAsync(PipelineRequest request, CancellationToken cancellationToken)
     {
         await _semaphore.WaitAsync(cancellationToken);
 

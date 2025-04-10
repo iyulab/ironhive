@@ -5,11 +5,17 @@
 /// </summary>
 public interface IPipelineWorker : IDisposable
 {
+    bool IsRunning { get; }
+
     /// <summary>
     /// 지속적으로 작업을 수행하는 메서드입니다.
     /// </summary>
-    /// <param name="cancellationToken">작업 취소/중지 토큰입니다.</param>
-    Task StartAsync(CancellationToken cancellationToken = default);
+    Task StartAsync();
+
+    /// <summary>
+    /// 실행중인 작업을 중지하는 메서드입니다.
+    /// </summary>
+    Task StopAsync();
 
     /// <summary>
     /// 지정된 컨텍스트에서 작업을 수행하는 메서드입니다.
