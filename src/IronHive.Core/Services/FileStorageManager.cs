@@ -8,40 +8,11 @@ public class FileStorageManager : IFileStorageManager
 {
     private readonly IServiceProvider _services;
     private readonly IReadOnlyDictionary<string, Func<IServiceProvider, object?, IFileStorage>> _factories;
-    private readonly IFileDecoderResolver _resolver;
 
     public FileStorageManager(IServiceProvider services)
     {
         _services = services;
         _factories = services.GetRequiredService<IHiveServiceStore>().GetFactories<IFileStorage>();
-        _resolver = services.GetRequiredService<IFileDecoderResolver>();
-    }
-
-    /// <inheritdoc />
-    public IEnumerable<string> GetDecodableExtensions()
-        => _resolver.GetSupportedExtensions();
-
-    /// <inheritdoc />
-    public string? GetMimeType(string fileName)
-        => _resolver.GetMimeType(fileName);
-
-    /// <inheritdoc />
-    public async Task<string> DecodeFileAsync(
-        string provider,
-        string filePath,
-        object? providerConfig = null,
-        CancellationToken cancellationToken = default)
-    {
-        var fileName = Path.GetFileName(filePath);
-        if (_resolver.TryGetDecoderByName(fileName, out var decoder))
-        {
-            await using var stream = await ReadFileAsync(provider, filePath, providerConfig, cancellationToken);
-            return await decoder.DecodeAsync(stream, cancellationToken);
-        }
-        else
-        {
-            throw new NotSupportedException($"Unsupported file {fileName}");
-        }
     }
 
     /// <inheritdoc />

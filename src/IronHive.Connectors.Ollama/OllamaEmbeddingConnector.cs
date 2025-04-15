@@ -39,6 +39,22 @@ public class OllamaEmbeddingConnector : IEmbeddingConnector
     }
 
     /// <inheritdoc />
+    public async Task<IEnumerable<float>> EmbedAsync(
+        string model, 
+        string input, 
+        CancellationToken cancellationToken = default)
+    {
+        var res = await _client.PostEmbeddingAsync(new EmbeddingRequest
+        {
+            Model = model,
+            Input = new[] { input }
+        }, cancellationToken);
+
+        return res.Embeddings.FirstOrDefault() ??
+                throw new InvalidOperationException("No embedding found for the input.");
+    }
+
+    /// <inheritdoc />
     public async Task<IEnumerable<EmbeddingResult>> EmbedBatchAsync(
         string model,
         IEnumerable<string> inputs,

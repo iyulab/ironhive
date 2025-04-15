@@ -1,10 +1,11 @@
 ﻿using IronHive.Abstractions.Files;
-using System.Diagnostics.CodeAnalysis;
 
 namespace IronHive.Core.Services;
 
-public class FileDecoderResolver : IFileDecoderResolver
+public class FileDecoderManager : IFileDecoderManager
 {
+    private readonly IEnumerable<IFileDecoder> _decoders;
+
     // 파일 확장자와 MimeType 매핑
     private readonly IDictionary<string, string> _mapping = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
@@ -387,11 +388,17 @@ public class FileDecoderResolver : IFileDecoderResolver
         { ".zip", "application/x-zip-compressed" }
     };
 
-    private readonly IEnumerable<IFileDecoder> _decoders;
-
-    public FileDecoderResolver(IEnumerable<IFileDecoder> decoders)
+    public FileDecoderManager(IEnumerable<IFileDecoder> decoders)
     {
         _decoders = decoders;
+    }
+
+    /// <inheritdoc />
+    public IEnumerable<string> GetSupportedExtensions()
+    {
+        return _mapping
+            .Where(kvp => _decoders.Any(decoder => decoder.SupportsMimeType(kvp.Value)))
+            .Select(kvp => kvp.Key);
     }
 
     /// <inheritdoc />
@@ -407,28 +414,29 @@ public class FileDecoderResolver : IFileDecoderResolver
     }
 
     /// <inheritdoc />
-    public IEnumerable<string> GetSupportedExtensions()
+    public void SetMimeType(string extension, string mimeType)
     {
-        // 각 확장자에 대해 해당 MimeType을 지원하는 디코더가 있으면 반환합니다.
-        return _mapping
-            .Where(kvp => _decoders.Any(decoder => decoder.SupportsMimeType(kvp.Value)))
-            .Select(kvp => kvp.Key);
+        if (_mapping.ContainsKey(extension))
+        {
+            _mapping[extension] = mimeType;
+        }
+        else
+        {
+            _mapping.Add(extension, mimeType);
+        }
     }
 
     /// <inheritdoc />
-    public bool TryGetDecoderByName(string filePath, [MaybeNullWhen(false)] out IFileDecoder decoder)
+    public async Task<string> DecodeAsync(
+        string filePath, 
+        Stream data, 
+        CancellationToken cancellationToken = default)
     {
-        decoder = GetDecoderByName(filePath);
-        return decoder != null;
-    }
+        var mimeType = GetMimeType(filePath)
+            ?? throw new NotSupportedException("등록 되지 않은 파일 형식입니다.");
+        var decoder = _decoders.FirstOrDefault(d => d.SupportsMimeType(mimeType))
+            ?? throw new NotSupportedException("지원하지 않는 파일 형식입니다.");
 
-    /// <inheritdoc />
-    public IFileDecoder? GetDecoderByName(string filePath)
-    {
-        var mime = GetMimeType(filePath);
-        if (mime == null)
-            return null;
-
-        return _decoders.FirstOrDefault(decoder => decoder.SupportsMimeType(mime));
+        return await decoder.DecodeAsync(data, cancellationToken);
     }
 }

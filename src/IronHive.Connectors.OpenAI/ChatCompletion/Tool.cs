@@ -23,7 +23,7 @@ internal class Function
     public string? Description { get; set; }
 
     [JsonPropertyName("parameters")]
-    public FunctionParameters? Parameters { get; set; }
+    public object? Parameters { get; set; }
 
     /// <summary>
     /// "true" is not working, "false" is default

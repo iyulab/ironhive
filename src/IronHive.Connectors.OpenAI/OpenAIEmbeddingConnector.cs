@@ -1,5 +1,4 @@
-﻿using IronHive.Abstractions.ChatCompletion;
-using IronHive.Abstractions.Embedding;
+﻿using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Json;
 using IronHive.Connectors.OpenAI.Embeddings;
 using System.Reflection;
@@ -58,6 +57,22 @@ public class OpenAIEmbeddingConnector : IEmbeddingConnector
     {
         var models = await GetModelsAsync(cancellationToken);
         return models.First(m => m.Model == model);
+    }
+
+    /// <inheritdoc />
+    public async Task<IEnumerable<float>> EmbedAsync(
+        string model, 
+        string input, 
+        CancellationToken cancellationToken = default)
+    {
+        var res = await _client.PostEmbeddingAsync(new EmbeddingRequest
+        {
+            Model = model,
+            Input = new[] { input }
+        }, cancellationToken);
+
+        return res.FirstOrDefault()?.Embedding ??
+                throw new InvalidOperationException("No embedding found for the input.");
     }
 
     /// <inheritdoc />

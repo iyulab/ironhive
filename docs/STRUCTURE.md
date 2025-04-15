@@ -20,9 +20,6 @@
 ### AI Services
 - IChatCompletionService        => Singleton!                                     => Required
   - IHiveServiceStore           => Singleton!                                     => Required
-  - IToolHandlerManager         => Singleton!                                     => Required
-    - IServiceProvider          => SYSTEM                                         => For Handler
-    - IToolHandler[]            => Singleton | Scoped | Transient                 => Optional
 - IEmbeddingService             => Singleton!                                     => Required
   - IHiveServiceStore           => Singleton!                                     => Required
 
@@ -30,12 +27,12 @@
 - IFileStorageManger            => Singleton!                                     => Required
   - IServiceProvider            => SYSTEM                                         => For Factory Store
   - IHiveServiceStore           => Singleton!                                     => Required
-  - IFileDecoderResolver        => Singleton!                                     => Required
-    - IFileDecoder[]            => Singleton!                                     => Optional
+- IFileDecoderManager           => Singleton!                                     => Required
+  - IFileDecoder[]              => Singleton!                                     => Optional
   
 ### Memory Services
 - IQueueStorage               => Singleton!                                     => Required
 - IVectorStorage              => Singleton!                                     => Required
 - IEmbeddingService           => Singleton!                                     => Required
-- IPipelineEventHandler       => Singleton!                                     => Required??
+- IPipelineObserver           => Singleton | Scoped | Transient                 => Optional
 - IPipelineHandler[]          => Singleton | Scoped | Transient                 => Optional

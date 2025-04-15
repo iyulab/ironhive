@@ -35,7 +35,6 @@ public static class Extensions
             .AddEmbeddingConnector("openai", new OpenAIEmbeddingConnector(o_config))
             .AddChatCompletionConnector("anthropic", new AnthropicChatCompletionConnector(a_config))
             .AddChatCompletionConnector("gemini", new OpenAIChatCompletionConnector(g_config))
-            .AddChatCompletionConnector("iyulab", new OpenAIChatCompletionConnector(l_config))
-            .AddToolHandler<TestTool>("test", ServiceLifetime.Scoped);
+            .AddChatCompletionConnector("iyulab", new OpenAIChatCompletionConnector(l_config));
     }
 }

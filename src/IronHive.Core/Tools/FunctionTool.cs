@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.ComponentModel;
+using System.Reflection;
 using IronHive.Abstractions.Tools;
 
 namespace IronHive.Core.Tools;
@@ -10,32 +11,32 @@ public class FunctionTool : ITool
 {
     private readonly Delegate _function;
 
+    public FunctionTool(Delegate function)
+    {
+        _function = function;
+        Name = function.Method.GetCustomAttribute<FunctionToolAttribute>()?.Name ?? function.Method.Name;
+        Description = function.Method.GetCustomAttribute<DescriptionAttribute>()?.Description;
+        InputSchema = _function.Method.GetInputJsonSchema();
+    }
+
     /// <inheritdoc />
-    public required string Name { get; set; }
+    public ToolPermission Permission { get; set; } = ToolPermission.Auto;
+
+    /// <inheritdoc />
+    public string Name { get; set; }
 
     /// <inheritdoc />
     public string? Description { get; set; }
 
     /// <inheritdoc />
-    public ToolParameters? Parameters { get; set; }
-
-    /// <inheritdoc />
-    public required bool RequiresApproval { get; set; }
-
-    public FunctionTool(Delegate function)
-    {
-        _function = function;
-        Parameters = _function.Method.GetParameters() is var parameters && parameters.Length > 0
-            ? new ToolParameters(parameters)
-            : null;
-    }
+    public object? InputSchema { get; set; }
 
     /// <inheritdoc />
     public async Task<ToolResult> InvokeAsync(object? args, CancellationToken cancellationToken = default)
     {
         try
         {
-            var arguments = Parameters?.BuildArguments(args);
+            var arguments = BuildArguments(args);
             var result = _function.DynamicInvoke(arguments);
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -51,6 +52,47 @@ public class FunctionTool : ITool
         {
             return ToolResult.Failed(ex.Message);
         }
+    }
+
+    // delegate의 인자들을 빌드합니다.
+    private object?[]? BuildArguments(object? args)
+    {
+        var parameters = _function.Method.GetParameters();
+        if (parameters.Length == 0 || args == null)
+            return null;
+
+        var dictionary = args.ConvertTo<IDictionary<string, object?>>()
+            ?? new Dictionary<string, object?>();
+        var arguments = new object?[parameters.Length];
+
+        for (int i = 0; i < parameters.Length; i++)
+        {
+            var param = parameters[i];
+            var name = param.Name ?? throw new InvalidOperationException("Parameter name cannot be null.");
+
+            if (dictionary.TryGetValue(name, out var value))
+            {
+                // 인자가 존재하는 경우
+                arguments[i] = value.ConvertTo(param.ParameterType);
+            }
+            else if (param.HasDefaultValue)
+            {
+                // 인자가 존재하지 않고, 기본값이 있는 경우
+                arguments[i] = param.DefaultValue;
+            }
+            else if (param.IsOptional)
+            {
+                // 인자가 존재하지 않고, 선택적 인자인 경우
+                arguments[i] = null;
+            }
+            else
+            {
+                // 인자가 존재하지 않고, 필수 인자인 경우
+                throw new ArgumentException($"Parameter '{name}' is required");
+            }
+        }
+
+        return arguments;
     }
 
     // 비동기 메서드를 적절히 처리합니다.

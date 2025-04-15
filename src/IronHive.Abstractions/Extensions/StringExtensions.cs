@@ -15,6 +15,30 @@ public static class StringExtensions
         => str.EndsWith(value) ? str : str + value;
 
     /// <summary>
+    /// 문자열에 해당 접미사가 있는 경우 제거합니다.
+    /// </summary>
+    public static string RemoveSuffix(this string str, string value)
+        => str.EndsWith(value) ? str.Substring(0, str.Length - value.Length) : str;
+
+    /// <summary>
+    /// 문자열에 해당 접미사가 있는 경우 제거합니다.
+    /// </summary>
+    public static string RemoveSuffix(this string str, char value)
+        => str.EndsWith(value) ? str.Substring(0, str.Length - 1) : str;
+
+    /// <summary>
+    /// 문자열의 접두사를 지정한 값으로 만듭니다.
+    /// </summary>
+    public static string EnsurePreffix(this string str, string value)
+        => str.StartsWith(value) ? str : value + str;
+
+    /// <summary>
+    /// 문자열의 접두사를 지정한 값으로 만듭니다.
+    /// </summary>
+    public static string EnsurePreffix(this string str, char value)
+        => str.StartsWith(value) ? str : value + str;
+
+    /// <summary>
     /// 문자열에 해당 접두사가 있는 경우 제거합니다.
     /// </summary>
     public static string RemovePreffix(this string str, string value)

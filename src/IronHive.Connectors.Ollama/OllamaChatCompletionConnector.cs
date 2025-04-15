@@ -146,13 +146,7 @@ public class OllamaChatCompletionConnector : IChatCompletionConnector
                 {
                     Name = t.Name,
                     Description = t.Description,
-                    Parameters = t.Parameters != null 
-                    ? new ParametersSchema
-                    {
-                        Properties = t.Parameters?.JsonSchema.Properties,
-                        Required = t.Parameters?.JsonSchema.Required,
-                    } 
-                    : null
+                    Parameters = t.InputSchema
                 }
             };
         });

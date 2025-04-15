@@ -247,11 +247,7 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
         {
             Name = t.Name,
             Description = t.Description,
-            InputSchema = new ToolInputSchema
-            {
-                Properties = t.Parameters?.JsonSchema.Properties,
-                Required = t.Parameters?.JsonSchema.Required,
-            }
+            InputSchema = t.InputSchema ?? new ObjectJsonSchema()
         });
 
         return _req;

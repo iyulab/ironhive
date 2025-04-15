@@ -1,4 +1,6 @@
-﻿namespace IronHive.Abstractions.ChatCompletion;
+﻿using IronHive.Abstractions.Tools;
+
+namespace IronHive.Abstractions.ChatCompletion;
 
 public class ChatCompletionOptions : ChatCompletionParameters
 {
@@ -18,7 +20,7 @@ public class ChatCompletionOptions : ChatCompletionParameters
     public string? Instructions { get; set; }
 
     /// <summary>
-    /// 사용할 툴의 이름과 옵션입니다.
+    /// 사용할 툴입니다.
     /// </summary>
-    public IDictionary<string, object?>? Tools { get; set; }
+    public ToolCollection? Tools { get; set; }
 }

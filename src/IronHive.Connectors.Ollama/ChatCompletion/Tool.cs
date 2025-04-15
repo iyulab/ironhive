@@ -20,7 +20,7 @@ internal class FunctionTool
     public string? Description { get; set; }
 
     [JsonPropertyName("parameters")]
-    public ParametersSchema? Parameters { get; set; }
+    public object? Parameters { get; set; }
 }
 
 internal class ParametersSchema

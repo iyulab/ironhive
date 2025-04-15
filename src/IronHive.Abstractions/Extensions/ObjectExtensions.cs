@@ -65,19 +65,29 @@ public static class ObjectExtensions
                 // Case 4: The object is a JsonElement
                 return JsonSerializer.Deserialize(el.GetRawText(), target, options);
             }
-            else if (obj is JsonObject jo)
-            {
-                // Case 5: The object is a JsonObject
-                return jo.Deserialize(target, options);
-            }
             else if (obj is JsonNode node)
             {
-                // Case 6: The object is a JsonNode
+                // Case 5: The object is a JsonNode
                 return node.Deserialize(target, options);
+            }
+            else if (obj is JsonObject jo)
+            {
+                // Case 6: The object is a JsonObject
+                return jo.Deserialize(target, options);
+            }
+            else if (obj is JsonArray ja)
+            {
+                // Case 7: The object is a JsonArray
+                return ja.Deserialize(target, options);
+            }
+            else if (obj is string str)
+            {
+                // Case 8: The object is a string
+                return JsonSerializer.Deserialize(str, target, options);
             }
             else
             {
-                // Case 7: Attempt to serialize and deserialize the object to the target type
+                // Case 9: Attempt to serialize and deserialize the object to the target type
                 string jsonStr = JsonSerializer.Serialize(obj, options);
                 return JsonSerializer.Deserialize(jsonStr, target, options);
             }

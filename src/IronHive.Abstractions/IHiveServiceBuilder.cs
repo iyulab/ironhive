@@ -36,26 +36,6 @@ public interface IHiveServiceBuilder
         string serviceKey,
         IEmbeddingConnector connector);
 
-    /// <summary>
-    /// Adds a tool handler to the service collection.
-    /// </summary>
-    /// <param name="serviceKey">
-    /// A unique key used to invoke the tool service within the chat completion service.
-    /// </param>
-    /// <param name="lifetime">
-    /// The service's lifetime. Ensure compatibility with other registered services.
-    /// </param>
-    /// <param name="implementationFactory">
-    /// A factory method to create the tool handler.
-    /// The first parameter is the service provider and the second is the service key.
-    /// If null, the default implementation is used.
-    /// </param>
-    IHiveServiceBuilder AddToolHandler<TImplementation>(
-        string serviceKey,
-        ServiceLifetime lifetime = ServiceLifetime.Singleton,
-        Func<IServiceProvider, object?, TImplementation>? implementationFactory = null)
-        where TImplementation : class, IToolHandler;
-
     #endregion
 
     #region Memory Services

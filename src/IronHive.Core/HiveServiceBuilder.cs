@@ -46,17 +46,6 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     }
 
     /// <inheritdoc />
-    public IHiveServiceBuilder AddToolHandler<TImplementation>(
-        string serviceKey,
-        ServiceLifetime lifetime = ServiceLifetime.Singleton,
-        Func<IServiceProvider, object?, TImplementation>? implementationFactory = null)
-        where TImplementation : class, IToolHandler
-    {
-        AddKeyedService<IToolHandler, TImplementation>(serviceKey, lifetime, implementationFactory);
-        return this;
-    }
-
-    /// <inheritdoc />
     public IHiveServiceBuilder WithQueueStorage(IQueueStorage storage)
     {
         _services.RemoveAll<IQueueStorage>();
@@ -119,8 +108,6 @@ public class HiveServiceBuilder : IHiveServiceBuilder
             Debug.WriteLine("ChatCompletionConnector is not registered. Chat Completion will not work.");
         if (!ContainsAny<IEmbeddingConnector>())
             Debug.WriteLine("EmbeddingConnector is not registered. Embedding will not work.");
-        if (!ContainsAny<IToolHandler>())
-            Debug.WriteLine("ToolHandler is not registered. Chat Completion Tool Service will not work.");
 
         if (!ContainsAny<IFileStorage>())
             Debug.WriteLine("FileStorage is not registered. File Service will not work.");
@@ -144,10 +131,9 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         // AI 서비스
         _services.TryAddSingleton<IChatCompletionService, ChatCompletionService>();
         _services.TryAddSingleton<IEmbeddingService, EmbeddingService>();
-        _services.TryAddSingleton<IToolHandlerManager, ToolHandlerManager>();
         // File 서비스
         _services.TryAddSingleton<IFileStorageManager, FileStorageManager>();
-        _services.TryAddSingleton<IFileDecoderResolver, FileDecoderResolver>();
+        _services.TryAddSingleton<IFileDecoderManager, FileDecoderManager>();
         // 메모리 서비스
         _services.TryAddSingleton<IQueueStorage, LocalQueueStorage>();
         _services.TryAddSingleton<IVectorStorage, LocalVectorStorage>();

@@ -6,11 +6,13 @@ namespace IronHive.Core.Handlers;
 
 public class TextExtractionHandler : IPipelineHandler
 {
-    private readonly IFileStorageManager _manager;
+    private readonly IFileStorageManager _storages;
+    private readonly IFileDecoderManager _decoders;
 
-    public TextExtractionHandler(IFileStorageManager manager)
+    public TextExtractionHandler(IFileStorageManager storages, IFileDecoderManager decoders)
     {
-        _manager = manager;
+        _storages = storages;
+        _decoders = decoders;
     }
 
     public async Task<PipelineContext> ProcessAsync(PipelineContext context, CancellationToken cancellationToken)
@@ -19,16 +21,22 @@ public class TextExtractionHandler : IPipelineHandler
         if (source is TextMemorySource textSource)
         {
             var text = textSource.Text;
+
             context.Payload = text;
             return context;
         }
         else if (source is FileMemorySource fileSource)
         {
-            var text = await _manager.DecodeFileAsync(
+            using var stream = await _storages.ReadFileAsync(
                 provider: fileSource.Provider,
                 filePath: fileSource.FilePath,
                 providerConfig: fileSource.ProviderConfig,
-                cancellationToken: cancellationToken);            
+                cancellationToken: cancellationToken);
+            var text = await _decoders.DecodeAsync(
+                filePath: fileSource.FilePath,
+                data: stream,
+                cancellationToken: cancellationToken);
+
             context.Payload = text;
             return context;
         }

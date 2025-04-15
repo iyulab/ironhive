@@ -50,9 +50,9 @@ public class AssistantTextContent : AssistantContentBase
 public class AssistantToolContent : AssistantContentBase
 {
     /// <summary>
-    /// 현재 도구가 실행을 완료했는지 여부를 나타냅니다.
+    /// 도구 실행이 허용이 되었는지 나타냅니다.
     /// </summary>
-    public bool IsFinished { get; set; } = false;
+    public bool IsAllowed { get; set; } = false;
 
     /// <summary>
     /// 도구 콘텐츠 블록의 상태입니다.
@@ -73,11 +73,6 @@ public class AssistantToolContent : AssistantContentBase
     /// 도구 콘텐츠 블록의 결과입니다.
     /// </summary>
     public string? Result { get; set; }
-
-    /// <summary>
-    /// 도구 실행을 사용자가 거부했는지 여부를 나타냅니다.
-    /// </summary>
-    public bool UserDenied { get; set; } = true;
 
     public void Completed(string data)
     {

@@ -221,13 +221,7 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
             {
                 Name = t.Name,
                 Description = t.Description,
-                Parameters = t.Parameters != null 
-                ? new FunctionParameters
-                {
-                    Properties = t.Parameters.JsonSchema.Properties,
-                    Required = t.Parameters.JsonSchema.Required,
-                }
-                : null
+                Parameters = t.InputSchema
             }
         });
 

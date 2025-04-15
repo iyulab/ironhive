@@ -51,11 +51,10 @@ public class EmbeddingService : IEmbeddingService
         string input,
         CancellationToken cancellationToken = default)
     {
-        var res = await EmbedBatchAsync(provider, model, [input], cancellationToken);
-        var result = res.FirstOrDefault()?.Embedding
-            ?? throw new InvalidOperationException("Failed to embedding");
+        if (!_store.TryGetService<IEmbeddingConnector>(provider, out var connector))
+            throw new KeyNotFoundException($"Service key '{provider}' not found.");
 
-        return result;
+        return await connector.EmbedAsync(model, input, cancellationToken);
     }
 
     /// <inheritdoc />

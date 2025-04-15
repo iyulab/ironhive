@@ -6,7 +6,7 @@ using Tavily;
 
 namespace IronHive.Stack.WebApi.Tools;
 
-public class TestTool : ToolHandlerBase
+public class TestTool
 {
     private readonly HttpContext _context;
 
@@ -76,15 +76,6 @@ public class TestTool : ToolHandlerBase
         [Description("text content of file")] string text)
     {
         await File.WriteAllTextAsync(filePath, text);
-    }
-
-    public override Task<string> HandleSetInstructionsAsync(object? options)
-    {
-        if (options.TryConvertTo<TestToolOptions>(out var option))
-        {
-            return Task.FromResult(option.Description);
-        }
-        return base.HandleSetInstructionsAsync(options);
     }
 }
 

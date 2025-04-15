@@ -154,7 +154,7 @@ public class HiveSession : IHiveSession
             Provider = agent.Provider,
             Model = agent.Model,
             Instructions = agent.Instructions,
-            Tools = agent.Tools,
+            //Tools = agent.Tools,
             MaxTokens = agent.Parameters?.MaxTokens,
             StopSequences = agent.Parameters?.StopSequences,
             Temperature = agent.Parameters?.Temperature,

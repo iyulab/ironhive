@@ -11,12 +11,10 @@ namespace IronHive.Core.Services;
 public class ChatCompletionService : IChatCompletionService
 {
     private readonly IHiveServiceStore _store;
-    private readonly IToolHandlerManager _manager;
 
-    public ChatCompletionService(IHiveServiceStore store, IToolHandlerManager manager)
+    public ChatCompletionService(IHiveServiceStore store)
     {
         _store = store;
-        _manager = manager;
     }
 
     /// <inheritdoc />
@@ -81,7 +79,7 @@ public class ChatCompletionService : IChatCompletionService
             throw new KeyNotFoundException($"Service key '{options.Provider}' not found.");
 
         // 파라미터를 받아서 요청을 생성합니다.
-        var request = await CreateChatCompletionRequest(messages, options);
+        var request = CreateChatCompletionRequest(messages, options);
 
         // 생성 종료 이유
         EndReason? reason = null;
@@ -109,7 +107,7 @@ public class ChatCompletionService : IChatCompletionService
                 // 도구 호출
                 else if (request.Tools.TryGetValue(toolContent.Name, out var tool))
                 {
-                    if (tool.RequiresApproval && toolContent.UserDenied)
+                    if (tool.Permission == ToolPermission.Manual && !toolContent.IsAllowed)
                     {
                         // 도구가 승인이 요구되었고,
                         // 도구 사용을 확인하지 않은 경우 실패 처리
@@ -191,7 +189,7 @@ public class ChatCompletionService : IChatCompletionService
                     // 도구 호출
                     else if (request.Tools.TryGetValue(toolContent.Name, out var tool))
                     {
-                        if (tool.RequiresApproval)
+                        if (tool.Permission == ToolPermission.Manual)
                         {
                             approveRequired = true; // 도구 사용을 확인하지 않은 경우
                             // 도구가 승인이 요구되는 겨우 건너뜀
@@ -247,7 +245,7 @@ public class ChatCompletionService : IChatCompletionService
             throw new KeyNotFoundException($"Service key '{options.Provider}' not found.");
 
         // 파라미터를 받아서 요청을 생성합니다.
-        var request = await CreateChatCompletionRequest(messages, options);
+        var request = CreateChatCompletionRequest(messages, options);
 
         // 생성 종료 이유
         EndReason? reason = null;
@@ -274,7 +272,7 @@ public class ChatCompletionService : IChatCompletionService
                 }
                 if (request.Tools.TryGetValue(content.Name, out var tool))
                 {
-                    if (tool.RequiresApproval && content.UserDenied)
+                    if (tool.Permission == ToolPermission.Manual && !content.IsAllowed)
                     {
                         // 도구가 승인이 요구되었고,
                         // 도구 사용을 확인하지 않은 경우 실패 처리
@@ -452,7 +450,7 @@ public class ChatCompletionService : IChatCompletionService
                     }
                     if (request.Tools.TryGetValue(content.Name, out var tool))
                     {
-                        if (tool.RequiresApproval)
+                        if (tool.Permission == ToolPermission.Manual)
                         {
                             // 도구 사용이 요구되는 경우
                             approveRequired = true;
@@ -515,28 +513,15 @@ public class ChatCompletionService : IChatCompletionService
     }
 
     // 채팅 완성 요청을 생성합니다.
-    private async Task<ChatCompletionRequest> CreateChatCompletionRequest(
+    private static ChatCompletionRequest CreateChatCompletionRequest(
         MessageCollection messages, 
         ChatCompletionOptions options)
     {
-        var instructions = options.Instructions;
-        var tools = new ToolCollection();
-        if (options.Tools != null)
-        {
-            foreach (var (key, value) in options.Tools)
-            {
-                await _manager.HandleInitializedAsync(key, value);
-                instructions += await _manager.HandleSetInstructionsAsync(key, value);
-                var coll = _manager.CreateToolCollection(key);
-                tools.AddRange(coll);
-            }
-        }
-
         var request = new ChatCompletionRequest
         {
             Model = options.Model,
-            System = instructions,
-            Tools = tools,
+            System = options.Instructions,
+            Tools = options.Tools ?? new ToolCollection(),
             Messages = messages.Clone(), // 메시지 복사
             MaxTokens = options.MaxTokens,
             Temperature = options.Temperature,
