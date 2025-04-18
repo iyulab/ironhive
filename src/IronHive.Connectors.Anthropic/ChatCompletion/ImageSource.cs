@@ -5,7 +5,7 @@ namespace IronHive.Connectors.Anthropic.ChatCompletion;
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(Base64ImageSource), "base64")]
 [JsonDerivedType(typeof(UrlImageSource), "url")]
-internal class ImageSource
+internal abstract class ImageSource
 { }
 
 internal class Base64ImageSource : ImageSource

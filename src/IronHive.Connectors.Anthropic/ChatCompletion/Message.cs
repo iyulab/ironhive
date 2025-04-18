@@ -17,7 +17,7 @@ internal class Message
     public MessageRole Role { get; set; }
 
     [JsonPropertyName("content")]
-    public ICollection<MessageContent> Content { get; set; } = new List<MessageContent>();
+    public ICollection<IMessageContent> Content { get; set; } = [];
 
     public Message()
     { }

@@ -1,4 +1,4 @@
-﻿using IronHive.Connectors.Ollama.Base;
+﻿using IronHive.Connectors.Ollama.Clients;
 using System.Text.Json.Serialization;
 
 namespace IronHive.Connectors.Ollama.ChatCompletion;
@@ -18,7 +18,7 @@ internal class ChatRequest
     public string? Format { get; set; }
 
     [JsonPropertyName("options")]
-    public ModelOptions? Options { get; set; }
+    public OllamaModelOptions? Options { get; set; }
 
     [JsonPropertyName("stream")]
     public bool? Stream { get; set; }

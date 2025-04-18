@@ -28,9 +28,15 @@ public static class Extensions
         //    BaseUrl = "http://172.30.1.53:8080/v1-openai/",
         //    ApiKey = ""
         //};
+        var x_config = new OpenAIConfig
+        {
+            BaseUrl = "https://api.x.ai/v1/",
+            ApiKey = ""
+        };
 
         services.AddHiveServiceCore()
             .AddOpenAIConnectors("openai", o_config)
-            .AddAnthropicConnectors("anthropic", a_config);
+            .AddAnthropicConnectors("anthropic", a_config)
+            .AddOpenAIConnectors("xai", x_config);
     }
 }

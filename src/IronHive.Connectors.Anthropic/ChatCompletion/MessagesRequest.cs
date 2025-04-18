@@ -35,10 +35,10 @@ internal class MessagesRequest
     /// (Not Use)
     /// </summary>
     [JsonPropertyName("thinking")]
-    public object? Thinking { get; set; }
+    public IThinking? Thinking { get; set; }
 
     [JsonPropertyName("tool_choice")]
-    public ToolChoice? ToolChoice { get; set; }
+    public IToolChoice? ToolChoice { get; set; }
 
     [JsonPropertyName("tools")]
     public IEnumerable<Tool>? Tools { get; set; }

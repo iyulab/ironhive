@@ -1,4 +1,5 @@
 ﻿using IronHive.Abstractions.Embedding;
+using IronHive.Connectors.Ollama.Clients;
 using IronHive.Connectors.Ollama.Embeddings;
 
 namespace IronHive.Connectors.Ollama;
@@ -15,27 +16,6 @@ public class OllamaEmbeddingConnector : IEmbeddingConnector
     public OllamaEmbeddingConnector(string baseUrl)
     {
         _client = new OllamaEmbeddingClient(baseUrl);
-    }
-
-    /// <inheritdoc />
-    public async Task<IEnumerable<EmbeddingModel>> GetModelsAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var models = await _client.GetModelsAsync(cancellationToken);
-        return models.Select(m => new EmbeddingModel
-        {
-            Model = m.Name,
-            CreatedAt = m.ModifiedAt,
-        });
-    }
-
-    /// <inheritdoc />
-    public async Task<EmbeddingModel> GetModelAsync(
-        string model,
-        CancellationToken cancellationToken = default)
-    {
-        var models = await GetModelsAsync(cancellationToken);
-        return models.First(m => m.Model == model);
     }
 
     /// <inheritdoc />

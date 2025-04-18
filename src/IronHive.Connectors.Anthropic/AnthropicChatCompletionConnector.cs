@@ -1,11 +1,11 @@
-﻿using IronHive.Abstractions.ChatCompletion;
-using IronHive.Connectors.Anthropic.ChatCompletion;
+﻿using System.Text.Json;
 using System.Runtime.CompilerServices;
-using TokenUsage = IronHive.Abstractions.ChatCompletion.TokenUsage;
-using System.Text.Json;
+using IronHive.Abstractions.ChatCompletion;
 using IronHive.Abstractions.Json;
-using System.Reflection;
 using IronHive.Abstractions.Messages;
+using IronHive.Connectors.Anthropic.ChatCompletion;
+using IronHive.Connectors.Anthropic.Clients;
+using TokenUsage = IronHive.Abstractions.ChatCompletion.TokenUsage;
 
 namespace IronHive.Connectors.Anthropic;
 
@@ -21,47 +21,6 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
     public AnthropicChatCompletionConnector(string apiKey)
     {
         _client = new AnthropicChatCompletionClient(apiKey);
-    }
-
-    /// <inheritdoc />
-    public async Task<IEnumerable<ChatCompletionModel>> GetModelsAsync(
-        CancellationToken cancellationToken = default)
-    {
-        if (_client.Client.BaseAddress?.ToString() == AnthropicConstants.DefaultBaseUrl)
-        {
-            // Anthropic 모델을 호출하는 경우 내장 리소스를 사용
-            var assembly = Assembly.GetExecutingAssembly();
-            var resource = await JsonResourceLoader.LoadAsync<IEnumerable<ChatCompletionModel>>(
-                assembly: assembly,
-                resourceName: $"{assembly.GetName().Name}.Resources.AnthropicChatModels.json",
-                options: _client.JsonOptions,
-                cancellationToken: cancellationToken);
-            if (resource.Data == null)
-                throw new InvalidOperationException("Failed to load Anthropic models.");
-
-            return resource.Data;
-        }
-        else
-        {
-            // 다른 Anthropic 서버를 호출하는 경우 API를 사용
-            var models = await _client.GetModelsAsync(cancellationToken);
-            return models.Where(m => m.IsChatCompletion())
-                        .Select(m => new ChatCompletionModel
-                        {
-                            Model = m.Id,
-                            DisplayName = m.DisplayName,
-                            CreatedAt = m.CreatedAt,
-                        });
-        }
-    }
-
-    /// <inheritdoc />
-    public async Task<ChatCompletionModel> GetModelAsync(
-        string model,
-        CancellationToken cancellationToken = default)
-    {
-        var models = await GetModelsAsync(cancellationToken);
-        return models.First(m => m.Model == model);
     }
 
     /// <inheritdoc />
@@ -160,7 +119,7 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
             {
                 // 2-2. 컨텐츠 블록 생성 진행 이벤트
 
-                if (cde.ContentBlock is TextDeltaMessageContent text)
+                if (cde.Delta is TextDeltaMessageContent text)
                 {
                     // 텍스트 생성
                     yield return new ChatCompletionResponse<IAssistantContent>
@@ -172,7 +131,7 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                         }
                     };
                 }
-                else if (cde.ContentBlock is ToolUseDeltaMessageContent tool)
+                else if (cde.Delta is ToolUseDeltaMessageContent tool)
                 {
                     // 툴 사용
                     yield return new ChatCompletionResponse<IAssistantContent>

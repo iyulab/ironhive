@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using IronHive.Abstractions.Messages;
+using IronHive.Abstractions.Models;
 
 namespace WebServer.Controllers;
 
@@ -13,16 +14,28 @@ namespace WebServer.Controllers;
 [Route("/api")]
 public class ServiceController : ControllerBase
 {
+    private readonly IModelService _model;
     private readonly IChatCompletionService _chat;
     private readonly JsonSerializerOptions _jsonOptions;
 
     public ServiceController(
+        IModelService model,
         IChatCompletionService chat,
         IOptions<JsonOptions> jsonOptions)
     {
+        _model = model;
         _chat = chat;
         _jsonOptions = jsonOptions.Value.JsonSerializerOptions;
     }
+
+    [HttpGet("models")]
+    public async Task<ActionResult> GetModelsAsync(
+        CancellationToken cancellationToken)
+    {
+        var models = await _model.ListModelsAsync(cancellationToken);
+        return Ok(models);
+    }
+
 
     [HttpPost("conversation")]
     public async Task ConversationAsync(

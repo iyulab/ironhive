@@ -3,7 +3,7 @@ using IronHive.Abstractions.ChatCompletion;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Memory;
-using IronHive.Abstractions.Tools;
+using IronHive.Abstractions.Models;
 
 namespace IronHive.Abstractions;
 
@@ -13,6 +13,17 @@ namespace IronHive.Abstractions;
 public interface IHiveServiceBuilder
 {
     #region AI Services
+
+    /// <summary>
+    /// Registers a model connector in the Hive service store.
+    /// </summary>
+    /// <param name="serviceKey">
+    /// A unique key used to identify the service provider for retrieve model information.
+    /// </param>
+    /// <param name="connector">The model connector implementation.</param>
+    IHiveServiceBuilder AddModelConnector(
+        string serviceKey,
+        IModelConnector connector);
 
     /// <summary>
     /// Registers a chat completion connector in the Hive service store.

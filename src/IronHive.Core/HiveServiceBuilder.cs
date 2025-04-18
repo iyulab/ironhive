@@ -3,12 +3,12 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using IronHive.Abstractions.ChatCompletion;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Memory;
-using IronHive.Abstractions.Tools;
 using IronHive.Abstractions;
 using IronHive.Abstractions.Files;
 using IronHive.Core.Services;
 using IronHive.Core.Storages;
 using System.Diagnostics;
+using IronHive.Abstractions.Models;
 
 namespace IronHive.Core;
 
@@ -25,6 +25,15 @@ public class HiveServiceBuilder : IHiveServiceBuilder
 
         // 필수 서비스 없을 경우 등록
         AddRequiredServices();
+    }
+
+    /// <inheritdoc />
+    public IHiveServiceBuilder AddModelConnector(
+        string serviceKey, 
+        IModelConnector connector)
+    {
+        _store.AddService(serviceKey, connector);
+        return this;
     }
 
     /// <inheritdoc />
@@ -104,6 +113,8 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     public IHiveMind BuildHiveMind()
     {
         // 선택 서비스 등록 확인
+        if (!ContainsAny<IModelConnector>())
+            Debug.WriteLine("ModelConnector is not registered. Model will not work.");
         if (!ContainsAny<IChatCompletionConnector>())
             Debug.WriteLine("ChatCompletionConnector is not registered. Chat Completion will not work.");
         if (!ContainsAny<IEmbeddingConnector>())
@@ -129,6 +140,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         // Connectors, FileStorage 인스턴스 컨테이너
         _services.AddSingleton<IHiveServiceStore>(_store);
         // AI 서비스
+        _services.TryAddSingleton<IModelService, ModelService>();
         _services.TryAddSingleton<IChatCompletionService, ChatCompletionService>();
         _services.TryAddSingleton<IEmbeddingService, EmbeddingService>();
         // File 서비스
@@ -213,7 +225,9 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     {
         var serviceType = typeof(TService);
 
-        if (serviceType == typeof(IChatCompletionConnector))
+        if (serviceType == typeof(IModelConnector))
+            return _store.GetServices<IModelConnector>().Any();
+        else if (serviceType == typeof(IChatCompletionConnector))
             return _store.GetServices<IChatCompletionConnector>().Any();
         else if (serviceType == typeof(IEmbeddingConnector))
             return _store.GetServices<IEmbeddingConnector>().Any();

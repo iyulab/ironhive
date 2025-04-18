@@ -2,21 +2,23 @@ import { LitElement, css, html } from "lit";
 import { customElement, state } from "lit/decorators.js";
 
 import "@iyulab/chat-component";
-import "@iyulab/chat-component/styles/hivestack-light.css";
-import "@iyulab/chat-component/styles/hivestack-dark.css";
+import "@iyulab/chat-component/styles/chat-light.css";
+import "@iyulab/chat-component/styles/chat-dark.css";
+import "@iyulab/chat-component/styles/github.css";
 
 import { Message, MessageContent, StopMessageEvent, SubmitMessageEvent } from "@iyulab/chat-component";
 import { HttpResponse } from "../services/http";
-import { Api } from "../services";
+import { Api, ChatCompletionRequest } from "../services";
 
 @customElement('home-page')
 export class HomePage extends LitElement {
   private _res?: HttpResponse;
   
   @state() messages: Message[] = [];
+  @state() count: number = 0;
 
   render() {
-    return html`
+    return html` 
       <div class="flexible-box">
         <div class="container">
           <message-box
@@ -25,17 +27,13 @@ export class HomePage extends LitElement {
           
           <message-input
             placeholder="Type a message..."
-            @submit=${this.submit}
-            @stop=${this.stop}>
+            @submit=${this.submit}>
           ></message-input>
         </div>
       </div>
+      <div class="count">${this.count}</div>
       <div @click=${this.toggle} class="toggler">T</div>
     `;
-  }
-
-  private stop = (e: StopMessageEvent) => {
-    this._res?.cancel();
   }
 
   private submit = async (e: SubmitMessageEvent) => {
@@ -50,46 +48,50 @@ export class HomePage extends LitElement {
       content: [],
       timestamp: new Date().toISOString()
     }
+
     this.messages = [...this.messages, user_msg];
     const anth = { provider: "anthropic", model: "claude-3-5-haiku-latest" };
-    const open = { provider: "openai", model: "gpt-4o-mini" };
+    const open = { provider: "openai", model: "gpt-4.1-nano" };
     const gemini = { provider: "gemini", model: "gemini-2.0-flash-lite" };
     const iyulab = { provider: "iyulab", model: "exaone-3.5" };
-
-    this._res = await Api.chatAsync({
-      provider: open.provider,
-      model: open.model,
+    const xai = { provider: "xai", model: "grok-3-mini-fast" };
+    const request: ChatCompletionRequest = {
+      provider: xai.provider,
+      model: xai.model,
       messages: this.messages,
       instructions: "유저의 질문에 성실히 대답하세요."
-    }, (item) => {
-      let last = this.messages[this.messages.length - 1];
-      if (last.role !== 'assistant') {
-        this.messages = [...this.messages, bot_msg];
-        last = this.messages[this.messages.length - 1];
-      }
+    }
 
-      const data = item.data as MessageContent;
-      const index = data.index || 0;
-      last.content ||= [];
-      const content = last.content?.at(index);
-      console.log("Data: ", data);
+    for await (const msg of Api.conversation(request)) {
+      // console.log(msg);
+    //   let last = this.messages[this.messages.length - 1];
+    //   if (last.role !== 'assistant') {
+    //     this.messages = [...this.messages, bot_msg];
+    //     last = this.messages[this.messages.length - 1];
+    //   }
 
-      if (content) {
-        if (content.type === 'text' && data.type === 'text') {
-          content.value ||= '';
-          content.value += data.value;
-        } else {
-          last.content[index] = data;
-        }
-      } else {
-        last.content?.push(data);
-      }
+    //   const data = msg.data as MessageContent;
+    //   const index = data.index || 0;
+    //   last.content ||= [];
+    //   const content = last.content?.at(index);
+    //   console.log("Data: ", data);
 
-      this.messages = [...this.messages];
-    });
+    //   if (content) {
+    //     if (content.type === 'text' && data.type === 'text') {
+    //       content.value ||= '';
+    //       content.value += data.value;
+    //     } else {
+    //       last.content[index] = data;
+    //     }
+    //   } else {
+    //     last.content?.push(data);
+    //   }
+
+    //   this.messages = [...this.messages];
+    }
   }
 
-  private toggle = () => {
+  private toggle = async () => {
     const html = document.documentElement;
     if (html.hasAttribute('theme')) {
       html.removeAttribute('theme');
@@ -132,6 +134,13 @@ export class HomePage extends LitElement {
       color: var(--hs-text-color);
       background-color: var(--hs-background-color);
       overflow: hidden;
+    }
+
+    .count {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      font-size: 1.5em;
     }
 
     .toggler {

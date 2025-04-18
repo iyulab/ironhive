@@ -12,6 +12,7 @@ public static class HiveServiceBuilderExtensions
         string serviceKey, 
         AnthropicConfig config)
     {
+        builder.AddModelConnector(serviceKey, new AnthropicModelConnector(config));
         builder.AddChatCompletionConnector(serviceKey, new AnthropicChatCompletionConnector(config));
         return builder;
     }

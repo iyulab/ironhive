@@ -11,6 +11,6 @@ internal class AnthropicConstants
     internal const string VersionHeaderName = "anthropic-version";
     internal const string VersionHeaderValue = "2023-06-01";
 
-    internal const string GetModelListPath = "/models?limit=1000";
+    internal const string GetModelsPath = "/models";
     internal const string PostMessagesPath = "/messages";
 }

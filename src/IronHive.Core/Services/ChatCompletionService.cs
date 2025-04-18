@@ -18,38 +18,6 @@ public class ChatCompletionService : IChatCompletionService
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<ChatCompletionModel>> GetModelsAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var models = new List<ChatCompletionModel>();
-        var connectors = _store.GetServices<IChatCompletionConnector>();
-
-        foreach (var (key, conn) in connectors)
-        {
-            var providerModels = await conn.GetModelsAsync(cancellationToken);
-            models.AddRange(providerModels.Select(m =>
-            {
-                m.Provider = key;
-                return m;
-            }));
-        }
-
-        return models;
-    }
-
-    /// <inheritdoc />
-    public async Task<ChatCompletionModel> GetModelAsync(
-        string provider,
-        string model,
-        CancellationToken cancellationToken = default)
-    {
-        var conn = _store.GetService<IChatCompletionConnector>(provider);
-        var providerModel = await conn.GetModelAsync(provider, cancellationToken);
-        providerModel.Provider = provider;
-        return providerModel;
-    }
-
-    /// <inheritdoc />
     public Task<ChatCompletionResponse<AssistantMessage>> GenerateMessageAsync(
         UserMessage message, 
         ChatCompletionOptions options, 
@@ -532,39 +500,4 @@ public class ChatCompletionService : IChatCompletionService
 
         return request;
     }
-
-    // 모델이 지원하는 기능을 확인합니다.
-    //private async Task<bool> CanGenerateMessage(ChatCompletionOptions options)
-    //{
-    //    var model = await GetModelAsync(options.Provider, options.Model);
-    //    if (model.Capabilities.SupportsVision == false)
-    //    {
-    //        var users = messages.OfType<UserMessage>();
-    //        var anyImg = users.Any(x => x.Content.Any(c => c is UserImageContent));
-    //        if (anyImg)
-    //        {
-    //            throw new NotSupportedException("Vision is not supported by the model.");
-    //        }
-    //    }
-
-    //    if (model.Capabilities.SupportsToolCall == false)
-    //    {
-    //        var anyTools = options.Tools?.Any() ?? false;
-    //        if (anyTools)
-    //        {
-    //            throw new NotSupportedException("Tool call is not supported by the model.");
-    //        }
-    //    }
-
-    //    if (model.Capabilities.SupportsAudio == true)
-    //    {
-    //        // do nothing
-    //    }
-
-    //    if (model.Capabilities.SupportsReasoning == true)
-    //    {
-    //        // do nothing
-    //    }
-    //    return true;
-    //}
 }

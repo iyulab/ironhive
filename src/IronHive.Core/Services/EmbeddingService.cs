@@ -13,38 +13,6 @@ public class EmbeddingService : IEmbeddingService
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<EmbeddingModel>> GetModelsAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var models = new List<EmbeddingModel>();
-        var connectors = _store.GetServices<IEmbeddingConnector>();
-
-        foreach (var (key, conn) in connectors)
-        {
-            var providerModels = await conn.GetModelsAsync(cancellationToken);
-            models.AddRange(providerModels.Select(m =>
-            {
-                m.Provider = key;
-                return m;
-            }));
-        }
-
-        return models;
-    }
-
-    /// <inheritdoc />
-    public async Task<EmbeddingModel> GetModelAsync(
-        string provider,
-        string model,
-        CancellationToken cancellationToken = default)
-    {
-        var conn = _store.GetService<IEmbeddingConnector>(provider);
-        var providerModel = await conn.GetModelAsync(model, cancellationToken);
-        providerModel.Provider = provider;
-        return providerModel;
-    }
-
-    /// <inheritdoc />
     public async Task<IEnumerable<float>> EmbedAsync(
         string provider,
         string model,

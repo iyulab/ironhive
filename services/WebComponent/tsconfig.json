@@ -5,8 +5,6 @@
     "module": "ESNext",
     "lib": ["ESNext","ES2020","DOM","DOM.Iterable"],
     "moduleResolution": "Bundler",
-    "types": ["vite/client"],
-    "jsx": "react-jsx",
 
     // 엄격한 타입 체킹
     "strict": true,
@@ -42,8 +40,7 @@
     "preserveSymlinks": true
   },
   "include": [
-    "vite.config.ts",
-    "vite-env.d.ts",
     "src/**/*",
+    "rollup.config.ts",
   ]
 }

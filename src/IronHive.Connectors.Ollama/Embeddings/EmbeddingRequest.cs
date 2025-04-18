@@ -1,4 +1,4 @@
-﻿using IronHive.Connectors.Ollama.Base;
+﻿using IronHive.Connectors.Ollama.Clients;
 using System.Text.Json.Serialization;
 
 namespace IronHive.Connectors.Ollama.Embeddings;
@@ -12,7 +12,7 @@ internal class EmbeddingRequest
     public required IEnumerable<string> Input { get; set; }
 
     [JsonPropertyName("options")]
-    public ModelOptions? Options { get; set; }
+    public OllamaModelOptions? Options { get; set; }
 
     [JsonPropertyName("truncate")]
     public bool Truncate { get; set; } = true;

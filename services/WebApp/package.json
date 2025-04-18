@@ -15,11 +15,11 @@
     "@iyulab/chat-component": "^0.1.0",
     "@lit-labs/router": "^0.1.4",
     "@shoelace-style/shoelace": "^2.20.1",
-    "@types/node": "^22.13.13",    
-    "eslint": "^9.23.0",
-    "marked": "^15.0.7",
-    "typescript": "^5.8.2",
-    "vite": "^6.2.3",
+    "@types/node": "^22.14.1",    
+    "eslint": "^9.24.0",
+    "marked": "^15.0.8",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.1",
     "vite-plugin-dts": "^4.5.3"
   }
 }

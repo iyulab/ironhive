@@ -1,11 +1,10 @@
-﻿using IronHive.Abstractions.ChatCompletion;
-using IronHive.Connectors.Ollama.Base;
-using IronHive.Connectors.Ollama.ChatCompletion;
-using System.Runtime.CompilerServices;
-using IMessage = IronHive.Abstractions.Messages.IMessage;
-using OllamaMessage = IronHive.Connectors.Ollama.ChatCompletion.Message;
+﻿using System.Runtime.CompilerServices;
 using System.Text.Json;
+using IronHive.Abstractions.ChatCompletion;
 using IronHive.Abstractions.Messages;
+using IronHive.Connectors.Ollama.ChatCompletion;
+using IronHive.Connectors.Ollama.Clients;
+using IronHive.Connectors.Ollama.Models;
 
 namespace IronHive.Connectors.Ollama;
 
@@ -21,27 +20,6 @@ public class OllamaChatCompletionConnector : IChatCompletionConnector
     public OllamaChatCompletionConnector(string baseUrl)
     {
         _client = new OllamaChatCompletionClient(baseUrl);
-    }
-
-    /// <inheritdoc />
-    public async Task<IEnumerable<ChatCompletionModel>> GetModelsAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var models = await _client.GetModelsAsync(cancellationToken);
-        return models.Select(m => new ChatCompletionModel
-        {
-            Model = m.Name,
-            CreatedAt = m.ModifiedAt,
-        });
-    }
-
-    /// <inheritdoc />
-    public async Task<ChatCompletionModel> GetModelAsync(
-        string model,
-        CancellationToken cancellationToken = default)
-    {
-        var models = await GetModelsAsync(cancellationToken);
-        return models.First(m => m.Model == model);
     }
 
     /// <inheritdoc />
@@ -125,7 +103,7 @@ public class OllamaChatCompletionConnector : IChatCompletionConnector
         {
             Model = request.Model,
             Messages = request.Messages.ToOllama(request?.System),
-            Options = new ModelOptions
+            Options = new OllamaModelOptions
             {
                 NumPredict = request?.MaxTokens,
                 Temperature = request?.Temperature,

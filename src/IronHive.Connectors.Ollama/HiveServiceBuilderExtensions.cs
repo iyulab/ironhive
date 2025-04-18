@@ -12,6 +12,7 @@ public static class HiveServiceBuilderExtensions
         string serviceKey,
         OllamaConfig config)
     {
+        builder.AddModelConnector(serviceKey, new OllamaModelConnector(config));
         builder.AddChatCompletionConnector(serviceKey, new OllamaChatCompletionConnector(config));
         builder.AddEmbeddingConnector(serviceKey, new OllamaEmbeddingConnector(config));
         return builder;

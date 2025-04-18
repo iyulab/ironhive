@@ -12,6 +12,7 @@ public static class HiveServiceBuilderExtensions
         string serviceKey, 
         OpenAIConfig config)
     {
+        builder.AddModelConnector(serviceKey, new OpenAIModelConnector(config));
         builder.AddChatCompletionConnector(serviceKey, new OpenAIChatCompletionConnector(config));
         builder.AddEmbeddingConnector(serviceKey, new OpenAIEmbeddingConnector(config));
         return builder;
