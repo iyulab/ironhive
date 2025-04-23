@@ -55,7 +55,6 @@ internal class AnthropicChatCompletionClient : AnthropicClientBase
             if (!data.StartsWith('{') || !data.EndsWith('}'))
                 continue;
 
-            Console.WriteLine(data);
             var message = JsonSerializer.Deserialize<StreamingMessagesResponse>(data, JsonOptions);
             if (message != null)
             {

@@ -7,6 +7,9 @@ using System.Text;
 using System.Text.Json;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Models;
+using Microsoft.AspNetCore.StaticFiles;
+using IronHive.Core.Tools;
+using IronHive.Core.Mcp;
 
 namespace WebServer.Controllers;
 
@@ -28,6 +31,52 @@ public class ServiceController : ControllerBase
         _jsonOptions = jsonOptions.Value.JsonSerializerOptions;
     }
 
+    [RequestSizeLimit(10_737_418_240)] // 10GB
+    [HttpPost("upload")]
+    public async Task<ActionResult> UploadAsync(
+        [FromForm] IFormFile[] files,
+        CancellationToken cancellationToken)
+    {
+        var dic = @"C:\\temp";
+        var fileInfos = new List<object>();
+        foreach (var file in files) 
+        {
+            var filePath = Path.Combine(dic, file.FileName);
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream, cancellationToken);
+            }
+            fileInfos.Add(new
+            {
+                Name = file.FileName,
+                Type = file.ContentType,
+                Size = file.Length,
+            });
+        }
+        return Ok(fileInfos);
+    }
+
+    [HttpGet("download/{fileName}")]
+    public async Task<ActionResult> DownloadAsync(
+        [FromRoute] string fileName,
+        CancellationToken cancellationToken)
+    {
+        var dic = @"C:\\temp";
+        var filePath = Path.Combine(dic, fileName);
+
+        if (!System.IO.File.Exists(filePath))
+            return NotFound($"파일을 찾을 수 없습니다: {fileName}");
+
+        var provider = new FileExtensionContentTypeProvider();
+        if (!provider.TryGetContentType(fileName, out var contentType))
+        {
+            contentType = "application/octet-stream";
+        }
+
+        var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        return File(stream, contentType, fileName);
+    }
+
     [HttpGet("models")]
     public async Task<ActionResult> GetModelsAsync(
         CancellationToken cancellationToken)
@@ -36,12 +85,24 @@ public class ServiceController : ControllerBase
         return Ok(models);
     }
 
-
     [HttpPost("conversation")]
     public async Task ConversationAsync(
         [FromBody] ConversationRequest request,
         CancellationToken cancellationToken)
     {
+        //var tools = await ToolFactory.CreateFromMcpServer(new McpStdioServer
+        //{
+        //    Command = "docker",
+        //    Arguments = [
+        //        "run",
+        //        "-i",
+        //        "--rm",
+        //        "mcp/sequentialthinking"
+        //    ]
+        //});
+
+        //request.Tools = tools;
+
         try
         {
             Response.ContentType = "text/event-stream; charset=utf-8";
@@ -50,56 +111,47 @@ public class ServiceController : ControllerBase
 
             await foreach (var result in _chat.GenerateStreamingMessageAsync(request.Messages, request, cancellationToken))
             {
-                var json = JsonSerializer.Serialize(result, _jsonOptions);
-
-                var type = $"event: delta\n";
-                var data = $"data: {json}\n\n";
-                var bytes = Encoding.UTF8.GetBytes(type + data);
-
-                await Response.Body.WriteAsync(bytes, cancellationToken);
-                await Response.Body.FlushAsync(cancellationToken);
+                await WriteEventAsync("delta", result, cancellationToken);
             }
-
-            var done = Encoding.UTF8.GetBytes($"data: [DONE]\n\n");
-            await Response.Body.WriteAsync(done, cancellationToken);
-            await Response.Body.FlushAsync(cancellationToken);
         }
         catch(OperationCanceledException)
         {
             // When Canceled
             Debug.WriteLine("Canceled");
-
-            Response.StatusCode = 499; // Client Closed Request
-            var problem = new ProblemDetails
-            {
-                Title = "Client Closed Request",
-                Status = 499,
-                Detail = "Client closed request.",
-                Instance = HttpContext.Request.Path
-            };
-
-            await Response.WriteAsJsonAsync(problem, _jsonOptions, cancellationToken);
+            Response.StatusCode = 499;
         }
         catch(Exception ex)
         {
             // When Error
             Debug.WriteLine(ex.ToString());
-
             Response.StatusCode = 500;
-            var problem = new ProblemDetails
+            await Response.WriteAsJsonAsync(new
             {
-                Title = "Internal Server Error",
-                Status = 500,
-                Detail = ex.Message,
-                Instance = HttpContext.Request.Path
-            };
-
-            await Response.WriteAsJsonAsync(problem, _jsonOptions, cancellationToken);
+                Source = ex.Source,
+                Message = ex.Message,
+                StackTrace = ex.StackTrace,
+                Data = ex.Data,
+                HelpLink = ex.HelpLink,
+            }, _jsonOptions, cancellationToken);
         }
         finally
         {
             await Response.CompleteAsync();
         }
+    }
+
+    private async Task WriteEventAsync(string type, object? data, CancellationToken cancellationToken)
+    {
+        var json = JsonSerializer.Serialize(data, _jsonOptions);
+
+        var sb = new StringBuilder();
+        sb.Append("event: ").Append(type).Append('\n');
+        sb.Append("data: ").Append(json).Append('\n');
+        sb.Append('\n'); // 빈 줄로 이벤트 종료
+        var bytes = Encoding.UTF8.GetBytes(sb.ToString());
+
+        await Response.Body.WriteAsync(bytes, cancellationToken);
+        await Response.Body.FlushAsync(cancellationToken);
     }
 }
 

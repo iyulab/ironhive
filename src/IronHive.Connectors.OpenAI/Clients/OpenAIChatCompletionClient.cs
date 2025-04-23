@@ -65,7 +65,6 @@ internal class OpenAIChatCompletionClient : OpenAIClientBase
             if (!data.StartsWith('{') || !data.EndsWith('}'))
                 continue;
 
-            Console.WriteLine(data);
             var message = JsonSerializer.Deserialize<StreamingChatCompletionResponse>(data, JsonOptions);
             if (message != null)
             {

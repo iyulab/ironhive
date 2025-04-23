@@ -1,16 +1,4 @@
-/**
- * Represents the HTTP methods that can be used in an HTTP request.
- */
-export type HttpMethod =
-  | 'GET'
-  | 'HEAD'
-  | 'OPTIONS'
-  | 'TRACE'
-  | 'PUT'
-  | 'POST'
-  | 'PATCH'
-  | 'DELETE'
-  | 'CONNECT';
+import { HttpMethod } from "./HttpMethod";
 
 /**
  * Options for configuring an HTTP request.
@@ -74,10 +62,50 @@ export interface HttpRequest extends HttpOptions {
   /**
    * Parameters to include in the request URL.
    */
-  query?: Record<string, any>;
+  query?: Record<string, string | string[]>;
 
   /**
    * Body of the request.
    */
   body?: any;
+}
+
+/**
+ * Represents an HTTP request.
+ */
+export interface HttpUploadRequest extends HttpOptions {
+  /**
+   * HTTP method to use for the request.
+   */
+  method: HttpMethod;
+
+  /**
+   * Path of the request relative to the base URL.
+   */
+  path: string;
+
+  /**
+   * Parameters to include in the request URL.
+   */
+  query?: Record<string, string | string[]>;
+
+  /**
+   * Body of the file request.
+   */
+  body: FormData | File | File[];
+}
+
+/**
+ * Represents an HTTP request.
+ */
+export interface HttpDownloadRequest {
+  /**
+   * Path of the request relative to the base URL.
+   */
+  path: string;
+
+  /**
+   * Parameters to include in the request URL.
+   */
+  query?: Record<string, string | string[]>;
 }

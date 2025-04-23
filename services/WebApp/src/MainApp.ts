@@ -2,6 +2,10 @@ import { LitElement, css, html } from "lit";
 import { customElement } from "lit/decorators.js";
 import { Router } from '@lit-labs/router';
 
+import "@iyulab/chat-component";
+import "@iyulab/chat-component/styles/chat-light.css";
+import "@iyulab/chat-component/styles/chat-dark.css";
+import "@iyulab/chat-component/styles/github.css";
 import '@shoelace-style/shoelace';
 import "./pages";
 
@@ -9,7 +13,11 @@ import "./pages";
 export class MainApp extends LitElement {
   private router = new Router(this, [
     { path: '/', 
-      render: () => html`<home-page></home-page>`}
+      render: () => html`<home-page></home-page>`},
+    { path: '/chat',
+      render: () => html`<chat-page></chat-page>`},
+    { path: '/file',
+      render: () => html`<file-page></file-page>`},
   ], {
     fallback: {
       render: () => html`<error-page></error-page>`
@@ -18,25 +26,61 @@ export class MainApp extends LitElement {
 
   render() {
     return html`
-      <div class="main">
+      <div class="flexible-box">
         ${this.router.outlet()}
       </div>
+      <div class="toggler" @click=${this.toggle}>T</div>
     `;
+  }
+
+  private toggle = async () => {
+    const html = document.documentElement;
+    if (html.hasAttribute('theme')) {
+      html.removeAttribute('theme');
+    } else {
+      html.setAttribute('theme', 'dark');
+    }
   }
 
   static styles = css`
     :host {
-      display: block;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       width: 100vw;
       height: 100vh;
     }
 
-    .main {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      height: 100%;
+    .flexible-box {
+      position: relative;
+      display: block;
+      width: 60%;
+      height: 80%;
+      border: 1px dashed gray;
+      resize: both;
+      overflow: auto;
+      box-sizing: border-box;
+    }
+
+    .toggler {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 24px;
+      height: 24px;
+      background-color: gray;
+      color: #fff;
+      text-align: center;
+      line-height: 24px;
+      user-select: none;
+      cursor: pointer;
+    }
+    .toggler:hover {
+      background-color: #888;
+    }
+    .toggler:active {
+      background-color: #555;
     }
   `;
 }

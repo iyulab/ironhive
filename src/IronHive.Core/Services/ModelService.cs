@@ -1,5 +1,6 @@
 ﻿using IronHive.Abstractions;
 using IronHive.Abstractions.Models;
+using System.Net;
 
 namespace IronHive.Core.Services;
 
@@ -21,12 +22,20 @@ public class ModelService : IModelService
 
         foreach (var (key, conn) in connectors)
         {
-            var providerModels = await conn.ListModelsAsync(cancellationToken);
-            models.AddRange(providerModels.Select(m =>
+            try
             {
-                m.Provider = key;
-                return m;
-            }));
+                var providerModels = await conn.ListModelsAsync(cancellationToken);
+                models.AddRange(providerModels.Select(m =>
+                {
+                    m.Provider = key;
+                    return m;
+                }));
+            }
+            catch(HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                // Ignore 401 errors for now.
+                continue;
+            }
         }
 
         return models;

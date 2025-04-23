@@ -1,1 +1,1 @@
-export * from './HiveIcon';
+export * from './ChatIcon';

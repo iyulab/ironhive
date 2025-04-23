@@ -1,13 +1,17 @@
 {
   "folders": [
     {
+      "name": "HTTP_CLIENT",
+      "path": "../HttpClient"
+    },
+    {
       "name": "WEB_COMPONENT",
       "path": "../WebComponent"
     },
     {
       "name": "WEB_APP",
       "path": "."
-    }
+    },
   ],
   "settings": {},
 }

@@ -38,9 +38,9 @@ export class MessageInput extends LitElement {
           <chat-button
             ?disabled=${this.disabled}
             @click=${this.invokeSendEvent}>
-            <hive-icon 
+            <chat-icon 
               name=${this.mode === 'input' ? 'send' : 'stop'}
-            ></hive-icon>
+            ></chat-icon>
           </chat-button>
         </div>
       </div>

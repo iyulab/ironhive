@@ -11,9 +11,10 @@ export class ChatButton extends LitElement {
     return html`
       <div class="button"
         ?disabled=${this.disabled}>
-        ${this.loading
-          ? html`<chat-spinner></chat-spinner>`
-          : html`<slot></slot>`}
+        <slot></slot>
+        <div class="button overlay">
+          <chat-spinner></chat-spinner>
+        </div>
       </div>
     `;
   }
@@ -23,14 +24,22 @@ export class ChatButton extends LitElement {
       display: inline-block;
       font-size: 16px;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      user-select: none;
+    }
+    :host([loading]) .button.overlay {
+      pointer-events: none;
+      display: flex;
+    }
+    :host([disabled]) {
+      pointer-events: none;
     }
 
     .button {
+      position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 8px;
-      
       border: none;
       border-radius: 4px;
       background-color: var(--hs-primary-color);
@@ -46,6 +55,16 @@ export class ChatButton extends LitElement {
     .button[disabled] {
       opacity: 0.5; 
       cursor: not-allowed;
+    }
+
+    .overlay {
+      display: none;
+      position: absolute;
+      z-index: 1;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
     }
   `;
 }

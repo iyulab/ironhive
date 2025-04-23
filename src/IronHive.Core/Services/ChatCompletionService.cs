@@ -475,7 +475,7 @@ public class ChatCompletionService : IChatCompletionService
         // 마지막 메시지를 줍니다.
         yield return new ChatCompletionResponse<IAssistantContent>
         {
-            EndReason = EndReason.ToolCall,
+            EndReason = EndReason.EndTurn,
             TokenUsage = usage,
         };
     }
