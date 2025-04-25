@@ -199,7 +199,8 @@ public class ChatCompletionService : IChatCompletionService
         {
             EndReason = reason,
             TokenUsage = usage,
-            Data = message
+            Data = message,
+            Timestamp = DateTime.UtcNow
         };
     }
 
@@ -477,6 +478,7 @@ public class ChatCompletionService : IChatCompletionService
         {
             EndReason = EndReason.EndTurn,
             TokenUsage = usage,
+            Timestamp = DateTime.UtcNow
         };
     }
 

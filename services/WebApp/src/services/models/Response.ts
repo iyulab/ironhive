@@ -16,4 +16,5 @@ export interface StreamingResponse {
   endReason?: EndReason;
   data?: MessageContent;
   tokenUsage?: TokenUsage;
+  timestamp?: string;
 }

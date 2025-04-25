@@ -2,11 +2,11 @@
   "folders": [
     {
       "name": "HTTP_CLIENT",
-      "path": "../HttpClient"
+      "path": "../../../node-packages/packages/http-client"
     },
     {
       "name": "WEB_COMPONENT",
-      "path": "../WebComponent"
+      "path": "../../../node-packages/packages/chat-components"
     },
     {
       "name": "WEB_APP",

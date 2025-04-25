@@ -118,7 +118,6 @@ public class ServiceController : ControllerBase
         {
             // When Canceled
             Debug.WriteLine("Canceled");
-            Response.StatusCode = 499;
         }
         catch(Exception ex)
         {

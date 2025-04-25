@@ -10,19 +10,19 @@ export class HomePage extends LitElement {
   render() {
     return html` 
       <div class="container">
-        <chat-button 
+        <lc-button 
           ?loading=${this.loading} 
           ?disabled=${this.disabled} 
           @click=${this.clicked}>
-          Hello
-        </chat-button>
+          Yama
+        </lc-button>
       </div>
     `;
   }
 
   private clicked = async (e: any) => {
     console.log(e);
-    this.loading = true;
+    this.loading = !this.loading;
   }
 
   static styles = css`
@@ -34,8 +34,8 @@ export class HomePage extends LitElement {
     .container {
       position: relative;
       display: flex;
-      width: 10%;
-      height: 5%;
+      width: 50%;
+      height: 50%;
       align-items: center;
       justify-content: center;
       border: 1px dashed red;

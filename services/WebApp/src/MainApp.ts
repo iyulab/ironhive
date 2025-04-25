@@ -2,10 +2,9 @@ import { LitElement, css, html } from "lit";
 import { customElement } from "lit/decorators.js";
 import { Router } from '@lit-labs/router';
 
-import "@iyulab/chat-component";
-import "@iyulab/chat-component/styles/chat-light.css";
-import "@iyulab/chat-component/styles/chat-dark.css";
-import "@iyulab/chat-component/styles/github.css";
+import "@iyulab/chat-components";
+import "@iyulab/chat-components/styles/lc-light.css";
+import "@iyulab/chat-components/styles/lc-dark.css";
 import '@shoelace-style/shoelace';
 import "./pages";
 

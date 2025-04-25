@@ -20,6 +20,11 @@ public class ChatCompletionResponse<T>
     /// the data of the response.
     /// </summary>
     public T? Data { get; set; }
+
+    /// <summary>
+    /// Created DateTime
+    /// </summary>
+    public DateTime? Timestamp { get; set; }
 }
 
 /// <summary>

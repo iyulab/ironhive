@@ -1,4 +1,4 @@
-import { HttpClient } from './http';
+import { CancelToken, HttpClient } from '@iyulab/http-client';
 import { ChatCompletionRequest, StreamingResponse } from './models';
 
 export class Api {
@@ -6,12 +6,16 @@ export class Api {
     baseUrl: import.meta.env.VITE_SERVER_URL,
   });
 
-  public static async *conversation(request: ChatCompletionRequest) : AsyncGenerator<StreamingResponse> {
+  public static async *conversation(
+    request: ChatCompletionRequest,
+    token?: CancelToken,
+  ) : AsyncGenerator<StreamingResponse> {
+
     const res = await this.controller.send({
       method: 'POST',
       path: '/conversation',
       body: request,
-    });
+    }, token);
 
     if (!res.ok) {
       console.warn('Error:', await res.json());
@@ -22,6 +26,8 @@ export class Api {
         yield JSON.parse(msg.data.join('')) as StreamingResponse;
       }
     }
+    
+    console.log('Conversation completed');
   }
 
   public static async *upload(form: FormData) {

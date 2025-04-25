@@ -31,8 +31,8 @@
   - IFileDecoder[]              => Singleton!                                     => Optional
   
 ### Memory Services
-- IQueueStorage               => Singleton!                                     => Required
-- IVectorStorage              => Singleton!                                     => Required
-- IEmbeddingService           => Singleton!                                     => Required
-- IPipelineObserver           => Singleton | Scoped | Transient                 => Optional
-- IPipelineHandler[]          => Singleton | Scoped | Transient                 => Optional
+- IQueueStorage                 => Singleton!                                     => Required
+- IVectorStorage                => Singleton!                                     => Required
+- IEmbeddingService             => Singleton!                                     => Required
+- IPipelineObserver             => Singleton | Scoped | Transient                 => Optional
+- IPipelineHandler[]            => Singleton | Scoped | Transient                 => Optional

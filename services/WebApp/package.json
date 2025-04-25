@@ -9,10 +9,12 @@
     "build": "vite build"
   },
   "workspaces": [
-    "../WebComponent"
+    "../../../node-packages/packages/http-client",
+    "../../../node-packages/packages/chat-components"
   ],
   "devDependencies": {
-    "@iyulab/chat-component": "^0.1.0",
+    "@iyulab/chat-components": "^0.1.0",
+    "@iyulab/http-client": "^0.1.0",
     "@lit-labs/router": "^0.1.4",
     "@shoelace-style/shoelace": "^2.20.1",
     "@types/node": "^22.14.1",    
