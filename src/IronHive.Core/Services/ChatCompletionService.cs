@@ -389,6 +389,44 @@ public class ChatCompletionService : IChatCompletionService
                             };  
                         }
                     }
+                    // 추론 컨텐츠의 경우
+                    else if(res.Data is AssistantThinkingContent thinking)
+                    {
+                        var last = stack.LastOrDefault();
+                        var value = thinking.Value;
+
+                        // 마지막 컨텐츠가 추론인경루
+                        // 추론을 이어 붙입니다.
+                        if (last is AssistantThinkingContent lastThinking)
+                        {
+                            lastThinking.Value ??= string.Empty;
+                            lastThinking.Value += value;
+                        }
+                        // 마지막 컨텐츠가 추론이 아닌경우
+                        // 새로운 추론 컨텐츠를 추가합니다.
+                        else
+                        {
+                            stack.Add(thinking);
+                            last = stack.Last();
+                        }
+
+                        // 추론 컨텐츠의 ID가 있을 경우
+                        if (!string.IsNullOrEmpty(thinking.Id))
+                        {
+                            last.Id = thinking.Id;
+                        }
+
+                        yield return new ChatCompletionResponse<IAssistantContent>
+                        {
+                            Data = new AssistantThinkingContent
+                            {
+                                // 실제 인덱스 계산 (축적된 컨텐츠 + 현재 인덱스)
+                                Index = message.Content.Count + last.Index,
+                                Id = last.Id,
+                                Value = value,
+                            }
+                        };
+                    }
                     // 이외의 컨텐츠는 지원하지 않습니다.
                     else
                     {

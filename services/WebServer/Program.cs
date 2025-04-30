@@ -9,6 +9,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 # region For Services
 builder.Services.AddMainSerivces();
+builder.Services.AddSingleton<JobObject>();
+builder.Services.AddSingleton<ProcessStore>();
 #endregion
 
 builder.Services.AddHttpContextAccessor();

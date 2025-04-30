@@ -81,6 +81,10 @@ internal static class MessageCollectionExtensions
                         _messages.Add(am);
                         _messages.Add(um);
                     }
+                    else if (type == typeof(AssistantThinkingContent))
+                    {
+                        // 추론 메시지는 설계 구조상 생략합니다.
+                    }
                     else
                     {
                         throw new NotImplementedException("not supported yet");

@@ -16,12 +16,12 @@ export class HomePage extends LitElement {
           @click=${this.clicked}>
           Yama
         </lc-button>
+        <speech-loader></speech-loader>
       </div>
     `;
   }
 
   private clicked = async (e: any) => {
-    console.log(e);
     this.loading = !this.loading;
   }
 

@@ -1,6 +1,10 @@
 {
   "folders": [
     {
+      "name": "NODE_PACKAGES",
+      "path": "../../../node-packages"
+    },
+    {
       "name": "HTTP_CLIENT",
       "path": "../../../node-packages/packages/http-client"
     },

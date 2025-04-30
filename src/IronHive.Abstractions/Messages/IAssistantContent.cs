@@ -8,6 +8,7 @@ namespace IronHive.Abstractions.Messages;
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(AssistantTextContent), "text")]
 [JsonDerivedType(typeof(AssistantToolContent), "tool")]
+[JsonDerivedType(typeof(AssistantThinkingContent), "thinking")]
 public interface IAssistantContent
 {
     /// <summary>
@@ -120,4 +121,15 @@ public enum ToolStatus
     /// 도구가 실패한 상태
     /// </summary>
     Failed
+}
+
+/// <summary>
+/// 추론 결과 콘텐츠 블록을 나타냅니다
+/// </summary>
+public class AssistantThinkingContent : AssistantContentBase
+{
+    /// <summary>
+    /// 텍스트 콘텐츠 블록의 내용입니다.
+    /// </summary>
+    public string? Value { get; set; }
 }

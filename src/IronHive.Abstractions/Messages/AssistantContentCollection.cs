@@ -37,6 +37,19 @@ public class AssistantContentCollection : ICollection<IAssistantContent>
     }
 
     /// <summary>
+    /// ThinkingContent를 추가합니다.
+    /// 인덱스 번호는 자동으로 재할당됩니다.
+    /// </summary>
+    public void AddThinking(string? id, string? value)
+    {
+        Add(new AssistantThinkingContent
+        {
+            Id = id,
+            Value = value
+        });
+    }
+
+    /// <summary>
     /// 배열을 추가합니다. 
     /// 인덱스 번호는 자동으로 재할당됩니다.
     /// </summary>

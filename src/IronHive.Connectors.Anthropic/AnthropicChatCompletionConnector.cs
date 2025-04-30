@@ -34,15 +34,20 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
 
         foreach (var item in res.Content ?? [])
         {
+            // 텍스트 생성
             if (item is TextMessageContent text)
             {
-                // 텍스트 생성
                 message.Content.AddText(text.Text);
             }
+            // 툴 사용
             else if (item is ToolUseMessageContent tool)
             {
-                // 툴 사용
                 message.Content.AddTool(tool.Id, tool.Name, JsonSerializer.Serialize(tool.Input), null);
+            }
+            // 추론 사용
+            else if (item is ThinkingMessageContent thinking)
+            {
+                message.Content.AddThinking(thinking.Signature, thinking.Thinking);
             }
             else
             {
@@ -89,9 +94,9 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
             {
                 // 2-1. 컨텐츠 블록 시작 이벤트
 
+                // 텍스트 생성
                 if (cse.ContentBlock is TextMessageContent text)
                 {
-                    // 텍스트 생성
                     yield return new ChatCompletionResponse<IAssistantContent>
                     {
                         Data = new AssistantTextContent
@@ -101,9 +106,9 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                         }
                     };
                 }
+                // 툴 사용
                 else if (cse.ContentBlock is ToolUseMessageContent tool)
                 {
-                    // 툴 사용
                     yield return new ChatCompletionResponse<IAssistantContent>
                     {
                         Data = new AssistantToolContent
@@ -114,14 +119,27 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                         }
                     };
                 }
+                // 추론 사용
+                else if (cse.ContentBlock is ThinkingMessageContent thinking)
+                {
+                    yield return new ChatCompletionResponse<IAssistantContent>
+                    {
+                        Data = new AssistantThinkingContent
+                        {
+                            Index = cse.Index,
+                            Id = thinking.Signature,
+                            Value = thinking.Thinking
+                        }
+                    };
+                }
             }
             else if (res is ContentDeltaEvent cde)
             {
                 // 2-2. 컨텐츠 블록 생성 진행 이벤트
 
+                // 텍스트 생성
                 if (cde.Delta is TextDeltaMessageContent text)
                 {
-                    // 텍스트 생성
                     yield return new ChatCompletionResponse<IAssistantContent>
                     {
                         Data = new AssistantTextContent
@@ -131,15 +149,39 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
                         }
                     };
                 }
+                // 툴 사용
                 else if (cde.Delta is ToolUseDeltaMessageContent tool)
                 {
-                    // 툴 사용
                     yield return new ChatCompletionResponse<IAssistantContent>
                     {
                         Data = new AssistantToolContent
                         {
                             Index = cde.Index,
                             Arguments = tool.PartialJson,
+                        }
+                    };
+                }
+                // 추론 사용
+                else if (cde.Delta is ThinkingDeltaMessageContent thinking)
+                {
+                    yield return new ChatCompletionResponse<IAssistantContent>
+                    {
+                        Data = new AssistantThinkingContent
+                        {
+                            Index = cde.Index,
+                            Value = thinking.Thinking
+                        }
+                    };
+                }
+                // 추론 ID 전달
+                else if (cde.Delta is SignatureDeltaMessageContent signature)
+                {
+                    yield return new ChatCompletionResponse<IAssistantContent>
+                    {
+                        Data = new AssistantThinkingContent
+                        {
+                            Index = cde.Index,
+                            Id = signature.Signature
                         }
                     };
                 }
@@ -195,11 +237,16 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
             Model = request.Model,
             System = request.System,
             Messages = request.Messages.ToAnthropic(),
-            MaxTokens = request.MaxTokens ?? 8192, // MaxToken이 필수요청사항으로 "8192"값을 기본으로 함
+            // MaxToken이 필수요청사항으로 "8192"값을 기본으로 함
+            MaxTokens = request.MaxTokens ?? (IsThinkingModel(request.Model) ? 64_000 :  8_192),
             Temperature = request.Temperature,
             TopK = request.TopK,
             TopP = request.TopP,
             StopSequences = request.StopSequences,
+            // 추론 모델일 경우 기본 사용
+            Thinking = IsThinkingModel(request.Model) 
+            ? new EnabledThinking { BudgetTokens = 32_000 }
+            : null,
         };
 
         _req.Tools = request.Tools.Select(t => new Tool
@@ -210,5 +257,10 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
         });
 
         return _req;
+    }
+
+    private static bool IsThinkingModel(string model)
+    {
+        return model.StartsWith("claude-3-7-sonnet", StringComparison.OrdinalIgnoreCase);
     }
 }

@@ -23,7 +23,7 @@ export class Api {
 
     for await (const msg of res.stream()) {
       if (msg.event === 'delta') {
-        yield JSON.parse(msg.data.join('')) as StreamingResponse;
+        yield JSON.parse(msg.data) as StreamingResponse;
       }
     }
     

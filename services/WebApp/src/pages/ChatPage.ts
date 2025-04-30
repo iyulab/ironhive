@@ -1,7 +1,7 @@
 import { LitElement, css, html } from "lit";
 import { customElement, state } from "lit/decorators.js";
 
-import { Message } from "@iyulab/chat-component";
+import { Message } from "@iyulab/chat-components";
 import { CancelToken } from '@iyulab/http-client';
 import { Api, ChatCompletionRequest } from "../services";
 
@@ -14,19 +14,18 @@ export class ChatPage extends LitElement {
 
   render() {
     return html`
-      <chat-room
-        .loading=${this.loading}
-        .messages=${this.messages}
-        @send=${this.submit}
-        @stop=${() => {
-          try {
-            this.token.cancel('stop');
-            this.loading = false;
-          } catch (e) {
-            console.log("여기 생성");
-          }
-        }}
-      ></chat-room>
+      <div class="container">
+        <message-box
+          .messages=${this.messages}
+        ></message-box>
+        
+        <message-input
+          .loading=${this.loading}
+          placeholder="Type a message..."
+          @send=${this.submit}
+          @stop=${this.token.cancel}
+        ></message-input>
+      </div>
     `;
   }
 
@@ -62,7 +61,7 @@ export class ChatPage extends LitElement {
         instructions: "유저의 질문에 성실히 대답하세요."
       }
 
-      for await (const res of Api.conversation(request, this.token)) {  
+      for await (const res of Api.conversation(request, this.token)) { 
         let last = this.messages[this.messages.length - 1];
         if (last.role !== 'assistant') {
           this.messages = [...this.messages, bot_msg];
@@ -78,7 +77,10 @@ export class ChatPage extends LitElement {
           if (content) {
             if (content.type === 'text' && data.type === 'text') {
               content.value ||= '';
-              content.value += data.value;
+              content.value += data.value || '';
+            } else if (content.type === 'thinking' && data.type === 'thinking') {
+              content.value ||= '';
+              content.value += data.value || '';
             } else {
               last.content[index] = data;
             }
@@ -103,6 +105,33 @@ export class ChatPage extends LitElement {
     :host {
       width: 100%;
       height: 100%;
+    }
+
+    .container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      min-width: 320px;
+      min-height: 480px;
+      color: var(--hs-text-color);
+      background-color: var(--hs-background-color);
+      overflow: hidden;
+    }
+
+    message-box {
+      position: relative;
+      width: 100%;
+      height: 100%;
+
+      --messages-padding: 10px 20% 160px 20%;
+    }
+
+    message-input {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60%;
     }
   `;
 }
