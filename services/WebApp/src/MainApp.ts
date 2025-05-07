@@ -3,8 +3,8 @@ import { customElement } from "lit/decorators.js";
 import { Router } from '@lit-labs/router';
 
 import "@iyulab/chat-components";
-import "@iyulab/chat-components/styles/lc-light.css";
-import "@iyulab/chat-components/styles/lc-dark.css";
+import "@iyulab/chat-components/styles/chat-styles.css";
+import "@iyulab/chat-components/styles/github-markdown.css";
 import '@shoelace-style/shoelace';
 import "./pages";
 

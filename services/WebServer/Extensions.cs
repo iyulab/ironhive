@@ -18,16 +18,16 @@ public static class Extensions
         {
             ApiKey = "",
         };
-        //var g_config = new OpenAIConfig
-        //{
-        //    BaseUrl = "https://generativelanguage.googleapis.com/v1beta/openai/",
-        //    ApiKey = ""
-        //};
-        //var l_config = new OpenAIConfig
-        //{
-        //    BaseUrl = "http://172.30.1.53:8080/v1-openai/",
-        //    ApiKey = ""
-        //};
+        var g_config = new OpenAIConfig
+        {
+            BaseUrl = "https://generativelanguage.googleapis.com/v1beta/openai/",
+            ApiKey = ""
+        };
+        var l_config = new OpenAIConfig
+        {
+            BaseUrl = "http://172.30.1.53:8080/v1-openai/",
+            ApiKey = ""
+        };
         var x_config = new AnthropicConfig
         {
             BaseUrl = "https://api.x.ai/v1/",
@@ -37,6 +37,8 @@ public static class Extensions
         services.AddHiveServiceCore()
             .AddOpenAIConnectors("openai", o_config)
             .AddAnthropicConnectors("anthropic", a_config)
-            .AddAnthropicConnectors("xai", x_config);
+            .AddOpenAIConnectors("google", g_config)
+            .AddAnthropicConnectors("xai", x_config)
+            .AddOpenAIConnectors("local", l_config);
     }
 }

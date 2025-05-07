@@ -1,7 +1,7 @@
-import { LitElement, css, html } from "lit";
+import { LitElement, PropertyValues, css, html } from "lit";
 import { customElement, state } from "lit/decorators.js";
 
-import { Message } from "@iyulab/chat-components";
+import type { Message, ModelDescriptor } from "@iyulab/chat-components";
 import { CancelToken } from '@iyulab/http-client';
 import { Api, ChatCompletionRequest } from "../services";
 
@@ -10,7 +10,20 @@ export class ChatPage extends LitElement {
   private token = new CancelToken();
 
   @state() loading: boolean = false;
+  @state() models: ModelDescriptor[] = [];
+  @state() model?: ModelDescriptor;
   @state() messages: Message[] = [];
+
+  protected firstUpdated(changedProperties: PropertyValues) {
+    super.firstUpdated(changedProperties);
+    
+    fetch('/models.json')
+      .then(res => res.text())
+      .then(text => JSON.parse(text))
+      .then((json: any) => {
+        this.models = json.models;
+      });
+  }
 
   render() {
     return html`
@@ -23,13 +36,24 @@ export class ChatPage extends LitElement {
           .loading=${this.loading}
           placeholder="Type a message..."
           @send=${this.submit}
-          @stop=${this.token.cancel}
-        ></message-input>
+          @stop=${this.token.cancel}>
+          <uc-model-select
+            .models=${this.models}
+            @select=${(e: any) => {
+              this.model = e.detail;
+              console.log("Selected model:", this.model);
+            }}
+          ></uc-model-select>
+          <div style="flex: 1"></div>
+          <uc-clear-button></uc-clear-button>
+        </message-input>
       </div>
     `;
   }
 
   private submit = async (e: any) => {
+    if (!this.model) return;
+
     try {
       this.loading = true;
       this.token = new CancelToken();
@@ -49,14 +73,9 @@ export class ChatPage extends LitElement {
       }
 
       this.messages = [...this.messages, user_msg];
-      const anth = { provider: "anthropic", model: "claude-3-5-haiku-latest" };
-      const open = { provider: "openai", model: "gpt-4.1-mini" };
-      const gemini = { provider: "gemini", model: "gemini-2.0-flash-lite" };
-      const iyulab = { provider: "iyulab", model: "exaone-3.5" };
-      const xai = { provider: "xai", model: "grok-3-mini-fast" };
       const request: ChatCompletionRequest = {
-        provider: open.provider,
-        model: open.model,
+        provider: this.model.provider,
+        model: this.model.model,
         messages: this.messages,
         instructions: "유저의 질문에 성실히 대답하세요."
       }
@@ -113,8 +132,8 @@ export class ChatPage extends LitElement {
       height: 100%;
       min-width: 320px;
       min-height: 480px;
-      color: var(--hs-text-color);
-      background-color: var(--hs-background-color);
+      color: var(--uc-text-color);
+      background-color: var(--uc-background-color-0);
       overflow: hidden;
     }
 

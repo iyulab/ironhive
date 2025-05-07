@@ -10,12 +10,12 @@ export class HomePage extends LitElement {
   render() {
     return html` 
       <div class="container">
-        <lc-button 
+        <uc-button 
           ?loading=${this.loading} 
           ?disabled=${this.disabled} 
           @click=${this.clicked}>
           Yama
-        </lc-button>
+        </uc-button>
         <speech-loader></speech-loader>
       </div>
     `;

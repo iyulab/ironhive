@@ -1,0 +1,36 @@
+{
+  "type": "object",
+  "lastModifiedAt": "2025-05-07T12:00:00Z",
+  "models": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano",
+      "display": "GPT 4.1",
+      "description": "Compact and efficient model by OpenAI"
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-3-7-sonnet-latest",
+      "display": "Claude 3.7",
+      "description": "Latest reasoning model by Anthropic"
+    },
+    {
+      "provider": "xai",
+      "model": "grok-3-mini-fast",
+      "display": "Grok 3.0",
+      "description": "Lightweight model from xAI"
+    },
+    {
+      "provider": "google",
+      "model": "gemini-2.5-pro-preview-05-06",
+      "display": "Gemini 2.5",
+      "description": "Newest Gemini model by Google"
+    },
+    {
+      "provider": "local",
+      "model": "exaone-3.5",
+      "display": "ExaOne 3.5",
+      "description": "Local AI model provided by Iyulab"
+    }
+  ]
+}
