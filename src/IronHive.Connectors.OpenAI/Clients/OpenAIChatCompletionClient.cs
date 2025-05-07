@@ -30,17 +30,6 @@ internal class OpenAIChatCompletionClient : OpenAIClientBase
         ChatCompletionRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        request.Messages = request.Messages.Select(m =>
-        {
-            if (m is DeveloperMessage dm)
-            {
-                m = new SystemMessage
-                {
-                    Content = dm.Content
-                };
-            }
-            return m;
-        }).ToArray();
         request.Stream = true;
         request.StreamOptions = new StreamOptions { InCludeUsage = true };
         var json = JsonSerializer.Serialize(request, JsonOptions);
