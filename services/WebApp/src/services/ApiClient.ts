@@ -18,7 +18,8 @@ export class Api {
     }, token);
 
     if (!res.ok) {
-      console.warn('Error:', await res.json());
+      const body = await res.json() as any;
+      throw new Error(body.message);
     }
 
     for await (const msg of res.stream()) {
@@ -26,8 +27,6 @@ export class Api {
         yield JSON.parse(msg.data) as StreamingResponse;
       }
     }
-    
-    console.log('Conversation completed');
   }
 
   public static async *upload(form: FormData) {

@@ -1,5 +1,5 @@
 import { LitElement, css, html } from "lit";
-import { customElement } from "lit/decorators.js";
+import { customElement, property, state } from "lit/decorators.js";
 import { Router } from '@lit-labs/router';
 
 import "@iyulab/chat-components";
@@ -23,12 +23,15 @@ export class MainApp extends LitElement {
     }
   });
 
+  @property({ type: String, reflect: true }) 
+  mode: 'flexible' | 'fixed' = 'fixed';
+
   render() {
     return html`
       <div class="flexible-box">
         ${this.router.outlet()}
       </div>
-      <div class="toggler" @click=${this.toggle}>T</div>
+      <div class="toggler theme" @click=${this.toggle}>T</div>
     `;
   }
 
@@ -50,12 +53,18 @@ export class MainApp extends LitElement {
       width: 100vw;
       height: 100vh;
     }
+    :host([mode="fixed"]) .flexible-box {
+      width: 100%;
+      height: 100%;
+      resize: none;
+    }
 
     .flexible-box {
       position: relative;
       display: block;
       width: 60%;
       height: 80%;
+      padding: 20px;
       border: 1px dashed gray;
       resize: both;
       overflow: auto;
@@ -64,8 +73,6 @@ export class MainApp extends LitElement {
 
     .toggler {
       position: absolute;
-      top: 10px;
-      right: 10px;
       width: 24px;
       height: 24px;
       background-color: gray;
@@ -74,6 +81,10 @@ export class MainApp extends LitElement {
       line-height: 24px;
       user-select: none;
       cursor: pointer;
+    }
+    .toggler.theme {
+      top: 10px;
+      right: 10px;
     }
     .toggler:hover {
       background-color: #888;

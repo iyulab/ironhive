@@ -47,17 +47,30 @@ internal class OpenAIChatCompletionClient : OpenAIClientBase
             cancellationToken.ThrowIfCancellationRequested();
 
             var line = await reader.ReadLineAsync(cancellationToken);
-            if (string.IsNullOrWhiteSpace(line) || !line.StartsWith("data"))
+            if (string.IsNullOrWhiteSpace(line))
                 continue;
 
-            var data = line.Substring("data:".Length).Trim();
-            if (!data.StartsWith('{') || !data.EndsWith('}'))
-                continue;
-
-            var message = JsonSerializer.Deserialize<StreamingChatCompletionResponse>(data, JsonOptions);
-            if (message != null)
+            if (line.StartsWith("data"))
             {
-                yield return message;
+                var data = line.Substring("data:".Length).Trim();
+                if (!data.StartsWith('{') || !data.EndsWith('}'))
+                    continue;
+
+                var message = JsonSerializer.Deserialize<StreamingChatCompletionResponse>(data, JsonOptions);
+                if (message != null)
+                {
+                    yield return message;
+                }
+            }
+            // 특정 플랫폼 용도
+            else if (line.StartsWith("error"))
+            {
+                var data = line.Substring("error:".Length).Trim();
+                throw new InvalidOperationException(data);
+            }
+            else
+            {
+                continue;
             }
         }
     }

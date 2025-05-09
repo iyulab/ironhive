@@ -23,14 +23,14 @@ public static class Extensions
             BaseUrl = "https://generativelanguage.googleapis.com/v1beta/openai/",
             ApiKey = ""
         };
-        var l_config = new OpenAIConfig
-        {
-            BaseUrl = "http://172.30.1.53:8080/v1-openai/",
-            ApiKey = ""
-        };
         var x_config = new AnthropicConfig
         {
             BaseUrl = "https://api.x.ai/v1/",
+            ApiKey = ""
+        };
+        var l_config = new OpenAIConfig
+        {
+            BaseUrl = "http://172.30.1.53:8080/v1-openai/",
             ApiKey = ""
         };
 

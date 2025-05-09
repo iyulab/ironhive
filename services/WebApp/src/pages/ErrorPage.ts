@@ -4,11 +4,8 @@ import { customElement, property } from 'lit/decorators.js';
 @customElement('error-page')
 export class ErrorPage extends LitElement {
 
-  @property({ type: Number })
-  status: number = 404;
-
-  @property({ type: String })
-  message: string = 'Page Not Found';
+  @property({ type: Number }) status: number = 404;
+  @property({ type: String }) message: string = 'Page Not Found';
 
   render() {
     return html`

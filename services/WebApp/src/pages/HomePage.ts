@@ -3,11 +3,17 @@ import { customElement, state } from "lit/decorators.js";
 
 @customElement('home-page')
 export class HomePage extends LitElement {
-
+  
+  @state() open: boolean = false;
   @state() loading: boolean = false;
   @state() disabled: boolean = false;
 
+  connectedCallback(): void {
+    super.connectedCallback();
+  }
+
   render() {
+
     return html` 
       <div class="container">
         <uc-button 
@@ -16,13 +22,13 @@ export class HomePage extends LitElement {
           @click=${this.clicked}>
           Yama
         </uc-button>
-        <speech-loader></speech-loader>
       </div>
     `;
   }
 
   private clicked = async (e: any) => {
     this.loading = !this.loading;
+    this.open = !this.open;
   }
 
   static styles = css`
@@ -40,6 +46,10 @@ export class HomePage extends LitElement {
       justify-content: center;
       border: 1px dashed red;
       box-sizing: border-box;
+    }
+
+    .container > div {
+      overflow-wrap: anywhere;
     }
   `;
 }

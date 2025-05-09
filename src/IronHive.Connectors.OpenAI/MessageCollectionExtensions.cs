@@ -95,6 +95,10 @@ internal static class MessageCollectionExtensions
                         _messages.Add(am);
                         _messages.AddRange(tms);
                     }
+                    else if (type == typeof(AssistantThinkingContent))
+                    {
+                        // 추론 컨텐츠 건너뛰기
+                    }
                     else
                     {
                         throw new NotImplementedException("not supported yet");
