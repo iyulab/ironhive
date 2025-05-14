@@ -10,47 +10,17 @@ public class AssistantContentCollection : ICollection<IAssistantContent>
     private readonly List<IAssistantContent> _items = new();
 
     /// <summary>
-    /// TextContent를 추가합니다.
-    /// 인덱스 번호는 자동으로 재할당됩니다.
+    /// 아이템을 추가합니다.
+    /// 아이템의 인덱스 번호는 자동으로 재할당됩니다.
     /// </summary>
-    public void AddText(string? value)
+    public void Add(IAssistantContent item)
     {
-        Add(new AssistantTextContent
-        {
-            Value = value
-        });
+        item.Index = _items.Count;
+        _items.Add(item);
     }
 
     /// <summary>
-    /// ToolContent를 추가합니다.
-    /// 인덱스 번호는 자동으로 재할당됩니다.
-    /// </summary>
-    public void AddTool(string? id, string? name, string? arguments, string? result)
-    {
-        Add(new AssistantToolContent
-        {
-            Id = id,
-            Name = name,
-            Arguments = arguments,
-            Result = result
-        });
-    }
-
-    /// <summary>
-    /// ThinkingContent를 추가합니다.
-    /// 인덱스 번호는 자동으로 재할당됩니다.
-    /// </summary>
-    public void AddThinking(string? id, string? value)
-    {
-        Add(new AssistantThinkingContent
-        {
-            Id = id,
-            Value = value
-        });
-    }
-
-    /// <summary>
-    /// 배열을 추가합니다. 
+    /// 아이템 배열을 추가합니다. 
     /// 인덱스 번호는 자동으로 재할당됩니다.
     /// </summary>
     public void AddRange(IEnumerable<IAssistantContent> collection)
@@ -62,44 +32,39 @@ public class AssistantContentCollection : ICollection<IAssistantContent>
     }
 
     /// <summary>
-    /// 아이템을 동일한 타입에 따라 분리합니다.
-    /// 예) [ToolContent, ToolContent, TextContent, ToolContent]
-    ///  => [ToolContent, ToolContent], [TextContent], [ToolContent]
+    /// Tool 사용을 기준으로 아이템을 분리합니다.
+    /// Tool 컨텐츠들 다음 항목부터 새 그룹으로 분리됩니다.
+    /// 예) [ThinkingContent, ToolContent, ToolContent, TextContent, ToolContent, TextContent]
+    ///  => [ThinkingContent, ToolContent, ToolContent], [TextContent, ToolContent], [TextContent]
     /// </summary>
-    public IEnumerable<(Type, AssistantContentCollection)> Split()
+    public IEnumerable<AssistantContentCollection> Split()
     {
-        var result = new List<(Type, AssistantContentCollection)>();
-        var group = new AssistantContentCollection();
-        Type? groupType = null;
+        if (_items.Count == 0)
+            return Enumerable.Empty<AssistantContentCollection>();
+
+        var result = new List<AssistantContentCollection>();
+        var currentGroup = new AssistantContentCollection();
+        var previousWasTool = false;
 
         foreach (var item in _items)
         {
-            var currentType = item.GetType();
-            if (group.Count == 0)
+            var isTool = item is AssistantToolContent;
+
+            // 이전 항목이 Tool이었고 현재 항목이 Tool이 아닌 경우 새 그룹 시작
+            if (previousWasTool && !isTool)
             {
-                // 그룹이 비어있으면 현재 아이템 타입을 기준으로 그룹 시작
-                groupType = currentType;
-                group.Add(item);
+                result.Add(currentGroup);
+                currentGroup = new AssistantContentCollection();
             }
-            else if (currentType != groupType)
-            {
-                // 현재 아이템 타입과 이전 그룹의 타입이 다르면 그룹 분리 
-                result.Add((groupType!, group));
-                group = new AssistantContentCollection();
-                groupType = currentType;
-                group.Add(item);
-            }
-            else
-            {
-                // 현재 아이템 타입과 이전 그룹의 타입이 같으면 그룹에 추가
-                group.Add(item);
-            }
+
+            currentGroup.Add(item);
+            previousWasTool = isTool;
         }
 
-        // 마지막 그룹이 있다면 추가합니다.
-        if (group.Count > 0)
+        // 마지막 그룹 추가
+        if (currentGroup.Count > 0)
         {
-            result.Add((groupType!, group));
+            result.Add(currentGroup);
         }
 
         return result;
@@ -115,16 +80,6 @@ public class AssistantContentCollection : ICollection<IAssistantContent>
     {
         get => _items[index];
         set => _items[index] = value;
-    }
-
-    /// <summary>
-    /// 아이템을 추가합니다.
-    /// 아이템의 인덱스 번호는 자동으로 재할당됩니다.
-    /// </summary>
-    public void Add(IAssistantContent item)
-    {
-        item.Index = _items.Count;
-        _items.Add(item);
     }
 
     public void Clear() => _items.Clear();

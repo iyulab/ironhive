@@ -55,54 +55,51 @@ internal static class MessageCollectionExtensions
             else if (message is AssistantMessage assistant)
             {
                 // AI 메시지
-                foreach (var (type, group) in assistant.Content.Split())
+                foreach (var group in assistant.Content.Split())
                 {
-                    if (type == typeof(AssistantTextContent))
+                    var am = new OpenAIAssistantMessage();
+                    var tms = new List<ToolMessage>();
+                    foreach (var content in group)
                     {
-                        // 텍스트 메시지
-                        var am = new OpenAIAssistantMessage();
-                        foreach (var item in group.Cast<AssistantTextContent>())
+                        if (content is AssistantThinkingContent thinking)
                         {
-                            am.Content ??= string.Empty;
-                            am.Content += item.Value ?? string.Empty;
+                            // 추론 컨텐츠 건너뛰기
                         }
-                        _messages.Add(am);
-                    }
-                    else if (type == typeof(AssistantToolContent))
-                    {
-                        // 도구 메시지
-                        var am = new OpenAIAssistantMessage();
-                        var tms = new List<ToolMessage>();
-                        foreach (var item in group.Cast<AssistantToolContent>())
+                        else if (content is AssistantTextContent text)
                         {
+                            // 텍스트 메시지 (어시스턴트 메시지)
+                            am.Content = text.Value ?? string.Empty;
+                        }
+                        else if (content is AssistantToolContent tool)
+                        {
+                            // 도구 메시지
                             am.ToolCalls ??= new List<ToolCall>();
                             am.ToolCalls.Add(new ToolCall
                             {
-                                Index = item.Index,
-                                Id = item.Id,
+                                Index = tool.Index,
+                                Id = tool.Id,
                                 Function = new FunctionCall
                                 {
-                                    Name = item.Name,
-                                    Arguments = item.Arguments
+                                    Name = tool.Name,
+                                    Arguments = tool.Arguments
                                 }
                             });
+
+                            // 도구 결과 메시지
                             tms.Add(new ToolMessage
                             {
-                                ID = item.Id ?? string.Empty,
-                                Content = item.Result ?? string.Empty,
+                                ID = tool.Id ?? string.Empty,
+                                Content = tool.Result ?? string.Empty,
                             });
                         }
-                        _messages.Add(am);
-                        _messages.AddRange(tms);
+                        else
+                        {
+                            throw new NotImplementedException("not supported yet");
+                        }
                     }
-                    else if (type == typeof(AssistantThinkingContent))
-                    {
-                        // 추론 컨텐츠 건너뛰기
-                    }
-                    else
-                    {
-                        throw new NotImplementedException("not supported yet");
-                    }
+
+                    _messages.Add(am);
+                    _messages.AddRange(tms);
                 }
             }
             else

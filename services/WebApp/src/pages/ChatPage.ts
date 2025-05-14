@@ -1,7 +1,7 @@
 import { LitElement, PropertyValues, css, html } from "lit";
 import { customElement, state } from "lit/decorators.js";
 
-import type { Message, ModelDescriptor } from "@iyulab/chat-components";
+import type { AssistantMessage, Message, ModelDescriptor } from "@iyulab/chat-components";
 import { CancelToken } from '@iyulab/http-client';
 import { Api, ChatCompletionRequest } from "../services";
 
@@ -44,6 +44,7 @@ export class ChatPage extends LitElement {
 
         <message-alert
           theme="danger"
+          timeout="5000"
           ?open=${this.error !== undefined}
           .value=${this.error}
         ></message-alert>
@@ -104,10 +105,11 @@ export class ChatPage extends LitElement {
         let last = this.messages[this.messages.length - 1];
         if (last.role !== 'assistant') {
           this.messages = [...this.messages, bot_msg];
-          last = this.messages[this.messages.length - 1];
+          last = this.messages[this.messages.length - 1] as AssistantMessage;
         }
   
         const data = res.data;
+        console.log(data);
         if (data) {
           const index = data.index || 0;
           last.content ||= [];
@@ -118,8 +120,10 @@ export class ChatPage extends LitElement {
               content.value ||= '';
               content.value += data.value || '';
             } else if (content.type === 'thinking' && data.type === 'thinking') {
+              content.id ||= data.id;
               content.value ||= '';
               content.value += data.value || '';
+              console.log(content.id, data.id);
             } else {
               last.content[index] = data;
             }
@@ -128,7 +132,7 @@ export class ChatPage extends LitElement {
           }
   
           this.messages = [...this.messages];
-        } 
+        }
         
         if (res.timestamp) {
           last.timestamp = res.timestamp;

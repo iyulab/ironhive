@@ -13,7 +13,7 @@ public interface IMessage
     /// <summary>
     /// name of message owner.
     /// </summary>
-    public string? Name { get; set; }
+    string? Name { get; set; }
 
     /// <summary>
     /// when the message was created.
@@ -50,7 +50,7 @@ public class UserMessage : MessageBase
 public class AssistantMessage : MessageBase
 {
     /// <summary>
-    /// Assistant message content. "text" or "tool".
+    /// Assistant message content. "thinking", "text" or "tool".
     /// </summary>
     public AssistantContentCollection Content { get; set; } = new();
 }

@@ -38,17 +38,24 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
         var text = choice?.Message?.Content;
         if (!string.IsNullOrWhiteSpace(text))
         {
-            message.Content.AddText(text);
+            message.Content.Add(new AssistantTextContent
+            {
+                Value = text
+            });
         }
 
         // 툴 사용
         var tools = choice?.Message?.ToolCalls;
         if (tools != null && tools.Count > 0)
         {
-            
             foreach (var t in tools)
             {
-                message.Content.AddTool(t.Id, t.Function?.Name, t.Function?.Arguments, null);
+                message.Content.Add(new AssistantToolContent
+                {
+                    Id = t.Id,
+                    Name = t.Function?.Name,
+                    Arguments = t.Function?.Arguments,
+                });
             }
         }
 
@@ -116,19 +123,22 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
             }
 
             // 툴 사용
-            var tool = choice.Delta?.ToolCalls?.FirstOrDefault();
-            if (tool != null)
+            var tools = choice.Delta?.ToolCalls;
+            if (tools != null)
             {
-                yield return new ChatCompletionResponse<IAssistantContent>
+                foreach(var tool in tools)
                 {
-                    Data = new AssistantToolContent
+                    yield return new ChatCompletionResponse<IAssistantContent>
                     {
-                        Id = tool.Id,
-                        Index = txtgen ? tool.Index + 1 : tool.Index,
-                        Name = tool.Function?.Name,
-                        Arguments = tool.Function?.Arguments
-                    }
-                };
+                        Data = new AssistantToolContent
+                        {
+                            Id = tool.Id,
+                            Index = txtgen ? tool.Index + 1 : tool.Index,
+                            Name = tool.Function?.Name,
+                            Arguments = tool.Function?.Arguments
+                        }
+                    };
+                }
             }
 
             // 텍스트 생성
@@ -157,29 +167,34 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
 
     private static OpenAIChatCompletionRequest ConvertRequest(ChatCompletionRequest request)
     {
-        // Reasoning Models, 일부 파라미터 작동 안함
-        var reason = request.Model.Contains("o1") || request.Model.Contains("o3");
+        // 추론모델의 경우 일부 파라미터 작동 안함
+        var isReasoning = IsReasoningModel(request.Model);
 
         var _req = new OpenAIChatCompletionRequest
         {
             Model = request.Model,
             Messages = request.Messages.ToOpenAI(request.System),
             MaxCompletionTokens = request.MaxTokens,
-            Temperature = reason ? null : request.Temperature,
-            TopP = reason ? null : request.TopP,
+            Temperature = isReasoning ? null : request.Temperature,
+            TopP = isReasoning ? null : request.TopP,
             Stop = request.StopSequences,
+            Tools = request.Tools.Select(t => new Tool
+            {
+                Function = new Function
+                {
+                    Name = t.Name,
+                    Description = t.Description,
+                    Parameters = t.InputSchema
+                }
+            })
         };
 
-        _req.Tools = request.Tools.Select(t => new Tool
-        {
-            Function = new Function
-            {
-                Name = t.Name,
-                Description = t.Description,
-                Parameters = t.InputSchema
-            }
-        });
-
         return _req;
+    }
+
+    private static bool IsReasoningModel(string model)
+    {
+        // 처음 시작이 o와 숫자로 시작하는 모델
+        return model.StartsWith('o') && char.IsDigit(model[1]);
     }
 }

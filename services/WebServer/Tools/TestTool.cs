@@ -1,20 +1,25 @@
-﻿using IronHive.Abstractions.Tools;
+﻿using dotenv.net;
+using HtmlAgilityPack;
+using IronHive.Abstractions.Tools;
 using IronHive.Core.Tools;
+using IronHive.Core.Utilities;
+using ModelContextProtocol.Protocol.Types;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Threading;
 using Tavily;
 
 namespace WebServer.Tools;
 
 public class TestTool
 {
-    private readonly HttpContext _context;
+    //private readonly HttpContext _context;
 
-    public TestTool(IHttpContextAccessor accessor)
-    {
-        _context = accessor.HttpContext
-            ?? throw new InvalidOperationException("HttpContext is not available.");
-    }
+    //public TestTool(IHttpContextAccessor accessor)
+    //{
+    //    _context = accessor.HttpContext
+    //        ?? throw new InvalidOperationException("HttpContext is not available.");
+    //}
 
     [FunctionTool(Name = "utc")]
     [Description("Get the current UTC time")]
@@ -23,14 +28,29 @@ public class TestTool
         return DateTime.UtcNow;
     }
 
+    [FunctionTool("get_web_content")]
+    [Description("get web content from url")]
+    public async Task<string> GetWebContentAsync(
+        [Description("url for content")] string url)
+    {
+        using var client = new HttpClient();
+        var html = await client.GetStringAsync(url);
+
+        var doc = new HtmlDocument();
+        doc.LoadHtml(html);
+        var text = doc.DocumentNode.InnerText;
+        return TextCleaner.Clean(text);
+    }
+
     [FunctionTool("web_search")]
     [Description("perform a web search and retrieve search results")]
     public async Task<SearchResponse> SearchWebAsycn(
         [Description("search query")] string query)
     {
+        var env = DotEnv.Read();
         using var client = new TavilyClient();
         var result = await client.SearchAsync(
-            apiKey: "",
+            apiKey: env.TryGetValue("TAVILY", out var value) ? value : string.Empty,
             query: query);
         return result;
     }

@@ -2,20 +2,22 @@
 using AnthropicMessage = IronHive.Connectors.Anthropic.ChatCompletion.Message;
 using System.Text.Json;
 using IronHive.Abstractions.Messages;
+using System.Net.WebSockets;
+using System.IO.IsolatedStorage;
 
 namespace IronHive.Connectors.Anthropic;
 
 internal static class MessageCollectionExtensions
 {
-    internal static IEnumerable<AnthropicMessage> ToAnthropic(this MessageCollection messages)
+    internal static IEnumerable<AnthropicMessage> ToAnthropic(this MessageCollection messages, bool withThingking)
     {
         var _messages = new List<AnthropicMessage>();
 
         foreach (var message in messages)
         {
+            // 사용자 메시지
             if (message is UserMessage user)
             {
-                // 사용자 메시지
                 var um = new AnthropicMessage(MessageRole.User);
                 foreach (var item in user.Content)
                 {
@@ -38,30 +40,54 @@ internal static class MessageCollectionExtensions
 
                 _messages.Add(um);
             }
+            // AI 메시지
             else if (message is AssistantMessage assistant)
             {
-                // AI 메시지
-                foreach (var (type, group) in assistant.Content.Split())
+                var groups = assistant.Content.Split();
+                
+                foreach (var group in groups)
                 {
-                    if (type == typeof(AssistantTextContent))
+                    var am = new AnthropicMessage(MessageRole.Assistant);
+                    var um = new AnthropicMessage(MessageRole.User);
+
+                    // 추론 모델은 툴 사용 시나리오에서
+                    // ToolUse 이전에 반드시 추론 메시지가 존재해야 합니다.
+                    var isLastMessage = message == messages.Last();
+                    var isFirstGroup = group == groups.First();
+                    if (isLastMessage && isFirstGroup && withThingking)
                     {
-                        // 텍스트 메시지 (어시스턴트 메시지)
-                        var am = new AnthropicMessage(MessageRole.Assistant);
-                        foreach (var item in group.Cast<AssistantTextContent>())
+                        foreach (var thinking in group.OfType<AssistantThinkingContent>())
+                        {
+                            am.Content.Add(thinking.Mode == ThinkingMode.Secure
+                                ? new RedactedThinkingMessageContent
+                                {
+                                    Data = thinking.Value ?? string.Empty,
+                                }
+                                : new ThinkingMessageContent
+                                {
+                                    Signature = thinking.Id ?? string.Empty,
+                                    Thinking = thinking.Value ?? string.Empty
+                                });
+                        }
+                    }
+
+                    foreach (var content in group)
+                    {
+                        // 추론 메시지
+                        if (content is AssistantThinkingContent)
+                        {
+                            continue;
+                        }
+                        // 텍스트 메시지
+                        else if (content is AssistantTextContent text)
                         {
                             am.Content.Add(new TextMessageContent
                             {
-                                Text = item.Value ?? string.Empty
+                                Text = text.Value ?? string.Empty
                             });
                         }
-                        _messages.Add(am);
-                    }
-                    else if (type == typeof(AssistantToolContent))
-                    {
                         // 도구 메시지
-                        var am = new AnthropicMessage(MessageRole.Assistant);
-                        var um = new AnthropicMessage(MessageRole.User);
-                        foreach (var tool in group.Cast<AssistantToolContent>())
+                        else if (content is AssistantToolContent tool)
                         {
                             am.Content.Add(new ToolUseMessageContent
                             {
@@ -73,22 +99,20 @@ internal static class MessageCollectionExtensions
                             });
                             um.Content.Add(new ToolResultMessageContent
                             {
-                                IsError = (tool.Status == ToolStatus.Failed),
+                                IsError = tool.Status == ToolStatus.Failed,
                                 ToolUseId = tool.Id,
                                 Content = tool.Result ?? string.Empty,
                             });
                         }
-                        _messages.Add(am);
+                        else
+                        {
+                            throw new NotImplementedException("not supported yet");
+                        }
+                    }
+
+                    _messages.Add(am);
+                    if (um.Content.Count > 0)
                         _messages.Add(um);
-                    }
-                    else if (type == typeof(AssistantThinkingContent))
-                    {
-                        // 추론 메시지는 설계 구조상 생략합니다.
-                    }
-                    else
-                    {
-                        throw new NotImplementedException("not supported yet");
-                    }
                 }
             }
             else

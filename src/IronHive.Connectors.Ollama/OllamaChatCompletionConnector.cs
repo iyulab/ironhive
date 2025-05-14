@@ -4,7 +4,6 @@ using IronHive.Abstractions.ChatCompletion;
 using IronHive.Abstractions.Messages;
 using IronHive.Connectors.Ollama.ChatCompletion;
 using IronHive.Connectors.Ollama.Clients;
-using IronHive.Connectors.Ollama.Models;
 
 namespace IronHive.Connectors.Ollama;
 
@@ -35,7 +34,10 @@ public class OllamaChatCompletionConnector : IChatCompletionConnector
         var text = res.Message?.Content;
         if (text != null)
         {
-            message.Content.AddText(text);
+            message.Content.Add(new AssistantTextContent
+            {
+                Value = text
+            });
         }
 
         // 도구 호출
@@ -44,7 +46,11 @@ public class OllamaChatCompletionConnector : IChatCompletionConnector
         {
             foreach (var t in tools)
             {
-                message.Content.AddTool(null, t.Function?.Name, JsonSerializer.Serialize(t.Function?.Arguments), null);
+                message.Content.Add(new AssistantToolContent
+                {
+                    Name = t.Function?.Name,
+                    Arguments = JsonSerializer.Serialize(t.Function?.Arguments)
+                });
             }
         }
 

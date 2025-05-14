@@ -26,10 +26,11 @@ public static class TextCleaner
 
         // 3. 공백 정리: 각 줄의 앞뒤 공백을 제거하고 2개 이상의 공백을 1개로 줄임
         var lines = cleanedText.Split('\n');
-        var cleanedLines = lines.Select(line => MultipleSpacesRegex.Replace(line.Trim(), " "));
+        lines = lines.Select(line => MultipleSpacesRegex.Replace(line.Trim(), " ")).ToArray();
+        cleanedText = string.Join("\n", lines);
 
-        // 4. 합치기
-        cleanedText = string.Join("\n", cleanedLines);
+        // 4. 줄바꿈 정리: 3개 이상의 줄바꿈을 2개로 줄임
+        cleanedText = MultipleLineBreaksRegex.Replace(cleanedText, "\n\n");
 
         return cleanedText;
     }

@@ -50,35 +50,36 @@ public class SystemController : ControllerBase
     [HttpGet("process")]
     public async Task<ActionResult> GetProcessAsync()
     {
+        var root = Process.GetCurrentProcess();
+
         var startInfo = new ProcessStartInfo
         {
             FileName = "notepad.exe",
-            UseShellExecute = false
+            UseShellExecute = true,
         };
 
-        var server1 = Process.Start(startInfo);
-        var server2 = Process.Start(startInfo);
+        var server1 = Process.Start(startInfo)!;
+        var server2 = Process.Start(startInfo)!;
 
-        _job.AddProcess(server1);
-        //_processes.AddProcess("server1", server1);
+        _processes.AddProcess("server1", server1);
+        _processes.AddProcess("server2", server2);
+
+        //_job.AddProcess(server1);
+        //_job.AddProcess(server2);
+
+        //ProcessLauncher.Start("notepad.exe");
+        //ProcessLauncher.Start("notepad.exe");
+
         Console.WriteLine($"Process ID: {server1.Id}");
-
-        _job.AddProcess(server2);
-        //_processes.AddProcess("server2", server2);
         Console.WriteLine($"Process ID: {server2.Id}");
-
-        //ProcessLauncher.Start("notepad.exe");
-        //ProcessLauncher.Start("notepad.exe");
 
         await Task.CompletedTask;
         return Ok();
     }
 
     [HttpGet("crash")]
-    public async Task<ActionResult> CrashAsync()
+    public void Crash()
     {
         Environment.FailFast("비정상 종료 테스트");
-        await Task.CompletedTask;
-        return Ok();
     }
 }

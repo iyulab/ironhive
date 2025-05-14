@@ -45,12 +45,14 @@ internal class OpenAIChatCompletionClient : OpenAIClientBase
         while (!reader.EndOfStream)
         {
             cancellationToken.ThrowIfCancellationRequested();
-
             var line = await reader.ReadLineAsync(cancellationToken);
-            if (string.IsNullOrWhiteSpace(line))
-                continue;
 
-            if (line.StartsWith("data"))
+            Console.WriteLine(line);
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                continue;
+            }
+            else if (line.StartsWith("data:"))
             {
                 var data = line.Substring("data:".Length).Trim();
                 if (!data.StartsWith('{') || !data.EndsWith('}'))
@@ -62,8 +64,8 @@ internal class OpenAIChatCompletionClient : OpenAIClientBase
                     yield return message;
                 }
             }
-            // 특정 플랫폼 용도
-            else if (line.StartsWith("error"))
+            // 특정 플랫폼의 경우
+            else if (line.StartsWith("error:"))
             {
                 var data = line.Substring("error:".Length).Trim();
                 throw new InvalidOperationException(data);

@@ -27,13 +27,14 @@ internal class AnthropicChatCompletionClient : AnthropicClientBase
             ?? throw new InvalidOperationException("Failed to deserialize response.");
         return message;
     }
-
+     
     internal async IAsyncEnumerable<StreamingMessagesResponse> PostStreamingMessagesAsync(
         MessagesRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         request.Stream = true;
         var json = JsonSerializer.Serialize(request, JsonOptions);
+        Console.WriteLine($"input: {json}");
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         using var _request = new HttpRequestMessage(HttpMethod.Post, AnthropicConstants.PostMessagesPath.RemovePreffix('/'));
         _request.Content = content;
@@ -46,19 +47,28 @@ internal class AnthropicChatCompletionClient : AnthropicClientBase
         while (!reader.EndOfStream)
         {
             cancellationToken.ThrowIfCancellationRequested();
-
             var line = await reader.ReadLineAsync(cancellationToken);
-            if (string.IsNullOrWhiteSpace(line) || !line.StartsWith("data"))
-                continue;
+            Console.WriteLine(line);
 
-            var data = line.Substring("data:".Length).Trim();
-            if (!data.StartsWith('{') || !data.EndsWith('}'))
-                continue;
-
-            var message = JsonSerializer.Deserialize<StreamingMessagesResponse>(data, JsonOptions);
-            if (message != null)
+            if (string.IsNullOrWhiteSpace(line))
             {
-                yield return message;
+                continue;
+            } 
+            else if (line.StartsWith("data:"))
+            {
+                var data = line.Substring("data:".Length).Trim();
+                if (!data.StartsWith('{') || !data.EndsWith('}'))
+                    continue;
+
+                var message = JsonSerializer.Deserialize<StreamingMessagesResponse>(data, JsonOptions);
+                if (message != null)
+                {
+                    yield return message;
+                }
+            }
+            else
+            {
+                continue;
             }
         }
     }

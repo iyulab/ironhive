@@ -23,4 +23,9 @@ public class ChatCompletionOptions : ChatCompletionParameters
     /// 사용할 툴입니다.
     /// </summary>
     public ToolCollection? Tools { get; set; }
+
+    /// <summary>
+    /// 툴 사용에 의한 루프를 최대 몇번까지 돌릴지 설정합니다.
+    /// </summary>
+    public int MaxLoopCount { get; set; } = 10;
 }

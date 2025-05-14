@@ -75,9 +75,9 @@ public class AssistantToolContent : AssistantContentBase
     /// </summary>
     public string? Result { get; set; }
 
-    public void Completed(string data)
+    public void Success(string data)
     {
-        Status = ToolStatus.Completed;
+        Status = ToolStatus.Success;
         Result = data;
     }
 
@@ -98,7 +98,7 @@ public class AssistantToolContent : AssistantContentBase
 }
 
 /// <summary>
-/// Tool Status
+/// 툴 사용 상태
 /// </summary>
 public enum ToolStatus
 {
@@ -108,14 +108,19 @@ public enum ToolStatus
     Pending,
 
     /// <summary>
+    /// 도구가 실행 준비 완료 상태
+    /// </summary>
+    Ready,
+
+    /// <summary>
     /// 도구가 실행 중인 상태
     /// </summary>
-    Running,
+    Processing,
 
     /// <summary>
     /// 도구가 완료된 상태
     /// </summary>
-    Completed,
+    Success,
 
     /// <summary>
     /// 도구가 실패한 상태
@@ -124,12 +129,38 @@ public enum ToolStatus
 }
 
 /// <summary>
+/// 추론 출력 형식
+/// </summary>
+public enum ThinkingMode
+{
+    /// <summary>
+    /// 전체 추론 맥락 
+    /// </summary>
+    Detailed,
+
+    /// <summary>
+    /// 보안 추론 컨텐츠
+    /// </summary>
+    Secure,
+
+    /// <summary>
+    /// 추론 요약 콘텐츠
+    /// </summary>
+    Summary
+}
+
+/// <summary>
 /// 추론 결과 콘텐츠 블록을 나타냅니다
 /// </summary>
 public class AssistantThinkingContent : AssistantContentBase
 {
     /// <summary>
-    /// 텍스트 콘텐츠 블록의 내용입니다.
+    /// 추론의 형식 입니다.
+    /// </summary>
+    public ThinkingMode Mode { get; set; } = ThinkingMode.Detailed;
+
+    /// <summary>
+    /// 추론 콘텐츠 블록의 내용입니다.
     /// </summary>
     public string? Value { get; set; }
 }

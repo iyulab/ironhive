@@ -10,6 +10,7 @@ using IronHive.Abstractions.Models;
 using Microsoft.AspNetCore.StaticFiles;
 using IronHive.Core.Tools;
 using IronHive.Core.Mcp;
+using WebServer.Tools;
 
 namespace WebServer.Controllers;
 
@@ -102,15 +103,21 @@ public class ServiceController : ControllerBase
         //});
 
         //request.Tools = tools;
+        request.Tools = FunctionToolFactory.CreateFromObject<TestTool>();
 
         try
         {
-            Response.ContentType = "text/event-stream; charset=utf-8";
-            Response.Headers.CacheControl = "no-cache";
-            Response.Headers.Connection = "keep-alive";
-
+            var isStarted = false;
             await foreach (var result in _chat.GenerateStreamingMessageAsync(request.Messages, request, cancellationToken))
             {
+                if (!isStarted)
+                {
+                    Response.ContentType = "text/event-stream; charset=utf-8";
+                    Response.Headers.CacheControl = "no-cache";
+                    Response.Headers.Connection = "keep-alive";
+                    isStarted = true;
+                }
+
                 await WriteEventAsync("delta", result, cancellationToken);
             }
         }
@@ -123,15 +130,24 @@ public class ServiceController : ControllerBase
         {
             // When Error
             Debug.WriteLine(ex.ToString());
-            Response.StatusCode = 500;
-            await Response.WriteAsJsonAsync(new
+            var error = new
             {
                 Source = ex.Source,
                 Message = ex.Message,
                 StackTrace = ex.StackTrace,
                 Data = ex.Data,
                 HelpLink = ex.HelpLink,
-            }, _jsonOptions, cancellationToken);
+            };
+
+            if (!Response.HasStarted)
+            {
+                Response.StatusCode = 500;
+                await Response.WriteAsJsonAsync(error, _jsonOptions, cancellationToken);
+            }
+            else
+            {
+                await WriteEventAsync("error", error, cancellationToken);
+            }
         }
         finally
         {

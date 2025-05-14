@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace IronHive.Abstractions.Json;
 
@@ -83,7 +84,7 @@ public class ArrayJsonSchema : JsonSchema
 public class ObjectJsonSchema : JsonSchema
 {
     [JsonPropertyName("properties")]
-    public IDictionary<string, JsonSchema>? Properties { get; set; }
+    public IDictionary<string, JsonSchema> Properties { get; set; } = new Dictionary<string, JsonSchema>();
 
     [JsonPropertyName("required")]
     public IEnumerable<string>? Required { get; set; }

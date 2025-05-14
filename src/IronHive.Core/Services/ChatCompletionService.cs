@@ -91,7 +91,7 @@ public class ChatCompletionService : IChatCompletionService
                     else if (data.Length > 30_000)
                         toolContent.TooMuchResult();
                     else
-                        toolContent.Completed(data);
+                        toolContent.Success(data);
                 }
                 // 도구를 찾을 수 없는 경우
                 else
@@ -136,7 +136,16 @@ public class ChatCompletionService : IChatCompletionService
 
             // 메시지 컨텐츠 추가
             if (res.Data?.Content != null)
+            {
+                foreach (var content in res.Data.Content)
+                {
+                    if (string.IsNullOrEmpty(content.Id) && content is AssistantToolContent tool)
+                    {
+                        tool.Id = $"tool_{Guid.NewGuid().ToShort()}";
+                    }
+                }
                 message.Content.AddRange(res.Data.Content);
+            }
 
             // 메시지 추가(마지막 메시지가 유저가 아닌 경우 == 첫번째 루프인 경우)
             if (request.Messages.LastOrDefault() is not AssistantMessage)
@@ -172,7 +181,7 @@ public class ChatCompletionService : IChatCompletionService
                         else if (data.Length > 30_000)
                             toolContent.TooMuchResult(); // 결과가 너무 긴 경우
                         else
-                            toolContent.Completed(data); // 성공 처리
+                            toolContent.Success(data); // 성공 처리
                     }
                     // 도구를 찾을 수 없는 경우
                     else
@@ -213,13 +222,13 @@ public class ChatCompletionService : IChatCompletionService
         if (!_store.TryGetService<IChatCompletionConnector>(options.Provider, out var conn))
             throw new KeyNotFoundException($"Service key '{options.Provider}' not found.");
 
-        // 파라미터를 받아서 요청을 생성합니다.
+        // 커넥터에 전달할 요청 객체를 생성합니다.
         var request = CreateChatCompletionRequest(messages, options);
 
         // 생성 종료 이유
         EndReason? reason = null;
 
-        // 루프를 돌면서 축적될 메시지 입니다.
+        // 전체 토큰 사용량
         TokenUsage? usage = null;
 
         // 루프를 돌면서 축적될 메시지 입니다.
@@ -254,7 +263,7 @@ public class ChatCompletionService : IChatCompletionService
                     else
                     {
                         // 도구 호출
-                        content.Status = ToolStatus.Running;
+                        content.Status = ToolStatus.Processing;
                         yield return new ChatCompletionResponse<IAssistantContent>
                         {
                             Data = content
@@ -268,7 +277,7 @@ public class ChatCompletionService : IChatCompletionService
                         else if (data.Length > 30_000)
                             content.TooMuchResult();
                         else
-                            content.Completed(data);
+                            content.Success(data);
 
                         yield return new ChatCompletionResponse<IAssistantContent>
                         {
@@ -373,6 +382,10 @@ public class ChatCompletionService : IChatCompletionService
                         // 없다면 새로운 툴 컨텐츠를 추가합니다.
                         else
                         {
+                            if (string.IsNullOrEmpty(tool.Id))
+                            {
+                                tool.Id = $"tool_{Guid.NewGuid().ToShort()}";
+                            }
                             stack.Add(tool);
                             yield return new ChatCompletionResponse<IAssistantContent>
                             {
@@ -386,34 +399,30 @@ public class ChatCompletionService : IChatCompletionService
                                     Id = tool.Id,
                                     Name = tool.Name,
                                 }
-                            };  
+                            };
                         }
                     }
                     // 추론 컨텐츠의 경우
                     else if(res.Data is AssistantThinkingContent thinking)
                     {
-                        var last = stack.LastOrDefault();
-                        var value = thinking.Value;
+                        var existing = stack.ElementAtOrDefault(thinking.Index ?? 0) as AssistantThinkingContent;
 
-                        // 마지막 컨텐츠가 추론인경루
-                        // 추론을 이어 붙입니다.
-                        if (last is AssistantThinkingContent lastThinking)
+                        // 현재루프의 컨텐츠에서 해당하는 인덱스에 추론이 있는지 확인
+                        if (existing != null)
                         {
-                            lastThinking.Value ??= string.Empty;
-                            lastThinking.Value += value;
+                            existing.Value ??= string.Empty;
+                            existing.Value += thinking.Value;
                         }
-                        // 마지막 컨텐츠가 추론이 아닌경우
-                        // 새로운 추론 컨텐츠를 추가합니다.
+                        // 없다면 새로운 컨텐츠를 스택에 추가합니다.
                         else
                         {
                             stack.Add(thinking);
-                            last = stack.Last();
+                            existing = stack.LastOrDefault() as AssistantThinkingContent;
                         }
 
-                        // 추론 컨텐츠의 ID가 있을 경우
-                        if (!string.IsNullOrEmpty(thinking.Id))
+                        if (!string.IsNullOrEmpty(thinking.Id) && existing != null)
                         {
-                            last.Id = thinking.Id;
+                            existing.Id = thinking.Id;
                         }
 
                         yield return new ChatCompletionResponse<IAssistantContent>
@@ -421,9 +430,10 @@ public class ChatCompletionService : IChatCompletionService
                             Data = new AssistantThinkingContent
                             {
                                 // 실제 인덱스 계산 (축적된 컨텐츠 + 현재 인덱스)
-                                Index = message.Content.Count + last.Index,
-                                Id = last.Id,
-                                Value = value,
+                                Index = message.Content.Count + existing?.Index,
+                                Mode = existing?.Mode ?? thinking.Mode,
+                                Id = existing?.Id ?? thinking.Id,
+                                Value = thinking.Value,
                             }
                         };
                     }
@@ -465,7 +475,7 @@ public class ChatCompletionService : IChatCompletionService
                         else
                         {
                             // 도구 호출
-                            content.Status = ToolStatus.Running;
+                            content.Status = ToolStatus.Processing;
                             yield return new ChatCompletionResponse<IAssistantContent>
                             {
                                 Data = content
@@ -479,7 +489,7 @@ public class ChatCompletionService : IChatCompletionService
                             else if (data.Length > 30_000)
                                 content.TooMuchResult();
                             else
-                                content.Completed(data);
+                                content.Success(data);
 
                             yield return new ChatCompletionResponse<IAssistantContent>
                             {

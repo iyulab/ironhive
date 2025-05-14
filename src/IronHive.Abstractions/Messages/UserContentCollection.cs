@@ -10,25 +10,13 @@ public class UserContentCollection : ICollection<IUserContent>
     private readonly List<IUserContent> _items = new();
 
     /// <summary>
-    /// TextContent를 추가합니다.
+    /// 아이템을 추가합니다.
+    /// 아이템의 인덱스 번호는 자동으로 재할당됩니다.
     /// </summary>
-    public void AddText(string? value)
+    public void Add(IUserContent item)
     {
-        Add(new UserTextContent
-        {
-            Value = value
-        });
-    }
-
-    /// <summary>
-    /// ImageContent를 추가합니다.
-    /// </summary>
-    public void AddImage(string? data)
-    {
-        Add(new UserImageContent
-        {
-            Data = data
-        });
+        item.Index = _items.Count;
+        _items.Add(item);
     }
 
     /// <summary>
@@ -52,16 +40,6 @@ public class UserContentCollection : ICollection<IUserContent>
     {
         get => _items[index];
         set => _items[index] = value;
-    }
-
-    /// <summary>
-    /// 아이템을 추가합니다.
-    /// 아이템의 인덱스 번호는 자동으로 재할당됩니다.
-    /// </summary>
-    public void Add(IUserContent item)
-    {
-        item.Index = _items.Count;
-        _items.Add(item);
     }
 
     public void Clear() => _items.Clear();

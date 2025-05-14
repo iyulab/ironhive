@@ -4,11 +4,11 @@ using ModelContextProtocol.Client;
 
 namespace IronHive.Core.Tools;
 
-public class McpTool : ITool
+public class McpServerTool : ITool
 {
     private readonly McpClientTool _client;
 
-    public McpTool(McpClientTool client)
+    public McpServerTool(McpClientTool client)
     {
         _client = client;
         Name = client.Name;

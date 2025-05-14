@@ -51,7 +51,10 @@ public class QnAExtractionHandler : IPipelineHandler
             foreach (var chunk in chunks)
             {
                 var message = new UserMessage();
-                message.Content.AddText($"generate QnA pairs in this information:\n\n{chunk}");
+                message.Content.Add(new UserTextContent
+                {
+                    Value = $"generate QnA pairs in this information:\n\n{chunk}"
+                });
                 var result = await _service.GenerateMessageAsync(message, serviceOptions, cancellationToken);
                 var text = result.Data?.Content.OfType<AssistantTextContent>().FirstOrDefault()?.Value
                     ?? throw new InvalidOperationException("No response from the chat completion service.");

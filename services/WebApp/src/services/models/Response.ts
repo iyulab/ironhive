@@ -1,4 +1,4 @@
-import { MessageContent } from "@iyulab/chat-component";
+import { AssistantMessageContent } from "@iyulab/chat-components";
 
 export type EndReason = 
   | "endTurn"
@@ -14,7 +14,7 @@ export interface TokenUsage {
 
 export interface StreamingResponse {
   endReason?: EndReason;
-  data?: MessageContent;
+  data?: AssistantMessageContent;
   tokenUsage?: TokenUsage;
   timestamp?: string;
 }

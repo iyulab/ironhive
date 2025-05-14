@@ -5,16 +5,16 @@ public class FunctionToolAttribute : Attribute
 {
     public string? Name { get; set; }
 
-    public bool RequiresApproval { get; set; }
+    public bool RequiredUserConfirmed { get; set; }
 
-    public FunctionToolAttribute() 
+    public FunctionToolAttribute()
     {
-        RequiresApproval = false;
+        RequiredUserConfirmed = false;
     }
 
-    public FunctionToolAttribute(string? name = null, bool requiresApproval = false)
+    public FunctionToolAttribute(string? name = null, bool requiredUserConfirmed = false)
     {
         Name = name;
-        RequiresApproval = requiresApproval;
+        RequiredUserConfirmed = requiredUserConfirmed;
     }
 }

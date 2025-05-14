@@ -186,7 +186,7 @@ export class FilePage extends LitElement {
       height: 100%;
       min-width: 320px;
       min-height: 480px;
-      color: var(--uc-txt-color);
+      color: var(--uc-twxt-color-high);
       background-color: var(--uc-background-color-0);
       overflow: hidden;
       padding: 20px;
