@@ -8,17 +8,30 @@ namespace IronHive.Core.Mcp;
 /// <inheritdoc />
 public class McpServerManager : IMcpServerManager
 {
-    private readonly IDictionary<string, IMcpClient> _servers = new Dictionary<string, IMcpClient>();
+    private readonly Dictionary<string, IMcpClient> _servers = new();
 
     /// <inheritdoc />
-    public async Task<bool> IsRunningAsync(string id, CancellationToken cancellationToken = default)
+    public async Task<bool> IsRunningAsync(
+        string id, 
+        CancellationToken cancellationToken = default)
     {
-        await Task.CompletedTask;
-        return _servers.ContainsKey(id);
+        if (_servers.TryGetValue(id, out var client))
+        {
+            await client.PingAsync(cancellationToken);
+            return true;
+        }
+        else
+        {
+            _servers.Remove(id);
+            return false;
+        }
     }
 
     /// <inheritdoc />
-    public async Task StartAsync(string id, IMcpServer server, CancellationToken cancellationToken = default)
+    public async Task StartAsync(
+        string id, 
+        IMcpServer server, 
+        CancellationToken cancellationToken = default)
     {
         await StopAsync(id, cancellationToken);
 
@@ -64,7 +77,9 @@ public class McpServerManager : IMcpServerManager
     }
 
     /// <inheritdoc />
-    public async Task StopAsync(string id, CancellationToken cancellationToken = default)
+    public async Task StopAsync(
+        string id, 
+        CancellationToken cancellationToken = default)
     {
         if (_servers.TryGetValue(id, out var client))
         {
@@ -74,7 +89,9 @@ public class McpServerManager : IMcpServerManager
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<ITool>> ListToolsAsync(string id, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<ITool>> ListToolsAsync(
+        string id, 
+        CancellationToken cancellationToken = default)
     {
         if (_servers.TryGetValue(id, out var client))
         {

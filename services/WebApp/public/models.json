@@ -18,7 +18,7 @@
     },
     {
       "provider": "xai",
-      "modelId": "grok-3-mini-fast",
+      "modelId": "grok-3-mini",
       "displayName": "Grok 3.0",
       "description": "Lightweight model from xAI",
       "contextWindow": 131072
@@ -32,8 +32,8 @@
     },
     {
       "provider": "local",
-      "modelId": "exaone-3.5",
-      "displayName": "ExaOne 3.5",
+      "modelId": "clova-x",
+      "displayName": "HyperClova X",
       "description": "Local AI model provided by Iyulab",
       "contextWindow": 32768
     }

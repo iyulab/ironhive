@@ -33,9 +33,9 @@ export class ChatPage extends LitElement {
   render() {
     return html`
       <div class="container">
-        <uc-bar-spinner
-          ?open=${this.loading}
-        ></uc-bar-spinner>
+        <status-panel
+          .status=${this.loading ? 'processing' : 'pending'}
+        ></status-panel>
 
         <token-panel
           .value=${this.tokenUsage}
@@ -123,7 +123,6 @@ export class ChatPage extends LitElement {
               content.id ||= data.id;
               content.value ||= '';
               content.value += data.value || '';
-              console.log(content.id, data.id);
             } else {
               last.content[index] = data;
             }
@@ -177,23 +176,17 @@ export class ChatPage extends LitElement {
       overflow: hidden;
     }
 
-    uc-bar-spinner {
+    status-panel {
       position: absolute;
       z-index: 100;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      display: none;
-    }
-    uc-bar-spinner[open] {
-      display: block;
+      top: 16px;
+      left: 16px;
     }
 
     token-panel {
       position: absolute;
       z-index: 100;
-      width: 15%;
-      top: 16px;
+      top: 120px;
       left: 16px;
     }
 

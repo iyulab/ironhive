@@ -31,10 +31,11 @@ public class TestTool
     [FunctionTool("get_web_content")]
     [Description("get web content from url")]
     public async Task<string> GetWebContentAsync(
-        [Description("url for content")] string url)
+        [Description("url for content")] string url, 
+        CancellationToken cancellationToken)
     {
         using var client = new HttpClient();
-        var html = await client.GetStringAsync(url);
+        var html = await client.GetStringAsync(url, cancellationToken);
 
         var doc = new HtmlDocument();
         doc.LoadHtml(html);
@@ -45,20 +46,23 @@ public class TestTool
     [FunctionTool("web_search")]
     [Description("perform a web search and retrieve search results")]
     public async Task<SearchResponse> SearchWebAsycn(
-        [Description("search query")] string query)
+        [Description("search query")] string query,
+        CancellationToken cancellationToken)
     {
         var env = DotEnv.Read();
         using var client = new TavilyClient();
         var result = await client.SearchAsync(
             apiKey: env.TryGetValue("TAVILY", out var value) ? value : string.Empty,
-            query: query);
+            query: query,
+            cancellationToken: cancellationToken);
         return result;
     }
 
     [FunctionTool("window_cmd")]
     [Description("execute Windows command-line commands safely")]
     public async Task<string> ExecuteCommandAsync(
-        [Description("command to execute in Windows Command Prompt")] string command)
+        [Description("command to execute in Windows Command Prompt")] string command,
+        CancellationToken cancellationToken)
     {
         // 위험한 명령어 차단
         //string[] blockedCommands = { "rm -rf", "format", "del", "shutdown" };
@@ -78,13 +82,13 @@ public class TestTool
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true,
-            }
+            },
         };
 
         process.Start();
-        var output = await process.StandardOutput.ReadToEndAsync();
-        var error = await process.StandardError.ReadToEndAsync();
-        await process.WaitForExitAsync();
+        var output = await process.StandardOutput.ReadToEndAsync(cancellationToken);
+        var error = await process.StandardError.ReadToEndAsync(cancellationToken);
+        await process.WaitForExitAsync(cancellationToken);
 
         return string.IsNullOrWhiteSpace(error) ? output : throw new Exception(error);
     }

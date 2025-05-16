@@ -67,7 +67,6 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
             {
                 message.Content.Add(new AssistantToolContent
                 {
-                    Status = ToolStatus.Pending,
                     Id = tool.Id,
                     Name = tool.Name,
                     Arguments = JsonSerializer.Serialize(tool.Input)

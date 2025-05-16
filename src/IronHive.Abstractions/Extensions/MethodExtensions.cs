@@ -21,7 +21,11 @@ public static class MethodExtensions
 
         foreach (var param in parameters)
         {
-            if (string.IsNullOrEmpty(param.Name))
+            // 이름이 없거나 out 매개변수인 경우
+            if (string.IsNullOrEmpty(param.Name) || param.IsOut)
+                continue;
+            // 특정 타입의 경우
+            if (param.ParameterType == typeof(CancellationToken))
                 continue;
 
             var description = param.GetCustomAttribute<DescriptionAttribute>()?.Description;

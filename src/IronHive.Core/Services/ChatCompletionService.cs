@@ -1,8 +1,11 @@
-﻿using IronHive.Abstractions;
+﻿using DocumentFormat.OpenXml.Bibliography;
+using IronHive.Abstractions;
 using IronHive.Abstractions.ChatCompletion;
 using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Tools;
+using IronHive.Core.Utilities;
+using ModelContextProtocol.Protocol.Types;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 
@@ -47,168 +50,46 @@ public class ChatCompletionService : IChatCompletionService
             throw new KeyNotFoundException($"Service key '{options.Provider}' not found.");
 
         // 파라미터를 받아서 요청을 생성합니다.
-        var request = CreateChatCompletionRequest(messages, options);
-
-        // 생성 종료 이유
-        EndReason? reason = null;
-
-        // 루프를 돌면서 축적될 메시지 입니다.
-        TokenUsage? usage = null;
-
-        // 루프를 돌면서 축적될 메시지 입니다.
+        var req = CreateChatCompletionRequest(messages, options);
+        EndReason? reason;
+        TokenUsage? usage;
         AssistantMessage message;
 
-        // 마지막 메시지가 어시스턴트 메시지인 경우
-        // 툴 호출을 확인하고 결과를 생성합니다.
-        // 유저가 툴사용을 허락했는지 확인하고 실행합니다.
-        if (messages.LastOrDefault() is AssistantMessage assistantMessage)
-        {
-            message = assistantMessage;
-            var toolContentGroup = message.Content.OfType<AssistantToolContent>() ?? [];
-            foreach (var toolContent in toolContentGroup)
-            {
-                // 도구 이름이 없거나 결과가 이미 있는 경우 건너뜀
-                if (string.IsNullOrEmpty(toolContent.Name) || toolContent.Result != null)
-                {
-                    continue;
-                }
-                // 도구 호출
-                else if (request.Tools.TryGetValue(toolContent.Name, out var tool))
-                {
-                    if (tool.Permission == ToolPermission.Manual && !toolContent.IsAllowed)
-                    {
-                        // 도구가 승인이 요구되었고,
-                        // 도구 사용을 확인하지 않은 경우 실패 처리
-                        toolContent.DeniedToolInvoke();
-                        continue;
-                    }
-
-                    var result = await tool.InvokeAsync(toolContent.Arguments, cancellationToken);
-                    var data = JsonSerializer.Serialize(result.Data, JsonDefaultOptions.Options);
-
-                    if (!result.IsSuccess)
-                        toolContent.Failed(data);
-                    else if (data.Length > 30_000)
-                        toolContent.TooMuchResult();
-                    else
-                        toolContent.Success(data);
-                }
-                // 도구를 찾을 수 없는 경우
-                else
-                {
-                    toolContent.NotFoundTool();
-                }
-            }
-        }
-        // 마지막 메시지가 어시스턴트 메시지가 아닌 경우
-        // 유저와의 대화를 시작합니다.
-        else
-        {
-            message = new AssistantMessage();        
-        }
-
         // 루프 시작
-        while (!cancellationToken.IsCancellationRequested)
+        bool next;
+        var counter = new LoopCounter(options.MaxLoopCount);
+        do
         {
-            var res = await conn.GenerateMessageAsync(request, cancellationToken);
-
-            // 생성 종료 이유
-            if (res.EndReason != null)
+            // 마지막 메시지가 어시스턴트 메시지인 경우, 툴 사용을 확인하고, 메시지를 이어갑니다.
+            if (req.Messages.LastOrDefault() is AssistantMessage last)
             {
-                reason = res.EndReason;
+                await foreach (var _ in ProcessToolContentAsync(last, req.Tools, cancellationToken))
+                { }
             }
 
-            // 토큰 사용량 업데이트
-            if (res.TokenUsage != null)
+            var res = await conn.GenerateMessageAsync(req, cancellationToken);
+
+            message = req.Messages.LastOrCreate<AssistantMessage>();
+            foreach (var content in res.Data?.Content ?? [])
             {
-                if (usage != null)
-                {
-                    // 두번째 이후
-                    // 처음 입력토큰은 그대로 두고, 이후에 생성된 토큰만 추가
-                    usage.OutputTokens += res.TokenUsage.OutputTokens;
-                }
-                else
-                {
-                    // 처음 첫번째 루프에서 토큰 사용량을 설정
-                    usage = res.TokenUsage;
-                }
+                // 툴 컨텐츠 추가
+                message.Content.Add(content is AssistantToolContent tool
+                    ? PrepareToolContent(tool, req.Tools)
+                    : content);
             }
+            reason = res.EndReason; // 생성 종료 이유 업데이트
+            usage = res.TokenUsage; // 토큰 사용량 업데이트
 
-            // 메시지 컨텐츠 추가
-            if (res.Data?.Content != null)
-            {
-                foreach (var content in res.Data.Content)
-                {
-                    if (string.IsNullOrEmpty(content.Id) && content is AssistantToolContent tool)
-                    {
-                        tool.Id = $"tool_{Guid.NewGuid().ToShort()}";
-                    }
-                }
-                message.Content.AddRange(res.Data.Content);
-            }
-
-            // 메시지 추가(마지막 메시지가 유저가 아닌 경우 == 첫번째 루프인 경우)
-            if (request.Messages.LastOrDefault() is not AssistantMessage)
-                request.Messages.Add(message);
-
-            // 도구 호출
-            if (reason == EndReason.ToolCall)
-            {
-                bool approveRequired = false;
-                var toolContentGroup = message.Content.OfType<AssistantToolContent>() ?? [];
-                foreach (var toolContent in toolContentGroup)
-                {
-                    // 도구 이름이 없거나 결과가 이미 있는 경우 건너뜀
-                    if (string.IsNullOrEmpty(toolContent.Name) || toolContent.Result != null)
-                    {
-                        continue;
-                    }
-                    // 도구 호출
-                    else if (request.Tools.TryGetValue(toolContent.Name, out var tool))
-                    {
-                        if (tool.Permission == ToolPermission.Manual)
-                        {
-                            approveRequired = true; // 도구 사용을 확인하지 않은 경우
-                            // 도구가 승인이 요구되는 겨우 건너뜀
-                            continue;
-                        }
-
-                        var result = await tool.InvokeAsync(toolContent.Arguments, cancellationToken);
-                        var data = JsonSerializer.Serialize(result.Data, JsonDefaultOptions.Options);
-
-                        if (!result.IsSuccess)
-                            toolContent.Failed(data);    // 실패 처리
-                        else if (data.Length > 30_000)
-                            toolContent.TooMuchResult(); // 결과가 너무 긴 경우
-                        else
-                            toolContent.Success(data); // 성공 처리
-                    }
-                    // 도구를 찾을 수 없는 경우
-                    else
-                    {
-                        toolContent.NotFoundTool();  // 도구를 찾을 수 없음
-                    }
-                }
-
-                if (approveRequired)
-                {
-                    // 도구 사용을 확인하지 않은 경우
-                    // 승인 요청을 위해 루프를 종료합니다.
-                    break;
-                }
-            }
-            // 도구 호출이 아닌 경우 종료
-            else
-            {
-                break;
-            }
+            next = ShouldContinue(reason, message, counter, cancellationToken);
+            counter.Increment();
         }
+        while (next);
 
         return new ChatCompletionResponse<AssistantMessage>
         {
             EndReason = reason,
-            TokenUsage = usage,
             Data = message,
+            TokenUsage = usage,
             Timestamp = DateTime.UtcNow
         };
     }
@@ -223,93 +104,32 @@ public class ChatCompletionService : IChatCompletionService
             throw new KeyNotFoundException($"Service key '{options.Provider}' not found.");
 
         // 커넥터에 전달할 요청 객체를 생성합니다.
-        var request = CreateChatCompletionRequest(messages, options);
-
-        // 생성 종료 이유
+        var req = CreateChatCompletionRequest(messages, options);
         EndReason? reason = null;
-
-        // 전체 토큰 사용량
         TokenUsage? usage = null;
 
-        // 루프를 돌면서 축적될 메시지 입니다.
-        AssistantMessage message;
-
-        // 마지막 메시지가 어시스턴트 메시지인 경우
-        // 툴 호출을 확인하고 결과를 생성합니다.
-        // 유저가 툴사용을 허락했는지 확인하고 실행합니다.
-        if (messages.LastOrDefault() is AssistantMessage assistantMessage)
+        // 루프 시작
+        bool next;
+        var counter = new LoopCounter(options.MaxLoopCount);
+        do
         {
-            message = assistantMessage;
-            var toolContentGroup = message.Content.OfType<AssistantToolContent>();
-            foreach (var content in toolContentGroup)
+            // 마지막 메시지가 어시스턴트 메시지인 경우, 툴 사용을 확인하고, 메시지를 이어갑니다.
+            if (req.Messages.LastOrDefault() is AssistantMessage message)
             {
-                if (string.IsNullOrEmpty(content.Name) || content.Result != null)
+                await foreach (var res in ProcessToolContentAsync(message, req.Tools, cancellationToken))
                 {
-                    // 도구 이름이 없거나 결과가 이미 있는 경우 건너뜀
-                    continue;
-                }
-                if (request.Tools.TryGetValue(content.Name, out var tool))
-                {
-                    if (tool.Permission == ToolPermission.Manual && !content.IsAllowed)
-                    {
-                        // 도구가 승인이 요구되었고,
-                        // 도구 사용을 확인하지 않은 경우 실패 처리
-                        content.DeniedToolInvoke();
-                        yield return new ChatCompletionResponse<IAssistantContent>
-                        {
-                            Data = content
-                        };
-                    }
-                    else
-                    {
-                        // 도구 호출
-                        content.Status = ToolStatus.Processing;
-                        yield return new ChatCompletionResponse<IAssistantContent>
-                        {
-                            Data = content
-                        };
-
-                        var result = await tool.InvokeAsync(content.Arguments, cancellationToken);
-                        var data = JsonSerializer.Serialize(result.Data, JsonDefaultOptions.Options);
-
-                        if (!result.IsSuccess)
-                            content.Failed(data);
-                        else if (data.Length > 30_000)
-                            content.TooMuchResult();
-                        else
-                            content.Success(data);
-
-                        yield return new ChatCompletionResponse<IAssistantContent>
-                        {
-                            Data = content
-                        };
-                    }
-                }
-                else
-                {
-                    content.NotFoundTool();
-                    yield return new ChatCompletionResponse<IAssistantContent>
-                    {
-                        Data = content
-                    };
+                    yield return res;
                 }
             }
-        }
-        // 마지막 메시지가 어시스턴트 메시지가 아닌 경우
-        // 채팅이 시작됩니다.
-        else
-        {
-            message = new AssistantMessage();
-        }
+            // 마지막 메시지가 어시스턴트 메시지가 아닌 경우, 새로운 메시지를 생성합니다.
+            else
+            {
+                message = new AssistantMessage();
+            }
 
-        // 루프 시작
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            // 현재 루프에서 생성된 컨텐츠를 저장할 스택
+            // 현재 루프에서 생성된 컨텐츠를 저장할 메시지 컨텐츠 스택 객체
             var stack = new AssistantContentCollection();
-
-            // 메시지 생성
-            await foreach (var res in conn.GenerateStreamingMessageAsync(request, cancellationToken))
+            await foreach (var res in conn.GenerateStreamingMessageAsync(req, cancellationToken))
             {
                 // 생성 종료 이유
                 if (res.EndReason != null)
@@ -320,17 +140,7 @@ public class ChatCompletionService : IChatCompletionService
                 // 토큰 사용량 업데이트
                 if (res.TokenUsage != null)
                 {
-                    if (usage != null)
-                    {
-                        // 두번째 이후
-                        // 처음 입력토큰은 그대로 두고, 이후에 생성된 토큰만 추가
-                        usage.OutputTokens += res.TokenUsage.OutputTokens;
-                    }
-                    else
-                    {
-                        // 처음 첫번째 루프에서 토큰 사용량을 설정
-                        usage = res.TokenUsage;
-                    }
+                    usage = res.TokenUsage;
                 }
 
                 // 컨텐츠 추가
@@ -339,31 +149,25 @@ public class ChatCompletionService : IChatCompletionService
                     // 텍스트 컨텐츠의 경우
                     if (res.Data is AssistantTextContent text)
                     {
-                        var last = stack.LastOrDefault();
-                        var value = text.Value;
-
-                        // 마지막 컨텐츠가 텍스트인 경우
-                        // 텍스트를 이어 붙입니다.
-                        if (last is AssistantTextContent lastText)
+                        // 마지막 컨텐츠가 텍스트인 경우 텍스트를 이어 붙입니다.
+                        if (stack.LastOrDefault() is AssistantTextContent lastText)
                         {
                             lastText.Value ??= string.Empty;
-                            lastText.Value += value;
+                            lastText.Value += text.Value;
                         }
-                        // 마지막 컨텐츠가 텍스트가 아닌 경우
-                        // 새로운 텍스트 컨텐츠를 추가합니다.
+                        // 아닌 경우 새로운 텍스트 컨텐츠를 추가합니다.
                         else
                         {
                             stack.Add(text);
-                            last = stack.Last();
                         }
 
                         yield return new ChatCompletionResponse<IAssistantContent>
                         {
                             Data = new AssistantTextContent
                             {
-                                // 실제 인덱스 계산 (축적된 컨텐츠 + 현재 인덱스)
-                                Index = message.Content.Count + last.Index, 
-                                Value = value,
+                                // 실제 축적 인덱스 계산 (축적된 컨텐츠 + 현재 인덱스)
+                                Index = (message.Content.Count + stack.Count) - 1,
+                                Value = text.Value,
                             }
                         };
                     }
@@ -371,31 +175,27 @@ public class ChatCompletionService : IChatCompletionService
                     else if (res.Data is AssistantToolContent tool)
                     {
                         // 현재루프의 컨텐츠에서 해당하는 인덱스에 툴이 있는지 확인
-                        var exist = stack.ElementAtOrDefault(tool.Index ?? 0);
+                        var existing = stack.ElementAtOrDefault(tool.Index ?? 0);
 
                         // 있다면 스트리밍으로 나오는 Arguments를 이어 붙입니다.
-                        if (exist is AssistantToolContent existTool)
+                        if (existing is AssistantToolContent existingTool)
                         {
-                            existTool.Arguments ??= string.Empty;
-                            existTool.Arguments += tool.Arguments;
+                            existingTool.Arguments ??= string.Empty;
+                            existingTool.Arguments += tool.Arguments;
                         }
                         // 없다면 새로운 툴 컨텐츠를 추가합니다.
                         else
                         {
-                            if (string.IsNullOrEmpty(tool.Id))
-                            {
-                                tool.Id = $"tool_{Guid.NewGuid().ToShort()}";
-                            }
+                            tool = PrepareToolContent(tool, req.Tools);
                             stack.Add(tool);
                             yield return new ChatCompletionResponse<IAssistantContent>
                             {
                                 Data = new AssistantToolContent
                                 {
                                     // 실제 인덱스 계산 (축적된 컨텐츠 + 현재 인덱스)
-                                    Index = message.Content.Count + tool.Index,
-                                    // 도구는 대기 상태로 시작합니다.
-                                    Status = ToolStatus.Pending,
-                                    // 호출한 도구 이름과 Provider에서 제공한 ID
+                                    Index = (message.Content.Count + stack.Count) - 1,
+                                    ExecutionStatus = ToolExecutionStatus.Pending,
+                                    ApprovalStatus = tool.ApprovalStatus,
                                     Id = tool.Id,
                                     Name = tool.Name,
                                 }
@@ -403,26 +203,26 @@ public class ChatCompletionService : IChatCompletionService
                         }
                     }
                     // 추론 컨텐츠의 경우
-                    else if(res.Data is AssistantThinkingContent thinking)
+                    else if (res.Data is AssistantThinkingContent thinking)
                     {
-                        var existing = stack.ElementAtOrDefault(thinking.Index ?? 0) as AssistantThinkingContent;
+                        var existing = stack.ElementAtOrDefault(thinking.Index ?? 0);
 
                         // 현재루프의 컨텐츠에서 해당하는 인덱스에 추론이 있는지 확인
-                        if (existing != null)
+                        if (existing is AssistantThinkingContent existingThinking)
                         {
-                            existing.Value ??= string.Empty;
-                            existing.Value += thinking.Value;
+                            existingThinking.Value ??= string.Empty;
+                            existingThinking.Value += thinking.Value;
                         }
                         // 없다면 새로운 컨텐츠를 스택에 추가합니다.
                         else
                         {
                             stack.Add(thinking);
-                            existing = stack.LastOrDefault() as AssistantThinkingContent;
+                            existingThinking = thinking;
                         }
 
-                        if (!string.IsNullOrEmpty(thinking.Id) && existing != null)
+                        if (!string.IsNullOrEmpty(thinking.Id))
                         {
-                            existing.Id = thinking.Id;
+                            existingThinking.Id = thinking.Id;
                         }
 
                         yield return new ChatCompletionResponse<IAssistantContent>
@@ -430,9 +230,9 @@ public class ChatCompletionService : IChatCompletionService
                             Data = new AssistantThinkingContent
                             {
                                 // 실제 인덱스 계산 (축적된 컨텐츠 + 현재 인덱스)
-                                Index = message.Content.Count + existing?.Index,
-                                Mode = existing?.Mode ?? thinking.Mode,
-                                Id = existing?.Id ?? thinking.Id,
+                                Index = (message.Content.Count + stack.Count) - 1,
+                                Mode = existingThinking?.Mode ?? thinking.Mode,
+                                Id = existingThinking?.Id ?? thinking.Id,
                                 Value = thinking.Value,
                             }
                         };
@@ -445,83 +245,24 @@ public class ChatCompletionService : IChatCompletionService
                 }
             }
 
-            // 어시스턴트 메시지에 컨텐츠를 추가(현재 루프에서 생성된 컨텐츠를 축적)
-            if (stack.Count > 0)
-                message.Content.AddRange(stack);
-
-            // 어시스턴트 메시지 추가 (마지막 메시지가 아닌 경우 == 첫번째 루프였을 경우)
-            if (request.Messages.LastOrDefault() is not AssistantMessage)
-                request.Messages.Add(message);
-
-            // 도구 호출
-            if (reason == EndReason.ToolCall)
+            // 스택에 있는 컨텐츠를 메시지에 추가합니다.
+            foreach (var content in stack)
             {
-                bool approveRequired = false;
-                var toolContentGroup = message.Content.OfType<AssistantToolContent>();
-                foreach (var content in toolContentGroup)
-                {
-                    if (string.IsNullOrEmpty(content.Name) || content.Result != null)
-                    {
-                        // 도구 이름이 없거나 결과가 이미 있는 경우 건너뜀
-                        continue;
-                    }
-                    if (request.Tools.TryGetValue(content.Name, out var tool))
-                    {
-                        if (tool.Permission == ToolPermission.Manual)
-                        {
-                            // 도구 사용이 요구되는 경우
-                            approveRequired = true;
-                        }
-                        else
-                        {
-                            // 도구 호출
-                            content.Status = ToolStatus.Processing;
-                            yield return new ChatCompletionResponse<IAssistantContent>
-                            {
-                                Data = content
-                            };
-
-                            var result = await tool.InvokeAsync(content.Arguments, cancellationToken);
-                            var data = JsonSerializer.Serialize(result.Data, JsonDefaultOptions.Options);
-
-                            if (!result.IsSuccess)
-                                content.Failed(data);
-                            else if (data.Length > 30_000)
-                                content.TooMuchResult();
-                            else
-                                content.Success(data);
-
-                            yield return new ChatCompletionResponse<IAssistantContent>
-                            {
-                                Data = content
-                            };
-                        }
-                    }
-                    else
-                    {
-                        content.NotFoundTool();
-                        yield return new ChatCompletionResponse<IAssistantContent> 
-                        { 
-                            Data = content 
-                        };
-                    }
-                }
-
-                if (approveRequired)
-                {
-                    // 도구 사용을 확인하지 않은 경우
-                    // 승인 요청을 위해 루프를 종료합니다.
-                    break;
-                }
+                message.Content.Add(content);
             }
-            // 이외 루프 종료
-            else
+
+            // 요청 메시지의 마지막이 어시스턴트가 아닌 경우, 메시지를 추가합니다.
+            if (req.Messages.LastOrDefault() is not AssistantMessage)
             {
-                break;
+                req.Messages.Add(message);
             }
+
+            next = ShouldContinue(reason, message, counter, cancellationToken);
+            counter.Increment();
         }
+        while (next);
 
-        // 마지막 메시지를 줍니다.
+        // 마지막 메시지를 전달 합니다.
         yield return new ChatCompletionResponse<IAssistantContent>
         {
             EndReason = EndReason.EndTurn,
@@ -530,7 +271,9 @@ public class ChatCompletionService : IChatCompletionService
         };
     }
 
-    // 채팅 완성 요청을 생성합니다.
+    /// <summary>
+    /// 채팅 요청 객체를 생성합니다.
+    /// </summary>
     private static ChatCompletionRequest CreateChatCompletionRequest(
         MessageCollection messages, 
         ChatCompletionOptions options)
@@ -549,5 +292,93 @@ public class ChatCompletionService : IChatCompletionService
         };
 
         return request;
+    }
+
+    /// <summary>
+    /// 도구 컨텐츠를 준비 합니다.
+    /// </summary>
+    private static AssistantToolContent PrepareToolContent(
+        AssistantToolContent content, 
+        ToolCollection tools)
+    {
+        // 도구의 아이디가 없는 경우 임의 생성합니다.
+        if (string.IsNullOrEmpty(content.Id))
+        {
+            content.Id = $"tool_{Guid.NewGuid().ToShort()}";
+        }
+
+        // 도구가 승인을 필요로 하는 경우
+        if (!string.IsNullOrEmpty(content.Name) && tools.TryGetValue(content.Name, out var tool))
+        {
+            content.ApprovalStatus = tool.RequiresApproval 
+                ? ToolApprovalStatus.Requires 
+                : ToolApprovalStatus.NotRequired;
+        }
+
+        return content;
+    }
+
+    /// <summary>
+    /// 도구 컨텐츠를 처리합니다.
+    /// </summary>
+    private static async IAsyncEnumerable<ChatCompletionResponse<IAssistantContent>> ProcessToolContentAsync(
+        AssistantMessage message,
+        ToolCollection tools,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        foreach (var tc in message.Content.GetIncompleteToolContents())
+        {
+            // 도구 이름이 없는 경우 예상치 못한 오류입니다.
+            if (string.IsNullOrEmpty(tc.Name))
+                throw new KeyNotFoundException($"Tool name is not found. Please check the tool name in the message content.");
+
+            // 실행 거부된 경우 혹은 승인 확인이 안된 경우
+            if (tc.ApprovalStatus == ToolApprovalStatus.Rejected || 
+                tc.ApprovalStatus == ToolApprovalStatus.Requires)
+            {
+                tc.Result = ToolResult.InvocationRejected();
+            }
+            // 도구 호출
+            else if (tools.TryGetValue(tc.Name, out var tool))
+            {
+                tc.ExecutionStatus = ToolExecutionStatus.Running;
+                yield return new ChatCompletionResponse<IAssistantContent> { Data = tc };
+                tc.Result = await tool.InvokeAsync(tc.Arguments, cancellationToken);
+            }
+            // 도구를 찾을 수 없는 경우
+            else
+            {
+                tc.Result = ToolResult.ToolNotFound(tc.Name);
+            }
+
+            tc.ExecutionStatus = ToolExecutionStatus.Completed;
+            yield return new ChatCompletionResponse<IAssistantContent> { Data = tc };
+        }
+    }
+
+    /// <summary>
+    /// 루프를 계속 진행할지 여부를 결정합니다.
+    /// </summary>
+    private bool ShouldContinue(
+        EndReason? endReason,
+        AssistantMessage message,
+        LoopCounter counter,
+        CancellationToken token)
+    {
+        // 취소 요청이 있는 경우 종료 Throw
+        if (token.IsCancellationRequested)
+            throw new OperationCanceledException(token);
+        // 최대 루프 카운트 초과할 경우 종료 Throw
+        if (!counter.HasNext)
+            throw new InvalidOperationException("Max loop count exceeded.");
+
+        // 도구 호출이 아닌 경우 종료
+        if (endReason != EndReason.ToolCall)
+            return false;
+        // 도구 승인 요청이 있는 경우 종료
+        if (message.Content.RequiresToolApproval())
+            return false;
+
+        return true;
     }
 }

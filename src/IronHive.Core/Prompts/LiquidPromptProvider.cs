@@ -5,7 +5,7 @@ using System.Text.Encodings.Web;
 namespace IronHive.Core.Prompts;
 
 /// <inheritdoc />
-public class LiquidPromptTemplate : IPromptTemplate
+public class LiquidPromptProvider : IPromptProvider
 {
     //private readonly FluidParser _parser = new FluidParser();
 

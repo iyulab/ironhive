@@ -1,14 +1,15 @@
 ﻿using IronHive.Abstractions.Prompts;
-using Scriban;
+using HandlebarsDotNet;
 
 namespace IronHive.Core.Prompts;
 
 /// <inheritdoc />
-public class ScribanPromptTemplate : IPromptTemplate
+public class HandlebarPromptProvider : IPromptProvider
 {
     /// <inheritdoc />
     public string Render(string template, object? context)
     {
-        return Template.Parse(template).Render(context);
+        var binder = Handlebars.Compile(template);
+        return binder(context);
     }
 }

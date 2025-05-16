@@ -4,7 +4,6 @@ using System.Text.Json.Serialization;
 using System.Text.Encodings.Web;
 using WebServer.Dev;
 using WebServer;
-using IronHive.Core.Mcp;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -72,21 +71,5 @@ else
     app.Urls.Clear();
     app.Urls.Add("http://*:8080");
 }
-
-//var manager = new McpServerManager();
-//await manager.StartAsync("test", new McpSseServer
-//{
-//    Endpoint = new Uri("http://localhost:8000/sse"),
-//});
-
-//var tools = await manager.ListToolsAsync("test");
-//foreach (var tool in tools)
-//{
-//    var res = await tool.InvokeAsync(new
-//    {
-//        location = "seoul",
-//    });
-//}
-
 
 app.Run();

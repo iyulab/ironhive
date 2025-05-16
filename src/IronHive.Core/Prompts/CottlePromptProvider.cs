@@ -4,7 +4,7 @@ using Cottle;
 namespace IronHive.Core.Prompts;
 
 /// <inheritdoc />
-public class CottlePromptTemplate : IPromptTemplate
+public class CottlePromptProvider : IPromptProvider
 {
     /// <inheritdoc />
     public string Render(string template, object? context)

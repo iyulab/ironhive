@@ -39,7 +39,7 @@ public abstract class MessageBase : IMessage
 public class UserMessage : MessageBase
 {
     /// <summary>
-    /// User message content. "text" or "image".
+    /// User message content. "text" or "file".
     /// </summary>
     public UserContentCollection Content { get; set; } = new();
 }

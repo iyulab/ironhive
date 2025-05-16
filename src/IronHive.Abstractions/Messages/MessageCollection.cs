@@ -4,7 +4,6 @@ namespace IronHive.Abstractions.Messages;
 
 /// <summary>
 /// 메시지를 담는 컬렉션 구현입니다.
-/// 아직 별다른 기능은 없습니다.
 /// </summary>
 public sealed class MessageCollection : ICollection<IMessage>
 {
@@ -18,6 +17,31 @@ public sealed class MessageCollection : ICollection<IMessage>
     public MessageCollection(IEnumerable<IMessage> messages)
     {
         _items = new(messages);
+    }
+
+    /// <summary>
+    /// 마지막 메시지가 T 타입이면 그 메시지를 반환합니다.
+    /// 그렇지 않으면 새로운 T 타입의 메시지를 생성하여 컬렉션에 추가하고 반환합니다.
+    /// </summary>
+    public T LastOrCreate<T>() where T : IMessage, new()
+    {
+        if (_items.Count == 0)
+        {
+            var message = new T();
+            _items.Add(message);
+            return message;
+        }
+
+        if (_items[^1] is T lastMessage)
+        {
+            return lastMessage;
+        }
+        else
+        {
+            var message = new T();
+            _items.Add(message);
+            return message;
+        }
     }
 
     #region ICollection Implementations

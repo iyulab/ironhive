@@ -3,7 +3,7 @@
 /// <summary>
 /// Interface for prompt template rendering.
 /// </summary>
-public interface IPromptTemplate
+public interface IPromptProvider
 {
     /// <summary>
     /// Renders a template with the given context.

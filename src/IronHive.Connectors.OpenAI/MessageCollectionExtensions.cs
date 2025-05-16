@@ -34,16 +34,17 @@ internal static class MessageCollectionExtensions
                             Text = text.Value ?? string.Empty
                         });
                     }
-                    else if (item is UserImageContent image)
+                    else if (item is UserFileContent file)
                     {
                         // 이미지 메시지
-                        um.Content.Add(new ImageMessageContent
-                        {
-                            ImageURL = new ImageURL
-                            {
-                                URL = image.Data ?? string.Empty,
-                            }
-                        });
+                        //um.Content.Add(new ImageMessageContent
+                        //{
+                        //    ImageURL = new ImageURL
+                        //    {
+                        //        URL = image.Data ?? string.Empty,
+                        //    }
+                        //});
+                        throw new NotImplementedException("not supported file yet");
                     }
                     else
                     {
@@ -55,7 +56,7 @@ internal static class MessageCollectionExtensions
             else if (message is AssistantMessage assistant)
             {
                 // AI 메시지
-                foreach (var group in assistant.Content.Split())
+                foreach (var group in assistant.Content.SplitByTool())
                 {
                     var am = new OpenAIAssistantMessage();
                     var tms = new List<ToolMessage>();
@@ -89,7 +90,7 @@ internal static class MessageCollectionExtensions
                             tms.Add(new ToolMessage
                             {
                                 ID = tool.Id ?? string.Empty,
-                                Content = tool.Result ?? string.Empty,
+                                Content = tool.Result?.Data ?? string.Empty,
                             });
                         }
                         else

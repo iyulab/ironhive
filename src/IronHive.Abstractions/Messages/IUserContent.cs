@@ -7,7 +7,7 @@ namespace IronHive.Abstractions.Messages;
 /// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(UserTextContent), "text")]
-[JsonDerivedType(typeof(UserImageContent), "image")]
+[JsonDerivedType(typeof(UserFileContent), "file")]
 public interface IUserContent
 {
     /// <summary>
@@ -36,18 +36,41 @@ public class UserTextContent : UserContentBase
     public string? Value { get; set; }
 }
 
-/// <summary>
-/// 이미지 콘텐츠 블록을 나타냅니다
-/// </summary>
-public class UserImageContent : UserContentBase
+public enum FileDataFormat
 {
     /// <summary>
-    /// 이미지의 MIME 타입을 나타냅니다
+    /// URL 링크입니다
+    /// </summary>
+    Url,
+
+    /// <summary>
+    /// Base64 인코딩된 데이터입니다
+    /// </summary>
+    Base64,
+
+    /// <summary>
+    /// 일반 텍스트입니다
+    /// </summary>
+    Text
+}
+
+/// <summary>
+/// 파일의 콘텐츠 블록을 나타냅니다
+/// </summary>
+public class UserFileContent : UserContentBase
+{
+    /// <summary>
+    /// 파일의 MIME 타입을 나타냅니다
     /// </summary>
     public string? ContentType { get; set; }
 
     /// <summary>
-    /// 이미지의 데이터 URL or Base64 인코딩된 문자열을 나타냅니다
+    /// 데이터의 형식을 나타냅니다
+    /// </summary>
+    public FileDataFormat? DataFormat { get; set; }
+
+    /// <summary>
+    /// 데이터의 타입에 따른 값을 나타냅니다
     /// </summary>
     public string? Data { get; set; }
 }

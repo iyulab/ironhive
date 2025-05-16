@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Serialization;
+﻿using IronHive.Abstractions.Tools;
+using System.Text.Json.Serialization;
 
 namespace IronHive.Abstractions.Messages;
 
@@ -45,62 +46,7 @@ public class AssistantTextContent : AssistantContentBase
     public string? Value { get; set; }
 }
 
-/// <summary>
-/// 도구 콘텐츠 블록을 나타냅니다
-/// </summary>
-public class AssistantToolContent : AssistantContentBase
-{
-    /// <summary>
-    /// 도구 실행이 허용이 되었는지 나타냅니다.
-    /// </summary>
-    public bool IsAllowed { get; set; } = false;
-
-    /// <summary>
-    /// 도구 콘텐츠 블록의 상태입니다.
-    /// </summary>
-    public ToolStatus Status { get; set; } = ToolStatus.Pending;
-
-    /// <summary>
-    /// 도구 콘텐츠 블록의 이름입니다.
-    /// </summary>
-    public string? Name { get; set; }
-
-    /// <summary>
-    /// 도구 콘텐츠 블록의 인수입니다.
-    /// </summary>
-    public string? Arguments { get; set; }
-
-    /// <summary>
-    /// 도구 콘텐츠 블록의 결과입니다.
-    /// </summary>
-    public string? Result { get; set; }
-
-    public void Success(string data)
-    {
-        Status = ToolStatus.Success;
-        Result = data;
-    }
-
-    public void Failed(string error)
-    {
-        Status = ToolStatus.Failed;
-        Result = error;
-    }
-
-    public void DeniedToolInvoke()
-        => Failed("User denied the tool call request. Please check to the user for reasons.");
-
-    public void NotFoundTool()
-        => Failed($"Tool [{Name}] not found. Please check the tool name for any typos or consult the documentation for available tools.");
-
-    public void TooMuchResult()
-        => Failed("The result contains too much information. Please change the parameters or specify additional filters to obtain a smaller result set.");
-}
-
-/// <summary>
-/// 툴 사용 상태
-/// </summary>
-public enum ToolStatus
+public enum ToolExecutionStatus
 {
     /// <summary>
     /// 도구가 대기 중인 상태
@@ -108,29 +54,67 @@ public enum ToolStatus
     Pending,
 
     /// <summary>
-    /// 도구가 실행 준비 완료 상태
-    /// </summary>
-    Ready,
-
-    /// <summary>
     /// 도구가 실행 중인 상태
     /// </summary>
-    Processing,
+    Running,
 
     /// <summary>
-    /// 도구가 완료된 상태
+    /// 도구 실행이 완료된 상태
     /// </summary>
-    Success,
-
-    /// <summary>
-    /// 도구가 실패한 상태
-    /// </summary>
-    Failed
+    Completed,
 }
 
-/// <summary>
-/// 추론 출력 형식
-/// </summary>
+public enum ToolApprovalStatus
+{
+    /// <summary>
+    /// 도구 승인이 필요하지 않은 경우
+    /// </summary>
+    NotRequired,
+
+    /// <summary>
+    /// 도구 승인이 필요한 경우, 사용자에게 승인을 요청하는 상태
+    /// </summary>
+    Requires,
+
+    /// <summary>
+    /// 도구 실행을 승인한 경우
+    /// </summary>
+    Approved,
+
+    /// <summary>
+    /// 도구 실행을 거부한 경우
+    /// </summary>
+    Rejected
+}
+
+public class AssistantToolContent : AssistantContentBase
+{
+    /// <summary>
+    /// 도구 실행 상태입니다.
+    /// </summary>
+    public ToolExecutionStatus ExecutionStatus { get; set; } = ToolExecutionStatus.Pending;
+
+    /// <summary>
+    /// 도구 승인 상태입니다.
+    /// </summary>
+    public ToolApprovalStatus ApprovalStatus { get; set; } = ToolApprovalStatus.NotRequired;
+
+    /// <summary>
+    /// 도구 이름입니다.
+    /// </summary>
+    public string? Name { get; set; }
+
+    /// <summary>
+    /// 도구 실행에 필요한 매개변수입니다.
+    /// </summary>
+    public string? Arguments { get; set; }
+
+    /// <summary>
+    /// 도구 실행 결과입니다.
+    /// </summary>
+    public ToolResult? Result { get; set; }
+}
+
 public enum ThinkingMode
 {
     /// <summary>

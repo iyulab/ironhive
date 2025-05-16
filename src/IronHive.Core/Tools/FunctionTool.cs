@@ -1,11 +1,13 @@
 ﻿using System.ComponentModel;
 using System.Reflection;
+using System.Text.Json;
+using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Tools;
 
 namespace IronHive.Core.Tools;
 
 /// <summary>
-/// Represents a tool that invokes a dotnet function.
+/// Built-in dotnet function tool.
 /// </summary>
 public class FunctionTool : ITool
 {
@@ -13,14 +15,13 @@ public class FunctionTool : ITool
 
     public FunctionTool(Delegate function)
     {
+        var attr = function.Method.GetCustomAttribute<FunctionToolAttribute>();
+        Name = attr?.Name ?? function.Method.Name;
+        Description = attr?.Description ?? function.Method.GetCustomAttribute<DescriptionAttribute>()?.Description;
+        RequiresApproval = attr?.RequiresApproval ?? false;
+        InputSchema = function.Method.GetInputJsonSchema();
         _function = function;
-        Name = function.Method.GetCustomAttribute<FunctionToolAttribute>()?.Name ?? function.Method.Name;
-        Description = function.Method.GetCustomAttribute<DescriptionAttribute>()?.Description;
-        InputSchema = _function.Method.GetInputJsonSchema();
     }
-
-    /// <inheritdoc />
-    public ToolPermission Permission { get; set; } = ToolPermission.Auto;
 
     /// <inheritdoc />
     public string Name { get; set; }
@@ -32,30 +33,44 @@ public class FunctionTool : ITool
     public object? InputSchema { get; set; }
 
     /// <inheritdoc />
+    public bool RequiresApproval { get; set; } = false;
+
+    /// <inheritdoc />
     public async Task<ToolResult> InvokeAsync(object? args, CancellationToken cancellationToken = default)
     {
         try
         {
-            var arguments = BuildArguments(args);
-            var result = _function.DynamicInvoke(arguments);
+            var arguments = BuildArguments(args, cancellationToken);
+            var obj = _function.DynamicInvoke(arguments);
             cancellationToken.ThrowIfCancellationRequested();
 
-            result = await HandleResultAsync(result, _function.Method.ReturnType, cancellationToken);
+            obj = await HandleResultAsync(obj, _function.Method.ReturnType, cancellationToken);
+            var str = JsonSerializer.Serialize(obj, JsonDefaultOptions.Options);
 
-            return ToolResult.Success(result);
+            if (str.Length > 30_000)
+            {
+                return ToolResult.ExcessiveResult();
+            }
+            return ToolResult.Success(str);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (TargetInvocationException ex) when (ex.InnerException != null)
         {
-            return ToolResult.Failed(ex.InnerException.Message);
+            return ToolResult.Failure(ex.InnerException.Message);
         }
         catch (Exception ex)
         {
-            return ToolResult.Failed(ex.Message);
+            return ToolResult.Failure(ex.Message);
         }
     }
 
-    // delegate의 인자들을 빌드합니다.
-    private object?[]? BuildArguments(object? args)
+    /// <summary>
+    /// Delegate의 인자를 빌드합니다.
+    /// </summary>
+    private object?[]? BuildArguments(object? args, CancellationToken cancellationToken)
     {
         var parameters = _function.Method.GetParameters();
         if (parameters.Length == 0 || args == null)
@@ -70,32 +85,29 @@ public class FunctionTool : ITool
             var param = parameters[i];
             var name = param.Name ?? throw new InvalidOperationException("Parameter name cannot be null.");
 
-            if (dictionary.TryGetValue(name, out var value))
-            {
-                // 인자가 존재하는 경우
+            // 특별한 타입의 경우
+            if (param.ParameterType == typeof(CancellationToken))
+                arguments[i] = cancellationToken;
+            // 인자가 존재하는 경우
+            else if (dictionary.TryGetValue(name, out var value))
                 arguments[i] = value.ConvertTo(param.ParameterType);
-            }
+            // 인자가 존재하지 않고, 기본값이 있는 경우
             else if (param.HasDefaultValue)
-            {
-                // 인자가 존재하지 않고, 기본값이 있는 경우
                 arguments[i] = param.DefaultValue;
-            }
+            // 인자가 존재하지 않고, 선택적 인자인 경우
             else if (param.IsOptional)
-            {
-                // 인자가 존재하지 않고, 선택적 인자인 경우
                 arguments[i] = null;
-            }
+            // 인자가 존재하지 않고, 필수 인자인 경우
             else
-            {
-                // 인자가 존재하지 않고, 필수 인자인 경우
                 throw new ArgumentException($"Parameter '{name}' is required");
-            }
         }
 
         return arguments;
     }
 
-    // 비동기 메서드를 적절히 처리합니다.
+    /// <summary>
+    /// 비동기 메서드를 적절히 처리합니다.
+    /// </summary>
     private static async Task<object?> HandleResultAsync(object? result, Type returnType, CancellationToken cancellationToken)
     {
         // Void 인 경우

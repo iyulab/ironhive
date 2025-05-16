@@ -1,28 +1,10 @@
 ﻿namespace IronHive.Abstractions.Tools;
 
-public enum ToolPermission
-{
-    /// <summary>
-    /// The tool is required to be called user confirmation.
-    /// </summary>
-    Manual,
-
-    /// <summary>
-    /// The tool is invoked automatically.
-    /// </summary>
-    Auto
-}
-
 /// <summary>
 /// Defines an interface for a tool used to LLM Context.
 /// </summary>
 public interface ITool
 {
-    /// <summary>
-    /// Gets or sets the permission level of the tool.
-    /// </summary>
-    ToolPermission Permission { get; set; }
-
     /// <summary>
     /// Gets or sets the name of the tool.
     /// </summary>
@@ -37,6 +19,11 @@ public interface ITool
     /// Gets or sets the JSON schema for the tool parameters.
     /// </summary>
     object? InputSchema { get; set; }
+
+    /// <summary>
+    /// Whether the tool requires confirmation before execution.
+    /// </summary>
+    bool RequiresApproval { get; set; }
 
     /// <summary>
     /// Invokes the tool asynchronously using the specified parameters.

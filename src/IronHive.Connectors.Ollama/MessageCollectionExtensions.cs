@@ -35,10 +35,11 @@ internal static class MessageCollectionExtensions
                         um.Content ??= string.Empty;
                         um.Content += text.Value;
                     }
-                    else if (item is UserImageContent image)
+                    else if (item is UserFileContent file)
                     {
-                        um.Images ??= [];
-                        um.Images.Add(image.Data!);
+                        //um.Images ??= [];
+                        //um.Images.Add(image.Data!);
+                        throw new NotImplementedException("not supported file yet");
                     }
                 }
                 _messages.Add(um);

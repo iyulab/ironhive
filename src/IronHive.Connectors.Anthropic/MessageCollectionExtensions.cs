@@ -28,7 +28,7 @@ internal static class MessageCollectionExtensions
                             Text = text.Value ?? string.Empty
                         });
                     }
-                    else if (item is UserImageContent image)
+                    else if (item is UserFileContent file)
                     {
                         throw new NotSupportedException("not supported image yet");
                     }
@@ -43,7 +43,7 @@ internal static class MessageCollectionExtensions
             // AI 메시지
             else if (message is AssistantMessage assistant)
             {
-                var groups = assistant.Content.Split();
+                var groups = assistant.Content.SplitByTool();
                 
                 foreach (var group in groups)
                 {
@@ -99,9 +99,9 @@ internal static class MessageCollectionExtensions
                             });
                             um.Content.Add(new ToolResultMessageContent
                             {
-                                IsError = tool.Status == ToolStatus.Failed,
                                 ToolUseId = tool.Id,
-                                Content = tool.Result ?? string.Empty,
+                                IsError = !tool.Result?.IsSuccess ?? false,
+                                Content = tool.Result?.Data ?? string.Empty,
                             });
                         }
                         else

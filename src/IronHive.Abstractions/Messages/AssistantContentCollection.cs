@@ -32,12 +32,30 @@ public class AssistantContentCollection : ICollection<IAssistantContent>
     }
 
     /// <summary>
+    /// 실행되지 않은 모든 Tool 컨텐츠를 반환합니다.
+    /// </summary>
+    public IEnumerable<AssistantToolContent> GetIncompleteToolContents()
+    {
+        return _items.OfType<AssistantToolContent>()
+            .Where(tool => tool.ExecutionStatus != ToolExecutionStatus.Completed);
+    }
+
+    /// <summary>
+    /// 승인이 필요한 Tool이 하나라도 있을 경우 true, 이외 false
+    /// </summary>
+    public bool RequiresToolApproval()
+    {
+        return _items.OfType<AssistantToolContent>()
+            .Any(tool => tool.ApprovalStatus == ToolApprovalStatus.Requires);
+    }
+
+    /// <summary>
     /// Tool 사용을 기준으로 아이템을 분리합니다.
     /// Tool 컨텐츠들 다음 항목부터 새 그룹으로 분리됩니다.
     /// 예) [ThinkingContent, ToolContent, ToolContent, TextContent, ToolContent, TextContent]
     ///  => [ThinkingContent, ToolContent, ToolContent], [TextContent, ToolContent], [TextContent]
     /// </summary>
-    public IEnumerable<AssistantContentCollection> Split()
+    public IEnumerable<AssistantContentCollection> SplitByTool()
     {
         if (_items.Count == 0)
             return Enumerable.Empty<AssistantContentCollection>();
