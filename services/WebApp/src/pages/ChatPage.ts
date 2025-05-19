@@ -2,7 +2,7 @@ import { LitElement, PropertyValues, css, html } from "lit";
 import { customElement, state } from "lit/decorators.js";
 
 import type { AssistantMessage, Message, ModelDescriptor } from "@iyulab/chat-components";
-import { CancelToken } from '@iyulab/http-client';
+import { CanceledError, CancelToken } from '@iyulab/http-client';
 import { Api, ChatCompletionRequest } from "../services";
 
 @customElement('chat-page')
@@ -14,7 +14,7 @@ export class ChatPage extends LitElement {
   @state() selectedModel?: ModelDescriptor;
   @state() messages: Message[] = [];
   @state() tokenUsage: number = 0;
-  @state() error?: string;
+  @state() error?: { status: "danger" | "warning" | "info", message: string };
 
   protected firstUpdated(changedProperties: PropertyValues) {
     super.firstUpdated(changedProperties);
@@ -43,21 +43,22 @@ export class ChatPage extends LitElement {
         ></token-panel>
 
         <message-alert
-          theme="danger"
-          timeout="5000"
           ?open=${this.error !== undefined}
-          .value=${this.error}
+          timeout="5000"
+          status=${this.error?.status || 'danger'}
+          .value=${this.error?.message}
         ></message-alert>
 
         <message-box
           .messages=${this.messages}
+          @tool-change=${this.change}
         ></message-box>
 
         <message-input
           .loading=${this.loading}
           placeholder="Type a message..."
           @send=${this.submit}
-          @stop=${this.canceller.cancel.bind(this.canceller)}>
+          @stop=${() => this.canceller.cancel()}>
           <uc-model-select
             .models=${this.models}
             .selectedModel=${this.selectedModel}
@@ -72,28 +73,46 @@ export class ChatPage extends LitElement {
     `;
   }
 
+  private clear() {
+    this.messages = [];
+    localStorage.removeItem('messages');
+  }
+
   private submit = async (e: any) => {
+    const value = e.detail;
+    const user_msg: Message = {
+      role: 'user',
+      content: [{ type: 'text', value: value }],
+      timestamp: new Date().toISOString()
+    }
+    this.messages = [...this.messages, user_msg];
+    await this.generate();
+  }
+
+  private change = async (e: any) => {
+    this.messages = e.detail;
+    const last = this.messages[this.messages.length - 1];
+    if (last.role === 'assistant') {
+      for (const content of last.content || []) {
+        if (content.type === 'tool' && content.approvalStatus === 'requires') {
+          return;
+        }
+      }
+
+      this.generate();
+    }
+  }
+
+  private generate = async () => {
     try {
       this.error = undefined;
       this.loading = true;
 
       if (!this.selectedModel) {
-        this.error = "모델을 선택해주세요.";
+        this.error = { status: 'warning', message: '모델을 선택하세요.' };
         return;
       }
 
-      const value = e.detail;
-      const user_msg: Message = {
-        role: 'user',
-        content: [{ type: 'text', value: value }],
-        timestamp: new Date().toISOString()
-      }
-      const bot_msg: Message = {
-        role: 'assistant',
-        content: [],
-      }
-
-      this.messages = [...this.messages, user_msg];
       const request: ChatCompletionRequest = {
         provider: this.selectedModel.provider,
         model: this.selectedModel.modelId,
@@ -104,12 +123,11 @@ export class ChatPage extends LitElement {
       for await (const res of Api.conversation(request, this.canceller)) { 
         let last = this.messages[this.messages.length - 1];
         if (last.role !== 'assistant') {
-          this.messages = [...this.messages, bot_msg];
+          this.messages = [...this.messages, { role: 'assistant', content: [] }];
           last = this.messages[this.messages.length - 1] as AssistantMessage;
         }
   
         const data = res.data;
-        console.log(data);
         if (data) {
           const index = data.index || 0;
           last.content ||= [];
@@ -136,7 +154,7 @@ export class ChatPage extends LitElement {
         if (res.timestamp) {
           last.timestamp = res.timestamp;
           this.messages = [...this.messages];
-        } 
+        }
         
         if (res.tokenUsage) {
           this.tokenUsage = res.tokenUsage.totalTokens;
@@ -145,19 +163,20 @@ export class ChatPage extends LitElement {
   
       localStorage.setItem('messages', JSON.stringify(this.messages));
     } catch (e: any) {
-      this.error = e instanceof Error ? e.message : e.toString();
+      if (e instanceof CanceledError) {
+        this.error = { status: 'info', message: '요청이 취소되었습니다.' };
+      } else {
+        this.error = e instanceof Error 
+          ? { status: 'danger', message: e.message } 
+          : { status: 'danger', message: '알 수 없는 오류가 발생했습니다.' };
+      }
     } finally {
       this.loading = false;
       this.canceller = new CancelToken();
       this.canceller.register(() => {
-        console.warn('Request cancelled');
+        console.warn('등록된 취소 요청');
       });
     }
-  }
-
-  private clear() {
-    this.messages = [];
-    localStorage.removeItem('messages');
   }
 
   static styles = css`

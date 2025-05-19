@@ -36,7 +36,7 @@ public static class Extensions
         var l_config = new OpenAIConfig
         {
             BaseUrl = "http://172.30.1.53:8080/v1-openai/",
-            ApiKey = env.TryGetValue("LOCAL", out var lValue) ? lValue : string.Empty,
+            ApiKey = env.TryGetValue("GPUSTACK", out var lValue) ? lValue : string.Empty,
         };
 
         services.AddHiveServiceCore()
@@ -44,6 +44,6 @@ public static class Extensions
             .AddAnthropicConnectors("anthropic", a_config)
             .AddOpenAIConnectors("google", g_config)
             .AddAnthropicConnectors("xai", x_config)
-            .AddOpenAIConnectors("local", l_config);
+            .AddOpenAIConnectors("gpustack", l_config);
     }
 }

@@ -1,4 +1,4 @@
-import { Message } from "@iyulab/chat-component";
+import { Message } from "@iyulab/chat-components";
 
 export interface ChatCompletionRequest {
   provider: string;

@@ -182,6 +182,10 @@ public class ChatCompletionService : IChatCompletionService
                         {
                             existingTool.Arguments ??= string.Empty;
                             existingTool.Arguments += tool.Arguments;
+                            yield return new ChatCompletionResponse<IAssistantContent>
+                            {
+                                Data = existingTool
+                            };
                         }
                         // 없다면 새로운 툴 컨텐츠를 추가합니다.
                         else

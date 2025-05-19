@@ -91,63 +91,43 @@ public class ServiceController : ControllerBase
         [FromBody] ConversationRequest request,
         CancellationToken cancellationToken)
     {
-        //var tools = await ToolFactory.CreateFromMcpServer(new McpStdioServer
-        //{
-        //    Command = "docker",
-        //    Arguments = [
-        //        "run",
-        //        "-i",
-        //        "--rm",
-        //        "mcp/sequentialthinking"
-        //    ]
-        //});
-
-        //request.Tools = tools;
+        request.Instructions = $"Current UTC Time: {DateTime.UtcNow}\n" + request.Instructions;
         request.Tools = FunctionToolFactory.CreateFromObject<TestTool>();
 
         try
         {
-            var isStarted = false;
+            Response.ContentType = "text/event-stream; charset=utf-8";
+            Response.Headers.CacheControl = "no-cache";
+            Response.Headers.Connection = "keep-alive";
+
+            await WriteEventAsync("[Begin]");
             await foreach (var result in _chat.GenerateStreamingMessageAsync(request.Messages, request, cancellationToken))
             {
-                if (!isStarted)
-                {
-                    Response.ContentType = "text/event-stream; charset=utf-8";
-                    Response.Headers.CacheControl = "no-cache";
-                    Response.Headers.Connection = "keep-alive";
-                    isStarted = true;
-                }
-
-                await WriteEventAsync("delta", result, cancellationToken);
+                await WriteEventAsync(result, "delta");
             }
+            await WriteEventAsync("[DONE]");
         }
-        catch(OperationCanceledException)
+        catch(OperationCanceledException ex)
         {
-            // When Canceled
-            Debug.WriteLine("Canceled");
-        }
-        catch(Exception ex)
-        {
-            // When Error
-            Debug.WriteLine(ex.ToString());
-            var error = new
+            await WriteEventAsync(new
             {
                 Source = ex.Source,
                 Message = ex.Message,
                 StackTrace = ex.StackTrace,
                 Data = ex.Data,
                 HelpLink = ex.HelpLink,
-            };
-
-            if (!Response.HasStarted)
+            }, "cancelled");
+        }
+        catch(Exception ex)
+        {
+            await WriteEventAsync(new
             {
-                Response.StatusCode = 500;
-                await Response.WriteAsJsonAsync(error, _jsonOptions, cancellationToken);
-            }
-            else
-            {
-                await WriteEventAsync("error", error, cancellationToken);
-            }
+                Source = ex.Source,
+                Message = ex.Message,
+                StackTrace = ex.StackTrace,
+                Data = ex.Data,
+                HelpLink = ex.HelpLink,
+            }, "error");
         }
         finally
         {
@@ -155,18 +135,21 @@ public class ServiceController : ControllerBase
         }
     }
 
-    private async Task WriteEventAsync(string type, object? data, CancellationToken cancellationToken)
+    private async Task WriteEventAsync(object data, string? type = null)
     {
-        var json = JsonSerializer.Serialize(data, _jsonOptions);
+        if (data is not string str)
+            str = JsonSerializer.Serialize(data, _jsonOptions);
 
         var sb = new StringBuilder();
-        sb.Append("event: ").Append(type).Append('\n');
-        sb.Append("data: ").Append(json).Append('\n');
+        if (type != null)
+            sb.Append("event: ").Append(type).Append('\n');
+        
+        sb.Append("data: ").Append(str).Append('\n');
         sb.Append('\n'); // 빈 줄로 이벤트 종료
         var bytes = Encoding.UTF8.GetBytes(sb.ToString());
 
-        await Response.Body.WriteAsync(bytes, cancellationToken);
-        await Response.Body.FlushAsync(cancellationToken);
+        await Response.Body.WriteAsync(bytes);
+        await Response.Body.FlushAsync();
     }
 }
 

@@ -4,7 +4,7 @@
   "models": [
     {
       "provider": "openai",
-      "modelId": "gpt-4.1-nano",
+      "modelId": "gpt-4o-mini",
       "displayName": "GPT 4.1",
       "description": "Compact and efficient model by OpenAI",
       "contextWindow": 1047576
@@ -31,11 +31,11 @@
       "contextWindow": 1048576
     },
     {
-      "provider": "local",
+      "provider": "gpustack",
       "modelId": "clova-x",
       "displayName": "HyperClova X",
       "description": "Local AI model provided by Iyulab",
-      "contextWindow": 32768
+      "contextWindow": 98304
     }
   ]
 }

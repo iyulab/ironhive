@@ -1,4 +1,4 @@
-import { CancelToken, HttpClient } from '@iyulab/http-client';
+import { CancelToken, HttpClient, CanceledError } from '@iyulab/http-client';
 import { ChatCompletionRequest, StreamingResponse } from './models';
 
 export class Api {
@@ -22,20 +22,26 @@ export class Api {
       throw new Error(body.message);
     }
 
-    for await (const msg of res.stream()) {
-      if (msg.event === 'delta') {
-        yield JSON.parse(msg.data) as StreamingResponse;
+    for await (const chunk of res.stream()) {
+      if (chunk.event === 'delta') {
+        yield JSON.parse(chunk.data) as StreamingResponse;
+      }
+      if (chunk.event === 'cancelled') {
+        throw new CanceledError(chunk.data);
+      }
+      if (chunk.event === 'error') {
+        throw new Error(chunk.data);
       }
     }
   }
 
   public static async *upload(form: FormData) {
-    for await (const msg of this.controller.upload({
+    for await (const chunk of this.controller.upload({
       method: 'POST',
       path: '/upload',
       body: form,
     })) {
-      yield msg;
+      yield chunk;
     }
   }
 
