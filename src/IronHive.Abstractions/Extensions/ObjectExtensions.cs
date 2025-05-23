@@ -1,9 +1,10 @@
-﻿using IronHive.Abstractions.Json;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics;
 using System.Runtime.Serialization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Net.Http.Json;
+using IronHive.Abstractions.Json;
 
 namespace System;
 
@@ -55,39 +56,50 @@ public static class ObjectExtensions
                 // Case 2: The object is already the target type
                 return obj;
             }
-            else if (obj is JsonDocument doc)
+            else if (obj is string str)
             {
-                // Case 3: The object is a JsonDocument
-                return doc.Deserialize(target, options);
+                // Case 3: The object is a string
+                return JsonSerializer.Deserialize(str, target, options);
             }
             else if (obj is JsonElement el)
             {
                 // Case 4: The object is a JsonElement
                 return JsonSerializer.Deserialize(el.GetRawText(), target, options);
             }
+            else if (obj is JsonDocument doc)
+            {
+                // Case 5: The object is a JsonDocument
+                return doc.Deserialize(target, options);
+            }
             else if (obj is JsonNode node)
             {
-                // Case 5: The object is a JsonNode
+                // Case 6: The object is a JsonNode
                 return node.Deserialize(target, options);
+            }
+            else if (obj is JsonContent jc)
+            {
+                // Case 7: The object is a JsonContent
+                var stream = jc.ReadAsStream();
+                return JsonSerializer.Deserialize(stream, target, options);
             }
             else if (obj is JsonObject jo)
             {
-                // Case 6: The object is a JsonObject
+                // Case 8: The object is a JsonObject
                 return jo.Deserialize(target, options);
             }
             else if (obj is JsonArray ja)
             {
-                // Case 7: The object is a JsonArray
+                // Case 9: The object is a JsonArray
                 return ja.Deserialize(target, options);
             }
-            else if (obj is string str)
+            else if (obj is JsonValue jv)
             {
-                // Case 8: The object is a string
-                return JsonSerializer.Deserialize(str, target, options);
+                // Case 10: The object is a JsonValue
+                return jv.Deserialize(target, options);
             }
             else
             {
-                // Case 9: Attempt to serialize and deserialize the object to the target type
+                // Case 11: Attempt to serialize and deserialize the object to the target type
                 string jsonStr = JsonSerializer.Serialize(obj, options);
                 return JsonSerializer.Deserialize(jsonStr, target, options);
             }

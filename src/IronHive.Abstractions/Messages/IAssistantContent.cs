@@ -112,7 +112,7 @@ public class AssistantToolContent : AssistantContentBase
     /// <summary>
     /// 도구 실행 결과입니다.
     /// </summary>
-    public ToolResult? Result { get; set; }
+    public ToolOutput? Result { get; set; }
 }
 
 public enum ThinkingMode

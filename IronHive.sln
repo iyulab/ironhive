@@ -5,6 +5,8 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "00. docs", "00. docs", "{C5D07BAA-9B0C-4DBD-A39A-6043C34F1443}"
 	ProjectSection(SolutionItems) = preProject
+		docs\EndReason.md = docs\EndReason.md
+		docs\StreamStructure.json = docs\StreamStructure.json
 		docs\STRUCTURE.md = docs\STRUCTURE.md
 		docs\TODO.md = docs\TODO.md
 	EndProjectSection
@@ -40,6 +42,12 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleTest", "test\ConsoleTest.csproj", "{EC6EB34D-2B26-DCDF-BD29-E3C4BE3EA34F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebServer", "services\WebServer\WebServer.csproj", "{38B56B48-E92B-0A30-497E-BA66BD4646E3}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tools", "Tools", "{01312FBB-E101-4E24-BEFD-74DD432685B1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IronHive.Tools.MCP", "src\IronHive.Tools.MCP\IronHive.Tools.MCP.csproj", "{3318E20F-4D8E-4517-9B6C-7CE4731C613D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IronHive.Tools.OpenApi", "src\IronHive.Tools.OpenApi\IronHive.Tools.OpenApi.csproj", "{34BF3BED-42D6-4C69-A074-6EB8A8AE40D8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -91,6 +99,14 @@ Global
 		{38B56B48-E92B-0A30-497E-BA66BD4646E3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{38B56B48-E92B-0A30-497E-BA66BD4646E3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{38B56B48-E92B-0A30-497E-BA66BD4646E3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3318E20F-4D8E-4517-9B6C-7CE4731C613D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3318E20F-4D8E-4517-9B6C-7CE4731C613D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3318E20F-4D8E-4517-9B6C-7CE4731C613D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3318E20F-4D8E-4517-9B6C-7CE4731C613D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{34BF3BED-42D6-4C69-A074-6EB8A8AE40D8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{34BF3BED-42D6-4C69-A074-6EB8A8AE40D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{34BF3BED-42D6-4C69-A074-6EB8A8AE40D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{34BF3BED-42D6-4C69-A074-6EB8A8AE40D8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -109,6 +125,9 @@ Global
 		{1245BC72-B0D2-736C-95E0-13980FD3605B} = {0E0B40CA-1316-4A75-89E7-41DF7B8D2BE0}
 		{EC6EB34D-2B26-DCDF-BD29-E3C4BE3EA34F} = {56FE49BB-39B3-4DE9-BDA5-6E2C5D358F4A}
 		{38B56B48-E92B-0A30-497E-BA66BD4646E3} = {C8D5274F-AC00-46C7-1F8D-E88E81087A52}
+		{01312FBB-E101-4E24-BEFD-74DD432685B1} = {D742CF15-98B2-4095-B749-589A7ED4EFD1}
+		{3318E20F-4D8E-4517-9B6C-7CE4731C613D} = {01312FBB-E101-4E24-BEFD-74DD432685B1}
+		{34BF3BED-42D6-4C69-A074-6EB8A8AE40D8} = {01312FBB-E101-4E24-BEFD-74DD432685B1}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {D53D41CC-8B85-4816-A6CC-C1161061E791}

@@ -9,8 +9,8 @@ using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Models;
 using Microsoft.AspNetCore.StaticFiles;
 using IronHive.Core.Tools;
-using IronHive.Core.Mcp;
 using WebServer.Tools;
+using IronHive.Abstractions.Tools;
 
 namespace WebServer.Controllers;
 
@@ -20,15 +20,18 @@ public class ServiceController : ControllerBase
 {
     private readonly IModelService _model;
     private readonly IChatCompletionService _chat;
+    private readonly IToolPluginManager _plugins;
     private readonly JsonSerializerOptions _jsonOptions;
-
+    
     public ServiceController(
         IModelService model,
         IChatCompletionService chat,
+        IToolPluginManager plugins,
         IOptions<JsonOptions> jsonOptions)
     {
         _model = model;
         _chat = chat;
+        _plugins = plugins;
         _jsonOptions = jsonOptions.Value.JsonSerializerOptions;
     }
 
@@ -92,14 +95,14 @@ public class ServiceController : ControllerBase
         CancellationToken cancellationToken)
     {
         request.Instructions = $"Current UTC Time: {DateTime.UtcNow}\n" + request.Instructions;
-        request.Tools = FunctionToolFactory.CreateFromObject<TestTool>();
+        request.Tools = await _plugins.ListAsync(cancellationToken);
 
         try
         {
-            Response.ContentType = "text/event-stream; charset=utf-8";
-            Response.Headers.CacheControl = "no-cache";
             Response.Headers.Connection = "keep-alive";
-
+            Response.Headers.CacheControl = "no-cache";
+            Response.ContentType = "text/event-stream; charset=utf-8";
+            
             await WriteEventAsync("[Begin]");
             await foreach (var result in _chat.GenerateStreamingMessageAsync(request.Messages, request, cancellationToken))
             {

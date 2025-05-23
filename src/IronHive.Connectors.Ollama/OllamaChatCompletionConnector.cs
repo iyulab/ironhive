@@ -130,7 +130,7 @@ public class OllamaChatCompletionConnector : IChatCompletionConnector
                 {
                     Name = t.Name,
                     Description = t.Description,
-                    Parameters = t.InputSchema
+                    Parameters = t.Parameters
                 }
             };
         });

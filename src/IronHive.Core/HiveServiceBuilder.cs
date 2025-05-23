@@ -1,14 +1,16 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using System.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using IronHive.Abstractions.ChatCompletion;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Memory;
+using IronHive.Abstractions.Models;
+using IronHive.Abstractions.Tools;
 using IronHive.Abstractions;
 using IronHive.Abstractions.Files;
 using IronHive.Core.Services;
 using IronHive.Core.Storages;
-using System.Diagnostics;
-using IronHive.Abstractions.Models;
+using IronHive.Core.Tools;
 
 namespace IronHive.Core;
 
@@ -18,10 +20,10 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     private readonly IServiceCollection _services;
     private readonly IHiveServiceStore _store;
 
-    public HiveServiceBuilder(IServiceCollection? services = null, IHiveServiceStore? store = null)
+    public HiveServiceBuilder(IServiceCollection? services = null)
     {
         _services = services ?? new ServiceCollection();
-        _store = store ?? new HiveServiceStore();
+        _store = new HiveServiceStore();
 
         // 필수 서비스 없을 경우 등록
         AddRequiredServices();
@@ -51,6 +53,26 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         IEmbeddingConnector connector)
     {
         _store.AddService(serviceKey, connector);
+        return this;
+    }
+
+    /// <inheritdoc />
+    public IHiveServiceBuilder AddToolPlugin(IToolPlugin plugin)
+    {
+        _services.AddSingleton(plugin);
+        return this;
+    }
+
+    /// <inheritdoc />
+    public IHiveServiceBuilder AddFunctionTools<T>(string pluginKey) where T : class
+    {
+        _services.AddSingleton<IToolPlugin, FunctionToolPlugin<T>>(sp =>
+        {
+            return new FunctionToolPlugin<T>(sp)
+            {
+                PluginName = pluginKey
+            };
+        });
         return this;
     }
 
@@ -143,6 +165,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         _services.TryAddSingleton<IModelService, ModelService>();
         _services.TryAddSingleton<IChatCompletionService, ChatCompletionService>();
         _services.TryAddSingleton<IEmbeddingService, EmbeddingService>();
+        _services.TryAddSingleton<IToolPluginManager, ToolPluginManager>();
         // File 서비스
         _services.TryAddSingleton<IFileStorageManager, FileStorageManager>();
         _services.TryAddSingleton<IFileDecoderManager, FileDecoderManager>();

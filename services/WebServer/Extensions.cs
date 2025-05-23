@@ -2,6 +2,7 @@
 using IronHive.Connectors.Anthropic;
 using IronHive.Connectors.OpenAI;
 using System.Diagnostics;
+using WebServer.Tools;
 
 namespace WebServer;
 
@@ -12,31 +13,28 @@ public static class Extensions
     /// </summary>
     public static void AddMainSerivces(this IServiceCollection services)
     {
-        DotEnv.Load(options: new DotEnvOptions(envFilePaths: [".env"], trimValues: true));
-        var env =  DotEnv.Read();
-
         var o_config = new OpenAIConfig
         {
-            ApiKey = env.TryGetValue("OPENAI", out var oValue) ? oValue : string.Empty,
+            ApiKey = Environment.GetEnvironmentVariable("OPENAI_KEY") ?? string.Empty,
         };
         var a_config = new AnthropicConfig
         {
-            ApiKey = env.TryGetValue("ANTHROPIC", out var aValue) ? aValue : string.Empty,
+            ApiKey = Environment.GetEnvironmentVariable("ANTHROPIC_KEY") ?? string.Empty,
         };
         var g_config = new OpenAIConfig
         {
             BaseUrl = "https://generativelanguage.googleapis.com/v1beta/openai/",
-            ApiKey = env.TryGetValue("GOOGLE", out var gValue) ? gValue : string.Empty,
+            ApiKey = Environment.GetEnvironmentVariable("GOOGLE_KEY") ?? string.Empty
         };
         var x_config = new AnthropicConfig
         {
             BaseUrl = "https://api.x.ai/v1/",
-            ApiKey = env.TryGetValue("XAI", out var xValue) ? xValue : string.Empty,
+            ApiKey = Environment.GetEnvironmentVariable("XAI_KEY") ?? string.Empty
         };
         var l_config = new OpenAIConfig
         {
-            BaseUrl = "http://172.30.1.53:8080/v1-openai/",
-            ApiKey = env.TryGetValue("GPUSTACK", out var lValue) ? lValue : string.Empty,
+            BaseUrl = "http://labs.iyulab.com:10150/v1-openai/",
+            ApiKey = Environment.GetEnvironmentVariable("GPUSTACK_KEY") ?? string.Empty
         };
 
         services.AddHiveServiceCore()
@@ -44,6 +42,7 @@ public static class Extensions
             .AddAnthropicConnectors("anthropic", a_config)
             .AddOpenAIConnectors("google", g_config)
             .AddAnthropicConnectors("xai", x_config)
-            .AddOpenAIConnectors("gpustack", l_config);
+            .AddOpenAIConnectors("gpustack", l_config)
+            .AddFunctionTools<TestTool>("function");
     }
 }

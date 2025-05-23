@@ -35,7 +35,7 @@ internal class MessageDeltaEvent : StreamingMessagesResponse
     public MessageDelta? Delta { get; set; }
 
     [JsonPropertyName("usage")]
-    public TokenUsage? Usage { get; set; }
+    public MessagesUsage? Usage { get; set; }
 
     internal class MessageDelta
     {

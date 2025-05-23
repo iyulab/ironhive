@@ -1,23 +1,21 @@
-﻿using DocumentFormat.OpenXml.Bibliography;
-using IronHive.Abstractions;
+﻿using IronHive.Abstractions;
 using IronHive.Abstractions.ChatCompletion;
-using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Utilities;
-using ModelContextProtocol.Protocol.Types;
 using System.Runtime.CompilerServices;
-using System.Text.Json;
 
 namespace IronHive.Core.Services;
 
 public class ChatCompletionService : IChatCompletionService
 {
     private readonly IHiveServiceStore _store;
+    private readonly IToolPluginManager _plugins;
 
-    public ChatCompletionService(IHiveServiceStore store)
+    public ChatCompletionService(IHiveServiceStore store, IToolPluginManager plugins)
     {
         _store = store;
+        _plugins = plugins;
     }
 
     /// <inheritdoc />
@@ -57,13 +55,13 @@ public class ChatCompletionService : IChatCompletionService
 
         // 루프 시작
         bool next;
-        var counter = new LoopCounter(options.MaxLoopCount);
+        var counter = new LimitedCounter(options.MaxLoopCount);
         do
         {
             // 마지막 메시지가 어시스턴트 메시지인 경우, 툴 사용을 확인하고, 메시지를 이어갑니다.
             if (req.Messages.LastOrDefault() is AssistantMessage last)
             {
-                await foreach (var _ in ProcessToolContentAsync(last, req.Tools, cancellationToken))
+                await foreach (var _ in ProcessToolContentAsync(last, cancellationToken))
                 { }
             }
 
@@ -80,8 +78,8 @@ public class ChatCompletionService : IChatCompletionService
             reason = res.EndReason; // 생성 종료 이유 업데이트
             usage = res.TokenUsage; // 토큰 사용량 업데이트
 
-            next = ShouldContinue(reason, message, counter, cancellationToken);
             counter.Increment();
+            next = ShouldContinue(reason, message, counter, cancellationToken);
         }
         while (next);
 
@@ -110,13 +108,13 @@ public class ChatCompletionService : IChatCompletionService
 
         // 루프 시작
         bool next;
-        var counter = new LoopCounter(options.MaxLoopCount);
+        var counter = new LimitedCounter(options.MaxLoopCount);
         do
         {
             // 마지막 메시지가 어시스턴트 메시지인 경우, 툴 사용을 확인하고, 메시지를 이어갑니다.
             if (req.Messages.LastOrDefault() is AssistantMessage message)
             {
-                await foreach (var res in ProcessToolContentAsync(message, req.Tools, cancellationToken))
+                await foreach (var res in ProcessToolContentAsync(message, cancellationToken))
                 {
                     yield return res;
                 }
@@ -261,8 +259,8 @@ public class ChatCompletionService : IChatCompletionService
                 req.Messages.Add(message);
             }
 
-            next = ShouldContinue(reason, message, counter, cancellationToken);
             counter.Increment();
+            next = ShouldContinue(reason, message, counter, cancellationToken);
         }
         while (next);
 
@@ -286,7 +284,7 @@ public class ChatCompletionService : IChatCompletionService
         {
             Model = options.Model,
             System = options.Instructions,
-            Tools = options.Tools ?? new ToolCollection(),
+            Tools = options.Tools ?? [],
             Messages = messages.Clone(), // 메시지 복사
             MaxTokens = options.MaxTokens,
             Temperature = options.Temperature,
@@ -301,9 +299,7 @@ public class ChatCompletionService : IChatCompletionService
     /// <summary>
     /// 도구 컨텐츠를 준비 합니다.
     /// </summary>
-    private static AssistantToolContent PrepareToolContent(
-        AssistantToolContent content, 
-        ToolCollection tools)
+    private static AssistantToolContent PrepareToolContent(AssistantToolContent content, IEnumerable<ToolDescriptor> tools)
     {
         // 도구의 아이디가 없는 경우 임의 생성합니다.
         if (string.IsNullOrEmpty(content.Id))
@@ -312,10 +308,11 @@ public class ChatCompletionService : IChatCompletionService
         }
 
         // 도구가 승인을 필요로 하는 경우
-        if (!string.IsNullOrEmpty(content.Name) && tools.TryGetValue(content.Name, out var tool))
+        if (!string.IsNullOrEmpty(content.Name))
         {
-            content.ApprovalStatus = tool.RequiresApproval 
-                ? ToolApprovalStatus.Requires 
+            var required = tools.FirstOrDefault(t => t.Name == content.Name)?.RequiresApproval ?? false;
+            content.ApprovalStatus = required
+                ? ToolApprovalStatus.Requires
                 : ToolApprovalStatus.NotRequired;
         }
 
@@ -325,9 +322,8 @@ public class ChatCompletionService : IChatCompletionService
     /// <summary>
     /// 도구 컨텐츠를 처리합니다.
     /// </summary>
-    private static async IAsyncEnumerable<ChatCompletionResponse<IAssistantContent>> ProcessToolContentAsync(
+    private async IAsyncEnumerable<ChatCompletionResponse<IAssistantContent>> ProcessToolContentAsync(
         AssistantMessage message,
-        ToolCollection tools,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         foreach (var tc in message.Content.GetIncompleteToolContents())
@@ -340,19 +336,16 @@ public class ChatCompletionService : IChatCompletionService
             if (tc.ApprovalStatus == ToolApprovalStatus.Rejected || 
                 tc.ApprovalStatus == ToolApprovalStatus.Requires)
             {
-                tc.Result = ToolResult.InvocationRejected();
+                tc.Result = ToolOutput.InvocationRejected();
             }
             // 도구 호출
-            else if (tools.TryGetValue(tc.Name, out var tool))
+            else
             {
                 tc.ExecutionStatus = ToolExecutionStatus.Running;
                 yield return new ChatCompletionResponse<IAssistantContent> { Data = tc };
-                tc.Result = await tool.InvokeAsync(tc.Arguments, cancellationToken);
-            }
-            // 도구를 찾을 수 없는 경우
-            else
-            {
-                tc.Result = ToolResult.ToolNotFound(tc.Name);
+
+                var input = new ToolInput(tc.Arguments);
+                tc.Result = await _plugins.InvokeAsync(tc.Name, input, cancellationToken);
             }
 
             tc.ExecutionStatus = ToolExecutionStatus.Completed;
@@ -366,14 +359,14 @@ public class ChatCompletionService : IChatCompletionService
     private bool ShouldContinue(
         EndReason? endReason,
         AssistantMessage message,
-        LoopCounter counter,
+        LimitedCounter counter,
         CancellationToken token)
     {
         // 취소 요청이 있는 경우 종료 Throw
         if (token.IsCancellationRequested)
             throw new OperationCanceledException(token);
         // 최대 루프 카운트 초과할 경우 종료 Throw
-        if (!counter.HasNext)
+        if (counter.ReachedMax)
             throw new InvalidOperationException("Max loop count exceeded.");
 
         // 도구 호출이 아닌 경우 종료

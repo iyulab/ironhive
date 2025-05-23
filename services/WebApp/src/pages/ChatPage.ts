@@ -36,7 +36,7 @@ export class ChatPage extends LitElement {
         <status-panel
           .status=${this.loading ? 'processing' : 'pending'}
         ></status-panel>
-
+        
         <token-panel
           .value=${this.tokenUsage}
           .maxValue=${this.selectedModel?.contextWindow || 0}

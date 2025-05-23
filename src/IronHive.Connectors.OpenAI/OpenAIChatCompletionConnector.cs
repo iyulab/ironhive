@@ -173,7 +173,7 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
         var _req = new OpenAIChatCompletionRequest
         {
             Model = request.Model,
-            Messages = request.Messages.ToOpenAI(request.System),
+            Messages = request.Messages.ToOpenAI(request.System, isReasoning),
             MaxCompletionTokens = request.MaxTokens,
             Temperature = isReasoning ? null : request.Temperature,
             TopP = isReasoning ? null : request.TopP,
@@ -184,7 +184,7 @@ public class OpenAIChatCompletionConnector : IChatCompletionConnector
                 {
                     Name = t.Name,
                     Description = t.Description,
-                    Parameters = t.InputSchema
+                    Parameters = t.Parameters
                 }
             })
         };

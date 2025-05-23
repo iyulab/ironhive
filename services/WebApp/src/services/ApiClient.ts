@@ -3,7 +3,7 @@ import { ChatCompletionRequest, StreamingResponse } from './models';
 
 export class Api {
   private static readonly controller: HttpClient = new HttpClient({
-    baseUrl: import.meta.env.VITE_SERVER_URL,
+    baseUrl: import.meta.env.DEV ? import.meta.env.VITE_SERVER_URL : window.location.origin,
   });
 
   public static async *conversation(
@@ -13,7 +13,7 @@ export class Api {
 
     const res = await this.controller.send({
       method: 'POST',
-      path: '/conversation',
+      path: '/api/conversation',
       body: request,
     }, token);
 
@@ -38,7 +38,7 @@ export class Api {
   public static async *upload(form: FormData) {
     for await (const chunk of this.controller.upload({
       method: 'POST',
-      path: '/upload',
+      path: '/api/upload',
       body: form,
     })) {
       yield chunk;
@@ -47,7 +47,7 @@ export class Api {
 
   public static async download(fileName: string) {
     this.controller.download({
-      path: `/download/${fileName}`,
+      path: `/api/download/${fileName}`,
     });
   }
 

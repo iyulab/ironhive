@@ -4,13 +4,25 @@ using System.Text.Json.Serialization;
 using System.Text.Encodings.Web;
 using WebServer.Dev;
 using WebServer;
+using dotenv.net;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    WebRootPath = "wwwroot",
+});
 
-# region For Services
+#region For Services
+
+#if DEBUG
+Console.WriteLine("Debug");
+DotEnv.Load(options: new DotEnvOptions(envFilePaths: [".env.development"], trimValues: true));
+#else
+Console.WriteLine("Production");
+DotEnv.Load(options: new DotEnvOptions(envFilePaths: [".env"], trimValues: true));
+#endif
+
 builder.Services.AddMainSerivces();
-builder.Services.AddSingleton<JobObject>();
-builder.Services.AddSingleton<ProcessStore>();
 #endregion
 
 builder.Services.AddHttpContextAccessor();
@@ -65,11 +77,11 @@ else
     app.UseAuthentication();
     app.UseAuthorization();
 
-    app.UseHttpsRedirection();
-    app.UseHsts();
+    //app.UseHttpsRedirection();
+    //app.UseHsts();
 
     app.Urls.Clear();
-    app.Urls.Add("http://*:8080");
+    app.Urls.Add("http://*:80");
 }
 
 app.Run();

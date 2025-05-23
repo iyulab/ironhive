@@ -1,5 +1,5 @@
-﻿using IronHive.Abstractions.Json;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
+using IronHive.Abstractions.Json;
 
 namespace IronHive.Connectors.Anthropic.Models;
 
@@ -32,10 +32,4 @@ internal class AnthropicModel
     [JsonPropertyName("created_at")]
     [JsonConverter(typeof(DateTimeJsonConverter))]
     public DateTime? CreatedAt { get; set; }
-
-    public bool IsChatCompletion()
-    {
-        // 클로드 3 버전이상 모델만
-        return Id.Contains("claude-3");
-    }
 }

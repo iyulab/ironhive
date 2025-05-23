@@ -31,19 +31,18 @@ public class TestTool
         [Description("The query string to search for.")] string query,
         CancellationToken cancellationToken)
     {
-        var env = DotEnv.Read();
         using var client = new TavilyClient();
         var result = await client.SearchAsync(
-            apiKey: env.TryGetValue("TAVILY", out var value) ? value : string.Empty,
+            apiKey: Environment.GetEnvironmentVariable("TAVILY_KEY") ?? string.Empty,
             query: query,
             cancellationToken: cancellationToken);
         return result;
     }
 
-    [FunctionTool(Name = "window_command", RequiresApproval = true)]
-    [Description("Runs a Windows command and returns the output.")]
+    [FunctionTool(Name = "command_line", RequiresApproval = true)]
+    [Description("Runs a command and returns the output.")]
     public async Task<string> ExecuteCommandAsync(
-        [Description("The command to run in Windows Command Prompt.")] string command,
+        [Description("The command to run in Command Prompt.")] string command,
         CancellationToken cancellationToken)
     {
         // 위험한 명령어 차단
@@ -54,23 +53,43 @@ public class TestTool
         //    throw new InvalidOperationException("Potentially dangerous command blocked.");
         //}
 
-        using var process = new Process
+        Process process;
+        if (Environment.OSVersion.Platform == PlatformID.Win32NT)
         {
-            StartInfo = new ProcessStartInfo
+            process = new Process
             {
-                FileName = "cmd.exe",
-                Arguments = $"/c {command}",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            },
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = $"/c {command}",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                },
+            };
+        }
+        else
+        {
+            process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "bash",
+                    Arguments = $"-c {command}",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                },
+            };
         };
 
         process.Start();
         var output = await process.StandardOutput.ReadToEndAsync(cancellationToken);
         var error = await process.StandardError.ReadToEndAsync(cancellationToken);
         await process.WaitForExitAsync(cancellationToken);
+        process.Dispose();
 
         return string.IsNullOrWhiteSpace(error) ? output : throw new Exception(error);
     }

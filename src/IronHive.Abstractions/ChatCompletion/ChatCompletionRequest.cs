@@ -23,6 +23,6 @@ public class ChatCompletionRequest : ChatCompletionParameters
     /// <summary>
     /// the tool list to use in the model.
     /// </summary>
-    public ToolCollection Tools { get; set; } = [];
+    public IEnumerable<ToolDescriptor> Tools { get; set; } = [];
 
 }

@@ -4,6 +4,7 @@ using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Models;
+using IronHive.Abstractions.Tools;
 
 namespace IronHive.Abstractions;
 
@@ -46,6 +47,20 @@ public interface IHiveServiceBuilder
     IHiveServiceBuilder AddEmbeddingConnector(
         string serviceKey,
         IEmbeddingConnector connector);
+
+    /// <summary>
+    /// Registers a tool plugin in the Hive service store.
+    /// </summary>
+    /// <param name="plugin">
+    /// The tool plugin implementation.
+    /// </param>
+    IHiveServiceBuilder AddToolPlugin(IToolPlugin plugin);
+
+    /// <summary>
+    /// 지워야 함!!
+    /// </summary>
+    [Obsolete("Use AddToolPlugin instead.")]
+    IHiveServiceBuilder AddFunctionTools<T>(string pluginKey) where T : class;
 
     #endregion
 

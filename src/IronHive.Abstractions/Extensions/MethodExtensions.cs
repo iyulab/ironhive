@@ -1,4 +1,5 @@
 ﻿using IronHive.Abstractions.Json;
+using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
 
 namespace System.Reflection;
@@ -27,6 +28,9 @@ public static class MethodExtensions
             // 특정 타입의 경우
             if (param.ParameterType == typeof(CancellationToken))
                 continue;
+            // 특정 서비스의 경우
+            if (param.GetCustomAttribute<FromKeyedServicesAttribute>() != null)
+                continue;
 
             var description = param.GetCustomAttribute<DescriptionAttribute>()?.Description;
             var schema = JsonSchemaFactory.CreateFrom(param.ParameterType, description);
@@ -40,7 +44,7 @@ public static class MethodExtensions
         return new ObjectJsonSchema
         {
             Properties = properties,
-            Required = required.Count != 0 ? required : null
+            Required = required.Count != 0 ? required : null,
         };
     }
 }

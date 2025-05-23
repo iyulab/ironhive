@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="JsonSchema.Net" Version="7.3.4" />
+    <PackageReference Include="JsonSchema.Net.OpenApi" Version="3.2.0" />
+    <PackageReference Include="Microsoft.OpenApi" Version="1.6.24" />
+    <PackageReference Include="Microsoft.OpenApi.Readers" Version="1.6.24" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\IronHive.Abstractions\IronHive.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

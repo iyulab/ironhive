@@ -8,8 +8,16 @@ public interface IPromptProvider
     /// <summary>
     /// Renders a template with the given context.
     /// </summary>
-    /// <param name="template">the template to render</param>
-    /// <param name="context">model to use for rendering</param>
+    /// <param name="expression">the template to render</param>
+    /// <param name="model">model to use for rendering</param>
     /// <returns>rendered text</returns>
-    string Render(string template, object? context);
+    string Render(string expression, object? model);
+
+    /// <summary>
+    /// Renders a template from a file with the given context.
+    /// </summary>
+    /// <param name="filePath">the path to the template file</param>
+    /// <param name="model">model to use for rendering</param>
+    /// <returns>rendered text</returns>
+    string RenderFromFile(string filePath, object? model);
 }

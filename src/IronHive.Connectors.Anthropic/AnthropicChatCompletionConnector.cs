@@ -1,11 +1,10 @@
 ﻿using System.Text.Json;
 using System.Runtime.CompilerServices;
-using IronHive.Abstractions.ChatCompletion;
 using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Messages;
-using IronHive.Connectors.Anthropic.ChatCompletion;
+using IronHive.Abstractions.ChatCompletion;
 using IronHive.Connectors.Anthropic.Clients;
-using TokenUsage = IronHive.Abstractions.ChatCompletion.TokenUsage;
+using IronHive.Connectors.Anthropic.ChatCompletion;
 
 namespace IronHive.Connectors.Anthropic;
 
@@ -288,11 +287,11 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
             Thinking = isThinking
             ? new EnabledThinking { BudgetTokens = 32_000 }
             : null,
-            Tools = request.Tools.Select(t => new Tool
+            Tools = request.Tools.Select(t => new CustomTool
             {
                 Name = t.Name,
                 Description = t.Description,
-                InputSchema = t.InputSchema ?? new ObjectJsonSchema()
+                InputSchema = t.Parameters ?? new ObjectJsonSchema()
             })
         };
 
@@ -301,6 +300,8 @@ public class AnthropicChatCompletionConnector : IChatCompletionConnector
 
     private static bool IsThinkingModel(string model)
     {
-        return model.StartsWith("claude-3-7-sonnet", StringComparison.OrdinalIgnoreCase);
+        return model.StartsWith("claude-3-7-sonnet", StringComparison.OrdinalIgnoreCase)
+            || model.StartsWith("claude-sonnet-4", StringComparison.OrdinalIgnoreCase)
+            || model.StartsWith("claude-opus-4", StringComparison.OrdinalIgnoreCase);
     }
 }

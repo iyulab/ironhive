@@ -22,6 +22,7 @@ export class HomePage extends LitElement {
           @click=${this.clicked}>
           Yama
         </uc-button>
+        <uc-copy-button></uc-copy-button>
       </div>
     `;
   }

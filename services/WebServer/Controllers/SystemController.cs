@@ -10,13 +10,8 @@ namespace WebServer.Controllers;
 [Route("/system")]
 public class SystemController : ControllerBase
 {
-    private readonly JobObject _job;
-    private readonly ProcessStore _processes;
-
-    public SystemController(JobObject job, ProcessStore processes)
+    public SystemController()
     {
-        _job = job;
-        _processes = processes;
     }
 
     [HttpGet("healthz")]
@@ -45,36 +40,6 @@ public class SystemController : ControllerBase
         var version = assembly.GetName().Version;
         await Task.CompletedTask;
         return Ok(version);
-    }
-
-    [HttpGet("process")]
-    public async Task<ActionResult> GetProcessAsync()
-    {
-        var root = Process.GetCurrentProcess();
-
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = "notepad.exe",
-            UseShellExecute = true,
-        };
-
-        var server1 = Process.Start(startInfo)!;
-        var server2 = Process.Start(startInfo)!;
-
-        _processes.AddProcess("server1", server1);
-        _processes.AddProcess("server2", server2);
-
-        //_job.AddProcess(server1);
-        //_job.AddProcess(server2);
-
-        //ProcessLauncher.Start("notepad.exe");
-        //ProcessLauncher.Start("notepad.exe");
-
-        Console.WriteLine($"Process ID: {server1.Id}");
-        Console.WriteLine($"Process ID: {server2.Id}");
-
-        await Task.CompletedTask;
-        return Ok();
     }
 
     [HttpGet("crash")]

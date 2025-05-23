@@ -7,11 +7,19 @@ internal enum StopReason
     EndTurn,
     MaxTokens,
     StopSequence,
-    ToolUse
+    ToolUse,
+    PauseTurn,
+    Refusal
 }
 
 internal class MessagesResponse
 {
+    /// <summary>
+    /// (Not Use) Information about the container that the tool is running in.
+    /// </summary>
+    [JsonPropertyName("container")]
+    public object? Container { get; set; }
+
     /// <summary>
     /// text or tool content
     /// </summary>
@@ -30,9 +38,6 @@ internal class MessagesResponse
     [JsonPropertyName("role")]
     public string Role { get; } = "assistant";
 
-    /// <summary>
-    /// "end_turn", "max_tokens", "stop_sequence", "tool_use"
-    /// </summary>
     [JsonPropertyName("stop_reason")]
     public StopReason? StopReason { get; set; }
 
@@ -46,5 +51,5 @@ internal class MessagesResponse
     public string Type { get; } = "message";
 
     [JsonPropertyName("usage")]
-    public required TokenUsage Usage { get; set; }
+    public required MessagesUsage Usage { get; set; }
 }

@@ -1,21 +1,24 @@
-﻿using IronHive.Connectors.OpenAI.ChatCompletion;
+﻿using IronHive.Abstractions.Messages;
+using IronHive.Connectors.OpenAI.ChatCompletion;
 using OpenAIMessage = IronHive.Connectors.OpenAI.ChatCompletion.Message;
 using UserMessage = IronHive.Abstractions.Messages.UserMessage;
 using OpenAIUserMessage = IronHive.Connectors.OpenAI.ChatCompletion.UserMessage;
 using AssistantMessage = IronHive.Abstractions.Messages.AssistantMessage;
 using OpenAIAssistantMessage = IronHive.Connectors.OpenAI.ChatCompletion.AssistantMessage;
-using IronHive.Abstractions.Messages;
 
 namespace IronHive.Connectors.OpenAI;
 
 internal static class MessageCollectionExtensions
 {
-    internal static IEnumerable<OpenAIMessage> ToOpenAI(this MessageCollection messages, string? system = null)
+    internal static IEnumerable<OpenAIMessage> ToOpenAI(this MessageCollection messages, string? system = null, bool isReasoning = false)
     {
         var _messages = new List<OpenAIMessage>();
         if (!string.IsNullOrWhiteSpace(system))
         {
-            _messages.Add(new DeveloperMessage { Content = system });
+            if (isReasoning)
+                _messages.Add(new DeveloperMessage { Content = system });
+            else
+                _messages.Add(new SystemMessage { Content = system });
         }
 
         foreach (var message in messages)
@@ -90,7 +93,9 @@ internal static class MessageCollectionExtensions
                             tms.Add(new ToolMessage
                             {
                                 ID = tool.Id ?? string.Empty,
-                                Content = tool.Result?.Data ?? string.Empty,
+                                Content = tool.Result != null && tool.Result.IsSuccess
+                                    ? tool.Result?.Data ?? string.Empty
+                                    : $"Failed: {tool.Result?.Data}"
                             });
                         }
                         else
