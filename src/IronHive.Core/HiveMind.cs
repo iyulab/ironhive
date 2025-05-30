@@ -1,4 +1,5 @@
 ﻿using IronHive.Abstractions;
+using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Memory;
 using IronHive.Core.Services;
 

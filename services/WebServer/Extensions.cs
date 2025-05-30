@@ -1,6 +1,7 @@
 ﻿using dotenv.net;
-using IronHive.Connectors.Anthropic;
-using IronHive.Connectors.OpenAI;
+using IronHive.Providers.Anthropic;
+using IronHive.Providers.OpenAI;
+using IronHive.Core;
 using System.Diagnostics;
 using WebServer.Tools;
 
@@ -38,11 +39,11 @@ public static class Extensions
         };
 
         services.AddHiveServiceCore()
-            .AddOpenAIConnectors("openai", o_config)
-            .AddAnthropicConnectors("anthropic", a_config)
-            .AddOpenAIConnectors("google", g_config)
-            .AddAnthropicConnectors("xai", x_config)
-            .AddOpenAIConnectors("gpustack", l_config)
-            .AddFunctionTools<TestTool>("function");
+            .AddOpenAIProviders("openai", o_config)
+            .AddAnthropicProviders("anthropic", a_config)
+            .AddOpenAIProviders("google", g_config)
+            .AddAnthropicProviders("xai", x_config)
+            .AddOpenAIProviders("gpustack", l_config)
+            .AddFunctionTools<TestTool>("builtin");
     }
 }

@@ -18,7 +18,7 @@
     },
     {
       "provider": "xai",
-      "modelId": "grok-3-mini",
+      "modelId": "grok-3-mini-fast",
       "displayName": "Grok 3.0",
       "description": "Lightweight reasoning model by xAI",
       "contextWindow": 131072

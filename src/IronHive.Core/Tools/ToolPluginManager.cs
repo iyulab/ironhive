@@ -60,30 +60,4 @@ public class ToolPluginManager : IToolPluginManager
 
         return plugin.InvokeAsync(toolName, input, cancellationToken);
     }
-
-    /// <summary>
-    /// 함수형 도구 플러그인을 추가합니다.
-    /// </summary>
-    public void AddFunctionTools<T>(string name) where T : class
-    {
-        if (Plugins.ContainsKey(name))
-        {
-            throw new ArgumentException($"Tool plugin '{name}' already exists.");
-        }
-
-        var plugin = new FunctionToolPlugin<T>(_provider)
-        {
-            PluginName = name
-        };
-
-        Plugins.Add(name, plugin);
-    }
-
-    /// <summary>
-    /// 함수형 도구 플러그인을 제거합니다.
-    /// </summary>
-    public void RemoveFunctionTools(string name)
-    {
-        Plugins.Remove(name);
-    }
 }

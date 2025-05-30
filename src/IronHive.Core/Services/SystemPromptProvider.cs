@@ -1,4 +1,4 @@
-﻿using IronHive.Abstractions.Prompts;
+﻿using IronHive.Abstractions.Agent;
 using Scriban;
 
 namespace IronHive.Core.Services;

@@ -1,5 +1,5 @@
-﻿using IronHive.Abstractions;
-using IronHive.Abstractions.ChatCompletion;
+﻿using IronHive.Abstractions.Agent;
+using IronHive.Abstractions.Message;
 
 namespace IronHive.Core;
 
@@ -17,5 +17,5 @@ public class HiveAgent : IHiveAgent
 
     public IDictionary<string, object?>? Tools { get; set; }
 
-    public ChatCompletionParameters? Parameters { get; set; }
+    public MessageGenerationParameters? Parameters { get; set; }
 }

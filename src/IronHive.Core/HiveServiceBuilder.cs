@@ -1,94 +1,76 @@
 ﻿using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using IronHive.Abstractions.ChatCompletion;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Memory;
-using IronHive.Abstractions.Models;
 using IronHive.Abstractions.Tools;
 using IronHive.Abstractions;
 using IronHive.Abstractions.Files;
 using IronHive.Core.Services;
 using IronHive.Core.Storages;
 using IronHive.Core.Tools;
+using IronHive.Abstractions.Catalog;
+using IronHive.Abstractions.Message;
 
 namespace IronHive.Core;
 
 /// <inheritdoc />
 public class HiveServiceBuilder : IHiveServiceBuilder
 {
-    private readonly IServiceCollection _services;
     private readonly IHiveServiceStore _store;
 
     public HiveServiceBuilder(IServiceCollection? services = null)
     {
-        _services = services ?? new ServiceCollection();
+        Services = services ?? new ServiceCollection();
         _store = new HiveServiceStore();
 
         // 필수 서비스 없을 경우 등록
         AddRequiredServices();
     }
 
+    public IServiceCollection Services { get; }
+
     /// <inheritdoc />
-    public IHiveServiceBuilder AddModelConnector(
-        string serviceKey, 
-        IModelConnector connector)
+    public IHiveServiceBuilder AddModelCatalogProvider(IModelCatalogProvider provider)
     {
-        _store.AddService(serviceKey, connector);
+        Services.AddSingleton(provider);
         return this;
     }
 
     /// <inheritdoc />
-    public IHiveServiceBuilder AddChatCompletionConnector(
-        string serviceKey,
-        IChatCompletionConnector connector)
+    public IHiveServiceBuilder AddMessageGenerationProvider(IMessageGenerationProvider provider)
     {
-        _store.AddService(serviceKey, connector);
+        Services.AddSingleton(provider);
         return this;
     }
 
     /// <inheritdoc />
-    public IHiveServiceBuilder AddEmbeddingConnector(
-        string serviceKey,
-        IEmbeddingConnector connector)
+    public IHiveServiceBuilder AddEmbeddingProvider(IEmbeddingProvider provider)
     {
-        _store.AddService(serviceKey, connector);
+        Services.AddSingleton(provider);
         return this;
     }
 
     /// <inheritdoc />
     public IHiveServiceBuilder AddToolPlugin(IToolPlugin plugin)
     {
-        _services.AddSingleton(plugin);
-        return this;
-    }
-
-    /// <inheritdoc />
-    public IHiveServiceBuilder AddFunctionTools<T>(string pluginKey) where T : class
-    {
-        _services.AddSingleton<IToolPlugin, FunctionToolPlugin<T>>(sp =>
-        {
-            return new FunctionToolPlugin<T>(sp)
-            {
-                PluginName = pluginKey
-            };
-        });
+        Services.AddSingleton(plugin);
         return this;
     }
 
     /// <inheritdoc />
     public IHiveServiceBuilder WithQueueStorage(IQueueStorage storage)
     {
-        _services.RemoveAll<IQueueStorage>();
-        _services.AddSingleton(storage);
+        Services.RemoveAll<IQueueStorage>();
+        Services.AddSingleton(storage);
         return this;
     }
 
     /// <inheritdoc />
     public IHiveServiceBuilder WithVectorStorage(IVectorStorage storage)
     {
-        _services.RemoveAll<IVectorStorage>();
-        _services.AddSingleton(storage);
+        Services.RemoveAll<IVectorStorage>();
+        Services.AddSingleton(storage);
         return this;
     }
 
@@ -127,7 +109,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     /// <inheritdoc />
     public IHiveServiceBuilder AddFileDecoder(IFileDecoder decoder)
     {
-        _services.AddSingleton(decoder);
+        Services.AddSingleton(decoder);
         return this;
     }
 
@@ -135,11 +117,11 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     public IHiveMind BuildHiveMind()
     {
         // 선택 서비스 등록 확인
-        if (!ContainsAny<IModelConnector>())
-            Debug.WriteLine("ModelConnector is not registered. Model will not work.");
-        if (!ContainsAny<IChatCompletionConnector>())
-            Debug.WriteLine("ChatCompletionConnector is not registered. Chat Completion will not work.");
-        if (!ContainsAny<IEmbeddingConnector>())
+        if (!ContainsAny<IModelCatalogProvider>())
+            Debug.WriteLine("ModelCatalogProvider is not registered. Model will not work.");
+        if (!ContainsAny<IMessageGenerationProvider>())
+            Debug.WriteLine("MessageGenerationProvider is not registered. Chat Completion will not work.");
+        if (!ContainsAny<IEmbeddingProvider>())
             Debug.WriteLine("EmbeddingConnector is not registered. Embedding will not work.");
 
         if (!ContainsAny<IFileStorage>())
@@ -152,7 +134,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         if (!ContainsAny<IPipelineObserver>())
             Debug.WriteLine("PipelineObserver is not registered. You can't check the pipeline work.");
 
-        var provider = _services.BuildServiceProvider();
+        var provider = Services.BuildServiceProvider();
         return new HiveMind(provider);
     }
 
@@ -160,18 +142,18 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     private void AddRequiredServices()
     {
         // Connectors, FileStorage 인스턴스 컨테이너
-        _services.AddSingleton<IHiveServiceStore>(_store);
+        Services.AddSingleton<IHiveServiceStore>(_store);
         // AI 서비스
-        _services.TryAddSingleton<IModelService, ModelService>();
-        _services.TryAddSingleton<IChatCompletionService, ChatCompletionService>();
-        _services.TryAddSingleton<IEmbeddingService, EmbeddingService>();
-        _services.TryAddSingleton<IToolPluginManager, ToolPluginManager>();
+        Services.TryAddSingleton<IModelCatalogService, ModelCatalogService>();
+        Services.TryAddSingleton<IMessageGenerationService, MessageGenerationService>();
+        Services.TryAddSingleton<IEmbeddingService, EmbeddingService>();
+        Services.TryAddSingleton<IToolPluginManager, ToolPluginManager>();
         // File 서비스
-        _services.TryAddSingleton<IFileStorageManager, FileStorageManager>();
-        _services.TryAddSingleton<IFileDecoderManager, FileDecoderManager>();
+        Services.TryAddSingleton<IFileStorageManager, FileStorageManager>();
+        Services.TryAddSingleton<IFileDecoderManager, FileDecoderManager>();
         // 메모리 서비스
-        _services.TryAddSingleton<IQueueStorage, LocalQueueStorage>();
-        _services.TryAddSingleton<IVectorStorage, LocalVectorStorage>();
+        Services.TryAddSingleton<IQueueStorage, LocalQueueStorage>();
+        Services.TryAddSingleton<IVectorStorage, LocalVectorStorage>();
     }
 
     // Service 등록 로직 처리
@@ -184,23 +166,23 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         if (lifetime == ServiceLifetime.Singleton)
         {
             if (implementationFactory != null)
-                _services.AddSingleton<TService, TImplementation>(implementationFactory);
+                Services.AddSingleton<TService, TImplementation>(implementationFactory);
             else
-                _services.AddSingleton<TService, TImplementation>();
+                Services.AddSingleton<TService, TImplementation>();
         }
         else if (lifetime == ServiceLifetime.Scoped)
         {
             if (implementationFactory != null)
-                _services.AddScoped<TService, TImplementation>(implementationFactory);
+                Services.AddScoped<TService, TImplementation>(implementationFactory);
             else
-                _services.AddScoped<TService, TImplementation>();
+                Services.AddScoped<TService, TImplementation>();
         }
         else if (lifetime == ServiceLifetime.Transient)
         {
             if (implementationFactory != null)
-                _services.AddTransient<TService, TImplementation>(implementationFactory);
+                Services.AddTransient<TService, TImplementation>(implementationFactory);
             else
-                _services.AddTransient<TService, TImplementation>();
+                Services.AddTransient<TService, TImplementation>();
         }
         else
         {
@@ -219,23 +201,23 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         if (lifetime == ServiceLifetime.Singleton)
         {
             if (implementationFactory != null)
-                _services.AddKeyedSingleton<TService, TImplementation>(serviceKey, implementationFactory);
+                Services.AddKeyedSingleton<TService, TImplementation>(serviceKey, implementationFactory);
             else
-                _services.AddKeyedSingleton<TService, TImplementation>(serviceKey);
+                Services.AddKeyedSingleton<TService, TImplementation>(serviceKey);
         }
         else if (lifetime == ServiceLifetime.Scoped)
         {
             if (implementationFactory != null)
-                _services.AddKeyedScoped<TService, TImplementation>(serviceKey, implementationFactory);
+                Services.AddKeyedScoped<TService, TImplementation>(serviceKey, implementationFactory);
             else
-                _services.AddKeyedScoped<TService, TImplementation>(serviceKey);
+                Services.AddKeyedScoped<TService, TImplementation>(serviceKey);
         }
         else if (lifetime == ServiceLifetime.Transient)
         {
             if (implementationFactory != null)
-                _services.AddKeyedTransient<TService, TImplementation>(serviceKey, implementationFactory);
+                Services.AddKeyedTransient<TService, TImplementation>(serviceKey, implementationFactory);
             else
-                _services.AddKeyedTransient<TService, TImplementation>(serviceKey);
+                Services.AddKeyedTransient<TService, TImplementation>(serviceKey);
         }
         else
         {
@@ -248,15 +230,15 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     {
         var serviceType = typeof(TService);
 
-        if (serviceType == typeof(IModelConnector))
-            return _store.GetServices<IModelConnector>().Any();
-        else if (serviceType == typeof(IChatCompletionConnector))
-            return _store.GetServices<IChatCompletionConnector>().Any();
-        else if (serviceType == typeof(IEmbeddingConnector))
-            return _store.GetServices<IEmbeddingConnector>().Any();
+        if (serviceType == typeof(IModelCatalogProvider))
+            return _store.GetServices<IModelCatalogProvider>().Any();
+        else if (serviceType == typeof(IMessageGenerationProvider))
+            return _store.GetServices<IMessageGenerationProvider>().Any();
+        else if (serviceType == typeof(IEmbeddingProvider))
+            return _store.GetServices<IEmbeddingProvider>().Any();
         else if (serviceType == typeof(IFileStorage))
             return _store.GetFactories<IFileStorage>().Any();
         else
-            return _services.Any(x => x.ServiceType == typeof(TService));
+            return Services.Any(x => x.ServiceType == typeof(TService));
     }
 }

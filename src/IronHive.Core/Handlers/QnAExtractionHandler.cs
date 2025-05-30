@@ -1,6 +1,7 @@
-﻿using IronHive.Abstractions.ChatCompletion;
-using IronHive.Abstractions.Memory;
-using IronHive.Abstractions.Messages;
+﻿using IronHive.Abstractions.Memory;
+using IronHive.Abstractions.Message;
+using IronHive.Abstractions.Message.Content;
+using IronHive.Abstractions.Message.Roles;
 using System.Text.RegularExpressions;
 
 namespace IronHive.Core.Handlers;
@@ -17,7 +18,7 @@ public class QnAExtractionHandler : IPipelineHandler
         @"<qa>\s*<q>\s*(.*?)\s*</q>\s*<a>\s*(.*?)\s*</a>\s*</qa>",
         RegexOptions.Singleline | RegexOptions.Compiled);
 
-    private readonly IChatCompletionService _service;
+    private readonly IMessageGenerationService _service;
 
     public class Options
     {
@@ -25,7 +26,7 @@ public class QnAExtractionHandler : IPipelineHandler
         public required string Model { get; set; }
     }
 
-    public QnAExtractionHandler(IChatCompletionService chat)
+    public QnAExtractionHandler(IMessageGenerationService chat)
     {
         _service = chat;
     }
@@ -37,26 +38,28 @@ public class QnAExtractionHandler : IPipelineHandler
             var options = context.Options.ConvertTo<Options>()
                 ?? throw new InvalidOperationException($"Must provide options for {nameof(QnAExtractionHandler)}");
 
-            var serviceOptions = new ChatCompletionOptions
-            {
-                Provider = options.Provider,
-                Model = options.Model, 
-                Instructions = GetInstructions(),
-                Temperature = 0.0f,
-                TopK = 0,
-                TopP = 0.9f
-            };
-
             var dialogues = new List<Dialogue>();
             foreach (var chunk in chunks)
             {
-                var message = new UserMessage();
-                message.Content.Add(new UserTextContent
+                var request = new MessageGenerationRequest
                 {
-                    Value = $"generate QnA pairs in this information:\n\n{chunk}"
-                });
-                var result = await _service.GenerateMessageAsync(message, serviceOptions, cancellationToken);
-                var text = result.Data?.Content.OfType<AssistantTextContent>().FirstOrDefault()?.Value
+                    Provider = options.Provider,
+                    Model = options.Model,  
+                    System = GetInstructions(),
+                    Messages = [new UserMessage
+                    {
+                        Id = Guid.NewGuid().ToShort(),
+                        Content = [ new TextMessageContent { Value = $"generate QnA pairs in this information:\n\n{chunk}" } ]
+                    }],
+                    Parameters = new MessageGenerationParameters
+                    {
+                        Temperature = 0.0f,
+                        TopK = 0,
+                        TopP = 0.9f
+                    }
+                };
+                var result = await _service.GenerateMessageAsync(request, cancellationToken);
+                var text = result.Message?.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value
                     ?? throw new InvalidOperationException("No response from the chat completion service.");
                 dialogues.AddRange(ParseFrom(text));
             }

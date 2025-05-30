@@ -9,19 +9,17 @@ using dotenv.net;
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
     Args = args,
-    WebRootPath = "wwwroot",
+#if !DEBUG
+    WebRootPath = "/var/app/wwwroot",
+#endif
 });
 
 #region For Services
-
-#if DEBUG
-Console.WriteLine("Debug");
-DotEnv.Load(options: new DotEnvOptions(envFilePaths: [".env.development"], trimValues: true));
-#else
-Console.WriteLine("Production");
-DotEnv.Load(options: new DotEnvOptions(envFilePaths: [".env"], trimValues: true));
-#endif
-
+DotEnv.Load(new DotEnvOptions(
+    envFilePaths: [".env",".env.development"],
+    trimValues: true,
+    overwriteExistingVars: false
+));
 builder.Services.AddMainSerivces();
 #endregion
 
@@ -55,7 +53,6 @@ var app = builder.Build();
 
 app.UseRouting();
 app.UseStaticFiles();
-
 app.MapControllers();
 app.MapFallbackToFile("index.html");
 

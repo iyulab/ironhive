@@ -117,10 +117,11 @@ export class ChatPage extends LitElement {
         provider: this.selectedModel.provider,
         model: this.selectedModel.modelId,
         messages: this.messages,
-        instructions: "유저가 요구하지 않는 한 너무 길게 대답하지 마세요.",
+        system: "유저가 요구하지 않는 한 너무 길게 대답하지 마세요.",
       }
 
       for await (const res of Api.conversation(request, this.canceller)) { 
+        console.debug(res);
         let last = this.messages[this.messages.length - 1];
         if (last.role !== 'assistant') {
           this.messages = [...this.messages, { role: 'assistant', content: [] }];

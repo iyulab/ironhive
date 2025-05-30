@@ -1,12 +1,30 @@
-﻿using IronHive.Core.Decoders;
+﻿using Microsoft.Extensions.DependencyInjection;
+using IronHive.Core.Decoders;
 using IronHive.Core.Handlers;
 using IronHive.Core.Storages;
 using IronHive.Abstractions;
+using IronHive.Abstractions.Tools;
+using IronHive.Core.Tools;
 
 namespace IronHive.Core;
 
 public static class HiveServiceBuilderExtensions
 {
+    /// <summary>
+    /// Add a function tool plugin to the service builder.
+    /// </summary>
+    public static IHiveServiceBuilder AddFunctionTools<T>(this IHiveServiceBuilder builder, string pluginKey) where T : class
+    {
+        builder.Services.AddSingleton<IToolPlugin, FunctionToolPlugin<T>>(sp =>
+        {
+            return new FunctionToolPlugin<T>(sp)
+            {
+                PluginName = pluginKey
+            };
+        });
+        return builder;
+    }
+
     /// <summary>
     /// text, word, pdf, ppt, image decoders are registered by default.
     /// </summary>

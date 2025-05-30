@@ -19,7 +19,7 @@ public class EmbeddingService : IEmbeddingService
         string input,
         CancellationToken cancellationToken = default)
     {
-        if (!_store.TryGetService<IEmbeddingConnector>(provider, out var connector))
+        if (!_store.TryGetService<IEmbeddingProvider>(provider, out var connector))
             throw new KeyNotFoundException($"Service key '{provider}' not found.");
 
         return await connector.EmbedAsync(model, input, cancellationToken);
@@ -32,7 +32,7 @@ public class EmbeddingService : IEmbeddingService
         IEnumerable<string> inputs,
         CancellationToken cancellationToken = default)
     {
-        if (!_store.TryGetService<IEmbeddingConnector>(provider, out var connector))
+        if (!_store.TryGetService<IEmbeddingProvider>(provider, out var connector))
             throw new KeyNotFoundException($"Service key '{provider}' not found.");
 
         return await connector.EmbedBatchAsync(model, inputs, cancellationToken);

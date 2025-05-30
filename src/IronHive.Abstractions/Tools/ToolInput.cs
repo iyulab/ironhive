@@ -9,14 +9,14 @@ namespace IronHive.Abstractions.Tools;
 /// </summary>
 public class ToolInput : IReadOnlyDictionary<string, object?>
 {
-    private readonly Dictionary<string, object?> _inner;
+    private readonly Dictionary<string, object?> _items;
 
     /// <summary>
     /// 빈 입력을 생성합니다.
     /// </summary>
     public ToolInput()
     {
-        _inner = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        _items = new Dictionary<string, object?>(StringComparer.Ordinal);
     }
 
     /// <summary>
@@ -25,8 +25,8 @@ public class ToolInput : IReadOnlyDictionary<string, object?>
     /// <param name="input">입력 객체 (보통 익명 객체 또는 Dictionary)</param>
     public ToolInput(object? input)
     {
-        _inner = input?.ConvertTo<Dictionary<string, object?>>()
-                 ?? new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        _items = input?.ConvertTo<Dictionary<string, object?>>()
+                 ?? new Dictionary<string, object?>(StringComparer.Ordinal);
     }
 
     /// <summary>
@@ -34,23 +34,23 @@ public class ToolInput : IReadOnlyDictionary<string, object?>
     /// </summary>
     public object? this[string key]
     {
-        get => _inner.TryGetValue(key, out var value) ? value : null;
+        get => _items.TryGetValue(key, out var value) ? value : null;
     }
 
-    public IEnumerable<string> Keys => _inner.Keys;
+    public IEnumerable<string> Keys => _items.Keys;
 
-    public IEnumerable<object?> Values => _inner.Values;
+    public IEnumerable<object?> Values => _items.Values;
 
-    public int Count => _inner.Count;
+    public int Count => _items.Count;
 
-    public bool ContainsKey(string key) => _inner.ContainsKey(key);
+    public bool ContainsKey(string key) => _items.ContainsKey(key);
 
     public bool TryGetValue(string key, [MaybeNullWhen(false)] out object? value)
-        => _inner.TryGetValue(key, out value);
+        => _items.TryGetValue(key, out value);
 
     public IEnumerator<KeyValuePair<string, object?>> GetEnumerator()
-        => _inner.GetEnumerator();
+        => _items.GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator()
-        => _inner.GetEnumerator();
+        => _items.GetEnumerator();
 }

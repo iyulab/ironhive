@@ -1,16 +1,15 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using IronHive.Abstractions.ChatCompletion;
 using IronHive.Abstractions.Embedding;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
-using IronHive.Abstractions.Messages;
-using IronHive.Abstractions.Models;
 using Microsoft.AspNetCore.StaticFiles;
 using IronHive.Core.Tools;
 using WebServer.Tools;
 using IronHive.Abstractions.Tools;
+using IronHive.Abstractions.Catalog;
+using IronHive.Abstractions.Message;
 
 namespace WebServer.Controllers;
 
@@ -18,19 +17,19 @@ namespace WebServer.Controllers;
 [Route("/api")]
 public class ServiceController : ControllerBase
 {
-    private readonly IModelService _model;
-    private readonly IChatCompletionService _chat;
+    private readonly IModelCatalogService _model;
+    private readonly IMessageGenerationService _generator;
     private readonly IToolPluginManager _plugins;
     private readonly JsonSerializerOptions _jsonOptions;
     
     public ServiceController(
-        IModelService model,
-        IChatCompletionService chat,
+        IModelCatalogService model,
+        IMessageGenerationService chat,
         IToolPluginManager plugins,
         IOptions<JsonOptions> jsonOptions)
     {
         _model = model;
-        _chat = chat;
+        _generator = chat;
         _plugins = plugins;
         _jsonOptions = jsonOptions.Value.JsonSerializerOptions;
     }
@@ -91,10 +90,10 @@ public class ServiceController : ControllerBase
 
     [HttpPost("conversation")]
     public async Task ConversationAsync(
-        [FromBody] ConversationRequest request,
+        [FromBody] MessageGenerationRequest request,
         CancellationToken cancellationToken)
     {
-        request.Instructions = $"Current UTC Time: {DateTime.UtcNow}\n" + request.Instructions;
+        request.System = $"Current UTC Time: {DateTime.UtcNow}\n" + request.System;
         request.Tools = await _plugins.ListAsync(cancellationToken);
 
         try
@@ -104,7 +103,7 @@ public class ServiceController : ControllerBase
             Response.ContentType = "text/event-stream; charset=utf-8";
             
             await WriteEventAsync("[Begin]");
-            await foreach (var result in _chat.GenerateStreamingMessageAsync(request.Messages, request, cancellationToken))
+            await foreach (var result in _generator.GenerateStreamingMessageAsync(request, cancellationToken))
             {
                 await WriteEventAsync(result, "delta");
             }
@@ -154,9 +153,4 @@ public class ServiceController : ControllerBase
         await Response.Body.WriteAsync(bytes);
         await Response.Body.FlushAsync();
     }
-}
-
-public class ConversationRequest : ChatCompletionOptions
-{
-    public MessageCollection Messages { get; set; } = new();
 }

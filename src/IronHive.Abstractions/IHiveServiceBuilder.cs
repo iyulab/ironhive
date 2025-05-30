@@ -1,10 +1,10 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using IronHive.Abstractions.ChatCompletion;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Memory;
-using IronHive.Abstractions.Models;
 using IronHive.Abstractions.Tools;
+using IronHive.Abstractions.Catalog;
+using IronHive.Abstractions.Message;
 
 namespace IronHive.Abstractions;
 
@@ -13,54 +13,32 @@ namespace IronHive.Abstractions;
 /// </summary>
 public interface IHiveServiceBuilder
 {
+    /// <summary>
+    /// Gets the service collection used to register services in the Hive service store.
+    /// </summary>
+    IServiceCollection Services { get; }
+
     #region AI Services
 
     /// <summary>
-    /// Registers a model connector in the Hive service store.
+    /// Registers a model provider as a singleton in the service collection.
     /// </summary>
-    /// <param name="serviceKey">
-    /// A unique key used to identify the service provider for retrieve model information.
-    /// </param>
-    /// <param name="connector">The model connector implementation.</param>
-    IHiveServiceBuilder AddModelConnector(
-        string serviceKey,
-        IModelConnector connector);
+    IHiveServiceBuilder AddModelCatalogProvider(IModelCatalogProvider provider);
 
     /// <summary>
-    /// Registers a chat completion connector in the Hive service store.
+    /// Registers a message generation provider as a singleton in the service collection.
     /// </summary>
-    /// <param name="serviceKey">
-    /// A unique key used to identify the service provider for chat completion.
-    /// </param>
-    /// <param name="connector">The chat completion connector implementation.</param>
-    IHiveServiceBuilder AddChatCompletionConnector(
-        string serviceKey,
-        IChatCompletionConnector connector);
+    IHiveServiceBuilder AddMessageGenerationProvider(IMessageGenerationProvider provider);
 
     /// <summary>
-    /// Registers an embedding connector in the Hive service store.
+    /// Registers an embedding provider as a singleton in the service collection.
     /// </summary>
-    /// <param name="serviceKey">
-    /// A unique key used to identify the service provider for embedding.
-    /// </param>
-    /// <param name="connector">The embedding connector implementation.</param>
-    IHiveServiceBuilder AddEmbeddingConnector(
-        string serviceKey,
-        IEmbeddingConnector connector);
+    IHiveServiceBuilder AddEmbeddingProvider(IEmbeddingProvider provider);
 
     /// <summary>
-    /// Registers a tool plugin in the Hive service store.
+    /// Registers a tool plugin as a singleton in the service collection.
     /// </summary>
-    /// <param name="plugin">
-    /// The tool plugin implementation.
-    /// </param>
     IHiveServiceBuilder AddToolPlugin(IToolPlugin plugin);
-
-    /// <summary>
-    /// 지워야 함!!
-    /// </summary>
-    [Obsolete("Use AddToolPlugin instead.")]
-    IHiveServiceBuilder AddFunctionTools<T>(string pluginKey) where T : class;
 
     #endregion
 

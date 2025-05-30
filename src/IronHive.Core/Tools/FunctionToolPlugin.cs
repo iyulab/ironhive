@@ -1,7 +1,6 @@
 ﻿using System.Reflection;
 using System.ComponentModel;
 using System.Text.Json;
-using System.Linq.Expressions;
 using Microsoft.Extensions.DependencyInjection;
 using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Tools;
@@ -11,13 +10,13 @@ namespace IronHive.Core.Tools;
 public class FunctionToolPlugin<T> : IToolPlugin where T : class
 {
     private readonly IServiceProvider _provider;
-    private readonly List<ToolDescriptor> _tools;
-    private readonly Dictionary<string, string> _mapper;
+    private readonly IReadOnlyCollection<ToolDescriptor> _tools;
+    private readonly IReadOnlyDictionary<string, MethodInfo> _methods;
 
     public FunctionToolPlugin(IServiceProvider serviceProvider)
     {
         _provider = serviceProvider;
-        (_tools, _mapper) = ExtractToolDescriptors();
+        (_tools, _methods)= ExtractMethods();
     }
 
     /// <inheritdoc />
@@ -48,27 +47,28 @@ public class FunctionToolPlugin<T> : IToolPlugin where T : class
     {
         try
         {
+            if(!_methods.TryGetValue(name, out var method))
+                return ToolOutput.ToolNotFound(name);
+
             var instance = ActivatorUtilities.CreateInstance<T>(_provider);
-            if (!_mapper.TryGetValue(name, out var methodName))
-                return ToolOutput.Failure($"Tool '{name}' not found.");
-
-            var method = typeof(T).GetMethod(methodName, 
-                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
-            if (method == null)
-                return ToolOutput.Failure($"Method '{methodName}' not found.");
-
             var parameters = method.GetParameters();
-            var parameterTypes = parameters.Select(p => p.ParameterType).ToArray();
-            var returnType = method.ReturnType;
-            var functionType = returnType == typeof(void)
-                ? Expression.GetActionType(parameterTypes)
-                : Expression.GetFuncType([.. parameterTypes, returnType]);
-            var function = method.CreateDelegate(functionType, instance);
             var arguments = BuildArguments(parameters, input, cancellationToken);
 
-            var result = function.DynamicInvoke(arguments);
+            var invokeTask = Task.Run(() =>
+            {
+                return method.Invoke(instance, arguments);
+            }, cancellationToken);
+            var timeoutTask = Task.Delay(TimeSpan.FromMinutes(5), cancellationToken);
+            var completedTask = await Task.WhenAny(invokeTask, timeoutTask);
+            if (completedTask == timeoutTask)
+            {
+                return ToolOutput.Failure("메서드 실행이 타임아웃되었습니다.");
+            }
+
             cancellationToken.ThrowIfCancellationRequested();
-            var output = await HandleDynamicResultAsync(result, function.Method.ReturnType, cancellationToken);
+            var result = invokeTask.Result;
+
+            var output = await HandleDynamicResultAsync(result, method.ReturnType, cancellationToken);
             var json = JsonSerializer.Serialize(output, JsonDefaultOptions.Options);
 
             return json.Length < 30_000
@@ -92,7 +92,10 @@ public class FunctionToolPlugin<T> : IToolPlugin where T : class
     /// <summary>
     /// Delegate의 인자를 빌드합니다.
     /// </summary>
-    private static object?[]? BuildArguments(ParameterInfo[] parameters, ToolInput input, CancellationToken cancellationToken)
+    private static object?[]? BuildArguments(
+        ParameterInfo[] parameters, 
+        ToolInput input, 
+        CancellationToken cancellationToken)
     {
         if (parameters.Length == 0) return null;
         var args = new object?[parameters.Length];
@@ -125,31 +128,31 @@ public class FunctionToolPlugin<T> : IToolPlugin where T : class
     /// <summary>
     /// 비동기 메서드를 적절히 처리합니다.
     /// </summary>
-    private static async Task<object?> HandleDynamicResultAsync(object? result, Type returnType, CancellationToken cancellationToken)
+    private static async Task<object?> HandleDynamicResultAsync(
+        object? result, 
+        Type resultType, 
+        CancellationToken cancellationToken)
     {
         // Void 인 경우
-        if (result == null || returnType == typeof(void))
+        if (result == null || resultType == typeof(void))
         {
             return "completed function";
         }
-
         // Task 인 경우
-        if (returnType == typeof(Task))
+        if (resultType == typeof(Task))
         {
             await ((Task)result).ConfigureAwait(false);
             return "completed function";
         }
-
         // ValueTask 인 경우
-        if (returnType == typeof(ValueTask))
+        if (resultType == typeof(ValueTask))
         {
             await ((ValueTask)result).ConfigureAwait(false);
             return "completed function";
         }
-
-        if (returnType.IsGenericType)
+        if (resultType.IsGenericType)
         {
-            var def = returnType.GetGenericTypeDefinition();
+            var def = resultType.GetGenericTypeDefinition();
 
             // Task<T>인 경우
             if (def == typeof(Task<>))
@@ -157,14 +160,12 @@ public class FunctionToolPlugin<T> : IToolPlugin where T : class
                 dynamic dynTask = result;
                 return await dynTask.ConfigureAwait(false);
             }
-
             // ValueTask<T>인 경우
             if (def == typeof(ValueTask<>))
             {
                 dynamic dynTask = result;
                 return await dynTask.ConfigureAwait(false);
             }
-
             // IAsyncEnumerable<T>인 경우
             if (def == typeof(IAsyncEnumerable<>))
             {
@@ -177,9 +178,8 @@ public class FunctionToolPlugin<T> : IToolPlugin where T : class
                 return list;
             }
         }
-
         // 커스텀 awaitable 인 경우
-        if (returnType.GetMethod("GetAwaiter") != null)
+        if (resultType.GetMethod("GetAwaiter") != null)
         {
             dynamic dynTask = result;
             return await dynTask;
@@ -189,15 +189,14 @@ public class FunctionToolPlugin<T> : IToolPlugin where T : class
         return result;
     }
 
-
     /// <summary>
     /// Get all tools from the class.
     /// </summary>
-    private static (List<ToolDescriptor>, Dictionary<string, string>) ExtractToolDescriptors()
+    private static (IReadOnlyCollection<ToolDescriptor>, IReadOnlyDictionary<string, MethodInfo>) ExtractMethods()
     {
         var methods = typeof(T).GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
         var tools = new List<ToolDescriptor>();
-        var mapper = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var mappers = new Dictionary<string, MethodInfo>(StringComparer.Ordinal);
 
         foreach (var method in methods)
         {
@@ -208,13 +207,55 @@ public class FunctionToolPlugin<T> : IToolPlugin where T : class
             {
                 Name = attr.Name ?? method.Name,
                 Description = attr.Description ?? method.GetCustomAttribute<DescriptionAttribute>()?.Description,
-                Parameters = method.GetInputJsonSchema(),
+                Parameters = BuildInputJsonSchema(method),
                 RequiresApproval = attr.RequiresApproval,
             };
             tools.Add(descriptor);
-            mapper[descriptor.Name] = method.Name;
+            mappers[descriptor.Name] = method;
         }
 
-        return (tools, mapper);
+        return (tools, mappers);
+    }
+
+    /// <summary>
+    /// Get the input JSON schema for the method.
+    /// </summary>
+    private static ObjectJsonSchema? BuildInputJsonSchema(MethodInfo method)
+    {
+        var parameters = method.GetParameters();
+        if (parameters.Length == 0)
+        {
+            return null;
+        }
+
+        var properties = new Dictionary<string, JsonSchema>();
+        var required = new List<string>();
+
+        foreach (var param in parameters)
+        {
+            // 이름이 없거나 out 매개변수인 경우
+            if (string.IsNullOrEmpty(param.Name) || param.IsOut)
+                continue;
+            // 특정 타입의 경우
+            if (param.ParameterType == typeof(CancellationToken))
+                continue;
+            // 특정 서비스의 경우
+            if (param.GetCustomAttribute<FromKeyedServicesAttribute>() != null)
+                continue;
+
+            var description = param.GetCustomAttribute<DescriptionAttribute>()?.Description;
+            var schema = JsonSchemaFactory.CreateFrom(param.ParameterType, description);
+            properties.Add(param.Name, schema);
+
+            // 필수 속성인지 확인
+            if (!param.IsOptional)
+                required.Add(param.Name);
+        }
+
+        return new ObjectJsonSchema
+        {
+            Properties = properties,
+            Required = required.Count != 0 ? required : null,
+        };
     }
 }

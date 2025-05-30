@@ -3,7 +3,7 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 
 # 빌드 파일 복사
-COPY bin/publish .
+COPY bin/Publish .
 
 # ASP.NET Core 포트 노출
 EXPOSE 80

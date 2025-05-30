@@ -4,6 +4,8 @@ using IronHive.Core.Tools;
 using IronHive.Core.Utilities;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Net;
+using System.Text;
 using Tavily;
 
 namespace WebServer.Tools;
@@ -12,20 +14,30 @@ public class TestTool
 {
     [FunctionTool("extract_web")]
     [Description("Fetches and extracts text content from a web page.")]
-    public async Task<string> GetWebContentAsync(
+    public async Task<object> GetWebContentAsync(
         [Description("The URL to fetch content from.")] string url, 
         CancellationToken cancellationToken)
     {
-        using var client = new HttpClient();
+        using var client = new HttpClient(new HttpClientHandler
+        {
+            AutomaticDecompression = DecompressionMethods.All,
+        });
         var html = await client.GetStringAsync(url, cancellationToken);
 
         var doc = new HtmlDocument();
         doc.LoadHtml(html);
-        var text = doc.DocumentNode.InnerText;
-        return TextCleaner.Clean(text);
+        var title = doc.DocumentNode.SelectSingleNode("/html/head/title")?.InnerText;
+        var body = doc.DocumentNode.SelectSingleNode("/html/body");
+        var content = TextCleaner.Clean(body?.InnerText ?? string.Empty);
+
+        return new
+        {
+            Title = title,
+            Content = content
+        };
     }
 
-    [FunctionTool(Name = "search_web", RequiresApproval = true)]
+    [FunctionTool(Name = "search_web")]
     [Description("Performs a web search and returns the results.")]
     public async Task<SearchResponse> SearchWebAsycn(
         [Description("The query string to search for.")] string query,
@@ -76,7 +88,7 @@ public class TestTool
                 StartInfo = new ProcessStartInfo
                 {
                     FileName = "bash",
-                    Arguments = $"-c {command}",
+                    Arguments = $"-c \"{command}\"",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,

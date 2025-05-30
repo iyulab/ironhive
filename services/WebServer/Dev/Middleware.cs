@@ -1,4 +1,9 @@
-﻿using System.Text;
+﻿using IronHive.Abstractions.Message;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using System.Text;
+using System.Text.Json;
+using WebServer.Controllers;
 
 namespace WebServer.Dev;
 
@@ -44,6 +49,28 @@ public class Middleware
         }
         else
         {
+            var requestType = typeof(MessageGenerationRequest);
+            try
+            {
+                // JSON 요청 본문을 파싱
+                using var reader = new StreamReader(context.Request.Body,
+                                                 encoding: Encoding.UTF8,
+                                                 detectEncodingFromByteOrderMarks: false,
+                                                 bufferSize: 1024,
+                                                 leaveOpen: true);
+                var body = await reader.ReadToEndAsync();
+                var options = context.RequestServices.GetRequiredService<IOptions<JsonOptions>>();
+                var jsonOptions = options.Value.JsonSerializerOptions;
+                var json = JsonSerializer.Deserialize(body, requestType, jsonOptions);
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError($"JSON 파싱 오류: {ex.Message}");
+            }
+            finally
+            {
+                context.Request.Body.Position = 0;
+            }
             _logger.LogInformation($"[Request] {context.Request.Method} {context.Request.Path}");
         }
 

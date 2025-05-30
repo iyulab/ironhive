@@ -2,6 +2,11 @@
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using Json.Schema;
+using Json.Schema.Generation;
+using DescriptionAttribute = System.ComponentModel.DescriptionAttribute;
+using JsonSchemaNet = Json.Schema.JsonSchema;
+using RequiredAttribute = System.ComponentModel.DataAnnotations.RequiredAttribute;
 
 namespace IronHive.Abstractions.Json;
 
@@ -10,6 +15,18 @@ namespace IronHive.Abstractions.Json;
 /// </summary>
 public static class JsonSchemaFactory
 {
+    /// <summary>
+    /// Creates a new JSON schema from a .NET type using the Json.Schema library.
+    /// </summary>
+    [Obsolete("Use CreateFrom<T>() instead. This method will be removed in a future version.")]
+    public static JsonSchemaNet CreateNew<T>()
+    {
+        var schema = new JsonSchemaBuilder()
+            .FromType<T>()
+            .Build();
+        return schema;
+    }
+
     /// <summary>
     /// Creates a JSON schema from a .NET type.
     /// </summary>
