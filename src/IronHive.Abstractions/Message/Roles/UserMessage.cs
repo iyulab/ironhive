@@ -9,4 +9,9 @@ public class UserMessage : Message
     /// User message content. "text" or "file".
     /// </summary>
     public ICollection<MessageContent> Content { get; set; } = [];
+
+    /// <summary>
+    /// Timestamp of the message.
+    /// </summary>
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 }

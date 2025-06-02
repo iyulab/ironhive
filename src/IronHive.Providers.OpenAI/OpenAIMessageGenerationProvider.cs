@@ -8,6 +8,7 @@ using AssistantMessage = IronHive.Abstractions.Message.Roles.AssistantMessage;
 using OpenAIAssistantMessage = IronHive.Providers.OpenAI.ChatCompletion.AssistantMessage;
 using MessageContent = IronHive.Abstractions.Message.MessageContent;
 using OpenAIMessageContent = IronHive.Providers.OpenAI.ChatCompletion.MessageContent;
+using System.ComponentModel.DataAnnotations;
 
 namespace IronHive.Providers.OpenAI;
 
@@ -56,8 +57,10 @@ public class OpenAIMessageGenerationProvider : IMessageGenerationProvider
             {
                 content.Add(new ToolMessageContent
                 {
-                    Id = tool.Id,
-                    Name = tool.Function?.Name,
+                    IsCompleted = false,
+                    IsApproved = false,
+                    Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
+                    Name = tool.Function?.Name ?? string.Empty,
                     Input = tool.Function?.Arguments,
                 });
             }
@@ -96,19 +99,21 @@ public class OpenAIMessageGenerationProvider : IMessageGenerationProvider
     {
         var req = request.ToOpenAI();
 
-        OpenAIAssistantMessage? message = null;
-        var id = string.Empty;
-        var model = string.Empty;
+        // 인덱스 추적 관리용
+        (int, MessageContent)? current = null;
+        int? currentToolIndex = null;
+
+        string id = string.Empty;
+        string model = string.Empty;
         MessageDoneReason? reason = null;
         MessageTokenUsage? usage = null;
         await foreach (var res in _client.PostStreamingChatCompletionAsync(req, cancellationToken))
         {
             // 메시지 시작
-            if (message == null)
+            if (current == null)
             {
-                message = new OpenAIAssistantMessage();
                 id = res.Id ?? Guid.NewGuid().ToString();
-                model = res.Model;
+                model = res.Model ?? req.Model;
                 yield return new StreamingMessageBeginResponse
                 {
                     Id = id
@@ -157,45 +162,88 @@ public class OpenAIMessageGenerationProvider : IMessageGenerationProvider
                     var tool = tools.ElementAt(i);
                     var toolIndex = tool.Index ?? i;
 
-                    // 텍스트 컨텐츠가 있을경우 인덱스를 +1
-                    var outIndex = message.Content == null ? toolIndex : toolIndex + 1;
-                    var existing = message.ToolCalls?.ElementAtOrDefault(toolIndex);
-
-                    // 새로운 툴을 생성
-                    if (existing == null)
+                    // 이어서 생성되는 툴 메시지의 경우
+                    if (current.HasValue)
                     {
-                        message.ToolCalls ??= [];
-                        message.ToolCalls.Add(new ToolCall
+                        var (index, content) = current.Value;
+                        if (content is ToolMessageContent toolContent)
                         {
-                            Index = toolIndex,
-                            Id = tool.Id,
-                            Function = new FunctionCall
+                            // 현재 컨텐츠가 ToolMessageContent이고, 인덱스가 동일한 경우 업데이트
+                            if (toolIndex == currentToolIndex)
                             {
-                                Name = tool.Function?.Name,
-                                Arguments = tool.Function?.Arguments
+                                yield return new StreamingContentDeltaResponse
+                                {
+                                    Index = index,
+                                    Delta = new ToolDeltaContent
+                                    { 
+                                        Input = tool.Function?.Arguments ?? string.Empty 
+                                    }
+                                };
                             }
-                        });
-                        yield return new StreamingContentAddedResponse
+                            // 현재 컨텐츠가 ToolMessageContent이지만, 인덱스가 다른 경우
+                            // 이전 컨텐츠 종료 및 새 컨텐츠 시작
+                            else
+                            {
+                                yield return new StreamingContentCompletedResponse
+                                {
+                                    Index = index,
+                                };
+                                current = (index + 1, new ToolMessageContent
+                                {
+                                    IsCompleted = false,
+                                    IsApproved = false,
+                                    Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
+                                    Name = tool.Function?.Name ?? string.Empty,
+                                    Input = tool.Function?.Arguments,
+                                });
+                                currentToolIndex = toolIndex;
+                                yield return new StreamingContentAddedResponse
+                                {
+                                    Index = current.Value.Item1,
+                                    Content = current.Value.Item2
+                                };
+                            }
+                        }
+                        // 현재 컨텐츠가 ToolMessageContent가 아닌 경우
+                        // 이전 컨텐츠 종료 및 새 컨텐츠 시작
+                        else
                         {
-                            Index = outIndex,
-                            Content = new ToolMessageContent
+                            yield return new StreamingContentCompletedResponse
                             {
-                                Id = tool.Id,
-                                Name = tool.Function?.Name,
-                                Input = tool.Function?.Arguments
-                            }
-                        };
+                                Index = index,
+                            };
+                            current = (index + 1, new ToolMessageContent
+                            {
+                                IsCompleted = false,
+                                IsApproved = false,
+                                Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
+                                Name = tool.Function?.Name ?? string.Empty,
+                                Input = tool.Function?.Arguments,
+                            });
+                            currentToolIndex = toolIndex;
+                            yield return new StreamingContentAddedResponse
+                            {
+                                Index = current.Value.Item1,
+                                Content = current.Value.Item2
+                            };
+                        }
                     }
-                    // 생성한 툴의 입력값을 생성
+                    // 처음 생성되는 툴 메시지의 경우
                     else
                     {
-                        yield return new StreamingContentDeltaResponse
+                        current = (0, new ToolMessageContent
                         {
-                            Index = outIndex,
-                            Delta = new ToolDeltaContent
-                            {
-                                Input = tool.Function?.Arguments ?? string.Empty,
-                            }
+                            IsCompleted = false,
+                            IsApproved = false,
+                            Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
+                            Name = tool.Function?.Name ?? string.Empty,
+                            Input = tool.Function?.Arguments,
+                        });
+                        currentToolIndex = toolIndex;
+                        yield return new StreamingContentAddedResponse
+                        {
+                            Index = current.Value.Item1,
+                            Content = current.Value.Item2
                         };
                     }
                 }
@@ -205,42 +253,68 @@ public class OpenAIMessageGenerationProvider : IMessageGenerationProvider
             var text = delta.Content;
             if (text != null)
             {
-                // 새로운 텍스트를 시작
-                if (message.Content == null)
+                // 이어서 생성되는 텍스트 메시지의 경우
+                if (current.HasValue)
                 {
-                    message.Content = text;
-                    yield return new StreamingContentAddedResponse
+                    var (index, content) = current.Value;
+                    // 현재 컨텐츠가 TextMessageContent인 경우
+                    if (content is TextMessageContent textContent)
                     {
-                        Index = 0,
-                        Content = new TextMessageContent
+                        yield return new StreamingContentDeltaResponse
                         {
-                            Value = text
-                        }
-                    };
+                            Index = index,
+                            Delta = new TextDeltaContent
+                            {
+                                Value = text
+                            }
+                        };
+                    }
+                    // 현재 컨텐츠가 TextMessageContent가 아닌 경우
+                    // 이전 컨텐츠 종료 및 새 컨텐츠 시작
+                    else
+                    {
+                        yield return new StreamingContentCompletedResponse
+                        {
+                            Index = index,
+                        };
+                        current = (index + 1, new TextMessageContent { Value = text });
+                        yield return new StreamingContentAddedResponse
+                        {
+                            Index = current.Value.Item1,
+                            Content = current.Value.Item2
+                        };
+                    }
                 }
-                // 텍스트 메시지 업데이트
+                // 처음 생성되는 텍스트 메시지의 경우
                 else
                 {
-                    yield return new StreamingContentDeltaResponse
+                    current = (0, new TextMessageContent { Value = text });
+                    yield return new StreamingContentAddedResponse
                     {
-                        Index = 0,
-                        Delta = new TextDeltaContent
-                        {
-                            Value = text
-                        }
+                        Index = current.Value.Item1,
+                        Content = current.Value.Item2
                     };
                 }
             }
-            
+        }
+
+        // 남아 있는 컨텐츠 처리
+        if (current.HasValue)
+        {
+            yield return new StreamingContentCompletedResponse
+            {
+                Index = current.Value.Item1,
+            };
+            //current = null;
         }
 
         // 종료
         yield return new StreamingMessageDoneResponse
         {
-            Id = id,
-            Name = null,
             DoneReason = reason,
             TokenUsage = usage,
+            Id = id,
+            Model = model,
             Timestamp = DateTime.UtcNow,
         };
     }

@@ -72,8 +72,10 @@ public class AnthropicMessageGenerationProvider : IMessageGenerationProvider
             {
                 content.Add(new ToolMessageContent
                 {
-                    Id = tool.Id,
-                    Name = tool.Name,
+                    IsCompleted = false,
+                    IsApproved = false,
+                    Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
+                    Name = tool.Name ?? string.Empty,
                     Input = JsonSerializer.Serialize(tool.Input)
                 });
             }
@@ -190,8 +192,10 @@ public class AnthropicMessageGenerationProvider : IMessageGenerationProvider
                         Index = index,
                         Content = new ToolMessageContent
                         {
-                            Id = tool.Id,
-                            Name = tool.Name
+                            IsCompleted = false,
+                            IsApproved = false,
+                            Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
+                            Name = tool.Name ?? string.Empty,
                         }
                     };
                 }
@@ -265,6 +269,7 @@ public class AnthropicMessageGenerationProvider : IMessageGenerationProvider
                 yield return new StreamingMessageDoneResponse
                 {
                     Id = id,
+                    Model = model,
                     DoneReason = mde.Delta.StopReason switch
                     {
                         StopReason.ToolUse => MessageDoneReason.ToolCall,

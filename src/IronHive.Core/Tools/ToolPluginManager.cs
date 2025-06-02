@@ -6,20 +6,36 @@ namespace IronHive.Core.Tools;
 public class ToolPluginManager : IToolPluginManager
 {
     private const char Delimiter = '_';
+    private readonly Dictionary<string, IToolPlugin> _plugins;
 
     public ToolPluginManager(IEnumerable<IToolPlugin> plugins)
     {
-        Plugins = plugins.ToDictionary(plugin => plugin.PluginName, plugin => plugin);
+        _plugins = plugins.ToDictionary(plugin => plugin.PluginName, plugin => plugin);
     }
 
     /// <inheritdoc />
-    public IDictionary<string, IToolPlugin> Plugins { get; }
+    public bool ContainsPlugin(string name)
+    {
+        return _plugins.ContainsKey(name);
+    }
+
+    /// <inheritdoc />
+    public bool TryAddPlugin(IToolPlugin plugin)
+    {
+        return _plugins.TryAdd(plugin.PluginName, plugin);
+    }
+
+    /// <inheritdoc />
+    public bool TryRemovePlugin(string name)
+    {
+        return _plugins.Remove(name);
+    }
 
     /// <inheritdoc />
     public async Task<IEnumerable<ToolDescriptor>> ListAsync(
         CancellationToken cancellationToken = default)
     {
-        var tasks = Plugins.Select(async kvp =>
+        var tasks = _plugins.Select(async kvp =>
         {
             var (pluginName, plugin) = (kvp.Key, kvp.Value);
             var tools = (await plugin.ListAsync(cancellationToken))
@@ -49,7 +65,7 @@ public class ToolPluginManager : IToolPluginManager
         }
 
         var (pluginName, toolName) = (parts[0], parts[1]);
-        if (!Plugins.TryGetValue(pluginName, out var plugin))
+        if (!_plugins.TryGetValue(pluginName, out var plugin))
         {
             throw new KeyNotFoundException($"Tool '{name}' not found.");
         }

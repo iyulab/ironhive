@@ -35,7 +35,7 @@ public class AssistantMessage : Message
         get
         {
             return Content.OfType<ToolMessageContent>()
-                .Any(tool => tool.ApprovalStatus == ToolApprovalStatus.Requires);
+                .Any(tool => tool.IsApproved == false);
         }
     }
 

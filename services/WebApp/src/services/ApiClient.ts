@@ -1,5 +1,5 @@
 import { CancelToken, HttpClient, CanceledError } from '@iyulab/http-client';
-import { ChatCompletionRequest, StreamingResponse } from './models';
+import { MessageGenerationRequest, StreamingMessageResponse } from './models';
 
 export class Api {
   private static readonly controller: HttpClient = new HttpClient({
@@ -7,9 +7,9 @@ export class Api {
   });
 
   public static async *conversation(
-    request: ChatCompletionRequest,
+    request: MessageGenerationRequest,
     token?: CancelToken,
-  ) : AsyncGenerator<StreamingResponse> {
+  ) : AsyncGenerator<StreamingMessageResponse> {
 
     const res = await this.controller.send({
       method: 'POST',
@@ -24,13 +24,16 @@ export class Api {
 
     for await (const chunk of res.stream()) {
       if (chunk.event === 'delta') {
-        yield JSON.parse(chunk.data) as StreamingResponse;
-      }
-      if (chunk.event === 'cancelled') {
-        throw new CanceledError(chunk.data);
-      }
-      if (chunk.event === 'error') {
-        throw new Error(chunk.data);
+        const data = JSON.parse(chunk.data) as StreamingMessageResponse;
+        if (data.type === 'message.error') {
+          if (data.code === 499)
+            throw new CanceledError(data.message);
+          else
+            throw new Error(data.message || 'An error occurred during the conversation.');
+        }
+        else {
+          yield data;
+        }
       }
     }
   }

@@ -1,12 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using IronHive.Abstractions.Embedding;
-using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.StaticFiles;
-using IronHive.Core.Tools;
-using WebServer.Tools;
 using IronHive.Abstractions.Tools;
 using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Message;
@@ -102,34 +98,26 @@ public class ServiceController : ControllerBase
             Response.Headers.CacheControl = "no-cache";
             Response.ContentType = "text/event-stream; charset=utf-8";
             
-            await WriteEventAsync("[Begin]");
             await foreach (var result in _generator.GenerateStreamingMessageAsync(request, cancellationToken))
             {
                 await WriteEventAsync(result, "delta");
             }
-            await WriteEventAsync("[DONE]");
         }
         catch(OperationCanceledException ex)
         {
-            await WriteEventAsync(new
+            await WriteEventAsync(new StreamingMessageErrorResponse
             {
-                Source = ex.Source,
+                Code = 499,
                 Message = ex.Message,
-                StackTrace = ex.StackTrace,
-                Data = ex.Data,
-                HelpLink = ex.HelpLink,
-            }, "cancelled");
+            }, "delta");
         }
         catch(Exception ex)
         {
-            await WriteEventAsync(new
+            await WriteEventAsync(new StreamingMessageErrorResponse
             {
-                Source = ex.Source,
+                Code = 500,
                 Message = ex.Message,
-                StackTrace = ex.StackTrace,
-                Data = ex.Data,
-                HelpLink = ex.HelpLink,
-            }, "error");
+            }, "delta");
         }
         finally
         {

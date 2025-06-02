@@ -29,7 +29,7 @@ public class AnthropicModelCatalogProvider : IModelCatalogProvider
         return models.Select(m => new ModelSummary
         {
             Provider = ProviderName,
-            Id = m.Id,
+            ModelId = m.Id,
             DisplayName = m.DisplayName,
         });
     }
@@ -45,7 +45,7 @@ public class AnthropicModelCatalogProvider : IModelCatalogProvider
             ? new ModelDetails
             {
                 Provider = ProviderName,
-                Id = model.Id,
+                ModelId = model.Id,
                 DisplayName = model.DisplayName,
                 CreatedAt = model.CreatedAt,
             }

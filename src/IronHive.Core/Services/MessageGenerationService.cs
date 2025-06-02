@@ -1,4 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
+using System.Threading.Channels;
 using IronHive.Abstractions.Message;
 using IronHive.Abstractions.Message.Content;
 using IronHive.Abstractions.Message.Roles;
@@ -87,9 +88,18 @@ public class MessageGenerationService : IMessageGenerationService
         if (!_providers.TryGetValue(request.Provider, out var provider))
             throw new KeyNotFoundException($"Service key '{request.Provider}' not found.");
 
-        string messageId = string.Empty;
+        string messageId = request.Messages.LastOrDefault() is AssistantMessage lastMessage
+            ? lastMessage.Id
+            : Guid.NewGuid().ToString();
+        string model = request.Model;
         MessageDoneReason? reason = null;
         MessageTokenUsage? usage = null;
+
+        // 메시지 생성 시작
+        yield return new StreamingMessageBeginResponse
+        {
+            Id = messageId,
+        };
 
         // 루프 시작
         bool next;
@@ -99,7 +109,6 @@ public class MessageGenerationService : IMessageGenerationService
             // 마지막 메시지가 어시스턴트 메시지인 경우, 툴 사용을 확인하고, 메시지를 이어갑니다.
             if (request.Messages.LastOrDefault() is AssistantMessage message)
             {
-                messageId = message.Id;
                 await foreach (var res in ProcessToolContentAsync(message, cancellationToken))
                 {
                     yield return res;
@@ -108,7 +117,6 @@ public class MessageGenerationService : IMessageGenerationService
             // 마지막 메시지가 어시스턴트 메시지가 아닌 경우, 새로운 메시지를 생성합니다.
             else
             {
-                messageId = Guid.NewGuid().ToString();
                 message = new AssistantMessage { Id = messageId };
             }
 
@@ -118,8 +126,7 @@ public class MessageGenerationService : IMessageGenerationService
             {
                 if (res is StreamingMessageBeginResponse mbr)
                 {
-                    mbr.Id = messageId;
-                    yield return mbr;
+                    continue;
                 }
                 else if (res is StreamingContentAddedResponse car)
                 {
@@ -131,47 +138,17 @@ public class MessageGenerationService : IMessageGenerationService
                 }
                 else if (res is StreamingContentDeltaResponse cdr)
                 {
+                    var content = stack.ElementAt(cdr.Index);
+                    content.Merge(cdr.Delta);
                     cdr.Index = message.Content.Count + cdr.Index;
-                    if (cdr.Delta is TextDeltaContent text)
-                    {
-                        var content = stack.ElementAt(cdr.Index) as TextMessageContent
-                            ?? throw new InvalidOperationException("Expected TextMessageContent type for delta processing.");
-                        content.Value += text.Value;
-                        yield return cdr;
-                    }
-                    else if (cdr.Delta is ThinkingDeltaContent thinking)
-                    {
-                        var content = stack.ElementAt(cdr.Index) as ThinkingMessageContent
-                            ?? throw new InvalidOperationException("Expected AssistantThinkingContent type for delta processing.");
-                        content.Value += thinking.Data;
-                        yield return cdr;
-                    }
-                    else if (cdr.Delta is ToolDeltaContent tool)
-                    {
-                        var content = stack.ElementAt(cdr.Index) as ToolMessageContent
-                            ?? throw new InvalidOperationException("Expected ToolMessageContent type for delta processing.");
-                        content.Input += tool.Input;
-                        yield return cdr;
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException("Unexpected delta type.");
-                    }
+                    yield return cdr;
                 }
                 else if (res is StreamingContentUpdatedResponse cur)
                 {
+                    var content = stack.ElementAt(cur.Index);
+                    content.Update(cur.Updated);
                     cur.Index = message.Content.Count + cur.Index;
-                    if (cur.Updated is ThinkingUpdatedContent thinking)
-                    {
-                        var content = stack.ElementAt(cur.Index) as ThinkingMessageContent
-                            ?? throw new InvalidOperationException("Expected ThinkingMessageContent type for updated content.");
-                        content.Id = thinking.Id;
-                        yield return cur;
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException("Unexpected updated content type.");
-                    }
+                    yield return cur;
                 }
                 else if (res is StreamingContentCompletedResponse ccr)
                 {
@@ -183,6 +160,11 @@ public class MessageGenerationService : IMessageGenerationService
                     // 스트리밍 메시지 종료 응답인 경우, 종료 이유와 토큰 사용량을 업데이트합니다.
                     reason = mdr.DoneReason;
                     usage = mdr.TokenUsage;
+                    model = mdr.Model;
+                }
+                else if (res is StreamingMessageErrorResponse mer)
+                {
+                    yield return mer;
                 }
                 else
                 {
@@ -202,6 +184,7 @@ public class MessageGenerationService : IMessageGenerationService
                 request.Messages.Add(message);
             }
 
+            // 다음 루프를 계속 진행할지 여부를 결정합니다.
             counter.Increment();
             next = ShouldContinue(reason, message, counter, cancellationToken);
         }
@@ -210,9 +193,10 @@ public class MessageGenerationService : IMessageGenerationService
         // 마지막 메시지를 전달 합니다.
         yield return new StreamingMessageDoneResponse
         {
-            Id = messageId,
             DoneReason = reason,
             TokenUsage = usage,
+            Id = messageId,
+            Model = model,
             Timestamp = DateTime.UtcNow
         };
     }
@@ -229,13 +213,8 @@ public class MessageGenerationService : IMessageGenerationService
         }
 
         // 도구가 승인을 필요로 하는 경우
-        if (!string.IsNullOrEmpty(content.Name))
-        {
-            var required = tools.FirstOrDefault(t => t.Name == content.Name)?.RequiresApproval ?? false;
-            content.ApprovalStatus = required
-                ? ToolApprovalStatus.Requires
-                : ToolApprovalStatus.NotRequired;
-        }
+        var requiredApproval = tools.FirstOrDefault(t => t.Name == content.Name)?.RequiresApproval ?? false;
+        content.IsApproved = !requiredApproval;
 
         return content;
     }
@@ -247,42 +226,88 @@ public class MessageGenerationService : IMessageGenerationService
         AssistantMessage message,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        for (var i = 0; i < message.Content.Count; i++)
+        var maxConcurrent = 3; // 동시 실행할 최대 도구 호출 수
+        var semaphore = new SemaphoreSlim(maxConcurrent, maxConcurrent);
+        var channel = Channel.CreateBounded<StreamingMessageResponse>(new BoundedChannelOptions(maxConcurrent * 4)
         {
-            var content = message.Content.ElementAt(i);
-            if (content is not ToolMessageContent tool)
+            FullMode = BoundedChannelFullMode.Wait
+        });
+
+        // 1) 각 ToolMessageContent별로 별도의 Task를 생성
+        var tasks = new List<Task>();
+        foreach (var (item, idx) in message.Content.Select((x, i) => (x, i)))
+        {
+            if (item is not ToolMessageContent tool)
                 continue;
 
-            // 도구 이름이 없는 경우 예상치 못한 오류입니다.
-            if (string.IsNullOrEmpty(tool.Name))
-                throw new KeyNotFoundException($"Tool name is not found. Please check the tool name in the message content.");
+            if (tool.IsCompleted && !tool.IsApproved)
+                continue;
 
-            yield return new StreamingContentInProgressResponse
+            var task = Task.Run(async () =>
             {
-                Index = i,
-            };
-
-            // 실행 거부된 경우 혹은 승인 확인이 안된 경우
-            if (tool.ApprovalStatus == ToolApprovalStatus.Rejected ||
-                tool.ApprovalStatus == ToolApprovalStatus.Requires)
-            {
-                tool.Output = ToolOutput.InvocationRejected();
-            }
-            // 도구 호출
-            else
-            {
-                var input = new ToolInput(tool.Input);
-                tool.Output = await _plugins.InvokeAsync(tool.Name, input, cancellationToken);
-            }
-
-            yield return new StreamingContentUpdatedResponse
-            {
-                Index = i,
-                Updated = new ToolUpdatedContent
+                await semaphore.WaitAsync(cancellationToken);
+                
+                try
                 {
-                    Output = tool.Output,
+                    await channel.Writer.WriteAsync(new StreamingContentInProgressResponse
+                    {
+                        Index = idx
+                    }, cancellationToken);
+
+                    var input = new ToolInput(tool.Input);
+                    var output = await _plugins.InvokeAsync(tool.Name, input, cancellationToken);
+                    tool.IsCompleted = true; // 도구 호출 완료 표시
+                    tool.Output = output; // 도구 호출 결과 저장
+                    await channel.Writer.WriteAsync(new StreamingContentUpdatedResponse
+                    { 
+                        Index = idx,
+                        Updated = new ToolUpdatedContent { Output = output }
+                    }, cancellationToken);
                 }
-            };
+                catch (Exception ex)
+                {
+                    await channel.Writer.WriteAsync(new StreamingMessageErrorResponse
+                    {
+                        Code = 500,
+                        Message = ex.Message,
+                    }, cancellationToken);
+                }
+                finally
+                {
+                    // 항상 Semaphore를 릴리즈
+                    semaphore.Release();
+                }
+            }, cancellationToken);
+            tasks.Add(task);
+        }
+
+        // 2) 태스크들을 동시 실행
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.WhenAll(tasks);
+            }
+            catch (Exception ex)
+            {
+                await channel.Writer.WriteAsync(new StreamingMessageErrorResponse
+                {
+                    Code = 500,
+                    Message = ex.Message,
+                }, cancellationToken);
+            }
+            finally
+            {
+                channel.Writer.Complete(); // 모든 태스크가 끝나면 완료 표시
+            }
+            
+            
+        }, CancellationToken.None);
+
+        // 3) 채널에서 남은 출력 읽어서 yield, Complete()가 호출될 때까지 계속 읽기
+        await foreach (var res in channel.Reader.ReadAllAsync(cancellationToken))
+        {
+            yield return res;
         }
     }
 
@@ -298,8 +323,11 @@ public class MessageGenerationService : IMessageGenerationService
         if (counter.ReachedMax)
             throw new InvalidOperationException("Max loop count exceeded.");
 
-        // 도구 호출이 아닌 경우 종료
-        if (endReason != MessageDoneReason.ToolCall)
+        // 정상 종료일 경우 종료
+        if (endReason == MessageDoneReason.EndTurn)
+            return false;
+        // 정지 시퀀스 생성시 종료
+        if (endReason == MessageDoneReason.StopSequence)
             return false;
         // 도구 승인 요청이 있는 경우 종료
         if (message.RequiresApproval)

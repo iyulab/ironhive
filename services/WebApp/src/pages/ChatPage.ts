@@ -1,20 +1,23 @@
 import { LitElement, PropertyValues, css, html } from "lit";
-import { customElement, state } from "lit/decorators.js";
+import { customElement, query, state } from "lit/decorators.js";
 
-import type { AssistantMessage, Message, ModelDescriptor } from "@iyulab/chat-components";
+import type { AssistantMessage, Message, ModelSummary } from "@iyulab/chat-components";
 import { CanceledError, CancelToken } from '@iyulab/http-client';
-import { Api, ChatCompletionRequest } from "../services";
+import { Api, MessageGenerationRequest } from "../services";
 
 @customElement('chat-page')
 export class ChatPage extends LitElement {
   private canceller = new CancelToken();
 
+  @query('message-box') messageBoxEl!: LitElement;
+
   @state() loading: boolean = false;
-  @state() models: ModelDescriptor[] = [];
-  @state() selectedModel?: ModelDescriptor;
-  @state() messages: Message[] = [];
-  @state() tokenUsage: number = 0;
   @state() error?: { status: "danger" | "warning" | "info", message: string };
+
+  @state() models: ModelSummary[] = [];
+  @state() context: { model?: ModelSummary; messages: Message[]; usages: number; } = {
+    model: undefined, messages: [], usages: 0 
+  };
 
   protected firstUpdated(changedProperties: PropertyValues) {
     super.firstUpdated(changedProperties);
@@ -24,10 +27,10 @@ export class ChatPage extends LitElement {
       .then(text => JSON.parse(text))
       .then((json: any) => {
         this.models = json.models;
-        this.selectedModel = this.models.at(0) || undefined;
+        this.context.model = this.models.at(0) || undefined;
       });
 
-    this.messages = JSON.parse(localStorage.getItem('messages') || '[]') as Message[];
+    this.context = JSON.parse(localStorage.getItem('history') || '{"model": null, "messages": [], "usages": 0}');
   }
 
   render() {
@@ -38,8 +41,8 @@ export class ChatPage extends LitElement {
         ></status-panel>
         
         <token-panel
-          .value=${this.tokenUsage}
-          .maxValue=${this.selectedModel?.contextWindow || 0}
+          .value=${this.context.usages}
+          .maxValue=${this.context.model?.contextLength || 0}
         ></token-panel>
 
         <message-alert
@@ -50,7 +53,7 @@ export class ChatPage extends LitElement {
         ></message-alert>
 
         <message-box
-          .messages=${this.messages}
+          .messages=${this.context.messages}
           @tool-change=${this.change}
         ></message-box>
 
@@ -61,8 +64,8 @@ export class ChatPage extends LitElement {
           @stop=${() => this.canceller.cancel()}>
           <uc-model-select
             .models=${this.models}
-            .selectedModel=${this.selectedModel}
-            @select=${(e: any) => this.selectedModel = e.detail}
+            .selectedModel=${this.context.model}
+            @select=${(e: any) => this.context.model = e.detail}
           ></uc-model-select>
           <div style="flex: 1"></div>
           <uc-clear-button
@@ -74,8 +77,10 @@ export class ChatPage extends LitElement {
   }
 
   private clear() {
-    this.messages = [];
-    localStorage.removeItem('messages');
+    this.context.messages = [];
+    this.context.usages = 0;
+    localStorage.setItem('history', JSON.stringify(this.context));
+    this.requestUpdate();
   }
 
   private submit = async (e: any) => {
@@ -85,16 +90,18 @@ export class ChatPage extends LitElement {
       content: [{ type: 'text', value: value }],
       timestamp: new Date().toISOString()
     }
-    this.messages = [...this.messages, user_msg];
+    this.context.messages = [...this.context.messages, user_msg];
     await this.generate();
   }
 
   private change = async (e: any) => {
-    this.messages = e.detail;
-    const last = this.messages[this.messages.length - 1];
+    this.context.messages = e.detail;
+    const last = this.context.messages[this.context.messages.length - 1];
     if (last.role === 'assistant') {
       for (const content of last.content || []) {
-        if (content.type === 'tool' && content.approvalStatus === 'requires') {
+        if (content.type === 'tool' && 
+          content.isCompleted === false &&
+          content.isApproved === false) {
           return;
         }
       }
@@ -108,61 +115,75 @@ export class ChatPage extends LitElement {
       this.error = undefined;
       this.loading = true;
 
-      if (!this.selectedModel) {
+      if (!this.context.model) {
         this.error = { status: 'warning', message: '모델을 선택하세요.' };
         return;
       }
 
-      const request: ChatCompletionRequest = {
-        provider: this.selectedModel.provider,
-        model: this.selectedModel.modelId,
-        messages: this.messages,
+      const request: MessageGenerationRequest = {
+        provider: this.context.model.provider,
+        model: this.context.model.modelId,
+        messages: this.context.messages,
         system: "유저가 요구하지 않는 한 너무 길게 대답하지 마세요.",
       }
+      console.debug('요청 메시지:', request);
 
       for await (const res of Api.conversation(request, this.canceller)) { 
         console.debug(res);
-        let last = this.messages[this.messages.length - 1];
+        let last = this.context.messages[this.context.messages.length - 1];
         if (last.role !== 'assistant') {
-          this.messages = [...this.messages, { role: 'assistant', content: [] }];
-          last = this.messages[this.messages.length - 1] as AssistantMessage;
+          this.context.messages = [...this.context.messages, { role: 'assistant', content: [] }];
+          this.messageBoxEl.requestUpdate();
+          last = this.context.messages[this.context.messages.length - 1] as AssistantMessage;
         }
   
-        const data = res.data;
-        if (data) {
-          const index = data.index || 0;
-          last.content ||= [];
-          const content = last.content?.at(index);
-  
-          if (content) {
-            if (content.type === 'text' && data.type === 'text') {
-              content.value ||= '';
-              content.value += data.value || '';
-            } else if (content.type === 'thinking' && data.type === 'thinking') {
-              content.id ||= data.id;
-              content.value ||= '';
-              content.value += data.value || '';
-            } else {
-              last.content[index] = data;
-            }
-          } else {
-            last.content?.push(data);
+        if (res.type === 'message.begin') {
+          last.id = res.id;
+          continue;
+        } else if (res.type === 'message.content.added') {
+          last.content.push(res.content);
+        } else if (res.type === 'message.content.delta') {
+          const content = last.content.at(res.index);
+          if (content?.type === 'text' && res.delta.type === 'text') {
+            content.value ||= '';
+            content.value += res.delta.value || '';
+          } else if (content?.type === 'thinking' && res.delta.type === 'thinking') {
+            content.value ||= '';
+            content.value += res.delta.data || '';
+          } else if (content?.type === 'tool' && res.delta.type === 'tool') {
+            content.input ||= '';
+            content.input += res.delta.input || '';
           }
-  
-          this.messages = [...this.messages];
+        } else if (res.type === 'message.content.updated') {
+          const content = last.content.at(res.index);
+          if (content?.type === 'thinking' && res.updated.type === 'thinking') {
+            content.id = res.updated.id;
+          } else if (content?.type === 'tool' && res.updated.type === 'tool') {
+            content.output = res.updated.output;
+            content.isCompleted = true;
+          }
+        } else if (res.type === 'message.content.in_progress') {
+          const content = last.content.at(res.index);
+          if (content?.type === 'tool') {
+            continue;
+          }
+        } else if (res.type === 'message.content.completed') {
+          const content = last.content.at(res.index);
+          if (content?.type === 'thinking') {
+            continue;
+          } else if (content?.type === 'tool') {
+            continue;
+          }
+        } else if (res.type === 'message.done') {
+          last.id ||= res.id;
+          last.timestamp = res.timestamp || new Date().toISOString();
+          this.context.usages = res.tokenUsage?.TotalTokens || 0;
         }
-        
-        if (res.timestamp) {
-          last.timestamp = res.timestamp;
-          this.messages = [...this.messages];
-        }
-        
-        if (res.tokenUsage) {
-          this.tokenUsage = res.tokenUsage.totalTokens;
-        }
+
+        this.messageBoxEl.requestUpdate();
       }
-  
-      localStorage.setItem('messages', JSON.stringify(this.messages));
+
+      localStorage.setItem('history', JSON.stringify(this.context));
     } catch (e: any) {
       if (e instanceof CanceledError) {
         this.error = { status: 'info', message: '요청이 취소되었습니다.' };

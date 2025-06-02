@@ -22,7 +22,3 @@ public class MessageResponse
     /// </summary>
     public MessageTokenUsage? TokenUsage { get; set; }
 }
-
-
-
-

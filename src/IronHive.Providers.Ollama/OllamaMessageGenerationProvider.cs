@@ -55,7 +55,10 @@ public class OllamaMessageGenerationProvider : IMessageGenerationProvider
             {
                 message.Content.Add(new ToolMessageContent
                 {
-                    Name = t.Function?.Name,
+                    IsCompleted = false,
+                    IsApproved = false,
+                    Id = $"tool_{Guid.NewGuid().ToShort()}",
+                    Name = t.Function?.Name ?? string.Empty,
                     Input = JsonSerializer.Serialize(t.Function?.Arguments)
                 });
             }
@@ -102,6 +105,7 @@ public class OllamaMessageGenerationProvider : IMessageGenerationProvider
                 yield return new StreamingMessageDoneResponse
                 {
                     Id = Guid.NewGuid().ToShort(),
+                    Model = res.Model,
                     DoneReason = res.DoneReason switch
                     {
                         DoneReason.Stop => MessageDoneReason.EndTurn,

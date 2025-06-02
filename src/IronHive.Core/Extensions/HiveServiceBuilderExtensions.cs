@@ -5,7 +5,6 @@ using IronHive.Core.Storages;
 using IronHive.Abstractions;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Tools;
-using DocumentFormat.OpenXml.Office.CustomUI;
 
 namespace IronHive.Core;
 
@@ -14,13 +13,13 @@ public static class HiveServiceBuilderExtensions
     /// <summary>
     /// Add a function tool plugin to the service builder.
     /// </summary>
-    public static IHiveServiceBuilder AddFunctionTools<T>(this IHiveServiceBuilder builder, string pluginKey) where T : class
+    public static IHiveServiceBuilder AddFunctionToolPlugin<T>(this IHiveServiceBuilder builder, string pluginName) where T : class
     {
         builder.Services.AddSingleton<IToolPlugin, FunctionToolPlugin<T>>(sp =>
         {
             return new FunctionToolPlugin<T>(sp)
             {
-                PluginName = pluginKey
+                PluginName = pluginName
             };
         });
         return builder;

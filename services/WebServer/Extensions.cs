@@ -1,8 +1,6 @@
-﻿using dotenv.net;
-using IronHive.Providers.Anthropic;
+﻿using IronHive.Providers.Anthropic;
 using IronHive.Providers.OpenAI;
 using IronHive.Core;
-using System.Diagnostics;
 using WebServer.Tools;
 
 namespace WebServer;
@@ -44,6 +42,6 @@ public static class Extensions
             .AddOpenAIProviders("google", g_config)
             .AddAnthropicProviders("xai", x_config)
             .AddOpenAIProviders("gpustack", l_config)
-            .AddFunctionTools<TestTool>("builtin");
+            .AddFunctionToolPlugin<TestTool>("builtin");
     }
 }

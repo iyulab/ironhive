@@ -1,11 +1,18 @@
 import { Message } from "@iyulab/chat-components";
 
-export interface ChatCompletionRequest {
+export interface MessageGenerationRequest {
   provider: string;
   model: string;
   system?: string;
   messages: Message[];
-  parameters?: {
-    [key: string]: any;
-  }
+  tools?: any;
+  parameters?: MessageGenerationParameters;
+}
+
+export interface MessageGenerationParameters {
+  maxTokens?: number;
+  temperature?: number;
+  topK?: number;
+  topP?: number;
+  stopSequences?: string[];
 }

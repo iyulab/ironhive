@@ -9,7 +9,7 @@ public static class HiveServiceBuilderExtensions
     /// </summary>
     /// <param name="name">등록할 MCP 서버의 이름입니다.</param>
     /// <param name="server">등록할 MCP 서버의 구현체입니다.</param>    
-    public static IHiveServiceBuilder AddMcpServer(this IHiveServiceBuilder builder, string name, IMcpServer server)
+    public static IHiveServiceBuilder AddMcpToolPlugin(this IHiveServiceBuilder builder, string name, IMcpServer server)
     {
         var plugin = McpToolPuginFactory.Create(name, server);
         builder.AddToolPlugin(plugin);

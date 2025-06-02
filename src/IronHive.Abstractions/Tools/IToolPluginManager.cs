@@ -1,4 +1,6 @@
-﻿namespace IronHive.Abstractions.Tools;
+﻿using System.Diagnostics.CodeAnalysis;
+
+namespace IronHive.Abstractions.Tools;
 
 /// <summary>
 /// 툴 플러그인을 관리하는 매니저 인터페이스입니다.
@@ -7,14 +9,25 @@
 public interface IToolPluginManager
 {
     /// <summary>
-    /// 로드된 모든 툴 플러그인을 이름(Key)과 함께 보관하는 딕셔너리입니다.
+    /// 지정한 이름의 플러그인이 매니저에 등록되어 있는지 여부를 반환합니다.
     /// </summary>
-    IDictionary<string, IToolPlugin> Plugins { get; }
+    bool ContainsPlugin(string name);
+
+    /// <summary>
+    /// 새로운 플러그인을 매니저에 등록합니다.
+    /// 플러그인 등록에 성공하면 true, 이미 동일한 이름의 플러그인이 존재하거나 등록에 실패하면 false를 반환합니다.
+    /// </summary>
+    bool TryAddPlugin(IToolPlugin plugin);
+
+    /// <summary>
+    /// 지정한 이름의 플러그인을 매니저에서 제거합니다.
+    /// </summary>
+    bool TryRemovePlugin(string name);
 
     /// <summary>
     /// 모든 등록된 플러그인에서 사용할 수 있는 툴 목록을 비동기적으로 가져옵니다.
     /// </summary>
-    public Task<IEnumerable<ToolDescriptor>> ListAsync(
+    Task<IEnumerable<ToolDescriptor>> ListAsync(
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -26,7 +39,7 @@ public interface IToolPluginManager
     /// <returns>
     /// 비동기적으로 툴의 실행 결과를 나타내는 <see cref="ToolOutput"/> 객체를 반환합니다.
     /// </returns>
-    public Task<ToolOutput> InvokeAsync(
+    Task<ToolOutput> InvokeAsync(
         string name,
         ToolInput input,
         CancellationToken cancellationToken = default);

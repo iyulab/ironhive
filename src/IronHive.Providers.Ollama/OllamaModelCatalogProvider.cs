@@ -28,7 +28,7 @@ public class OllamaModelCatalogProvider : IModelCatalogProvider
         return models.Select(m => new ModelSummary
         {
             Provider = ProviderName,
-            Id = m.Name,
+            ModelId = m.Name,
         });
     }
 
@@ -46,7 +46,7 @@ public class OllamaModelCatalogProvider : IModelCatalogProvider
         return new ModelDetails
         {
             Provider = ProviderName,
-            Id = modelId,
+            ModelId = modelId,
             Capabilities = model.Capabilities,
         };
     }

@@ -19,16 +19,15 @@ public abstract class StreamingMessageResponse
 public class StreamingMessageBeginResponse : StreamingMessageResponse
 {
     public required string Id { get; set; }
-    public string? Name { get; set; }
 }
 
 // 스트리밍 메시지 종료
 public class StreamingMessageDoneResponse : StreamingMessageResponse
 {
-    public required string Id { get; set; }
-    public string? Name { get; set; }
     public MessageDoneReason? DoneReason { get; set; }
     public MessageTokenUsage? TokenUsage { get; set; }
+    public required string Id { get; set; }
+    public required string Model { get; set; }
     public required DateTime Timestamp { get; set; }
 }
 
@@ -60,8 +59,6 @@ public class StreamingContentUpdatedResponse : StreamingMessageResponse
 public class StreamingContentInProgressResponse : StreamingMessageResponse
 {
     public required int Index { get; set; }
-
-    public string? Message { get; set; }
 }
 
 // 메시지 컨텐츠 종료

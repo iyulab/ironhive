@@ -7,35 +7,35 @@
       "modelId": "gpt-4.1-mini",
       "displayName": "GPT 4.1",
       "description": "Compact and efficient model by OpenAI",
-      "contextWindow": 1047576
+      "contextLength": 1047576
     },
     {
       "provider": "anthropic",
       "modelId": "claude-sonnet-4-0",
       "displayName": "Claude 4",
       "description": "Latest reasoning model by Anthropic",
-      "contextWindow": 200000
+      "contextLength": 200000
     },
     {
       "provider": "xai",
       "modelId": "grok-3-mini-fast",
       "displayName": "Grok 3.0",
       "description": "Lightweight reasoning model by xAI",
-      "contextWindow": 131072
+      "contextLength": 131072
     },
     {
       "provider": "google",
       "modelId": "gemini-2.5-flash-preview-05-20",
       "displayName": "Gemini 2.5",
       "description": "Newest Gemini model by Google",
-      "contextWindow": 1048576
+      "contextLength": 1048576
     },
     {
       "provider": "gpustack",
       "modelId": "clova-x",
       "displayName": "HyperClova X",
       "description": "Local AI model provided by Iyulab",
-      "contextWindow": 98304
+      "contextLength": 98304
     }
   ]
 }

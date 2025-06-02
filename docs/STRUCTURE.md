@@ -6,33 +6,24 @@
 - IHiveMind
 
 ### 파생 서비스
-- IHiveSession
-  - IHiveAgent[]
 - IHiveMemory
 - IPipelineWorker
 
-### Common Services(Important)
-- IHiveServiceStore             => Singleton!                                     => Required
-  - IChatCompletionConnector[]  => Instance                                       => Optional
-  - IEmbeddingConnector[]       => Instance                                       => Optional
-  - IFileStorage[]              => Factory Instance                               => Optional
-
 ### AI Services
-- IChatCompletionService        => Singleton!                                     => Required
-  - IHiveServiceStore           => Singleton!                                     => Required
-- IEmbeddingService             => Singleton!                                     => Required
-  - IHiveServiceStore           => Singleton!                                     => Required
+- IMessageGenerationService        => Singleton                                   => Required
+  - IMessageGenerationProvider[]   => Singleton                                   => Optional
+- IEmbeddingService                => Singleton                                   => Required
+  - IEmbeddingProvider[]           => Singleton                                   => Optional
 
 ### File Services
-- IFileStorageManger            => Singleton!                                     => Required
-  - IServiceProvider            => SYSTEM                                         => For Factory Store
-  - IHiveServiceStore           => Singleton!                                     => Required
-- IFileDecoderManager           => Singleton!                                     => Required
-  - IFileDecoder[]              => Singleton!                                     => Optional
+- IFileStorageManger               => Singleton                                   => Required
+  - IFileStorage[]                 => Singleton                                   => Optional
+- IFileDecoderManager              => Singleton                                   => Required
+  - IFileDecoder[]                 => Singleton                                   => Optional
   
 ### Memory Services
-- IQueueStorage                 => Singleton!                                     => Required
-- IVectorStorage                => Singleton!                                     => Required
-- IEmbeddingService             => Singleton!                                     => Required
+- IQueueStorage                 => Singleton                                      => Required
+- IVectorStorage                => Singleton                                      => Required
+- IEmbeddingService             => Singleton                                      => Required
 - IPipelineObserver             => Singleton | Scoped | Transient                 => Optional
 - IPipelineHandler[]            => Singleton | Scoped | Transient                 => Optional

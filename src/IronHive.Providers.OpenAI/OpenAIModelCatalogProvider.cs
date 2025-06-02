@@ -28,7 +28,7 @@ public class OpenAIModelCatalogProvider : IModelCatalogProvider
         return models.Select(m => new ModelSummary
         {
             Provider = ProviderName,
-            Id = m.Id,
+            ModelId = m.Id,
         });
     }
 
@@ -43,7 +43,7 @@ public class OpenAIModelCatalogProvider : IModelCatalogProvider
             ? new ModelDetails
             {
                 Provider = ProviderName,
-                Id = model.Id,
+                ModelId = model.Id,
                 OwnedBy = model.OwnedBy,
                 CreatedAt = model.Created,
             }
