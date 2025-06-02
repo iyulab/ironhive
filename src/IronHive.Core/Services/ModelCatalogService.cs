@@ -5,7 +5,7 @@ namespace IronHive.Core.Services;
 
 public class ModelCatalogService : IModelCatalogService
 {
-    private readonly IReadOnlyDictionary<string, IModelCatalogProvider> _providers;
+    private readonly Dictionary<string, IModelCatalogProvider> _providers;
 
     public ModelCatalogService(IEnumerable<IModelCatalogProvider> providers)
     {
@@ -18,12 +18,12 @@ public class ModelCatalogService : IModelCatalogService
     {
         var models = new List<ModelSummary>();
 
-        foreach (var (_, provider) in _providers)
+        foreach (var provider in _providers.Values)
         {
             try
             {
-                var providerModels = await provider.ListModelsAsync(cancellationToken);
-                models.AddRange(providerModels);
+                var smmaries = await provider.ListModelsAsync(cancellationToken);
+                models.AddRange(smmaries);
             }
             catch(HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
             {
@@ -41,9 +41,9 @@ public class ModelCatalogService : IModelCatalogService
         string modelId, 
         CancellationToken cancellationToken = default)
     {
-        if (_providers.TryGetValue(provider, out var pro))
+        if (_providers.TryGetValue(provider, out var service))
         {
-            return await pro.FindModelAsync(modelId, cancellationToken);
+            return await service.FindModelAsync(modelId, cancellationToken);
         }
         else
         {

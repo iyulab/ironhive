@@ -1,5 +1,4 @@
 ﻿using IronHive.Abstractions.Tools;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace IronHive.Core.Tools;
 
@@ -7,13 +6,10 @@ namespace IronHive.Core.Tools;
 public class ToolPluginManager : IToolPluginManager
 {
     private const char Delimiter = '_';
-    private readonly IServiceProvider _provider;
 
-    public ToolPluginManager(IServiceProvider provider)
+    public ToolPluginManager(IEnumerable<IToolPlugin> plugins)
     {
-        _provider = provider;
-        Plugins = provider.GetServices<IToolPlugin>()
-            .ToDictionary(plugin => plugin.PluginName, plugin => plugin);
+        Plugins = plugins.ToDictionary(plugin => plugin.PluginName, plugin => plugin);
     }
 
     /// <inheritdoc />

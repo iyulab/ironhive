@@ -1,15 +1,14 @@
-﻿using IronHive.Abstractions;
-using IronHive.Abstractions.Embedding;
+﻿using IronHive.Abstractions.Embedding;
 
 namespace IronHive.Core.Services;
 
 public class EmbeddingService : IEmbeddingService
 {
-    private readonly IHiveServiceStore _store;
+    private readonly Dictionary<string, IEmbeddingProvider> _providers;
 
-    public EmbeddingService(IHiveServiceStore store)
+    public EmbeddingService(IEnumerable<IEmbeddingProvider> providers)
     {
-        _store = store;
+        _providers = providers.ToDictionary(p => p.ProviderName, p => p);
     }
 
     /// <inheritdoc />
@@ -19,10 +18,11 @@ public class EmbeddingService : IEmbeddingService
         string input,
         CancellationToken cancellationToken = default)
     {
-        if (!_store.TryGetService<IEmbeddingProvider>(provider, out var connector))
+        if (!_providers.TryGetValue(provider, out var service))
             throw new KeyNotFoundException($"Service key '{provider}' not found.");
 
-        return await connector.EmbedAsync(model, input, cancellationToken);
+        var result = await service.EmbedAsync(model, input, cancellationToken);
+        return result;
     }
 
     /// <inheritdoc />
@@ -32,9 +32,10 @@ public class EmbeddingService : IEmbeddingService
         IEnumerable<string> inputs,
         CancellationToken cancellationToken = default)
     {
-        if (!_store.TryGetService<IEmbeddingProvider>(provider, out var connector))
+        if (!_providers.TryGetValue(provider, out var service))
             throw new KeyNotFoundException($"Service key '{provider}' not found.");
 
-        return await connector.EmbedBatchAsync(model, inputs, cancellationToken);
+        var results = await service.EmbedBatchAsync(model, inputs, cancellationToken);
+        return results;
     }
 }

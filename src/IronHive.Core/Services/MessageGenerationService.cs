@@ -1,17 +1,15 @@
-﻿using IronHive.Abstractions;
+﻿using System.Runtime.CompilerServices;
 using IronHive.Abstractions.Message;
 using IronHive.Abstractions.Message.Content;
 using IronHive.Abstractions.Message.Roles;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Utilities;
-using Json.Schema.Generation.Intents;
-using System.Runtime.CompilerServices;
 
 namespace IronHive.Core.Services;
 
 public class MessageGenerationService : IMessageGenerationService
 {
-    private readonly IReadOnlyDictionary<string, IMessageGenerationProvider> _providers;
+    private readonly Dictionary<string, IMessageGenerationProvider> _providers;
     private readonly IToolPluginManager _plugins;
 
     public MessageGenerationService(IEnumerable<IMessageGenerationProvider> providers, IToolPluginManager plugins)
@@ -47,7 +45,7 @@ public class MessageGenerationService : IMessageGenerationService
             }
             else
             {
-                message = new AssistantMessage { Id = Guid.NewGuid().ToShort() };
+                message = new AssistantMessage { Id = Guid.NewGuid().ToString() };
             }
 
             var res = await provider.GenerateMessageAsync(request, cancellationToken);
@@ -89,6 +87,7 @@ public class MessageGenerationService : IMessageGenerationService
         if (!_providers.TryGetValue(request.Provider, out var provider))
             throw new KeyNotFoundException($"Service key '{request.Provider}' not found.");
 
+        string messageId = string.Empty;
         MessageDoneReason? reason = null;
         MessageTokenUsage? usage = null;
 
@@ -100,6 +99,7 @@ public class MessageGenerationService : IMessageGenerationService
             // 마지막 메시지가 어시스턴트 메시지인 경우, 툴 사용을 확인하고, 메시지를 이어갑니다.
             if (request.Messages.LastOrDefault() is AssistantMessage message)
             {
+                messageId = message.Id;
                 await foreach (var res in ProcessToolContentAsync(message, cancellationToken))
                 {
                     yield return res;
@@ -108,7 +108,8 @@ public class MessageGenerationService : IMessageGenerationService
             // 마지막 메시지가 어시스턴트 메시지가 아닌 경우, 새로운 메시지를 생성합니다.
             else
             {
-                message = new AssistantMessage { Id = Guid.NewGuid().ToShort() };
+                messageId = Guid.NewGuid().ToString();
+                message = new AssistantMessage { Id = messageId };
             }
 
             // 현재 루프에서 생성된 컨텐츠를 저장할 메시지 컨텐츠 스택 객체
@@ -117,64 +118,40 @@ public class MessageGenerationService : IMessageGenerationService
             {
                 if (res is StreamingMessageBeginResponse mbr)
                 {
+                    mbr.Id = messageId;
                     yield return mbr;
                 }
                 else if (res is StreamingContentAddedResponse car)
                 {
+                    car.Index = message.Content.Count + car.Index;
                     stack.Add(car.Content is ToolMessageContent tool
                         ? PrepareToolContent(tool, request.Tools)
                         : car.Content);
-                    var index = message.Content.Count + car.Index;
-                    yield return new StreamingContentAddedResponse
-                    {
-                        Index = index,
-                        Content = car.Content
-                    };
+                    yield return car;
                 }
                 else if (res is StreamingContentDeltaResponse cdr)
                 {
-                    var index = message.Content.Count + cdr.Index;
+                    cdr.Index = message.Content.Count + cdr.Index;
                     if (cdr.Delta is TextDeltaContent text)
                     {
                         var content = stack.ElementAt(cdr.Index) as TextMessageContent
                             ?? throw new InvalidOperationException("Expected TextMessageContent type for delta processing.");
-                        content.Value += text.Text;
-                        yield return new StreamingContentDeltaResponse
-                        {
-                            Index = index,
-                            Delta = new TextDeltaContent
-                            {
-                                Text = text.Text,
-                            }
-                        };
+                        content.Value += text.Value;
+                        yield return cdr;
                     }
                     else if (cdr.Delta is ThinkingDeltaContent thinking)
                     {
                         var content = stack.ElementAt(cdr.Index) as ThinkingMessageContent
                             ?? throw new InvalidOperationException("Expected AssistantThinkingContent type for delta processing.");
                         content.Value += thinking.Data;
-                        yield return new StreamingContentDeltaResponse
-                        {
-                            Index = index,
-                            Delta = new ThinkingDeltaContent
-                            {
-                                Data = thinking.Data,
-                            }
-                        };
+                        yield return cdr;
                     }
                     else if (cdr.Delta is ToolDeltaContent tool)
                     {
                         var content = stack.ElementAt(cdr.Index) as ToolMessageContent
                             ?? throw new InvalidOperationException("Expected ToolMessageContent type for delta processing.");
                         content.Input += tool.Input;
-                        yield return new StreamingContentDeltaResponse
-                        {
-                            Index = index,
-                            Delta = new ToolDeltaContent
-                            {
-                                Input = tool.Input,
-                            }
-                        };
+                        yield return cdr;
                     }
                     else
                     {
@@ -183,13 +160,12 @@ public class MessageGenerationService : IMessageGenerationService
                 }
                 else if (res is StreamingContentUpdatedResponse cur)
                 {
-                    var index = message.Content.Count + cur.Index;
+                    cur.Index = message.Content.Count + cur.Index;
                     if (cur.Updated is ThinkingUpdatedContent thinking)
                     {
                         var content = stack.ElementAt(cur.Index) as ThinkingMessageContent
                             ?? throw new InvalidOperationException("Expected ThinkingMessageContent type for updated content.");
                         content.Id = thinking.Id;
-                        cur.Index = index;
                         yield return cur;
                     }
                     else
@@ -199,18 +175,14 @@ public class MessageGenerationService : IMessageGenerationService
                 }
                 else if (res is StreamingContentCompletedResponse ccr)
                 {
-                    var index = message.Content.Count + ccr.Index;
-                    yield return new StreamingContentCompletedResponse
-                    {
-                        Index = index,
-                    };
+                    ccr.Index = message.Content.Count + ccr.Index;
+                    yield return ccr;
                 }
                 else if (res is StreamingMessageDoneResponse mdr)
                 {
                     // 스트리밍 메시지 종료 응답인 경우, 종료 이유와 토큰 사용량을 업데이트합니다.
                     reason = mdr.DoneReason;
                     usage = mdr.TokenUsage;
-                    yield return mdr;
                 }
                 else
                 {
@@ -238,8 +210,8 @@ public class MessageGenerationService : IMessageGenerationService
         // 마지막 메시지를 전달 합니다.
         yield return new StreamingMessageDoneResponse
         {
-            Id = request.Messages.LastOrDefault()?.Id ?? Guid.NewGuid().ToShort(),
-            DoneReason = MessageDoneReason.EndTurn,
+            Id = messageId,
+            DoneReason = reason,
             TokenUsage = usage,
             Timestamp = DateTime.UtcNow
         };

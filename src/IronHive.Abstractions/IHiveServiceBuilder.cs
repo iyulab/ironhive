@@ -98,18 +98,7 @@ public interface IHiveServiceBuilder
     /// <summary>
     /// Registers a file storage factory as a singleton in the service collection.
     /// </summary>
-    /// <param name="serviceKey">
-    /// A unique key used to identify the file storage provider in the file service.
-    /// </param>
-    /// <param name="implementationFactory">
-    /// A factory method to create the file storage.
-    /// The first parameter is the service provider and the second is a user-defined configuration object.
-    /// If null, the default implementation is used.
-    /// </param>
-    IHiveServiceBuilder AddFileStorage<TImplementation>(
-        string serviceKey,
-        Func<IServiceProvider, object?, TImplementation>? implementationFactory = null)
-        where TImplementation : class, IFileStorage;
+    IHiveServiceBuilder AddFileStorage(IFileStorage storage);
 
     /// <summary>
     /// Registers one or more file decoders as a singleton in the service collection.

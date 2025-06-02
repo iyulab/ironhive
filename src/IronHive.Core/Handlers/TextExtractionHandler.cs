@@ -20,7 +20,7 @@ public class TextExtractionHandler : IPipelineHandler
         var source = context.Source;
         if (source is TextMemorySource textSource)
         {
-            var text = textSource.Text;
+            var text = textSource.Value;
 
             context.Payload = text;
             return context;
@@ -28,9 +28,8 @@ public class TextExtractionHandler : IPipelineHandler
         else if (source is FileMemorySource fileSource)
         {
             using var stream = await _storages.ReadFileAsync(
-                provider: fileSource.Provider,
+                storage: fileSource.Storage,
                 filePath: fileSource.FilePath,
-                providerConfig: fileSource.ProviderConfig,
                 cancellationToken: cancellationToken);
             var text = await _decoders.DecodeAsync(
                 filePath: fileSource.FilePath,

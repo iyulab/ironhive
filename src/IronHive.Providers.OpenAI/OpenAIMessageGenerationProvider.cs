@@ -226,7 +226,7 @@ public class OpenAIMessageGenerationProvider : IMessageGenerationProvider
                         Index = 0,
                         Delta = new TextDeltaContent
                         {
-                            Text = text
+                            Value = text
                         }
                     };
                 }

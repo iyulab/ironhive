@@ -6,6 +6,11 @@
 public interface IFileStorage : IDisposable
 {
     /// <summary>
+    /// 저장소의 이름을 반환합니다.
+    /// </summary>
+    string StorageName { get; }
+
+    /// <summary>
     /// 지정한 접두어(prefix)를 가진 폴더 내의 파일 및 디렉토리의 목록을 반환합니다.
     /// 디렉토리는 '/'로 끝나는 문자열로 반환됩니다.
     /// (하위 폴더의 내용은 포함되지 않습니다.)

@@ -7,7 +7,7 @@ public class FileDecoderManager : IFileDecoderManager
     private readonly IEnumerable<IFileDecoder> _decoders;
 
     // 파일 확장자와 MimeType 매핑
-    private readonly IDictionary<string, string> _mapping = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    private readonly Dictionary<string, string> _mapping = new(StringComparer.OrdinalIgnoreCase)
     {
         { ".323", "text/h323" },
         { ".3g2", "video/3gpp2" },
@@ -416,13 +416,9 @@ public class FileDecoderManager : IFileDecoderManager
     /// <inheritdoc />
     public void SetMimeType(string extension, string mimeType)
     {
-        if (_mapping.ContainsKey(extension))
+        if (!_mapping.TryAdd(extension, mimeType))
         {
             _mapping[extension] = mimeType;
-        }
-        else
-        {
-            _mapping.Add(extension, mimeType);
         }
     }
 

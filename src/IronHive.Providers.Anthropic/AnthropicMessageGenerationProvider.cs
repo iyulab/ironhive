@@ -231,7 +231,7 @@ public class AnthropicMessageGenerationProvider : IMessageGenerationProvider
                         Index = index,
                         Delta = new TextDeltaContent
                         {
-                            Text = text.Text,
+                            Value = text.Text,
                         }
                     };
                 }

@@ -67,7 +67,7 @@ public partial class LocalVectorStorage : IVectorStorage
         {
             Id = string.Empty,
             SourceId = string.Empty,
-            Source = new TextMemorySource { Text = string.Empty },
+            Source = new TextMemorySource { Value = string.Empty },
             Vectors = new float[dimensions]
         };
         coll.Upsert(empty);

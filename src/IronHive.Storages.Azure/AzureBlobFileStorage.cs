@@ -9,13 +9,16 @@ public class AzureBlobFileStorage : IFileStorage
 {
     private readonly BlobContainerClient _client;
     
-    public string ContainerName { get; init; }
-
     public AzureBlobFileStorage(AzureBlobConfig config)
     {
         ContainerName = config.ContainerName;
         _client = CreateClient(config);
     }
+
+    /// <inheritdoc />
+    public required string StorageName { get; init; }
+
+    public string ContainerName { get; }
 
     public void Dispose()
     {

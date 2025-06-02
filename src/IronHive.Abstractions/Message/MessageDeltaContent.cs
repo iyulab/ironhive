@@ -11,7 +11,7 @@ public abstract class MessageDeltaContent
 
 public class TextDeltaContent : MessageDeltaContent
 {
-    public required string Text { get; set; }
+    public required string Value { get; set; }
 }
 
 public class ToolDeltaContent : MessageDeltaContent

@@ -5,6 +5,7 @@ using IronHive.Core.Storages;
 using IronHive.Abstractions;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Tools;
+using DocumentFormat.OpenXml.Office.CustomUI;
 
 namespace IronHive.Core;
 
@@ -55,7 +56,10 @@ public static class HiveServiceBuilderExtensions
     /// </summary>
     public static IHiveServiceBuilder AddDefaultFileStorages(this IHiveServiceBuilder builder)
     {
-        builder.AddFileStorage<LocalFileStorage>("local");
+        builder.AddFileStorage(new LocalFileStorage
+        { 
+            StorageName = "local"
+        });
         return builder;
     }
 }

@@ -1,69 +1,79 @@
-﻿using IronHive.Abstractions;
-using IronHive.Abstractions.Files;
-using Microsoft.Extensions.DependencyInjection;
+﻿using IronHive.Abstractions.Files;
 
 namespace IronHive.Core.Services;
 
 public class FileStorageManager : IFileStorageManager
 {
-    private readonly IServiceProvider _services;
-    private readonly IReadOnlyDictionary<string, Func<IServiceProvider, object?, IFileStorage>> _factories;
+    private readonly Dictionary<string, IFileStorage> _storages;
 
-    public FileStorageManager(IServiceProvider services)
+    public FileStorageManager(IEnumerable<IFileStorage> storages)
     {
-        _services = services;
-        _factories = services.GetRequiredService<IHiveServiceStore>().GetFactories<IFileStorage>();
+        _storages = storages.ToDictionary(s => s.StorageName, s => s);
     }
 
     /// <inheritdoc />
-    public IFileStorage CreateFileStorage(string provider, object? providerConfig = null)
-    {
-        if (_factories.TryGetValue(provider, out var factory))
-            return factory(_services, providerConfig);
-        else
-            throw new InvalidOperationException($"Unknown file storage provider: {provider}");
-    }
-
-    /// <inheritdoc />
-    public Task<IEnumerable<string>> ListAsync(
-        string provider,
+    public async Task<IEnumerable<string>> ListAsync(
+        string storage,
         string? prefix = null,
         int depth = 1,
-        object? providerConfig = null,
         CancellationToken cancellationToken = default)
-        => CreateFileStorage(provider, providerConfig).ListAsync(prefix, depth, cancellationToken);
+    {
+        if (!_storages.TryGetValue(storage, out var service))
+            throw new ArgumentException($"저장소 '{storage}'을(를) 찾을 수 없습니다.", nameof(storage));
+        
+        var result = await service.ListAsync(prefix, depth, cancellationToken);
+        return result;
+    }
 
     /// <inheritdoc />
-    public Task<bool> ExistsAsync(
-        string provider,
+    public async Task<bool> ExistsAsync(
+        string storage,
         string path,
-        object? providerConfig = null,
         CancellationToken cancellationToken = default)
-        => CreateFileStorage(provider, providerConfig).ExistsAsync(path, cancellationToken);
+    {
+        if (!_storages.TryGetValue(storage, out var service))
+            throw new ArgumentException($"저장소 '{storage}'을(를) 찾을 수 없습니다.", nameof(storage));
+
+        var result = await service.ExistsAsync(path, cancellationToken);
+        return result;
+    }
 
     /// <inheritdoc />
-    public Task<Stream> ReadFileAsync(
-        string provider,
+    public async Task<Stream> ReadFileAsync(
+        string storage,
         string filePath,
-        object? providerConfig = null,
         CancellationToken cancellationToken = default)
-        => CreateFileStorage(provider, providerConfig).ReadFileAsync(filePath, cancellationToken);
+    {
+        if (!_storages.TryGetValue(storage, out var service))
+            throw new ArgumentException($"저장소 '{storage}'을(를) 찾을 수 없습니다.", nameof(storage));
+
+        var result = await service.ReadFileAsync(filePath, cancellationToken);
+        return result;
+    }
 
     /// <inheritdoc />
-    public Task WriteFileAsync(
-        string provider,
+    public async Task WriteFileAsync(
+        string storage,
         string filePath,
         Stream data,
         bool overwrite = true,
-        object? providerConfig = null,
         CancellationToken cancellationToken = default)
-        => CreateFileStorage(provider, providerConfig).WriteFileAsync(filePath, data, overwrite, cancellationToken);
+    {
+        if (!_storages.TryGetValue(storage, out var service))
+            throw new ArgumentException($"저장소 '{storage}'을(를) 찾을 수 없습니다.", nameof(storage));
+
+        await service.WriteFileAsync(filePath, data, overwrite, cancellationToken);
+    }
 
     /// <inheritdoc />
-    public Task DeleteAsync(
-        string provider,
+    public async Task DeleteAsync(
+        string storage,
         string path,
-        object? providerConfig = null,
         CancellationToken cancellationToken = default)
-        => CreateFileStorage(provider, providerConfig).DeleteAsync(path, cancellationToken);
+    {
+        if (!_storages.TryGetValue(storage, out var service))
+            throw new ArgumentException($"저장소 '{storage}'을(를) 찾을 수 없습니다.", nameof(storage));
+
+        await service.DeleteAsync(path, cancellationToken);
+    }
 }

@@ -17,12 +17,9 @@ namespace IronHive.Core;
 /// <inheritdoc />
 public class HiveServiceBuilder : IHiveServiceBuilder
 {
-    private readonly IHiveServiceStore _store;
-
     public HiveServiceBuilder(IServiceCollection? services = null)
     {
         Services = services ?? new ServiceCollection();
-        _store = new HiveServiceStore();
 
         // 필수 서비스 없을 경우 등록
         AddRequiredServices();
@@ -96,13 +93,9 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     }
 
     /// <inheritdoc />
-    public IHiveServiceBuilder AddFileStorage<TImplementation>(
-        string serviceKey, 
-        Func<IServiceProvider, object?, TImplementation>? implementationFactory = null)
-        where TImplementation : class, IFileStorage
+    public IHiveServiceBuilder AddFileStorage(IFileStorage storage)
     {
-        implementationFactory ??= (sp, _) => ActivatorUtilities.CreateInstance<TImplementation>(sp);
-        _store.AddFactory<IFileStorage>(serviceKey, implementationFactory);
+        Services.AddSingleton(storage);
         return this;
     }
 
@@ -141,8 +134,6 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     // 필수 서비스 등록
     private void AddRequiredServices()
     {
-        // Connectors, FileStorage 인스턴스 컨테이너
-        Services.AddSingleton<IHiveServiceStore>(_store);
         // AI 서비스
         Services.TryAddSingleton<IModelCatalogService, ModelCatalogService>();
         Services.TryAddSingleton<IMessageGenerationService, MessageGenerationService>();
@@ -228,17 +219,6 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     // 서비스 등록 확인
     private bool ContainsAny<TService>()
     {
-        var serviceType = typeof(TService);
-
-        if (serviceType == typeof(IModelCatalogProvider))
-            return _store.GetServices<IModelCatalogProvider>().Any();
-        else if (serviceType == typeof(IMessageGenerationProvider))
-            return _store.GetServices<IMessageGenerationProvider>().Any();
-        else if (serviceType == typeof(IEmbeddingProvider))
-            return _store.GetServices<IEmbeddingProvider>().Any();
-        else if (serviceType == typeof(IFileStorage))
-            return _store.GetFactories<IFileStorage>().Any();
-        else
-            return Services.Any(x => x.ServiceType == typeof(TService));
+        return Services.Any(x => x.ServiceType == typeof(TService));
     }
 }

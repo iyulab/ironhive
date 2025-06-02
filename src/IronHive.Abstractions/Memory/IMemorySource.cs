@@ -27,7 +27,7 @@ public abstract class MemorySourceBase : IMemorySource
 /// </summary>
 public class TextMemorySource : MemorySourceBase
 {
-    public required string Text { get; set; }
+    public required string Value { get; set; }
 }
 
 /// <summary>
@@ -35,9 +35,7 @@ public class TextMemorySource : MemorySourceBase
 /// </summary>
 public class FileMemorySource : MemorySourceBase
 {
-    public required string Provider { get; set; }
-
-    public object? ProviderConfig { get; set; }
+    public required string Storage { get; set; }
 
     public required string FilePath { get; set; }
 

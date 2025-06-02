@@ -11,8 +11,6 @@ public class AmazonS3FileStorage : IFileStorage
 {
     private readonly AmazonS3Client _client;
 
-    public string BucketName { get; init; }
-
     public AmazonS3FileStorage(AmazonS3Config config)
     {
         if (string.IsNullOrWhiteSpace(config.BucketName))
@@ -21,6 +19,11 @@ public class AmazonS3FileStorage : IFileStorage
         BucketName = config.BucketName;
         _client = CreateClient(config);
     }
+
+    /// <inheritdoc />
+    public required string StorageName { get; init; }
+
+    public string BucketName { get; }
 
     public void Dispose()
     {
