@@ -1,6 +1,6 @@
-﻿using IronHive.Plugins.MCP;
+﻿using IronHive.Abstractions;
 
-namespace IronHive.Abstractions;
+namespace IronHive.Plugins.MCP;
 
 public static class HiveServiceBuilderExtensions
 {

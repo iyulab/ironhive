@@ -2,10 +2,10 @@ import { LitElement, css, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { Router } from '@lit-labs/router';
 
-import "@iyulab/chat-components";
-import "@iyulab/chat-components/styles/chat-styles.css";
-import "@iyulab/chat-components/styles/github-markdown.css";
-import '@shoelace-style/shoelace';
+import "@iyulab/chat-components/components";
+import "@iyulab/chat-components/styles/basic.css";
+import "@iyulab/chat-components/styles/github.css";
+import "@iyulab/chat-components/styles/highlight.css";
 import "./pages";
 
 @customElement('main-app')
@@ -23,8 +23,21 @@ export class MainApp extends LitElement {
     }
   });
 
+  @state() 
+  darkMode: boolean = false;
+
   @property({ type: String, reflect: true }) 
   mode: 'flexible' | 'fixed' = 'fixed';
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    this.darkMode = localStorage.getItem('dark') === 'true' || false;
+    if (this.darkMode) {
+      document.documentElement.setAttribute('theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('theme');
+    }
+  }
 
   render() {
     return html`
@@ -39,8 +52,10 @@ export class MainApp extends LitElement {
     const html = document.documentElement;
     if (html.hasAttribute('theme')) {
       html.removeAttribute('theme');
+      localStorage.removeItem('dark');
     } else {
       html.setAttribute('theme', 'dark');
+      localStorage.setItem('dark', 'true');
     }
   }
 

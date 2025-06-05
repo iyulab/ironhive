@@ -73,7 +73,7 @@ public class AnthropicMessageGenerationProvider : IMessageGenerationProvider
                 content.Add(new ToolMessageContent
                 {
                     IsCompleted = false,
-                    IsApproved = false,
+                    IsApproved = !request.Tools.First(t => t.Name == tool.Name).RequiresApproval,
                     Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
                     Name = tool.Name ?? string.Empty,
                     Input = JsonSerializer.Serialize(tool.Input)
@@ -193,7 +193,7 @@ public class AnthropicMessageGenerationProvider : IMessageGenerationProvider
                         Content = new ToolMessageContent
                         {
                             IsCompleted = false,
-                            IsApproved = false,
+                            IsApproved = !request.Tools.First(t => t.Name == tool.Name).RequiresApproval,
                             Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
                             Name = tool.Name ?? string.Empty,
                         }

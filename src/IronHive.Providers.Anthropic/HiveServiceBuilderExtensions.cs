@@ -1,6 +1,6 @@
-﻿using IronHive.Abstractions;
+﻿using IronHive.Providers.Anthropic;
 
-namespace IronHive.Providers.Anthropic;
+namespace IronHive.Abstractions;
 
 public static class HiveServiceBuilderExtensions
 {

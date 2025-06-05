@@ -1,6 +1,6 @@
-﻿using IronHive.Abstractions;
+﻿using IronHive.Providers.Ollama;
 
-namespace IronHive.Providers.Ollama;
+namespace IronHive.Abstractions;
 
 public static class HiveServiceBuilderExtensions
 {

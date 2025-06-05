@@ -1,5 +1,5 @@
 import { LitElement, PropertyValues, css, html } from "lit";
-import { customElement, query, state } from "lit/decorators.js";
+import { customElement, state } from "lit/decorators.js";
 
 import type { AssistantMessage, Message, ModelSummary } from "@iyulab/chat-components";
 import { CanceledError, CancelToken } from '@iyulab/http-client';
@@ -9,15 +9,13 @@ import { Api, MessageGenerationRequest } from "../services";
 export class ChatPage extends LitElement {
   private canceller = new CancelToken();
 
-  @query('message-box') messageBoxEl!: LitElement;
-
   @state() loading: boolean = false;
   @state() error?: { status: "danger" | "warning" | "info", message: string };
 
   @state() models: ModelSummary[] = [];
-  @state() context: { model?: ModelSummary; messages: Message[]; usages: number; } = {
-    model: undefined, messages: [], usages: 0 
-  };
+  @state() model?: ModelSummary;
+  @state() messages: Message[] = [];
+  @state() usages: number = 0;
 
   protected firstUpdated(changedProperties: PropertyValues) {
     super.firstUpdated(changedProperties);
@@ -27,59 +25,62 @@ export class ChatPage extends LitElement {
       .then(text => JSON.parse(text))
       .then((json: any) => {
         this.models = json.models;
-        this.context.model = this.models.at(0) || undefined;
+        const model = localStorage.getItem('model');
+        this.model = model ? JSON.parse(model) : this.models.at(0) || undefined;
       });
 
-    this.context = JSON.parse(localStorage.getItem('history') || '{"model": null, "messages": [], "usages": 0}');
+    this.messages = JSON.parse(localStorage.getItem('messages') || '[]');
+    this.usages = parseInt(localStorage.getItem('usages') || '0', 0);
   }
 
   render() {
     return html`
       <div class="container">
-        <status-panel
+        <uc-status-panel
           .status=${this.loading ? 'processing' : 'pending'}
-        ></status-panel>
+        ></uc-status-panel>
         
-        <token-panel
-          .value=${this.context.usages}
-          .maxValue=${this.context.model?.contextLength || 0}
-        ></token-panel>
+        <uc-token-panel
+          .value=${this.usages}
+          .maxValue=${this.model?.contextLength || 0}
+        ></uc-token-panel>
 
-        <message-alert
+        <uc-message-alert
           ?open=${this.error !== undefined}
           timeout="5000"
           status=${this.error?.status || 'danger'}
           .value=${this.error?.message}
-        ></message-alert>
+        ></uc-message-alert>
 
-        <message-box
-          .messages=${this.context.messages}
+        <uc-message-box
+          .messages=${this.messages}
           @tool-change=${this.change}
-        ></message-box>
+        ></uc-message-box>
 
-        <message-input
+        <uc-message-input
           .loading=${this.loading}
           placeholder="Type a message..."
           @send=${this.submit}
           @stop=${() => this.canceller.cancel()}>
           <uc-model-select
             .models=${this.models}
-            .selectedModel=${this.context.model}
-            @select=${(e: any) => this.context.model = e.detail}
+            .selectedModel=${this.model}
+            @select=${(e: any) => {this.model = e.detail; localStorage.setItem('model', JSON.stringify(this.model))}}
           ></uc-model-select>
           <div style="flex: 1"></div>
           <uc-clear-button
             @click=${this.clear}
           ></uc-clear-button>
-        </message-input>
+        </uc-message-input>
       </div>
     `;
   }
 
   private clear() {
-    this.context.messages = [];
-    this.context.usages = 0;
-    localStorage.setItem('history', JSON.stringify(this.context));
+    this.messages = [];
+    this.usages = 0;
+    localStorage.setItem('messages', JSON.stringify(this.messages));
+    localStorage.setItem('usages', this.usages.toString());
     this.requestUpdate();
   }
 
@@ -90,13 +91,13 @@ export class ChatPage extends LitElement {
       content: [{ type: 'text', value: value }],
       timestamp: new Date().toISOString()
     }
-    this.context.messages = [...this.context.messages, user_msg];
+    this.messages = [...this.messages, user_msg];
     await this.generate();
   }
 
   private change = async (e: any) => {
-    this.context.messages = e.detail;
-    const last = this.context.messages[this.context.messages.length - 1];
+    this.messages = e.detail;
+    const last = this.messages[this.messages.length - 1];
     if (last.role === 'assistant') {
       for (const content of last.content || []) {
         if (content.type === 'tool' && 
@@ -115,26 +116,25 @@ export class ChatPage extends LitElement {
       this.error = undefined;
       this.loading = true;
 
-      if (!this.context.model) {
+      if (!this.model) {
         this.error = { status: 'warning', message: '모델을 선택하세요.' };
         return;
       }
 
       const request: MessageGenerationRequest = {
-        provider: this.context.model.provider,
-        model: this.context.model.modelId,
-        messages: this.context.messages,
+        provider: this.model.provider,
+        model: this.model.modelId,
+        messages: this.messages,
         system: "유저가 요구하지 않는 한 너무 길게 대답하지 마세요.",
       }
-      console.debug('요청 메시지:', request);
+      // console.debug('요청 메시지:', request);
 
       for await (const res of Api.conversation(request, this.canceller)) { 
-        console.debug(res);
-        let last = this.context.messages[this.context.messages.length - 1];
+        // console.debug(res);
+        let last = this.messages[this.messages.length - 1];
         if (last.role !== 'assistant') {
-          this.context.messages = [...this.context.messages, { role: 'assistant', content: [] }];
-          this.messageBoxEl.requestUpdate();
-          last = this.context.messages[this.context.messages.length - 1] as AssistantMessage;
+          this.messages = [...this.messages, { role: 'assistant', content: [] }];
+          last = this.messages[this.messages.length - 1] as AssistantMessage;
         }
   
         if (res.type === 'message.begin') {
@@ -177,13 +177,15 @@ export class ChatPage extends LitElement {
         } else if (res.type === 'message.done') {
           last.id ||= res.id;
           last.timestamp = res.timestamp || new Date().toISOString();
-          this.context.usages = res.tokenUsage?.TotalTokens || 0;
+          this.usages = res.tokenUsage?.totalTokens || 0;
+          console.debug('토큰 사용량:', this.usages);
         }
 
-        this.messageBoxEl.requestUpdate();
+        this.messages = [...this.messages];
       }
 
-      localStorage.setItem('history', JSON.stringify(this.context));
+      localStorage.setItem('messages', JSON.stringify(this.messages));
+      localStorage.setItem('usages', this.usages.toString());
     } catch (e: any) {
       if (e instanceof CanceledError) {
         this.error = { status: 'info', message: '요청이 취소되었습니다.' };
@@ -217,21 +219,21 @@ export class ChatPage extends LitElement {
       overflow: hidden;
     }
 
-    status-panel {
+    uc-status-panel {
       position: absolute;
       z-index: 100;
       top: 16px;
       left: 16px;
     }
 
-    token-panel {
+    uc-token-panel {
       position: absolute;
       z-index: 100;
       top: 120px;
       left: 16px;
     }
 
-    message-alert {
+    uc-alert {
       position: absolute;
       z-index: 100;
       max-width: 60%;
@@ -240,7 +242,7 @@ export class ChatPage extends LitElement {
       transform: translateX(-50%);
     }
 
-    message-box {
+    uc-message-box {
       position: relative;
       width: 100%;
       height: 100%;
@@ -248,7 +250,7 @@ export class ChatPage extends LitElement {
       --messages-padding: 10px 20% 160px 20%;
     }
 
-    message-input {
+    uc-message-input {
       position: absolute;
       z-index: 100;
       width: 60%;

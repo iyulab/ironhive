@@ -27,7 +27,7 @@ export class HomePage extends LitElement {
     `;
   }
 
-  private clicked = async (e: any) => {
+  private clicked = async () => {
     this.loading = !this.loading;
     this.open = !this.open;
   }

@@ -2,11 +2,10 @@
 using IronHive.Core.Decoders;
 using IronHive.Core.Handlers;
 using IronHive.Core.Storages;
-using IronHive.Abstractions;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Tools;
 
-namespace IronHive.Core;
+namespace IronHive.Abstractions;
 
 public static class HiveServiceBuilderExtensions
 {
@@ -21,6 +20,18 @@ public static class HiveServiceBuilderExtensions
             {
                 PluginName = pluginName
             };
+        });
+        return builder;
+    }
+
+    /// <summary>
+    /// Add a local file storage to the service builder.
+    /// </summary>
+    public static IHiveServiceBuilder AddLocalFileStorage(this IHiveServiceBuilder builder, string storageName)
+    {
+        builder.AddFileStorage(new LocalFileStorage
+        {
+            StorageName = storageName
         });
         return builder;
     }
@@ -47,18 +58,6 @@ public static class HiveServiceBuilderExtensions
         builder.AddPipelineHandler<TextChunkerHandler>("split_text");
         builder.AddPipelineHandler<QnAExtractionHandler>("gen_QnA");
         builder.AddPipelineHandler<VectorEmbeddingHandler>("gen_vectors");
-        return builder;
-    }
-
-    /// <summary>
-    /// "local" file storage is registered by default.
-    /// </summary>
-    public static IHiveServiceBuilder AddDefaultFileStorages(this IHiveServiceBuilder builder)
-    {
-        builder.AddFileStorage(new LocalFileStorage
-        { 
-            StorageName = "local"
-        });
         return builder;
     }
 }

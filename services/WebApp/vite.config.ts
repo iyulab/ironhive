@@ -1,11 +1,10 @@
 import { defineConfig } from 'vite';
-import dts from "vite-plugin-dts";
 import { resolve } from 'path';
 
 export default defineConfig({
   root: resolve(__dirname, 'src'),
-  envDir: resolve(__dirname),
   publicDir: resolve(__dirname, 'public'),
+  envDir: resolve(__dirname),
   build: {
     copyPublicDir: true,
     emptyOutDir: true,
@@ -14,9 +13,5 @@ export default defineConfig({
       input: resolve(__dirname, 'src/index.html'),
     }
   },
-  plugins: [
-    dts({
-      include: [ "src/**/*"] 
-    }),
-  ]
+  plugins: []
 });

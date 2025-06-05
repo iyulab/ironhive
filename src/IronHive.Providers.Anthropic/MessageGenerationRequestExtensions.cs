@@ -4,10 +4,12 @@ using IronHive.Abstractions.Message;
 using IronHive.Abstractions.Message.Content;
 using IronHive.Abstractions.Message.Roles;
 using IronHive.Providers.Anthropic.Messages;
-using TextMessageContent = IronHive.Abstractions.Message.Content.TextMessageContent;
-using ThinkingMessageContent = IronHive.Abstractions.Message.Content.ThinkingMessageContent;
 using AnthropicMessage = IronHive.Providers.Anthropic.Messages.Message;
+using TextMessageContent = IronHive.Abstractions.Message.Content.TextMessageContent;
 using AnthropicTextMessageContent = IronHive.Providers.Anthropic.Messages.TextMessageContent;
+using ImageMessageContent = IronHive.Abstractions.Message.Content.ImageMessageContent;
+using AnthropicImageMessageContent = IronHive.Providers.Anthropic.Messages.ImageMessageContent;
+using ThinkingMessageContent = IronHive.Abstractions.Message.Content.ThinkingMessageContent;
 using AnthropicThinkingMessageContent = IronHive.Providers.Anthropic.Messages.ThinkingMessageContent;
 
 namespace IronHive.Providers.Anthropic;
@@ -29,6 +31,7 @@ internal static class MessageGenerationRequestExtensions
                 var um = new AnthropicMessage(MessageRole.User);
                 foreach (var item in user.Content)
                 {
+                    // 텍스트 메시지
                     if (item is TextMessageContent text)
                     {
                         um.Content.Add(new AnthropicTextMessageContent
@@ -36,9 +39,24 @@ internal static class MessageGenerationRequestExtensions
                             Text = text.Value ?? string.Empty
                         });
                     }
-                    else if (item is FileMessageContent file)
+                    // 이미지 메시지
+                    else if (item is ImageMessageContent image)
                     {
-                        throw new NotSupportedException("not supported file yet");
+                        um.Content.Add(new AnthropicImageMessageContent
+                        { 
+                            Source = new Base64ImageSource
+                            {
+                                MediaType = image.Format switch
+                                {
+                                    ImageFormat.Png => "image/png",
+                                    ImageFormat.Jpeg => "image/jpeg",
+                                    ImageFormat.Gif => "image/gif",
+                                    ImageFormat.Webp => "image/webp",
+                                    _ => throw new NotSupportedException($"not supported image format {image.Format}")
+                                },
+                                Data = image.Data
+                            }
+                        });
                     }
                     else
                     {
@@ -59,7 +77,7 @@ internal static class MessageGenerationRequestExtensions
                     var um = new AnthropicMessage(MessageRole.User);
 
                     // 추론 모델은 툴 사용 시나리오에서
-                    // ToolUse 이전에 반드시 추론 메시지가 존재해야 합니다.
+                    // ToolUseMessageContent 이전에 반드시 추론 메시지가 존재해야 합니다.
                     var isLastMessage = message == request.Messages.Last();
                     var isFirstGroup = group == groups.First();
                     if (isLastMessage && isFirstGroup && isThinking)

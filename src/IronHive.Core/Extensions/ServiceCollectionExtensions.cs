@@ -13,7 +13,7 @@ public static class ServiceCollectionExtensions
         return builder;
     }
 
-    public static IHiveServiceBuilder AddHiveServiceDefault(this IServiceCollection services)
+    public static IHiveServiceBuilder AddDefaultHiveServices(this IServiceCollection services)
     {
         var builder = services.AddHiveServiceCore();
         builder.AddDefaultFileDecoders();

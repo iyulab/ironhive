@@ -1,6 +1,6 @@
-﻿using IronHive.Abstractions;
+﻿using IronHive.Providers.OpenAI;
 
-namespace IronHive.Providers.OpenAI;
+namespace IronHive.Abstractions;
 
 public static class HiveServiceBuilderExtensions
 {

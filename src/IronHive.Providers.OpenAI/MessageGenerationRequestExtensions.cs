@@ -8,6 +8,8 @@ using OpenAIUserMessage = IronHive.Providers.OpenAI.ChatCompletion.UserMessage;
 using OpenAIAssistantMessage = IronHive.Providers.OpenAI.ChatCompletion.AssistantMessage;
 using TextMessageContent = IronHive.Abstractions.Message.Content.TextMessageContent;
 using OpenAITextMessageContent = IronHive.Providers.OpenAI.ChatCompletion.TextMessageContent;
+using ImageMessageContent = IronHive.Abstractions.Message.Content.ImageMessageContent;
+using OpenAIImageMessageContent = IronHive.Providers.OpenAI.ChatCompletion.ImageMessageContent;
 
 namespace IronHive.Providers.OpenAI;
 
@@ -35,17 +37,24 @@ internal static class MessageGenerationRequestExtensions
                 var um = new OpenAIUserMessage();
                 foreach (var item in user.Content)
                 {
+                    // 텍스트 메시지
                     if (item is TextMessageContent text)
                     {
-                        // 텍스트 메시지
                         um.Content.Add(new OpenAITextMessageContent
                         {
                             Text = text.Value ?? string.Empty
                         });
                     }
-                    else if (item is FileMessageContent file)
+                    // 이미지 메시지
+                    else if (item is ImageMessageContent image)
                     {
-                        throw new NotImplementedException("not supported file yet");
+                        um.Content.Add(new OpenAIImageMessageContent
+                        {
+                            ImageUrl = new ImageUrl
+                            {
+                                Url = image.Data
+                            }
+                        });
                     }
                     else
                     {

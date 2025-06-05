@@ -56,6 +56,20 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     }
 
     /// <inheritdoc />
+    public IHiveServiceBuilder AddFileStorage(IFileStorage storage)
+    {
+        Services.AddSingleton(storage);
+        return this;
+    }
+
+    /// <inheritdoc />
+    public IHiveServiceBuilder AddFileDecoder(IFileDecoder decoder)
+    {
+        Services.AddSingleton(decoder);
+        return this;
+    }
+
+    /// <inheritdoc />
     public IHiveServiceBuilder WithQueueStorage(IQueueStorage storage)
     {
         Services.RemoveAll<IQueueStorage>();
@@ -89,20 +103,6 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         where TImplementation : class, IPipelineHandler
     {
         AddKeyedService<IPipelineHandler, TImplementation>(serviceKey, lifetime, implementationFactory);
-        return this;
-    }
-
-    /// <inheritdoc />
-    public IHiveServiceBuilder AddFileStorage(IFileStorage storage)
-    {
-        Services.AddSingleton(storage);
-        return this;
-    }
-
-    /// <inheritdoc />
-    public IHiveServiceBuilder AddFileDecoder(IFileDecoder decoder)
-    {
-        Services.AddSingleton(decoder);
         return this;
     }
 

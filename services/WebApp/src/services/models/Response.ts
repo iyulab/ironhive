@@ -95,5 +95,5 @@ export interface ToolMessageUpdatedResponse {
 export interface MessageTokenUsage {
   inputTokens?: number;
   outputTokens?: number;
-  TotalTokens?: number;
+  totalTokens?: number;
 }

@@ -6,21 +6,22 @@
   "main": "src/index.js",
   "scripts": {
     "start": "vite --host 0.0.0.0 --port 3000 --open chat --force",
-    "build": "vite build"
+    "build": "eslint && vite build"
   },
   "workspaces": [
     "../../../node-packages/packages/http-client",
     "../../../node-packages/packages/chat-components"
   ],
   "devDependencies": {
+    "@eslint/js": "^9.28.0",
     "@iyulab/chat-components": "^0.1.0",
     "@iyulab/http-client": "^0.3.0",
     "@lit-labs/router": "^0.1.4",
-    "@shoelace-style/shoelace": "^2.20.1",
-    "@types/node": "^22.15.27",    
+    "@types/node": "^22.15.27",
     "eslint": "^9.27.0",
-    "marked": "^15.0.12",
+    "globals": "^16.2.0",
     "typescript": "^5.8.3",
+    "typescript-eslint": "^8.33.1",
     "vite": "^6.3.5",
     "vite-plugin-dts": "^4.5.4"
   }

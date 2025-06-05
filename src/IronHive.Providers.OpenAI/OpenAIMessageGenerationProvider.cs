@@ -8,7 +8,6 @@ using AssistantMessage = IronHive.Abstractions.Message.Roles.AssistantMessage;
 using OpenAIAssistantMessage = IronHive.Providers.OpenAI.ChatCompletion.AssistantMessage;
 using MessageContent = IronHive.Abstractions.Message.MessageContent;
 using OpenAIMessageContent = IronHive.Providers.OpenAI.ChatCompletion.MessageContent;
-using System.ComponentModel.DataAnnotations;
 
 namespace IronHive.Providers.OpenAI;
 
@@ -58,7 +57,7 @@ public class OpenAIMessageGenerationProvider : IMessageGenerationProvider
                 content.Add(new ToolMessageContent
                 {
                     IsCompleted = false,
-                    IsApproved = false,
+                    IsApproved = !request.Tools.First(t => t.Name == tool.Function?.Name).RequiresApproval,
                     Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
                     Name = tool.Function?.Name ?? string.Empty,
                     Input = tool.Function?.Arguments,
@@ -191,7 +190,7 @@ public class OpenAIMessageGenerationProvider : IMessageGenerationProvider
                                 current = (index + 1, new ToolMessageContent
                                 {
                                     IsCompleted = false,
-                                    IsApproved = false,
+                                    IsApproved = !request.Tools.First(t => t.Name == tool.Function?.Name).RequiresApproval,
                                     Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
                                     Name = tool.Function?.Name ?? string.Empty,
                                     Input = tool.Function?.Arguments,
@@ -215,7 +214,7 @@ public class OpenAIMessageGenerationProvider : IMessageGenerationProvider
                             current = (index + 1, new ToolMessageContent
                             {
                                 IsCompleted = false,
-                                IsApproved = false,
+                                IsApproved = !request.Tools.First(t => t.Name == tool.Function?.Name).RequiresApproval,
                                 Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
                                 Name = tool.Function?.Name ?? string.Empty,
                                 Input = tool.Function?.Arguments,
@@ -234,7 +233,7 @@ public class OpenAIMessageGenerationProvider : IMessageGenerationProvider
                         current = (0, new ToolMessageContent
                         {
                             IsCompleted = false,
-                            IsApproved = false,
+                            IsApproved = !request.Tools.First(t => t.Name == tool.Function?.Name).RequiresApproval,
                             Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
                             Name = tool.Function?.Name ?? string.Empty,
                             Input = tool.Function?.Arguments,

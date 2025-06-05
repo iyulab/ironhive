@@ -1,5 +1,7 @@
 ﻿using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading.Channels;
+using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Message;
 using IronHive.Abstractions.Message.Content;
 using IronHive.Abstractions.Message.Roles;
@@ -12,11 +14,19 @@ public class MessageGenerationService : IMessageGenerationService
 {
     private readonly Dictionary<string, IMessageGenerationProvider> _providers;
     private readonly IToolPluginManager _plugins;
+    private readonly IFileStorageManager _files;
+    private readonly IFileDecoderManager _decoders;
 
-    public MessageGenerationService(IEnumerable<IMessageGenerationProvider> providers, IToolPluginManager plugins)
+    public MessageGenerationService(
+        IEnumerable<IMessageGenerationProvider> providers,
+        IToolPluginManager plugins,
+        IFileStorageManager files,
+        IFileDecoderManager decoders)
     {
         _providers = providers.ToDictionary(p => p.ProviderName, p => p);
         _plugins = plugins;
+        _files = files;
+        _decoders = decoders;
     }
 
     /// <inheritdoc />
@@ -27,13 +37,14 @@ public class MessageGenerationService : IMessageGenerationService
         if (!_providers.TryGetValue(request.Provider, out var provider))
             throw new KeyNotFoundException($"Service key '{request.Provider}' not found.");
 
-        // 파라미터를 받아서 요청을 생성합니다.
-        MessageDoneReason? reason = null;
-        MessageTokenUsage? usage = null;
-        AssistantMessage? message = null;
+        // 요청 준비
+        request = await ResolveFileMessageContent(request, cancellationToken);
+        MessageDoneReason? reason;
+        MessageTokenUsage? usage;
+        AssistantMessage? message;
+        bool next;
 
         // 루프 시작
-        bool next;
         var counter = new LimitedCounter(request.MaxLoopCount);
         do
         {
@@ -54,9 +65,7 @@ public class MessageGenerationService : IMessageGenerationService
             foreach (var content in res.Message?.Content ?? [])
             {
                 // 툴 컨텐츠 추가
-                message.Content.Add(content is ToolMessageContent tool
-                    ? PrepareToolContent(tool, request.Tools)
-                    : content);
+                message.Content.Add(content);
             }
 
             // 요청 메시지의 마지막이 어시스턴트가 아닌 경우, 메시지를 추가합니다.
@@ -131,9 +140,7 @@ public class MessageGenerationService : IMessageGenerationService
                 else if (res is StreamingContentAddedResponse car)
                 {
                     car.Index = message.Content.Count + car.Index;
-                    stack.Add(car.Content is ToolMessageContent tool
-                        ? PrepareToolContent(tool, request.Tools)
-                        : car.Content);
+                    stack.Add(car.Content);
                     yield return car;
                 }
                 else if (res is StreamingContentDeltaResponse cdr)
@@ -201,22 +208,62 @@ public class MessageGenerationService : IMessageGenerationService
         };
     }
 
+
     /// <summary>
-    /// 도구 컨텐츠를 준비 합니다.
+    /// 파일 메시지 컨텐츠를 처리합니다.
     /// </summary>
-    private static ToolMessageContent PrepareToolContent(ToolMessageContent content, IEnumerable<ToolDescriptor> tools)
+    private async Task<MessageGenerationRequest> ResolveFileMessageContent(MessageGenerationRequest request, CancellationToken cancellationToken)
     {
-        // 도구의 아이디가 없는 경우 임의 생성합니다.
-        if (string.IsNullOrEmpty(content.Id))
+        // 파일 메시지 컨텐츠를 처리합니다.
+        foreach (var message in request.Messages)
         {
-            content.Id = $"tool_{Guid.NewGuid().ToShort()}";
+            if (message is not UserMessage um)
+                continue;
+            
+            foreach(var umc in um.Content)
+            {
+                if (umc is not FileMessageContent file)
+                    continue;
+                
+                var stream = await _files.ReadFileAsync(file.Storage, file.FilePath, cancellationToken);
+                if (stream is null)
+                    throw new FileNotFoundException($"File not found: {file.Storage}/{file.FilePath}");
+
+                // 파일 컨텐츠의 종류에 따라 처리합니다.
+                var fileType = _decoders.GetMimeType(file.FilePath);
+                if (string.IsNullOrEmpty(fileType))
+                    throw new NotSupportedException($"Unsupported file type for {file.FilePath}");
+
+                // 이미지 파일의 경우
+                if (fileType.StartsWith("image/"))
+                {
+                    um.Content.Add(new ImageMessageContent
+                    {
+                        Format = fileType switch
+                        {
+                            "image/png" => ImageFormat.Png,
+                            "image/jpeg" => ImageFormat.Jpeg,
+                            "image/gif" => ImageFormat.Gif,
+                            "image/webp" => ImageFormat.Webp,
+                            _ => throw new NotSupportedException($"Unsupported image format: {fileType}")
+                        },
+                        Data = await _decoders.DecodeAsync(file.FilePath, stream, cancellationToken),
+                    });
+                }
+                // 이외 텍스트 파일이나 기타 파일의 경우
+                else
+                {
+                    var sb = new StringBuilder();
+                    sb.AppendLine($"File {Path.GetFileName(file.FilePath)} (type: {fileType}):");
+                    sb.AppendLine(await _decoders.DecodeAsync(file.FilePath, stream, cancellationToken));
+                    um.Content.Add(new TextMessageContent
+                    {
+                        Value = sb.ToString()
+                    });
+                }
+            }
         }
-
-        // 도구가 승인을 필요로 하는 경우
-        var requiredApproval = tools.FirstOrDefault(t => t.Name == content.Name)?.RequiresApproval ?? false;
-        content.IsApproved = !requiredApproval;
-
-        return content;
+        return request;
     }
 
     /// <summary>

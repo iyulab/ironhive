@@ -1,6 +1,6 @@
-﻿using IronHive.Plugins.MCP;
+﻿using IronHive.Abstractions.Tools;
 
-namespace IronHive.Abstractions.Tools;
+namespace IronHive.Plugins.MCP;
 
 public static class ToolPluginManagerExtensions
 {
