@@ -295,7 +295,7 @@ public class AnthropicMessageGenerationProvider : IMessageGenerationProvider
             // 에러 이벤트
             else if (res is ErrorEvent error)
             {
-                throw new Exception(JsonSerializer.Serialize(error.Error));
+                throw new Exception(error.Error.Message);
             }
             // 알수 없는 이벤트
             else

@@ -1,4 +1,4 @@
-import { LitElement, PropertyValues, css, html } from "lit";
+import { LitElement, css, html } from "lit";
 import { customElement, state } from "lit/decorators.js";
 
 import type { AssistantMessage, Message, ModelSummary } from "@iyulab/chat-components";
@@ -17,9 +17,8 @@ export class ChatPage extends LitElement {
   @state() messages: Message[] = [];
   @state() usages: number = 0;
 
-  protected firstUpdated(changedProperties: PropertyValues) {
-    super.firstUpdated(changedProperties);
-    
+  connectedCallback(): void {
+    super.connectedCallback();
     fetch('/models.json')
       .then(res => res.text())
       .then(text => JSON.parse(text))
@@ -28,7 +27,6 @@ export class ChatPage extends LitElement {
         const model = localStorage.getItem('model');
         this.model = model ? JSON.parse(model) : this.models.at(0) || undefined;
       });
-
     this.messages = JSON.parse(localStorage.getItem('messages') || '[]');
     this.usages = parseInt(localStorage.getItem('usages') || '0', 0);
   }
@@ -45,12 +43,12 @@ export class ChatPage extends LitElement {
           .maxValue=${this.model?.contextLength || 0}
         ></uc-token-panel>
 
-        <uc-message-alert
+        <uc-alert
           ?open=${this.error !== undefined}
           timeout="5000"
           status=${this.error?.status || 'danger'}
           .value=${this.error?.message}
-        ></uc-message-alert>
+        ></uc-alert>
 
         <uc-message-box
           .messages=${this.messages}
@@ -130,7 +128,7 @@ export class ChatPage extends LitElement {
       // console.debug('요청 메시지:', request);
 
       for await (const res of Api.conversation(request, this.canceller)) { 
-        // console.debug(res);
+        console.debug(res);
         let last = this.messages[this.messages.length - 1];
         if (last.role !== 'assistant') {
           this.messages = [...this.messages, { role: 'assistant', content: [] }];

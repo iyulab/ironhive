@@ -9,7 +9,9 @@ using dotenv.net;
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
     Args = args,
-#if !DEBUG
+#if DEBUG
+    WebRootPath = "wwwroot"
+#else
     WebRootPath = "/var/app/wwwroot",
 #endif
 });

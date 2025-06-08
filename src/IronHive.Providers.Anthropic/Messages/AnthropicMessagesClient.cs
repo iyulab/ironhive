@@ -46,6 +46,7 @@ internal class AnthropicMessagesClient : AnthropicClientBase
         {
             cancellationToken.ThrowIfCancellationRequested();
             var line = await reader.ReadLineAsync(cancellationToken);
+            //Console.WriteLine(line);
 
             if (string.IsNullOrWhiteSpace(line))
                 continue;
