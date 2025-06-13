@@ -55,32 +55,12 @@ public class ServiceController : ControllerBase
         return Ok(fileInfos);
     }
 
-    [HttpGet("download/{fileName}")]
-    public async Task<ActionResult> DownloadAsync(
-        [FromRoute] string fileName,
-        CancellationToken cancellationToken)
-    {
-        var dic = @"C:\\temp";
-        var filePath = Path.Combine(dic, fileName);
-
-        if (!System.IO.File.Exists(filePath))
-            return NotFound($"파일을 찾을 수 없습니다: {fileName}");
-
-        var provider = new FileExtensionContentTypeProvider();
-        if (!provider.TryGetContentType(fileName, out var contentType))
-        {
-            contentType = "application/octet-stream";
-        }
-
-        var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-        return File(stream, contentType, fileName);
-    }
-
     [HttpGet("models")]
     public async Task<ActionResult> GetModelsAsync(
+        [FromQuery(Name = "provider")] string? provider,
         CancellationToken cancellationToken)
     {
-        var models = await _model.ListModelsAsync(cancellationToken);
+        var models = await _model.ListModelsAsync(provider, cancellationToken);
         return Ok(models);
     }
 

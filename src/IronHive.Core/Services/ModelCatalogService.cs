@@ -14,25 +14,38 @@ public class ModelCatalogService : IModelCatalogService
 
     /// <inheritdoc />
     public async Task<IEnumerable<ModelSummary>> ListModelsAsync(
+        string? provider = null,
         CancellationToken cancellationToken = default)
     {
-        var models = new List<ModelSummary>();
-
-        foreach (var provider in _providers.Values)
+        if (!string.IsNullOrWhiteSpace(provider))
         {
-            try
+            if (_providers.TryGetValue(provider, out var service))
             {
-                var smmaries = await provider.ListModelsAsync(cancellationToken);
-                models.AddRange(smmaries);
+                return await service.ListModelsAsync(cancellationToken);
             }
-            catch(HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+            else
             {
-                // Ignore 401 errors for now.
-                continue;
+                return Enumerable.Empty<ModelSummary>();
             }
         }
+        else
+        {
+            var tasks = _providers.Values.Select(async p =>
+            {
+                try
+                {
+                    return await p.ListModelsAsync(cancellationToken);
+                }
+                catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    // 401 Unauthorized는 무시
+                    return Enumerable.Empty<ModelSummary>();
+                }
+            });
 
-        return models;
+            var results = await Task.WhenAll(tasks);
+            return results.SelectMany(r => r);
+        }
     }
 
     /// <inheritdoc />

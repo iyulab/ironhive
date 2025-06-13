@@ -1,7 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading.Channels;
-using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Message;
 using IronHive.Abstractions.Message.Content;
 using IronHive.Abstractions.Message.Roles;
@@ -14,19 +12,11 @@ public class MessageGenerationService : IMessageGenerationService
 {
     private readonly Dictionary<string, IMessageGenerationProvider> _providers;
     private readonly IToolPluginManager _plugins;
-    private readonly IFileStorageManager _files;
-    private readonly IFileDecoderManager _decoders;
 
-    public MessageGenerationService(
-        IEnumerable<IMessageGenerationProvider> providers,
-        IToolPluginManager plugins,
-        IFileStorageManager files,
-        IFileDecoderManager decoders)
+    public MessageGenerationService(IEnumerable<IMessageGenerationProvider> providers, IToolPluginManager plugins)
     {
         _providers = providers.ToDictionary(p => p.ProviderName, p => p);
         _plugins = plugins;
-        _files = files;
-        _decoders = decoders;
     }
 
     /// <inheritdoc />
@@ -38,7 +28,6 @@ public class MessageGenerationService : IMessageGenerationService
             throw new KeyNotFoundException($"Service key '{request.Provider}' not found.");
 
         // 요청 준비
-        request = await ResolveFileMessageContent(request, cancellationToken);
         MessageDoneReason? reason;
         MessageTokenUsage? usage;
         AssistantMessage? message;
@@ -206,64 +195,6 @@ public class MessageGenerationService : IMessageGenerationService
             Model = model,
             Timestamp = DateTime.UtcNow
         };
-    }
-
-
-    /// <summary>
-    /// 파일 메시지 컨텐츠를 처리합니다.
-    /// </summary>
-    private async Task<MessageGenerationRequest> ResolveFileMessageContent(MessageGenerationRequest request, CancellationToken cancellationToken)
-    {
-        // 파일 메시지 컨텐츠를 처리합니다.
-        foreach (var message in request.Messages)
-        {
-            if (message is not UserMessage um)
-                continue;
-            
-            foreach(var umc in um.Content)
-            {
-                if (umc is not FileMessageContent file)
-                    continue;
-                
-                var stream = await _files.ReadFileAsync(file.Storage, file.FilePath, cancellationToken);
-                if (stream is null)
-                    throw new FileNotFoundException($"File not found: {file.Storage}/{file.FilePath}");
-
-                // 파일 컨텐츠의 종류에 따라 처리합니다.
-                var fileType = _decoders.GetMimeType(file.FilePath);
-                if (string.IsNullOrEmpty(fileType))
-                    throw new NotSupportedException($"Unsupported file type for {file.FilePath}");
-
-                // 이미지 파일의 경우
-                if (fileType.StartsWith("image/"))
-                {
-                    um.Content.Add(new ImageMessageContent
-                    {
-                        Format = fileType switch
-                        {
-                            "image/png" => ImageFormat.Png,
-                            "image/jpeg" => ImageFormat.Jpeg,
-                            "image/gif" => ImageFormat.Gif,
-                            "image/webp" => ImageFormat.Webp,
-                            _ => throw new NotSupportedException($"Unsupported image format: {fileType}")
-                        },
-                        Data = await _decoders.DecodeAsync(file.FilePath, stream, cancellationToken),
-                    });
-                }
-                // 이외 텍스트 파일이나 기타 파일의 경우
-                else
-                {
-                    var sb = new StringBuilder();
-                    sb.AppendLine($"File {Path.GetFileName(file.FilePath)} (type: {fileType}):");
-                    sb.AppendLine(await _decoders.DecodeAsync(file.FilePath, stream, cancellationToken));
-                    um.Content.Add(new TextMessageContent
-                    {
-                        Value = sb.ToString()
-                    });
-                }
-            }
-        }
-        return request;
     }
 
     /// <summary>

@@ -45,6 +45,14 @@ internal static class MessageGenerationRequestExtensions
                             Text = text.Value ?? string.Empty
                         });
                     }
+                    // 파일 문서 메시지
+                    else if (item is DocumentMessageContent document)
+                    {
+                        um.Content.Add(new OpenAITextMessageContent
+                        {
+                            Text = $"Document Content:\n{document.Data}"
+                        });
+                    }
                     // 이미지 메시지
                     else if (item is ImageMessageContent image)
                     {
@@ -52,7 +60,7 @@ internal static class MessageGenerationRequestExtensions
                         {
                             ImageUrl = new ImageUrl
                             {
-                                Url = image.Data
+                                Url = image.Base64
                             }
                         });
                     }

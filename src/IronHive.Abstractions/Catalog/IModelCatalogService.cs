@@ -7,8 +7,10 @@ public interface IModelCatalogService
 {
     /// <summary>
     /// 사용 가능한 모든 모델 목록을 비동기적으로 가져옵니다.
+    /// provider가 지정되지 않은 경우 모든 공급자의 모델을 포함합니다.
     /// </summary>
     Task<IEnumerable<ModelSummary>> ListModelsAsync(
+        string? provider = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

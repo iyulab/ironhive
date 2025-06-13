@@ -45,6 +45,8 @@ public class TestTool
     {
         using var client = new TavilyClient();
         var result = await client.SearchAsync(
+            includeAnswer: true,
+            includeRawContent: false,
             apiKey: Environment.GetEnvironmentVariable("TAVILY_KEY") ?? string.Empty,
             query: query,
             cancellationToken: cancellationToken);

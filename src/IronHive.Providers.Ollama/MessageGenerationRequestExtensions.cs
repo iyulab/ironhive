@@ -37,11 +37,15 @@ internal static class MessageGenerationRequestExtensions
                         um.Content ??= string.Empty;
                         um.Content += text.Value;
                     }
-                    else if (item is FileMessageContent file)
+                    else if (item is DocumentMessageContent document)
                     {
-                        //um.Images ??= [];
-                        //um.Images.Add(image.Data!);
-                        throw new NotImplementedException("not supported file yet");
+                        um.Content ??= string.Empty;
+                        um.Content += $"\nDocument Content:\n{document.Data}\n";
+                    }
+                    else if (item is ImageMessageContent image)
+                    {
+                        um.Images ??= [];
+                        um.Images.Add(image.Base64);
                     }
                 }
                 _messages.Add(um);

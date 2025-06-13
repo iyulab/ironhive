@@ -1,4 +1,4 @@
-import { MessageContent } from "@iyulab/chat-components";
+import { MessageContent } from "./Request";
 
 export type StreamingMessageResponse = (
   StreamingMessageBeginResponse |

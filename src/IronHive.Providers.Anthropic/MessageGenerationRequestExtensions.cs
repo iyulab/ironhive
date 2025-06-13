@@ -1,5 +1,5 @@
-﻿using System.Text.Json;
-using IronHive.Abstractions.Json;
+﻿using IronHive.Abstractions.Json;
+using IronHive.Abstractions.Tools;
 using IronHive.Abstractions.Message;
 using IronHive.Abstractions.Message.Content;
 using IronHive.Abstractions.Message.Roles;
@@ -8,6 +8,7 @@ using AnthropicMessage = IronHive.Providers.Anthropic.Messages.Message;
 using TextMessageContent = IronHive.Abstractions.Message.Content.TextMessageContent;
 using AnthropicTextMessageContent = IronHive.Providers.Anthropic.Messages.TextMessageContent;
 using ImageMessageContent = IronHive.Abstractions.Message.Content.ImageMessageContent;
+using DocumentMessageContent = IronHive.Abstractions.Message.Content.DocumentMessageContent;
 using AnthropicImageMessageContent = IronHive.Providers.Anthropic.Messages.ImageMessageContent;
 using ThinkingMessageContent = IronHive.Abstractions.Message.Content.ThinkingMessageContent;
 using AnthropicThinkingMessageContent = IronHive.Providers.Anthropic.Messages.ThinkingMessageContent;
@@ -39,22 +40,23 @@ internal static class MessageGenerationRequestExtensions
                             Text = text.Value ?? string.Empty
                         });
                     }
+                    // 파일 문서 메시지
+                    else if (item is DocumentMessageContent document)
+                    {
+                        um.Content.Add(new AnthropicTextMessageContent
+                        {
+                            Text = $"Document Content:\n{document.Data}"
+                        });
+                    }
                     // 이미지 메시지
                     else if (item is ImageMessageContent image)
                     {
                         um.Content.Add(new AnthropicImageMessageContent
-                        { 
+                        {
                             Source = new Base64ImageSource
                             {
-                                MediaType = image.Format switch
-                                {
-                                    ImageFormat.Png => "image/png",
-                                    ImageFormat.Jpeg => "image/jpeg",
-                                    ImageFormat.Gif => "image/gif",
-                                    ImageFormat.Webp => "image/webp",
-                                    _ => throw new NotSupportedException($"not supported image format {image.Format}")
-                                },
-                                Data = image.Data
+                                MediaType = image.FormatString,
+                                Data = image.Base64
                             }
                         });
                     }
@@ -120,7 +122,7 @@ internal static class MessageGenerationRequestExtensions
                                 Id = tool.Id,
                                 Name = tool.Name,
                                 Input = !string.IsNullOrWhiteSpace(tool.Input)
-                                    ? JsonSerializer.Deserialize<IDictionary<string, object>>(tool.Input)
+                                    ? new ToolInput(tool.Input)
                                     : new object()
                             });
                             um.Content.Add(new ToolResultMessageContent

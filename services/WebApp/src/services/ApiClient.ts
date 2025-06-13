@@ -1,5 +1,5 @@
 import { CancelToken, HttpClient, CanceledError } from '@iyulab/http-client';
-import { MessageGenerationRequest, StreamingMessageResponse } from './models';
+import { MessageGenerationRequest, StreamingMessageResponse } from './types';
 
 export class Api {
   private static readonly controller: HttpClient = new HttpClient({
