@@ -74,10 +74,10 @@ internal class ChatCompletionRequest
     public float? PresencePenalty { get; set; }
 
     /// <summary>
-    /// (Not Use) o-series model only ["low", "medium", "high"]
+    /// o-series model only
     /// </summary>
     [JsonPropertyName("reasoning_effort")]
-    public string? ReasoningEffort { get; set; }
+    public ReasoningEffort? ReasoningEffort { get; set; }
 
     /// <summary>
     /// (Not Use) text or json

@@ -2,7 +2,7 @@ import { LitElement, PropertyValues, css, html, nothing } from "lit";
 import { customElement, query, queryAll, state } from "lit/decorators.js";
 import { repeat } from "lit/directives/repeat.js";
 
-import type { Alert, BlockContent, TextBlock, ToolBlock, ToolBlockContent, Message as UcMessage } from "@iyulab/chat-components";
+import type { Alert, BlockItem, TextBlock, ToolBlock, ToolBlockItem, Message as UcMessage } from "@iyulab/chat-components";
 import { CanceledError, CancelToken } from '@iyulab/http-client';
 
 import { Api, AssistantMessage, Message, MessageContent, MessageGenerationRequest, type ModelSummary } from "../services";
@@ -11,157 +11,143 @@ import { Api, AssistantMessage, Message, MessageContent, MessageGenerationReques
 export class HomePage extends LitElement {
   private canceller = new CancelToken();
 
-  @query('.message-area') messageAreaEl!: HTMLDivElement;
   @queryAll('uc-message') messageEls!: NodeListOf<UcMessage>;
-  @query('.alert') alertEl!: Alert;
-  @query('.input') inputEl!: TextBlock;
+  @query('.message-area') messageAreaEl!: HTMLDivElement;
+  @query('uc-alert') alertEl!: Alert;
+  @query('uc-text-block') inputEl!: TextBlock;
 
-  @state() status: '대기중' | '생성준비완료' | '생성중' = '대기중';
-
-  @state() models: ModelSummary[] = [];
+  @state() status: 'wait' | 'ready' | 'busy' = 'wait';
+  @state() scrollPosition: 'top' | 'center' | 'bottom' = 'bottom';
   @state() model?: ModelSummary;
   @state() messages: Message[] = [];
   @state() usages: number = 0;
+  @state() thinking: 'low' | 'medium' | 'high' | 'none' = 'none';
 
   protected firstUpdated(changedProperties: PropertyValues): void {
     super.firstUpdated(changedProperties);
-    fetch('/models.json')
-      .then(res => res.text())
-      .then(text => JSON.parse(text))
-      .then((json: any) => {
-        this.models = json.models;
-        const model = localStorage.getItem('model');
-        this.model = model ? JSON.parse(model) : this.models.at(0) || undefined;
-      });
+    this.model = JSON.parse(localStorage.getItem('model') || '{}');
     this.messages = JSON.parse(localStorage.getItem('messages') || '[]');
     this.usages = parseInt(localStorage.getItem('usages') || '0', 0);
+    this.thinking = localStorage.getItem('thinking') as any || 'none';
     this.scrollToBottom();
   }
 
   render() {
     return html`
-      <!-- Select Area -->
-      <model-select
-        .models=${this.models}
-        .selectedModel=${this.model}
-        @select=${(e: any) => {this.model = e.detail; localStorage.setItem('model', JSON.stringify(this.model))}}
-      ></model-select>
+      <!-- Header Area -->
+      <div class="header-area">
+        <uc-button class="header-btn" tooltip="Token Usage: ${this.usages} / ${this.model?.contextLength || "N/A"}">
+          <uc-icon external name="indicator"></uc-icon>
+        </uc-button>
+        <model-select
+          .model=${this.model}
+          @select-model=${this.handleSelectModel}
+        ></model-select>
+        <uc-button class="header-btn" tooltip="Customize Model Parameters">
+          <uc-icon name="sidebar-right"></uc-icon>
+        </uc-button>
+        <uc-alert></uc-alert>
+      </div>
 
       <!-- Message Area -->
-      <div class="message-area">
+      <div class="message-area" @scroll=${this.updateScrollPosition}>
         <div class="message-box">
           ${repeat(this.messages, (msg: Message) => msg.id, (msg: Message) => {
-              const content = this.messageToBlockContent(msg);
+              const items = this.messageToBlockItem(msg);
               return msg.role === 'user' ? html`
                 <uc-message class="user-msg"
-                  .content=${content}
+                  .items=${items}
                   .timestamp=${msg.timestamp}
                   @change=${this.handleChangeMessage}>
                 </uc-message>`
               : msg.role === 'assistant' ? html`
                 <uc-message class="bot-msg"
-                  .content=${content}
+                  .items=${items}
                   .timestamp=${msg.timestamp}
                   @change=${this.handleChangeMessage}>
                 </uc-message>`
               :nothing})}
-            <!-- <div class="empty-msg"></div> -->
         </div>
       </div>
 
       <!-- Control Area -->
       <div class="control-area">
-        <uc-alert
-          class="alert"
-        ></uc-alert>
         <div class="control-box">
+          <uc-icon class="scroll-btn"
+            name="chevron-down"
+            ?visible=${this.scrollPosition !== 'bottom'}
+            @click=${this.scrollToBottom}
+          ></uc-icon>
+
           <uc-text-block 
-            class="input"
             editable
             placeholder="메시지를 입력하세요..."
             maxRows="15"
-            @input=${this.handleInputChange}
-            @keydown=${this.handleInputKeydown}>
-          </uc-text-block>
+            @input=${this.handleChangeInput}
+            @keydown=${this.handleKeydownInput}
+          ></uc-text-block>
           
           <div class="buttons">
             <uc-attach-button
               multiple
               accept="image/*,text/plain,application/pdf"
-              @select-files=${this.handleAttachChange}
+              @select-files=${this.handleSelectFiles}
             ></uc-attach-button>
+            <uc-think-button
+              ?disabled=${this.model?.thinkable === false}
+              .mode=${this.thinking}
+              @select-think=${this.handleSelectThink}
+            ></uc-think-button>
             <div class="flex"></div>
             <uc-button tooltip="Clear All Messages"
               @click=${this.handleClearClick}>
               <uc-icon external name="eraser"></uc-icon>
             </uc-button>
             <uc-send-button
-              mode=${this.status === '생성중' ? 'stop' : 'send'}
-              ?disabled=${this.status === '대기중'}
-              @click=${this.handleSendClick}>
-            </uc-send-button>
+              mode=${this.status === 'busy' ? 'stop' : 'send'}
+              ?disabled=${this.status === 'wait'}
+              @click=${this.handleSendClick}
+            ></uc-send-button>
           </div>
         </div>
       </div>
     `;
   }
 
-  private messageToBlockContent = (msg: Message): BlockContent[] => {
-    return msg.content.map((content: MessageContent) => {
-      if (content.type === 'thinking') {
-        return { type: 'thinking', value: content.value || '' };
-      }
-
-      if (content.type === 'text') {
-        if (msg.role === 'user') {
-          return { type: 'text', value: content.value || '' };
-        }
-
-        if (msg.role === 'assistant') {
-          return { type: 'markdown', value: content.value || ''};
-        }
-      }
-
-      if (content.type === 'tool') {
-        return { type: 'tool', 
-          status : content.isCompleted ? content.output?.isSuccess ? 'SUCCESS' : 'FAILED' :
-          content.isApproved ? 'PENDING_APPROVAL' : 'WAITING',
-          name: content.name, 
-          input: content.input, 
-          output: content.output  
-        } as ToolBlockContent;
-      }
-
-      return { type: 'text', value: '' };
-    });
-  }
-
-  private showAlert = (status: 'info' | 'warning' | 'danger', message: string) => {
-    this.alertEl.status = status;
-    this.alertEl.value = message;
-    this.alertEl.open = true;
-  }
-
-  private handleAttachChange = (event: CustomEvent) => {
-    const files = event.detail;
-    this.showAlert('info', `현재 파일 첨부 기능은 지원하지 않습니다. 
-      ${files.length}개의 파일이 선택되었습니다.`);
-  }
-
-  private handleInputChange = (event: InputEvent) => {
-    const text = (event.target as TextBlock).value?.trim();
-    if (this.status === '대기중' && text && text.length > 0) {
-      this.status = '생성준비완료';
-    } else if (this.status === '생성준비완료' && (!text || text.length === 0)) {
-      this.status = '대기중';
+  private handleSelectThink = (event: CustomEvent) => {
+    const value = event.detail;
+    this.thinking = value || 'none';
+    if (value) {
+      localStorage.setItem('thinking', value);
+    } else {
+      localStorage.removeItem('thinking');
     }
   }
 
-  private handleInputKeydown = (event: KeyboardEvent) => {
+  private handleSelectModel = (event: CustomEvent) => {
+    this.model = event.detail;
+    localStorage.setItem('model', JSON.stringify(this.model));
+  }
+
+  private handleSelectFiles = (event: CustomEvent) => {
+    const files = event.detail;
+    this.info(`첨부된 파일: ${files.length}개, 현재 첨부 기능은 지원하지 않습니다.`);
+  }
+
+  private handleChangeInput = (event: InputEvent) => {
+    const text = (event.target as TextBlock).value?.trim();
+    if (this.status === 'wait' && text && text.length > 0) {
+      this.status = 'ready';
+    } else if (this.status === 'ready' && (!text || text.length === 0)) {
+      this.status = 'wait';
+    }
+  }
+
+  private handleKeydownInput = (event: KeyboardEvent) => {
     event.stopPropagation();
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
-      if (this.status !== '생성준비완료') return;
+      if (this.status !== 'ready') return;
       
       this.handleSendClick();
     }
@@ -172,12 +158,12 @@ export class HomePage extends LitElement {
     this.usages = 0;
     localStorage.setItem('messages', JSON.stringify(this.messages));
     localStorage.setItem('usages', this.usages.toString());
-    this.status = '대기중';
+    this.status = 'wait';
     this.requestUpdate();
   }
 
   private handleSendClick = () => {
-    if (this.status === '생성준비완료') {
+    if (this.status === 'ready') {
       const user_msg: Message = {
         role: 'user',
         content: [{ type: 'text', value: this.inputEl.value?.trim() || '' }],
@@ -187,9 +173,9 @@ export class HomePage extends LitElement {
       this.scrollToBottom();
       this.inputEl.value = '';
       this.generate();
-    } else if (this.status === '생성중') {
+    } else if (this.status === 'busy') {
       this.canceller.cancel('사용자가 요청을 중단했습니다.');
-      this.status = '대기중';
+      this.status = 'wait';
       this.requestUpdate();
     }
   }
@@ -210,6 +196,21 @@ export class HomePage extends LitElement {
     }
   }
 
+  private updateScrollPosition = () => {
+    const scrollTop = this.messageAreaEl.scrollTop;
+    const scrollHeight = this.messageAreaEl.scrollHeight;
+    const clientHeight = this.messageAreaEl.clientHeight;
+
+    // 스크롤 위치에 따라 상태 업데이트
+    if (scrollTop === 0) {
+      this.scrollPosition = 'top';
+    } else if (scrollTop + clientHeight >= scrollHeight - 1) {
+      this.scrollPosition = 'bottom';
+    } else {
+      this.scrollPosition = 'center';
+    }
+  }
+
   private scrollToBottom = () => {
     requestAnimationFrame(() => {
       this.messageAreaEl.scrollTo({
@@ -219,13 +220,53 @@ export class HomePage extends LitElement {
     });
   }
 
+  private info = (message: string) => 
+    this.alertEl.show({ status: 'info', value: message, timeout: 3000 });
+
+  private warn = (message: string) =>
+    this.alertEl.show({ status: 'warning', value: message, timeout: 3000 });
+
+  private error = (message: string) =>
+    this.alertEl.show({ status: 'danger', value: message });
+
+  private messageToBlockItem = (msg: Message): BlockItem[] => {
+    return msg.content.map((content: MessageContent) => {
+      if (content.type === 'thinking') {
+        return { type: 'thinking', value: content.value || '' };
+      }
+
+      if (content.type === 'text') {
+        if (msg.role === 'user') {
+          return { type: 'text', value: content.value || '' };
+        }
+
+        if (msg.role === 'assistant') {
+          return { type: 'markdown', value: content.value || ''};
+        }
+      }
+
+      if (content.type === 'tool') {
+        return { 
+          type: 'tool', 
+          status : content.isCompleted ? content.output?.isSuccess ? 'SUCCESS' : 'FAILED' :
+          content.isApproved ? 'WAITING' : 'PENDING_APPROVAL',
+          name: content.name, 
+          input: content.input, 
+          output: content.output  
+        } as ToolBlockItem;
+      }
+
+      return { type: 'text', value: '' };
+    });
+  }
+
   private generate = async () => {
     try {
-      this.status = '생성중';
+      this.status = 'busy';
 
       if (!this.model) {
-        this.showAlert('warning', '모델이 선택되지 않았습니다. 모델을 선택해주세요.');
-        this.status = '생성준비완료';
+        this.warn('모델이 선택되지 않았습니다. 모델을 선택해주세요.');
+        this.status = 'ready';
         return;
       }
 
@@ -234,6 +275,7 @@ export class HomePage extends LitElement {
         model: this.model.modelId,
         messages: this.messages,
         system: "유저가 요구하지 않는 한 너무 길게 대답하지 마세요.",
+        thinkingEffort: this.model.thinkable ? this.thinking !== 'none' ? this.thinking : undefined : undefined,
       }
       // console.debug('요청 메시지:', request);
 
@@ -270,13 +312,13 @@ export class HomePage extends LitElement {
           } else if (content?.type === 'tool' && res.updated.type === 'tool') {
             content.output = res.updated.output;
             content.isCompleted = true;
-            const block = this.messageEls[this.messages.length - 1].content?.at(res.index) as ToolBlockContent;
+            const block = this.messageEls[this.messages.length - 1].items?.at(res.index) as unknown as ToolBlock;
             block.status = content.output.isSuccess ? 'SUCCESS' : 'FAILED';
           }
         } else if (res.type === 'message.content.in_progress') {
           const content = last.content.at(res.index);
           if (content?.type === 'tool') {
-            const block = this.messageEls[this.messages.length - 1].content?.at(res.index) as ToolBlockContent;
+            const block = this.messageEls[this.messages.length - 1].items?.at(res.index) as unknown as ToolBlock;
             block.status = 'EXECUTING';
           }
         } else if (res.type === 'message.content.completed') {
@@ -285,7 +327,7 @@ export class HomePage extends LitElement {
             continue;
           } else if (content?.type === 'tool') {
             if (content.isCompleted === false && content.isApproved === false) {
-              const block = this.messageEls[this.messages.length - 1].content?.at(res.index) as ToolBlockContent;
+              const block = this.messageEls[this.messages.length - 1].items?.at(res.index) as unknown as ToolBlock;
               block.status = 'PENDING_APPROVAL';
             }
           }
@@ -308,9 +350,9 @@ export class HomePage extends LitElement {
         this.messages = this.messages.slice(0, -1);
       }
       if (e instanceof CanceledError) {
-        this.showAlert('info', '요청이 취소되었습니다.');
+        this.info('요청이 취소되었습니다.');
       } else {
-        this.showAlert('danger', `메시지 생성 중 오류가 발생했습니다: ${e.message || e}`);
+        this.error(`메시지 생성 중 오류가 발생했습니다: ${e.message || e}`);
       }
     } finally {
       this.canceller = new CancelToken();
@@ -318,9 +360,9 @@ export class HomePage extends LitElement {
         console.warn('등록된 취소 요청');
       });
       if (this.inputEl.value) {
-        this.status = '생성준비완료';
+        this.status = 'ready';
       } else {
-        this.status = '대기중';
+        this.status = 'wait';
       }
     }
   }
@@ -337,25 +379,46 @@ export class HomePage extends LitElement {
       box-sizing: border-box;
     }
 
-    /* Select Area */
-    model-select {
+    /* Header Area */
+    .header-area {
       position: absolute;
-      top: -40px;
+      top: -48px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 100;
-      min-width: 200px;
-      max-width: 300px;
+      width: 720px;
+      height: 48px;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+    .header-btn {
+      border: none;
+      font-size: 18px;
+    }
+
+    uc-alert {
+      position: absolute;
+      z-index: 100;
+      top: 110%;
+      left: 50%;
+      min-width: 320px;
+      max-width: 100%;
+      transform: translateX(-50%) translateY(-24px);
+    }
+    uc-alert[open] {
+      transform: translateX(-50%) translateY(0px);
     }
 
     /* Message Area */
     .message-area {
       position: relative;
       display: flex;
-      align-items: baseline;
       justify-content: center;
       width: 100%;
-      height: 100%;
+      height: calc(100% - 106px);
       overflow: auto;
       scrollbar-width: thin;
       scrollbar-color: var(--uc-scrollbar-color) transparent;
@@ -366,51 +429,44 @@ export class HomePage extends LitElement {
       position: relative;
       display: flex;
       flex-direction: column;
-      justify-content: flex-start;
       gap: 8px;
       width: 90%;
+      height: 100%;
       max-width: 720px;
     }
     .message-box .user-msg {
+      max-width: 100%;
       align-self: flex-end;
-      max-width: 80%;
     }
     .message-box .bot-msg {
-      align-self: flex-start;
       width: 100%;
+      align-self: flex-start;
     }
     .message-box .bot-msg::part(body) {
       background-color: var(--uc-background-color-0);
     }
-    /* 마지막 메시지 크기 주의 */
     .message-box > :nth-last-child(1) {
-      min-height: calc(100vh - 180px - 48px); /* 180px for bottom + 48px for header */
-      margin-bottom: 180px;
+      min-height: 100%;
+    }
+    .message-box > :nth-last-child(1)::part(footer) {
+      padding-bottom: 32px;
     }
 
     /* Control Area */
     .control-area {
+      position: relative;
+      width: 100%;
+      height: 106px;
+    }
+
+    .control-box {
       position: absolute;
       z-index: 100;
-      bottom: 24px;
+      bottom: 16px;
       left: 50%;
       transform: translateX(-50%);
       width: 90%;
       max-width: 720px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    uc-alert {
-      position: relative;
-      width: 100%;
-    }
-
-    .control-box {
-      position: relative;
-      width: 100%;
-
       display: flex;
       flex-direction: column;
       gap: 4px;
@@ -419,6 +475,36 @@ export class HomePage extends LitElement {
       border-radius: 16px;
       box-shadow: 0 4px 8px var(--uc-shadow-color-mid);
       background-color: var(--uc-background-color-0);
+    }
+    .control-box .scroll-btn {
+      position: absolute;
+      z-index: 100;
+      top: -42px;
+      right: 0;
+      font-size: 16px;
+      padding: 8px;
+      border: 1px solid var(--uc-border-color-low);
+      border-radius: 50%;
+      background-color: var(--uc-background-color-0);
+      box-shadow: 0 2px 4px var(--uc-shadow-color-mid);
+      pointer-events: none;
+      scale: 0;
+      opacity: 0;
+      transform: translateY(42px);
+      transition: transform 0.3s ease, opacity 0.3s ease, scale 0.3s ease;
+      cursor: pointer;
+    }
+    .control-box .scroll-btn[visible] {
+      pointer-events: auto;
+      scale: 1;
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .control-box .scroll-btn:hover {
+      background-color: var(--uc-background-color-100);
+    }
+    .control-box .scroll-btn:active {
+      background-color: var(--uc-background-color-200);
     }
     .control-box .buttons {
       display: flex;

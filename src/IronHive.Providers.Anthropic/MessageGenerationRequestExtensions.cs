@@ -19,9 +19,7 @@ internal static class MessageGenerationRequestExtensions
 {
     internal static MessagesRequest ToAnthropic(this MessageGenerationRequest request)
     {
-        var isThinking = request.Model.StartsWith("claude-3-7-sonnet", StringComparison.OrdinalIgnoreCase)
-            || request.Model.StartsWith("claude-sonnet-4", StringComparison.OrdinalIgnoreCase)
-            || request.Model.StartsWith("claude-opus-4", StringComparison.OrdinalIgnoreCase);
+        var isThinking = IsThinkingModel(request);
 
         var messages = new List<AnthropicMessage>();
         foreach (var message in request.Messages)
@@ -72,7 +70,7 @@ internal static class MessageGenerationRequestExtensions
             else if (message is AssistantMessage assistant)
             {
                 var groups = assistant.SplitContentByTool();
-                
+
                 foreach (var group in groups)
                 {
                     var am = new AnthropicMessage(MessageRole.Assistant);
@@ -149,21 +147,20 @@ internal static class MessageGenerationRequestExtensions
             }
         }
 
+        // 필수요청사항인 토큰을 계산합니다.
+        var (maxTokens, budgetTokens) = CaculateTokens(request);
         return new MessagesRequest
         {
             Model = request.Model,
             System = request.System,
             Messages = messages,
-            // MaxToken이 필수요청사항으로 "8192"값을 기본으로 함
-            MaxTokens = request.Parameters?.MaxTokens ?? (isThinking ? 64_000 : 8_192),
-            Temperature = request.Parameters?.Temperature,
-            TopK = request.Parameters?.TopK,
-            TopP = request.Parameters?.TopP,
+            MaxTokens = maxTokens,
+            // 추론 모델의 경우 토큰샘플링 방식을 임의로 설정할 수 없습니다.
+            Temperature = isThinking ? null : request.Parameters?.Temperature,
+            TopP = isThinking ? null : request.Parameters?.TopP,
+            TopK = isThinking ? null : request.Parameters?.TopK,
             StopSequences = request.Parameters?.StopSequences,
-            // 추론 모델일 경우 기본 사용
-            Thinking = isThinking
-            ? new EnabledThinking { BudgetTokens = 32_000 }
-            : null,
+            Thinking = budgetTokens,
             Tools = request.Tools.Select(t => new CustomTool
             {
                 Name = t.Name,
@@ -171,5 +168,46 @@ internal static class MessageGenerationRequestExtensions
                 InputSchema = t.Parameters ?? new ObjectJsonSchema()
             })
         };
+    }
+
+    // 추론 모델인지 확인합니다.
+    internal static bool IsThinkingModel(MessageGenerationRequest request)
+    {
+        return request.Model.StartsWith("claude-3-7-sonnet", StringComparison.OrdinalIgnoreCase)
+            || request.Model.StartsWith("claude-sonnet-4", StringComparison.OrdinalIgnoreCase)
+            || request.Model.StartsWith("claude-opus-4", StringComparison.OrdinalIgnoreCase);
+    }
+
+    // 최대 토큰 수를 계산하고 추론 예산을 설정합니다.
+    internal static (int, EnabledThinking?) CaculateTokens(MessageGenerationRequest request)
+    {
+        // 추론 모델의 경우 예산 토큰을 설정합니다.
+        if (IsThinkingModel(request))
+        {
+            // MaxToken이 필수요청사항으로 opus는 "32000", sonnet은 "64000"을 기본으로 함
+            var maxTokens = request.Parameters?.MaxTokens ??
+                (request.Model.StartsWith("claude-opus-4") ? 32_000 : 64_000);
+
+            if (request.ThinkingEffort == null)
+                return (maxTokens, null);
+
+            // 절대값 기반 + 비례값 기반 혼합 전략
+            int budgetTokens = (int)(request.ThinkingEffort switch
+            {
+                MessageThinkingEffort.Low => Math.Min(maxTokens * 0.25, 12_000),    // 25%, 12K
+                MessageThinkingEffort.Medium => Math.Min(maxTokens * 0.50, 32_000), // 50%, 32K  
+                MessageThinkingEffort.High => Math.Min(maxTokens * 0.75, 48_000),   // 75%, 48K
+                _ => 1024 // 최소값
+            });
+            // "1024"토큰보다 커야함
+            budgetTokens = budgetTokens >= 1024 ? budgetTokens : 1024;
+            return (maxTokens, new EnabledThinking { BudgetTokens = budgetTokens });
+        }
+        else
+        {
+            // MaxToken이 필수요청사항으로 기본모델은 "8192"값을 기본으로 함
+            var maxTokens = request.Parameters?.MaxTokens ?? 8192;
+            return (maxTokens, null);
+        }
     }
 }

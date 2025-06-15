@@ -30,6 +30,11 @@ public class MessageGenerationRequest
     public IEnumerable<ToolDescriptor> Tools { get; set; } = [];
 
     /// <summary>
+    /// when the model can thinking, this property will be set.
+    /// </summary>
+    public MessageThinkingEffort? ThinkingEffort { get; set; }
+
+    /// <summary>
     /// the parameters for message generation.
     /// </summary>
     public MessageGenerationParameters? Parameters { get; set; }

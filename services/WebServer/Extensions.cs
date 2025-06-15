@@ -41,7 +41,7 @@ public static class Extensions
             .AddAnthropicProviders("anthropic", a_config)
             .AddOpenAIProviders("google", g_config)
             .AddAnthropicProviders("xai", x_config)
-            .AddOpenAIProviders("gpustack", l_config)
+            .AddOpenAIProviders("iyulab", l_config)
             .AddFunctionToolPlugin<TestTool>("builtin");
     }
 }

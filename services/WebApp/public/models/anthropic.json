@@ -1,0 +1,35 @@
+{
+  "type": "list",
+  "data": [
+    {
+      "provider": "anthropic",
+      "modelId": "claude-3-5-haiku-latest",
+      "displayName": "Claude Haiku 3.5",
+      "description": "Most fast lightweight model",
+      "thinkable": false,
+      "inputPrice": 0.8,
+      "outputPrice": 4,
+      "contextLength": 200000
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-sonnet-4-0",
+      "displayName": "Claude Sonnet 4",
+      "description": "Latest balanced reasoning model",
+      "thinkable": true,
+      "inputPrice": 3,
+      "outputPrice": 15,
+      "contextLength": 200000
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-opus-4-0",
+      "displayName": "Claude Opus 4",
+      "description": "Latest intelligence reasoning model",
+      "thinkable": true,
+      "inputPrice": 15,
+      "outputPrice": 75,
+      "contextLength": 200000
+    }
+  ]
+}

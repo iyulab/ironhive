@@ -137,6 +137,12 @@ class Main extends LitElement {
       overflow: auto;
       resize: both;
     }
+
+    @media (max-width: 768px) {
+      .header .title uc-icon[name="label"] {
+        display: none;
+      }
+    }
   `;
 }
 

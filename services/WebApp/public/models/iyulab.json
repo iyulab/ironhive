@@ -1,0 +1,15 @@
+{
+  "type": "list",
+  "data": [
+    {
+      "provider": "iyulab",
+      "modelId": "clova-x",
+      "displayName": "HyperClova X",
+      "description": "Naver LLM model provided by Iyulab",
+      "thinkable": false,
+      "inputPrice": 0,
+      "outputPrice": 0,
+      "contextLength": 98304
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "type": "list",
+  "data": [
+    {
+      "provider": "openai",
+      "modelId": "gpt-4o",
+      "displayName": "GPT 4o",
+      "description": "Basic gpt model",
+      "thinkable": false,
+      "inputPrice": 2.5,
+      "outputPrice": 10,
+      "contextLength": 128000
+    },
+    {
+      "provider": "openai",
+      "modelId": "gpt-4o-mini",
+      "displayName": "GPT 4o Mini",
+      "description": "Basic lightweight gpt model",
+      "thinkable": false,
+      "inputPrice": 0.15,
+      "outputPrice": 0.6,
+      "contextLength": 128000
+    },
+    {
+      "provider": "openai",
+      "modelId": "gpt-4.1",
+      "displayName": "GPT 4.1",
+      "description": "Latest gpt model",
+      "thinkable": false,
+      "inputPrice": 2,
+      "outputPrice": 8,
+      "contextLength": 1047576
+    },
+    {
+      "provider": "openai",
+      "modelId": "gpt-4.1-mini",
+      "displayName": "GPT 4.1 Mini",
+      "description": "Latest lightweight gpt model",
+      "thinkable": false,
+      "inputPrice": 0.4,
+      "outputPrice": 1.6,
+      "contextLength": 1047576
+    },
+    {
+      "provider": "openai",
+      "modelId": "o4-mini",
+      "displayName": "o4 Mini",
+      "description": "Latest reasoning model",
+      "thinkable": true,
+      "inputPrice": 1.1,
+      "outputPrice": 4.4,
+      "contextLength": 200000
+    }
+  ]
+}

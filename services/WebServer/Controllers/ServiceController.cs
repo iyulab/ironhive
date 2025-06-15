@@ -71,7 +71,7 @@ public class ServiceController : ControllerBase
     {
         request.System = $"Current UTC Time: {DateTime.UtcNow}\n" + request.System;
         request.Tools = await _plugins.ListAsync(cancellationToken);
-
+        
         try
         {
             Response.Headers.Connection = "keep-alive";

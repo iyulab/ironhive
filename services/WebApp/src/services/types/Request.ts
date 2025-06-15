@@ -4,6 +4,7 @@ export interface MessageGenerationRequest {
   system?: string;
   messages: Message[];
   tools?: any;
+  thinkingEffort?: "low" | "medium" | "high";
   parameters?: MessageGenerationParameters;
 }
 

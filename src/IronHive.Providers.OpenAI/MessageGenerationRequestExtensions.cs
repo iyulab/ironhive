@@ -17,8 +17,7 @@ internal static class MessageGenerationRequestExtensions
 {
     internal static ChatCompletionRequest ToOpenAI(this MessageGenerationRequest request)
     {
-        // 추론모델의 경우 일부 파라미터 작동 안함
-        var isReasoning = request.Model.StartsWith('o') && char.IsDigit(request.Model[1]);
+        var isReasoning = IsReasoningModel(request);
 
         var messages = new List<OpenAIMessage>();
         if (!string.IsNullOrWhiteSpace(request.System))
@@ -135,9 +134,17 @@ internal static class MessageGenerationRequestExtensions
             Model = request.Model,
             Messages = messages,
             MaxCompletionTokens = request.Parameters?.MaxTokens,
+            // 추론 모델의 경우 토큰샘플링 방식을 임의로 설정할 수 없습니다.
             Temperature = isReasoning ? null : request.Parameters?.Temperature,
             TopP = isReasoning ? null : request.Parameters?.TopP,
             Stop = request.Parameters?.StopSequences,
+            ReasoningEffort = request.ThinkingEffort switch
+            {
+                MessageThinkingEffort.Low => ReasoningEffort.Low,
+                MessageThinkingEffort.Medium => ReasoningEffort.Medium,
+                MessageThinkingEffort.High => ReasoningEffort.High,
+                _ => null
+            },
             Tools = request.Tools.Select(t => new Tool
             {
                 Function = new Function
@@ -148,5 +155,12 @@ internal static class MessageGenerationRequestExtensions
                 }
             }),
         };
+    }
+
+    // 추론모델인지 확인합니다.
+    private static bool IsReasoningModel (MessageGenerationRequest request)
+    {
+        // 'o'와 숫자로 시작하는 경우
+        return request.Model.StartsWith('o') && char.IsDigit(request.Model[1]);
     }
 }
