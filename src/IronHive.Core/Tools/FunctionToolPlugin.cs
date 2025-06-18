@@ -13,9 +13,9 @@ public class FunctionToolPlugin<T> : IToolPlugin where T : class
     private readonly IReadOnlyCollection<ToolDescriptor> _tools;
     private readonly IReadOnlyDictionary<string, MethodInfo> _methods;
 
-    public FunctionToolPlugin(IServiceProvider serviceProvider)
+    public FunctionToolPlugin(IServiceProvider provider)
     {
-        _provider = serviceProvider;
+        _provider = provider;
         (_tools, _methods)= ExtractMethods();
     }
 
@@ -48,7 +48,7 @@ public class FunctionToolPlugin<T> : IToolPlugin where T : class
         try
         {
             if(!_methods.TryGetValue(name, out var method))
-                return ToolOutput.ToolNotFound(name);
+                return ToolOutput.NotFound(name);
 
             var instance = ActivatorUtilities.CreateInstance<T>(_provider);
             var parameters = method.GetParameters();
@@ -62,7 +62,7 @@ public class FunctionToolPlugin<T> : IToolPlugin where T : class
             var completedTask = await Task.WhenAny(invokeTask, timeoutTask);
             if (completedTask == timeoutTask)
             {
-                return ToolOutput.Failure("메서드 실행이 타임아웃되었습니다.");
+                return ToolOutput.Failure("메서드 실행이 너무 오래 걸립니다. 5분을 초과하는 실행은 허용되지 않습니다.");
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -71,9 +71,10 @@ public class FunctionToolPlugin<T> : IToolPlugin where T : class
             var output = await HandleDynamicResultAsync(result, method.ReturnType, cancellationToken);
             var json = JsonSerializer.Serialize(output, JsonDefaultOptions.Options);
 
-            return json.Length < 30_000
-                ? ToolOutput.Success(json)
-                : ToolOutput.ExcessiveResult();
+            // 결과가 너무 큰 경우
+            return json.Length > 30_000
+                ? ToolOutput.TooMuch()
+                : ToolOutput.Success(json);
         }
         catch (OperationCanceledException)
         {

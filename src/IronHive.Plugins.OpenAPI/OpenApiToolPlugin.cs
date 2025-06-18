@@ -72,7 +72,7 @@ public class OpenApiToolPlugin : IToolPlugin
     {
         if (!_operations.TryGetValue(name, out var operationInfo))
         {
-            return ToolOutput.ToolNotFound(name);
+            return ToolOutput.NotFound(name);
         }
 
         var (operation, path, method) = operationInfo;

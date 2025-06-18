@@ -3,13 +3,19 @@
   "data": [
     {
       "provider": "iyulab",
-      "modelId": "clova-x",
+      "modelId": "hyper-clova-x",
       "displayName": "HyperClova X",
       "description": "Naver LLM model provided by Iyulab",
       "thinkable": false,
-      "inputPrice": 0,
-      "outputPrice": 0,
-      "contextLength": 98304
+      "contextLength": 40960
+    },
+    {
+      "provider": "iyulab",
+      "modelId": "kanana-1.5",
+      "displayName": "Kanana 1.5",
+      "description": "Kakao LLM model provided by Iyulab",
+      "thinkable": false,
+      "contextLength": 32768
     }
   ]
 }

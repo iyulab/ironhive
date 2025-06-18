@@ -5,6 +5,7 @@ using System.Text.Encodings.Web;
 using WebServer.Dev;
 using WebServer;
 using dotenv.net;
+using WebServer.Controllers;
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {

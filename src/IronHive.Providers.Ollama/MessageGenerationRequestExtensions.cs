@@ -109,12 +109,12 @@ internal static class MessageGenerationRequestExtensions
             }),
             Options = new OllamaModelOptions
             {
-                NumPredict = request?.Parameters?.MaxTokens,
-                Temperature = request?.Parameters?.Temperature,
-                TopP = request?.Parameters?.TopP,
-                TopK = request?.Parameters?.TopK,
-                Stop = request?.Parameters?.StopSequences != null
-                    ? string.Join(" ", request.Parameters.StopSequences)
+                NumPredict = request?.MaxTokens,
+                Temperature = request?.Temperature,
+                TopP = request?.TopP,
+                TopK = request?.TopK,
+                Stop = request?.StopSequences != null
+                    ? string.Join(" ", request.StopSequences)
                     : null,
             },
         };

@@ -3,26 +3,6 @@
   "data": [
     {
       "provider": "xai",
-      "modelId": "grok-3",
-      "displayName": "Grok 3.0",
-      "description": "Latest grok model",
-      "thinkable": false,
-      "inputPrice": 3,
-      "outputPrice": 15,
-      "contextLength": 131072
-    },
-    {
-      "provider": "xai",
-      "modelId": "grok-3-fast",
-      "displayName": "Grok 3.0 Fast",
-      "description": "Fast Latest grok model",
-      "thinkable": false,
-      "inputPrice": 5,
-      "outputPrice": 25,
-      "contextLength": 131072
-    },
-    {
-      "provider": "xai",
       "modelId": "grok-3-mini",
       "displayName": "Grok 3.0 Mini",
       "description": "Reasoning grok model",
@@ -39,6 +19,26 @@
       "thinkable": true,
       "inputPrice": 0.6,
       "outputPrice": 4,
+      "contextLength": 131072
+    },
+    {
+      "provider": "xai",
+      "modelId": "grok-3",
+      "displayName": "Grok 3.0",
+      "description": "Latest grok model",
+      "thinkable": false,
+      "inputPrice": 3,
+      "outputPrice": 15,
+      "contextLength": 131072
+    },
+    {
+      "provider": "xai",
+      "modelId": "grok-3-fast",
+      "displayName": "Grok 3.0 Fast",
+      "description": "Fast Latest grok model",
+      "thinkable": false,
+      "inputPrice": 5,
+      "outputPrice": 25,
       "contextLength": 131072
     }
   ]

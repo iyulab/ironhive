@@ -3,23 +3,14 @@
   "data": [
     {
       "provider": "google",
-      "modelId": "gemini-2.0-flash",
-      "displayName": "Gemini 2.0",
-      "description": "Basic gemini model",
-      "thinkable": false,
-      "inputPrice": 0.1,
-      "outputPrice": 0.4,
-      "contextLength": 1048576
-    },
-    {
-      "provider": "google",
-      "modelId": "gemini-2.0-flash-lite",
-      "displayName": "Gemini 2.0 Lite",
-      "description": "Basic lightweight gemini model",
-      "thinkable": false,
-      "inputPrice": 0.075,
-      "outputPrice": 0.3,
-      "contextLength": 1048576
+      "modelId": "gemini-2.5-flash-preview-05-20",
+      "displayName": "Gemini 2.5 Flash",
+      "description": "Latest lightweight reasoning model",
+      "thinkable": true,
+      "inputPrice": 0.15,
+      "outputPrice": 3.5,
+      "contextLength": 1048576,
+      "maxOutput": 65536
     },
     {
       "provider": "google",
@@ -29,17 +20,30 @@
       "thinkable": true,
       "inputPrice": 2.5,
       "outputPrice": 15,
-      "contextLength": 1048576
+      "contextLength": 1048576,
+      "maxOutput": 65536
     },
     {
       "provider": "google",
-      "modelId": "gemini-2.5-flash-preview-05-20",
-      "displayName": "Gemini 2.5 Flash",
-      "description": "Latest lightweight reasoning model",
-      "thinkable": true,
-      "inputPrice": 0.15,
-      "outputPrice": 3.5,
-      "contextLength": 1048576
+      "modelId": "gemini-2.0-flash-lite",
+      "displayName": "Gemini 2.0 Lite",
+      "description": "Basic lightweight gemini model",
+      "thinkable": false,
+      "inputPrice": 0.075,
+      "outputPrice": 0.3,
+      "contextLength": 1048576,
+      "maxOutput": 8192
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-2.0-flash",
+      "displayName": "Gemini 2.0",
+      "description": "Basic gemini model",
+      "thinkable": false,
+      "inputPrice": 0.1,
+      "outputPrice": 0.4,
+      "contextLength": 1048576,
+      "maxOutput": 8192
     }
   ]
 }

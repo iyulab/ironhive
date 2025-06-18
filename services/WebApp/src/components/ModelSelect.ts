@@ -71,16 +71,17 @@ export class ModelSelect extends LitElement {
                 <div class="item" ?selected=${selected} @click=${() => this.select(i)}>
                   <div class="display">
                     ${i.displayName}
-                    ${i.thinkable ? html`<uc-icon name="lightbulb"></uc-icon>` : nothing}
+                    ${i.thinkable ? html`<uc-icon name="lightbulb-fill"></uc-icon>` : nothing}
                   </div>
                   <div class="description">
                     ${i.description}
                   </div>
                   <uc-tooltip placement="right-start">
-                    Thinkable: ${i.thinkable ? '✅' : '❌'}<br>
-                    Input Price: $${i.inputPrice} / 1M tokens<br>
-                    Output Price: $${i.outputPrice} / 1M tokens<br>
-                    Context Length: ${i.contextLength} tokens
+                    <strong>Thinkable:</strong><span>${i.thinkable ? '✅' : '❌'}</span>
+                    <strong>Input Price:</strong><span>${i.inputPrice ? `$${i.inputPrice} / 1M tokens` : 'Free'}</span>
+                    <strong>Output Price:</strong><span>${i.outputPrice ? `$${i.outputPrice} / 1M tokens` : 'Free'}</span>
+                    <strong>Context Length:</strong><span>${i.contextLength} tokens</span>
+                    <strong>Max Output:</strong><span>${i.maxOutput ? `${i.maxOutput} tokens` : 'Unknown'}</span>
                   </uc-tooltip>
                 </div>`});
             }), html`<uc-dot-rotate-loader class="loader"></uc-dot-rotate-loader>`)}
@@ -209,6 +210,9 @@ export class ModelSelect extends LitElement {
       line-height: 1.5;
       font-weight: 400;
     }
+    .models .item .display uc-icon {
+      color: var(--uc-yellow-color-500);
+    }
     .models .item .description {
       font-size: 12px;
       line-height: 1.5;
@@ -217,6 +221,11 @@ export class ModelSelect extends LitElement {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+    .models .item uc-tooltip {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 4px;
     }
     
   `;

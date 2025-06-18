@@ -7,6 +7,7 @@ import "@iyulab/chat-components/styles/light.css";
 import "@iyulab/chat-components/styles/dark.css";
 import { type Theme, setTheme } from '@iyulab/chat-components/utilities/theme-functions.js';
 
+import { AppStorage } from "./services/AppStorage";
 import "./components";
 import "./pages";
 
@@ -22,7 +23,7 @@ class Main extends LitElement {
     }
   });
 
-  @state() theme: Theme = localStorage.getItem('theme') as Theme || 'light';
+  @state() theme: Theme = AppStorage.theme;
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -55,7 +56,7 @@ class Main extends LitElement {
   private toggleTheme = () => {
     this.theme = this.theme === 'light' ? 'dark' : 'light';
     setTheme(this.theme);
-    localStorage.setItem('theme', this.theme);
+    AppStorage.theme = this.theme;
   }
 
   static styles = css`

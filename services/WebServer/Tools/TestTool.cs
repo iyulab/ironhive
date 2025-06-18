@@ -41,12 +41,14 @@ public class TestTool
         };
     }
 
-    [FunctionTool(Name = "search_web")]
+    [FunctionTool(Name = "search_web", RequiresApproval = true)]
     [Description("Performs a web search and returns the results.")]
     public async Task<SearchResponse> SearchWebAsycn(
         [Description("The query string to search for.")] string query,
         CancellationToken cancellationToken)
     {
+        await Task.Delay(5000, cancellationToken);
+
         using var client = new TavilyClient();
         var result = await client.SearchAsync(
             includeAnswer: true,

@@ -7,7 +7,8 @@ export interface ModelSummary {
   displayName: string;
   description: string;
   thinkable: boolean;
-  inputPrice: number;
-  outputPrice: number;
+  inputPrice?: number;
+  outputPrice?: number;
   contextLength: number;
+  maxOutput?: number;
 }

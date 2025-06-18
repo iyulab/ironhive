@@ -51,12 +51,8 @@ public class QnAExtractionHandler : IPipelineHandler
                         Id = Guid.NewGuid().ToShort(),
                         Content = [ new TextMessageContent { Value = $"generate QnA pairs in this information:\n\n{chunk}" } ]
                     }],
-                    Parameters = new MessageGenerationParameters
-                    {
-                        Temperature = 0.0f,
-                        TopK = 0,
-                        TopP = 0.9f
-                    }
+                    Temperature = 0.0f,
+                    TopP = 0.5f
                 };
                 var result = await _service.GenerateMessageAsync(request, cancellationToken);
                 var text = result.Message?.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value

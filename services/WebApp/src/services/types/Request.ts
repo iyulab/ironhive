@@ -5,10 +5,6 @@ export interface MessageGenerationRequest {
   messages: Message[];
   tools?: any;
   thinkingEffort?: "low" | "medium" | "high";
-  parameters?: MessageGenerationParameters;
-}
-
-export interface MessageGenerationParameters {
   maxTokens?: number;
   temperature?: number;
   topK?: number;
@@ -45,14 +41,22 @@ export interface ThinkingMessageContent {
   value?: string;
 }
 
+export type ToolContentStauts = (
+  "waiting" | 
+  "paused" | 
+  "approved" |
+  "rejected" |
+  "inProgress" |
+  "success" | 
+  "failure");
+
 export interface ToolMessageContent {
   type: "tool";
-  isCompleted?: boolean;
-  isApproved?: boolean;
+  status: ToolContentStauts;
   id?: string;
   name?: string;
   input?: string;
-  output?: { isSuccess: boolean; data?: string };
+  output?: string;
 }
 
 export type MessageContent = (

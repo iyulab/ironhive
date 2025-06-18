@@ -3,23 +3,14 @@
   "data": [
     {
       "provider": "openai",
-      "modelId": "gpt-4o",
-      "displayName": "GPT 4o",
-      "description": "Basic gpt model",
+      "modelId": "gpt-4.1-mini",
+      "displayName": "GPT 4.1 Mini",
+      "description": "Latest lightweight gpt model",
       "thinkable": false,
-      "inputPrice": 2.5,
-      "outputPrice": 10,
-      "contextLength": 128000
-    },
-    {
-      "provider": "openai",
-      "modelId": "gpt-4o-mini",
-      "displayName": "GPT 4o Mini",
-      "description": "Basic lightweight gpt model",
-      "thinkable": false,
-      "inputPrice": 0.15,
-      "outputPrice": 0.6,
-      "contextLength": 128000
+      "inputPrice": 0.4,
+      "outputPrice": 1.6,
+      "contextLength": 1047576,
+      "maxOutput": 32768
     },
     {
       "provider": "openai",
@@ -29,27 +20,52 @@
       "thinkable": false,
       "inputPrice": 2,
       "outputPrice": 8,
-      "contextLength": 1047576
-    },
-    {
-      "provider": "openai",
-      "modelId": "gpt-4.1-mini",
-      "displayName": "GPT 4.1 Mini",
-      "description": "Latest lightweight gpt model",
-      "thinkable": false,
-      "inputPrice": 0.4,
-      "outputPrice": 1.6,
-      "contextLength": 1047576
+      "contextLength": 1047576,
+      "maxOutput": 32768
     },
     {
       "provider": "openai",
       "modelId": "o4-mini",
       "displayName": "o4 Mini",
-      "description": "Latest reasoning model",
+      "description": "Latest small and fast reasoning model",
       "thinkable": true,
       "inputPrice": 1.1,
       "outputPrice": 4.4,
-      "contextLength": 200000
+      "contextLength": 200000,
+      "maxOutput": 100000
+    },
+    {
+      "provider": "openai",
+      "modelId": "o3",
+      "displayName": "o3",
+      "description": "powerful reasoning model",
+      "thinkable": true,
+      "inputPrice": 2,
+      "outputPrice": 8,
+      "contextLength": 200000,
+      "maxOutput": 100000
+    },
+    {
+      "provider": "openai",
+      "modelId": "gpt-4o-mini",
+      "displayName": "GPT 4o Mini",
+      "description": "Basic lightweight gpt model",
+      "thinkable": false,
+      "inputPrice": 0.15,
+      "outputPrice": 0.6,
+      "contextLength": 128000,
+      "maxOutput": 16384
+    },
+    {
+      "provider": "openai",
+      "modelId": "gpt-4o",
+      "displayName": "GPT 4o",
+      "description": "Basic gpt model",
+      "thinkable": false,
+      "inputPrice": 2.5,
+      "outputPrice": 10,
+      "contextLength": 128000,
+      "maxOutput": 16384
     }
   ]
 }

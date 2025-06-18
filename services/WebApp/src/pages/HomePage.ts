@@ -2,21 +2,23 @@ import { LitElement, PropertyValues, css, html, nothing } from "lit";
 import { customElement, query, queryAll, state } from "lit/decorators.js";
 import { repeat } from "lit/directives/repeat.js";
 
-import type { Alert, BlockItem, TextBlock, ToolBlock, ToolBlockItem, Message as UcMessage } from "@iyulab/chat-components";
+import type { Alert, BlockItem, TextBlock, ToolBlockItem, Message as UcMessage } from "@iyulab/chat-components";
 import { CanceledError, CancelToken } from '@iyulab/http-client';
 
-import { Api, AssistantMessage, Message, MessageContent, MessageGenerationRequest, type ModelSummary } from "../services";
+import { Api, AssistantMessage, Message, MessageContent, MessageGenerationRequest, ToolMessageContent, type ModelSummary } from "../services";
+import { AppStorage } from "../services/AppStorage";
 
 @customElement('home-page')
 export class HomePage extends LitElement {
   private canceller = new CancelToken();
+  private pausedCount: number = 0;
 
   @queryAll('uc-message') messageEls!: NodeListOf<UcMessage>;
   @query('.message-area') messageAreaEl!: HTMLDivElement;
   @query('uc-alert') alertEl!: Alert;
   @query('uc-text-block') inputEl!: TextBlock;
 
-  @state() status: 'wait' | 'ready' | 'busy' = 'wait';
+  @state() status: 'wait' | 'ready' | 'busy' | 'pause' = 'wait';
   @state() scrollPosition: 'top' | 'center' | 'bottom' = 'bottom';
   @state() model?: ModelSummary;
   @state() messages: Message[] = [];
@@ -25,10 +27,10 @@ export class HomePage extends LitElement {
 
   protected firstUpdated(changedProperties: PropertyValues): void {
     super.firstUpdated(changedProperties);
-    this.model = JSON.parse(localStorage.getItem('model') || '{}');
-    this.messages = JSON.parse(localStorage.getItem('messages') || '[]');
-    this.usages = parseInt(localStorage.getItem('usages') || '0', 0);
-    this.thinking = localStorage.getItem('thinking') as any || 'none';
+    this.model = AppStorage.model;
+    this.messages = AppStorage.messages;
+    this.usages = AppStorage.usages;
+    this.thinking = AppStorage.thinking;
     this.scrollToBottom();
   }
 
@@ -36,13 +38,15 @@ export class HomePage extends LitElement {
     return html`
       <!-- Header Area -->
       <div class="header-area">
-        <uc-button class="header-btn" tooltip="Token Usage: ${this.usages} / ${this.model?.contextLength || "N/A"}">
-          <uc-icon external name="indicator"></uc-icon>
-        </uc-button>
         <model-select
           .model=${this.model}
           @select-model=${this.handleSelectModel}
         ></model-select>
+        <uc-token-indicator class="header-btn"
+          type="button"
+          .value=${this.usages}
+          .maxValue=${this.model?.contextLength || 0}
+        ></uc-token-indicator>
         <uc-button class="header-btn" tooltip="Customize Model Parameters">
           <uc-icon name="sidebar-right"></uc-icon>
         </uc-button>
@@ -58,14 +62,14 @@ export class HomePage extends LitElement {
                 <uc-message class="user-msg"
                   .items=${items}
                   .timestamp=${msg.timestamp}
-                  @change=${this.handleChangeMessage}>
-                </uc-message>`
+                  @tool-approval=${this.handleToolUpdate}
+                ></uc-message>`
               : msg.role === 'assistant' ? html`
                 <uc-message class="bot-msg"
                   .items=${items}
                   .timestamp=${msg.timestamp}
-                  @change=${this.handleChangeMessage}>
-                </uc-message>`
+                  @tool-approval=${this.handleToolUpdate}
+                ></uc-message>`
               :nothing})}
         </div>
       </div>
@@ -95,17 +99,17 @@ export class HomePage extends LitElement {
             ></uc-attach-button>
             <uc-think-button
               ?disabled=${this.model?.thinkable === false}
-              .mode=${this.thinking}
-              @select-think=${this.handleSelectThink}
+              .value=${this.model?.thinkable ? this.thinking : 'none'}
+              @change-think=${this.handleChangeThink}
             ></uc-think-button>
             <div class="flex"></div>
-            <uc-button tooltip="Clear All Messages"
+            <uc-button tooltip="Clear Messages"
               @click=${this.handleClearClick}>
               <uc-icon external name="eraser"></uc-icon>
             </uc-button>
             <uc-send-button
-              mode=${this.status === 'busy' ? 'stop' : 'send'}
-              ?disabled=${this.status === 'wait'}
+              mode=${this.status === 'busy' || this.status === 'pause' ? 'stop' : 'send'}
+              ?disabled=${this.status === 'wait' || this.status === 'pause'}
               @click=${this.handleSendClick}
             ></uc-send-button>
           </div>
@@ -114,19 +118,15 @@ export class HomePage extends LitElement {
     `;
   }
 
-  private handleSelectThink = (event: CustomEvent) => {
+  private handleChangeThink = (event: CustomEvent) => {
     const value = event.detail;
     this.thinking = value || 'none';
-    if (value) {
-      localStorage.setItem('thinking', value);
-    } else {
-      localStorage.removeItem('thinking');
-    }
+    AppStorage.thinking = this.thinking;
   }
 
   private handleSelectModel = (event: CustomEvent) => {
     this.model = event.detail;
-    localStorage.setItem('model', JSON.stringify(this.model));
+    AppStorage.model = this.model;
   }
 
   private handleSelectFiles = (event: CustomEvent) => {
@@ -156,8 +156,8 @@ export class HomePage extends LitElement {
   private handleClearClick = () => {
     this.messages = [];
     this.usages = 0;
-    localStorage.setItem('messages', JSON.stringify(this.messages));
-    localStorage.setItem('usages', this.usages.toString());
+    AppStorage.messages = this.messages;
+    AppStorage.usages = this.usages;
     this.status = 'wait';
     this.requestUpdate();
   }
@@ -175,23 +175,18 @@ export class HomePage extends LitElement {
       this.generate();
     } else if (this.status === 'busy') {
       this.canceller.cancel('사용자가 요청을 중단했습니다.');
-      this.status = 'wait';
-      this.requestUpdate();
     }
   }
 
-  private handleChangeMessage = async (e: any) => {
-    this.messages = e.detail;
-    const last = this.messages[this.messages.length - 1];
-    if (last.role === 'assistant') {
-      for (const content of last.content || []) {
-        if (content.type === 'tool' && 
-          content.isCompleted === false &&
-          content.isApproved === false) {
-          return;
-        }
-      }
+  private handleToolUpdate = async (e: CustomEvent) => {
+    const { index, isApproved } = e.detail;
+    const last = this.messages.at(-1);
+    const content = last?.content.at(index) as ToolMessageContent;
+    if (!content) return;
+    content.status = isApproved ? 'approved' : 'rejected';
+    this.pausedCount --;
 
+    if (this.pausedCount <= 0) {
       this.generate();
     }
   }
@@ -248,11 +243,10 @@ export class HomePage extends LitElement {
       if (content.type === 'tool') {
         return { 
           type: 'tool', 
-          status : content.isCompleted ? content.output?.isSuccess ? 'SUCCESS' : 'FAILED' :
-          content.isApproved ? 'WAITING' : 'PENDING_APPROVAL',
+          status : content.status,
           name: content.name, 
           input: content.input, 
-          output: content.output  
+          output: content.output
         } as ToolBlockItem;
       }
 
@@ -276,11 +270,12 @@ export class HomePage extends LitElement {
         messages: this.messages,
         system: "유저가 요구하지 않는 한 너무 길게 대답하지 마세요.",
         thinkingEffort: this.model.thinkable ? this.thinking !== 'none' ? this.thinking : undefined : undefined,
+        maxTokens: this.model.maxOutput,
       }
       // console.debug('요청 메시지:', request);
 
       for await (const res of Api.conversation(request, this.canceller)) { 
-        // console.log(res);
+        console.log(res);
         let last = this.messages[this.messages.length - 1];
         if (last.role !== 'assistant') {
           this.messages = [...this.messages, { role: 'assistant', content: [] }];
@@ -310,39 +305,36 @@ export class HomePage extends LitElement {
           if (content?.type === 'thinking' && res.updated.type === 'thinking') {
             content.id = res.updated.id;
           } else if (content?.type === 'tool' && res.updated.type === 'tool') {
+            content.status = res.updated.status;
             content.output = res.updated.output;
-            content.isCompleted = true;
-            const block = this.messageEls[this.messages.length - 1].items?.at(res.index) as unknown as ToolBlock;
-            block.status = content.output.isSuccess ? 'SUCCESS' : 'FAILED';
-          }
-        } else if (res.type === 'message.content.in_progress') {
-          const content = last.content.at(res.index);
-          if (content?.type === 'tool') {
-            const block = this.messageEls[this.messages.length - 1].items?.at(res.index) as unknown as ToolBlock;
-            block.status = 'EXECUTING';
-          }
-        } else if (res.type === 'message.content.completed') {
-          const content = last.content.at(res.index);
-          if (content?.type === 'thinking') {
-            continue;
-          } else if (content?.type === 'tool') {
-            if (content.isCompleted === false && content.isApproved === false) {
-              const block = this.messageEls[this.messages.length - 1].items?.at(res.index) as unknown as ToolBlock;
-              block.status = 'PENDING_APPROVAL';
+            if (content.status === 'paused') {
+              this.pausedCount++;
             }
           }
+        } else if (res.type === 'message.content.in_progress') {
+          continue;
+        } else if (res.type === 'message.content.completed') {
+          continue;
         } else if (res.type === 'message.done') {
           last.id ||= res.id;
           last.timestamp = res.timestamp || new Date().toISOString();
           this.usages = res.tokenUsage?.totalTokens || 0;
-          console.debug('토큰 사용량:', this.usages);
+          if (res.doneReason === 'toolCall') {
+            this.status = 'pause';
+            this.info('사용자의 승인을 요구하는 도구 호출이 있습니다. 도구를 승인해주세요.');
+          } else {
+            AppStorage.messages = this.messages;
+            AppStorage.usages = this.usages;
+            if (this.inputEl.value) {
+              this.status = 'ready';
+            } else {
+              this.status = 'wait';
+            }
+          }
         }
 
         this.messages = [...this.messages];
       }
-
-      localStorage.setItem('messages', JSON.stringify(this.messages));
-      localStorage.setItem('usages', this.usages.toString());
     } catch (e: any) {
       const last = this.messages[this.messages.length - 1];
       if (last && last.role === 'assistant' && last.content.length === 0) {
@@ -351,19 +343,16 @@ export class HomePage extends LitElement {
       }
       if (e instanceof CanceledError) {
         this.info('요청이 취소되었습니다.');
+      } else if (e instanceof Error) {
+        this.error(`메시지 생성 중 오류가 발생했습니다:<br>${e.message}`);
       } else {
-        this.error(`메시지 생성 중 오류가 발생했습니다: ${e.message || e}`);
+        this.error(`메시지 생성 중 오류가 발생했습니다: 알 수 없는 오류`);
       }
     } finally {
       this.canceller = new CancelToken();
       this.canceller.register(() => {
         console.warn('등록된 취소 요청');
       });
-      if (this.inputEl.value) {
-        this.status = 'ready';
-      } else {
-        this.status = 'wait';
-      }
     }
   }
 

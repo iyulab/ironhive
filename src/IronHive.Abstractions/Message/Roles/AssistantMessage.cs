@@ -13,12 +13,12 @@ public class AssistantMessage : Message
     public string? Name { get; set; }
 
     /// <summary>
-    /// The model id used by the assistant.
+    /// The model id which is generated this message.
     /// </summary>
     public string? Model { get; set; }
 
     /// <summary>
-    /// Assistant message content. "thinking", "text" or "tool".
+    /// Assistant message content. "text", "thinking" or "tool".
     /// </summary>
     public ICollection<MessageContent> Content { get; set; } = [];
 
@@ -34,8 +34,9 @@ public class AssistantMessage : Message
     {
         get
         {
+            // 완료되지 않은 툴중에 승인되지 않은 경우가 하나라도 있을 경우
             return Content.OfType<ToolMessageContent>()
-                .Any(tool => tool.IsApproved == false);
+                .Any(tool => tool.IsCompleted == false && tool.Status != ToolContentStatus.Approved);
         }
     }
 

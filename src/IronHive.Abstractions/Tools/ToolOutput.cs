@@ -55,20 +55,20 @@ public class ToolOutput
     /// </summary>
     /// <param name="toolName">찾지 못한 도구 이름</param>
     /// <returns>실패한 <see cref="ToolOutput"/> 객체</returns>
-    public static ToolOutput ToolNotFound(string toolName)
+    public static ToolOutput NotFound(string toolName)
         => Failure($"도구 [{toolName}]를 찾을 수 없습니다. 이름에 오타가 없는지 확인하거나 사용 가능한 도구 목록을 참조하세요.");
 
     /// <summary>
     /// 사용자가 도구 실행을 거부했을 때의 오류 결과를 생성합니다.
     /// </summary>
     /// <returns>실패한 <see cref="ToolOutput"/> 객체</returns>
-    public static ToolOutput InvocationRejected()
+    public static ToolOutput Rejected()
         => Failure("사용자가 이 도구 호출 요청을 거부했습니다. 사용자에게 사유를 확인하세요.");
 
     /// <summary>
     /// 도구 실행 결과가 너무 방대한 경우의 오류 결과를 생성합니다.
     /// </summary>
     /// <returns>실패한 <see cref="ToolOutput"/> 객체</returns>
-    public static ToolOutput ExcessiveResult()
+    public static ToolOutput TooMuch()
         => Failure("결과 데이터가 너무 많습니다. 파라미터를 변경하거나 필터를 지정하여 더 적은 결과를 받아보세요.");
 }

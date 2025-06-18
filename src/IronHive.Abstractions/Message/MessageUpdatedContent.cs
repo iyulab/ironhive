@@ -1,4 +1,4 @@
-﻿using IronHive.Abstractions.Tools;
+﻿using IronHive.Abstractions.Message.Content;
 using System.Text.Json.Serialization;
 
 namespace IronHive.Abstractions.Message;
@@ -16,5 +16,6 @@ public class ThinkingUpdatedContent : MessageUpdatedContent
 
 public class ToolUpdatedContent : MessageUpdatedContent
 {
-    public required ToolOutput Output { get; set; }
+    public required ToolContentStatus Status { get; set; }
+    public string? Output { get; set; }
 }

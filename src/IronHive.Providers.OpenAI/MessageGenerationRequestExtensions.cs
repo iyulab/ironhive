@@ -108,9 +108,7 @@ internal static class MessageGenerationRequestExtensions
                             tml.Add(new ToolMessage
                             {
                                 ID = tool.Id ?? string.Empty,
-                                Content = (tool.Output != null && tool.Output.IsSuccess)
-                                    ? tool.Output?.Data ?? string.Empty
-                                    : $"Failed: {tool.Output?.Data}"
+                                Content = tool.Output ?? string.Empty
                             });
                         }
                         else
@@ -133,11 +131,11 @@ internal static class MessageGenerationRequestExtensions
         {
             Model = request.Model,
             Messages = messages,
-            MaxCompletionTokens = request.Parameters?.MaxTokens,
+            MaxCompletionTokens = request.MaxTokens,
             // 추론 모델의 경우 토큰샘플링 방식을 임의로 설정할 수 없습니다.
-            Temperature = isReasoning ? null : request.Parameters?.Temperature,
-            TopP = isReasoning ? null : request.Parameters?.TopP,
-            Stop = request.Parameters?.StopSequences,
+            Temperature = isReasoning ? null : request.Temperature,
+            TopP = isReasoning ? null : request.TopP,
+            Stop = request.StopSequences,
             ReasoningEffort = request.ThinkingEffort switch
             {
                 MessageThinkingEffort.Low => ReasoningEffort.Low,

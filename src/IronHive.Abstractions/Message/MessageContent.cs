@@ -51,7 +51,7 @@ public abstract class MessageContent
                 break;
 
             case (ToolMessageContent toolContent, ToolUpdatedContent toolUpdated):
-                toolContent.Output = toolUpdated.Output;
+                // 내부에서 조절
                 break;
 
             default:

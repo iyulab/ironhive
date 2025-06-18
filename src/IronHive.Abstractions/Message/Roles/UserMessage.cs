@@ -6,7 +6,7 @@
 public class UserMessage : Message
 {
     /// <summary>
-    /// User message content. "text" or "file".
+    /// User message content. "text", "image", "document"
     /// </summary>
     public ICollection<MessageContent> Content { get; set; } = [];
 

@@ -53,7 +53,16 @@ public class MessageGenerationService : IMessageGenerationService
 
             foreach (var content in res.Message?.Content ?? [])
             {
-                // 툴 컨텐츠 추가
+                // 툴 컨텐츠의 경우 승인 요구사항을 확인하고 반영합니다.
+                if (content is ToolMessageContent tool)
+                {
+                    if (tool.RequiresApproval(request.Tools))
+                        tool.ChangeToPaused();
+                    else
+                        tool.ChangeToApproved();
+                }
+                
+                // 컨텐츠 추가
                 message.Content.Add(content);
             }
 
@@ -171,6 +180,24 @@ public class MessageGenerationService : IMessageGenerationService
             // 스택에 있는 컨텐츠를 메시지에 추가합니다.
             foreach (var content in stack)
             {
+                if (content is ToolMessageContent tool)
+                {
+                    // 툴 컨텐츠의 경우 승인 요구사항을 확인하고 반영합니다.
+                    if (tool.RequiresApproval(request.Tools))
+                        tool.ChangeToPaused();
+                    else
+                        tool.ChangeToApproved();
+
+                    yield return new StreamingContentUpdatedResponse
+                    {
+                        Index = message.Content.Count,
+                        Updated = new ToolUpdatedContent
+                        {
+                            Status = tool.Status,
+                            Output = tool.Output
+                        }
+                    };
+                }
                 message.Content.Add(content);
             }
 
@@ -215,40 +242,49 @@ public class MessageGenerationService : IMessageGenerationService
         var tasks = new List<Task>();
         foreach (var (item, idx) in message.Content.Select((x, i) => (x, i)))
         {
+            // 툴이 아닌 아이템 건너뛰기
             if (item is not ToolMessageContent tool)
                 continue;
-
-            if (tool.IsCompleted && !tool.IsApproved)
+            // 이미 완료된 툴 건너뛰기
+            if (tool.IsCompleted)
                 continue;
-
+            // 승인되지 않은 툴 건너뛰기
+            if (tool.Status != ToolContentStatus.Approved)
+                continue;
+            
             var task = Task.Run(async () =>
             {
                 await semaphore.WaitAsync(cancellationToken);
                 
                 try
                 {
-                    await channel.Writer.WriteAsync(new StreamingContentInProgressResponse
+                    tool.ChangeToInProgress();
+                    await channel.Writer.WriteAsync(new StreamingContentUpdatedResponse
                     {
-                        Index = idx
+                        Index = idx,
+                        Updated = new ToolUpdatedContent
+                        {
+                            Status = tool.Status,
+                            Output = tool.Output
+                        }
                     }, cancellationToken);
 
                     var input = new ToolInput(tool.Input);
                     var output = await _plugins.InvokeAsync(tool.Name, input, cancellationToken);
-                    tool.IsCompleted = true; // 도구 호출 완료 표시
-                    tool.Output = output; // 도구 호출 결과 저장
+                    tool.CompleteExecution(output);
                     await channel.Writer.WriteAsync(new StreamingContentUpdatedResponse
                     { 
                         Index = idx,
-                        Updated = new ToolUpdatedContent { Output = output }
+                        Updated = new ToolUpdatedContent 
+                        { 
+                            Status = tool.Status,
+                            Output = tool.Output
+                        }
                     }, cancellationToken);
                 }
                 catch (Exception ex)
                 {
-                    await channel.Writer.WriteAsync(new StreamingMessageErrorResponse
-                    {
-                        Code = 500,
-                        Message = ex.Message,
-                    }, cancellationToken);
+                    throw new InvalidOperationException($"Error processing tool content for {tool.Name} at index {idx}.", ex);
                 }
                 finally
                 {
@@ -268,18 +304,12 @@ public class MessageGenerationService : IMessageGenerationService
             }
             catch (Exception ex)
             {
-                await channel.Writer.WriteAsync(new StreamingMessageErrorResponse
-                {
-                    Code = 500,
-                    Message = ex.Message,
-                }, cancellationToken);
+                throw new InvalidOperationException("An error occurred while processing tool content.", ex);
             }
             finally
             {
                 channel.Writer.Complete(); // 모든 태스크가 끝나면 완료 표시
             }
-            
-            
         }, CancellationToken.None);
 
         // 3) 채널에서 남은 출력 읽어서 yield, Complete()가 호출될 때까지 계속 읽기

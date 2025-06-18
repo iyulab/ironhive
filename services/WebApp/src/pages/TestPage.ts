@@ -40,7 +40,20 @@ export class TestPage extends LitElement {
         <uc-bar-rotate-loader></uc-bar-rotate-loader>
         <uc-ring-stretch-loader></uc-ring-stretch-loader>
         <uc-ring-rotate-loader></uc-ring-rotate-loader>
+        <uc-hourglass-rotate-loader></uc-hourglass-rotate-loader>
         <uc-pulse-loader></uc-pulse-loader>
+        <json-viewer
+          .data=${{
+            name: "John Doe",
+            age: 30,
+            address: {
+              street: "123 Main St",
+              city: "Anytown",
+              state: "CA"
+            },
+            hobbies: ["reading", "gaming", "hiking"]
+          }}
+        ></json-viewer>
       </div>
     `;
   }

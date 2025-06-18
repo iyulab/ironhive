@@ -56,8 +56,6 @@ public class OpenAIMessageGenerationProvider : IMessageGenerationProvider
             {
                 content.Add(new ToolMessageContent
                 {
-                    IsCompleted = false,
-                    IsApproved = !request.Tools.First(t => t.Name == tool.Function?.Name).RequiresApproval,
                     Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
                     Name = tool.Function?.Name ?? string.Empty,
                     Input = tool.Function?.Arguments,
@@ -189,8 +187,6 @@ public class OpenAIMessageGenerationProvider : IMessageGenerationProvider
                                 };
                                 current = (index + 1, new ToolMessageContent
                                 {
-                                    IsCompleted = false,
-                                    IsApproved = !request.Tools.First(t => t.Name == tool.Function?.Name).RequiresApproval,
                                     Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
                                     Name = tool.Function?.Name ?? string.Empty,
                                     Input = tool.Function?.Arguments,
@@ -213,8 +209,6 @@ public class OpenAIMessageGenerationProvider : IMessageGenerationProvider
                             };
                             current = (index + 1, new ToolMessageContent
                             {
-                                IsCompleted = false,
-                                IsApproved = !request.Tools.First(t => t.Name == tool.Function?.Name).RequiresApproval,
                                 Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
                                 Name = tool.Function?.Name ?? string.Empty,
                                 Input = tool.Function?.Arguments,
@@ -232,8 +226,6 @@ public class OpenAIMessageGenerationProvider : IMessageGenerationProvider
                     {
                         current = (0, new ToolMessageContent
                         {
-                            IsCompleted = false,
-                            IsApproved = !request.Tools.First(t => t.Name == tool.Function?.Name).RequiresApproval,
                             Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
                             Name = tool.Function?.Name ?? string.Empty,
                             Input = tool.Function?.Arguments,

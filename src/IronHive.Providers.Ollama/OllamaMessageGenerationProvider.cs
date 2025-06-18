@@ -55,8 +55,6 @@ public class OllamaMessageGenerationProvider : IMessageGenerationProvider
             {
                 message.Content.Add(new ToolMessageContent
                 {
-                    IsCompleted = false,
-                    IsApproved = false,
                     Id = $"tool_{Guid.NewGuid().ToShort()}",
                     Name = t.Function?.Name ?? string.Empty,
                     Input = JsonSerializer.Serialize(t.Function?.Arguments)

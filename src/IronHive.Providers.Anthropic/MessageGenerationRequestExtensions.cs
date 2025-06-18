@@ -126,8 +126,8 @@ internal static class MessageGenerationRequestExtensions
                             um.Content.Add(new ToolResultMessageContent
                             {
                                 ToolUseId = tool.Id,
-                                IsError = !tool.Output?.IsSuccess ?? false,
-                                Content = tool.Output?.Data ?? string.Empty,
+                                IsError = tool.IsError,
+                                Content = tool.Output ?? string.Empty,
                             });
                         }
                         else
@@ -156,10 +156,10 @@ internal static class MessageGenerationRequestExtensions
             Messages = messages,
             MaxTokens = maxTokens,
             // 추론 모델의 경우 토큰샘플링 방식을 임의로 설정할 수 없습니다.
-            Temperature = isThinking ? null : request.Parameters?.Temperature,
-            TopP = isThinking ? null : request.Parameters?.TopP,
-            TopK = isThinking ? null : request.Parameters?.TopK,
-            StopSequences = request.Parameters?.StopSequences,
+            Temperature = isThinking ? null : request.Temperature,
+            TopP = isThinking ? null : request.TopP,
+            TopK = isThinking ? null : request.TopK,
+            StopSequences = request.StopSequences,
             Thinking = budgetTokens,
             Tools = request.Tools.Select(t => new CustomTool
             {
@@ -185,7 +185,7 @@ internal static class MessageGenerationRequestExtensions
         if (IsThinkingModel(request))
         {
             // MaxToken이 필수요청사항으로 opus는 "32000", sonnet은 "64000"을 기본으로 함
-            var maxTokens = request.Parameters?.MaxTokens ??
+            var maxTokens = request.MaxTokens ??
                 (request.Model.StartsWith("claude-opus-4") ? 32_000 : 64_000);
 
             if (request.ThinkingEffort == null)
@@ -206,7 +206,7 @@ internal static class MessageGenerationRequestExtensions
         else
         {
             // MaxToken이 필수요청사항으로 기본모델은 "8192"값을 기본으로 함
-            var maxTokens = request.Parameters?.MaxTokens ?? 8192;
+            var maxTokens = request.MaxTokens ?? 8192;
             return (maxTokens, null);
         }
     }
