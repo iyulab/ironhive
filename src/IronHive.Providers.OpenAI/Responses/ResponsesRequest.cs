@@ -12,7 +12,7 @@ internal class ResponsesRequest
     /// 사용할 모델 식별자 (예: "gpt-4o-mini")
     /// </summary>
     [JsonPropertyName("model")]
-    public string Model { get; set; }
+    public required string Model { get; set; }
 
     /// <summary>
     /// 입력 메시지 또는 단일 문자열. 
@@ -28,25 +28,25 @@ internal class ResponsesRequest
     /// 추가 지시사항(선택). 문자열 형태로만 전달
     /// </summary>
     [JsonPropertyName("instructions")]
-    public string Instructions { get; set; }
+    public string? Instructions { get; set; }
 
     /// <summary>
     /// 호출할 도구(tool) 정의 배열(선택)
     /// </summary>
     [JsonPropertyName("tools")]
-    public List<ToolDefinition> Tools { get; set; }
+    public List<ToolDefinition>? Tools { get; set; }
 
     /// <summary>
     /// 출력 형식 지정(예: JSON 스키마) (선택)
     /// </summary>
     [JsonPropertyName("text")]
-    public TextFormat Text { get; set; }
+    public TextFormat? Text { get; set; }
 
     /// <summary>
     /// 이전에 생성된 응답 ID를 지정 (대화 상태 유지) (선택)
     /// </summary>
     [JsonPropertyName("previous_response_id")]
-    public string PreviousResponseId { get; set; }
+    public string? PreviousResponseId { get; set; }
 
     /// <summary>
     /// 스트리밍 응답 여부 (선택)
@@ -82,7 +82,7 @@ internal class ResponsesRequest
     /// 중단 토큰(들) (선택)
     /// </summary>
     [JsonPropertyName("stop")]
-    public List<string> Stop { get; set; }
+    public List<string>? Stop { get; set; }
 
     /// <summary>
     /// 로그 확률 수집(선택)
@@ -107,13 +107,13 @@ internal class ResponsesRequest
     /// 키: 토큰 ID 문자열, 값: bias 값
     /// </summary>
     [JsonPropertyName("logit_bias")]
-    public Dictionary<string, double> LogitBias { get; set; }
+    public Dictionary<string, double>? LogitBias { get; set; }
 
     /// <summary>
     /// 사용자 식별자(선택)
     /// </summary>
     [JsonPropertyName("user")]
-    public string User { get; set; }
+    public string? User { get; set; }
 }
 
 /// <summary>
@@ -125,7 +125,7 @@ public class Message
     /// 역할: "system", "developer", "user" 중 하나
     /// </summary>
     [JsonPropertyName("role")]
-    public string Role { get; set; }
+    public required string Role { get; set; }
 
     /// <summary>
     /// 콘텐츠: 단순 문자열 또는 rich content 객체 배열
@@ -143,14 +143,14 @@ public class ToolDefinition
     /// 도구의 타입 (예: "web_search_preview", "file_search", "image_generation", "function" 등)
     /// </summary>
     [JsonPropertyName("type")]
-    public string Type { get; set; }
+    public required string Type { get; set; }
 
     /// <summary>
     /// 추가적인 속성들은 JSON 확장 데이터를 통해 저장  
     /// 예) file_search의 vector_store_ids, max_num_results 등
     /// </summary>
     [JsonExtensionData]
-    public Dictionary<string, JsonElement> AdditionalProperties { get; set; }
+    public Dictionary<string, JsonElement>? AdditionalProperties { get; set; }
 }
 
 /// <summary>
@@ -162,7 +162,7 @@ public class TextFormat
     /// 예: "json_schema" 등
     /// </summary>
     [JsonPropertyName("format")]
-    public FormatDetail Format { get; set; }
+    public required FormatDetail Format { get; set; }
 }
 
 public class FormatDetail
@@ -171,11 +171,11 @@ public class FormatDetail
     /// "json_schema" 등
     /// </summary>
     [JsonPropertyName("type")]
-    public string Type { get; set; }
+    public required string Type { get; set; }
 
     /// <summary>
     /// 스키마 이름
     /// </summary>
     [JsonPropertyName("name")]
-    public string Name { get; set; }
+    public required string Name { get; set; }
 }

@@ -12,7 +12,7 @@ internal class StreamingResponsesResponse
     /// 이벤트 타입 (예: "response.created", "response.output_text.delta", "response.completed", "response.error" 등)
     /// </summary>
     [JsonPropertyName("type")]
-    public string Type { get; set; }
+    public required string Type { get; set; }
 
     /// <summary>
     /// 타입별 데이터를 담고 있는 필드
@@ -30,19 +30,19 @@ public class ResponseTextDeltaEvent
     /// 항상 "response.output_text.delta"
     /// </summary>
     [JsonPropertyName("type")]
-    public string Type { get; set; }
+    public required string Type { get; set; }
 
     /// <summary>
     /// 모델이 생성한 텍스트 델타 조각
     /// </summary>
     [JsonPropertyName("delta")]
-    public string Delta { get; set; }
+    public string? Delta { get; set; }
 
     /// <summary>
     /// 이 델타가 속한 출력 아이템의 ID
     /// </summary>
     [JsonPropertyName("item_id")]
-    public string ItemId { get; set; }
+    public string? ItemId { get; set; }
 
     /// <summary>
     /// 이 델타가 속한 출력 아이템 중 몇 번째인지 (인덱스)
@@ -66,13 +66,13 @@ public class ResponseCompletedEvent
     /// 항상 "response.completed"
     /// </summary>
     [JsonPropertyName("type")]
-    public string Type { get; set; }
+    public required string Type { get; set; }
 
     /// <summary>
     /// 완료된 응답 객체의 정보
     /// </summary>
     [JsonPropertyName("response")]
-    public CompletedResponseInfo Response { get; set; }
+    public CompletedResponseInfo? Response { get; set; }
 }
 
 /// <summary>
@@ -84,7 +84,7 @@ public class CompletedResponseInfo
     /// 응답 ID (예: "resp_67cbc9705fc08190bbe455c5ba3d6daf")
     /// </summary>
     [JsonPropertyName("id")]
-    public string Id { get; set; }
+    public required string Id { get; set; }
 
     /// <summary>
     /// 생성된 시각(Unix timestamp, 초 단위)
@@ -96,13 +96,13 @@ public class CompletedResponseInfo
     /// 사용된 모델 식별자 (예: "gpt-4o-2024-08-06")
     /// </summary>
     [JsonPropertyName("model")]
-    public string Model { get; set; }
+    public string? Model { get; set; }
 
     /// <summary>
     /// 응답 상태 (예: "completed", "failed", "in_progress" 등)
     /// </summary>
     [JsonPropertyName("status")]
-    public string Status { get; set; }
+    public string? Status { get; set; }
 
     /// <summary>
     /// (선택) 메시지 배열, 최종 결과를 포함한 전체 메시지 정보
@@ -126,7 +126,7 @@ public class CompletedResponseInfo
     /// (선택) 기타 필요한 필드를 추가로 정의할 수 있음
     /// </summary>
     [JsonExtensionData]
-    public Dictionary<string, JsonElement> AdditionalProperties { get; set; }
+    public Dictionary<string, JsonElement>? AdditionalProperties { get; set; }
 }
 
 /// <summary>
@@ -138,13 +138,13 @@ public class ResponseErrorEvent
     /// 항상 "response.error"
     /// </summary>
     [JsonPropertyName("type")]
-    public string Type { get; set; }
+    public required string Type { get; set; }
 
     /// <summary>
     /// 에러 상세 정보
     /// </summary>
     [JsonPropertyName("error")]
-    public ErrorDetail Error { get; set; }
+    public ErrorDetail? Error { get; set; }
 }
 
 /// <summary>
@@ -156,25 +156,25 @@ public class ErrorDetail
     /// 에러 메시지
     /// </summary>
     [JsonPropertyName("message")]
-    public string Message { get; set; }
+    public string? Message { get; set; }
 
     /// <summary>
     /// 에러 유형 (예: "invalid_request_error", "rate_limit_error" 등)
     /// </summary>
     [JsonPropertyName("type")]
-    public string Type { get; set; }
+    public required string Type { get; set; }
 
     /// <summary>
     /// 문제가 된 파라미터 이름 (옵션)
     /// </summary>
     [JsonPropertyName("param")]
-    public string Param { get; set; }
+    public string? Param { get; set; }
 
     /// <summary>
     /// 에러 코드 (옵션)
     /// </summary>
     [JsonPropertyName("code")]
-    public string Code { get; set; }
+    public string? Code { get; set; }
 }
 
 /// <summary>
@@ -186,19 +186,19 @@ public class ResponseFunctionCallArgumentsDeltaEvent
     /// 항상 "response.function_call_arguments.delta"
     /// </summary>
     [JsonPropertyName("type")]
-    public string Type { get; set; }
+    public required string Type { get; set; }
 
     /// <summary>
     /// 이 델타가 속한 호출 ID (message 또는 도구 호출 내에서의 식별자)
     /// </summary>
     [JsonPropertyName("call_id")]
-    public string CallId { get; set; }
+    public string? CallId { get; set; }
 
     /// <summary>
     /// JSON 문자열 형태로 점진적으로 전송되는 함수 호출 인자의 델타 조각
     /// </summary>
     [JsonPropertyName("delta")]
-    public string Delta { get; set; }
+    public string? Delta { get; set; }
 }
 
 /// <summary>
@@ -210,7 +210,7 @@ public class ResponseFunctionCallArgumentsDoneEvent
     /// 항상 "response.function_call_arguments.done"
     /// </summary>
     [JsonPropertyName("type")]
-    public string Type { get; set; }
+    public required string Type { get; set; }
 
     /// <summary>
     /// 최종 완성된 인자(input) JSON
@@ -222,5 +222,5 @@ public class ResponseFunctionCallArgumentsDoneEvent
     /// 호출 ID (message 또는 도구 호출 내에서의 식별자)
     /// </summary>
     [JsonPropertyName("call_id")]
-    public string CallId { get; set; }
+    public string? CallId { get; set; }
 }
