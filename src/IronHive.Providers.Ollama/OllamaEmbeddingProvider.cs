@@ -55,4 +55,14 @@ public class OllamaEmbeddingProvider : IEmbeddingProvider
         });
         return result;
     }
+
+    /// <inheritdoc />
+    public Task<int> CountTokensAsync(
+        string modelId, 
+        string input, 
+        CancellationToken cancellationToken = default)
+    {
+        // Ollama does not support token counting directly.
+        throw new NotImplementedException();
+    }
 }

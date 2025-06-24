@@ -30,4 +30,13 @@ public interface IEmbeddingService
         string modelId,
         IEnumerable<string> inputs,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 지정된 프로바이더와 모델을 사용하여 입력 문자열의 토큰 수를 계산합니다.
+    /// </summary>
+    Task<int> CountTokensAsync(
+        string provider,
+        string modelId,
+        string input,
+        CancellationToken cancellationToken = default);
 }

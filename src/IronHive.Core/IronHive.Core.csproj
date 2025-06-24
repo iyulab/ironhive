@@ -23,7 +23,6 @@
     <PackageReference Include="PdfPig" Version="0.1.10" />
     <PackageReference Include="Scriban" Version="6.2.1" />
     <PackageReference Include="System.Numerics.Tensors" Version="9.0.5" />
-    <PackageReference Include="Tiktoken" Version="2.2.0" />
   </ItemGroup>
 
   <ItemGroup>
