@@ -5,9 +5,7 @@ using IronHive.Providers.OpenAI.ChatCompletion;
 using MessageGenerationRequest = IronHive.Abstractions.Message.MessageGenerationRequest;
 using TextMessageContent = IronHive.Abstractions.Message.Content.TextMessageContent;
 using AssistantMessage = IronHive.Abstractions.Message.Roles.AssistantMessage;
-using OpenAIAssistantMessage = IronHive.Providers.OpenAI.ChatCompletion.AssistantMessage;
 using MessageContent = IronHive.Abstractions.Message.MessageContent;
-using OpenAIMessageContent = IronHive.Providers.OpenAI.ChatCompletion.MessageContent;
 
 namespace IronHive.Providers.OpenAI;
 
@@ -54,11 +52,14 @@ public class OpenAIMessageGenerationProvider : IMessageGenerationProvider
         {
             foreach (var tool in tools.OrderBy(t => t.Index))
             {
+                if (tool is not OpenAIFunctionToolCall function)
+                    continue;
+
                 content.Add(new ToolMessageContent
                 {
-                    Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
-                    Name = tool.Function?.Name ?? string.Empty,
-                    Input = tool.Function?.Arguments,
+                    Id = function.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
+                    Name = function.Function?.Name ?? string.Empty,
+                    Input = function.Function?.Arguments,
                 });
             }
         }
@@ -67,10 +68,10 @@ public class OpenAIMessageGenerationProvider : IMessageGenerationProvider
         {
             DoneReason = choice?.FinishReason switch
             {
-                FinishReason.ToolCalls => MessageDoneReason.ToolCall,
-                FinishReason.Stop => MessageDoneReason.EndTurn,
-                FinishReason.Length => MessageDoneReason.MaxTokens,
-                FinishReason.ContentFilter => MessageDoneReason.ContentFilter,
+                ChatFinishReason.ToolCalls => MessageDoneReason.ToolCall,
+                ChatFinishReason.Stop => MessageDoneReason.EndTurn,
+                ChatFinishReason.Length => MessageDoneReason.MaxTokens,
+                ChatFinishReason.ContentFilter => MessageDoneReason.ContentFilter,
                 _ => null
             },
             Message = new AssistantMessage
@@ -137,10 +138,10 @@ public class OpenAIMessageGenerationProvider : IMessageGenerationProvider
             {
                 reason = choice.FinishReason switch
                 {
-                    FinishReason.ToolCalls => MessageDoneReason.ToolCall,
-                    FinishReason.Stop => MessageDoneReason.EndTurn,
-                    FinishReason.Length => MessageDoneReason.MaxTokens,
-                    FinishReason.ContentFilter => MessageDoneReason.ContentFilter,
+                    ChatFinishReason.ToolCalls => MessageDoneReason.ToolCall,
+                    ChatFinishReason.Stop => MessageDoneReason.EndTurn,
+                    ChatFinishReason.Length => MessageDoneReason.MaxTokens,
+                    ChatFinishReason.ContentFilter => MessageDoneReason.ContentFilter,
                     _ => null
                 };
             }
@@ -159,6 +160,9 @@ public class OpenAIMessageGenerationProvider : IMessageGenerationProvider
                     var tool = tools.ElementAt(i);
                     var toolIndex = tool.Index ?? i;
 
+                    if (tool is not OpenAIFunctionToolCall function)
+                        continue;
+
                     // 이어서 생성되는 툴 메시지의 경우
                     if (current.HasValue)
                     {
@@ -173,7 +177,7 @@ public class OpenAIMessageGenerationProvider : IMessageGenerationProvider
                                     Index = index,
                                     Delta = new ToolDeltaContent
                                     { 
-                                        Input = tool.Function?.Arguments ?? string.Empty 
+                                        Input = function.Function?.Arguments ?? string.Empty 
                                     }
                                 };
                             }
@@ -187,9 +191,9 @@ public class OpenAIMessageGenerationProvider : IMessageGenerationProvider
                                 };
                                 current = (index + 1, new ToolMessageContent
                                 {
-                                    Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
-                                    Name = tool.Function?.Name ?? string.Empty,
-                                    Input = tool.Function?.Arguments,
+                                    Id = function.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
+                                    Name = function.Function?.Name ?? string.Empty,
+                                    Input = function.Function?.Arguments,
                                 });
                                 currentToolIndex = toolIndex;
                                 yield return new StreamingContentAddedResponse
@@ -209,9 +213,9 @@ public class OpenAIMessageGenerationProvider : IMessageGenerationProvider
                             };
                             current = (index + 1, new ToolMessageContent
                             {
-                                Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
-                                Name = tool.Function?.Name ?? string.Empty,
-                                Input = tool.Function?.Arguments,
+                                Id = function.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
+                                Name = function.Function?.Name ?? string.Empty,
+                                Input = function.Function?.Arguments,
                             });
                             currentToolIndex = toolIndex;
                             yield return new StreamingContentAddedResponse
@@ -226,9 +230,9 @@ public class OpenAIMessageGenerationProvider : IMessageGenerationProvider
                     {
                         current = (0, new ToolMessageContent
                         {
-                            Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
-                            Name = tool.Function?.Name ?? string.Empty,
-                            Input = tool.Function?.Arguments,
+                            Id = function.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
+                            Name = function.Function?.Name ?? string.Empty,
+                            Input = function.Function?.Arguments,
                         });
                         currentToolIndex = toolIndex;
                         yield return new StreamingContentAddedResponse

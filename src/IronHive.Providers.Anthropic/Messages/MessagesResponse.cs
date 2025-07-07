@@ -24,7 +24,7 @@ internal class MessagesResponse
     /// text or tool content
     /// </summary>
     [JsonPropertyName("content")]
-    public required IEnumerable<IMessageContent> Content { get; set; }
+    public required IEnumerable<MessageContent> Content { get; set; }
 
     [JsonPropertyName("id")]
     public required string Id { get; set; }

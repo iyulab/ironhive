@@ -3,18 +3,18 @@ using System.Text.Json;
 
 namespace IronHive.Providers.Anthropic.Catalog;
 
-internal class AnthropicModelsClient : AnthropicClientBase
+public class AnthropicModelsClient : AnthropicClientBase
 {
-    internal AnthropicModelsClient(AnthropicConfig config) : base(config)
+    public AnthropicModelsClient(AnthropicConfig config) : base(config)
     { }
 
-    internal AnthropicModelsClient(string apiKey) : base(apiKey)
+    public AnthropicModelsClient(string apiKey) : base(apiKey)
     { }
 
     /// <summary>
     /// Gets the list of Anthropic models.
     /// </summary>
-    internal async Task<IEnumerable<AnthropicModel>> GetModelsAsync(CancellationToken cancellationToken)
+    public async Task<IEnumerable<AnthropicModel>> GetModelsAsync(CancellationToken cancellationToken)
     {
         var path = $"{AnthropicConstants.GetModelsPath}?limit=999".RemovePreffix('/');
         var jsonDoc = await Client.GetFromJsonAsync<JsonDocument>(path, JsonOptions, cancellationToken);
@@ -27,7 +27,7 @@ internal class AnthropicModelsClient : AnthropicClientBase
     /// <summary>
     /// Gets the list of Anthropic models.
     /// </summary>
-    internal async Task<AnthropicModel?> GetModelAsync(string modelId, CancellationToken cancellationToken)
+    public async Task<AnthropicModel?> GetModelAsync(string modelId, CancellationToken cancellationToken)
     {
         var path = Path.Combine(AnthropicConstants.GetModelsPath, modelId).RemovePreffix('/');
         var model = await Client.GetFromJsonAsync<AnthropicModel>(path, JsonOptions, cancellationToken);

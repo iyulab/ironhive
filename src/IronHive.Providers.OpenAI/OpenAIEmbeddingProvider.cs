@@ -29,7 +29,7 @@ public class OpenAIEmbeddingProvider : IEmbeddingProvider
         string input, 
         CancellationToken cancellationToken = default)
     {
-        var res = await _client.PostEmbeddingAsync(new EmbeddingRequest
+        var res = await _client.PostEmbeddingAsync(new OpenAIEmbeddingRequest
         {
             Model = modelId,
             Input = new[] { input }
@@ -45,7 +45,7 @@ public class OpenAIEmbeddingProvider : IEmbeddingProvider
         IEnumerable<string> inputs,
         CancellationToken cancellationToken = default)
     {
-        var res = await _client.PostEmbeddingAsync(new EmbeddingRequest
+        var res = await _client.PostEmbeddingAsync(new OpenAIEmbeddingRequest
         {
             Model = modelId,
             Input = inputs,

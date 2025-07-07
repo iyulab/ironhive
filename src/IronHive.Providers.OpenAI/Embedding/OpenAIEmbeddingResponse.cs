@@ -2,7 +2,7 @@
 
 namespace IronHive.Providers.OpenAI.Embedding;
 
-internal class EmbeddingResponse
+public class OpenAIEmbeddingResponse
 {
     [JsonPropertyName("index")]
     public int? Index { get; set; }

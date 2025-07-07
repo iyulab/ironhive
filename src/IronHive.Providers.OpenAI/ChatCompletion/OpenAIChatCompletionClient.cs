@@ -5,15 +5,15 @@ using System.Runtime.CompilerServices;
 
 namespace IronHive.Providers.OpenAI.ChatCompletion;
 
-internal class OpenAIChatCompletionClient : OpenAIClientBase
+public class OpenAIChatCompletionClient : OpenAIClientBase
 {
-    internal OpenAIChatCompletionClient(string apiKey) : base(apiKey) { }
+    public OpenAIChatCompletionClient(string apiKey) : base(apiKey) { }
 
-    internal OpenAIChatCompletionClient(OpenAIConfig config) : base(config) { }
+    public OpenAIChatCompletionClient(OpenAIConfig config) : base(config) { }
 
-    internal async Task<ChatCompletionResponse> PostChatCompletionAsync(
+    public async Task<ChatCompletionResponse> PostChatCompletionAsync(
         ChatCompletionRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         request.Stream = false;
         var json = JsonSerializer.Serialize(request, JsonOptions);
@@ -25,12 +25,12 @@ internal class OpenAIChatCompletionClient : OpenAIClientBase
         return message;
     }
 
-    internal async IAsyncEnumerable<StreamingChatCompletionResponse> PostStreamingChatCompletionAsync(
+    public async IAsyncEnumerable<StreamingChatCompletionResponse> PostStreamingChatCompletionAsync(
         ChatCompletionRequest request,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         request.Stream = true;
-        request.StreamOptions = new StreamOptions { InCludeUsage = true };
+        request.StreamOptions = new ChatCompletionStreamOptions { InCludeUsage = true };
         var json = JsonSerializer.Serialize(request, JsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         using var _request = new HttpRequestMessage(HttpMethod.Post, OpenAIConstants.PostChatCompletionPath.RemovePreffix('/'));

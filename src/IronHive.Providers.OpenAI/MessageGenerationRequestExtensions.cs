@@ -3,13 +3,9 @@ using IronHive.Abstractions.Message.Content;
 using IronHive.Providers.OpenAI.ChatCompletion;
 using UserMessage = IronHive.Abstractions.Message.Roles.UserMessage;
 using AssistantMessage = IronHive.Abstractions.Message.Roles.AssistantMessage;
-using OpenAIMessage = IronHive.Providers.OpenAI.ChatCompletion.Message;
-using OpenAIUserMessage = IronHive.Providers.OpenAI.ChatCompletion.UserMessage;
-using OpenAIAssistantMessage = IronHive.Providers.OpenAI.ChatCompletion.AssistantMessage;
+using OpenAIMessage = IronHive.Providers.OpenAI.ChatCompletion.ChatMessage;
 using TextMessageContent = IronHive.Abstractions.Message.Content.TextMessageContent;
-using OpenAITextMessageContent = IronHive.Providers.OpenAI.ChatCompletion.TextMessageContent;
 using ImageMessageContent = IronHive.Abstractions.Message.Content.ImageMessageContent;
-using OpenAIImageMessageContent = IronHive.Providers.OpenAI.ChatCompletion.ImageMessageContent;
 
 namespace IronHive.Providers.OpenAI;
 
@@ -23,9 +19,9 @@ internal static class MessageGenerationRequestExtensions
         if (!string.IsNullOrWhiteSpace(request.System))
         {
             if (isReasoning)
-                messages.Add(new DeveloperMessage { Content = request.System });
+                messages.Add(new DeveloperChatMessage { Content = request.System });
             else
-                messages.Add(new SystemMessage { Content = request.System });
+                messages.Add(new SystemChatMessage { Content = request.System });
         }
 
         foreach (var message in request.Messages)
@@ -33,13 +29,13 @@ internal static class MessageGenerationRequestExtensions
             if (message is UserMessage user)
             {
                 // 사용자 메시지
-                var um = new OpenAIUserMessage();
+                var um = new UserChatMessage();
                 foreach (var item in user.Content)
                 {
                     // 텍스트 메시지
                     if (item is TextMessageContent text)
                     {
-                        um.Content.Add(new OpenAITextMessageContent
+                        um.Content.Add(new TextChatMessageContent
                         {
                             Text = text.Value ?? string.Empty
                         });
@@ -47,7 +43,7 @@ internal static class MessageGenerationRequestExtensions
                     // 파일 문서 메시지
                     else if (item is DocumentMessageContent document)
                     {
-                        um.Content.Add(new OpenAITextMessageContent
+                        um.Content.Add(new TextChatMessageContent
                         {
                             Text = $"Document Content:\n{document.Data}"
                         });
@@ -55,9 +51,9 @@ internal static class MessageGenerationRequestExtensions
                     // 이미지 메시지
                     else if (item is ImageMessageContent image)
                     {
-                        um.Content.Add(new OpenAIImageMessageContent
+                        um.Content.Add(new ImageChatMessageContent
                         {
-                            ImageUrl = new ImageUrl
+                            ImageUrl = new ImageChatMessageContent.ImageUrlSource
                             {
                                 Url = image.Base64
                             }
@@ -75,8 +71,8 @@ internal static class MessageGenerationRequestExtensions
                 // AI 메시지
                 foreach (var group in assistant.SplitContentByTool())
                 {
-                    var am = new OpenAIAssistantMessage();
-                    var tml = new List<ToolMessage>();
+                    var am = new AssistantChatMessage();
+                    var tml = new List<ToolChatMessage>();
                     foreach (var content in group)
                     {
                         if (content is ThinkingMessageContent thinking)
@@ -93,11 +89,11 @@ internal static class MessageGenerationRequestExtensions
                         {
                             // 도구 메시지
                             am.ToolCalls ??= [];
-                            am.ToolCalls.Add(new ToolCall
+                            am.ToolCalls.Add(new OpenAIFunctionToolCall
                             {
                                 //Index = tool.Index,
                                 Id = tool.Id,
-                                Function = new FunctionCall
+                                Function = new OpenAIFunctionToolCall.FunctionCallSchema
                                 {
                                     Name = tool.Name,
                                     Arguments = tool.Input
@@ -105,7 +101,7 @@ internal static class MessageGenerationRequestExtensions
                             });
 
                             // 도구 결과 메시지
-                            tml.Add(new ToolMessage
+                            tml.Add(new ToolChatMessage
                             {
                                 ID = tool.Id ?? string.Empty,
                                 Content = tool.Output ?? string.Empty
@@ -138,14 +134,14 @@ internal static class MessageGenerationRequestExtensions
             Stop = request.StopSequences,
             ReasoningEffort = request.ThinkingEffort switch
             {
-                MessageThinkingEffort.Low => ReasoningEffort.Low,
-                MessageThinkingEffort.Medium => ReasoningEffort.Medium,
-                MessageThinkingEffort.High => ReasoningEffort.High,
+                MessageThinkingEffort.Low => ChatReasoningEffort.Low,
+                MessageThinkingEffort.Medium => ChatReasoningEffort.Medium,
+                MessageThinkingEffort.High => ChatReasoningEffort.High,
                 _ => null
             },
-            Tools = request.Tools.Select(t => new Tool
+            Tools = request.Tools.Select(t => new OpenAIFunctionTool
             {
-                Function = new Function
+                Function = new OpenAIFunctionTool.FunctionSchema
                 {
                     Name = t.Name,
                     Description = t.Description,

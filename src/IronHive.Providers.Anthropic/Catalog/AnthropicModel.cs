@@ -6,7 +6,7 @@ namespace IronHive.Providers.Anthropic.Catalog;
 /// <summary>
 /// Represents a Anthropic model.
 /// </summary>
-internal class AnthropicModel
+public class AnthropicModel
 {
     /// <summary>
     /// always "model"

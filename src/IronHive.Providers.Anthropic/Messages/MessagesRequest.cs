@@ -53,13 +53,13 @@ internal class MessagesRequest
     /// (Not Use)
     /// </summary>
     [JsonPropertyName("thinking")]
-    public IThinking? Thinking { get; set; }
+    public ThinkingEffort? Thinking { get; set; }
 
     [JsonPropertyName("tool_choice")]
-    public IToolChoice? ToolChoice { get; set; }
+    public AnthropicToolChoice? ToolChoice { get; set; }
 
     [JsonPropertyName("tools")]
-    public IEnumerable<ITool>? Tools { get; set; }
+    public IEnumerable<AnthropicTool>? Tools { get; set; }
 
     /// <summary>
     /// 0 to 100

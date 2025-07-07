@@ -10,16 +10,13 @@ namespace IronHive.Providers.Anthropic.Messages;
 [JsonDerivedType(typeof(DocumentMessageContent), "document")]
 [JsonDerivedType(typeof(ThinkingMessageContent), "thinking")]
 [JsonDerivedType(typeof(RedactedThinkingMessageContent), "redacted_thinking")]
-internal interface IMessageContent
-{ }
-
-internal abstract class MessageContentBase : IMessageContent
+internal abstract class MessageContent
 {
     [JsonPropertyName("cache_control")]
     public CacheControl? CacheControl { get; set; }
 }
 
-internal class TextMessageContent : MessageContentBase
+internal class TextMessageContent : MessageContent
 {
     [JsonPropertyName("text")]
     public required string Text { get; set; }
@@ -28,13 +25,13 @@ internal class TextMessageContent : MessageContentBase
     public object? Citations { get; set; }
 }
 
-internal class ImageMessageContent : MessageContentBase
+internal class ImageMessageContent : MessageContent
 {
     [JsonPropertyName("source")]
     public required ImageSource Source { get; set; }
 }
 
-internal class ToolUseMessageContent : MessageContentBase
+internal class ToolUseMessageContent : MessageContent
 {
     [JsonPropertyName("id")]
     public string? Id { get; set; }
@@ -46,7 +43,7 @@ internal class ToolUseMessageContent : MessageContentBase
     public object? Input { get; set; }
 }
 
-internal class ToolResultMessageContent : MessageContentBase
+internal class ToolResultMessageContent : MessageContent
 {
     [JsonPropertyName("tool_use_id")]
     public string? ToolUseId { get; set; }
@@ -58,7 +55,7 @@ internal class ToolResultMessageContent : MessageContentBase
     public string Content { get; set; } = string.Empty;
 }
 
-internal class DocumentMessageContent : MessageContentBase
+internal class DocumentMessageContent : MessageContent
 {
     [JsonPropertyName("source")]
     public object? Source { get; set; }
@@ -73,7 +70,7 @@ internal class DocumentMessageContent : MessageContentBase
     public string? Title { get; set; }
 }
 
-internal class ThinkingMessageContent : IMessageContent
+internal class ThinkingMessageContent : MessageContent
 {
     /// <summary>
     /// 이 서명은 API에 블록을 다시 전달할 때 유효성을 확인하는 데 사용됩니다.
@@ -86,7 +83,7 @@ internal class ThinkingMessageContent : IMessageContent
     public required string Thinking { get; set; }
 }
 
-internal class RedactedThinkingMessageContent : IMessageContent
+internal class RedactedThinkingMessageContent : MessageContent
 {
     /// <summary>
     /// Claude가 내부 추론을 수행하는 과정 중, 보안상 민감하다고 판단되는 정보는 이 블록에 암호화되어 들어갑니다.

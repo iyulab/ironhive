@@ -2,7 +2,7 @@
 
 namespace IronHive.Providers.Anthropic;
 
-internal abstract class AnthropicClientBase
+public abstract class AnthropicClientBase : IDisposable
 {
     protected AnthropicClientBase(AnthropicConfig config)
     {
@@ -20,6 +20,12 @@ internal abstract class AnthropicClientBase
     public HttpClient Client { get; }
 
     public JsonSerializerOptions JsonOptions { get; }
+
+    public void Dispose()
+    {
+        Client.Dispose();
+        GC.SuppressFinalize(this);
+    }
 
     private static HttpClient CreateHttpClient(AnthropicConfig config)
     {

@@ -7,28 +7,28 @@ namespace IronHive.Providers.Anthropic.Messages;
 [JsonDerivedType(typeof(ToolUseDeltaMessageContent), "input_json_delta")]
 [JsonDerivedType(typeof(ThinkingDeltaMessageContent), "thinking_delta")]
 [JsonDerivedType(typeof(SignatureDeltaMessageContent), "signature_delta")]
-internal interface IMessageDeltaContent
+internal abstract class MessageDeltaContent
 { }
 
-internal class TextDeltaMessageContent : IMessageDeltaContent
+internal class TextDeltaMessageContent : MessageDeltaContent
 {
     [JsonPropertyName("text")]
     public required string Text { get; set; }
 }
 
-internal class ToolUseDeltaMessageContent : IMessageDeltaContent
+internal class ToolUseDeltaMessageContent : MessageDeltaContent
 {
     [JsonPropertyName("partial_json")]
     public required string PartialJson { get; set; }
 }
 
-internal class ThinkingDeltaMessageContent : IMessageDeltaContent
+internal class ThinkingDeltaMessageContent : MessageDeltaContent
 {
     [JsonPropertyName("thinking")]
     public required string Thinking { get; set; }
 }
 
-internal class SignatureDeltaMessageContent : IMessageDeltaContent
+internal class SignatureDeltaMessageContent : MessageDeltaContent
 {
     [JsonPropertyName("signature")]
     public required string Signature { get; set; }

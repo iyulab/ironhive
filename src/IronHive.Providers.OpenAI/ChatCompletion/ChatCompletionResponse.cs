@@ -2,10 +2,10 @@
 
 namespace IronHive.Providers.OpenAI.ChatCompletion;
 
-internal class ChatCompletionResponse
+public class ChatCompletionResponse
 {
     [JsonPropertyName("choices")]
-    public IEnumerable<Choice>? Choices { get; set; }
+    public IEnumerable<ChatChoice>? Choices { get; set; }
 
     [JsonPropertyName("created")]
     public int Created { get; set; }
@@ -29,5 +29,5 @@ internal class ChatCompletionResponse
     public string? SystemFingerprint { get; set; }
 
     [JsonPropertyName("usage")]
-    public TokenUsage? Usage { get; set; }
+    public ChatTokenUsage? Usage { get; set; }
 }

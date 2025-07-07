@@ -6,7 +6,7 @@ namespace IronHive.Providers.OpenAI.Catalog;
 /// <summary>
 /// Represents an OpenAI model.
 /// </summary>
-internal class OpenAIModel
+public class OpenAIModel
 {
     /// <summary>
     /// always "model"
@@ -31,5 +31,5 @@ internal class OpenAIModel
     /// </summary>
     [JsonPropertyName("created")]
     [JsonConverter(typeof(DateTimeJsonConverter))]
-    public DateTime Created { get; set; }
+    public DateTime? Created { get; set; }
 }

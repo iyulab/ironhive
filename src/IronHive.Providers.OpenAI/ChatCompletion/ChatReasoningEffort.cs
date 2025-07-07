@@ -1,6 +1,6 @@
 ﻿namespace IronHive.Providers.OpenAI.ChatCompletion;
 
-internal enum ReasoningEffort
+public enum ChatReasoningEffort
 {
     /// <summary>
     /// Low reasoning effort

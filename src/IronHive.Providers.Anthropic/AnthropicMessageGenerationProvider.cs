@@ -36,7 +36,7 @@ public class AnthropicMessageGenerationProvider : IMessageGenerationProvider
         var req = request.ToAnthropic();
         var res = await _client.PostMessagesAsync(req, cancellationToken);
 
-        var content = new List<MessageContent>();
+        var content = new List<Abstractions.Message.MessageContent>();
         foreach (var item in res.Content ?? [])
         {
             // 추론 생성

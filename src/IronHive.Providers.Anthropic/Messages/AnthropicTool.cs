@@ -6,11 +6,11 @@ namespace IronHive.Providers.Anthropic.Messages;
 /// Custom tool only, not use other tools
 /// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
-[JsonDerivedType(typeof(CustomTool), "custom")]
-internal interface ITool
+[JsonDerivedType(typeof(CustomAnthropicTool), "custom")]
+internal abstract class AnthropicTool
 { }
 
-internal class CustomTool : ITool
+internal class CustomAnthropicTool : AnthropicTool
 {
     [JsonPropertyName("name")]
     public required string Name { get; set; }

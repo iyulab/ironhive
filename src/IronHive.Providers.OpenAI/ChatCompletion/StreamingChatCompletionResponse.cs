@@ -3,10 +3,10 @@ using System.Text.Json.Serialization;
 
 namespace IronHive.Providers.OpenAI.ChatCompletion;
 
-internal class StreamingChatCompletionResponse
+public class StreamingChatCompletionResponse
 {
     [JsonPropertyName("choices")]
-    public IEnumerable<ChoiceDelta>? Choices { get; set; }
+    public IEnumerable<ChatChoiceDelta>? Choices { get; set; }
 
     [JsonPropertyName("created")]
     [JsonConverter(typeof(DateTimeJsonConverter))]
@@ -31,5 +31,5 @@ internal class StreamingChatCompletionResponse
     public string? SystemFingerprint { get; set; }
 
     [JsonPropertyName("usage")]
-    public TokenUsage? Usage { get; set; }
+    public ChatTokenUsage? Usage { get; set; }
 }

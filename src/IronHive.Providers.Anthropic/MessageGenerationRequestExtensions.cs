@@ -161,7 +161,7 @@ internal static class MessageGenerationRequestExtensions
             TopK = isThinking ? null : request.TopK,
             StopSequences = request.StopSequences,
             Thinking = budgetTokens,
-            Tools = request.Tools.Select(t => new CustomTool
+            Tools = request.Tools.Select(t => new CustomAnthropicTool
             {
                 Name = t.Name,
                 Description = t.Description,
@@ -179,7 +179,7 @@ internal static class MessageGenerationRequestExtensions
     }
 
     // 최대 토큰 수를 계산하고 추론 예산을 설정합니다.
-    internal static (int, EnabledThinking?) CaculateTokens(MessageGenerationRequest request)
+    internal static (int, EnabledThinkingEffort?) CaculateTokens(MessageGenerationRequest request)
     {
         // 추론 모델의 경우 예산 토큰을 설정합니다.
         if (IsThinkingModel(request))
@@ -201,7 +201,7 @@ internal static class MessageGenerationRequestExtensions
             });
             // "1024"토큰보다 커야함
             budgetTokens = budgetTokens >= 1024 ? budgetTokens : 1024;
-            return (maxTokens, new EnabledThinking { BudgetTokens = budgetTokens });
+            return (maxTokens, new EnabledThinkingEffort { BudgetTokens = budgetTokens });
         }
         else
         {

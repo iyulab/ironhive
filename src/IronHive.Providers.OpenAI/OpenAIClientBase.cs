@@ -2,7 +2,7 @@
 
 namespace IronHive.Providers.OpenAI;
 
-internal abstract class OpenAIClientBase
+public abstract class OpenAIClientBase : IDisposable
 {
     protected OpenAIClientBase(OpenAIConfig config)
     {
@@ -20,6 +20,15 @@ internal abstract class OpenAIClientBase
     public HttpClient Client { get; }
 
     public JsonSerializerOptions JsonOptions { get; }
+
+    /// <summary>
+    /// Releases all resources used by the <see cref="OpenAIClientBase"/> instance.
+    /// </summary>
+    public virtual void Dispose()
+    {
+        Client.Dispose();
+        GC.SuppressFinalize(this);
+    }
 
     /// <summary>
     /// Creates a new instance of <see cref="HttpClient"/> with the specified configuration settings.

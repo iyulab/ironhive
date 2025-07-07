@@ -4,15 +4,15 @@ using System.Text.Json;
 
 namespace IronHive.Providers.OpenAI.Embedding;
 
-internal class OpenAIEmbeddingClient : OpenAIClientBase
+public class OpenAIEmbeddingClient : OpenAIClientBase
 {
-    internal OpenAIEmbeddingClient(string apiKey) : base(apiKey) { }
+    public OpenAIEmbeddingClient(string apiKey) : base(apiKey) { }
 
-    internal OpenAIEmbeddingClient(OpenAIConfig config) : base(config) { }
+    public OpenAIEmbeddingClient(OpenAIConfig config) : base(config) { }
 
-    internal async Task<IEnumerable<EmbeddingResponse>> PostEmbeddingAsync(
-        EmbeddingRequest request,
-        CancellationToken cancellationToken)
+    public async Task<IEnumerable<OpenAIEmbeddingResponse>> PostEmbeddingAsync(
+        OpenAIEmbeddingRequest request,
+        CancellationToken cancellationToken = default)
     {
         var json = JsonSerializer.Serialize(request, JsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -24,7 +24,7 @@ internal class OpenAIEmbeddingClient : OpenAIClientBase
 
         var embeddings = jsonDocument.RootElement.GetProperty("data").EnumerateArray().Select(el =>
         {
-            return el.Deserialize<EmbeddingResponse>(JsonOptions)
+            return el.Deserialize<OpenAIEmbeddingResponse>(JsonOptions)
                 ?? throw new InvalidOperationException("Failed to deserialize response.");
         });
 

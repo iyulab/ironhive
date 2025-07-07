@@ -2,7 +2,7 @@
 
 namespace IronHive.Providers.OpenAI.Embedding;
 
-internal class EmbeddingRequest
+public class OpenAIEmbeddingRequest
 {
     [JsonPropertyName("input")]
     public required IEnumerable<string> Input { get; set; }

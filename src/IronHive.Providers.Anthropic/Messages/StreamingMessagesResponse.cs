@@ -56,7 +56,7 @@ internal class ContentStartEvent : StreamingMessagesResponse
     public int? Index { get; set; }
 
     [JsonPropertyName("content_block")]
-    public IMessageContent? ContentBlock { get; set; }
+    public MessageContent? ContentBlock { get; set; }
 }
 
 internal class ContentDeltaEvent : StreamingMessagesResponse
@@ -65,7 +65,7 @@ internal class ContentDeltaEvent : StreamingMessagesResponse
     public int? Index { get; set; }
 
     [JsonPropertyName("delta")]
-    public IMessageDeltaContent? Delta { get; set; }
+    public MessageDeltaContent? Delta { get; set; }
 }
 
 internal class ContentStopEvent : StreamingMessagesResponse

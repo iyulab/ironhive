@@ -2,7 +2,7 @@
 
 namespace IronHive.Providers.OpenAI.ChatCompletion;
 
-internal class LogProbs
+public class ChatLogProbs
 {
     [JsonPropertyName("content")]
     public IEnumerable<LogProbTokens>? Content { get; set; }
@@ -11,7 +11,7 @@ internal class LogProbs
     public IEnumerable<LogProbTokens>? Refusal { get; set; }
 }
 
-internal class LogProbTokens
+public class LogProbTokens
 {
     [JsonPropertyName("token")]
     public string? Token { get; set; }
@@ -26,7 +26,7 @@ internal class LogProbTokens
     public IEnumerable<LogProbToken>? TopLogProbs { get; set; }
 }
 
-internal class LogProbToken
+public class LogProbToken
 {
     [JsonPropertyName("token")]
     public string? Token { get; set; }

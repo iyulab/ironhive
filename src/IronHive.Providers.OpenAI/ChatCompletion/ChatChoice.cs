@@ -2,7 +2,7 @@
 
 namespace IronHive.Providers.OpenAI.ChatCompletion;
 
-internal enum FinishReason
+public enum ChatFinishReason
 {
     Stop,
     Length,
@@ -10,32 +10,32 @@ internal enum FinishReason
     ToolCalls
 }
 
-internal class Choice
+public class ChatChoice
 {
     [JsonPropertyName("finish_reason")]
-    public FinishReason? FinishReason { get; set; }
+    public ChatFinishReason? FinishReason { get; set; }
 
     [JsonPropertyName("index")]
     public int Index { get; set; }
 
     [JsonPropertyName("message")]
-    public AssistantMessage? Message { get; set; }
+    public AssistantChatMessage? Message { get; set; }
 
     [JsonPropertyName("logprobs")]
-    public LogProbs? LogProbs { get; set; }
+    public ChatLogProbs? LogProbs { get; set; }
 }
 
-internal class ChoiceDelta
+public class ChatChoiceDelta
 {
     [JsonPropertyName("finish_reason")]
-    public FinishReason? FinishReason { get; set; }
+    public ChatFinishReason? FinishReason { get; set; }
 
     [JsonPropertyName("index")]
     public int Index { get; set; }
 
     [JsonPropertyName("delta")]
-    public AssistantMessage? Delta { get; set; }
+    public AssistantChatMessage? Delta { get; set; }
 
     [JsonPropertyName("logprobs")]
-    public LogProbs? LogProbs { get; set; }
+    public ChatLogProbs? LogProbs { get; set; }
 }

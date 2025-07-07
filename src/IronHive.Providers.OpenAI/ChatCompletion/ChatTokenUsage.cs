@@ -2,7 +2,7 @@
 
 namespace IronHive.Providers.OpenAI.ChatCompletion;
 
-internal class TokenUsage
+public class ChatTokenUsage
 {
     [JsonPropertyName("prompt_tokens")]
     public int PromptTokens { get; set; }
@@ -20,7 +20,7 @@ internal class TokenUsage
     public CompletionTokensDetails? CompletionTokensDetails { get; set; }
 }
 
-internal class CompletionTokensDetails
+public class CompletionTokensDetails
 {
     [JsonPropertyName("accepted_prediction_tokens")]
     public int AcceptedTokens { get; set; }
@@ -35,7 +35,7 @@ internal class CompletionTokensDetails
     public int RejectedTokens { get; set; }
 }
 
-internal class PromptTokensDetails
+public class PromptTokensDetails
 {
     [JsonPropertyName("audio_tokens")]
     public int AudioTokens { get; set; }

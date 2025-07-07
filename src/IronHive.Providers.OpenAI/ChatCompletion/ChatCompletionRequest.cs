@@ -2,10 +2,10 @@
 
 namespace IronHive.Providers.OpenAI.ChatCompletion;
 
-internal class ChatCompletionRequest
+public class ChatCompletionRequest
 {
     [JsonPropertyName("messages")]
-    public required IEnumerable<Message> Messages { get; set; }
+    public required IEnumerable<ChatMessage> Messages { get; set; }
 
     [JsonPropertyName("model")]
     public required string Model { get; set; }
@@ -77,13 +77,13 @@ internal class ChatCompletionRequest
     /// o-series model only
     /// </summary>
     [JsonPropertyName("reasoning_effort")]
-    public ReasoningEffort? ReasoningEffort { get; set; }
+    public ChatReasoningEffort? ReasoningEffort { get; set; }
 
     /// <summary>
     /// (Not Use) text or json
     /// </summary>
     [JsonPropertyName("response_format")]
-    public ResponseFormat? ResponseFormat { get; set; }
+    public ChatResponseFormat? ResponseFormat { get; set; }
 
     /// <summary>
     /// (Not Use)
@@ -113,7 +113,7 @@ internal class ChatCompletionRequest
     public bool? Stream { get; set; }
 
     [JsonPropertyName("stream_options")]
-    public StreamOptions? StreamOptions { get; set; }
+    public ChatCompletionStreamOptions? StreamOptions { get; set; }
 
     /// <summary>
     /// 0.0 to 2.0
@@ -122,13 +122,13 @@ internal class ChatCompletionRequest
     public float? Temperature { get; set; }
 
     /// <summary>
-    /// "none", "auto", <see cref="Tool"/>
+    /// "none", "auto", <see cref="OpenAITool"/>
     /// </summary>
     [JsonPropertyName("tool_choice")]
-    public ToolChoice? ToolChoice { get; set; }
+    public OpenAIToolChoice? ToolChoice { get; set; }
 
     [JsonPropertyName("tools")]
-    public IEnumerable<Tool>? Tools { get; set; }
+    public IEnumerable<OpenAITool>? Tools { get; set; }
 
     /// <summary>
     /// 0 to 20
@@ -153,9 +153,10 @@ internal class ChatCompletionRequest
     /// </summary>
     [JsonPropertyName("web_search_options")]
     public object? WebSearchOptions { get; set; }
+
 }
 
-internal class StreamOptions
+public class ChatCompletionStreamOptions
 {
     [JsonPropertyName("include_usage")]
     public bool? InCludeUsage { get; set; }

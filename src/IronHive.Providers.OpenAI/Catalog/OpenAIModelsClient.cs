@@ -3,15 +3,16 @@ using System.Text.Json;
 
 namespace IronHive.Providers.OpenAI.Catalog;
 
-internal class OpenAIModelsClient : OpenAIClientBase
+public class OpenAIModelsClient : OpenAIClientBase
 {
-    internal OpenAIModelsClient(OpenAIConfig config) : base(config)
+    public OpenAIModelsClient(OpenAIConfig config) : base(config)
     { }
 
-    internal OpenAIModelsClient(string baseUrl) : base(baseUrl)
+    public OpenAIModelsClient(string baseUrl) : base(baseUrl)
     { }
 
-    internal async Task<IEnumerable<OpenAIModel>> GetListModelsAsync(CancellationToken cancellationToken)
+    public async Task<IEnumerable<OpenAIModel>> GetListModelsAsync(
+        CancellationToken cancellationToken = default)
     {
         var jsonDoc = await Client.GetFromJsonAsync<JsonDocument>(
             OpenAIConstants.GetModelsPath.RemovePreffix('/'), JsonOptions, cancellationToken);
@@ -22,7 +23,9 @@ internal class OpenAIModelsClient : OpenAIClientBase
             .ToArray() ?? [];
     }
 
-    internal async Task<OpenAIModel?> GetModelAsync(string modelId, CancellationToken cancellationToken)
+    public async Task<OpenAIModel?> GetModelAsync(
+        string modelId, 
+        CancellationToken cancellationToken = default)
     {
         var path = Path.Combine(OpenAIConstants.GetModelsPath, modelId).RemovePreffix('/');
         var model = await Client.GetFromJsonAsync<OpenAIModel>(path, JsonOptions, cancellationToken);
