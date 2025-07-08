@@ -35,7 +35,7 @@ public class OpenAIEmbeddingProvider : IEmbeddingProvider
             Input = new[] { input }
         }, cancellationToken);
 
-        return res.FirstOrDefault()?.Embedding ??
+        return res.Data?.FirstOrDefault()?.Embedding ??
                 throw new InvalidOperationException("No embedding found for the input.");
     }
 
@@ -51,12 +51,12 @@ public class OpenAIEmbeddingProvider : IEmbeddingProvider
             Input = inputs,
         }, cancellationToken);
 
-        var result = res.Select(r => new EmbeddingResult
+        var result = res.Data?.Select(r => new EmbeddingResult
         {
             Index = r.Index,
             Embedding = r.Embedding,
         });
-        return result;
+        return result ?? [];
     }
 
     /// <inheritdoc />

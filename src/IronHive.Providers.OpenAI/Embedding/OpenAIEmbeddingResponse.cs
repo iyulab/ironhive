@@ -4,15 +4,18 @@ namespace IronHive.Providers.OpenAI.Embedding;
 
 public class OpenAIEmbeddingResponse
 {
-    [JsonPropertyName("index")]
-    public int? Index { get; set; }
-
-    [JsonPropertyName("embedding")]
-    public IEnumerable<float>? Embedding { get; set; }
-
     /// <summary>
-    /// "embedding" only
+    /// "list" always.
     /// </summary>
     [JsonPropertyName("object")]
-    public string Object { get; } = "embedding";
+    public string Object { get; } = "list";
+
+    [JsonPropertyName("data")]
+    public IEnumerable<OpenAIEmbedding>? Data { get; set; }
+
+    [JsonPropertyName("model")]
+    public string? Model { get; set; }
+
+    [JsonPropertyName("usage")]
+    public EmbeddingTokenUsage? Usage { get; set; }
 }

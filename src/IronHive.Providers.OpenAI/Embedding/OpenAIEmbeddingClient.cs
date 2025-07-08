@@ -10,7 +10,7 @@ public class OpenAIEmbeddingClient : OpenAIClientBase
 
     public OpenAIEmbeddingClient(OpenAIConfig config) : base(config) { }
 
-    public async Task<IEnumerable<OpenAIEmbeddingResponse>> PostEmbeddingAsync(
+    public async Task<OpenAIEmbeddingResponse> PostEmbeddingAsync(
         OpenAIEmbeddingRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -19,15 +19,9 @@ public class OpenAIEmbeddingClient : OpenAIClientBase
         using var response = await Client.PostAsync(OpenAIConstants.PostEmbeddingPath.RemovePreffix('/'), content, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var jsonDocument = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken) 
+        var res = await response.Content.ReadFromJsonAsync<OpenAIEmbeddingResponse>(cancellationToken) 
             ?? throw new InvalidOperationException("Failed to deserialize response.");
 
-        var embeddings = jsonDocument.RootElement.GetProperty("data").EnumerateArray().Select(el =>
-        {
-            return el.Deserialize<OpenAIEmbeddingResponse>(JsonOptions)
-                ?? throw new InvalidOperationException("Failed to deserialize response.");
-        });
-
-        return embeddings;
+        return res;
     }
 }

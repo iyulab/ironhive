@@ -101,7 +101,7 @@ public class TextContentJsonConverter : JsonConverter<ICollection<ChatMessageCon
         else
         {
             // 이외 JSON으로 처리
-            return JsonSerializer.Deserialize<List<ChatMessageContent>>(ref reader, options);
+            return JsonSerializer.Deserialize<ICollection<ChatMessageContent>>(ref reader, options);
         }
     }
 
