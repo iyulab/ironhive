@@ -10,10 +10,10 @@ namespace IronHive.Core.Services;
 
 public class MessageGenerationService : IMessageGenerationService
 {
-    private readonly Dictionary<string, IMessageGenerationProvider> _providers;
+    private readonly Dictionary<string, IMessageGenerator> _providers;
     private readonly IToolPluginManager _plugins;
 
-    public MessageGenerationService(IEnumerable<IMessageGenerationProvider> providers, IToolPluginManager plugins)
+    public MessageGenerationService(IEnumerable<IMessageGenerator> providers, IToolPluginManager plugins)
     {
         _providers = providers.ToDictionary(p => p.ProviderName, p => p);
         _plugins = plugins;

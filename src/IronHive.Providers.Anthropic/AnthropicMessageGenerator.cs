@@ -11,16 +11,16 @@ using AnthropicThinkingMessageContent = IronHive.Providers.Anthropic.Messages.Th
 
 namespace IronHive.Providers.Anthropic;
 
-public class AnthropicMessageGenerationProvider : IMessageGenerationProvider
+public class AnthropicMessageGenerator : IMessageGenerator
 {
     private readonly AnthropicMessagesClient _client;
 
-    public AnthropicMessageGenerationProvider(AnthropicConfig config)
+    public AnthropicMessageGenerator(AnthropicConfig config)
     {
         _client = new AnthropicMessagesClient(config);
     }
 
-    public AnthropicMessageGenerationProvider(string apiKey)
+    public AnthropicMessageGenerator(string apiKey)
     {
         _client = new AnthropicMessagesClient(apiKey);
     }

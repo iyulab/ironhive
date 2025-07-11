@@ -1,6 +1,6 @@
 ﻿namespace IronHive.Abstractions.Message;
 
-public interface IMessageGenerationProvider
+public interface IMessageGenerator
 {
     /// <summary>
     /// the provider key of the message generation provider.

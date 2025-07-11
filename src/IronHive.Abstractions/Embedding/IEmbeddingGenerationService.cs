@@ -3,7 +3,7 @@
 /// <summary>
 /// 다양한 임베딩 프로바이더를 통합하여 임베딩을 생성하는 서비스 인터페이스입니다.
 /// </summary>
-public interface IEmbeddingService
+public interface IEmbeddingGenerationService
 {
     /// <summary>
     /// 지정된 프로바이더와 모델을 사용하여 단일 입력에 대한 임베딩을 생성합니다.

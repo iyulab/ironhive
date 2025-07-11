@@ -9,16 +9,16 @@ using MessageContent = IronHive.Abstractions.Message.MessageContent;
 
 namespace IronHive.Providers.OpenAI;
 
-public class OpenAIMessageGenerationProvider : IMessageGenerationProvider
+public class OpenAIMessageGenerator : IMessageGenerator
 {
     private readonly OpenAIChatCompletionClient _client;
 
-    public OpenAIMessageGenerationProvider(OpenAIConfig config)
+    public OpenAIMessageGenerator(OpenAIConfig config)
     {
         _client = new OpenAIChatCompletionClient(config);
     }
 
-    public OpenAIMessageGenerationProvider(string apiKey)
+    public OpenAIMessageGenerator(string apiKey)
     {
         _client = new OpenAIChatCompletionClient(apiKey);
     }

@@ -3,16 +3,16 @@ using IronHive.Providers.Ollama.Embedding;
 
 namespace IronHive.Providers.Ollama;
 
-public class OllamaEmbeddingProvider : IEmbeddingProvider
+public class OllamaEmbeddingGenerator : IEmbeddingGenerator
 {
     private readonly OllamaEmbeddingClient _client;
 
-    public OllamaEmbeddingProvider(OllamaConfig? config = null)
+    public OllamaEmbeddingGenerator(OllamaConfig? config = null)
     {
         _client = new OllamaEmbeddingClient(config);
     }
 
-    public OllamaEmbeddingProvider(string baseUrl)
+    public OllamaEmbeddingGenerator(string baseUrl)
     {
         _client = new OllamaEmbeddingClient(baseUrl);
     }

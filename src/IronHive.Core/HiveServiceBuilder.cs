@@ -35,14 +35,14 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     }
 
     /// <inheritdoc />
-    public IHiveServiceBuilder AddMessageGenerationProvider(IMessageGenerationProvider provider)
+    public IHiveServiceBuilder AddMessageGenerator(IMessageGenerator provider)
     {
         Services.AddSingleton(provider);
         return this;
     }
 
     /// <inheritdoc />
-    public IHiveServiceBuilder AddEmbeddingProvider(IEmbeddingProvider provider)
+    public IHiveServiceBuilder AddEmbeddingGenerator(IEmbeddingGenerator provider)
     {
         Services.AddSingleton(provider);
         return this;
@@ -112,9 +112,9 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         // 선택 서비스 등록 확인
         if (!ContainsAny<IModelCatalogProvider>())
             Debug.WriteLine("ModelCatalogProvider is not registered. Model will not work.");
-        if (!ContainsAny<IMessageGenerationProvider>())
+        if (!ContainsAny<IMessageGenerator>())
             Debug.WriteLine("MessageGenerationProvider is not registered. Chat Completion will not work.");
-        if (!ContainsAny<IEmbeddingProvider>())
+        if (!ContainsAny<IEmbeddingGenerator>())
             Debug.WriteLine("EmbeddingConnector is not registered. Embedding will not work.");
 
         if (!ContainsAny<IFileStorage>())
@@ -137,7 +137,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         // AI 서비스
         Services.TryAddSingleton<IModelCatalogService, ModelCatalogService>();
         Services.TryAddSingleton<IMessageGenerationService, MessageGenerationService>();
-        Services.TryAddSingleton<IEmbeddingService, EmbeddingService>();
+        Services.TryAddSingleton<IEmbeddingGenerationService, EmbeddingGenerationService>();
         Services.TryAddSingleton<IToolPluginManager, ToolPluginManager>();
         // File 서비스
         Services.TryAddSingleton<IFileStorageManager, FileStorageManager>();

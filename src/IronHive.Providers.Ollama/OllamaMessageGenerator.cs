@@ -7,16 +7,16 @@ using IronHive.Providers.Ollama.Chat;
 
 namespace IronHive.Providers.Ollama;
 
-public class OllamaMessageGenerationProvider : IMessageGenerationProvider
+public class OllamaMessageGenerator : IMessageGenerator
 {
     private readonly OllamaChatClient _client;
 
-    public OllamaMessageGenerationProvider(OllamaConfig? config = null)
+    public OllamaMessageGenerator(OllamaConfig? config = null)
     {
         _client = new OllamaChatClient(config);
     }
 
-    public OllamaMessageGenerationProvider(string baseUrl)
+    public OllamaMessageGenerator(string baseUrl)
     {
         _client = new OllamaChatClient(baseUrl);
     }

@@ -16,7 +16,7 @@ public static class HiveServiceBuilderExtensions
         { 
             ProviderName = name
         });
-        builder.AddMessageGenerationProvider(new AnthropicMessageGenerationProvider(config)
+        builder.AddMessageGenerator(new AnthropicMessageGenerator(config)
         {
             ProviderName = name
         });

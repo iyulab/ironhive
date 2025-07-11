@@ -16,11 +16,11 @@ public static class HiveServiceBuilderExtensions
         {
             ProviderName = name
         });
-        builder.AddMessageGenerationProvider(new OpenAIMessageGenerationProvider(config)
+        builder.AddMessageGenerator(new OpenAIMessageGenerator(config)
         {
             ProviderName = name
         });
-        builder.AddEmbeddingProvider(new OpenAIEmbeddingProvider(config)
+        builder.AddEmbeddingGenerator(new OpenAIEmbeddingGenerator(config)
         { 
             ProviderName = name 
         });

@@ -6,9 +6,9 @@ namespace IronHive.Core.Handlers;
 
 public class TextChunkerHandler : IPipelineHandler
 {
-    private readonly IEmbeddingService _service;
+    private readonly IEmbeddingGenerationService _service;
 
-    public TextChunkerHandler(IEmbeddingService service)
+    public TextChunkerHandler(IEmbeddingGenerationService service)
     {
         _service = service;
     }

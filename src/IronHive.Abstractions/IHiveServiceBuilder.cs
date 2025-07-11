@@ -28,12 +28,12 @@ public interface IHiveServiceBuilder
     /// <summary>
     /// Registers a message generation provider as a singleton in the service collection.
     /// </summary>
-    IHiveServiceBuilder AddMessageGenerationProvider(IMessageGenerationProvider provider);
+    IHiveServiceBuilder AddMessageGenerator(IMessageGenerator provider);
 
     /// <summary>
     /// Registers an embedding provider as a singleton in the service collection.
     /// </summary>
-    IHiveServiceBuilder AddEmbeddingProvider(IEmbeddingProvider provider);
+    IHiveServiceBuilder AddEmbeddingGenerator(IEmbeddingGenerator provider);
 
     /// <summary>
     /// Registers a tool plugin as a singleton in the service collection.

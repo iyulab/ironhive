@@ -31,6 +31,11 @@ public class ModelDetails : ModelSummary
     public DateTime? CreatedAt { get; set; }
 
     /// <summary>
+    /// 모델이 수정된 날짜 및 시간입니다 (UTC 기준).
+    /// </summary>
+    public DateTime? UpdatedAt { get; set; }
+
+    /// <summary>
     /// 모델의 메타데이터입니다. 추가적인 정보나 속성을 포함할 수 있습니다.
     /// </summary>
     public IDictionary<string, object>? Metadata { get; set; }

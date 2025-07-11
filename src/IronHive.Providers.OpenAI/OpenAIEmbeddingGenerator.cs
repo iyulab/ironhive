@@ -5,17 +5,17 @@ using Tiktoken.Encodings;
 
 namespace IronHive.Providers.OpenAI;
 
-public class OpenAIEmbeddingProvider : IEmbeddingProvider
+public class OpenAIEmbeddingGenerator : IEmbeddingGenerator
 {
     private readonly OpenAIEmbeddingClient _client;
     private readonly Encoder _tokenizer = new(new Cl100KBase());
 
-    public OpenAIEmbeddingProvider(OpenAIConfig config)
+    public OpenAIEmbeddingGenerator(OpenAIConfig config)
     {
         _client = new OpenAIEmbeddingClient(config);
     }
 
-    public OpenAIEmbeddingProvider(string apiKey)
+    public OpenAIEmbeddingGenerator(string apiKey)
     {
         _client = new OpenAIEmbeddingClient(apiKey);
     }

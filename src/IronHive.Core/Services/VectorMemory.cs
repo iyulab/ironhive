@@ -8,7 +8,7 @@ public class VectorMemory : IVectorMemory
 {
     private readonly IQueueStorage _queue;
     private readonly IVectorStorage _vector;
-    private readonly IEmbeddingService _embedding;
+    private readonly IEmbeddingGenerationService _embedding;
 
     private readonly int _dimensions;
 
@@ -18,7 +18,7 @@ public class VectorMemory : IVectorMemory
         EmbedModel = config.EmbedModel;
         _queue = services.GetRequiredService<IQueueStorage>();
         _vector = services.GetRequiredService<IVectorStorage>();
-        _embedding = services.GetRequiredService<IEmbeddingService>();
+        _embedding = services.GetRequiredService<IEmbeddingGenerationService>();
         _dimensions = GetEmbeddingDimensions();
     }
 

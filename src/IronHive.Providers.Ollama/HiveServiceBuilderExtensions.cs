@@ -16,11 +16,11 @@ public static class HiveServiceBuilderExtensions
         {
             ProviderName = name
         });
-        builder.AddMessageGenerationProvider(new OllamaMessageGenerationProvider(config)
+        builder.AddMessageGenerator(new OllamaMessageGenerator(config)
         {
             ProviderName = name
         });
-        builder.AddEmbeddingProvider(new OllamaEmbeddingProvider(config)
+        builder.AddEmbeddingGenerator(new OllamaEmbeddingGenerator(config)
         {
             ProviderName = name
         });

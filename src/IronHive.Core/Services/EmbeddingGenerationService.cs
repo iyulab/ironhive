@@ -2,11 +2,11 @@
 
 namespace IronHive.Core.Services;
 
-public class EmbeddingService : IEmbeddingService
+public class EmbeddingGenerationService : IEmbeddingGenerationService
 {
-    private readonly Dictionary<string, IEmbeddingProvider> _providers;
+    private readonly Dictionary<string, IEmbeddingGenerator> _providers;
 
-    public EmbeddingService(IEnumerable<IEmbeddingProvider> providers)
+    public EmbeddingGenerationService(IEnumerable<IEmbeddingGenerator> providers)
     {
         _providers = providers.ToDictionary(p => p.ProviderName, p => p);
     }

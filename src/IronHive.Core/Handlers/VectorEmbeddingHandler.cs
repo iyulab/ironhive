@@ -5,10 +5,10 @@ namespace IronHive.Core.Handlers;
 
 public class VectorEmbeddingHandler : IPipelineHandler
 {
-    private readonly IEmbeddingService _service;
+    private readonly IEmbeddingGenerationService _service;
     private readonly IVectorStorage _storage;
 
-    public VectorEmbeddingHandler(IEmbeddingService emeddings, IVectorStorage storage)
+    public VectorEmbeddingHandler(IEmbeddingGenerationService emeddings, IVectorStorage storage)
     {
         _service = emeddings;
         _storage = storage;
