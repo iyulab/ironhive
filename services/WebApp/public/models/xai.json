@@ -23,23 +23,13 @@
     },
     {
       "provider": "xai",
-      "modelId": "grok-3",
-      "displayName": "Grok 3.0",
+      "modelId": "grok-4",
+      "displayName": "Grok 4.0",
       "description": "Latest grok model",
-      "thinkable": false,
+      "thinkable": true,
       "inputPrice": 3,
       "outputPrice": 15,
-      "contextLength": 131072
-    },
-    {
-      "provider": "xai",
-      "modelId": "grok-3-fast",
-      "displayName": "Grok 3.0 Fast",
-      "description": "Fast Latest grok model",
-      "thinkable": false,
-      "inputPrice": 5,
-      "outputPrice": 25,
-      "contextLength": 131072
+      "contextLength": 256000
     }
   ]
 }

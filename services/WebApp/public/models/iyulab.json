@@ -16,6 +16,14 @@
       "description": "Kakao LLM model provided by Iyulab",
       "thinkable": false,
       "contextLength": 32768
+    },
+    {
+      "provider": "iyulab",
+      "modelId": "a.x-4.0-light",
+      "displayName": "A.X 4.0 Light",
+      "description": "SKT LLM model provided by Iyulab",
+      "thinkable": false,
+      "contextLength": 16384
     }
   ]
 }

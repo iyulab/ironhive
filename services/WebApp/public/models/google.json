@@ -3,7 +3,7 @@
   "data": [
     {
       "provider": "google",
-      "modelId": "gemini-2.5-flash-preview-05-20",
+      "modelId": "gemini-2.5-flash",
       "displayName": "Gemini 2.5 Flash",
       "description": "Latest lightweight reasoning model",
       "thinkable": true,
@@ -14,7 +14,7 @@
     },
     {
       "provider": "google",
-      "modelId": "gemini-2.5-pro-preview-06-05",
+      "modelId": "gemini-2.5-pro",
       "displayName": "Gemini 2.5 Pro",
       "description": "Latest reasoning model",
       "thinkable": true,
@@ -25,25 +25,14 @@
     },
     {
       "provider": "google",
-      "modelId": "gemini-2.0-flash-lite",
-      "displayName": "Gemini 2.0 Lite",
-      "description": "Basic lightweight gemini model",
-      "thinkable": false,
-      "inputPrice": 0.075,
-      "outputPrice": 0.3,
-      "contextLength": 1048576,
-      "maxOutput": 8192
-    },
-    {
-      "provider": "google",
-      "modelId": "gemini-2.0-flash",
-      "displayName": "Gemini 2.0",
-      "description": "Basic gemini model",
-      "thinkable": false,
+      "modelId": "gemini-2.5-flash-lite-preview-06-17",
+      "displayName": "Gemini 2.5 Flash Lite",
+      "description": "Fast and efficient model for quick tasks",
+      "thinkable": true,
       "inputPrice": 0.1,
       "outputPrice": 0.4,
-      "contextLength": 1048576,
-      "maxOutput": 8192
+      "contextLength": 1000000,
+      "maxOutput": 64000
     }
   ]
 }

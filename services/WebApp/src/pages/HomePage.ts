@@ -199,7 +199,7 @@ export class HomePage extends LitElement {
     // 스크롤 위치에 따라 상태 업데이트
     if (scrollTop === 0) {
       this.scrollPosition = 'top';
-    } else if (scrollTop + clientHeight >= scrollHeight - 1) {
+    } else if (scrollTop + clientHeight >= scrollHeight - 20) {
       this.scrollPosition = 'bottom';
     } else {
       this.scrollPosition = 'center';
@@ -427,6 +427,9 @@ export class HomePage extends LitElement {
       max-width: 100%;
       align-self: flex-end;
     }
+    .message-box .user-msg::part(body) {
+      background-color: var(--uc-background-color-200);
+    }
     .message-box .bot-msg {
       width: 100%;
       align-self: flex-start;
@@ -494,6 +497,9 @@ export class HomePage extends LitElement {
     }
     .control-box .scroll-btn:active {
       background-color: var(--uc-background-color-200);
+    }
+    .control-box uc-text-block {
+      padding: 8px;
     }
     .control-box .buttons {
       display: flex;
