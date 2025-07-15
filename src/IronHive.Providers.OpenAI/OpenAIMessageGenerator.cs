@@ -50,16 +50,13 @@ public class OpenAIMessageGenerator : IMessageGenerator
         var tools = choice?.Message?.ToolCalls;
         if (tools != null && tools.Count > 0)
         {
-            foreach (var tool in tools.OrderBy(t => t.Index))
+            foreach (var func in tools.OrderBy(t => t.Index))
             {
-                if (tool is not OpenAIFunctionToolCall function)
-                    continue;
-
                 content.Add(new ToolMessageContent
                 {
-                    Id = function.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
-                    Name = function.Function?.Name ?? string.Empty,
-                    Input = function.Function?.Arguments,
+                    Id = func.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
+                    Name = func.Function?.Name ?? string.Empty,
+                    Input = func.Function?.Arguments,
                 });
             }
         }
@@ -157,11 +154,8 @@ public class OpenAIMessageGenerator : IMessageGenerator
             {
                 for (var i = 0; i < tools.Count; i++)
                 {
-                    var tool = tools.ElementAt(i);
-                    var toolIndex = tool.Index ?? i;
-
-                    if (tool is not OpenAIFunctionToolCall function)
-                        continue;
+                    var func = tools.ElementAt(i);
+                    var funcIndex = func.Index ?? i;
 
                     // 이어서 생성되는 툴 메시지의 경우
                     if (current.HasValue)
@@ -170,14 +164,14 @@ public class OpenAIMessageGenerator : IMessageGenerator
                         if (content is ToolMessageContent toolContent)
                         {
                             // 현재 컨텐츠가 ToolMessageContent이고, 인덱스가 동일한 경우 업데이트
-                            if (toolIndex == currentToolIndex)
+                            if (funcIndex == currentToolIndex)
                             {
                                 yield return new StreamingContentDeltaResponse
                                 {
                                     Index = index,
                                     Delta = new ToolDeltaContent
                                     { 
-                                        Input = function.Function?.Arguments ?? string.Empty 
+                                        Input = func.Function?.Arguments ?? string.Empty 
                                     }
                                 };
                             }
@@ -191,11 +185,11 @@ public class OpenAIMessageGenerator : IMessageGenerator
                                 };
                                 current = (index + 1, new ToolMessageContent
                                 {
-                                    Id = function.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
-                                    Name = function.Function?.Name ?? string.Empty,
-                                    Input = function.Function?.Arguments,
+                                    Id = func.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
+                                    Name = func.Function?.Name ?? string.Empty,
+                                    Input = func.Function?.Arguments,
                                 });
-                                currentToolIndex = toolIndex;
+                                currentToolIndex = funcIndex;
                                 yield return new StreamingContentAddedResponse
                                 {
                                     Index = current.Value.Item1,
@@ -213,11 +207,11 @@ public class OpenAIMessageGenerator : IMessageGenerator
                             };
                             current = (index + 1, new ToolMessageContent
                             {
-                                Id = function.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
-                                Name = function.Function?.Name ?? string.Empty,
-                                Input = function.Function?.Arguments,
+                                Id = func.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
+                                Name = func.Function?.Name ?? string.Empty,
+                                Input = func.Function?.Arguments,
                             });
-                            currentToolIndex = toolIndex;
+                            currentToolIndex = funcIndex;
                             yield return new StreamingContentAddedResponse
                             {
                                 Index = current.Value.Item1,
@@ -230,11 +224,11 @@ public class OpenAIMessageGenerator : IMessageGenerator
                     {
                         current = (0, new ToolMessageContent
                         {
-                            Id = function.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
-                            Name = function.Function?.Name ?? string.Empty,
-                            Input = function.Function?.Arguments,
+                            Id = func.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
+                            Name = func.Function?.Name ?? string.Empty,
+                            Input = func.Function?.Arguments,
                         });
-                        currentToolIndex = toolIndex;
+                        currentToolIndex = funcIndex;
                         yield return new StreamingContentAddedResponse
                         {
                             Index = current.Value.Item1,

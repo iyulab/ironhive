@@ -173,7 +173,7 @@ export class HomePage extends LitElement {
       this.scrollToBottom();
       this.inputEl.value = '';
       this.generate();
-    } else if (this.status === 'busy') {
+    } else if (this.status === 'busy' || this.status === 'pause') {
       this.canceller.cancel('사용자가 요청을 중단했습니다.');
     }
   }

@@ -6,7 +6,8 @@ namespace IronHive.Providers.OpenAI.ChatCompletion;
 [JsonDerivedType(typeof(TextChatResponseFormat), "text")]
 [JsonDerivedType(typeof(JsonObjectChatResponseFormat), "json_object")]
 [JsonDerivedType(typeof(JsonSchemaChatResponseFormat), "json_schema")]
-public class ChatResponseFormat { }
+public abstract class ChatResponseFormat 
+{ }
 
 public class TextChatResponseFormat : ChatResponseFormat { }
 
@@ -15,9 +16,9 @@ public class JsonObjectChatResponseFormat : ChatResponseFormat { }
 public class JsonSchemaChatResponseFormat : ChatResponseFormat
 {
     [JsonPropertyName("json_schema")]
-    public required JsonSchemaFormat JsonSchema { get; set; }
+    public required JsonFormat JsonSchema { get; set; }
 
-    public class JsonSchemaFormat
+    public class JsonFormat
     {
         [JsonPropertyName("name")]
         public required string Name { get; set; }

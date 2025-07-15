@@ -53,7 +53,7 @@ internal static class MessageGenerationRequestExtensions
                     {
                         um.Content.Add(new ImageChatMessageContent
                         {
-                            ImageUrl = new ImageChatMessageContent.ImageUrlSource
+                            ImageUrl = new ImageChatMessageContent.ImageSource
                             {
                                 Url = image.Base64
                             }
@@ -93,7 +93,7 @@ internal static class MessageGenerationRequestExtensions
                             {
                                 //Index = tool.Index,
                                 Id = tool.Id,
-                                Function = new OpenAIFunctionToolCall.FunctionCallSchema
+                                Function = new OpenAIFunctionToolCall.FunctionSchema
                                 {
                                     Name = tool.Name,
                                     Arguments = tool.Input

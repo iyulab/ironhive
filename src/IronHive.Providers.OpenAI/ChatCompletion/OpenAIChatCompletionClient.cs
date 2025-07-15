@@ -45,6 +45,7 @@ public class OpenAIChatCompletionClient : OpenAIClientBase
         {
             cancellationToken.ThrowIfCancellationRequested();
             var line = await reader.ReadLineAsync(cancellationToken);
+            Console.WriteLine(line);
 
             if (string.IsNullOrWhiteSpace(line))
                 continue;

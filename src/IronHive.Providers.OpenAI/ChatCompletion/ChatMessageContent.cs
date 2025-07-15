@@ -6,7 +6,8 @@ namespace IronHive.Providers.OpenAI.ChatCompletion;
 [JsonDerivedType(typeof(TextChatMessageContent), "text")]
 [JsonDerivedType(typeof(ImageChatMessageContent), "image_url")]
 [JsonDerivedType(typeof(AudioChatMessageContent), "input_audio")]
-public class ChatMessageContent { }
+public abstract class ChatMessageContent 
+{ }
 
 public class TextChatMessageContent : ChatMessageContent
 {
@@ -17,9 +18,9 @@ public class TextChatMessageContent : ChatMessageContent
 public class ImageChatMessageContent : ChatMessageContent
 {
     [JsonPropertyName("image_url")]
-    public required ImageUrlSource ImageUrl { get; set; }
+    public required ImageSource ImageUrl { get; set; }
 
-    public class ImageUrlSource
+    public class ImageSource
     {
         /// <summary>
         /// Either a URL of the image or the base64 encoded image data.
@@ -38,9 +39,9 @@ public class ImageChatMessageContent : ChatMessageContent
 public class AudioChatMessageContent : ChatMessageContent
 {
     [JsonPropertyName("input_audio")]
-    public required InputAudioSource InputAudio { get; set; }
+    public required AudioSource InputAudio { get; set; }
 
-    public class InputAudioSource
+    public class AudioSource
     {
         /// <summary>
         /// the base64 encoded audio data.
