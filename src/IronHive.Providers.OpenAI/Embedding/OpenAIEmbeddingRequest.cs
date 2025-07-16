@@ -1,12 +1,12 @@
-﻿using System.Text.Json;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
+using IronHive.Providers.OpenAI.JsonConverters;
 
 namespace IronHive.Providers.OpenAI.Embedding;
 
 public class OpenAIEmbeddingRequest
 {
     [JsonPropertyName("input")]
-    [JsonConverter(typeof(TextInputJsonConverter))]
+    [JsonConverter(typeof(EmbeddingInputJsonConverter))]
     public required IEnumerable<string> Input { get; set; }
 
     [JsonPropertyName("model")]
@@ -26,27 +26,4 @@ public class OpenAIEmbeddingRequest
 
     [JsonPropertyName("user")]
     public string? User { get; set; }
-}
-
-/// <summary>
-/// Json converter for OpenAIEmbeddingRequest's input property.
-/// </summary>
-public class TextInputJsonConverter : JsonConverter<IEnumerable<string>>
-{
-    public override IEnumerable<string>? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-    {
-        if (reader.TokenType == JsonTokenType.String)
-        {
-            return new[] { reader.GetString()! };
-        }
-        else
-        {
-            return JsonSerializer.Deserialize<IEnumerable<string>>(ref reader, options);
-        }
-    }
-
-    public override void Write(Utf8JsonWriter writer, IEnumerable<string> value, JsonSerializerOptions options)
-    {
-        JsonSerializer.Serialize(writer, value, options);
-    }
 }

@@ -1,5 +1,5 @@
-﻿using System.Text.Json;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
+using IronHive.Providers.OpenAI.JsonConverters;
 
 namespace IronHive.Providers.OpenAI.ChatCompletion;
 
@@ -36,7 +36,7 @@ public class UserChatMessage : ChatMessage
     public string? Name { get; set; }
 
     [JsonPropertyName("content")]
-    [JsonConverter(typeof(TextContentJsonConverter))]
+    [JsonConverter(typeof(ChatMessageContentJsonConverter))]
     public ICollection<ChatMessageContent> Content { get; set; } = new List<ChatMessageContent>();
 }
 
@@ -83,31 +83,4 @@ public class ToolChatMessage : ChatMessage
 
     [JsonPropertyName("content")]
     public required string Content { get; set; }
-}
-
-/// <summary>
-/// 일반 String을 허용하는 유저 메시지를 처리하기 위한 JsonConverter입니다.
-/// </summary>
-public class TextContentJsonConverter : JsonConverter<ICollection<ChatMessageContent>>
-{
-    public override ICollection<ChatMessageContent>? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-    {
-        if (reader.TokenType == JsonTokenType.String)
-        {
-            // 문자열이면 TextMessageContent 하나짜리 리스트로 변환
-            string text = reader.GetString() ?? string.Empty;
-            return [new TextChatMessageContent() { Text = text }];
-        }
-        else
-        {
-            // 이외 JSON으로 처리
-            return JsonSerializer.Deserialize<ICollection<ChatMessageContent>>(ref reader, options);
-        }
-    }
-
-    public override void Write(Utf8JsonWriter writer, ICollection<ChatMessageContent> value, JsonSerializerOptions options)
-    {
-        // ICollection<MessageContent>를 JSON으로 직렬화
-        JsonSerializer.Serialize(writer, value, options);
-    }
 }

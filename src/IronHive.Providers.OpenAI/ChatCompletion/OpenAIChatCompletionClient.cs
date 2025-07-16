@@ -45,7 +45,7 @@ public class OpenAIChatCompletionClient : OpenAIClientBase
         {
             cancellationToken.ThrowIfCancellationRequested();
             var line = await reader.ReadLineAsync(cancellationToken);
-            Console.WriteLine(line);
+            //Console.WriteLine(line);
 
             if (string.IsNullOrWhiteSpace(line))
                 continue;
@@ -63,7 +63,7 @@ public class OpenAIChatCompletionClient : OpenAIClientBase
                 }
             }
 
-            // 특정 플랫폼의 경우
+            // 특정 플랫폼(gpu_stack)의 경우
             if (line.StartsWith("error:"))
             {
                 var data = line.Substring("error:".Length).Trim();
