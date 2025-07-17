@@ -21,7 +21,10 @@ internal class AnthropicMessagesClient : AnthropicClientBase
         var json = JsonSerializer.Serialize(request, JsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         using var response = await Client.PostAsync(AnthropicConstants.PostMessagesPath.RemovePreffix('/'), content, cancellationToken);
+        if (!response.IsSuccessStatusCode && response.TryExtractMessage(out string error))
+            throw new HttpRequestException(error);
         response.EnsureSuccessStatusCode();
+
         var message = await response.Content.ReadFromJsonAsync<MessagesResponse>(JsonOptions, cancellationToken)
             ?? throw new InvalidOperationException("Failed to deserialize response.");
         return message;
@@ -37,6 +40,8 @@ internal class AnthropicMessagesClient : AnthropicClientBase
         using var _request = new HttpRequestMessage(HttpMethod.Post, AnthropicConstants.PostMessagesPath.RemovePreffix('/'));
         _request.Content = content;
         using var response = await Client.SendAsync(_request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        if (!response.IsSuccessStatusCode && response.TryExtractMessage(out string error))
+            throw new HttpRequestException(error);
         response.EnsureSuccessStatusCode();
 
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);

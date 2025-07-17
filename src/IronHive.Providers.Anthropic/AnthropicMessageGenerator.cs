@@ -291,7 +291,9 @@ public class AnthropicMessageGenerator : IMessageGenerator
             // 에러 이벤트
             else if (res is ErrorEvent error)
             {
-                throw new Exception(error.Error.Message);
+                var json = error.Error.ConvertTo<JsonElement>();
+                var message = json.GetProperty("message").GetString() ?? "Unknown error";
+                throw new Exception(message);
             }
             // 알수 없는 이벤트
             else

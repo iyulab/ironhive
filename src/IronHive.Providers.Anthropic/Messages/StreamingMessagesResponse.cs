@@ -20,7 +20,7 @@ internal class PingEvent : StreamingMessagesResponse
 internal class ErrorEvent : StreamingMessagesResponse
 {
     [JsonPropertyName("error")]
-    public required ErrorContent Error { get; set; }
+    public required object Error { get; set; }
 }
 
 internal class MessageStartEvent : StreamingMessagesResponse

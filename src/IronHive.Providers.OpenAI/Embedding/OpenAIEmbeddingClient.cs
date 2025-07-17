@@ -17,6 +17,8 @@ public class OpenAIEmbeddingClient : OpenAIClientBase
         var json = JsonSerializer.Serialize(request, JsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         using var response = await Client.PostAsync(OpenAIConstants.PostEmbeddingPath.RemovePreffix('/'), content, cancellationToken);
+        if (!response.IsSuccessStatusCode && response.TryExtractMessage(out string error))
+            throw new HttpRequestException(error);
         response.EnsureSuccessStatusCode();
 
         var res = await response.Content.ReadFromJsonAsync<OpenAIEmbeddingResponse>(cancellationToken) 

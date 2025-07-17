@@ -18,7 +18,6 @@ public class OpenAIModelsClient : OpenAIClientBase
             OpenAIConstants.GetModelsPath.RemovePreffix('/'), JsonOptions, cancellationToken);
 
         var models = jsonDoc?.RootElement.GetProperty("data").Deserialize<IEnumerable<OpenAIModel>>(JsonOptions);
-
         return models?.OrderByDescending(m => m.Created)
             .ToArray() ?? [];
     }

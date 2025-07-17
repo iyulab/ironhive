@@ -19,7 +19,10 @@ public class OpenAIChatCompletionClient : OpenAIClientBase
         var json = JsonSerializer.Serialize(request, JsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         using var response = await Client.PostAsync(OpenAIConstants.PostChatCompletionPath.RemovePreffix('/'), content, cancellationToken);
+        if (!response.IsSuccessStatusCode && response.TryExtractMessage(out string error))
+            throw new HttpRequestException(error);
         response.EnsureSuccessStatusCode();
+
         var message = await response.Content.ReadFromJsonAsync<ChatCompletionResponse>(JsonOptions, cancellationToken)
             ?? throw new InvalidOperationException("Failed to deserialize response.");
         return message;
@@ -36,6 +39,8 @@ public class OpenAIChatCompletionClient : OpenAIClientBase
         using var _request = new HttpRequestMessage(HttpMethod.Post, OpenAIConstants.PostChatCompletionPath.RemovePreffix('/'));
         _request.Content = content;
         using var response = await Client.SendAsync(_request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        if (!response.IsSuccessStatusCode && response.TryExtractMessage(out string error))
+            throw new HttpRequestException(error);
         response.EnsureSuccessStatusCode();
 
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
