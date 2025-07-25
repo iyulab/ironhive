@@ -1,6 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-
-namespace IronHive.Abstractions.Tools;
+﻿namespace IronHive.Abstractions.Tools;
 
 /// <summary>
 /// 툴 플러그인을 관리하는 매니저 인터페이스입니다.
@@ -9,20 +7,9 @@ namespace IronHive.Abstractions.Tools;
 public interface IToolPluginManager
 {
     /// <summary>
-    /// 지정한 이름의 플러그인이 매니저에 등록되어 있는지 여부를 반환합니다.
+    /// 각 이름으로 등록된 툴 플러그인들입니다.
     /// </summary>
-    bool ContainsPlugin(string name);
-
-    /// <summary>
-    /// 새로운 플러그인을 매니저에 등록합니다.
-    /// 플러그인 등록에 성공하면 true, 이미 동일한 이름의 플러그인이 존재하거나 등록에 실패하면 false를 반환합니다.
-    /// </summary>
-    bool TryAddPlugin(IToolPlugin plugin);
-
-    /// <summary>
-    /// 지정한 이름의 플러그인을 매니저에서 제거합니다.
-    /// </summary>
-    bool TryRemovePlugin(string name);
+    IDictionary<string, IToolPlugin> Plugins { get; }
 
     /// <summary>
     /// 모든 등록된 플러그인에서 사용할 수 있는 툴 목록을 비동기적으로 가져옵니다.

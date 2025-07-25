@@ -344,9 +344,14 @@ export class HomePage extends LitElement {
       if (e instanceof CanceledError) {
         this.info('요청이 취소되었습니다.');
       } else if (e instanceof Error) {
-        this.error(`메시지 생성 중 오류가 발생했습니다:<br>${e.message}`);
+        this.error(e.message);
       } else {
         this.error(`메시지 생성 중 오류가 발생했습니다: 알 수 없는 오류`);
+      }
+      if (this.inputEl.value) {
+        this.status = 'ready';
+      } else {
+        this.status = 'wait';
       }
     } finally {
       this.canceller = new CancelToken();
