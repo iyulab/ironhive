@@ -3,12 +3,12 @@
 /// <summary>
 /// Represents a storage for queues
 /// </summary>
-public interface IQueueStorage : IDisposable
+public interface IQueueStorage<T> : IDisposable
 {
     /// <summary>
     /// Adds a message to the queue
     /// </summary>
-    Task EnqueueAsync<T>(
+    Task EnqueueAsync(
         T message,
         CancellationToken cancellationToken = default);
 
@@ -17,7 +17,7 @@ public interface IQueueStorage : IDisposable
     /// The message must be acknowledged to be removed permanently.
     /// </summary>
     /// <returns>A pending message with a unique ID, or null if the queue is empty</returns>
-    Task<TaggedMessage<T>?> DequeueAsync<T>(
+    Task<TaggedMessage<T>?> DequeueAsync(
         CancellationToken cancellationToken = default);
 
     /// <summary>

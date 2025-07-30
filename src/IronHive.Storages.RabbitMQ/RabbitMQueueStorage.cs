@@ -7,7 +7,7 @@ namespace IronHive.Storages.RabbitMQ;
 /// <summary>
 /// RabbitMQ를 사용하여 큐 스토리지를 구현한 클래스입니다.
 /// </summary>
-public class RabbitMQueueStorage : IQueueStorage
+public class RabbitMQueueStorage<T> : IQueueStorage<T>
 {
     private IConnection _conn;
     private IChannel _channel;
@@ -34,7 +34,7 @@ public class RabbitMQueueStorage : IQueueStorage
     }
 
     /// <inheritdoc />
-    public async Task EnqueueAsync<T>(T message, CancellationToken cancellationToken = default)
+    public async Task EnqueueAsync(T message, CancellationToken cancellationToken = default)
     {
         if (!_isOpen)
             await ReConnectAsync();
@@ -50,7 +50,7 @@ public class RabbitMQueueStorage : IQueueStorage
     }
 
     /// <inheritdoc />
-    public async Task<TaggedMessage<T>?> DequeueAsync<T>(CancellationToken cancellationToken = default)
+    public async Task<TaggedMessage<T>?> DequeueAsync(CancellationToken cancellationToken = default)
     {
         if (!_isOpen)
             await ReConnectAsync();

@@ -38,7 +38,8 @@ public class OpenAIConfig
     public JsonSerializerOptions JsonOptions { get; set; } = new JsonSerializerOptions
     {
         PropertyNameCaseInsensitive = true,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower) },
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 }

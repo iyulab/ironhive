@@ -6,7 +6,7 @@ namespace IronHive.Core.Services;
 
 public class VectorMemory : IVectorMemory
 {
-    private readonly IQueueStorage _queue;
+    private readonly IQueueStorage<PipelineRequest> _queue;
     private readonly IVectorStorage _vector;
     private readonly IEmbeddingGenerationService _embedding;
 
@@ -16,7 +16,7 @@ public class VectorMemory : IVectorMemory
     {
         EmbedProvider = config.EmbedProvider;
         EmbedModel = config.EmbedModel;
-        _queue = services.GetRequiredService<IQueueStorage>();
+        _queue = services.GetRequiredService<IQueueStorage<PipelineRequest>>();
         _vector = services.GetRequiredService<IVectorStorage>();
         _embedding = services.GetRequiredService<IEmbeddingGenerationService>();
         _dimensions = GetEmbeddingDimensions();

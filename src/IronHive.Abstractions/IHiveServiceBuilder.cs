@@ -48,7 +48,7 @@ public interface IHiveServiceBuilder
     /// Registers a queue storage as a singleton in the service collection.
     /// Only one queue storage can be registered; a new registration replaces the previous one.
     /// </summary>
-    IHiveServiceBuilder WithQueueStorage(IQueueStorage storage);
+    IHiveServiceBuilder WithQueueStorage(IQueueStorage<PipelineRequest> storage);
 
     /// <summary>
     /// Registers a vector storage as a singleton in the service collection.

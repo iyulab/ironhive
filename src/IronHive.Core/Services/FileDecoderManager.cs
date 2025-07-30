@@ -394,11 +394,14 @@ public class FileDecoderManager : IFileDecoderManager
     }
 
     /// <inheritdoc />
-    public IEnumerable<string> GetSupportedExtensions()
+    public IEnumerable<string> SupportedExtensions
     {
-        return _mapping
-            .Where(kvp => _decoders.Any(decoder => decoder.SupportsMimeType(kvp.Value)))
-            .Select(kvp => kvp.Key);
+        get
+        { 
+            return _mapping
+                .Where(kvp => _decoders.Any(decoder => decoder.SupportsMimeType(kvp.Value)))
+                .Select(kvp => kvp.Key);
+        }
     }
 
     /// <inheritdoc />

@@ -8,7 +8,7 @@ public interface IFileDecoderManager
     /// <summary>
     /// 등록된 디코더들이 지원하는 파일 확장자 목록을 반환
     /// </summary>
-    IEnumerable<string> GetSupportedExtensions();
+    IEnumerable<string> SupportedExtensions { get; }
 
     /// <summary>
     /// 파일 경로에서 확장자를 추출하여 MimeType 반환

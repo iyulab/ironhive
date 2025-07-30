@@ -7,31 +7,17 @@ namespace IronHive.Core.Storages;
 
 public partial class LocalVectorStorage : IVectorStorage
 {
-    private string _databasePath = string.Empty;
-    private LiteDatabase? _database;
     private static readonly Regex _collPattern = new Regex(@"^[A-Za-z][A-Za-z0-9_]*$", RegexOptions.Compiled);
+    private readonly LiteDatabase _db;
 
-    /// <summary>
-    /// 데이터베이스 파일 경로입니다.
-    /// </summary>
-    public required string DatabasePath 
-    { 
-        get => _databasePath;
-        init
-        {
-            _databasePath = value;
-            Directory.CreateDirectory(Path.GetDirectoryName(value)!);
-        }
+    public LocalVectorStorage(LocalVectorConfig config)
+    {
+        _db = CreateLiteDatabase(config);
     }
-
-    /// <summary>
-    /// LiteDB 데이터베이스입니다.
-    /// </summary>
-    public LiteDatabase Database => _database ??= CreateLiteDatabase(DatabasePath);
 
     public void Dispose()
     {
-        Database.Dispose();
+        _db.Dispose();
         GC.SuppressFinalize(this);
     }
 
@@ -41,7 +27,7 @@ public partial class LocalVectorStorage : IVectorStorage
         CancellationToken cancellationToken = default)
     {
         prefix ??= string.Empty;
-        var colls = Database.GetCollectionNames()
+        var colls = _db.GetCollectionNames()
             .Where(p => p.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             ?? Enumerable.Empty<string>();
         return Task.FromResult(colls);
@@ -54,7 +40,7 @@ public partial class LocalVectorStorage : IVectorStorage
     {
         collectionName = EnsureCollectionName(collectionName);
 
-        var isExist = Database.CollectionExists(collectionName);
+        var isExist = _db.CollectionExists(collectionName);
         return Task.FromResult(isExist);
     }
 
@@ -69,7 +55,7 @@ public partial class LocalVectorStorage : IVectorStorage
         if (await CollectionExistsAsync(collectionName, cancellationToken))
             throw new InvalidOperationException($"Collection '{collectionName}' already exists.");
 
-        var coll = Database.GetCollection<VectorRecord>(collectionName);
+        var coll = _db.GetCollection<VectorRecord>(collectionName);
 
         // 인덱스 생성
         coll.EnsureIndex(p => p.Id);
@@ -98,12 +84,12 @@ public partial class LocalVectorStorage : IVectorStorage
             throw new InvalidOperationException($"Collection '{collectionName}' not found.");
 
         // 인덱스 삭제
-        var coll = Database.GetCollection<VectorRecord>(collectionName);
+        var coll = _db.GetCollection<VectorRecord>(collectionName);
         coll.DropIndex(nameof(VectorRecord.Id));
         coll.DropIndex(nameof(VectorRecord.SourceId));
 
         // 컬렉션 삭제
-        Database.DropCollection(collectionName);
+        _db.DropCollection(collectionName);
     }
 
     /// <inheritdoc />
@@ -115,7 +101,7 @@ public partial class LocalVectorStorage : IVectorStorage
     {
         collectionName = EnsureCollectionName(collectionName);
 
-        var coll = Database.GetCollection<VectorRecord>(collectionName);
+        var coll = _db.GetCollection<VectorRecord>(collectionName);
         var query = coll.Query();
 
         if (filter != null && (filter.SourceIds.Count > 0 || filter.VectorIds.Count > 0))
@@ -145,7 +131,7 @@ public partial class LocalVectorStorage : IVectorStorage
             p.LastUpdatedAt = DateTime.UtcNow;
             return p;
         });
-        var coll = Database.GetCollection<VectorRecord>(collectionName);
+        var coll = _db.GetCollection<VectorRecord>(collectionName);
         coll.Upsert(records);
         return Task.CompletedTask;
     }
@@ -158,7 +144,7 @@ public partial class LocalVectorStorage : IVectorStorage
     {
         collectionName = EnsureCollectionName(collectionName);
 
-        var coll = Database.GetCollection<VectorRecord>(collectionName);
+        var coll = _db.GetCollection<VectorRecord>(collectionName);
 
         if (filter.SourceIds.Count > 0)
             coll.DeleteMany(p => filter.SourceIds.Contains(p.SourceId));
@@ -178,7 +164,7 @@ public partial class LocalVectorStorage : IVectorStorage
     {
         collectionName = EnsureCollectionName(collectionName);
 
-        var coll = Database.GetCollection<VectorRecord>(collectionName);
+        var coll = _db.GetCollection<VectorRecord>(collectionName);
         var query = coll.Query();
 
         if (filter != null && (filter.SourceIds.Count > 0 || filter.VectorIds.Count > 0))
@@ -206,20 +192,22 @@ public partial class LocalVectorStorage : IVectorStorage
         return Task.FromResult(records);
     }
 
-    // LiteDB 인스턴스를 생성합니다.
-    private static LiteDatabase CreateLiteDatabase(string databasePath)
+    /// <summary>
+    /// LiteDB 인스턴스를 생성합니다.
+    /// </summary>
+    private static LiteDatabase CreateLiteDatabase(LocalVectorConfig config)
     {
-        var dic = Path.GetDirectoryName(databasePath);
-        if (!string.IsNullOrWhiteSpace(dic) && !Directory.Exists(dic))
-            Directory.CreateDirectory(dic);
+        var dir = Path.GetDirectoryName(config.Path);
+        if (!string.IsNullOrWhiteSpace(dir) && !Directory.Exists(dir))
+            Directory.CreateDirectory(dir);
 
         var connectionString = new ConnectionString
         {
-            Connection = ConnectionType.Shared,
-            Filename = databasePath,
-            Password = null,
-            AutoRebuild = false,
-            Upgrade = false,
+            Filename = config.Path,
+            Password = config.Password,
+            AutoRebuild = config.AutoRebuild,
+            Upgrade = config.Upgrade,
+            Connection = config.Shared ? ConnectionType.Shared : ConnectionType.Direct,
             ReadOnly = false,
         };
         var mapper = new BsonMapper();
@@ -229,21 +217,20 @@ public partial class LocalVectorStorage : IVectorStorage
         return new LiteDatabase(connectionString, mapper);
     }
 
-    // 컬렉션 이름의 유효성을 검사하고, 소문자로 변환하여 표준화합니다.
-    // LiteDB 규칙: 
-    // 1. 영문자, 숫자, 밑줄(_)만 허용됩니다.
-    // 2. 이름의 앞 첫글자는 영문자만 허용됩니다.
-    // 3. 대소문자는 구분하지 않으므로 소문자로 통일합니다.
+    /// <summary>
+    /// 컬렉션 이름의 유효성을 검사하고, 소문자로 변환하여 표준화합니다.
+    /// </summary>
     private static string EnsureCollectionName(string collectionName)
     {
         if (string.IsNullOrWhiteSpace(collectionName))
             throw new ArgumentNullException(nameof(collectionName));
 
-        // 유효성 검사
+        // 1.영문자, 숫자, 밑줄(_)만 허용됩니다.
+        // 2. 이름의 앞 첫글자는 영문자만 허용됩니다.
         if (!_collPattern.IsMatch(collectionName))
             throw new ArgumentException("Invalid collection name. The name must contain only English letters, numbers, and underscores, and must start with an English letter.");
 
-        // 소문자 변환
+        // 3. 대소문자는 구분하지 않으므로 소문자로 통일합니다.
         collectionName = collectionName.ToLowerInvariant();
         return collectionName;
     }

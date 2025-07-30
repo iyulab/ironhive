@@ -106,7 +106,6 @@ public static class ObjectExtensions
         }
         catch (Exception ex)
         {
-            Debug.WriteLine(ex.Message);
             return null;
         }
     }

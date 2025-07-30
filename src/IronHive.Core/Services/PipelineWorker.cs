@@ -1,44 +1,43 @@
-﻿using IronHive.Abstractions.Memory;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
+using IronHive.Abstractions.Memory;
 
 namespace IronHive.Core.Services;
 
 public class PipelineWorker : IPipelineWorker
 {
     private readonly IServiceProvider _services;
-    private readonly IQueueStorage _queue;
-    private readonly IEnumerable<IPipelineObserver> _events;
+    private readonly PipelineWorkerConfig _config;
+    private readonly IQueueStorage<PipelineRequest> _queue;
+    private readonly IEnumerable<IPipelineObserver> _observers;
 
-    private int _runningFlag = 0;
+    private int _flag = 0;
     private CancellationTokenSource _cts = new();
     private readonly SemaphoreSlim _semaphore;
 
-    public bool IsRunning => _runningFlag == 1;
-    public int AvailableExecutionSlots => _semaphore.CurrentCount;
-
     public PipelineWorker(IServiceProvider provider, PipelineWorkerConfig config)
     {
-        MaxExecutionSlots = config.MaxExecutionSlots;
-        PollingInterval = config.PollingInterval;
-
-        if (MaxExecutionSlots < 1)
-            throw new ArgumentOutOfRangeException(nameof(MaxExecutionSlots));
-        if (PollingInterval < TimeSpan.FromMilliseconds(100))
-            throw new ArgumentOutOfRangeException(nameof(PollingInterval));
+        if (config.MaxExecutionSlots < 1)
+            throw new ArgumentOutOfRangeException(nameof(config.MaxExecutionSlots));
+        if (config.PollingInterval < TimeSpan.FromMilliseconds(100))
+            throw new ArgumentOutOfRangeException(nameof(config.PollingInterval));
         
         _services = provider;
-        _queue = provider.GetRequiredService<IQueueStorage>();
-        _events = provider.GetServices<IPipelineObserver>();
-        _semaphore = new SemaphoreSlim(MaxExecutionSlots, MaxExecutionSlots);
+        _config = config;
+        _queue = provider.GetRequiredService<IQueueStorage<PipelineRequest>>();
+        _observers = provider.GetServices<IPipelineObserver>();
+        
+        _semaphore = new SemaphoreSlim(config.MaxExecutionSlots, config.MaxExecutionSlots);
     }
 
-    public int MaxExecutionSlots { get; }
-
-    public TimeSpan PollingInterval { get; }
+    /// <inheritdoc />
+    public bool IsRunning
+    {
+        get => _flag == 1;
+    }
 
     public void Dispose()
     {
-        StopAsync().Wait();
+        StopAsync().ConfigureAwait(false).GetAwaiter().GetResult();
         _semaphore.Dispose();
         _cts.Dispose();
 
@@ -48,50 +47,52 @@ public class PipelineWorker : IPipelineWorker
     /// <inheritdoc />
     public async Task StartAsync()
     {
-        if (Interlocked.Exchange(ref _runningFlag, 1) == 1)
+        if (Interlocked.Exchange(ref _flag, 1) == 1)
             return;
 
         try
         {
             while (!_cts.Token.IsCancellationRequested)
             {
-                // 실행 가능한 슬롯이 없으면 PollingInterval 만큼 대기
-                if (_semaphore.CurrentCount == 0)
-                {
-                    await Task.Delay(PollingInterval, _cts.Token);
-                    continue;
-                }
+                // 실행 슬롯 대기
+                await _semaphore.WaitAsync(_cts.Token); 
+                var msg = await _queue.DequeueAsync(_cts.Token);
 
-                var result = await _queue.DequeueAsync<PipelineRequest>(_cts.Token);
-                if (result == null)
+                // 메시지가 있으면 처리 시작
+                if (msg != null)
                 {
-                    // 폴링 말고 구독 이벤트 방법 확인
-                    await Task.Delay(PollingInterval, _cts.Token);
-                    continue;
-                }
-
-                _ = Task.Run(async () =>
-                {
-                    await ExecuteAsync(result.Message, _cts.Token);
-                    if (result.AckTag != null)
+                    _ = Task.Run(async () =>
                     {
-                        // 처리 확인 아웃
-                        await _queue.AckAsync(result.AckTag, _cts.Token);
-                    }
-                }, _cts.Token);
+                        try
+                        {
+                            await ExecuteAsync(msg.Message, _cts.Token);
+                            if (msg.AckTag != null)
+                                await _queue.AckAsync(msg.AckTag, _cts.Token);
+                        }
+                        finally
+                        {
+                            _semaphore.Release(); // 처리 후 슬롯 반환
+                        }
+                    }, _cts.Token).ConfigureAwait(false);
+                }
+                // 메시지가 없으면 일시 대기
+                else
+                {
+                    await Task.Delay(_config.PollingInterval, _cts.Token);
+                }
             }
         }
         finally
         {
-            // 필요하면 실행 상태 해제 가능 (ex. 재시작 허용 시)
-             Interlocked.Exchange(ref _runningFlag, 0);
+            // 실행 상태 해제
+             Interlocked.Exchange(ref _flag, 0);
         }
     }
 
     /// <inheritdoc />
     public async Task StopAsync()
     {
-        if (Interlocked.Exchange(ref _runningFlag, 0) == 0)
+        if (Interlocked.CompareExchange(ref _flag, 0, 1) != 1)
             return;
 
         _cts.Cancel();
@@ -99,28 +100,29 @@ public class PipelineWorker : IPipelineWorker
         _cts = new CancellationTokenSource();
 
         // 대기 중인 작업이 있으면 모두 취소될 때까지 대기
-        while (_semaphore.CurrentCount < MaxExecutionSlots)
+        while (_semaphore.CurrentCount < _config.MaxExecutionSlots)
         {
-            await Task.Delay(100);
+            await Task.Delay(100); // 잠시 대기 후 다시 확인
         }
+
+        Interlocked.Exchange(ref _flag, 0);
     }
 
     /// <inheritdoc />
     public async Task ExecuteAsync(PipelineRequest request, CancellationToken cancellationToken)
     {
-        await _semaphore.WaitAsync(cancellationToken);
-
-        var sourceId = request.Source.Id;
-        var steps = new Queue<string>(request.Steps);
-        var context = new PipelineContext
-        {
-            Source = request.Source,
-            Target = request.Target
-        };
-        var handlerOptions = request.HandlerOptions ?? new Dictionary<string, object?>();
-
         try
         {
+            var sourceId = request.Source.Id;
+            var handlerOptions = request.HandlerOptions ?? new Dictionary<string, object?>();
+
+            var steps = new Queue<string>(request.Steps);
+            var context = new PipelineContext
+            {
+                Source = request.Source,
+                Target = request.Target
+            };
+            
             await InvokeAllAsync(e => e.OnStartedAsync(sourceId));
 
             while (!cancellationToken.IsCancellationRequested && steps.TryDequeue(out var step))
@@ -147,17 +149,25 @@ public class PipelineWorker : IPipelineWorker
         }
         catch (Exception ex)
         {
-            await InvokeAllAsync(e => e.OnFailedAsync(sourceId, ex));
-        }
-        finally
-        {
-            _semaphore.Release();
+            await InvokeAllAsync(e => e.OnFailedAsync(request.Source.Id, ex));
         }
     }
 
-    // 이벤트들을 모두 인보크 해주는 메서드
-    private Task InvokeAllAsync(Func<IPipelineObserver, Task> action)
+    /// <summary>
+    /// 이벤트를 Observer에 비동기로 전달합니다.
+    /// </summary>
+    private async Task InvokeAllAsync(Func<IPipelineObserver, Task> action)
     {
-        return Task.WhenAll(_events.Select(e => action(e)));
+        await Task.WhenAll(_observers.Select(async observer =>
+        {
+            try
+            {
+                await action(observer);
+            }
+            catch
+            {
+                // 예외가 발생 무시
+            }
+        }));
     }
 }

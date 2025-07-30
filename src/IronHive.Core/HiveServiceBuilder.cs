@@ -70,9 +70,9 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     }
 
     /// <inheritdoc />
-    public IHiveServiceBuilder WithQueueStorage(IQueueStorage storage)
+    public IHiveServiceBuilder WithQueueStorage(IQueueStorage<PipelineRequest> storage)
     {
-        Services.RemoveAll<IQueueStorage>();
+        Services.RemoveAll<IQueueStorage<PipelineRequest>>();
         Services.AddSingleton(storage);
         return this;
     }
@@ -143,7 +143,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         Services.TryAddSingleton<IFileStorageManager, FileStorageManager>();
         Services.TryAddSingleton<IFileDecoderManager, FileDecoderManager>();
         // 메모리 서비스
-        Services.TryAddSingleton<IQueueStorage, LocalQueueStorage>();
+        Services.TryAddSingleton<IQueueStorage<PipelineRequest>, LocalQueueStorage<PipelineRequest>>();
         Services.TryAddSingleton<IVectorStorage, LocalVectorStorage>();
     }
 
