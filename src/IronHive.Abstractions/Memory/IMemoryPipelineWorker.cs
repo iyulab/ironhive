@@ -3,7 +3,7 @@
 /// <summary>
 /// 작업 수행을 담당하는 인터페이스입니다.
 /// </summary>
-public interface IPipelineWorker : IDisposable
+public interface IMemoryPipelineWorker : IDisposable
 {
     bool IsRunning { get; }
 
@@ -24,5 +24,5 @@ public interface IPipelineWorker : IDisposable
     /// <param name="target">작업 결과를 저장할 메모리 타겟입니다.</param>
     /// <param name="handlerOptions">작업 핸들러에 전달할 옵션입니다.</param>
     /// <param name="cancellationToken">작업 취소/중지 토큰입니다.</param>
-    Task ExecuteAsync(PipelineRequest request, CancellationToken cancellationToken = default);
+    Task ExecuteAsync(MemoryPipelineRequest request, CancellationToken cancellationToken = default);
 }

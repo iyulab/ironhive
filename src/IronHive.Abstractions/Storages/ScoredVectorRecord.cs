@@ -1,4 +1,6 @@
-﻿namespace IronHive.Abstractions.Memory;
+﻿using IronHive.Abstractions.Memory;
+
+namespace IronHive.Abstractions.Storages;
 
 /// <summary>
 /// Represents a vector with its score.

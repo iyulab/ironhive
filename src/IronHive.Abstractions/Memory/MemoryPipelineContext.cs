@@ -3,7 +3,7 @@
 /// <summary>
 /// 파이프라인 핸들러에 전달되는 데이터 객체입니다.
 /// </summary>
-public class PipelineContext
+public class MemoryPipelineContext
 {
     /// <summary>
     /// 파이프라인 데이터의 원본 소스입니다.

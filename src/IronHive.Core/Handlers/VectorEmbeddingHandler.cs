@@ -1,31 +1,27 @@
-﻿using IronHive.Abstractions.Embedding;
-using IronHive.Abstractions.Memory;
+﻿using IronHive.Abstractions.Memory;
+using IronHive.Abstractions.Storages;
 
 namespace IronHive.Core.Handlers;
 
-public class VectorEmbeddingHandler : IPipelineHandler
+public class VectorEmbeddingHandler : IMemoryPipelineHandler
 {
-    private readonly IEmbeddingGenerationService _service;
+    private readonly IMemoryEmbedder _embedder;
     private readonly IVectorStorage _storage;
 
-    public VectorEmbeddingHandler(IEmbeddingGenerationService emeddings, IVectorStorage storage)
+    public VectorEmbeddingHandler(IMemoryEmbedder embedder, IVectorStorage storage)
     {
-        _service = emeddings;
+        _embedder = embedder;
         _storage = storage;
     }
 
-    public async Task<PipelineContext> ProcessAsync(PipelineContext context, CancellationToken cancellationToken)
+    public async Task<MemoryPipelineContext> ProcessAsync(MemoryPipelineContext context, CancellationToken cancellationToken)
     {
         var target = context.Target.ConvertTo<VectorMemoryTarget>()
             ?? throw new InvalidOperationException("target is not a VectorMemoryTarget");
 
         if (context.Payload.TryConvertTo<IEnumerable<Dialogue>>(out var dialogues))
         {
-            var embeddings = await _service.EmbedBatchAsync(
-                target.EmbedProvider,
-                target.EmbedModel,
-                dialogues.Select(x => x.Question),
-                cancellationToken);
+            var embeddings = await _embedder.EmbedBatchAsync(dialogues.Select(x => x.Question), cancellationToken);
 
             if (embeddings == null || embeddings.Count() != dialogues.Count())
                 throw new InvalidOperationException("failed to get embeddings for dialogues");
@@ -56,11 +52,7 @@ public class VectorEmbeddingHandler : IPipelineHandler
         }
         else if (context.Payload.TryConvertTo<IEnumerable<string>>(out var chunks))
         {
-            var embeddings = await _service.EmbedBatchAsync(
-                target.EmbedProvider,
-                target.EmbedModel,
-                chunks,
-                cancellationToken);
+            var embeddings = await _embedder.EmbedBatchAsync(chunks, cancellationToken);
 
             if (embeddings == null || embeddings.Count() != chunks.Count())
                 throw new InvalidOperationException("failed to get embeddings for chunks");

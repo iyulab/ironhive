@@ -1,6 +1,7 @@
 ﻿using System.Text.Json;
 using RabbitMQ.Client;
 using IronHive.Abstractions.Memory;
+using IronHive.Abstractions.Storages;
 
 namespace IronHive.Storages.RabbitMQ;
 

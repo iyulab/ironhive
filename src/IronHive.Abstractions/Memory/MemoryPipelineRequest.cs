@@ -4,7 +4,7 @@
 /// 파이프라인 작업 요청을 나타내는 클래스입니다.
 /// 이 클래스는 작업 수행에 필요한 원본, 대상, 단계 및 핸들러 옵션을 하나의 객체로 캡슐화합니다.
 /// </summary>
-public class PipelineRequest
+public class MemoryPipelineRequest
 {
     /// <summary>
     /// 작업의 원본 메모리 타겟을 지정합니다.

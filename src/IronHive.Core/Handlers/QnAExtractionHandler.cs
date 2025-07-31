@@ -12,7 +12,7 @@ public class Dialogue
     public string Answer { get; set; } = string.Empty;
 }
 
-public class QnAExtractionHandler : IPipelineHandler
+public class QnAExtractionHandler : IMemoryPipelineHandler
 {
     private static readonly Regex DialogueRegex = new Regex(
         @"<qa>\s*<q>\s*(.*?)\s*</q>\s*<a>\s*(.*?)\s*</a>\s*</qa>",
@@ -31,7 +31,7 @@ public class QnAExtractionHandler : IPipelineHandler
         _service = chat;
     }
 
-    public async Task<PipelineContext> ProcessAsync(PipelineContext context, CancellationToken cancellationToken)
+    public async Task<MemoryPipelineContext> ProcessAsync(MemoryPipelineContext context, CancellationToken cancellationToken)
     {
         if (context.Payload.TryConvertTo<IEnumerable<string>>(out var chunks))
         {

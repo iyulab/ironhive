@@ -1,4 +1,4 @@
-﻿namespace IronHive.Abstractions.Memory;
+﻿namespace IronHive.Abstractions.Storages;
 
 /// <summary>
 /// Represents the result of a vector search.

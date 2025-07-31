@@ -11,6 +11,7 @@ using IronHive.Core.Storages;
 using IronHive.Core.Tools;
 using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Message;
+using IronHive.Abstractions.Storages;
 
 namespace IronHive.Core;
 
@@ -70,14 +71,6 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     }
 
     /// <inheritdoc />
-    public IHiveServiceBuilder WithQueueStorage(IQueueStorage<PipelineRequest> storage)
-    {
-        Services.RemoveAll<IQueueStorage<PipelineRequest>>();
-        Services.AddSingleton(storage);
-        return this;
-    }
-
-    /// <inheritdoc />
     public IHiveServiceBuilder WithVectorStorage(IVectorStorage storage)
     {
         Services.RemoveAll<IVectorStorage>();
@@ -86,23 +79,42 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     }
 
     /// <inheritdoc />
-    public IHiveServiceBuilder AddPipelineObserver<TImplementation>(
-        ServiceLifetime lifetime = ServiceLifetime.Singleton,
-        Func<IServiceProvider, TImplementation>? implementationFactory = null)
-        where TImplementation : class, IPipelineObserver
+    public IHiveServiceBuilder WithMemoryEmbedder(string provider, string model)
     {
-        AddService<IPipelineObserver, TImplementation>(lifetime, implementationFactory);
+        Services.AddSingleton<IMemoryEmbedder>(sp => new MemoryEmbedder(sp.GetRequiredService<IEmbeddingGenerationService>())
+        {
+            Model = model,
+            Provider = provider
+        });
         return this;
     }
 
     /// <inheritdoc />
-    public IHiveServiceBuilder AddPipelineHandler<TImplementation>(
+    public IHiveServiceBuilder WithMemoryQueueStorage(IQueueStorage<MemoryPipelineRequest> storage)
+    {
+        Services.RemoveAll<IQueueStorage<MemoryPipelineRequest>>();
+        Services.AddSingleton(storage);
+        return this;
+    }
+
+    /// <inheritdoc />
+    public IHiveServiceBuilder AddMemoryPipelineObserver<TImplementation>(
+        ServiceLifetime lifetime = ServiceLifetime.Singleton,
+        Func<IServiceProvider, TImplementation>? implementationFactory = null)
+        where TImplementation : class, IMemoryPipelineObserver
+    {
+        AddService<IMemoryPipelineObserver, TImplementation>(lifetime, implementationFactory);
+        return this;
+    }
+
+    /// <inheritdoc />
+    public IHiveServiceBuilder AddMemoryPipelineHandler<TImplementation>(
         string serviceKey,
         ServiceLifetime lifetime = ServiceLifetime.Singleton,
         Func<IServiceProvider, object?, TImplementation>? implementationFactory = null)
-        where TImplementation : class, IPipelineHandler
+        where TImplementation : class, IMemoryPipelineHandler
     {
-        AddKeyedService<IPipelineHandler, TImplementation>(serviceKey, lifetime, implementationFactory);
+        AddKeyedService<IMemoryPipelineHandler, TImplementation>(serviceKey, lifetime, implementationFactory);
         return this;
     }
 
@@ -122,9 +134,9 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         if (!ContainsAny<IFileDecoder>())
             Debug.WriteLine("FileDecoder is not registered. File Service will not work.");
 
-        if (!ContainsAny<IPipelineHandler>())
+        if (!ContainsAny<IMemoryPipelineHandler>())
             Debug.WriteLine("PipelineHandler is not registered. Memory Pipeline will not work.");
-        if (!ContainsAny<IPipelineObserver>())
+        if (!ContainsAny<IMemoryPipelineObserver>())
             Debug.WriteLine("PipelineObserver is not registered. You can't check the pipeline work.");
 
         var provider = Services.BuildServiceProvider();
@@ -142,9 +154,12 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         // File 서비스
         Services.TryAddSingleton<IFileStorageManager, FileStorageManager>();
         Services.TryAddSingleton<IFileDecoderManager, FileDecoderManager>();
+
         // 메모리 서비스
-        Services.TryAddSingleton<IQueueStorage<PipelineRequest>, LocalQueueStorage<PipelineRequest>>();
-        Services.TryAddSingleton<IVectorStorage, LocalVectorStorage>();
+        // !! (TODO) 메모리 서비스는 따로 빌더 패턴으로 구성하는 것이 좋음,
+        // SetWorker/SetEmbedder/SetQueueStorage/SetVectorStorage 등으로 구성
+        Services.TryAddSingleton<IMemoryService, MemoryService>();
+        Services.TryAddSingleton<IMemoryPipelineWorker, MemoryPipelineWorker>();
     }
 
     // Service 등록 로직 처리

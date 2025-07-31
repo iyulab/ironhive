@@ -1,16 +1,15 @@
 ﻿using System.Text;
-using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Memory;
 
 namespace IronHive.Core.Handlers;
 
-public class TextChunkerHandler : IPipelineHandler
+public class TextChunkerHandler : IMemoryPipelineHandler
 {
-    private readonly IEmbeddingGenerationService _service;
+    private readonly IMemoryEmbedder _embedder;
 
-    public TextChunkerHandler(IEmbeddingGenerationService service)
+    public TextChunkerHandler(IMemoryEmbedder embedder)
     {
-        _service = service;
+        _embedder = embedder;
     }
 
     public class Options
@@ -26,7 +25,7 @@ public class TextChunkerHandler : IPipelineHandler
     /// 2. 줄바꿈(\n) => 쉼표 또는 마침표(, .) => 공백 ( ) 순의 청크 방법론 고려
     /// 3. 속도를 위해 병렬 처리
     /// </summary>
-    public async Task<PipelineContext> ProcessAsync(PipelineContext context, CancellationToken cancellationToken)
+    public async Task<MemoryPipelineContext> ProcessAsync(MemoryPipelineContext context, CancellationToken cancellationToken)
     {
         var target = context.Target.ConvertTo<VectorMemoryTarget>()
             ?? throw new InvalidOperationException("target is not a VectorMemoryTarget");
@@ -41,12 +40,7 @@ public class TextChunkerHandler : IPipelineHandler
             var sb = new StringBuilder();
             foreach (var line in lines)
             {
-                var tokenCount = await _service.CountTokensAsync(
-                    provider: target.EmbedProvider, 
-                    modelId: target.EmbedModel,
-                    input: line, 
-                    cancellationToken: cancellationToken);
-
+                var tokenCount = await _embedder.CountTokensAsync(line, cancellationToken);
                 if (tokenCount <= 0)
                     continue; // Skip empty
 
@@ -82,6 +76,9 @@ public class TextChunkerHandler : IPipelineHandler
             {
                 chunks.Add(sb.ToString());
             }
+
+            if (chunks.Count == 0)
+                throw new InvalidOperationException("the document content is empty");
 
             context.Payload = chunks;
             return context;

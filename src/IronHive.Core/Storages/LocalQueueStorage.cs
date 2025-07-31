@@ -1,6 +1,6 @@
-﻿using IronHive.Abstractions.Memory;
+﻿using IronHive.Abstractions.Storages;
+using System.Collections.Concurrent;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace IronHive.Core.Storages;
 
@@ -12,7 +12,9 @@ public class LocalQueueStorage<T> : IQueueStorage<T>
     private const string MessageExtension = "qmsg";
     private const string LockExtension = "qlock";
     private const string DeadMessageExtension = "qdead";
+    private const int CacheQueueSize = 100;
 
+    private readonly ConcurrentQueue<string> _cache = new();
     private readonly string _directoryPath;
     private readonly TimeSpan? _ttl;
     private readonly JsonSerializerOptions _jsonOptions;
@@ -52,21 +54,33 @@ public class LocalQueueStorage<T> : IQueueStorage<T>
     /// <inheritdoc />
     public async Task<TaggedMessage<T>?> DequeueAsync(CancellationToken cancellationToken = default)
     {
-        // 큐 폴더 내의 .msg 파일들을 정렬하여 가져옵니다.
-        var files = Directory.GetFiles(_directoryPath, $"*.{MessageExtension}").OrderBy(f => f).ToList();
-
-        foreach (var file in files)
+        // 캐시가 비어있으면 디렉토리에서 파일을 가져와서 캐시에 추가합니다.
+        if (_cache.IsEmpty)
         {
-            var lockedFilePath = Path.ChangeExtension(file, $".{LockExtension}");
+            foreach(var file in Directory.EnumerateFiles(_directoryPath, $"*.{MessageExtension}").OrderBy(f => f).Take(CacheQueueSize))
+            {
+                _cache.Enqueue(file);
+            }
+        }
+        
+        while(_cache.TryDequeue(out var queueFilePath) || cancellationToken.IsCancellationRequested)
+        {
+            if (string.IsNullOrEmpty(queueFilePath))
+                continue;
+
+            var lockedFilePath = Path.ChangeExtension(queueFilePath, $".{LockExtension}");
             try
             {
+                // 큐 파일이 존재하지 않으면 건너뜁니다.
+                if (!File.Exists(queueFilePath))
+                    continue;
+
                 // 메시지 파일을 잠금상태로 변경합니다.
-                File.Move(file, lockedFilePath);
+                File.Move(queueFilePath, lockedFilePath);
 
-                // 파일명에서 enqueueTicks와 만료 정보를 파싱합니다. (파일명: "{enqueueTicks}_{expirationInfo}.lock")
+                // (파일명: "{enqueueTicks}_{expirationInfo}.lock")
                 var parts = Path.GetFileNameWithoutExtension(lockedFilePath).Split('_');
-
-                // 파일명 형식이 잘못된 경우 삭제합니다.
+                // 파일명이 잘못된 경우 삭제합니다.
                 if (parts.Length != 2)
                 {
                     File.Delete(lockedFilePath);
@@ -114,6 +128,10 @@ public class LocalQueueStorage<T> : IQueueStorage<T>
                 var deadFilePath = Path.ChangeExtension(lockedFilePath, $".{DeadMessageExtension}");
                 try
                 {
+                    // 파일이 없는 경우 건너뜁니다.
+                    if (!File.Exists(lockedFilePath))
+                        continue; 
+
                     File.Move(lockedFilePath, deadFilePath);
                 }
                 catch (IOException)
@@ -124,6 +142,7 @@ public class LocalQueueStorage<T> : IQueueStorage<T>
             }
         }
 
+        // 큐가 비어있으면 null 반환
         return null;
     }
 

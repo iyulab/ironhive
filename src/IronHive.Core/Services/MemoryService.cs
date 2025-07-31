@@ -1,42 +1,27 @@
-﻿using IronHive.Abstractions.Embedding;
-using IronHive.Abstractions.Memory;
+﻿using IronHive.Abstractions.Memory;
+using IronHive.Abstractions.Storages;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace IronHive.Core.Services;
 
-public class VectorMemory : IVectorMemory
+public class MemoryService : IMemoryService
 {
-    private readonly IQueueStorage<PipelineRequest> _queue;
+    private readonly IQueueStorage<MemoryPipelineRequest> _queue;
     private readonly IVectorStorage _vector;
-    private readonly IEmbeddingGenerationService _embedding;
+    private readonly IMemoryEmbedder _embedder;
 
     private readonly int _dimensions;
 
-    public VectorMemory(IServiceProvider services, VectorMemoryConfig config)
+    public MemoryService(IServiceProvider services)
     {
-        EmbedProvider = config.EmbedProvider;
-        EmbedModel = config.EmbedModel;
-        _queue = services.GetRequiredService<IQueueStorage<PipelineRequest>>();
+        _queue = services.GetRequiredService<IQueueStorage<MemoryPipelineRequest>>();
         _vector = services.GetRequiredService<IVectorStorage>();
-        _embedding = services.GetRequiredService<IEmbeddingGenerationService>();
-        _dimensions = GetEmbeddingDimensions();
+        _embedder = services.GetRequiredService<IMemoryEmbedder>();
+
+        // 임베딩 차원을 계산합니다.
+        var dummy = "this text is used to calculate the embedding dimensions";
+        _dimensions = _embedder.EmbedAsync(dummy).Result.Count();
     }
-
-    public string EmbedProvider { get; }
-
-    public string EmbedModel { get; }
-
-    /// <inheritdoc />
-    public async Task<IEnumerable<float>> EmbedAsync(
-        string input,
-        CancellationToken cancellationToken = default)
-        => await _embedding.EmbedAsync(EmbedProvider, EmbedModel, input, cancellationToken);
-
-    /// <inheritdoc />
-    public Task<IEnumerable<EmbeddingResult>> EmbedBatchAsync(
-        IEnumerable<string> input, 
-        CancellationToken cancellationToken = default)
-        => _embedding.EmbedBatchAsync(EmbedProvider, EmbedModel, input, cancellationToken);
 
     /// <inheritdoc />
     public async Task<IEnumerable<string>> ListCollectionsAsync(
@@ -133,7 +118,7 @@ public class VectorMemory : IVectorMemory
         CancellationToken cancellationToken = default)
     {
         var filter = GetVectorRecordFilter(sourceIds);
-        var vector = await EmbedAsync(query, cancellationToken);
+        var vector = await _embedder.EmbedAsync(query, cancellationToken);
         var records = await _vector.SearchVectorsAsync(
             collectionName: collectionName,
             vector: vector,
@@ -158,14 +143,12 @@ public class VectorMemory : IVectorMemory
         IDictionary<string, object?>? handlerOptions = null,
         CancellationToken cancellationToken = default)
     {
-        var request = new PipelineRequest
+        var request = new MemoryPipelineRequest
         {
             Source = source,
             Target = new VectorMemoryTarget
             {
                 CollectionName = collectionName,
-                EmbedProvider = EmbedProvider,
-                EmbedModel = EmbedModel,
             },
             Steps = steps,
             HandlerOptions = handlerOptions,
@@ -186,13 +169,5 @@ public class VectorMemory : IVectorMemory
         {
             return null;
         }
-    }
-
-    // 지정된 모델의 차원을 계산합니다.
-    private int GetEmbeddingDimensions()
-    {
-        var dummy = "this text is used to calculate the embedding dimensions";
-        var embedding = EmbedAsync(dummy).Result;
-        return embedding.Count();
     }
 }

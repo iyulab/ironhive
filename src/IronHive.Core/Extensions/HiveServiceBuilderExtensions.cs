@@ -54,10 +54,10 @@ public static class HiveServiceBuilderExtensions
     /// </summary>
     public static IHiveServiceBuilder AddDefaultPipelineHandlers(this IHiveServiceBuilder builder)
     {
-        builder.AddPipelineHandler<TextExtractionHandler>("extract_text");
-        builder.AddPipelineHandler<TextChunkerHandler>("split_text");
-        builder.AddPipelineHandler<QnAExtractionHandler>("gen_QnA");
-        builder.AddPipelineHandler<VectorEmbeddingHandler>("gen_vectors");
+        builder.AddMemoryPipelineHandler<TextExtractionHandler>("extract_text");
+        builder.AddMemoryPipelineHandler<TextChunkerHandler>("split_text");
+        builder.AddMemoryPipelineHandler<QnAExtractionHandler>("gen_QnA");
+        builder.AddMemoryPipelineHandler<VectorEmbeddingHandler>("gen_vectors");
         return builder;
     }
 }

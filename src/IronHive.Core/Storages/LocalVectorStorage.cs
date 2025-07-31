@@ -2,6 +2,7 @@
 using System.Numerics.Tensors;
 using LiteDB;
 using IronHive.Abstractions.Memory;
+using IronHive.Abstractions.Storages;
 
 namespace IronHive.Core.Storages;
 

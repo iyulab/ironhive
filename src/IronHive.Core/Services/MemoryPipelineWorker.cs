@@ -1,32 +1,26 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using IronHive.Abstractions.Memory;
+using IronHive.Abstractions.Storages;
 
 namespace IronHive.Core.Services;
 
-public class PipelineWorker : IPipelineWorker
+public class MemoryPipelineWorker : IMemoryPipelineWorker
 {
+    private const int PollingInterval = 1000; // 1초
+
     private readonly IServiceProvider _services;
-    private readonly PipelineWorkerConfig _config;
-    private readonly IQueueStorage<PipelineRequest> _queue;
-    private readonly IEnumerable<IPipelineObserver> _observers;
+    private readonly IQueueStorage<MemoryPipelineRequest> _queue;
+    private readonly IEnumerable<IMemoryPipelineObserver> _observers;
 
     private int _flag = 0;
     private CancellationTokenSource _cts = new();
-    private readonly SemaphoreSlim _semaphore;
+    private readonly SemaphoreSlim _semaphore = new(1, 1);
 
-    public PipelineWorker(IServiceProvider provider, PipelineWorkerConfig config)
+    public MemoryPipelineWorker(IServiceProvider provider)
     {
-        if (config.MaxExecutionSlots < 1)
-            throw new ArgumentOutOfRangeException(nameof(config.MaxExecutionSlots));
-        if (config.PollingInterval < TimeSpan.FromMilliseconds(100))
-            throw new ArgumentOutOfRangeException(nameof(config.PollingInterval));
-        
         _services = provider;
-        _config = config;
-        _queue = provider.GetRequiredService<IQueueStorage<PipelineRequest>>();
-        _observers = provider.GetServices<IPipelineObserver>();
-        
-        _semaphore = new SemaphoreSlim(config.MaxExecutionSlots, config.MaxExecutionSlots);
+        _queue = provider.GetRequiredService<IQueueStorage<MemoryPipelineRequest>>();
+        _observers = provider.GetServices<IMemoryPipelineObserver>();
     }
 
     /// <inheritdoc />
@@ -73,12 +67,12 @@ public class PipelineWorker : IPipelineWorker
                         {
                             _semaphore.Release(); // 처리 후 슬롯 반환
                         }
-                    }, _cts.Token).ConfigureAwait(false);
+                    }, _cts.Token);
                 }
                 // 메시지가 없으면 일시 대기
                 else
                 {
-                    await Task.Delay(_config.PollingInterval, _cts.Token);
+                    await Task.Delay(PollingInterval, _cts.Token);
                 }
             }
         }
@@ -100,7 +94,7 @@ public class PipelineWorker : IPipelineWorker
         _cts = new CancellationTokenSource();
 
         // 대기 중인 작업이 있으면 모두 취소될 때까지 대기
-        while (_semaphore.CurrentCount < _config.MaxExecutionSlots)
+        while (_semaphore.CurrentCount < 1)
         {
             await Task.Delay(100); // 잠시 대기 후 다시 확인
         }
@@ -109,7 +103,7 @@ public class PipelineWorker : IPipelineWorker
     }
 
     /// <inheritdoc />
-    public async Task ExecuteAsync(PipelineRequest request, CancellationToken cancellationToken)
+    public async Task ExecuteAsync(MemoryPipelineRequest request, CancellationToken cancellationToken)
     {
         try
         {
@@ -117,7 +111,7 @@ public class PipelineWorker : IPipelineWorker
             var handlerOptions = request.HandlerOptions ?? new Dictionary<string, object?>();
 
             var steps = new Queue<string>(request.Steps);
-            var context = new PipelineContext
+            var context = new MemoryPipelineContext
             {
                 Source = request.Source,
                 Target = request.Target
@@ -131,7 +125,7 @@ public class PipelineWorker : IPipelineWorker
                     continue;
 
                 using var scope = _services.CreateScope();
-                var handler = scope.ServiceProvider.GetRequiredKeyedService<IPipelineHandler>(step);
+                var handler = scope.ServiceProvider.GetRequiredKeyedService<IMemoryPipelineHandler>(step);
 
                 if (handlerOptions.TryGetValue(step, out var options))
                 {
@@ -156,7 +150,7 @@ public class PipelineWorker : IPipelineWorker
     /// <summary>
     /// 이벤트를 Observer에 비동기로 전달합니다.
     /// </summary>
-    private async Task InvokeAllAsync(Func<IPipelineObserver, Task> action)
+    private async Task InvokeAllAsync(Func<IMemoryPipelineObserver, Task> action)
     {
         await Task.WhenAll(_observers.Select(async observer =>
         {

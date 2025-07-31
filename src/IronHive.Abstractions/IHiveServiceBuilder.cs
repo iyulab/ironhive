@@ -5,6 +5,7 @@ using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Tools;
 using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Message;
+using IronHive.Abstractions.Storages;
 
 namespace IronHive.Abstractions;
 
@@ -45,16 +46,23 @@ public interface IHiveServiceBuilder
     #region Memory Services
 
     /// <summary>
-    /// Registers a queue storage as a singleton in the service collection.
-    /// Only one queue storage can be registered; a new registration replaces the previous one.
-    /// </summary>
-    IHiveServiceBuilder WithQueueStorage(IQueueStorage<PipelineRequest> storage);
-
-    /// <summary>
     /// Registers a vector storage as a singleton in the service collection.
     /// Only one vector storage can be registered; a new registration replaces the previous one.
     /// </summary>
     IHiveServiceBuilder WithVectorStorage(IVectorStorage storage);
+
+    /// <summary>
+    /// Registers a memory embedder as a singleton in the service collection.
+    /// </summary>
+    /// <param name="provider">the provider key of the embedder.</param>
+    /// <param name="model">the model key of the embedder.</param>
+    IHiveServiceBuilder WithMemoryEmbedder(string provider, string model);
+
+    /// <summary>
+    /// Registers a queue storage as a singleton in the service collection.
+    /// Only one queue storage can be registered; a new registration replaces the previous one.
+    /// </summary>
+    IHiveServiceBuilder WithMemoryQueueStorage(IQueueStorage<MemoryPipelineRequest> storage);
 
     /// <summary>
     /// Registers one or more pipeline event observers to the service collection.
@@ -66,10 +74,10 @@ public interface IHiveServiceBuilder
     /// A factory method to create the pipeline observer.
     /// The first parameter is the service provider, If null, the default implementation is used.
     /// </param>
-    IHiveServiceBuilder AddPipelineObserver<TImplementation>(
+    IHiveServiceBuilder AddMemoryPipelineObserver<TImplementation>(
         ServiceLifetime lifetime = ServiceLifetime.Singleton,
         Func<IServiceProvider, TImplementation>? implementationFactory = null)
-        where TImplementation : class, IPipelineObserver;
+        where TImplementation : class, IMemoryPipelineObserver;
 
     /// <summary>
     /// Adds a pipeline handler to the service collection.
@@ -85,11 +93,11 @@ public interface IHiveServiceBuilder
     /// The first parameter is the service provider and the second is the service key.
     /// If null, the default implementation is used.
     /// </param>
-    IHiveServiceBuilder AddPipelineHandler<TImplementation>(
+    IHiveServiceBuilder AddMemoryPipelineHandler<TImplementation>(
         string serviceKey,
         ServiceLifetime lifetime = ServiceLifetime.Singleton,
         Func<IServiceProvider, object?, TImplementation>? implementationFactory = null)
-        where TImplementation : class, IPipelineHandler;
+        where TImplementation : class, IMemoryPipelineHandler;
 
     #endregion
 

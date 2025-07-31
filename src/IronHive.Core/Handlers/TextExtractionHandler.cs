@@ -4,7 +4,7 @@ using HtmlAgilityPack;
 
 namespace IronHive.Core.Handlers;
 
-public class TextExtractionHandler : IPipelineHandler
+public class TextExtractionHandler : IMemoryPipelineHandler
 {
     private readonly IFileStorageManager _storages;
     private readonly IFileDecoderManager _decoders;
@@ -15,7 +15,7 @@ public class TextExtractionHandler : IPipelineHandler
         _decoders = decoders;
     }
 
-    public async Task<PipelineContext> ProcessAsync(PipelineContext context, CancellationToken cancellationToken)
+    public async Task<MemoryPipelineContext> ProcessAsync(MemoryPipelineContext context, CancellationToken cancellationToken)
     {
         var source = context.Source;
         if (source is TextMemorySource textSource)

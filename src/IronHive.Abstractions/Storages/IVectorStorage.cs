@@ -1,4 +1,4 @@
-﻿namespace IronHive.Abstractions.Memory;
+﻿namespace IronHive.Abstractions.Storages;
 
 /// <summary>
 /// 벡터 스토리지와 관련된 기본 기능을 제공하는 인터페이스입니다.
