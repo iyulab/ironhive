@@ -73,6 +73,7 @@ public class MemoryPipelineWorker : IMemoryPipelineWorker
                 else
                 {
                     await Task.Delay(PollingInterval, _cts.Token);
+                    _semaphore.Release();
                 }
             }
         }
