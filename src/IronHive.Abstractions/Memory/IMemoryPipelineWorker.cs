@@ -1,11 +1,35 @@
 ﻿namespace IronHive.Abstractions.Memory;
 
 /// <summary>
+/// 파이프라인 작업자의 상태를 나타내는 열거형입니다.
+/// </summary>
+public enum PipelineWorkerStatus
+{
+    /// <summary>
+    /// 작업이 실행된 상태입니다.
+    /// </summary>
+    Started,
+
+    /// <summary>
+    /// 작업이 중지된 상태입니다.
+    /// </summary>
+    Stopped,
+
+    /// <summary>
+    /// 작업 중지 요청이 들어온 상태입니다.
+    /// </summary>
+    StopRequested
+}
+
+/// <summary>
 /// 작업 수행을 담당하는 인터페이스입니다.
 /// </summary>
 public interface IMemoryPipelineWorker : IDisposable
 {
-    bool IsRunning { get; }
+    /// <summary>
+    /// 현재 작업이 실행 중인지 여부를 나타냅니다.
+    /// </summary>
+    PipelineWorkerStatus Status { get; }
 
     /// <summary>
     /// 지속적으로 작업을 수행하는 메서드입니다.
@@ -15,14 +39,11 @@ public interface IMemoryPipelineWorker : IDisposable
     /// <summary>
     /// 실행중인 작업을 중지하는 메서드입니다.
     /// </summary>
-    Task StopAsync();
+    /// <param name="force">작업을 즉시 중단합니다.</param>
+    Task StopAsync(bool force = false);
 
     /// <summary>
-    /// 지정된 컨텍스트에서 작업을 수행하는 메서드입니다.
+    /// 지정된 요청에 따라 작업을 수행하는 메서드입니다.
     /// </summary>
-    /// <param name="source">작업을 수행할 메모리 소스입니다.</param>
-    /// <param name="target">작업 결과를 저장할 메모리 타겟입니다.</param>
-    /// <param name="handlerOptions">작업 핸들러에 전달할 옵션입니다.</param>
-    /// <param name="cancellationToken">작업 취소/중지 토큰입니다.</param>
     Task ExecuteAsync(MemoryPipelineRequest request, CancellationToken cancellationToken = default);
 }

@@ -1,71 +1,57 @@
-﻿using IronHive.Abstractions.Embedding;
-using IronHive.Abstractions.Storages;
+﻿using IronHive.Abstractions.Storages;
 
 namespace IronHive.Abstractions.Memory;
 
 /// <summary>
-/// Interface for Hive Memory Service
+/// RAG(정보 검색 기반 생성) 메모리 서비스를 정의하는 인터페이스입니다.
 /// </summary>
 public interface IMemoryService
 {
     /// <summary>
-    /// Lists all vector collections in the storage.
+    /// 벡터화 및 저장 작업을 수행하는 워커의 수를 가져오거나 설정합니다.
     /// </summary>
+    int WorkersCount { get; set; }
+
+    /// <summary>
+    /// 지정된 접두사로 시작하는 벡터 컬렉션 목록을 비동기적으로 반환합니다.
+    /// </summary>
+    /// <param name="prefix">컬렉션 이름의 접두사 (옵션)</param>
     Task<IEnumerable<string>> ListCollectionsAsync(
         string? prefix = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Checks if a vector collection exists in the storage.
+    /// 지정된 이름의 컬렉션이 존재하는지 여부를 비동기적으로 확인합니다.
     /// </summary>
+    /// <param name="collectionName">컬렉션 이름</param>
     Task<bool> CollectionExistsAsync(
         string collectionName,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Creates a new vector collection with the specified name and dimensions.
+    /// 지정된 이름의 새로운 벡터 컬렉션을 비동기적으로 생성합니다.
     /// </summary>
+    /// <param name="collectionName">생성할 컬렉션 이름</param>
     Task CreateCollectionAsync(
         string collectionName,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Deletes a vector collection by its name.
+    /// 지정된 이름의 벡터 컬렉션을 비동기적으로 삭제합니다.
     /// </summary>
+    /// <param name="collectionName">삭제할 컬렉션 이름</param>
     Task DeleteCollectionAsync(
         string collectionName,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Finds vector records in a collection based on the specified filter.
+    /// 지정된 소스를 벡터화시키는 작업 큐에 등록합니다.
     /// </summary>
-    Task<IEnumerable<VectorRecord>> FindVectorsAsync(
-        string collectionName,
-        string sourceId,
-        int limit = 20,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Adds or updates vector records in a collection.
-    /// </summary>
-    Task UpdateVectorContentAsync(
-        string collectionName,
-        string vectorId,
-        object? content,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Deletes vector records from a collection by their source ID.
-    /// </summary>
-    Task DeleteVectorsAsync(
-        string collectionName,
-        string sourceId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Schedules vectorization of a memory source with specified steps and options.
-    /// </summary>
-    Task ScheduleVectorizationAsync(
+    /// <param name="collectionName">대상 컬렉션 이름</param>
+    /// <param name="source">인덱싱할 소스</param>
+    /// <param name="steps">처리 단계 목록</param>
+    /// <param name="handlerOptions">처리기 구성 옵션 (선택)</param>
+    Task ScheduleIndexingAsync(
         string collectionName,
         IMemorySource source,
         IEnumerable<string> steps,
@@ -73,9 +59,38 @@ public interface IMemoryService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Searches for vectors in a collection based on a query string and optional filters.
+    /// 지정된 소스를 즉시 벡터화하여 인덱싱합니다.
     /// </summary>
-    Task<VectorSearchResult> SearchVectorsAsync(
+    /// <param name="collectionName">대상 컬렉션 이름</param>
+    /// <param name="source">인덱싱할 소스</param>
+    /// <param name="steps">처리 단계 목록</param>
+    /// <param name="handlerOptions">처리기 구성 옵션 (선택)</param>
+    Task IndexSourceAsync(
+        string collectionName,
+        IMemorySource source,
+        IEnumerable<string> steps,
+        IDictionary<string, object?>? handlerOptions = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 지정된 소스를 컬렉션에서 제거합니다.
+    /// </summary>
+    /// <param name="collectionName">대상 컬렉션 이름</param>
+    /// <param name="sourceId">제거할 소스 ID</param>
+    Task DeleteSourceAsync(
+        string collectionName,
+        string sourceId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 지정된 쿼리를 기반으로 코사인 유사도를 사용하여 유사한 항목을 검색합니다.
+    /// </summary>
+    /// <param name="collectionName">검색할 컬렉션 이름</param>
+    /// <param name="query">검색 질의</param>
+    /// <param name="minScore">최소 유사도 점수</param>
+    /// <param name="limit">최대 결과 수</param>
+    /// <param name="sourceIds">제한할 소스 ID 목록 (옵션)</param>
+    Task<VectorSearchResult> SearchSimilarAsync(
         string collectionName,
         string query,
         float minScore = 0,

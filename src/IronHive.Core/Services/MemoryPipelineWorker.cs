@@ -4,36 +4,43 @@ using IronHive.Abstractions.Storages;
 
 namespace IronHive.Core.Services;
 
+/// <inheritdoc />
 public class MemoryPipelineWorker : IMemoryPipelineWorker
 {
-    private const int PollingInterval = 1000; // 1초
+    private const int DequeueInterval = 1000; // 1초
 
     private readonly IServiceProvider _services;
     private readonly IQueueStorage<MemoryPipelineRequest> _queue;
     private readonly IEnumerable<IMemoryPipelineObserver> _observers;
 
-    private int _flag = 0;
-    private CancellationTokenSource _cts = new();
-    private readonly SemaphoreSlim _semaphore = new(1, 1);
+    private int _flag = 1; // 0: 시작, 1: 중지, 2: 중지 요청
+    private TaskCompletionSource<bool>? _tcs = null;
+    private CancellationTokenSource? _cts = null;
 
-    public MemoryPipelineWorker(IServiceProvider provider)
+    public MemoryPipelineWorker(IServiceProvider services)
     {
-        _services = provider;
-        _queue = provider.GetRequiredService<IQueueStorage<MemoryPipelineRequest>>();
-        _observers = provider.GetServices<IMemoryPipelineObserver>();
+        _services = services;
+        _queue = services.GetRequiredService<IQueueStorage<MemoryPipelineRequest>>();
+        _observers = services.GetServices<IMemoryPipelineObserver>();
     }
 
     /// <inheritdoc />
-    public bool IsRunning
+    public PipelineWorkerStatus Status => _flag switch
     {
-        get => _flag == 1;
-    }
+        0 => PipelineWorkerStatus.Started,
+        1 => PipelineWorkerStatus.Stopped,
+        2 => PipelineWorkerStatus.StopRequested,
+        _ => throw new InvalidOperationException("Invalid worker status")
+    };
 
     public void Dispose()
     {
-        StopAsync().ConfigureAwait(false).GetAwaiter().GetResult();
-        _semaphore.Dispose();
-        _cts.Dispose();
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = null;
+
+        _tcs?.TrySetCanceled();
+        _tcs = null;
 
         GC.SuppressFinalize(this);
     }
@@ -41,66 +48,63 @@ public class MemoryPipelineWorker : IMemoryPipelineWorker
     /// <inheritdoc />
     public async Task StartAsync()
     {
-        if (Interlocked.Exchange(ref _flag, 1) == 1)
+        // 중지 상태가 아닐 경우 아무 작업도 하지 않음
+        if (Interlocked.CompareExchange(ref _flag, 0, 1) != 1)
             return;
+
+        _cts = new CancellationTokenSource();
+        _tcs = new TaskCompletionSource<bool>();
 
         try
         {
             while (!_cts.Token.IsCancellationRequested)
             {
-                // 실행 슬롯 대기
-                await _semaphore.WaitAsync(_cts.Token); 
                 var msg = await _queue.DequeueAsync(_cts.Token);
-
                 // 메시지가 있으면 처리 시작
                 if (msg != null)
                 {
-                    _ = Task.Run(async () =>
-                    {
-                        try
-                        {
-                            await ExecuteAsync(msg.Message, _cts.Token);
-                            if (msg.AckTag != null)
-                                await _queue.AckAsync(msg.AckTag, _cts.Token);
-                        }
-                        finally
-                        {
-                            _semaphore.Release(); // 처리 후 슬롯 반환
-                        }
-                    }, _cts.Token);
+                    await ExecuteAsync(msg.Message, _cts.Token);
+                    if (msg.AckTag != null)
+                        await _queue.AckAsync(msg.AckTag, _cts.Token);
                 }
                 // 메시지가 없으면 일시 대기
                 else
                 {
-                    await Task.Delay(PollingInterval, _cts.Token);
-                    _semaphore.Release();
+                    await Task.Delay(Math.Max(DequeueInterval, 100), _cts.Token);
                 }
+
+                // 중지 요청이 들어온 경우
+                if (_flag == 2) break;
             }
         }
         finally
         {
-            // 실행 상태 해제
-             Interlocked.Exchange(ref _flag, 0);
+            _cts?.Dispose();
+            _tcs?.TrySetResult(true);
+            _flag = 1; // 작업이 중지됨
         }
     }
 
     /// <inheritdoc />
-    public async Task StopAsync()
+    public async Task StopAsync(bool force = false)
     {
-        if (Interlocked.CompareExchange(ref _flag, 0, 1) != 1)
-            return;
-
-        _cts.Cancel();
-        _cts.Dispose();
-        _cts = new CancellationTokenSource();
-
-        // 대기 중인 작업이 있으면 모두 취소될 때까지 대기
-        while (_semaphore.CurrentCount < 1)
+        // 즉시 중지 요청인 경우
+        if (force)
         {
-            await Task.Delay(100); // 잠시 대기 후 다시 확인
+            _cts?.Cancel();
+        }
+        // 즉시 중지가 아닌 경우,
+        else
+        {
+            Interlocked.CompareExchange(ref _flag, 2, 0);
         }
 
-        Interlocked.Exchange(ref _flag, 0);
+        // 작업이 완료될 때까지 대기
+        var tcs = _tcs;
+        if (tcs != null)
+        {
+            await tcs.Task;
+        }
     }
 
     /// <inheritdoc />
@@ -109,49 +113,47 @@ public class MemoryPipelineWorker : IMemoryPipelineWorker
         try
         {
             var sourceId = request.Source.Id;
-            var handlerOptions = request.HandlerOptions ?? new Dictionary<string, object?>();
+            var options = request.HandlerOptions ?? new Dictionary<string, object?>();
 
             var steps = new Queue<string>(request.Steps);
             var context = new MemoryPipelineContext
             {
                 Source = request.Source,
-                Target = request.Target
+                Target = request.Target,
             };
             
-            await InvokeAllAsync(e => e.OnStartedAsync(sourceId));
+            await NotifyObserversAsync(e => e.OnStartedAsync(sourceId));
 
             while (!cancellationToken.IsCancellationRequested && steps.TryDequeue(out var step))
             {
                 if (string.IsNullOrWhiteSpace(step))
                     continue;
 
-                using var scope = _services.CreateScope();
-                var handler = scope.ServiceProvider.GetRequiredKeyedService<IMemoryPipelineHandler>(step);
-
-                if (handlerOptions.TryGetValue(step, out var options))
+#pragma warning disable IDE0063 // 간단한 using 문을 사용하지 않습니다.
+                using (var scope = _services.CreateScope())
                 {
-                    context.Options = options;
+                    var handler = scope.ServiceProvider.GetRequiredKeyedService<IMemoryPipelineHandler>(step);
+                    context.Options = options.TryGetValue(step, out var option) ? option : null;
+
+                    await NotifyObserversAsync(e => e.OnProcessBeforeAsync(sourceId, step, context));
+                    context = await handler.ProcessAsync(context, cancellationToken);
+                    await NotifyObserversAsync(e => e.OnProcessAfterAsync(sourceId, step, context));
                 }
-
-                await InvokeAllAsync(e => e.OnProcessBeforeAsync(sourceId, step, context));
-
-                context = await handler.ProcessAsync(context, cancellationToken);
-
-                await InvokeAllAsync(e => e.OnProcessAfterAsync(sourceId, step, context));
+#pragma warning restore IDE0063
             }
 
-            await InvokeAllAsync(e => e.OnCompletedAsync(sourceId));
+            await NotifyObserversAsync(e => e.OnCompletedAsync(sourceId));
         }
         catch (Exception ex)
         {
-            await InvokeAllAsync(e => e.OnFailedAsync(request.Source.Id, ex));
+            await NotifyObserversAsync(e => e.OnFailedAsync(request.Source.Id, ex));
         }
     }
 
     /// <summary>
     /// 이벤트를 Observer에 비동기로 전달합니다.
     /// </summary>
-    private async Task InvokeAllAsync(Func<IMemoryPipelineObserver, Task> action)
+    private async Task NotifyObserversAsync(Func<IMemoryPipelineObserver, Task> action)
     {
         await Task.WhenAll(_observers.Select(async observer =>
         {
@@ -161,7 +163,7 @@ public class MemoryPipelineWorker : IMemoryPipelineWorker
             }
             catch
             {
-                // 예외가 발생 무시
+                // 예외 발생 무시
             }
         }));
     }
