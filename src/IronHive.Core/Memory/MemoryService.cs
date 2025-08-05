@@ -2,8 +2,9 @@
 using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Storages;
 
-namespace IronHive.Core.Services;
+namespace IronHive.Core.Memory;
 
+/// <inheritdoc />
 public class MemoryService : IMemoryService
 {
     private readonly IServiceProvider _services;
@@ -11,8 +12,6 @@ public class MemoryService : IMemoryService
     private readonly IVectorStorage _vector;
     private readonly IMemoryEmbedder _embedder;
 
-    private readonly object _workersLock = new();
-    private readonly List<IMemoryPipelineWorker> _workers = [];
     private int? _dimensions = null;
 
     public MemoryService(IServiceProvider services)
@@ -24,47 +23,7 @@ public class MemoryService : IMemoryService
     }
 
     /// <inheritdoc />
-    public int WorkersCount
-    {
-        get
-        {
-            lock (_workersLock)
-            {
-                return _workers.Count(w => w.Status == PipelineWorkerStatus.Started);
-            }
-        }
-        set
-        {
-            if (value < 0)
-                throw new ArgumentOutOfRangeException(nameof(value), "Worker count cannot be negative.");
-
-            lock (_workersLock)
-            {
-                var count = _workers.Count(w => w.Status == PipelineWorkerStatus.Started);
-
-                // Stop and remove excess workers if needed
-                if (value < count)
-                {
-                    foreach (var worker in _workers.Skip(value))
-                    {
-                        _ = worker.StopAsync(false).ContinueWith(t => worker.Dispose());
-                    }
-                    _workers.RemoveRange(value, count - value);
-                }
-
-                // Add new workers if needed
-                if (value > count)
-                {
-                    for (int i = count; i < value; i++)
-                    {
-                        var worker = new MemoryPipelineWorker(_services);
-                        _workers.Add(worker);
-                        _ = Task.Run(worker.StartAsync);
-                    }
-                }
-            }
-        }
-    }
+    public ICollection<IMemoryWorker> Workers { get; set; } = [];
 
     /// <inheritdoc />
     public async Task<IEnumerable<string>> ListCollectionsAsync(
@@ -112,7 +71,7 @@ public class MemoryService : IMemoryService
     }
 
     /// <inheritdoc />
-    public async Task ScheduleIndexingAsync(
+    public async Task QueueIndexSourceAsync(
         string collectionName, 
         IMemorySource source, 
         IEnumerable<string> steps, 
@@ -120,8 +79,8 @@ public class MemoryService : IMemoryService
         CancellationToken cancellationToken = default)
     {
         // Ensure at least one worker is available
-        if (WorkersCount <= 0)
-            WorkersCount = 1;
+        if (Workers.Count != 0)
+            Workers.Add(new MemoryWorker(_services));
         
         var request = new MemoryPipelineRequest
         {
@@ -144,7 +103,7 @@ public class MemoryService : IMemoryService
         IDictionary<string, object?>? handlerOptions = null, 
         CancellationToken cancellationToken = default)
     {
-        var worker = new MemoryPipelineWorker(_services);
+        var worker = new MemoryWorker(_services);
         var request = new MemoryPipelineRequest
         {
             Source = source,

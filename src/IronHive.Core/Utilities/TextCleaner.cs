@@ -2,6 +2,9 @@
 
 namespace IronHive.Core.Utilities;
 
+/// <summary>
+/// 텍스트 정리 유틸리티 클래스입니다.
+/// </summary>
 public static class TextCleaner
 {
     private static readonly Regex LineBreakNormalizationRegex = new(@"\r\n|\r", RegexOptions.Compiled);

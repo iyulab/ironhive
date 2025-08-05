@@ -1,8 +1,9 @@
 ﻿using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Memory;
 
-namespace IronHive.Core.Services;
+namespace IronHive.Core.Memory;
 
+/// <inheritdoc />
 public class MemoryEmbedder : IMemoryEmbedder
 {
     private readonly IEmbeddingGenerationService _service;

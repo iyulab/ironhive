@@ -3,6 +3,9 @@ using System.Text.Json.Serialization;
 
 namespace IronHive.Core.Storages;
 
+/// <summary>
+/// 로컬 큐 스토리지의 설정을 정의하는 클래스입니다.
+/// </summary>
 public class LocalQueueConfig
 {
     /// <summary>
@@ -15,6 +18,11 @@ public class LocalQueueConfig
     /// 지정하지 않는 경우 메시지는 만료되지 않습니다.
     /// </summary>
     public TimeSpan? TimeToLive { get; set; }
+
+    /// <summary>
+    /// 큐 메시지를 캐싱하기 위한 큐의 크기입니다.
+    /// </summary>
+    public int CacheQueueSize { get; set; } = 100;
 
     /// <summary>
     /// 메시지 파일의 변환 옵션입니다.

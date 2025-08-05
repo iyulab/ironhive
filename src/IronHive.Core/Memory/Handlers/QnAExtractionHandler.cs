@@ -4,7 +4,7 @@ using IronHive.Abstractions.Message.Content;
 using IronHive.Abstractions.Message.Roles;
 using System.Text.RegularExpressions;
 
-namespace IronHive.Core.Handlers;
+namespace IronHive.Core.Memory.Handlers;
 
 public class Dialogue
 {
@@ -12,6 +12,9 @@ public class Dialogue
     public string Answer { get; set; } = string.Empty;
 }
 
+/// <summary>
+/// QnAExtractionHandler는 주어진 텍스트에서 Q&A 쌍을 추출하는 메모리 파이프라인 핸들러입니다.
+/// </summary>
 public class QnAExtractionHandler : IMemoryPipelineHandler
 {
     private static readonly Regex DialogueRegex = new Regex(

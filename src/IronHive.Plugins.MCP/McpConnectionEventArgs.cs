@@ -1,20 +1,20 @@
 ﻿namespace IronHive.Plugins.MCP;
 
 /// <summary>
-/// 연결 이벤트 인수입니다.
+/// MCP 서버의 연결 이벤트 인수입니다.
 /// </summary>
-public class ConnectedEventArgs : EventArgs
+public class McpConnectedEventArgs : EventArgs
 {
-    public ConnectedEventArgs(string serverName)
+    public McpConnectedEventArgs(string pluginName)
     {
-        Name = serverName;
+        PluginName = pluginName;
         Timestamp = DateTimeOffset.Now;
     }
 
     /// <summary>
     /// 연결 플러그인의 이름입니다.
     /// </summary>
-    public string Name { get; }
+    public string PluginName { get; }
 
     /// <summary>
     /// 연결 해제 시간
@@ -23,26 +23,26 @@ public class ConnectedEventArgs : EventArgs
 }
 
 /// <summary>
-/// 연결 해제 이벤트 인수입니다.
+/// MCP 서버의 연결 해제 이벤트 인수입니다.
 /// </summary>
-public class DisconnectedEventArgs : EventArgs
+public class McpDisconnectedEventArgs : EventArgs
 {
-    public DisconnectedEventArgs(string serverName, Exception? error = null)
+    public McpDisconnectedEventArgs(string pluginName, Exception? exception = null)
     {
-        Name = serverName;
-        Error = error;
+        PluginName = pluginName;
+        Exception = exception;
         Timestamp = DateTimeOffset.Now;
     }
 
     /// <summary>
     /// 연결 플러그인의 이름입니다.
     /// </summary>
-    public string Name { get; }
+    public string PluginName { get; }
 
     /// <summary>
     /// 연결 해제의 원인이 된 오류 (정상 해제인 경우 null)
     /// </summary>
-    public Exception? Error { get; }
+    public Exception? Exception { get; }
 
     /// <summary>
     /// 연결 해제 시간

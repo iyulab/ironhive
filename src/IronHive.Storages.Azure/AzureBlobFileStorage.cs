@@ -5,6 +5,9 @@ using IronHive.Abstractions.Files;
 
 namespace IronHive.Storages.Azure;
 
+/// <summary>
+/// Azure Blob Storage를 사용하여 파일 스토리지를 구현한 클래스입니다.
+/// </summary>
 public class AzureBlobFileStorage : IFileStorage
 {
     private readonly BlobContainerClient _client;
@@ -143,13 +146,17 @@ public class AzureBlobFileStorage : IFileStorage
         }
     }
 
-    // azure blob에서 경로끝에 '/'가 있으면 디렉토리로 간주합니다.
+    /// <summary>
+    /// azure blob에서 경로끝에 '/'가 있으면 디렉토리로 간주합니다.
+    /// </summary>
     private static bool IsDirectory(string path)
     {
         return path.EndsWith('/');
     }
 
-    // BlobContainerClient 생성
+    /// <summary>
+    /// BlobContainerClient 생성
+    /// </summary>
     private static BlobContainerClient CreateClient(AzureBlobConfig config)
     {
         var options = new BlobClientOptions();
@@ -167,7 +174,9 @@ public class AzureBlobFileStorage : IFileStorage
         return client.GetBlobContainerClient(config.ContainerName);
     }
 
-    // AccountName을 이용한 Uri 생성
+    /// <summary>
+    /// AccountName을 이용한 Uri 생성
+    /// </summary>
     private static Uri GetBlobStorageUri(AzureBlobConfig config)
     {
         if (string.IsNullOrWhiteSpace(config.AccountName))
@@ -175,7 +184,9 @@ public class AzureBlobFileStorage : IFileStorage
         return new Uri($"https://{config.AccountName}.blob.core.windows.net");
     }
 
-    // AccountKey를 이용한 인증 방식
+    /// <summary>
+    /// AccountKey를 이용한 인증 방식
+    /// </summary>
     private static StorageSharedKeyCredential GetSharedKeyCredential(AzureBlobConfig config)
     {
         if (string.IsNullOrWhiteSpace(config.AccountName))
@@ -183,7 +194,9 @@ public class AzureBlobFileStorage : IFileStorage
         return new StorageSharedKeyCredential(config.AccountName, config.AccountKey);
     }
 
-    // SAS Token을 이용한 인증 방식
+    /// <summary>
+    /// SAS Token을 이용한 인증 방식
+    /// </summary>
     private static AzureSasCredential GetSasTokenCredential(AzureBlobConfig config)
     {
         if (string.IsNullOrWhiteSpace(config.SASToken))

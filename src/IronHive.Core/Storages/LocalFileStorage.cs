@@ -3,6 +3,9 @@ using System.Runtime.InteropServices;
 
 namespace IronHive.Core.Storages;
 
+/// <summary>
+/// 현재 머신의 로컬 디스크 파일 시스템을 대상으로 하는 파일 스토리지 구현입니다.
+/// </summary>
 public class LocalFileStorage : IFileStorage
 {
     private readonly bool _isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
@@ -154,13 +157,17 @@ public class LocalFileStorage : IFileStorage
         return Task.CompletedTask;
     }
 
-    // 지정한 경로가 디렉토리 경로인지 확인합니다.
+    /// <summary>
+    /// 지정한 경로가 디렉토리 경로인지 확인합니다.
+    /// </summary>
     private static bool IsDirectory(string path)
     {
         return Path.EndsInDirectorySeparator(path);
     }
 
-    // 경로를 플랫폼에 맞게 변환합니다.
+    /// <summary>
+    /// 경로를 플랫폼에 맞게 변환합니다.
+    /// </summary>
     private string EnsurePath(string? path = null)
     {
         // null 또는 빈 문자열인 경우 "/"를 루트 경로로 반환
@@ -178,7 +185,9 @@ public class LocalFileStorage : IFileStorage
         return path;
     }
 
-    // 스트림 크기에 따라 최적의 버퍼 크기를 반환합니다.
+    /// <summary>
+    /// 스트림 크기에 따라 최적의 버퍼 크기를 반환합니다.
+    /// </summary>
     private int GetOptimalBufferSize(long length)
     {
         if (length <= 0) return _defaultBufferSize;

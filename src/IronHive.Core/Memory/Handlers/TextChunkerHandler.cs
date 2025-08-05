@@ -1,8 +1,11 @@
 ﻿using System.Text;
 using IronHive.Abstractions.Memory;
 
-namespace IronHive.Core.Handlers;
+namespace IronHive.Core.Memory.Handlers;
 
+/// <summary>
+/// TextChunkerHandler는 주어진 텍스트를 청크로 나누는 메모리 파이프라인 핸들러입니다.
+/// </summary>
 public class TextChunkerHandler : IMemoryPipelineHandler
 {
     private readonly IMemoryEmbedder _embedder;

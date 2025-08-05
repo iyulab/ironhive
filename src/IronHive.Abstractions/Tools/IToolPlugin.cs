@@ -1,14 +1,13 @@
 ﻿namespace IronHive.Abstractions.Tools;
 
 /// <summary>
-/// 도구(툴)를 정의하고 실행할 수 있는 플러그인 인터페이스입니다.
-/// 이 인터페이스는 툴의 메타데이터를 나열하고, 특정 툴을 실행하는 기능을 제공합니다.
+/// 도구(툴)를 정의하고 실행할 수 있는 플러그인 객체입니다.
+/// 툴의 메타데이터를 나열하고, 특정 툴을 실행하는 기능을 제공합니다.
 /// </summary>
 public interface IToolPlugin : IDisposable
 {
     /// <summary>
-    /// 플러그인의 고유 이름입니다.
-    /// 툴 플러그인을 식별하는 데 사용됩니다.
+    /// 플러그인의 고유 이름입니다. 플러그인을 식별하는 데 사용됩니다.
     /// </summary>
     string PluginName { get; }
 

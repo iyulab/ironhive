@@ -53,7 +53,14 @@ internal static class MessageGenerationRequestExtensions
                         {
                             Source = new Base64ImageSource
                             {
-                                MediaType = image.FormatString,
+                                MediaType = image.Format switch
+                                {
+                                    ImageFormat.Png => "image/png",
+                                    ImageFormat.Jpeg => "image/jpeg",
+                                    ImageFormat.Gif => "image/gif",
+                                    ImageFormat.Webp => "image/webp",
+                                    _ => throw new NotSupportedException($"not supported image format {image.Format}")
+                                },
                                 Data = image.Base64
                             }
                         });

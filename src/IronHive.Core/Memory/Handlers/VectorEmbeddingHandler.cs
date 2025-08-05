@@ -1,8 +1,11 @@
 ﻿using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Storages;
 
-namespace IronHive.Core.Handlers;
+namespace IronHive.Core.Memory.Handlers;
 
+/// <summary>
+/// VectorEmbeddingHandler는 주어진 메모리 소스에서 벡터 임베딩을 생성하고 벡터 스토리지에 저장하는 메모리 파이프라인 핸들러입니다.
+/// </summary>
 public class VectorEmbeddingHandler : IMemoryPipelineHandler
 {
     private readonly IMemoryEmbedder _embedder;

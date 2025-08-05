@@ -17,5 +17,6 @@ public class ThinkingUpdatedContent : MessageUpdatedContent
 public class ToolUpdatedContent : MessageUpdatedContent
 {
     public required ToolContentStatus Status { get; set; }
+
     public string? Output { get; set; }
 }

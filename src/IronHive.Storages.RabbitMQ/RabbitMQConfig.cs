@@ -2,6 +2,9 @@
 
 namespace IronHive.Storages.RabbitMQ;
 
+/// <summary>
+/// RabbitMQ 연결 및 메시지 큐 설정을 위한 구성 클래스
+/// </summary>
 public class RabbitMQConfig
 {
     /// <summary>

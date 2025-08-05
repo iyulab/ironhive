@@ -3,7 +3,7 @@
 /// <summary>
 /// 파이프라인 작업자의 상태를 나타내는 열거형입니다.
 /// </summary>
-public enum PipelineWorkerStatus
+public enum MemoryWorkerStatus
 {
     /// <summary>
     /// 작업이 실행된 상태입니다.
@@ -24,12 +24,17 @@ public enum PipelineWorkerStatus
 /// <summary>
 /// 작업 수행을 담당하는 인터페이스입니다.
 /// </summary>
-public interface IMemoryPipelineWorker : IDisposable
+public interface IMemoryWorker : IDisposable
 {
     /// <summary>
     /// 현재 작업이 실행 중인지 여부를 나타냅니다.
     /// </summary>
-    PipelineWorkerStatus Status { get; }
+    MemoryWorkerStatus Status { get; }
+
+    /// <summary>
+    /// 작업 진행 상황을 알리는 이벤트입니다.
+    /// </summary>
+    event EventHandler<MemoryPipelineEventArgs>? Progressed;
 
     /// <summary>
     /// 지속적으로 작업을 수행하는 메서드입니다.
@@ -45,5 +50,7 @@ public interface IMemoryPipelineWorker : IDisposable
     /// <summary>
     /// 지정된 요청에 따라 작업을 수행하는 메서드입니다.
     /// </summary>
-    Task ExecuteAsync(MemoryPipelineRequest request, CancellationToken cancellationToken = default);
+    Task ExecuteAsync(
+        MemoryPipelineRequest request,
+        CancellationToken cancellationToken = default);
 }

@@ -3,8 +3,11 @@ using IronHive.Core.Utilities;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 
-namespace IronHive.Core.Decoders;
+namespace IronHive.Core.Files.Decoders;
 
+/// <summary>
+/// PDF 파일 디코더 클래스입니다.
+/// </summary>
 public class PDFDecoder : IFileDecoder
 {
     /// <inheritdoc />

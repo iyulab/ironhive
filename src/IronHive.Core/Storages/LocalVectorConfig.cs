@@ -1,5 +1,8 @@
 ﻿namespace IronHive.Core.Storages;
 
+/// <summary>
+/// 로컬 벡터 데이터베이스 LiteDB 설정 클래스입니다.
+/// </summary>
 public class LocalVectorConfig
 {
     /// <summary>

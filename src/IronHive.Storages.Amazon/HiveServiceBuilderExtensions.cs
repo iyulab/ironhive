@@ -5,16 +5,16 @@ namespace IronHive.Abstractions;
 public static class HiveServiceBuilderExtensions
 {
     /// <summary>
-    /// Adds the Amazon S3 storage provider to the Hive service builder.
+    /// Amazon S3 스토리지를 Hive 서비스에 추가합니다.
     /// </summary>
     public static IHiveServiceBuilder AddAmazonS3Storage(
         this IHiveServiceBuilder builder,
-        string name,
+        string storageName,
         AmazonS3Config config)
     {
         builder.AddFileStorage(new AmazonS3FileStorage(config)
         {
-            StorageName = name
+            StorageName = storageName
         });
         return builder;
     }

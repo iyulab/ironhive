@@ -1,32 +1,32 @@
 ﻿namespace IronHive.Abstractions.Message;
 
 /// <summary>
-/// Represents the stop reason for the chat completion of an LLM operation.
+/// LLM 작업에서 채팅 응답이 중단된 사유를 나타내는 열거형입니다.
 /// </summary>
 public enum MessageDoneReason
 {
     /// <summary>
-    /// Assistant turn was completed.
+    /// 어시스턴트의 응답 턴이 완료됨.
     /// </summary>
     EndTurn,
 
     /// <summary>
-    /// the output maximum number of tokens was reached.
+    /// 출력 토큰의 최대 수에 도달함.
     /// </summary>
     MaxTokens,
 
     /// <summary>
-    /// a stop sequence text was reached.
+    /// 중단(stop) 시퀀스 문자열을 만남.
     /// </summary>
     StopSequence,
 
     /// <summary>
-    /// filtered text content was detected.
+    /// 필터링된(제한된) 텍스트 콘텐츠가 탐지됨.
     /// </summary>
     ContentFilter,
 
     /// <summary>
-    /// the model calling the tool for execution.
+    /// 모델이 툴 실행을 위한 도구 호출을 요구함
     /// </summary>
     ToolCall
 }

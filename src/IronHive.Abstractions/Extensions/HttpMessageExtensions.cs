@@ -2,14 +2,17 @@
 
 namespace System.Net.Http;
 
-public static class HttpResonseMessageExtensions
+public static class HttpMessageExtensions
 {
     /// <summary>
-    /// HttP 응답 메시지에서 재귀적으로 "message"라는 속성이 존재하는 경우 해당 메시지를 반환합니다.
+    /// HTTP 응답 메시지에서 재귀적으로 "message" 속성을 탐색하여 해당 메시지를 추출합니다.
+    /// 응답이 실패했을 경우에만 메시지를 추출합니다.
     /// </summary>
+    /// <param name="message">찾아낸 메시지 문자열 (없으면 빈 문자열)</param>
+    /// <returns>"message" 속성을 성공적으로 추출했으면 true, 그렇지 않으면 false</returns>
     public static bool TryExtractMessage(this HttpResponseMessage response, out string message)
     {
-        var name = "message";
+        const string name = "message";
 
         message = string.Empty;
         if (response.IsSuccessStatusCode)
@@ -37,8 +40,11 @@ public static class HttpResonseMessageExtensions
     }
 
     /// <summary>
-    /// JsonNode를 재귀적으로 탐색하여 해당하는 속서의 값을 찾습니다.
+    /// JsonNode를 재귀적으로 순회하여 지정된 속성 이름과 일치하는 값을 찾아 반환합니다.
     /// </summary>
+    /// <param name="node">탐색할 JsonNode 객체</param>
+    /// <param name="name">찾고자 하는 속성 이름</param>
+    /// <returns>속성 값이 존재하면 해당 문자열, 없으면 빈 문자열</returns>
     private static string FindPropertyValue(JsonNode? node, string name)
     {
         if (node is JsonObject obj)

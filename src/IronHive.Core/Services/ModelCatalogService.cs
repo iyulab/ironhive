@@ -3,6 +3,7 @@ using IronHive.Abstractions.Catalog;
 
 namespace IronHive.Core.Services;
 
+/// <inheritdoc />
 public class ModelCatalogService : IModelCatalogService
 {
     private readonly Dictionary<string, IModelCatalogProvider> _providers;

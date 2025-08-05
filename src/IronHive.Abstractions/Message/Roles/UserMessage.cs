@@ -1,17 +1,17 @@
 ﻿namespace IronHive.Abstractions.Message.Roles;
 
 /// <summary>
-/// User message.
+/// 유저 메시지를 나타내는 클래스입니다.
 /// </summary>
 public class UserMessage : Message
 {
     /// <summary>
-    /// User message content. "text", "image", "document"
+    /// "text", "image", "document" 등의 메시지 콘텐츠를 포함하는 컬렉션입니다.
     /// </summary>
     public ICollection<MessageContent> Content { get; set; } = [];
 
     /// <summary>
-    /// Timestamp of the message.
+    /// 메시지가 생성된 시간입니다.
     /// </summary>
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 }

@@ -12,17 +12,18 @@ public class LocalQueueStorage<T> : IQueueStorage<T>
     private const string MessageExtension = "qmsg";
     private const string LockExtension = "qlock";
     private const string DeadMessageExtension = "qdead";
-    private const int CacheQueueSize = 100;
 
-    private readonly ConcurrentQueue<string> _cache = new();
     private readonly string _directoryPath;
     private readonly TimeSpan? _ttl;
+    private readonly int _cacheSize;
     private readonly JsonSerializerOptions _jsonOptions;
+    private readonly ConcurrentQueue<string> _cache = new();
 
     public LocalQueueStorage(LocalQueueConfig config)
     {
         _directoryPath = config.DirectoryPath;
         _ttl = config.TimeToLive;
+        _cacheSize = config.CacheQueueSize > 0 ? config.CacheQueueSize : 100;
         _jsonOptions = config.JsonOptions;
 
         Directory.CreateDirectory(_directoryPath);
@@ -33,6 +34,24 @@ public class LocalQueueStorage<T> : IQueueStorage<T>
     public void Dispose()
     {
         GC.SuppressFinalize(this);
+    }
+
+    /// <inheritdoc />
+    public Task<int> CountAsync(CancellationToken cancellationToken = default)
+    {
+        var count = Directory.GetFiles(_directoryPath, $"*.{MessageExtension}").Length;
+        return Task.FromResult(count);
+    }
+
+    /// <inheritdoc />
+    public Task ClearAsync(CancellationToken cancellationToken = default)
+    {
+        if (Directory.Exists(_directoryPath))
+        {
+            Directory.Delete(_directoryPath, recursive: true);
+        }
+        Directory.CreateDirectory(_directoryPath);
+        return Task.CompletedTask;
     }
 
     /// <inheritdoc />
@@ -52,12 +71,13 @@ public class LocalQueueStorage<T> : IQueueStorage<T>
     }
 
     /// <inheritdoc />
-    public async Task<TaggedMessage<T>?> DequeueAsync(CancellationToken cancellationToken = default)
+    public async Task<QueueMessage<T>?> DequeueAsync(CancellationToken cancellationToken = default)
     {
         // 캐시가 비어있으면 디렉토리에서 파일을 가져와서 캐시에 추가합니다.
         if (_cache.IsEmpty)
         {
-            foreach(var file in Directory.EnumerateFiles(_directoryPath, $"*.{MessageExtension}").OrderBy(f => f).Take(CacheQueueSize))
+            foreach(var file in Directory.EnumerateFiles(_directoryPath, $"*.{MessageExtension}")
+                .OrderBy(f => f).Take(_cacheSize))
             {
                 _cache.Enqueue(file);
             }
@@ -106,10 +126,10 @@ public class LocalQueueStorage<T> : IQueueStorage<T>
                 var message = JsonSerializer.Deserialize<T>(bytes, _jsonOptions)
                     ?? throw new JsonException("Failed to deserialize message from file.");
 
-                return new TaggedMessage<T>
+                return new QueueMessage<T>
                 {
-                    Message = message,
-                    AckTag = lockedFilePath
+                    Payload = message,
+                    Tag = lockedFilePath
                 };
             }
             // 취소 요청이 들어온 경우, 예외를 발생시켜 작업을 중단합니다.
@@ -147,10 +167,10 @@ public class LocalQueueStorage<T> : IQueueStorage<T>
     }
 
     /// <inheritdoc />
-    public Task AckAsync(object ackTag, CancellationToken cancellationToken = default)
+    public Task AckAsync(object tag, CancellationToken cancellationToken = default)
     {
-        // ackTag는 lock 상태 파일의 경로입니다.
-        if (ackTag is not string lockedFilePath)
+        // tag는 lock 상태 파일의 경로입니다.
+        if (tag is not string lockedFilePath)
             throw new InvalidOperationException("Invalid ack tag.");
 
         if (File.Exists(lockedFilePath))
@@ -162,9 +182,9 @@ public class LocalQueueStorage<T> : IQueueStorage<T>
     }
 
     /// <inheritdoc />
-    public Task NackAsync(object ackTag, bool requeue = false, CancellationToken cancellationToken = default)
+    public Task NackAsync(object tag, bool requeue = false, CancellationToken cancellationToken = default)
     {
-        if (ackTag is not string lockedFilePath)
+        if (tag is not string lockedFilePath)
             throw new InvalidOperationException("Invalid ack tag.");
 
         // lock 상태 파일이 존재하지 않으면 아무 작업도 하지 않습니다.
@@ -192,24 +212,6 @@ public class LocalQueueStorage<T> : IQueueStorage<T>
             File.Delete(lockedFilePath);
         }
 
-        return Task.CompletedTask;
-    }
-
-    /// <inheritdoc />
-    public Task<int> CountAsync(CancellationToken cancellationToken = default)
-    {
-        var count = Directory.GetFiles(_directoryPath, $"*.{MessageExtension}").Length;
-        return Task.FromResult(count);
-    }
-
-    /// <inheritdoc />
-    public Task ClearAsync(CancellationToken cancellationToken = default)
-    {
-        if (Directory.Exists(_directoryPath))
-        {
-            Directory.Delete(_directoryPath, recursive: true);
-        }
-        Directory.CreateDirectory(_directoryPath);
         return Task.CompletedTask;
     }
 

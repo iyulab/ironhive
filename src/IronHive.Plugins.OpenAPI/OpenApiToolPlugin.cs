@@ -92,7 +92,7 @@ public class OpenApiToolPlugin : IToolPlugin
             {
                 return ToolOutput.Failure($"경로 파라미터 '{parameter.Name}'가 필요합니다.");
             }
-            finalPath = finalPath.Replace($"{{{parameter.Name}}}", Uri.EscapeDataString(value.ToString()));
+            finalPath = finalPath.Replace($"{{{parameter.Name}}}", Uri.EscapeDataString(value?.ToString()!));
         }
 
         // 쿼리 파라미터 구성
@@ -101,7 +101,7 @@ public class OpenApiToolPlugin : IToolPlugin
         {
             if (input.TryGetValue(parameter.Name, out var value))
             {
-                queryParams.Add($"{Uri.EscapeDataString(parameter.Name)}={Uri.EscapeDataString(value.ToString())}");
+                queryParams.Add($"{Uri.EscapeDataString(parameter.Name)}={Uri.EscapeDataString(value?.ToString()!)}");
             }
         }
         var queryString = queryParams.Any() ? "?" + string.Join("&", queryParams) : string.Empty;
@@ -133,7 +133,7 @@ public class OpenApiToolPlugin : IToolPlugin
             {
                 if (input.TryGetValue(property.Key, out var value))
                 {
-                    jsonBody[property.Key] = value;
+                    jsonBody[property.Key] = value!;
                 }
                 else if (schema.Required.Contains(property.Key))
                 {

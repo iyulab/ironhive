@@ -1,5 +1,24 @@
 ﻿namespace IronHive.Abstractions.Message.Content;
 
+/// <summary>
+/// 이미지 콘텐츠 블록을 나타냅니다
+/// </summary>
+public class ImageMessageContent : MessageContent
+{
+    /// <summary>
+    /// 이미지 형식을 나타냅니다.
+    /// </summary>
+    public required ImageFormat Format { get; set; }
+
+    /// <summary>
+    /// base64 인코딩된 이미지 데이터를 나타냅니다
+    /// </summary>
+    public required string Base64 { get; set; }
+}
+
+/// <summary>
+/// 이미지 콘텐츠 블록의 형식을 나타내는 열거형입니다.
+/// </summary>
 public enum ImageFormat
 {
     /// <summary>
@@ -21,34 +40,4 @@ public enum ImageFormat
     /// WebP 이미지
     /// </summary>
     Webp
-}
-
-public class ImageMessageContent : MessageContent
-{
-    /// <summary>
-    /// 이미지 형식을 나타냅니다.
-    /// </summary>
-    public required ImageFormat Format { get; set; }
-
-    /// <summary>
-    /// 문자열 처리된 이미지 형식을 나타냅니다.
-    /// </summary>
-    public string FormatString
-    {
-        get {
-            return Format switch
-            {
-                ImageFormat.Png => "image/png",
-                ImageFormat.Jpeg => "image/jpeg",
-                ImageFormat.Gif => "image/gif",
-                ImageFormat.Webp => "image/webp",
-                _ => throw new NotSupportedException($"not supported image format {Format}")
-            };
-        }
-    }
-
-    /// <summary>
-    /// base64 인코딩된 이미지 데이터를 나타냅니다
-    /// </summary>
-    public required string Base64 { get; set; }
 }

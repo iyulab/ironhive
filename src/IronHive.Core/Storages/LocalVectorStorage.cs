@@ -6,6 +6,9 @@ using IronHive.Abstractions.Storages;
 
 namespace IronHive.Core.Storages;
 
+/// <summary>
+/// LiteDB를 이용한 로컬 벡터 스토리지 구현입니다.
+/// </summary>
 public partial class LocalVectorStorage : IVectorStorage
 {
     private static readonly Regex _collPattern = new Regex(@"^[A-Za-z][A-Za-z0-9_]*$", RegexOptions.Compiled);

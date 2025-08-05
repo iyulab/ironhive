@@ -3,13 +3,16 @@ using MessagePack.Resolvers;
 
 namespace IronHive.Core.Utilities;
 
+/// <summary>
+/// MessagePack을 이용한 직렬화 유틸리티 클래스입니다.
+/// </summary>
 public static class MessageSerializer
 {
     private static readonly MessagePackSerializerOptions _options = ContractlessStandardResolver.Options
         .WithCompression(MessagePackCompression.Lz4Block);
 
     /// <summary>
-    /// Serialize the object to bytes using MessagePack
+    /// 객체를 MessagePack 형식으로 직렬화합니다.
     /// </summary>
     public static byte[]? Serialize<T>(
         T value,
@@ -24,7 +27,7 @@ public static class MessageSerializer
     }
 
     /// <summary>
-    /// Deserialize the bytes to an object using MessagePack
+    /// MessagePack 형식의 바이트 배열을 객체로 역직렬화합니다.
     /// </summary>
     public static T? Deserialize<T>(
         byte[] buffer, 

@@ -8,6 +8,7 @@ using IronHive.Core.Utilities;
 
 namespace IronHive.Core.Services;
 
+/// <inheritdoc />
 public class MessageGenerationService : IMessageGenerationService
 {
     private readonly Dictionary<string, IMessageGenerator> _providers;

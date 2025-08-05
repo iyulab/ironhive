@@ -3,8 +3,11 @@ using DocumentFormat.OpenXml.Wordprocessing;
 using IronHive.Abstractions.Files;
 using IronHive.Core.Utilities;
 
-namespace IronHive.Core.Decoders;
+namespace IronHive.Core.Files.Decoders;
 
+/// <summary>
+/// Word 파일 디코더 클래스입니다.
+/// </summary>
 public class WordDecoder : IFileDecoder
 {
     /// <inheritdoc />

@@ -3,22 +3,22 @@
 namespace IronHive.Abstractions.Message;
 
 /// <summary>
-/// Represents the result of message response
+/// 메시지 응답의 결과를 나타내는 클래스입니다.
 /// </summary>
 public class MessageResponse
 {
     /// <summary>
-    /// the response ended reason.
+    /// 응답이 종료된 사유입니다.
     /// </summary>
     public MessageDoneReason? DoneReason { get; set; }
 
     /// <summary>
-    /// the data of the response.
+    /// 응답 메시지 데이터입니다.
     /// </summary>
     public required AssistantMessage Message { get; set; }
 
     /// <summary>
-    /// the usage of tokens in the request.
+    /// 요청 시 사용된 토큰 정보입니다.
     /// </summary>
     public MessageTokenUsage? TokenUsage { get; set; }
 }

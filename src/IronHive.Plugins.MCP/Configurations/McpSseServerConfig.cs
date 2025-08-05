@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace IronHive.Plugins.MCP;
+namespace IronHive.Plugins.MCP.Configurations;
 
 /// <summary>
 /// Server-Sent Events(SSE) 기반의 MCP 서버 구현입니다.
@@ -38,6 +38,12 @@ public class McpSseServerConfig : IMcpServerConfig
     /// </summary>
     [JsonPropertyName("stream")]
     public bool UseStreamableHttp { get; set; } = false;
+
+    /// <summary>
+    /// MCP 클라이언트가 생성될 때 자동으로 서버에 연결할지 여부를 나타냅니다.
+    /// 기본 값은 true입니다.
+    /// </summary>
+    public bool AutoConnectOnCreated { get; set; } = true;
 
     public override bool Equals(object? obj)
     {

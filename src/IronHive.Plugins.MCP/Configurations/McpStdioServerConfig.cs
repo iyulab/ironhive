@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace IronHive.Plugins.MCP;
+namespace IronHive.Plugins.MCP.Configurations;
 
 /// <summary>
 /// 표준 입출력(STDIO) 기반의 MCP 서버 구현입니다.
@@ -43,6 +43,12 @@ public class McpStdioServerConfig : IMcpServerConfig
     /// </summary>
     [JsonPropertyName("directory")]
     public string? WorkingDirectory { get; set; }
+
+    /// <summary>
+    /// MCP 클라이언트가 생성될 때 자동으로 서버에 연결할지 여부를 나타냅니다.
+    /// 기본값은 false입니다.
+    /// </summary>
+    public bool AutoConnectOnCreated { get; set; } = false;
 
     public override bool Equals(object? obj)
     {

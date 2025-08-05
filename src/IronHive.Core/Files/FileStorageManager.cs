@@ -1,7 +1,8 @@
 ﻿using IronHive.Abstractions.Files;
 
-namespace IronHive.Core.Services;
+namespace IronHive.Core.Files;
 
+/// <inheritdoc />
 public class FileStorageManager : IFileStorageManager
 {
     private readonly Dictionary<string, IFileStorage> _storages;

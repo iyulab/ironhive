@@ -5,16 +5,16 @@ namespace IronHive.Abstractions;
 public static class HiveServiceBuilderExtensions
 {
     /// <summary>
-    /// Adds the Azure Blob Storage provider to the Hive service builder.
+    /// Azure Blob Storage를 Hive 서비스에 추가합니다.
     /// </summary>
     public static IHiveServiceBuilder AddAzureBlobStorage(
         this IHiveServiceBuilder builder,
-        string name,
+        string storageName,
         AzureBlobConfig config)
     {
         builder.AddFileStorage(new AzureBlobFileStorage(config)
         {
-            StorageName = name
+            StorageName = storageName
         });
         return builder;
     }

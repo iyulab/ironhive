@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace IronHive.Plugins.MCP;
+namespace IronHive.Plugins.MCP.Configurations;
 
 /// <summary>
 /// Model Context Protocol(MCP) 서버를 위한 공통 인터페이스입니다.
@@ -11,4 +11,9 @@ namespace IronHive.Plugins.MCP;
 [JsonDerivedType(typeof(McpStdioServerConfig), "stdio")]
 [JsonDerivedType(typeof(McpSseServerConfig), "sse")]
 public interface IMcpServerConfig
-{ }
+{
+    /// <summary>
+    /// MCP 클라이언트가 생성될 때 자동으로 서버에 연결할지 여부를 나타냅니다.
+    /// </summary>
+    bool AutoConnectOnCreated { get; set; }
+}

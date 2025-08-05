@@ -2,6 +2,7 @@
 
 namespace IronHive.Core.Services;
 
+/// <inheritdoc />
 public class EmbeddingGenerationService : IEmbeddingGenerationService
 {
     private readonly Dictionary<string, IEmbeddingGenerator> _providers;

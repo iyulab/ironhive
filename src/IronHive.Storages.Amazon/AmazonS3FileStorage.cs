@@ -7,6 +7,9 @@ using AmazonS3ClientConfig = Amazon.S3.AmazonS3Config;
 
 namespace IronHive.Storages.Amazon;
 
+/// <summary>
+/// Amazon S3를 사용하여 파일 스토리지를 구현한 클래스입니다.
+/// </summary>
 public class AmazonS3FileStorage : IFileStorage
 {
     private readonly AmazonS3Client _client;
@@ -213,13 +216,17 @@ public class AmazonS3FileStorage : IFileStorage
         }
     }
 
-    // S3에서는 키가 "/"로 끝나면 가상의 디렉터리로 간주합니다.
+    /// <summary>
+    /// S3에서는 키가 "/"로 끝나면 가상의 디렉터리로 간주합니다.
+    /// </summary>
     private static bool IsDirectory(string path)
     {
         return path.EndsWith('/');
     }
 
-    // AWS 클라이언트 생성
+    /// <summary>
+    /// AWS 클라이언트 생성
+    /// </summary>
     private AmazonS3Client CreateClient(AmazonS3Config config)
     {
         if (string.IsNullOrWhiteSpace(config.AccessKey))

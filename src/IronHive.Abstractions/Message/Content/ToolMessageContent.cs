@@ -3,6 +3,9 @@ using System.Text.Json.Serialization;
 
 namespace IronHive.Abstractions.Message.Content;
 
+/// <summary>
+/// 도구(툴) 실행 상태를 나타내는 열거형입니다.
+/// </summary>
 public enum ToolContentStatus
 {
     Waiting, // 도구가 대기 중인 상태입니다. (초기 상태 or 실행 이전 상태)
@@ -14,6 +17,9 @@ public enum ToolContentStatus
     Failure, // 도구 실행이 실패한 상태입니다. (오류가 발생한 상태입니다.)
 }
 
+/// <summary>
+/// 도구(툴) 실행을 위한 메시지 콘텐츠 블록입니다.
+/// </summary>
 public class ToolMessageContent : MessageContent
 {
     private string? _output;

@@ -16,6 +16,11 @@ public class MemoryPipelineContext
     public required IMemoryTarget Target { get; init; }
 
     /// <summary>
+    /// 파이프라인의 현재 단계입니다.
+    /// </summary>
+    public string? CurrentStep { get; set; }
+
+    /// <summary>
     /// 파이프라인의 중간경유 데이터 입니다.
     /// </summary>
     public object? Payload { get; set; }

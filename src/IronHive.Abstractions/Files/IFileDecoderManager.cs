@@ -1,7 +1,7 @@
 ﻿namespace IronHive.Abstractions.Files;
 
 /// <summary>
-/// 파일 디코더 관리 인터페이스
+/// 파일들을 디코딩하는 매니저 서비스입니다.
 /// </summary>
 public interface IFileDecoderManager
 {
@@ -11,18 +11,9 @@ public interface IFileDecoderManager
     IEnumerable<string> SupportedExtensions { get; }
 
     /// <summary>
-    /// 파일 경로에서 확장자를 추출하여 MimeType 반환
+    /// 등록된 디코더들이 지원하는 MIME 타입 목록을 반환
     /// </summary>
-    /// <param name="filePath">확장자를 포함하는 파일 경로 또는 파일이름</param>
-    /// <returns>등록된 MimeType을 반환, 없으면 null</returns>
-    string? GetMimeType(string filePath);
-
-    /// <summary>
-    /// 확장자에 대한 MimeType 매핑을 추가하거나 수정
-    /// </summary>
-    /// <param name="extension">파일 확장자 (예: .txt)</param>
-    /// <param name="mimeType">MimeType (예: text/plain)</param>
-    void SetMimeType(string extension, string mimeType);
+    IEnumerable<string> SupportedMimeTypes { get; }
 
     /// <summary>
     /// 지정된 파일 스트림을 디코딩

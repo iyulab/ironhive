@@ -16,8 +16,8 @@ public class PolymorphicJsonConverter<T> : JsonConverter<T> where T : class
     private readonly string _discriminatorName;
     private readonly StringComparison _discriminatorComparison;
 
-    private static readonly Lazy<Dictionary<string, Type>> _cachedTypeMapping = new(() => GetTypeMapping());
-    private readonly Dictionary<string, Type> _typeMapping;
+    private static readonly Lazy<Dictionary<string, Type>> _cachedTypeMapper = new(() => GetTypeMapper());
+    private readonly Dictionary<string, Type> _typeMapper;
 
     /// <summary>
     /// 사용자 지정 판별자 이름을 사용하는 생성자입니다.
@@ -29,7 +29,7 @@ public class PolymorphicJsonConverter<T> : JsonConverter<T> where T : class
         var attr = typeof(T).GetCustomAttribute<PolymorphicNameAttribute>();
         _discriminatorName = attr?.Name ?? DefaultDiscriminatorName;
         _discriminatorComparison = DefaultDiscriminatorComparison;
-        _typeMapping = _cachedTypeMapping.Value;
+        _typeMapper = _cachedTypeMapper.Value;
     }
 
     /// <summary>
@@ -45,7 +45,7 @@ public class PolymorphicJsonConverter<T> : JsonConverter<T> where T : class
     {
         _discriminatorName = discriminatorName ?? DefaultDiscriminatorName;
         _discriminatorComparison = discriminatorComparison ?? DefaultDiscriminatorComparison;
-        _typeMapping = typeMapping ?? _cachedTypeMapping.Value;
+        _typeMapper = typeMapping ?? _cachedTypeMapper.Value;
     }
 
     // Deserialize Method
@@ -61,11 +61,11 @@ public class PolymorphicJsonConverter<T> : JsonConverter<T> where T : class
                 throw new JsonException($"Missing discriminator property '{_discriminatorName}'.");
 
             var discriminatorValue = discriminatorProperty.Value.GetString();
-            if (string.IsNullOrEmpty(discriminatorValue) || !_typeMapping.ContainsKey(discriminatorValue))
+            if (string.IsNullOrEmpty(discriminatorValue) || !_typeMapper.ContainsKey(discriminatorValue))
                 throw new JsonException($"Unknown discriminator value '{discriminatorValue}', Are you missing a type mapping?");
 
             var jsonObject = jsonDoc.RootElement.GetRawText();
-            var targetType = _typeMapping[discriminatorValue];
+            var targetType = _typeMapper[discriminatorValue];
             var instance = JsonSerializer.Deserialize(jsonObject, targetType, options)
                 ?? throw new JsonException($"Failed to deserialize JSON to '{targetType.Name}'.");
 
@@ -77,7 +77,7 @@ public class PolymorphicJsonConverter<T> : JsonConverter<T> where T : class
     public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
     {
         var type = value.GetType();
-        var discriminatorValue = _typeMapping.FirstOrDefault(x => x.Value == type).Key;
+        var discriminatorValue = _typeMapper.FirstOrDefault(x => x.Value == type).Key;
 
         writer.WriteStartObject();
 
@@ -94,10 +94,13 @@ public class PolymorphicJsonConverter<T> : JsonConverter<T> where T : class
         writer.WriteEndObject();
     }
 
-    // Collect all types that are derived from T and have a PolymorphicPropertyValueAttribute
-    private static Dictionary<string, Type> GetTypeMapping()
+    /// <summary>
+    /// 현재 어셈블리에서 T의 파생 클래스를 검색하고, 식별자 값과 타입을 매핑합니다.
+    /// </summary>
+    /// <returns>식별자 값과 타입의 매핑 딕셔너리</returns>
+    private static Dictionary<string, Type> GetTypeMapper()
     {
-        var typeMapping = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
+        var typeMapper = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
         var derivedTypes = AppDomain.CurrentDomain.GetAssemblies()
             .SelectMany(assembly =>
             {
@@ -123,13 +126,12 @@ public class PolymorphicJsonConverter<T> : JsonConverter<T> where T : class
             if (discriminatorValueAttr == null) continue;
 
             // 중복 판별자 값이 있는 경우 예외를 발생시킵니다.
-            if (typeMapping.ContainsKey(discriminatorValueAttr.Value))
+            if (typeMapper.ContainsKey(discriminatorValueAttr.Value))
                 throw new JsonException($"Duplicate discriminator value '{discriminatorValueAttr.Value}'.");
 
-            typeMapping[discriminatorValueAttr.Value] = type;
+            typeMapper[discriminatorValueAttr.Value] = type;
         }
 
-        return typeMapping;
+        return typeMapper;
     }
-
 }

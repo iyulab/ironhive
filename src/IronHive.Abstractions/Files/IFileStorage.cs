@@ -16,13 +16,12 @@ public interface IFileStorage : IDisposable
     /// (하위 폴더의 내용은 포함되지 않습니다.)
     /// </summary>
     /// <param name="prefix">
-    /// 나열하기 원하는 파일 또는 디렉토리 경로의 접두어입니다.
-    /// null 또는 빈 문자열일 경우, 루트 항목을 나열합니다.
+    /// 나열하기 원하는 파일 또는 디렉토리 경로의 접두어입니다. null 또는 빈 문자열일 경우, 루트 항목을 나열합니다.
     /// </param>
     /// <param name="depth">
-    /// 탐색하기 원하는 디렉토리의 깊이입니다. 기본값은 1입니다.
-    /// 0 이하는 모든 하위 디렉토리를 탐색합니다.
+    /// 탐색하기 원하는 디렉토리의 깊이입니다. 기본값은 1입니다. 0 이하는 모든 하위 디렉토리를 탐색합니다.
     /// </param>
+    /// <returns>탐색 결과로 파일 및 디렉토리 경로의 목록을 반환합니다.</returns>
     Task<IEnumerable<string>> ListAsync(
         string? prefix = null,
         int depth = 1,
@@ -32,6 +31,7 @@ public interface IFileStorage : IDisposable
     /// 지정한 경로에 파일 또는 디렉토리가 존재하는지 비동기적으로 확인합니다.
     /// </summary>
     /// <param name="path">확인할 파일 또는 디렉토리의 경로입니다.</param>
+    /// <returns>존재 여부를 나타내는 <see cref="Task{bool}"/>를 반환합니다.</returns>
     Task<bool> ExistsAsync(
         string path,
         CancellationToken cancellationToken = default);
@@ -40,6 +40,7 @@ public interface IFileStorage : IDisposable
     /// 지정한 경로의 파일을 비동기적으로 읽어들입니다.
     /// </summary>
     /// <param name="filePath">읽을 파일의 경로입니다.</param>
+    /// <returns>내용을 포함하는 <see cref="Task{Stream}"/>를 반환합니다.</returns>
     Task<Stream> ReadFileAsync(
         string filePath,
         CancellationToken cancellationToken = default);

@@ -1,13 +1,14 @@
-﻿using IronHive.Abstractions.Files;
+﻿using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 
-namespace IronHive.Core.Services;
+namespace IronHive.Core.Files;
 
-public class FileDecoderManager : IFileDecoderManager
+/// <summary>
+/// 파일 확장자와 MIME 타입 간의 매핑을 제공하는 클래스입니다.
+/// </summary>
+public class MimeTypeMapper : IDictionary<string, string>
 {
-    private readonly IEnumerable<IFileDecoder> _decoders;
-
-    // 파일 확장자와 MimeType 매핑
-    private readonly Dictionary<string, string> _mapping = new(StringComparer.OrdinalIgnoreCase)
+    private readonly Dictionary<string, string> _items = new(StringComparer.OrdinalIgnoreCase)
     {
         { ".323", "text/h323" },
         { ".3g2", "video/3gpp2" },
@@ -388,54 +389,47 @@ public class FileDecoderManager : IFileDecoderManager
         { ".zip", "application/x-zip-compressed" }
     };
 
-    public FileDecoderManager(IEnumerable<IFileDecoder> decoders)
+    public string this[string key] 
     {
-        _decoders = decoders;
+        get => _items[key];
+        set => _items[key] = value;
     }
 
-    /// <inheritdoc />
-    public IEnumerable<string> SupportedExtensions
-    {
-        get
-        { 
-            return _mapping
-                .Where(kvp => _decoders.Any(decoder => decoder.SupportsMimeType(kvp.Value)))
-                .Select(kvp => kvp.Key);
-        }
-    }
+    public ICollection<string> Keys => _items.Keys;
 
-    /// <inheritdoc />
-    public string? GetMimeType(string filePath)
+    public ICollection<string> Values => _items.Values;
+
+    public int Count => _items.Count;
+
+    public bool IsReadOnly => false;
+
+    public void Add(string key, string value) => _items.Add(key, value);
+
+    public void Add(KeyValuePair<string, string> item) => _items.Add(item.Key, item.Value);
+
+    public bool Contains(KeyValuePair<string, string> item) => _items.Contains(item);
+
+    public bool ContainsKey(string key) => _items.ContainsKey(key);
+
+    public bool TryGetValue(string key, [MaybeNullWhen(false)] out string value) => _items.TryGetValue(key, out value);
+
+    public bool Remove(string key) => _items.Remove(key);
+
+    public bool Remove(KeyValuePair<string, string> item) => _items.Remove(item.Key);
+
+    public void Clear() => _items.Clear();
+
+    public IEnumerator<KeyValuePair<string, string>> GetEnumerator() => _items.GetEnumerator();
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+    public void CopyTo(KeyValuePair<string, string>[] array, int arrayIndex)
     {
-        var extention = Path.GetExtension(filePath);
-        if (_mapping.TryGetValue(extention, out var mimeType))
+        if (array == null) throw new ArgumentNullException(nameof(array));
+        if (arrayIndex < 0 || arrayIndex + Count > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
+        foreach (var item in _items)
         {
-            return mimeType;
+            array[arrayIndex++] = item;
         }
-
-        return null;
-    }
-
-    /// <inheritdoc />
-    public void SetMimeType(string extension, string mimeType)
-    {
-        if (!_mapping.TryAdd(extension, mimeType))
-        {
-            _mapping[extension] = mimeType;
-        }
-    }
-
-    /// <inheritdoc />
-    public async Task<string> DecodeAsync(
-        string filePath, 
-        Stream data, 
-        CancellationToken cancellationToken = default)
-    {
-        var mimeType = GetMimeType(filePath)
-            ?? throw new NotSupportedException("등록 되지 않은 파일 형식입니다.");
-        var decoder = _decoders.FirstOrDefault(d => d.SupportsMimeType(mimeType))
-            ?? throw new NotSupportedException("지원하지 않는 파일 형식입니다.");
-
-        return await decoder.DecodeAsync(data, cancellationToken);
     }
 }

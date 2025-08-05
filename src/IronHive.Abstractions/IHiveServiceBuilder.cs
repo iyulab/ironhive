@@ -10,88 +10,63 @@ using IronHive.Abstractions.Storages;
 namespace IronHive.Abstractions;
 
 /// <summary>
-/// Builder interface for registering Hive services and creating a HiveMind instance.
+/// Hive 서비스를 등록하고 HiveMind 인스턴스를 생성하기 위한 빌더 인터페이스입니다.
 /// </summary>
 public interface IHiveServiceBuilder
 {
     /// <summary>
-    /// Gets the service collection used to register services in the Hive service store.
+    /// Hive 서비스 등록에 사용되는 서비스 컬렉션을 가져옵니다.
     /// </summary>
     IServiceCollection Services { get; }
 
-    #region AI Services
-
     /// <summary>
-    /// Registers a model provider as a singleton in the service collection.
+    /// 모델 제공자를 싱글턴으로 등록합니다.
     /// </summary>
     IHiveServiceBuilder AddModelCatalogProvider(IModelCatalogProvider provider);
 
     /// <summary>
-    /// Registers a message generation provider as a singleton in the service collection.
+    /// 메시지 생성기를 싱글턴으로 등록합니다.
     /// </summary>
     IHiveServiceBuilder AddMessageGenerator(IMessageGenerator provider);
 
     /// <summary>
-    /// Registers an embedding provider as a singleton in the service collection.
+    /// 임베딩 생성기를 싱글턴으로 등록합니다.
     /// </summary>
     IHiveServiceBuilder AddEmbeddingGenerator(IEmbeddingGenerator provider);
 
     /// <summary>
-    /// Registers a tool plugin as a singleton in the service collection.
+    /// 툴 플러그인을 싱글턴으로 등록합니다.
     /// </summary>
     IHiveServiceBuilder AddToolPlugin(IToolPlugin plugin);
 
-    #endregion
-
-    #region Memory Services
-
     /// <summary>
-    /// Registers a vector storage as a singleton in the service collection.
-    /// Only one vector storage can be registered; a new registration replaces the previous one.
+    /// 벡터 스토리지를 싱글턴으로 등록합니다.
+    /// 하나의 벡터 스토리지만 등록할 수 있으며, 이후 등록은 기존 것을 대체합니다.
     /// </summary>
     IHiveServiceBuilder WithVectorStorage(IVectorStorage storage);
 
     /// <summary>
-    /// Registers a memory embedder as a singleton in the service collection.
+    /// 메모리 임베더를 싱글턴으로 등록합니다.
     /// </summary>
-    /// <param name="provider">the provider key of the embedder.</param>
-    /// <param name="model">the model key of the embedder.</param>
+    /// <param name="provider">임베더의 공급자 키입니다.</param>
+    /// <param name="model">임베더의 모델 키입니다.</param>
     IHiveServiceBuilder WithMemoryEmbedder(string provider, string model);
 
     /// <summary>
-    /// Registers a queue storage as a singleton in the service collection.
-    /// Only one queue storage can be registered; a new registration replaces the previous one.
+    /// 메모리 큐 스토리지를 싱글턴으로 등록합니다.
+    /// 하나의 큐 스토리지만 등록할 수 있으며, 이후 등록은 기존 것을 대체합니다.
     /// </summary>
     IHiveServiceBuilder WithMemoryQueueStorage(IQueueStorage<MemoryPipelineRequest> storage);
 
     /// <summary>
-    /// Registers one or more pipeline event observers to the service collection.
+    /// 메모리 파이프라인 핸들러를 등록합니다.
     /// </summary>
-    /// <param name="lifetime">
-    /// The service's lifetime. Ensure compatibility with other registered services.
-    /// </param>
+    /// <param name="serviceKey">메모리 서비스에서 파이프라인 단계로 사용될 고유 키입니다.</param>
+    /// <param name="lifetime">서비스 수명 주기입니다.</param>
     /// <param name="implementationFactory">
-    /// A factory method to create the pipeline observer.
-    /// The first parameter is the service provider, If null, the default implementation is used.
-    /// </param>
-    IHiveServiceBuilder AddMemoryPipelineObserver<TImplementation>(
-        ServiceLifetime lifetime = ServiceLifetime.Singleton,
-        Func<IServiceProvider, TImplementation>? implementationFactory = null)
-        where TImplementation : class, IMemoryPipelineObserver;
-
-    /// <summary>
-    /// Adds a pipeline handler to the service collection.
-    /// </summary>
-    /// <param name="serviceKey">
-    /// A unique key used as the pipeline step name in the memory service.
-    /// </param>
-    /// <param name="lifetime">
-    /// The service's lifetime. Ensure compatibility with other registered services.
-    /// </param>
-    /// <param name="implementationFactory">
-    /// A factory method to create the pipeline handler.
-    /// The first parameter is the service provider and the second is the service key.
-    /// If null, the default implementation is used.
+    /// 파이프라인 핸들러 인스턴스를 생성하는 팩토리 메서드입니다.
+    /// 첫 번째 매개변수는 서비스 프로바이더, 두 번째는 서비스 키입니다.
+    /// null이면 기본 구현이 사용됩니다.
     /// </param>
     IHiveServiceBuilder AddMemoryPipelineHandler<TImplementation>(
         string serviceKey,
@@ -99,26 +74,19 @@ public interface IHiveServiceBuilder
         Func<IServiceProvider, object?, TImplementation>? implementationFactory = null)
         where TImplementation : class, IMemoryPipelineHandler;
 
-    #endregion
-
-    #region File Services
-
     /// <summary>
-    /// Registers a file storage factory as a singleton in the service collection.
+    /// 파일 저장소 구현을 싱글턴으로 등록합니다.
     /// </summary>
     IHiveServiceBuilder AddFileStorage(IFileStorage storage);
 
     /// <summary>
-    /// Registers one or more file decoders as a singleton in the service collection.
-    /// Note: The order of decoders matters; the first decoder that supports the file type will be used.
+    /// 하나 이상의 파일 디코더를 싱글턴으로 등록합니다.
+    /// 디코더의 순서가 중요하며, 첫 번째로 일치하는 디코더가 사용됩니다.
     /// </summary>
     IHiveServiceBuilder AddFileDecoder(IFileDecoder decoder);
 
-    #endregion
-
     /// <summary>
-    /// Creates a standalone HiveMind instance.
-    /// Use this method when not employing the service collection.
+    /// 서비스 컬렉션을 사용하지 않는 독립적인 HiveMind 인스턴스를 생성합니다.
     /// </summary>
     IHiveMind BuildHiveMind();
 }

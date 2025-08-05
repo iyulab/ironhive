@@ -9,6 +9,9 @@ using static Qdrant.Client.Grpc.Conditions;
 
 namespace IronHive.Storages.Qdrant;
 
+/// <summary>
+/// Qdrant 벡터 스토리지 구현 클래스입니다.
+/// </summary>
 public class QdrantVectorStorage : IVectorStorage
 {
     // Qdrant에서 사용할 기본 텍스트용 벡터의 이름입니다.
@@ -248,7 +251,9 @@ public class QdrantVectorStorage : IVectorStorage
         return records;
     }
 
-    // 필터링 조건을 생성합니다.
+    /// <summary>
+    /// 필터링 조건을 생성합니다.
+    /// </summary>
     private static Filter? BuildFilter(VectorRecordFilter? filter)
     {
         if (filter == null || !filter.Any())
@@ -268,7 +273,9 @@ public class QdrantVectorStorage : IVectorStorage
         return conditions.Aggregate((current, next) => current | next);
     }
 
-    // VectorRecord를 Qdrant에서 사용하는 Payload로 변환합니다.
+    /// <summary>
+    /// VectorRecord를 Qdrant에서 사용하는 Payload로 변환합니다.
+    /// </summary>
     private static MapField<string, Value> ConvertRecordToPayload(VectorRecord record)
     {
         var payload = new MapField<string, Value>
@@ -282,7 +289,9 @@ public class QdrantVectorStorage : IVectorStorage
         return payload;
     }
 
-    // Qdrant에서 반환된 Point의 Payload를 VectorRecord로 변환합니다.
+    /// <summary>
+    /// Qdrant에서 반환된 Point의 Payload를 VectorRecord로 변환합니다.
+    /// </summary>
     private static VectorRecord ConvertRecordToPayload(MapField<string, Value> payload)
     {
         var vectorId = payload.GetValueOrDefault("vectorId")?.StringValue ?? string.Empty;
@@ -305,7 +314,9 @@ public class QdrantVectorStorage : IVectorStorage
         };
     }
 
-    // QdrantClient 인스턴스를 생성합니다.
+    /// <summary>
+    /// QdrantClient 인스턴스를 생성합니다.
+    /// </summary>
     private static QdrantClient CreateQdrantClient(QdrantConfig config)
     {
         return new QdrantClient(
@@ -316,14 +327,17 @@ public class QdrantVectorStorage : IVectorStorage
             grpcTimeout: config.GrpcTimeout);
     }
 
-    // 컬렉션 이름의 유효성 검사
-    // Qdrant 규칙:
-    // 1. 영문자, 숫자, 한글, 공백, 허용
-    // 2. 대소문자 구분
-    // 3. 1~255자 제한
-    // 4. 특수문자 일부 제한(*, <, >, /, :, ...etc)
+    /// <summary>
+    /// 컬렉션 이름의 유효성 검사
+    /// </summary>
     private static string EnsureCollectionName(string collectionName)
     {
+        // Qdrant 규칙:
+        // 1. 영문자, 숫자, 한글, 공백, 허용
+        // 2. 대소문자 구분
+        // 3. 1~255자 제한
+        // 4. 특수문자 일부 제한(*, <, >, /, :, ...etc)
+
         if (string.IsNullOrWhiteSpace(collectionName))
             throw new ArgumentException("collection name is required", nameof(collectionName));
 

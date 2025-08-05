@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 namespace IronHive.Abstractions.Json;
 
 /// <summary>
-/// Global options for JsonSerializer.
+/// JSON 직렬화 및 역직렬화에 사용되는 기본 옵션을 제공하는 클래스입니다.
 /// </summary>
 public static class JsonDefaultOptions
 {

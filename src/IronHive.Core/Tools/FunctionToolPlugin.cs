@@ -7,36 +7,42 @@ using IronHive.Abstractions.Tools;
 
 namespace IronHive.Core.Tools;
 
+/// <summary>
+/// .NET 메서드를 툴로 제공하는 플러그인입니다.
+/// </summary>
 public class FunctionToolPlugin<T> : IToolPlugin where T : class
 {
-    private readonly IServiceProvider _provider;
+    private readonly IServiceProvider? _provider;
     private readonly IReadOnlyCollection<ToolDescriptor> _tools;
     private readonly IReadOnlyDictionary<string, MethodInfo> _methods;
 
-    public FunctionToolPlugin(IServiceProvider provider)
+    public FunctionToolPlugin(IServiceProvider? provider = null)
     {
         _provider = provider;
-        (_tools, _methods)= ExtractMethods();
+        (_tools, _methods)= ExtractToolsAndMethods();
     }
 
     /// <inheritdoc />
     public required string PluginName { get; init; }
 
     /// <inheritdoc />
-    public void Dispose() => GC.SuppressFinalize(this);
+    public void Dispose()
+    {
+        GC.SuppressFinalize(this);
+    }
 
     /// <inheritdoc />
     public Task<IEnumerable<ToolDescriptor>> ListAsync(
         CancellationToken cancellationToken = default)
     {
-        var list = _tools.Select(t => new ToolDescriptor
+        var result = _tools.Select(t => new ToolDescriptor
         {
             Name = t.Name,
             Description = t.Description,
             Parameters = t.Parameters,
             RequiresApproval = t.RequiresApproval,
         });
-        return Task.FromResult(list);
+        return Task.FromResult(result);
     }
 
     /// <inheritdoc />
@@ -50,20 +56,19 @@ public class FunctionToolPlugin<T> : IToolPlugin where T : class
             if(!_methods.TryGetValue(name, out var method))
                 return ToolOutput.NotFound(name);
 
-            var instance = ActivatorUtilities.CreateInstance<T>(_provider);
+            var instance = _provider != null
+                ? ActivatorUtilities.CreateInstance<T>(_provider)
+                : Activator.CreateInstance<T>();
+
             var parameters = method.GetParameters();
             var arguments = BuildArguments(parameters, input, cancellationToken);
 
-            var invokeTask = Task.Run(() =>
-            {
-                return method.Invoke(instance, arguments);
-            }, cancellationToken);
+            // [TODO] 타임아웃 테스트 요구!!
+            var invokeTask = Task.Run(() => method.Invoke(instance, arguments), cancellationToken);
             var timeoutTask = Task.Delay(TimeSpan.FromMinutes(5), cancellationToken);
             var completedTask = await Task.WhenAny(invokeTask, timeoutTask);
             if (completedTask == timeoutTask)
-            {
-                return ToolOutput.Failure("메서드 실행이 너무 오래 걸립니다. 5분을 초과하는 실행은 허용되지 않습니다.");
-            }
+                return ToolOutput.Failure("The function execution timed out after 5 minutes. Please try again later.");
 
             cancellationToken.ThrowIfCancellationRequested();
             var result = invokeTask.Result;
@@ -191,15 +196,14 @@ public class FunctionToolPlugin<T> : IToolPlugin where T : class
     }
 
     /// <summary>
-    /// Get all tools from the class.
+    /// 지정된 클래스 타입의 인스턴스에서 툴과 메서드를 추출합니다.
     /// </summary>
-    private static (IReadOnlyCollection<ToolDescriptor>, IReadOnlyDictionary<string, MethodInfo>) ExtractMethods()
+    private static (IReadOnlyCollection<ToolDescriptor>, IReadOnlyDictionary<string, MethodInfo>) ExtractToolsAndMethods()
     {
-        var methods = typeof(T).GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
         var tools = new List<ToolDescriptor>();
-        var mappers = new Dictionary<string, MethodInfo>(StringComparer.Ordinal);
+        var methods = new Dictionary<string, MethodInfo>(StringComparer.Ordinal);
 
-        foreach (var method in methods)
+        foreach (var method in typeof(T).GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static))
         {
             var attr = method.GetCustomAttribute<FunctionToolAttribute>();
             if (attr == null) continue;
@@ -212,14 +216,14 @@ public class FunctionToolPlugin<T> : IToolPlugin where T : class
                 RequiresApproval = attr.RequiresApproval,
             };
             tools.Add(descriptor);
-            mappers[descriptor.Name] = method;
+            methods[descriptor.Name] = method;
         }
 
-        return (tools, mappers);
+        return (tools, methods);
     }
 
     /// <summary>
-    /// Get the input JSON schema for the method.
+    /// 툴 메서드의 입력 JSON 스키마를 빌드합니다.
     /// </summary>
     private static ObjectJsonSchema? BuildInputJsonSchema(MethodInfo method)
     {

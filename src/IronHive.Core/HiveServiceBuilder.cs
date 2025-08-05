@@ -12,6 +12,8 @@ using IronHive.Core.Tools;
 using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Message;
 using IronHive.Abstractions.Storages;
+using IronHive.Core.Files;
+using IronHive.Core.Memory;
 
 namespace IronHive.Core;
 
@@ -98,16 +100,6 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     }
 
     /// <inheritdoc />
-    public IHiveServiceBuilder AddMemoryPipelineObserver<TImplementation>(
-        ServiceLifetime lifetime = ServiceLifetime.Singleton,
-        Func<IServiceProvider, TImplementation>? implementationFactory = null)
-        where TImplementation : class, IMemoryPipelineObserver
-    {
-        AddService<IMemoryPipelineObserver, TImplementation>(lifetime, implementationFactory);
-        return this;
-    }
-
-    /// <inheritdoc />
     public IHiveServiceBuilder AddMemoryPipelineHandler<TImplementation>(
         string serviceKey,
         ServiceLifetime lifetime = ServiceLifetime.Singleton,
@@ -136,33 +128,43 @@ public class HiveServiceBuilder : IHiveServiceBuilder
 
         if (!ContainsAny<IMemoryPipelineHandler>())
             Debug.WriteLine("PipelineHandler is not registered. Memory Pipeline will not work.");
-        if (!ContainsAny<IMemoryPipelineObserver>())
-            Debug.WriteLine("PipelineObserver is not registered. You can't check the pipeline work.");
 
         var provider = Services.BuildServiceProvider();
         return new HiveMind(provider);
     }
 
-    // 필수 서비스 등록
+    /// <summary>
+    /// 필수 서비스들을 등록합니다.
+    /// </summary>
     private void AddRequiredServices()
     {
         // AI 서비스
         Services.TryAddSingleton<IModelCatalogService, ModelCatalogService>();
         Services.TryAddSingleton<IMessageGenerationService, MessageGenerationService>();
         Services.TryAddSingleton<IEmbeddingGenerationService, EmbeddingGenerationService>();
+        // Tool 서비스
         Services.TryAddSingleton<IToolPluginManager, ToolPluginManager>();
         // File 서비스
-        Services.TryAddSingleton<IFileStorageManager, FileStorageManager>();
         Services.TryAddSingleton<IFileDecoderManager, FileDecoderManager>();
+        Services.TryAddSingleton<IFileStorageManager, FileStorageManager>();
 
         // 메모리 서비스
         // !! (TODO) 메모리 서비스는 따로 빌더 패턴으로 구성하는 것이 좋음,
-        // SetWorker/SetEmbedder/SetQueueStorage/SetVectorStorage 등으로 구성
+        // 1. SetQueueStorage
+        // 2. SetVectorStorage
+        // 3. SetEmbedder
+        // 4. SetWorkers()  워커설정 객체
+        // 5. SetPipeline() 빌더 패턴으로 파이프라인 구성 
         Services.TryAddSingleton<IMemoryService, MemoryService>();
-        Services.TryAddSingleton<IMemoryPipelineWorker, MemoryPipelineWorker>();
     }
 
-    // Service 등록 로직 처리
+    /// <summary>
+    /// Service 등록 로직 처리
+    /// </summary>
+    /// <typeparam name="TService"></typeparam>
+    /// <typeparam name="TImplementation"></typeparam>
+    /// <param name="lifetime"></param>
+    /// <param name="implementationFactory"></param>
     private void AddService<TService, TImplementation>(
         ServiceLifetime? lifetime,
         Func<IServiceProvider, TImplementation>? implementationFactory = null)
@@ -196,7 +198,14 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         }
     }
 
-    // Keyed Service 등록 로직 처리
+    /// <summary>
+    /// Keyed Service 등록 로직 처리
+    /// </summary>
+    /// <typeparam name="TService"></typeparam>
+    /// <typeparam name="TImplementation"></typeparam>
+    /// <param name="serviceKey"></param>
+    /// <param name="lifetime"></param>
+    /// <param name="implementationFactory"></param>
     private void AddKeyedService<TService, TImplementation>(
         string serviceKey,
         ServiceLifetime? lifetime,
@@ -231,7 +240,9 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         }
     }
 
-    // 서비스 등록 확인
+    /// <summary>
+    /// 지정 타입의 서비스가 하나라도 등록되어 있는지 확인합니다.
+    /// </summary>
     private bool ContainsAny<TService>()
     {
         return Services.Any(x => x.ServiceType == typeof(TService));

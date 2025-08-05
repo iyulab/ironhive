@@ -8,9 +8,9 @@ namespace IronHive.Abstractions.Memory;
 public interface IMemoryService
 {
     /// <summary>
-    /// 벡터화 및 저장 작업을 수행하는 워커의 수를 가져오거나 설정합니다.
+    /// 벡터화 및 저장 작업을 수행하는 워커들입니다.
     /// </summary>
-    int WorkersCount { get; set; }
+    ICollection<IMemoryWorker> Workers { get; set; }
 
     /// <summary>
     /// 지정된 접두사로 시작하는 벡터 컬렉션 목록을 비동기적으로 반환합니다.
@@ -51,7 +51,7 @@ public interface IMemoryService
     /// <param name="source">인덱싱할 소스</param>
     /// <param name="steps">처리 단계 목록</param>
     /// <param name="handlerOptions">처리기 구성 옵션 (선택)</param>
-    Task ScheduleIndexingAsync(
+    Task QueueIndexSourceAsync(
         string collectionName,
         IMemorySource source,
         IEnumerable<string> steps,

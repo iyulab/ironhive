@@ -1,6 +1,4 @@
-﻿using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
-using System.Reflection;
+﻿using System.Reflection;
 using System.Runtime.CompilerServices;
 using Json.Schema;
 using Json.Schema.Generation;
@@ -11,14 +9,14 @@ using RequiredAttribute = System.ComponentModel.DataAnnotations.RequiredAttribut
 namespace IronHive.Abstractions.Json;
 
 /// <summary>
-/// Factory class for creating JSON schemas from .NET types.
+/// .NET 타입으로부터 JSON 스키마를 생성하는 팩토리 클래스입니다.
 /// </summary>
 public static class JsonSchemaFactory
 {
     /// <summary>
-    /// Creates a new JSON schema from a .NET type using the Json.Schema library.
+    /// Json.Schema 라이브러리를 사용하여 .NET 제네릭 타입으로부터 JSON 스키마를 생성합니다.
     /// </summary>
-    [Obsolete("Use CreateFrom<T>() instead. This method will be removed in a future version.")]
+    [Obsolete("대신 CreateFrom<T>() 메서드를 사용하세요. 이 메서드는 향후 버전에서 제거될 예정입니다.")]
     public static JsonSchemaNet CreateNew<T>()
     {
         var schema = new JsonSchemaBuilder()
@@ -28,23 +26,26 @@ public static class JsonSchemaFactory
     }
 
     /// <summary>
-    /// Creates a JSON schema from a .NET type.
+    /// 지정한 .NET 타입 T로부터 JSON 스키마를 생성합니다.
     /// </summary>
+    /// <param name="description">스키마 설명 (선택 사항)</param>
     public static JsonSchema CreateFrom<T>(string? description = null)
     {
         return CreateFrom(typeof(T), description);
     }
 
     /// <summary>
-    /// Creates a JSON schema from a .NET type.
+    /// 지정한 System.Type 객체로부터 JSON 스키마를 생성합니다.
     /// </summary>
+    /// <param name="type">.NET 타입 정보</param>
+    /// <param name="description">스키마 설명 (선택 사항)</param>
     public static JsonSchema CreateFrom(Type type, string? description = null)
     {
-        // boolean type
+        // boolean 타입 처리
         if (type == typeof(bool))
             return new BooleanJsonSchema(description);
 
-        // integer type
+        // 정수형 타입 처리
         if (type == typeof(byte))
             return new IntegerJsonSchema(description) { Format = "byte" };
         if (type == typeof(sbyte))
@@ -62,7 +63,7 @@ public static class JsonSchemaFactory
         if (type == typeof(ulong))
             return new IntegerJsonSchema(description) { Format = "uint64" };
 
-        // number type
+        // 실수형 타입 처리
         if (type == typeof(float))
             return new NumberJsonSchema(description) { Format = "float" };
         if (type == typeof(double))
@@ -70,7 +71,7 @@ public static class JsonSchemaFactory
         if (type == typeof(decimal))
             return new NumberJsonSchema(description) { Format = "decimal" };
 
-        // string type
+        // 문자열 타입 처리
         if (type == typeof(char))
             return new StringJsonSchema(description) { MaxLength = 1, MinLength = 1 };
         if (type == typeof(string))
@@ -86,11 +87,11 @@ public static class JsonSchemaFactory
         if (type.IsEnum)
             return new StringJsonSchema(description) { Enum = Enum.GetNames(type) };
 
-        // array type (Tuple, IEnumerable, ICollection, IList, List, Array)
+        // 배열 또는 컬렉션 타입 처리
         if (type.IsArray)
         {
             var genericType = type.GetElementType()
-                ?? throw new ArgumentException("Array type must have an element type.", nameof(type));
+                ?? throw new ArgumentException("배열 타입은 요소 타입이 있어야 합니다.", nameof(type));
             var items = CreateFrom(genericType);
             return new ArrayJsonSchema(description) { Items = items };
         }
@@ -107,7 +108,7 @@ public static class JsonSchemaFactory
             return new ArrayJsonSchema(description) { Items = items };
         }
 
-        // object type (IDictionary, class, struct, record)
+        // 객체 타입 처리 (딕셔너리, 클래스, 구조체, 레코드 등)
         if (IsDictionary(type))
         {
             var valueType = type.GetGenericArguments()[1];
@@ -142,11 +143,12 @@ public static class JsonSchemaFactory
             };
         }
 
-        throw new ArgumentException("Type not supported.", nameof(type));
+        throw new ArgumentException("지원하지 않는 타입입니다.", nameof(type));
     }
 
-    #region Private Methods
-
+    /// <summary>
+    /// 제네릭 배열(리스트/컬렉션 등) 타입 여부 확인
+    /// </summary>
     private static bool IsGenericArray(Type type)
     {
         if (!type.IsGenericType)
@@ -157,12 +159,18 @@ public static class JsonSchemaFactory
             || gType == typeof(List<>) || gType == typeof(IReadOnlyList<>) || gType == typeof(IReadOnlyCollection<>);
     }
 
+    /// <summary>
+    /// 튜플 타입 여부 확인
+    /// </summary>
     private static bool IsTuple(Type type)
     {
         var interfaces = type.GetInterfaces();
         return interfaces.Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ITuple));
     }
 
+    /// <summary>
+    /// 딕셔너리 타입 여부 확인
+    /// </summary>
     private static bool IsDictionary(Type type)
     {
         return type.GetInterfaces().Any(i =>
@@ -170,19 +178,23 @@ public static class JsonSchemaFactory
             i.GetGenericTypeDefinition() == typeof(IDictionary<,>));
     }
 
+    /// <summary>
+    /// 복합 객체(클래스, 구조체, 레코드) 타입 여부 확인
+    /// </summary>
     private static bool IsComplexObject(Type type)
     {
-        // Class
         if (type.IsClass && !type.IsAbstract && !type.IsInterface)
             return true;
 
-        // Struct, Record
         if (type.IsValueType && !type.IsPrimitive && !type.IsEnum)
             return true;
 
         return false;
     }
 
+    /// <summary>
+    /// 해당 속성이 필수인지 확인
+    /// </summary>
     private static bool IsRequiredProperty(PropertyInfo prop)
     {
         if (prop.PropertyType.IsValueType && Nullable.GetUnderlyingType(prop.PropertyType) == null)
@@ -196,6 +208,4 @@ public static class JsonSchemaFactory
 
         return false;
     }
-
-    #endregion
 }

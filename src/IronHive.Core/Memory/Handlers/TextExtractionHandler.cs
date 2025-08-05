@@ -2,8 +2,11 @@
 using IronHive.Abstractions.Files;
 using HtmlAgilityPack;
 
-namespace IronHive.Core.Handlers;
+namespace IronHive.Core.Memory.Handlers;
 
+/// <summary>
+/// TextExtractionHandler는 주어진 메모리 소스에서 텍스트를 추출하는 메모리 파이프라인 핸들러입니다.
+/// </summary>
 public class TextExtractionHandler : IMemoryPipelineHandler
 {
     private readonly IFileStorageManager _storages;

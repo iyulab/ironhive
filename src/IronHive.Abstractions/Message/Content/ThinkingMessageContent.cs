@@ -21,6 +21,9 @@ public class ThinkingMessageContent : MessageContent
     public string Value { get; set; } = string.Empty;
 }
 
+/// <summary>
+/// 추론 콘텐츠 블록의 형식을 나타내는 열거형입니다.
+/// </summary>
 public enum ThinkingFormat
 {
     /// <summary>

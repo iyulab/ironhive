@@ -1,9 +1,11 @@
 ﻿using IronHive.Abstractions.Files;
-using IronHive.Abstractions.Memory;
 using IronHive.Core.Utilities;
 
-namespace IronHive.Core.Decoders;
+namespace IronHive.Core.Files.Decoders;
 
+/// <summary>
+/// 텍스트 파일 디코더 클래스입니다.
+/// </summary>
 public class TextDecoder : IFileDecoder
 {
     /// <inheritdoc />
