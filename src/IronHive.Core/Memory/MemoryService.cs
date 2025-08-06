@@ -79,8 +79,12 @@ public class MemoryService : IMemoryService
         CancellationToken cancellationToken = default)
     {
         // Ensure at least one worker is available
-        if (Workers.Count != 0)
-            Workers.Add(new MemoryWorker(_services));
+        if (Workers.Count == 0)
+        {
+            var worker = new MemoryWorker(_services);
+            _ = Task.Run(worker.StartAsync);
+            Workers.Add(worker);
+        }
         
         var request = new MemoryPipelineRequest
         {

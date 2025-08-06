@@ -27,12 +27,12 @@ public class LocalQueueStorage<T> : IQueueStorage<T>
         _jsonOptions = config.JsonOptions;
 
         Directory.CreateDirectory(_directoryPath);
-        RestoreQueueMessages();
     }
 
     /// <inheritdoc />
     public void Dispose()
     {
+        _cache.Clear();
         GC.SuppressFinalize(this);
     }
 
@@ -132,32 +132,32 @@ public class LocalQueueStorage<T> : IQueueStorage<T>
                     Tag = lockedFilePath
                 };
             }
-            // 취소 요청이 들어온 경우, 예외를 발생시켜 작업을 중단합니다.
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            // 다른 소비자가 이미 처리 중일 경우 건너뜁니다.
+            // 다른 소비자가 처리 중일 경우 건너뜁니다.
             catch (IOException)
             {
                 continue;
             }
             // 이외의 경우 예외가 발생하면 해당 파일을 dead 메시지로 이동합니다.
-            catch (Exception)
+            catch (Exception ex)
             {
-                var deadFilePath = Path.ChangeExtension(lockedFilePath, $".{DeadMessageExtension}");
                 try
                 {
                     // 파일이 없는 경우 건너뜁니다.
                     if (!File.Exists(lockedFilePath))
-                        continue; 
+                        continue;
 
+                    var deadFilePath = Path.ChangeExtension(lockedFilePath, $".{DeadMessageExtension}");
                     File.Move(lockedFilePath, deadFilePath);
                 }
                 catch (IOException)
                 {
                     // 이동 실패 시, lock 상태에 남겨둡니다.
-                    // 이 경우, 나중에 다시 처리할 수 있도록 유지합니다.
+                }
+
+                // 취소 요청의 경우, 예외를 전파합니다
+                if (ex is OperationCanceledException)
+                {
+                    throw;
                 }
             }
         }
@@ -173,42 +173,43 @@ public class LocalQueueStorage<T> : IQueueStorage<T>
         if (tag is not string lockedFilePath)
             throw new InvalidOperationException("Invalid ack tag.");
 
-        if (File.Exists(lockedFilePath))
-        {
-            // 확인된 메시지의 lock 상태 파일을 삭제합니다.
-            File.Delete(lockedFilePath);
-        }
+        // lock 상태 파일이 존재하지 않으면 예외를 발생시킵니다.
+        if (!File.Exists(lockedFilePath))
+            throw new FileNotFoundException($"Lock file '{lockedFilePath}' does not exist.");
+
+        // 확인된 메시지의 lock 상태 파일을 삭제합니다.
+        File.Delete(lockedFilePath);
+        
         return Task.CompletedTask;
     }
 
     /// <inheritdoc />
     public Task NackAsync(object tag, bool requeue = false, CancellationToken cancellationToken = default)
     {
+        // tag는 lock 상태 파일의 경로입니다.
         if (tag is not string lockedFilePath)
             throw new InvalidOperationException("Invalid ack tag.");
 
-        // lock 상태 파일이 존재하지 않으면 아무 작업도 하지 않습니다.
+        // lock 상태 파일이 존재하지 않으면 예외를 발생시킵니다.
         if (!File.Exists(lockedFilePath))
-        {
-            return Task.CompletedTask;
-        }
+            throw new FileNotFoundException($"Lock file '{lockedFilePath}' does not exist.");
 
+        // requeue가 true인 경우, lock 상태 파일을 원래 큐 파일로 이동합니다.
         if (requeue)
         {
-            // requeue가 true인 경우, lock 상태 파일을 원래 큐 폴더로 이동합니다.
-            var originalPath = Path.ChangeExtension(lockedFilePath, $".{MessageExtension}");
             try
             {
-                File.Move(lockedFilePath, originalPath);
+                var queueFilePath = Path.ChangeExtension(lockedFilePath, $".{MessageExtension}");
+                File.Move(lockedFilePath, queueFilePath);
             }
             catch (IOException)
             {
                 // 이동 실패 시 lock 상태에 남겨둡니다.
             }
         }
+        // 이외, lock 상태 파일을 삭제합니다.
         else
         {
-            // requeue가 false인 경우, lock 상태 파일을 삭제합니다.
             File.Delete(lockedFilePath);
         }
 
@@ -216,30 +217,28 @@ public class LocalQueueStorage<T> : IQueueStorage<T>
     }
 
     /// <summary>
-    /// 시스템 시작 시 처리 중(lock 상태)의 메시지를 다시 큐에 복구합니다.
+    /// 큐에 존재하는 처리되지 않은 메시지들을 다시 복원합니다.
     /// </summary>
-    private void RestoreQueueMessages()
+    public async Task RestoreAsync()
     {
-        var lockedFiles = Directory.GetFiles(_directoryPath, $"*.{LockExtension}");
-        var deadFiles = Directory.GetFiles(_directoryPath, $"*.{DeadMessageExtension}");
-        var allFiles = lockedFiles.Concat(deadFiles).ToList();
+        var targets = new List<string>();
+        targets.AddRange(Directory.GetFiles(_directoryPath, $"*.{LockExtension}"));
+        targets.AddRange(Directory.GetFiles(_directoryPath, $"*.{DeadMessageExtension}"));
 
-        foreach (var file in allFiles)
+        await Parallel.ForEachAsync(targets, async (filePath, _) =>
         {
-            var msgFile = Path.ChangeExtension(file, $".{MessageExtension}");
-
             try
             {
-                File.Move(file, msgFile, overwrite: false); // 이미 있을 경우 덮어쓰지 않음
+                // 대상 파일을 큐 파일로 이동합니다.
+                var queueFilePath = Path.ChangeExtension(filePath, $".{MessageExtension}");
+                File.Move(filePath, queueFilePath, overwrite: false);
             }
             catch (IOException)
             {
-                // 동일 이름의 msg가 있을 경우 삭제
-                if (File.Exists(msgFile))
-                {
-                    File.Delete(msgFile);
-                }
+                // 충돌/접근 문제 발생 시 무시
             }
-        }
+
+            await Task.CompletedTask;
+        });
     }
 }

@@ -5,9 +5,6 @@
 /// </summary>
 public class VectorRecordFilter
 {
-    public ICollection<string> VectorIds { get; private set; } = new List<string>();
-    public ICollection<string> SourceIds { get; private set; } = new List<string>();
-
     public VectorRecordFilter()
     { }
 
@@ -16,10 +13,14 @@ public class VectorRecordFilter
         IEnumerable<string>? vectorIds = null)
     {
         if (sourceIds != null)
-            SourceIds = sourceIds.ToList();
+            SourceIds = [.. sourceIds];
         if (vectorIds != null)
-            VectorIds = vectorIds.ToList();
+            VectorIds = [.. vectorIds];
     }
+
+    public ICollection<string> VectorIds { get; private set; } = [];
+    
+    public ICollection<string> SourceIds { get; private set; } = [];
 
     /// <summary>
     /// 필터에 내용이 있는지 확인합니다.

@@ -3,7 +3,7 @@
 /// <summary>
 /// 파이프라인 진행 상태를 나타내는 열거형입니다.
 /// </summary>
-public enum PipelineState
+public enum PipelineStatus
 {
     /// <summary>
     /// 작업이 시작되었습니다.
@@ -36,16 +36,16 @@ public enum PipelineState
 /// </summary>
 public class MemoryPipelineEventArgs : EventArgs
 {
-    public MemoryPipelineEventArgs(PipelineState state, MemoryPipelineContext context)
+    public MemoryPipelineEventArgs(PipelineStatus status, MemoryPipelineContext context)
     {
-        State = state;
+        Status = status;
         Context = context;
     }
 
     /// <summary>
     /// 현재 진행 상태입니다.
     /// </summary>
-    public PipelineState State { get; }
+    public PipelineStatus Status { get; }
 
     /// <summary>
     /// 현재 파이프라인 컨텍스트입니다.
@@ -59,7 +59,7 @@ public class MemoryPipelineEventArgs : EventArgs
 public class MemoryPipelineErrorEventArgs : MemoryPipelineEventArgs
 {
     public MemoryPipelineErrorEventArgs(MemoryPipelineContext context, Exception exception)
-        : base(PipelineState.Failed, context)
+        : base(PipelineStatus.Failed, context)
     {
         Exception = exception;
     }

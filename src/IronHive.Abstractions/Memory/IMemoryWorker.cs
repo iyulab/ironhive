@@ -3,22 +3,13 @@
 /// <summary>
 /// 파이프라인 작업자의 상태를 나타내는 열거형입니다.
 /// </summary>
-public enum MemoryWorkerStatus
+public enum MemoryWorkerState
 {
-    /// <summary>
-    /// 작업이 실행된 상태입니다.
-    /// </summary>
-    Started,
-
-    /// <summary>
-    /// 작업이 중지된 상태입니다.
-    /// </summary>
-    Stopped,
-
-    /// <summary>
-    /// 작업 중지 요청이 들어온 상태입니다.
-    /// </summary>
-    StopRequested
+    StartRequested = 0,        // 작업 시작 요청됨
+    Idle = 1,                  // 메시지 없음, 대기 상태 (Delay)
+    Processing = 2,            // 메시지 처리 중
+    StopRequested = 3,         // 작업 중지 요청됨
+    Stopped = 4,               // 작업 중지됨
 }
 
 /// <summary>
@@ -27,14 +18,19 @@ public enum MemoryWorkerStatus
 public interface IMemoryWorker : IDisposable
 {
     /// <summary>
-    /// 현재 작업이 실행 중인지 여부를 나타냅니다.
+    /// 작업자의 상태가 변경될 때 발생하는 이벤트입니다.
     /// </summary>
-    MemoryWorkerStatus Status { get; }
+    event EventHandler<MemoryWorkerState>? StateChanged;
 
     /// <summary>
     /// 작업 진행 상황을 알리는 이벤트입니다.
     /// </summary>
     event EventHandler<MemoryPipelineEventArgs>? Progressed;
+
+    /// <summary>
+    /// 현재 작업이 실행 중인지 여부를 나타냅니다.
+    /// </summary>
+    MemoryWorkerState State { get; }
 
     /// <summary>
     /// 지속적으로 작업을 수행하는 메서드입니다.

@@ -1,5 +1,9 @@
 ﻿namespace IronHive.Abstractions.Message;
 
+/// <summary>
+/// LLM의 추론 과정에서 사용할 생각의 깊이를 나타내는 열거형입니다.
+/// 값이 높을수록 더 많은 토큰을 사용합니다.
+/// </summary>
 public enum MessageThinkingEffort
 {
     /// <summary>
