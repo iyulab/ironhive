@@ -1,17 +1,19 @@
-﻿using IronHive.Abstractions.Memory;
+﻿using IronHive.Abstractions.Embedding;
+using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Storages;
 
 namespace IronHive.Core.Memory.Handlers;
 
 /// <summary>
-/// VectorEmbeddingHandler는 주어진 메모리 소스에서 벡터 임베딩을 생성하고 벡터 스토리지에 저장하는 메모리 파이프라인 핸들러입니다.
+/// VectorEmbeddingHandler는 주어진 메모리 소스에서 벡터 임베딩을 생성하고,
+/// 벡터 스토리지에 저장하는 메모리 파이프라인 핸들러입니다.
 /// </summary>
 public class VectorEmbeddingHandler : IMemoryPipelineHandler
 {
-    private readonly IMemoryEmbedder _embedder;
+    private readonly IEmbeddingGenerationService _embedder;
     private readonly IVectorStorage _storage;
 
-    public VectorEmbeddingHandler(IMemoryEmbedder embedder, IVectorStorage storage)
+    public VectorEmbeddingHandler(IEmbeddingGenerationService embedder, IVectorStorage storage)
     {
         _embedder = embedder;
         _storage = storage;
@@ -24,7 +26,11 @@ public class VectorEmbeddingHandler : IMemoryPipelineHandler
 
         if (context.Payload.TryConvertTo<IEnumerable<Dialogue>>(out var dialogues))
         {
-            var embeddings = await _embedder.EmbedBatchAsync(dialogues.Select(x => x.Question), cancellationToken);
+            var embeddings = await _embedder.EmbedBatchAsync(
+                target.EmbeddingProvider,
+                target.EmbeddingModel,
+                dialogues.Select(x => x.Question), 
+                cancellationToken);
 
             if (embeddings == null || embeddings.Count() != dialogues.Count())
                 throw new InvalidOperationException("failed to get embeddings for dialogues");
@@ -41,11 +47,9 @@ public class VectorEmbeddingHandler : IMemoryPipelineHandler
                 points.Add(new VectorRecord
                 {
                     Id = Guid.NewGuid().ToString(),
-                    SourceId = context.Source.Id,
                     Vectors = vector,
-                    Source = context.Source,
                     Content = content,
-                    LastUpdatedAt = DateTime.UtcNow,
+                    Source = context.Source,
                 });
             }
 
@@ -55,7 +59,11 @@ public class VectorEmbeddingHandler : IMemoryPipelineHandler
         }
         else if (context.Payload.TryConvertTo<IEnumerable<string>>(out var chunks))
         {
-            var embeddings = await _embedder.EmbedBatchAsync(chunks, cancellationToken);
+            var embeddings = await _embedder.EmbedBatchAsync(
+                target.EmbeddingProvider,
+                target.EmbeddingModel,
+                chunks, 
+                cancellationToken);
 
             if (embeddings == null || embeddings.Count() != chunks.Count())
                 throw new InvalidOperationException("failed to get embeddings for chunks");
@@ -72,11 +80,9 @@ public class VectorEmbeddingHandler : IMemoryPipelineHandler
                 points.Add(new VectorRecord
                 {
                     Id = Guid.NewGuid().ToString(),
-                    SourceId = context.Source.Id,
-                    Source = context.Source,
                     Vectors = vector,
                     Content = content,
-                    LastUpdatedAt = DateTime.UtcNow,
+                    Source = context.Source,
                 });
             }
 

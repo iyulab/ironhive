@@ -5,25 +5,21 @@
 ### Root Service
 - IHiveMind
 
-### 파생 서비스
-- IHiveMemory
-- IPipelineWorker
-
 ### AI Services
 - IMessageGenerationService        => Singleton                                   => Required
-  - IMessageGenerationProvider[]   => Singleton                                   => Optional
-- IEmbeddingService                => Singleton                                   => Required
-  - IEmbeddingProvider[]           => Singleton                                   => Optional
+  - IMessageGenerator[]
+- IEmbeddingGenerationService      => Singleton                                   => Required
+  - IEmbeddingGenerator[]
 
 ### File Services
 - IFileStorageManger               => Singleton                                   => Required
-  - IFileStorage[]                 => Singleton                                   => Optional
+  - IFileStorage[]
 - IFileDecoderManager              => Singleton                                   => Required
-  - IFileDecoder[]                 => Singleton                                   => Optional
+  - IFileDecoder[]
   
 ### Memory Services
+- IMemoryService
+- IMemoryWorker
 - IQueueStorage                 => Singleton                                      => Required
 - IVectorStorage                => Singleton                                      => Required
-- IEmbeddingService             => Singleton                                      => Required
-- IPipelineObserver             => Singleton | Scoped | Transient                 => Optional
 - IPipelineHandler[]            => Singleton | Scoped | Transient                 => Optional

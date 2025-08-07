@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Storages;
+using IronHive.Abstractions.Embedding;
 
 namespace IronHive.Core.Memory;
 
@@ -10,27 +11,21 @@ public class MemoryService : IMemoryService
     private readonly IServiceProvider _services;
     private readonly IQueueStorage<MemoryPipelineRequest> _queue;
     private readonly IVectorStorage _vector;
-    private readonly IMemoryEmbedder _embedder;
-
-    private int? _dimensions = null;
+    private readonly IEmbeddingGenerationService _embedder;
 
     public MemoryService(IServiceProvider services)
     {
         _services = services;
         _queue = services.GetRequiredService<IQueueStorage<MemoryPipelineRequest>>();
         _vector = services.GetRequiredService<IVectorStorage>();
-        _embedder = services.GetRequiredService<IMemoryEmbedder>();
+        _embedder = services.GetRequiredService<IEmbeddingGenerationService>();
     }
 
     /// <inheritdoc />
-    public ICollection<IMemoryWorker> Workers { get; set; } = [];
-
-    /// <inheritdoc />
-    public async Task<IEnumerable<string>> ListCollectionsAsync(
-        string? prefix = null, 
+    public async Task<IEnumerable<VectorCollection>> ListCollectionsAsync( 
         CancellationToken cancellationToken = default)
     {
-        return await _vector.ListCollectionsAsync(prefix, cancellationToken);
+        return await _vector.ListCollectionsAsync(cancellationToken);
     }
 
     /// <inheritdoc />
@@ -42,21 +37,31 @@ public class MemoryService : IMemoryService
     }
 
     /// <inheritdoc />
-    public async Task CreateCollectionAsync(
-        string collectionName,
+    public async Task<VectorCollection?> GetCollectionInfoAsync(
+        string collectionName, 
         CancellationToken cancellationToken = default)
     {
-        if (await _vector.CollectionExistsAsync(collectionName, cancellationToken))
-            throw new InvalidOperationException($"Collection '{collectionName}' already exists.");
+        return await _vector.GetCollectionInfoAsync(collectionName, cancellationToken);
+    }
 
-        if (!_dimensions.HasValue)
+    /// <inheritdoc />
+    public async Task CreateCollectionAsync(
+        string collectionName,
+        string embeddingProvider,
+        string embeddingModel,
+        CancellationToken cancellationToken = default)
+    {
+        const string sample = "dimension calculation sample";
+        var embeddings = await _embedder.EmbedAsync(embeddingProvider, embeddingModel, sample, cancellationToken)
+            ?? throw new InvalidOperationException("Failed to get embeddings for dimension calculation.");
+
+        await _vector.CreateCollectionAsync(new VectorCollection
         {
-            const string sample = "dimension calculation sample";
-            var embeddings = await _embedder.EmbedAsync(sample, CancellationToken.None);
-            _dimensions = embeddings.Count();
-        }
-        
-        await _vector.CreateCollectionAsync(collectionName, _dimensions.Value, cancellationToken);
+            Name = collectionName,
+            Dimensions = embeddings.Count(),
+            EmbeddingProvider = embeddingProvider,
+            EmbeddingModel = embeddingModel,
+        }, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -64,9 +69,6 @@ public class MemoryService : IMemoryService
         string collectionName, 
         CancellationToken cancellationToken = default)
     {
-        if (!await _vector.CollectionExistsAsync(collectionName, cancellationToken))
-            throw new InvalidOperationException($"Collection '{collectionName}' does not exist.");
-
         await _vector.DeleteCollectionAsync(collectionName, cancellationToken);
     }
 
@@ -77,21 +79,18 @@ public class MemoryService : IMemoryService
         IEnumerable<string> steps, 
         IDictionary<string, object?>? handlerOptions = null, 
         CancellationToken cancellationToken = default)
-    {
-        // Ensure at least one worker is available
-        if (Workers.Count == 0)
-        {
-            var worker = new MemoryWorker(_services);
-            _ = Task.Run(worker.StartAsync);
-            Workers.Add(worker);
-        }
-        
+    {   
+        var collection = await _vector.GetCollectionInfoAsync(collectionName, cancellationToken)
+            ?? throw new InvalidOperationException($"Collection '{collectionName}' does not exist.");
+
         var request = new MemoryPipelineRequest
         {
             Source = source,
             Target = new VectorMemoryTarget
             {
-                CollectionName = collectionName,
+                CollectionName = collection.Name,
+                EmbeddingProvider = collection.EmbeddingProvider,
+                EmbeddingModel = collection.EmbeddingModel,
             },
             Steps = steps,
             HandlerOptions = handlerOptions,
@@ -107,13 +106,18 @@ public class MemoryService : IMemoryService
         IDictionary<string, object?>? handlerOptions = null, 
         CancellationToken cancellationToken = default)
     {
+        var collection = await _vector.GetCollectionInfoAsync(collectionName, cancellationToken)
+            ?? throw new InvalidOperationException($"Collection '{collectionName}' does not exist.");
+
         var worker = new MemoryWorker(_services);
         var request = new MemoryPipelineRequest
         {
             Source = source,
             Target = new VectorMemoryTarget
             {
-                CollectionName = collectionName,
+                CollectionName = collection.Name,
+                EmbeddingProvider = collection.EmbeddingProvider,
+                EmbeddingModel = collection.EmbeddingModel,
             },
             Steps = steps,
             HandlerOptions = handlerOptions,
@@ -141,6 +145,9 @@ public class MemoryService : IMemoryService
         IEnumerable<string>? sourceIds = null,
         CancellationToken cancellationToken = default)
     {
+        var collection = await _vector.GetCollectionInfoAsync(collectionName, cancellationToken)
+            ?? throw new InvalidOperationException($"Collection '{collectionName}' does not exist.");
+
         VectorRecordFilter? filter = null;
         if (sourceIds != null && sourceIds.Any())
         {
@@ -148,9 +155,9 @@ public class MemoryService : IMemoryService
             filter.AddSourceIds(sourceIds);
         }
 
-        var vector = await _embedder.EmbedAsync(query, cancellationToken);
+        var vector = await _embedder.EmbedAsync(collection.EmbeddingProvider, collection.EmbeddingModel, query, cancellationToken);
         var records = await _vector.SearchVectorsAsync(
-            collectionName: collectionName,
+            collectionName: collection.Name,
             vector: vector,
             minScore: minScore,
             limit: limit,

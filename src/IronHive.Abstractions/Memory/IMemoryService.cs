@@ -3,25 +3,18 @@
 namespace IronHive.Abstractions.Memory;
 
 /// <summary>
-/// RAG(정보 검색 기반 생성) 메모리 서비스를 정의하는 인터페이스입니다.
+/// 벡터기반 RAG(정보 검색 기반 생성) 메모리 서비스를 정의하는 인터페이스입니다.
 /// </summary>
 public interface IMemoryService
 {
     /// <summary>
-    /// 벡터화 및 저장 작업을 수행하는 워커들입니다.
-    /// </summary>
-    ICollection<IMemoryWorker> Workers { get; set; }
-
-    /// <summary>
     /// 지정된 접두사로 시작하는 벡터 컬렉션 목록을 비동기적으로 반환합니다.
     /// </summary>
-    /// <param name="prefix">컬렉션 이름의 접두사 (옵션)</param>
-    Task<IEnumerable<string>> ListCollectionsAsync(
-        string? prefix = null,
+    Task<IEnumerable<VectorCollection>> ListCollectionsAsync(        
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 지정된 이름의 컬렉션이 존재하는지 여부를 비동기적으로 확인합니다.
+    /// 지정된 이름의 컬렉션이 존재하는지 확인합니다.
     /// </summary>
     /// <param name="collectionName">컬렉션 이름</param>
     Task<bool> CollectionExistsAsync(
@@ -29,11 +22,23 @@ public interface IMemoryService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// 지정된 이름의 컬렉션의 정보를 비동기적으로 가져옵니다.
+    /// </summary>
+    /// <param name="collectionName">컬렉션 이름</param>
+    Task<VectorCollection?> GetCollectionInfoAsync(
+        string collectionName,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// 지정된 이름의 새로운 벡터 컬렉션을 비동기적으로 생성합니다.
     /// </summary>
-    /// <param name="collectionName">생성할 컬렉션 이름</param>
+    /// <param name="collectionName">컬렉션 이름</param>
+    /// <param name="embeddingProvider">임베딩 제공자</param>
+    /// <param name="embeddingModel">임베딩 모델</param>
     Task CreateCollectionAsync(
         string collectionName,
+        string embeddingProvider,
+        string embeddingModel,
         CancellationToken cancellationToken = default);
 
     /// <summary>

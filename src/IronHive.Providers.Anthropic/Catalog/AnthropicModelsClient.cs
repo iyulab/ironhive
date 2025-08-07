@@ -17,9 +17,9 @@ public class AnthropicModelsClient : AnthropicClientBase
     public async Task<IEnumerable<AnthropicModel>> GetModelsAsync(CancellationToken cancellationToken)
     {
         var path = $"{AnthropicConstants.GetModelsPath}?limit=999".RemovePreffix('/');
-        var jsonDoc = await Client.GetFromJsonAsync<JsonDocument>(path, JsonOptions, cancellationToken);
+        var jsonDoc = await _client.GetFromJsonAsync<JsonDocument>(path, _jsonOptions, cancellationToken);
 
-        var models = jsonDoc?.RootElement.GetProperty("data").Deserialize<IEnumerable<AnthropicModel>>(JsonOptions);
+        var models = jsonDoc?.RootElement.GetProperty("data").Deserialize<IEnumerable<AnthropicModel>>(_jsonOptions);
         return models?.OrderByDescending(m => m.CreatedAt)
             .ToArray() ?? [];
     }
@@ -30,7 +30,7 @@ public class AnthropicModelsClient : AnthropicClientBase
     public async Task<AnthropicModel?> GetModelAsync(string modelId, CancellationToken cancellationToken)
     {
         var path = Path.Combine(AnthropicConstants.GetModelsPath, modelId).RemovePreffix('/');
-        var model = await Client.GetFromJsonAsync<AnthropicModel>(path, JsonOptions, cancellationToken);
+        var model = await _client.GetFromJsonAsync<AnthropicModel>(path, _jsonOptions, cancellationToken);
         return model;
     }
 }

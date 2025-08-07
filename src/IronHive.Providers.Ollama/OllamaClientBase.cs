@@ -2,7 +2,7 @@
 
 namespace IronHive.Providers.Ollama;
 
-internal abstract class OllamaClientBase
+internal abstract class OllamaClientBase : IDisposable
 {
     protected readonly HttpClient _client;
     protected readonly JsonSerializerOptions _jsonOptions;
@@ -19,6 +19,12 @@ internal abstract class OllamaClientBase
         var config = new OllamaConfig { BaseUrl = baseUrl };
         _client = CreateHttpClient(config);
         _jsonOptions = config.JsonOptions;
+    }
+
+    public virtual void Dispose()
+    {
+        _client?.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     private static HttpClient CreateHttpClient(OllamaConfig config)

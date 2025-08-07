@@ -4,26 +4,25 @@ namespace IronHive.Providers.Anthropic;
 
 public abstract class AnthropicClientBase : IDisposable
 {
+    protected readonly HttpClient _client;
+    protected readonly JsonSerializerOptions _jsonOptions;
+
     protected AnthropicClientBase(AnthropicConfig config)
     {
-        Client = CreateHttpClient(config);
-        JsonOptions = config.JsonOptions;
+        _client = CreateHttpClient(config);
+        _jsonOptions = config.JsonOptions;
     }
 
     protected AnthropicClientBase(string apiKey)
     {
         var config = new AnthropicConfig { ApiKey = apiKey };
-        Client = CreateHttpClient(config);
-        JsonOptions = config.JsonOptions;
+        _client = CreateHttpClient(config);
+        _jsonOptions = config.JsonOptions;
     }
-
-    public HttpClient Client { get; }
-
-    public JsonSerializerOptions JsonOptions { get; }
 
     public void Dispose()
     {
-        Client.Dispose();
+        _client.Dispose();
         GC.SuppressFinalize(this);
     }
 

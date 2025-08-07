@@ -16,14 +16,14 @@ public class OpenAIChatCompletionClient : OpenAIClientBase
         CancellationToken cancellationToken = default)
     {
         request.Stream = false;
-        var json = JsonSerializer.Serialize(request, JsonOptions);
+        var json = JsonSerializer.Serialize(request, _jsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        using var response = await Client.PostAsync(OpenAIConstants.PostChatCompletionPath.RemovePreffix('/'), content, cancellationToken);
+        using var response = await _client.PostAsync(OpenAIConstants.PostChatCompletionPath.RemovePreffix('/'), content, cancellationToken);
         if (!response.IsSuccessStatusCode && response.TryExtractMessage(out string error))
             throw new HttpRequestException(error);
         response.EnsureSuccessStatusCode();
 
-        var message = await response.Content.ReadFromJsonAsync<ChatCompletionResponse>(JsonOptions, cancellationToken)
+        var message = await response.Content.ReadFromJsonAsync<ChatCompletionResponse>(_jsonOptions, cancellationToken)
             ?? throw new InvalidOperationException("Failed to deserialize response.");
         return message;
     }
@@ -34,11 +34,11 @@ public class OpenAIChatCompletionClient : OpenAIClientBase
     {
         request.Stream = true;
         request.StreamOptions = new ChatCompletionStreamOptions { InCludeUsage = true };
-        var json = JsonSerializer.Serialize(request, JsonOptions);
+        var json = JsonSerializer.Serialize(request, _jsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         using var _request = new HttpRequestMessage(HttpMethod.Post, OpenAIConstants.PostChatCompletionPath.RemovePreffix('/'));
         _request.Content = content;
-        using var response = await Client.SendAsync(_request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        using var response = await _client.SendAsync(_request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         if (!response.IsSuccessStatusCode && response.TryExtractMessage(out string error))
             throw new HttpRequestException(error);
         response.EnsureSuccessStatusCode();
@@ -61,7 +61,7 @@ public class OpenAIChatCompletionClient : OpenAIClientBase
                 if (!data.StartsWith('{') || !data.EndsWith('}'))
                     continue;
 
-                var message = JsonSerializer.Deserialize<StreamingChatCompletionResponse>(data, JsonOptions);
+                var message = JsonSerializer.Deserialize<StreamingChatCompletionResponse>(data, _jsonOptions);
                 if (message != null)
                 {
                     yield return message;

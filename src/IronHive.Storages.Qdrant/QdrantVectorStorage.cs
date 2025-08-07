@@ -1,11 +1,11 @@
 ﻿using System.Text.Json;
 using Google.Protobuf.Collections;
-using IronHive.Abstractions.Json;
-using IronHive.Abstractions.Memory;
-using IronHive.Abstractions.Storages;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
 using static Qdrant.Client.Grpc.Conditions;
+using IronHive.Abstractions.Json;
+using IronHive.Abstractions.Memory;
+using IronHive.Abstractions.Storages;
 
 namespace IronHive.Storages.Qdrant;
 
@@ -16,6 +16,11 @@ public class QdrantVectorStorage : IVectorStorage
 {
     // Qdrant에서 사용할 기본 텍스트용 벡터의 이름입니다.
     private const string DefaultVectorsName = "text";
+    // 컬렉션 별칭의 접두사와 구분자를 정의합니다.
+    // Qdrant에서 컬렉션 별칭은 커스텀 메타데이터를 저장하는 데 사용됩니다.
+    private const string CollectionAliasPrefix = "vc_meta";
+    private const string CollectionAliasSeparator = "|";
+
     private readonly QdrantClient _client;
 
     public QdrantVectorStorage(QdrantConfig config)
@@ -30,40 +35,42 @@ public class QdrantVectorStorage : IVectorStorage
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<string>> ListCollectionsAsync(
-        string? prefix = null,
+    public async Task<IEnumerable<VectorCollection>> ListCollectionsAsync(
         CancellationToken cancellationToken = default)
     {
-        prefix ??= string.Empty;
-        var colls = await _client.ListCollectionsAsync(cancellationToken);
-        return colls.Where(c => c.StartsWith(prefix));
+        var aliases = await _client.ListAliasesAsync(cancellationToken);
+        var colls = aliases.Select(a => ParseCollectionAlias(a.AliasName))
+            .DistinctBy(c => c.Name);
+        return colls;
     }
 
     /// <inheritdoc />
-    public async Task<bool> CollectionExistsAsync(
+    public async Task<VectorCollection?> GetCollectionInfoAsync(
         string collectionName,
         CancellationToken cancellationToken = default)
     {
-        return await _client.CollectionExistsAsync(collectionName, cancellationToken);
+        var aliases = await _client.ListCollectionAliasesAsync(collectionName, cancellationToken);
+        var alias = aliases.FirstOrDefault();
+        if (alias == null) return null;
+
+        return ParseCollectionAlias(alias);
     }
 
     /// <inheritdoc />
     public async Task CreateCollectionAsync(
-        string collectionName,
-        int dimensions,
+        VectorCollection collection,
         CancellationToken cancellationToken = default)
     {
-        collectionName = EnsureCollectionName(collectionName);
-
-        if (await CollectionExistsAsync(collectionName, cancellationToken))
-            throw new InvalidOperationException($"collection {collectionName} already exist");
+        collection.Name = EnsureCollectionName(collection.Name);
+        if (await _client.CollectionExistsAsync(collection.Name, cancellationToken))
+            throw new InvalidOperationException($"collection {collection.Name} already exist");
 
         var param = new VectorParams
         {
             Datatype = Datatype.Float32,
             Distance = Distance.Cosine,
             OnDisk = true,
-            Size = (ulong)dimensions
+            Size = (ulong)collection.Dimensions
         };
 
         // 벡터 설정은 컬렉션 생성 이후 수정이 불가능.
@@ -71,27 +78,32 @@ public class QdrantVectorStorage : IVectorStorage
 
         // 컬렉션 생성
         await _client.CreateCollectionAsync(
-            collectionName: collectionName,
+            collectionName: collection.Name,
             vectorsConfig: config,
             cancellationToken: cancellationToken);
 
         // 인덱스 생성
         await _client.CreatePayloadIndexAsync(
-            collectionName: collectionName,
-            "lastUpdatedAt",
+            collectionName: collection.Name,
+            "lastUpsertedAt",
             schemaType: PayloadSchemaType.Integer,
             cancellationToken: cancellationToken);
-
         await _client.CreatePayloadIndexAsync(
-            collectionName: collectionName,
+            collectionName: collection.Name,
             "vectorId",
             schemaType: PayloadSchemaType.Keyword,
             cancellationToken: cancellationToken);
-
         await _client.CreatePayloadIndexAsync(
-            collectionName: collectionName,
+            collectionName: collection.Name,
             "sourceId",
             schemaType: PayloadSchemaType.Keyword,
+            cancellationToken: cancellationToken);
+
+        // Alias 생성
+        var collectionAlias = CreateCollectionAlias(collection);
+        await _client.CreateAliasAsync(
+            aliasName: collectionAlias,
+            collectionName: collection.Name,
             cancellationToken: cancellationToken);
     }
 
@@ -100,20 +112,18 @@ public class QdrantVectorStorage : IVectorStorage
         string collectionName,
         CancellationToken cancellationToken = default)
     {
-        if (!await CollectionExistsAsync(collectionName, cancellationToken))
-            throw new InvalidOperationException($"collection {collectionName} is not exist");
+        if (!await _client.CollectionExistsAsync(collectionName, cancellationToken))
+            throw new InvalidOperationException($"collection {collectionName} does not exist");
 
         // 인덱스 삭제
         await _client.DeletePayloadIndexAsync(
             collectionName: collectionName,
-            "lastUpdatedAt",
+            "lastUpsertedAt",
             cancellationToken: cancellationToken);
-
         await _client.DeletePayloadIndexAsync(
             collectionName: collectionName,
             "vectorId",
             cancellationToken: cancellationToken);
-
         await _client.DeletePayloadIndexAsync(
             collectionName: collectionName,
             "sourceId",
@@ -133,7 +143,7 @@ public class QdrantVectorStorage : IVectorStorage
         CancellationToken cancellationToken = default)
     {
         var condition = BuildFilter(filter);
-        var orderBy = new OrderBy { Key = "lastUpdatedAt", Direction = Direction.Desc };
+        var orderBy = new OrderBy { Key = "lastUpsertedAt", Direction = Direction.Desc };
         var response = await _client.ScrollAsync(
             collectionName: collectionName,
             filter: condition,
@@ -146,16 +156,15 @@ public class QdrantVectorStorage : IVectorStorage
         var records = new List<VectorRecord>();
         foreach (var point in response.Result)
         {
-            var vectors = point.Vectors.Vectors_.Vectors[DefaultVectorsName].Data.ToArray();
-            var record = ConvertRecordToPayload(point.Payload);
+            var vectors = point.Vectors.Vectors.Vectors[DefaultVectorsName].Data.ToArray();
+            var record = ConvertPayloadToRecord(point.Payload);
             records.Add(new VectorRecord
             {
                 Id = record.Id,
-                SourceId = record.SourceId,
                 Vectors = vectors,
                 Source = record.Source,
                 Content = record.Content,
-                LastUpdatedAt = record.LastUpdatedAt,
+                LastUpsertedAt = record.LastUpsertedAt
             });
         }
         return records;
@@ -170,7 +179,7 @@ public class QdrantVectorStorage : IVectorStorage
         var points = new List<PointStruct>();
         foreach (var record in records)
         {
-            record.LastUpdatedAt = DateTime.UtcNow;
+            record.LastUpsertedAt = DateTime.UtcNow;
             var payload = ConvertRecordToPayload(record);
 
             points.Add(new PointStruct
@@ -186,7 +195,7 @@ public class QdrantVectorStorage : IVectorStorage
                     ["sourceId"] = payload["sourceId"],
                     ["source"] = payload["source"],
                     ["content"] = payload["content"],
-                    ["lastUpdatedAt"] = payload["lastUpdatedAt"],
+                    ["lastUpsertedAt"] = payload["lastUpsertedAt"],
                 },
             });
         }
@@ -236,7 +245,7 @@ public class QdrantVectorStorage : IVectorStorage
         var records = new List<ScoredVectorRecord>();
         foreach (var point in scoredPoints)
         {
-            var record = ConvertRecordToPayload(point.Payload);
+            var record = ConvertPayloadToRecord(point.Payload);
 
             records.Add(new ScoredVectorRecord
             {
@@ -244,7 +253,7 @@ public class QdrantVectorStorage : IVectorStorage
                 Score = point.Score,
                 Source = record.Source,
                 Content = record.Content,
-                LastUpdatedAt = record.LastUpdatedAt,
+                LastUpdatedAt = record.LastUpsertedAt,
             });
         }
 
@@ -284,7 +293,7 @@ public class QdrantVectorStorage : IVectorStorage
             ["sourceId"] = record.Source.Id,
             ["source"] = JsonSerializer.Serialize(record.Source, JsonDefaultOptions.Options),
             ["content"] = JsonSerializer.Serialize(record.Content, JsonDefaultOptions.Options),
-            ["lastUpdatedAt"] = new DateTimeOffset(record.LastUpdatedAt).ToUnixTimeMilliseconds(),
+            ["lastUpsertedAt"] = new DateTimeOffset(record.LastUpsertedAt).ToUnixTimeMilliseconds(),
         };
         return payload;
     }
@@ -292,25 +301,24 @@ public class QdrantVectorStorage : IVectorStorage
     /// <summary>
     /// Qdrant에서 반환된 Point의 Payload를 VectorRecord로 변환합니다.
     /// </summary>
-    private static VectorRecord ConvertRecordToPayload(MapField<string, Value> payload)
+    private static VectorRecord ConvertPayloadToRecord(MapField<string, Value> payload)
     {
         var vectorId = payload.GetValueOrDefault("vectorId")?.StringValue ?? string.Empty;
-        var source = JsonSerializer.Deserialize<IMemorySource>(
-            payload.GetValueOrDefault("source")?.StringValue ?? string.Empty)
-            ?? throw new InvalidOperationException("source is not found");
         var content = JsonSerializer.Deserialize<object>(
             payload.GetValueOrDefault("content")?.StringValue ?? string.Empty);
-        var lastUpdatedAt = DateTimeOffset.FromUnixTimeMilliseconds(
-            payload.GetValueOrDefault("lastUpdatedAt")?.IntegerValue ?? 0).UtcDateTime;
+        var lastUpsertedAt = DateTimeOffset.FromUnixTimeMilliseconds(
+            payload.GetValueOrDefault("lastUpsertedAt")?.IntegerValue ?? 0).UtcDateTime;
+        var source = JsonSerializer.Deserialize<IMemorySource>(
+            payload.GetValueOrDefault("source")?.StringValue ?? string.Empty)
+            ?? throw new InvalidOperationException("source is required");
 
         return new VectorRecord
         {
             Id = vectorId,
-            SourceId = source.Id,
-            Vectors = Array.Empty<float>(),
-            Source = source,
+            Vectors = [],
             Content = content,
-            LastUpdatedAt = lastUpdatedAt
+            Source = source,
+            LastUpsertedAt = lastUpsertedAt
         };
     }
 
@@ -328,23 +336,57 @@ public class QdrantVectorStorage : IVectorStorage
     }
 
     /// <summary>
-    /// 컬렉션 이름의 유효성 검사
+    /// 컬렉션 별칭에서 컬렉션 정보를 추출하여 VectorCollection 객체로 반환합니다.
     /// </summary>
-    private static string EnsureCollectionName(string collectionName)
+    private static VectorCollection ParseCollectionAlias(string collectionAlias)
+    {
+        var parts = collectionAlias.Split(CollectionAliasSeparator);
+        if (parts.Length != 5 || !long.TryParse(parts[4].Trim(), out var dimensions))
+            throw new ArgumentException("Invalid collection alias format", nameof(collectionAlias));
+
+        return new VectorCollection
+        {
+            Name = parts[1],
+            EmbeddingProvider = parts[2],
+            EmbeddingModel = parts[3],
+            Dimensions = dimensions
+        };
+    }
+
+    /// <summary>
+    /// 컬렉션 관련정보를 저장하기 위한 용도로 Qdrant의 컬렉션 별칭을 생성합니다.
+    /// </summary>
+    private static string CreateCollectionAlias(VectorCollection collection)
+    {
+        var collectionAlias = string.Join(CollectionAliasSeparator,
+            CollectionAliasPrefix,
+            collection.Name,
+            collection.EmbeddingProvider,
+            collection.EmbeddingModel,
+            collection.Dimensions);
+
+        return collectionAlias;
+    }
+
+    /// <summary>
+    /// Qdrant 컬렉션 이름의 유효성을 검사하고, 반환합니다.
+    /// </summary>
+    public static string EnsureCollectionName(string collectionName)
     {
         // Qdrant 규칙:
         // 1. 영문자, 숫자, 한글, 공백, 허용
         // 2. 대소문자 구분
         // 3. 1~255자 제한
         // 4. 특수문자 일부 제한(*, <, >, /, :, ...etc)
-
         if (string.IsNullOrWhiteSpace(collectionName))
             throw new ArgumentException("collection name is required", nameof(collectionName));
 
         if (collectionName.Length < 1 || collectionName.Length > 255)
-            throw new ArgumentException("collection name must be from 1 to 255 characters", nameof(collectionName));
+            throw new ArgumentException("collection name is too long", nameof(collectionName));
 
-        // 이외 유효성 검사는 Qdrant에서 수행
+        if (collectionName.StartsWith(CollectionAliasPrefix, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException($"collection name cannot start with '{CollectionAliasPrefix}'", nameof(collectionName));
+
         return collectionName;
     }
 }

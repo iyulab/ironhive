@@ -16,11 +16,11 @@ internal class OpenAIResponsesClient : OpenAIClientBase
         CancellationToken cancellationToken)
     {
         request.Stream = false;
-        var json = JsonSerializer.Serialize(request, JsonOptions);
+        var json = JsonSerializer.Serialize(request, _jsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        using var response = await Client.PostAsync(OpenAIConstants.PostChatCompletionPath.RemovePreffix('/'), content, cancellationToken);
+        using var response = await _client.PostAsync(OpenAIConstants.PostChatCompletionPath.RemovePreffix('/'), content, cancellationToken);
         response.EnsureSuccessStatusCode();
-        var message = await response.Content.ReadFromJsonAsync<ResponsesResponse>(JsonOptions, cancellationToken)
+        var message = await response.Content.ReadFromJsonAsync<ResponsesResponse>(_jsonOptions, cancellationToken)
             ?? throw new InvalidOperationException("Failed to deserialize response.");
         return message;
     }
@@ -31,11 +31,11 @@ internal class OpenAIResponsesClient : OpenAIClientBase
     {
         request.Stream = true;
         //request.StreamOptions = new StreamOptions { InCludeUsage = true };
-        var json = JsonSerializer.Serialize(request, JsonOptions);
+        var json = JsonSerializer.Serialize(request, _jsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         using var _request = new HttpRequestMessage(HttpMethod.Post, OpenAIConstants.PostChatCompletionPath.RemovePreffix('/'));
         _request.Content = content;
-        using var response = await Client.SendAsync(_request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        using var response = await _client.SendAsync(_request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         response.EnsureSuccessStatusCode();
 
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -56,7 +56,7 @@ internal class OpenAIResponsesClient : OpenAIClientBase
                 if (!data.StartsWith('{') || !data.EndsWith('}'))
                     continue;
 
-                var message = JsonSerializer.Deserialize<StreamingResponsesResponse>(data, JsonOptions);
+                var message = JsonSerializer.Deserialize<StreamingResponsesResponse>(data, _jsonOptions);
                 if (message != null)
                 {
                     yield return message;

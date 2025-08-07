@@ -8,6 +8,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "00. docs", "00. docs", "{C5
 		docs\ENDREASON.md = docs\ENDREASON.md
 		docs\STRUCTURE.md = docs\STRUCTURE.md
 		docs\TODO.md = docs\TODO.md
+		docs\VECTORDB.md = docs\VECTORDB.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "10. src", "10. src", "{D742CF15-98B2-4095-B749-589A7ED4EFD1}"

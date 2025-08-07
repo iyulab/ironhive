@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Memory;
 
 namespace IronHive.Core.Memory.Handlers;
@@ -8,9 +9,9 @@ namespace IronHive.Core.Memory.Handlers;
 /// </summary>
 public class TextChunkerHandler : IMemoryPipelineHandler
 {
-    private readonly IMemoryEmbedder _embedder;
+    private readonly IEmbeddingGenerationService _embedder;
 
-    public TextChunkerHandler(IMemoryEmbedder embedder)
+    public TextChunkerHandler(IEmbeddingGenerationService embedder)
     {
         _embedder = embedder;
     }
@@ -43,7 +44,12 @@ public class TextChunkerHandler : IMemoryPipelineHandler
             var sb = new StringBuilder();
             foreach (var line in lines)
             {
-                var tokenCount = await _embedder.CountTokensAsync(line, cancellationToken);
+                var tokenCount = await _embedder.CountTokensAsync(
+                    target.EmbeddingProvider, 
+                    target.EmbeddingModel, 
+                    line, 
+                    cancellationToken);
+
                 if (tokenCount <= 0)
                     continue; // Skip empty
 

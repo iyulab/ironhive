@@ -46,13 +46,6 @@ public interface IHiveServiceBuilder
     IHiveServiceBuilder WithVectorStorage(IVectorStorage storage);
 
     /// <summary>
-    /// 메모리 임베더를 싱글턴으로 등록합니다.
-    /// </summary>
-    /// <param name="provider">임베더의 공급자 키입니다.</param>
-    /// <param name="model">임베더의 모델 키입니다.</param>
-    IHiveServiceBuilder WithMemoryEmbedder(string provider, string model);
-
-    /// <summary>
     /// 메모리 큐 스토리지를 싱글턴으로 등록합니다.
     /// 하나의 큐 스토리지만 등록할 수 있으며, 이후 등록은 기존 것을 대체합니다.
     /// </summary>

@@ -11,6 +11,7 @@ namespace IronHive.Core.Storages;
 /// </summary>
 public partial class LocalVectorStorage : IVectorStorage
 {
+    private const string CollectionMetaTableName = "collections_meta";
     private static readonly Regex _collPattern = new Regex(@"^[A-Za-z][A-Za-z0-9_]*$", RegexOptions.Compiled);
     private readonly LiteDatabase _db;
 
@@ -26,74 +27,96 @@ public partial class LocalVectorStorage : IVectorStorage
     }
 
     /// <inheritdoc />
-    public Task<IEnumerable<string>> ListCollectionsAsync(
-        string? prefix = null,
+    public Task<IEnumerable<VectorCollection>> ListCollectionsAsync(
         CancellationToken cancellationToken = default)
     {
-        prefix ??= string.Empty;
-        var colls = _db.GetCollectionNames()
-            .Where(p => p.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-            ?? Enumerable.Empty<string>();
-        return Task.FromResult(colls);
+        var meta = _db.GetCollection<VectorCollection>(CollectionMetaTableName);
+        var result = meta.FindAll();
+
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(result);
     }
 
     /// <inheritdoc />
     public Task<bool> CollectionExistsAsync(
-        string collectionName,
+        string collectionName, 
         CancellationToken cancellationToken = default)
     {
-        collectionName = EnsureCollectionName(collectionName);
+        var meta = _db.GetCollection<VectorCollection>(CollectionMetaTableName);
+        var exists = meta.Exists(x => x.Name == collectionName);
 
-        var isExist = _db.CollectionExists(collectionName);
-        return Task.FromResult(isExist);
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(exists);
     }
 
     /// <inheritdoc />
-    public async Task CreateCollectionAsync(
+    public Task<VectorCollection?> GetCollectionInfoAsync(
         string collectionName,
-        int dimensions,
         CancellationToken cancellationToken = default)
     {
-        collectionName = EnsureCollectionName(collectionName);
+        var meta = _db.GetCollection<VectorCollection>(CollectionMetaTableName);
+        var coll = meta.FindOne(x => x.Name == collectionName);
 
-        if (await CollectionExistsAsync(collectionName, cancellationToken))
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(coll ?? null);
+    }
+
+    /// <inheritdoc />
+    public Task CreateCollectionAsync(
+        VectorCollection collection,
+        CancellationToken cancellationToken = default)
+    {
+        var collectionName = EnsureCollectionName(collection.Name);
+        if (_db.CollectionExists(collectionName))
             throw new InvalidOperationException($"Collection '{collectionName}' already exists.");
-
         var coll = _db.GetCollection<VectorRecord>(collectionName);
+        cancellationToken.ThrowIfCancellationRequested();
 
-        // 인덱스 생성
-        coll.EnsureIndex(p => p.Id);
-        coll.EnsureIndex(p => p.SourceId);
-
-        // LiteDB does not support creating an empty collection.
+        // LiteDB는 컬렉션 생성 기능을 따로 제공하지 않고, 자동으로 생성되므로,
+        // 임의의 빈 레코드를 추가하여 컬렉션을 초기화합니다.
         var empty = new VectorRecord
         {
-            Id = string.Empty,
-            SourceId = string.Empty,
+            Id = Guid.NewGuid().ToString(),
+            Vectors = new float[collection.Dimensions],
             Source = new TextMemorySource { Value = string.Empty },
-            Vectors = new float[dimensions]
         };
         coll.Upsert(empty);
         coll.Delete(empty.Id);
+
+        // 인덱스 생성
+        coll.EnsureIndex(p => p.Id);
+        coll.EnsureIndex(p => p.Source.Id);
+
+        // 메타 테이블에 등록
+        var meta = _db.GetCollection<VectorCollection>(CollectionMetaTableName);
+        meta.Upsert(collection);
+
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.CompletedTask;
     }
 
     /// <inheritdoc />
-    public async Task DeleteCollectionAsync(
+    public Task DeleteCollectionAsync(
         string collectionName,
         CancellationToken cancellationToken = default)
     {
         collectionName = EnsureCollectionName(collectionName);
-
-        if (!await CollectionExistsAsync(collectionName, cancellationToken))
-            throw new InvalidOperationException($"Collection '{collectionName}' not found.");
+        var coll = _db.GetCollection<VectorRecord>(collectionName);
+        cancellationToken.ThrowIfCancellationRequested();
 
         // 인덱스 삭제
-        var coll = _db.GetCollection<VectorRecord>(collectionName);
         coll.DropIndex(nameof(VectorRecord.Id));
-        coll.DropIndex(nameof(VectorRecord.SourceId));
+        coll.DropIndex(nameof(VectorRecord.Source.Id));
 
         // 컬렉션 삭제
         _db.DropCollection(collectionName);
+
+        // 메타 테이블에서 삭제
+        var meta = _db.GetCollection<VectorCollection>(CollectionMetaTableName);
+        meta.DeleteMany(p => p.Name == collectionName);
+
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.CompletedTask;
     }
 
     /// <inheritdoc />
@@ -104,21 +127,23 @@ public partial class LocalVectorStorage : IVectorStorage
         CancellationToken cancellationToken = default)
     {
         collectionName = EnsureCollectionName(collectionName);
-
         var coll = _db.GetCollection<VectorRecord>(collectionName);
-        var query = coll.Query();
+        cancellationToken.ThrowIfCancellationRequested();
 
+        var query = coll.Query();
         if (filter != null && (filter.SourceIds.Count > 0 || filter.VectorIds.Count > 0))
         {
             query = query.Where(p =>
-                filter.SourceIds.Count > 0 && filter.SourceIds.Contains(p.SourceId) ||
+                filter.SourceIds.Count > 0 && filter.SourceIds.Contains(p.Source.Id) ||
                 filter.VectorIds.Count > 0 && filter.VectorIds.Contains(p.Id));
         }
 
         var results = query
-            .OrderByDescending(p => p.LastUpdatedAt)
+            .OrderByDescending(p => p.LastUpsertedAt)
             .Limit(limit)
             .ToEnumerable();
+
+        cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(results);
     }
 
@@ -129,14 +154,17 @@ public partial class LocalVectorStorage : IVectorStorage
         CancellationToken cancellationToken = default)
     {
         collectionName = EnsureCollectionName(collectionName);
-
-        records = records.Select(p =>
-        {
-            p.LastUpdatedAt = DateTime.UtcNow;
-            return p;
-        });
         var coll = _db.GetCollection<VectorRecord>(collectionName);
-        coll.Upsert(records);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        coll.Upsert(records.Select(r =>
+        {
+            // Set LastUpdatedAt to current time
+            r.LastUpsertedAt = DateTime.UtcNow;
+            return r;
+        }));
+
+        cancellationToken.ThrowIfCancellationRequested();
         return Task.CompletedTask;
     }
 
@@ -147,13 +175,15 @@ public partial class LocalVectorStorage : IVectorStorage
         CancellationToken cancellationToken = default)
     {
         collectionName = EnsureCollectionName(collectionName);
-
         var coll = _db.GetCollection<VectorRecord>(collectionName);
+        cancellationToken.ThrowIfCancellationRequested();
 
         if (filter.SourceIds.Count > 0)
-            coll.DeleteMany(p => filter.SourceIds.Contains(p.SourceId));
+            coll.DeleteMany(p => filter.SourceIds.Contains(p.Source.Id));
         if (filter.VectorIds.Count > 0)
             coll.DeleteMany(p => filter.VectorIds.Contains(p.Id));
+
+        cancellationToken.ThrowIfCancellationRequested();
         return Task.CompletedTask;
     }
 
@@ -167,17 +197,17 @@ public partial class LocalVectorStorage : IVectorStorage
         CancellationToken cancellationToken = default)
     {
         collectionName = EnsureCollectionName(collectionName);
-
         var coll = _db.GetCollection<VectorRecord>(collectionName);
-        var query = coll.Query();
+        cancellationToken.ThrowIfCancellationRequested();
 
+        var query = coll.Query();
         if (filter != null && (filter.SourceIds.Count > 0 || filter.VectorIds.Count > 0))
         {
             query = query.Where(p =>
-                filter.SourceIds.Count > 0 && filter.SourceIds.Contains(p.SourceId) ||
+                filter.SourceIds.Count > 0 && filter.SourceIds.Contains(p.Source.Id) ||
                 filter.VectorIds.Count > 0 && filter.VectorIds.Contains(p.Id));
         }
-
+        
         var records = query
             .ToList()
             .Select(p => new ScoredVectorRecord
@@ -186,13 +216,14 @@ public partial class LocalVectorStorage : IVectorStorage
                 Score = TensorPrimitives.CosineSimilarity(vector.ToArray(), p.Vectors.ToArray()),
                 Source = p.Source,
                 Content = p.Content,
-                LastUpdatedAt = p.LastUpdatedAt 
+                LastUpdatedAt = p.LastUpsertedAt 
             })
             .Where(p => p.Score >= minScore)
             .OrderByDescending(p => p.Score)
             .Take(limit)
             .AsEnumerable();
 
+        cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(records);
     }
 
@@ -226,16 +257,20 @@ public partial class LocalVectorStorage : IVectorStorage
     /// </summary>
     private static string EnsureCollectionName(string collectionName)
     {
+        // LiteDB Rules: 
+        // 1. 영문자, 숫자, 밑줄(_)만 허용됩니다.
+        // 2. 이름의 앞 첫글자는 영문자만 허용됩니다.
+        // 3. 대소문자는 구분하지 않으므로 소문자로 통일합니다.
+
         if (string.IsNullOrWhiteSpace(collectionName))
             throw new ArgumentNullException(nameof(collectionName));
 
-        // 1.영문자, 숫자, 밑줄(_)만 허용됩니다.
-        // 2. 이름의 앞 첫글자는 영문자만 허용됩니다.
         if (!_collPattern.IsMatch(collectionName))
             throw new ArgumentException("Invalid collection name. The name must contain only English letters, numbers, and underscores, and must start with an English letter.");
 
-        // 3. 대소문자는 구분하지 않으므로 소문자로 통일합니다.
-        collectionName = collectionName.ToLowerInvariant();
-        return collectionName;
+        if (string.Equals(collectionName, CollectionMetaTableName, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException($"The collection name '{CollectionMetaTableName}' is reserved and cannot be used.");
+
+        return collectionName.ToLowerInvariant();
     }
 }

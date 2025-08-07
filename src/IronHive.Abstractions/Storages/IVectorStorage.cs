@@ -7,31 +7,35 @@
 public interface IVectorStorage : IDisposable
 {
     /// <summary>
-    /// 해당하는 벡터 컬렉션의 이름을 비동기적으로 반환합니다.
+    /// 모든 벡터 컬렉션들을 비동기적으로 반환합니다.
     /// </summary>
-    /// <param name="prefix">컬렉션 이름의 접두어 (옵션)</param>
-    /// <returns>컬렉션 이름의 나열</returns>
-    Task<IEnumerable<string>> ListCollectionsAsync(
-        string? prefix = null,
+    /// <returns>컬렉션 정보의 나열</returns>
+    Task<IEnumerable<VectorCollection>> ListCollectionsAsync(
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 지정된 이름의 벡터 컬렉션이 존재하는지 비동기적으로 확인합니다.
+    /// 지정된 이름의 벡터 컬렉션이 존재하는지 확인합니다.
     /// </summary>
-    /// <param name="collectionName">확인할 컬렉션의 이름</param>
-    /// <returns>컬렉션이 존재하면 true, 아니면 false</returns>
+    /// <param name="collectionName">컬렉션 이름</param>
     Task<bool> CollectionExistsAsync(
         string collectionName,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 새로운 벡터 컬렉션을 지정된 차원으로 비동기적으로 생성합니다.
+    /// 지정된 이름의 벡터 컬렉션의 정보를 비동기적으로 반환합니다.
     /// </summary>
-    /// <param name="collectionName">생성할 컬렉션의 이름</param>
-    /// <param name="dimensions">벡터의 차원 수</param>
-    Task CreateCollectionAsync(
+    /// <param name="collectionName">확인할 컬렉션의 이름</param>
+    /// <returns>해당하는 컬렉션의 정보, 없다면 null</returns>
+    Task<VectorCollection?> GetCollectionInfoAsync(
         string collectionName,
-        int dimensions,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 새로운 벡터 컬렉션을 비동기적으로 생성합니다.
+    /// </summary>
+    /// <param name="collection">새로 생성할 벡터 컬렉션의 정보</param>
+    Task CreateCollectionAsync(
+        VectorCollection collection,
         CancellationToken cancellationToken = default);
 
     /// <summary>

@@ -81,17 +81,6 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     }
 
     /// <inheritdoc />
-    public IHiveServiceBuilder WithMemoryEmbedder(string provider, string model)
-    {
-        Services.AddSingleton<IMemoryEmbedder>(sp => new MemoryEmbedder(sp.GetRequiredService<IEmbeddingGenerationService>())
-        {
-            Model = model,
-            Provider = provider
-        });
-        return this;
-    }
-
-    /// <inheritdoc />
     public IHiveServiceBuilder WithMemoryQueueStorage(IQueueStorage<MemoryPipelineRequest> storage)
     {
         Services.RemoveAll<IQueueStorage<MemoryPipelineRequest>>();
@@ -156,6 +145,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         // 4. SetWorkers()  워커설정 객체
         // 5. SetPipeline() 빌더 패턴으로 파이프라인 구성 
         Services.TryAddSingleton<IMemoryService, MemoryService>();
+        Services.TryAddSingleton<IMemoryWorkerManager, MemoryWorkerManager>();
     }
 
     /// <summary>

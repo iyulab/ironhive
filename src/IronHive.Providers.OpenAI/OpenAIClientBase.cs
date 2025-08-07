@@ -4,29 +4,28 @@ namespace IronHive.Providers.OpenAI;
 
 public abstract class OpenAIClientBase : IDisposable
 {
+    protected readonly HttpClient _client;
+    protected readonly JsonSerializerOptions _jsonOptions;
+
     protected OpenAIClientBase(OpenAIConfig config)
     {
-        Client = CreateHttpClient(config);
-        JsonOptions = config.JsonOptions;
+        _client = CreateHttpClient(config);
+        _jsonOptions = config.JsonOptions;
     }
 
     protected OpenAIClientBase(string apiKey)
     {
         var config = new OpenAIConfig { ApiKey = apiKey };
-        Client = CreateHttpClient(config);
-        JsonOptions = config.JsonOptions;
+        _client = CreateHttpClient(config);
+        _jsonOptions = config.JsonOptions;
     }
-
-    public HttpClient Client { get; }
-
-    public JsonSerializerOptions JsonOptions { get; }
 
     /// <summary>
     /// Releases all resources used by the <see cref="OpenAIClientBase"/> instance.
     /// </summary>
     public virtual void Dispose()
     {
-        Client.Dispose();
+        _client.Dispose();
         GC.SuppressFinalize(this);
     }
 

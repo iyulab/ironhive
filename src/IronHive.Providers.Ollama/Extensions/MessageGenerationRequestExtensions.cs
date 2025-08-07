@@ -1,11 +1,11 @@
 ﻿using System.Text.Json;
-using IronHive.Abstractions.Message;
 using IronHive.Abstractions.Message.Content;
 using IronHive.Abstractions.Message.Roles;
+using IronHive.Providers.Ollama;
 using IronHive.Providers.Ollama.Chat;
 using OllamaMessage = IronHive.Providers.Ollama.Chat.Message;
 
-namespace IronHive.Providers.Ollama;
+namespace IronHive.Abstractions.Message;
 
 internal static class MessageGenerationRequestExtensions
 {

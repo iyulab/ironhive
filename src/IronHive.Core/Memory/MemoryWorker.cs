@@ -47,16 +47,19 @@ public class MemoryWorker : IMemoryWorker
     /// <inheritdoc />
     public void Dispose()
     {
-        _cts?.Cancel();
-        _cts?.Dispose();
-        _cts = null;
+        try
+        {
+            _cts?.Dispose();
+            _tcs?.TrySetCanceled();
+        }
+        finally
+        {
+            _cts = null;
+            _tcs = null;
 
-        _tcs?.TrySetCanceled();
-        _tcs = null;
-
-        StateChanged = null;
-        Progressed = null;
-
+            StateChanged = null;
+            Progressed = null;
+        }
         GC.SuppressFinalize(this);
     }
 
@@ -78,15 +81,15 @@ public class MemoryWorker : IMemoryWorker
         {
             while (!_cts.Token.IsCancellationRequested)
             {
-                var msg = await _queue.DequeueAsync(_cts.Token);
-
                 if (State == MemoryWorkerState.StopRequested)
                     break;
 
+                var msg = await _queue.DequeueAsync(_cts.Token);
                 if (msg != null)
                 {
                     State = MemoryWorkerState.Processing;
                     await ExecuteAsync(msg.Payload, _cts.Token);
+                    Console.WriteLine($"[INFO] Processed message: {msg.Payload.Source.Id}");
                     if (msg.Tag != null)
                         await _queue.AckAsync(msg.Tag, _cts.Token);
                 }
@@ -96,6 +99,10 @@ public class MemoryWorker : IMemoryWorker
                     await Task.Delay(Math.Max(DequeueInterval, 100), _cts.Token);
                 }
             }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERROR] Worker encountered an error: {ex.Message}");
         }
         finally
         {
