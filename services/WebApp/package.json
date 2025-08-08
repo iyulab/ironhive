@@ -6,7 +6,8 @@
   "main": "src/index.js",
   "scripts": {
     "start": "vite --host 0.0.0.0 --port 3000 --open --force",
-    "build": "eslint && vite build"
+    "build": "eslint && vite build",
+    "upload": "az storage file upload-batch --account-name iyustorage -s dist -d ironhive --destination-path wwwroot"
   },
   "workspaces": [
     "../../../node-packages/packages/http-client",

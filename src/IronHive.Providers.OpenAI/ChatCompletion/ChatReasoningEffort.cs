@@ -3,17 +3,22 @@
 public enum ChatReasoningEffort
 {
     /// <summary>
+    /// Very low reasoning effort
+    /// </summary>
+    Minimal,
+
+    /// <summary>
     /// Low reasoning effort
     /// </summary>
-    Low = 1,
+    Low,
     
     /// <summary>
     /// Medium reasoning effort
     /// </summary>
-    Medium = 2,
+    Medium,
 
     /// <summary>
     /// High reasoning effort
     /// </summary>
-    High = 3
+    High
 }

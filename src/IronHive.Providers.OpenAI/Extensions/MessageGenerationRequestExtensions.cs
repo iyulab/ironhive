@@ -154,7 +154,8 @@ internal static class MessageGenerationRequestExtensions
     // 추론모델인지 확인합니다.
     private static bool IsReasoningModel (MessageGenerationRequest request)
     {
-        // 'o'와 숫자로 시작하는 경우
-        return request.Model.StartsWith('o') && char.IsDigit(request.Model[1]);
+        // 'o'와 숫자로 시작하거나 "gpt-5"모델의 경우
+        return request.Model.StartsWith('o') && char.IsDigit(request.Model[1]) |
+               request.Model.StartsWith("gpt-5", StringComparison.OrdinalIgnoreCase);
     }
 }

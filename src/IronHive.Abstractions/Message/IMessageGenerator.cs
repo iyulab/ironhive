@@ -3,7 +3,7 @@
 /// <summary>
 /// 메시지 생성기 공급자를 정의하는 인터페이스입니다.
 /// </summary>
-public interface IMessageGenerator
+public interface IMessageGenerator : IDisposable
 {
     /// <summary>
     /// 메시지 생성기 공급자의 고유 키입니다.

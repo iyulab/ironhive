@@ -1,5 +1,4 @@
 ﻿using System.Net.Http.Json;
-using System.Text.Json;
 
 namespace IronHive.Providers.Anthropic.Catalog;
 
@@ -14,20 +13,36 @@ public class AnthropicModelsClient : AnthropicClientBase
     /// <summary>
     /// Gets the list of Anthropic models.
     /// </summary>
-    public async Task<IEnumerable<AnthropicModel>> GetModelsAsync(CancellationToken cancellationToken)
+    public async Task<AnthropicListModelsResponse> GetModelsAsync(
+        AnthropicListModelsRequest request, 
+        CancellationToken cancellationToken)
     {
-        var path = $"{AnthropicConstants.GetModelsPath}?limit=999".RemovePreffix('/');
-        var jsonDoc = await _client.GetFromJsonAsync<JsonDocument>(path, _jsonOptions, cancellationToken);
+        var query = new Dictionary<string, string?>();
+        if (!string.IsNullOrWhiteSpace(request.BeforeId))
+            query["before_id"] = request.BeforeId;
+        if (!string.IsNullOrWhiteSpace(request.AfterId))
+            query["after_id"] = request.AfterId;
+        if (request.Limit > 0)
+            query["limit"] = request.Limit.ToString();
 
-        var models = jsonDoc?.RootElement.GetProperty("data").Deserialize<IEnumerable<AnthropicModel>>(_jsonOptions);
-        return models?.OrderByDescending(m => m.CreatedAt)
-            .ToArray() ?? [];
+        var path = AnthropicConstants.GetModelsPath.RemovePreffix('/');
+        if (query.Count != 0)
+        {
+            path += "?"; 
+            path += string.Join("&", query.Select(kvp => $"{kvp.Key}={Uri.EscapeDataString(kvp.Value ?? string.Empty)}"));
+        }
+
+        var response = await _client.GetFromJsonAsync<AnthropicListModelsResponse>(path, _jsonOptions, cancellationToken)
+            ?? throw new InvalidOperationException("Failed to retrieve models from Anthropic API.");
+        return response;
     }
 
     /// <summary>
     /// Gets the list of Anthropic models.
     /// </summary>
-    public async Task<AnthropicModel?> GetModelAsync(string modelId, CancellationToken cancellationToken)
+    public async Task<AnthropicModel?> GetModelAsync(
+        string modelId, 
+        CancellationToken cancellationToken)
     {
         var path = Path.Combine(AnthropicConstants.GetModelsPath, modelId).RemovePreffix('/');
         var model = await _client.GetFromJsonAsync<AnthropicModel>(path, _jsonOptions, cancellationToken);

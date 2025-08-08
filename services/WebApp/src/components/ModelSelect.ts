@@ -70,18 +70,35 @@ export class ModelSelect extends LitElement {
               return html`
                 <div class="item" ?selected=${selected} @click=${() => this.select(i)}>
                   <div class="display">
+                    ${selected ? html`<uc-icon name="check"></uc-icon>` : nothing}
                     ${i.displayName}
-                    ${i.thinkable ? html`<uc-icon name="lightbulb-fill"></uc-icon>` : nothing}
+                  </div>
+                  <div class="abilities">
+                    ${i.thinkable ? html`💡` : nothing}
                   </div>
                   <div class="description">
                     ${i.description}
                   </div>
                   <uc-tooltip placement="right-start">
-                    <strong>Thinkable:</strong><span>${i.thinkable ? '✅' : '❌'}</span>
-                    <strong>Input Price:</strong><span>${i.inputPrice ? `$${i.inputPrice} / 1M tokens` : 'Free'}</span>
-                    <strong>Output Price:</strong><span>${i.outputPrice ? `$${i.outputPrice} / 1M tokens` : 'Free'}</span>
-                    <strong>Context Length:</strong><span>${i.contextLength} tokens</span>
-                    <strong>Max Output:</strong><span>${i.maxOutput ? `${i.maxOutput} tokens` : 'Unknown'}</span>
+                    <div class="tooltip-section">
+                      <div class="ts-title">💲 Price (1M Tokens)</div>
+                      <div class="ts-value">
+                        <span class="io-badge in">in</span>
+                        <span>$ ${i.inputPrice || '0'}</span>
+                        <span class="io-badge out">out</span>
+                        <span>$ ${i.outputPrice || '0'}</span>
+                      </div>
+                    </div>
+                    
+                    <div class="tooltip-section">
+                      <div class="ts-title">📊 Token Limit</div>
+                      <div class="ts-value">
+                        <span class="io-badge in">in</span>
+                        <span>${this.formatTokens(i.contextLength)}</span>
+                        <span class="io-badge out">out</span>
+                        <span>${i.maxOutput ? this.formatTokens(i.maxOutput) : '?'}</span>
+                      </div>
+                    </div>
                   </uc-tooltip>
                 </div>`});
             }), html`<uc-dot-rotate-loader class="loader"></uc-dot-rotate-loader>`)}
@@ -97,6 +114,15 @@ export class ModelSelect extends LitElement {
       composed: true
     }));
     this.open = false;
+  }
+
+  private formatTokens(tokens: number): string {
+    if (tokens >= 1000000) {
+      return `${(tokens / 1000000).toFixed(1)}M`;
+    } else if (tokens >= 1000) {
+      return `${(tokens / 1000).toFixed(0)}K`;
+    }
+    return tokens.toString();
   }
 
   static styles = css`
@@ -177,7 +203,7 @@ export class ModelSelect extends LitElement {
       position: relative;
       display: flex;
       flex-direction: column;
-      min-width: 210px;
+      width: 210px;
 
       border-left: 1px solid var(--uc-border-color-low);
     }
@@ -191,8 +217,11 @@ export class ModelSelect extends LitElement {
     .models .item {
       position: relative;
       padding: 4px 8px;
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      grid-template-areas:
+        "dp ab"
+        "ds ds";
       cursor: pointer;
     }
     .models .item:hover {
@@ -202,6 +231,7 @@ export class ModelSelect extends LitElement {
       background-color: var(--uc-background-color-300);
     }
     .models .item .display {
+      grid-area: dp;
       display: flex;
       flex-direction: row;
       align-items: center;
@@ -210,10 +240,16 @@ export class ModelSelect extends LitElement {
       line-height: 1.5;
       font-weight: 400;
     }
-    .models .item .display uc-icon {
-      color: var(--uc-yellow-color-500);
+    .models .item .abilities {
+      grid-area: ab;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 4px;
+      font-size: 14px;
     }
     .models .item .description {
+      grid-area: ds;
       font-size: 12px;
       line-height: 1.5;
       font-weight: 300;
@@ -223,10 +259,47 @@ export class ModelSelect extends LitElement {
       text-overflow: ellipsis;
     }
     .models .item uc-tooltip {
-      display: grid;
-      grid-template-columns: auto 1fr;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 4px;
+    }
+
+    .tooltip-section {
+      display: flex;
+      flex-direction: column;
       gap: 4px;
     }
-    
+    .ts-title {
+      font-weight: 600;
+      font-size: 12px;
+    }
+    .ts-value {
+      display: grid;
+      grid-template-columns: auto 1fr auto 1fr;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      padding: 4px;
+    }
+    .io-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      font-style: italic;
+      font-family: 'Georgia', serif;
+    }
+    .io-badge.in {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    .io-badge.out {
+      background: #d1fae5;
+      color: #065f46;
+    }
   `;
 }

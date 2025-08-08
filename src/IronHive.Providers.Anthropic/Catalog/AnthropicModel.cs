@@ -9,16 +9,11 @@ namespace IronHive.Providers.Anthropic.Catalog;
 public class AnthropicModel
 {
     /// <summary>
-    /// always "model"
+    /// Creation date and time of the model.
     /// </summary>
-    [JsonPropertyName("type")]
-    public string? Type { get; set; }
-
-    /// <summary>
-    /// the model ID.
-    /// </summary>
-    [JsonPropertyName("id")]
-    public required string Id { get; set; }
+    [JsonPropertyName("created_at")]
+    [JsonConverter(typeof(DateTimeJsonConverter))]
+    public DateTime? CreatedAt { get; set; }
 
     /// <summary>
     /// Display name of the model.
@@ -27,9 +22,14 @@ public class AnthropicModel
     public string? DisplayName { get; set; }
 
     /// <summary>
-    /// Creation date and time of the model.
+    /// the model ID.
     /// </summary>
-    [JsonPropertyName("created_at")]
-    [JsonConverter(typeof(DateTimeJsonConverter))]
-    public DateTime? CreatedAt { get; set; }
+    [JsonPropertyName("id")]
+    public required string Id { get; set; }
+
+    /// <summary>
+    /// always "model"
+    /// </summary>
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
 }

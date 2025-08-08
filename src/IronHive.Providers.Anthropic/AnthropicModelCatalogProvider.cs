@@ -21,12 +21,23 @@ public class AnthropicModelCatalogProvider : IModelCatalogProvider
     public required string ProviderName { get; init; }
 
     /// <inheritdoc />
+    public void Dispose()
+    {
+        _client.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
+    /// <inheritdoc />
     public async Task<IEnumerable<ModelSummary>> ListModelsAsync(
         CancellationToken cancellationToken = default)
     {
-        var models = await _client.GetModelsAsync(cancellationToken);
+        var req = new AnthropicListModelsRequest
+        {
+            Limit = 999,
+        };
+        var res = await _client.GetModelsAsync(req, cancellationToken);
 
-        return models.Select(m => new ModelSummary
+        return res.Data.Select(m => new ModelSummary
         {
             Provider = ProviderName,
             ModelId = m.Id,

@@ -23,6 +23,9 @@ public class MemoryWorkerManager : IMemoryWorkerManager
     }
 
     /// <inheritdoc />
+    public event EventHandler<MemoryPipelineEventArgs>? Progressed;
+
+    /// <inheritdoc />
     public bool IsRunning => Volatile.Read(ref _state) == 1;
 
     /// <inheritdoc />
@@ -86,6 +89,7 @@ public class MemoryWorkerManager : IMemoryWorkerManager
             if (_workers.TryTake(out var worker))
             {
                 worker.StateChanged -= OnWorkerStateChanged;
+                worker.Progressed -= OnWorkerProgressed;
                 tasks.Add(worker.StopAsync(false).ContinueWith(t =>
                 {
                     worker.Dispose();
@@ -105,6 +109,7 @@ public class MemoryWorkerManager : IMemoryWorkerManager
         // 새로운 워커 인스턴스 생성
         var worker = _services.GetService<IMemoryWorker>() ?? new MemoryWorker(_services);
         worker.StateChanged += OnWorkerStateChanged;
+        worker.Progressed += OnWorkerProgressed;
 
         // 워커를 백그라운드에서 실행하고 관리 목록에 추가
         Task.Run(worker.StartAsync);
@@ -172,5 +177,13 @@ public class MemoryWorkerManager : IMemoryWorkerManager
                 }
                 break;
         }
+    }
+
+    /// <summary>
+    /// 워커의 진행 상황이벤트를 전달합니다.
+    /// </summary>
+    private void OnWorkerProgressed(object? sender, MemoryPipelineEventArgs e)
+    {
+        Progressed?.Invoke(sender, e);
     }
 }

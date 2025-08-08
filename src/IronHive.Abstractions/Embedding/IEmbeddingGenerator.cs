@@ -3,7 +3,7 @@
 /// <summary>
 /// 임베딩을 생성하는 기능을 제공하는 서비스 인터페이스입니다.
 /// </summary>
-public interface IEmbeddingGenerator
+public interface IEmbeddingGenerator : IDisposable
 {
     /// <summary>
     /// 공급자의 이름을 가져옵니다.

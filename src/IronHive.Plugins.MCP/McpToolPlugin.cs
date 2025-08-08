@@ -1,7 +1,7 @@
 ﻿using System.Data;
+using ModelContextProtocol.Client;
 using IronHive.Abstractions.Tools;
 using IronHive.Plugins.MCP.Configurations;
-using ModelContextProtocol.Client;
 
 namespace IronHive.Plugins.MCP;
 
@@ -23,7 +23,8 @@ public class McpToolPlugin : IToolPlugin
         _config = config;
 
         // 서버 설정을 기반으로 MCP 클라이언트를 초기화합니다
-        _ = Task.Run(async () => await ConnectAsync());
+        if (_config.AutoConnectOnCreated)
+            _ = Task.Run(async () => await ConnectAsync());
     }
 
     /// <inheritdoc />

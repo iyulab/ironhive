@@ -3,20 +3,9 @@
   "data": [
     {
       "provider": "anthropic",
-      "modelId": "claude-sonnet-4-0",
-      "displayName": "Claude Sonnet 4",
-      "description": "Latest balanced reasoning model",
-      "thinkable": true,
-      "inputPrice": 3,
-      "outputPrice": 15,
-      "contextLength": 200000,
-      "maxOutput": 64000
-    },
-    {
-      "provider": "anthropic",
-      "modelId": "claude-opus-4-0",
-      "displayName": "Claude Opus 4",
-      "description": "Latest intelligence reasoning model",
+      "modelId": "claude-opus-4-1",
+      "displayName": "Claude Opus 4.1",
+      "description": "Highest level of intelligence and capability",
       "thinkable": true,
       "inputPrice": 15,
       "outputPrice": 75,
@@ -25,9 +14,20 @@
     },
     {
       "provider": "anthropic",
+      "modelId": "claude-sonnet-4-0",
+      "displayName": "Claude Sonnet 4",
+      "description": "High intelligence and balanced performance",
+      "thinkable": true,
+      "inputPrice": 3,
+      "outputPrice": 15,
+      "contextLength": 200000,
+      "maxOutput": 64000
+    },
+    {
+      "provider": "anthropic",
       "modelId": "claude-3-5-haiku-latest",
       "displayName": "Claude Haiku 3.5",
-      "description": "Most fast lightweight model",
+      "description": "Intelligence at blazing speeds",
       "thinkable": false,
       "inputPrice": 0.8,
       "outputPrice": 4,

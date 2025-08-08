@@ -3,69 +3,36 @@
   "data": [
     {
       "provider": "openai",
-      "modelId": "gpt-4.1-mini",
-      "displayName": "GPT 4.1 Mini",
-      "description": "Latest lightweight gpt model",
-      "thinkable": false,
-      "inputPrice": 0.4,
-      "outputPrice": 1.6,
-      "contextLength": 1047576,
-      "maxOutput": 32768
-    },
-    {
-      "provider": "openai",
-      "modelId": "gpt-4.1",
-      "displayName": "GPT 4.1",
-      "description": "Latest gpt model",
-      "thinkable": false,
-      "inputPrice": 2,
-      "outputPrice": 8,
-      "contextLength": 1047576,
-      "maxOutput": 32768
-    },
-    {
-      "provider": "openai",
-      "modelId": "o4-mini",
-      "displayName": "o4 Mini",
-      "description": "Latest small and fast reasoning model",
+      "modelId": "gpt-5",
+      "displayName": "GPT 5",
+      "description": "The best model for coding and agentic tasks",
       "thinkable": true,
-      "inputPrice": 1.1,
-      "outputPrice": 4.4,
-      "contextLength": 200000,
-      "maxOutput": 100000
-    },
-    {
-      "provider": "openai",
-      "modelId": "o3",
-      "displayName": "o3",
-      "description": "powerful reasoning model",
-      "thinkable": true,
-      "inputPrice": 2,
-      "outputPrice": 8,
-      "contextLength": 200000,
-      "maxOutput": 100000
-    },
-    {
-      "provider": "openai",
-      "modelId": "gpt-4o-mini",
-      "displayName": "GPT 4o Mini",
-      "description": "Basic lightweight gpt model",
-      "thinkable": false,
-      "inputPrice": 0.15,
-      "outputPrice": 0.6,
-      "contextLength": 128000,
-      "maxOutput": 16384
-    },
-    {
-      "provider": "openai",
-      "modelId": "gpt-4o",
-      "displayName": "GPT 4o",
-      "description": "Basic gpt model",
-      "thinkable": false,
-      "inputPrice": 2.5,
+      "inputPrice": 1.25,
       "outputPrice": 10,
-      "contextLength": 128000,
-      "maxOutput": 16384
+      "contextLength": 400000,
+      "maxOutput": 128000
+    },
+    {
+      "provider": "openai",
+      "modelId": "gpt-5-mini",
+      "displayName": "GPT 5 Mini",
+      "description": "A faster, more cost-efficient version",
+      "thinkable": true,
+      "inputPrice": 0.25,
+      "outputPrice": 2,
+      "contextLength": 400000,
+      "maxOutput": 128000
+    },
+    {
+      "provider": "openai",
+      "modelId": "gpt-5-nano",
+      "displayName": "GPT 5 Nano",
+      "description": "Fastest, most cost-efficient version",
+      "thinkable": true,
+      "inputPrice": 0.05,
+      "outputPrice": 0.4,
+      "contextLength": 400000,
+      "maxOutput": 128000
     }
   ]
 }

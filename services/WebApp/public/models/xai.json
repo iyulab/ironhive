@@ -3,33 +3,36 @@
   "data": [
     {
       "provider": "xai",
+      "modelId": "grok-4",
+      "displayName": "Grok 4.0",
+      "description": "Latest and greatest flagship model",
+      "thinkable": true,
+      "inputPrice": 3,
+      "outputPrice": 15,
+      "contextLength": 256000,
+      "maxOutput": null
+    },
+    {
+      "provider": "xai",
       "modelId": "grok-3-mini",
       "displayName": "Grok 3.0 Mini",
-      "description": "Reasoning grok model",
+      "description": "A lightweight model that thinks before responding.",
       "thinkable": true,
       "inputPrice": 0.3,
       "outputPrice": 0.5,
-      "contextLength": 131072
+      "contextLength": 131072,
+      "maxOutput": null
     },
     {
       "provider": "xai",
       "modelId": "grok-3-mini-fast",
       "displayName": "Grok 3.0 Mini Fast",
-      "description": "Fast reasoning grok model",
+      "description": "A Fast response version of grok mini",
       "thinkable": true,
       "inputPrice": 0.6,
       "outputPrice": 4,
-      "contextLength": 131072
-    },
-    {
-      "provider": "xai",
-      "modelId": "grok-4",
-      "displayName": "Grok 4.0",
-      "description": "Latest grok model",
-      "thinkable": true,
-      "inputPrice": 3,
-      "outputPrice": 15,
-      "contextLength": 256000
+      "contextLength": 131072,
+      "maxOutput": null
     }
   ]
 }

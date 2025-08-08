@@ -14,7 +14,7 @@ public class ChatCompletionRequest
     /// (Not Use) when you use modalities: ["audio"]
     /// </summary>
     [JsonPropertyName("audio")]
-    public object? Audio { get; set; }
+    public ChatAudio? Audio { get; set; }
 
     /// <summary>
     /// -2.0 to 2.0
@@ -74,6 +74,12 @@ public class ChatCompletionRequest
     public float? PresencePenalty { get; set; }
 
     /// <summary>
+    /// (Not Use)
+    /// </summary>
+    [JsonPropertyName("prompt_cache_key")]
+    public string? PromptCacheKey { get; set; }
+
+    /// <summary>
     /// o-series model only
     /// </summary>
     [JsonPropertyName("reasoning_effort")]
@@ -84,6 +90,12 @@ public class ChatCompletionRequest
     /// </summary>
     [JsonPropertyName("response_format")]
     public ChatResponseFormat? ResponseFormat { get; set; }
+
+    /// <summary>
+    /// (Not Use)
+    /// </summary>
+    [JsonPropertyName("safety_identifier")]
+    public string? SafetyIdentifier { get; set; }
 
     /// <summary>
     /// (Not Use)
@@ -122,10 +134,10 @@ public class ChatCompletionRequest
     public float? Temperature { get; set; }
 
     /// <summary>
-    /// "none", "auto", <see cref="OpenAITool"/>
+    /// "none", "auto", ...
     /// </summary>
     [JsonPropertyName("tool_choice")]
-    public OpenAIToolChoice? ToolChoice { get; set; }
+    public object? ToolChoice { get; set; }
 
     [JsonPropertyName("tools")]
     public IEnumerable<OpenAITool>? Tools { get; set; }
@@ -143,21 +155,23 @@ public class ChatCompletionRequest
     public float? TopP { get; set; }
 
     /// <summary>
-    /// (Not Use)
+    /// Constrains the verbosity of the model's response
     /// </summary>
-    [JsonPropertyName("user")]
-    public string? User { get; set; }
+    [JsonPropertyName("verbosity")]
+    public ChatVerbosity? Verbosity { get; set; }
 
     /// <summary>
     /// (Not Use) web search tool
     /// </summary>
     [JsonPropertyName("web_search_options")]
     public object? WebSearchOptions { get; set; }
-
 }
 
 public class ChatCompletionStreamOptions
 {
+    [JsonPropertyName("include_obfuscation")]
+    public bool? IncludeObfuscation { get; set; }
+
     [JsonPropertyName("include_usage")]
-    public bool? InCludeUsage { get; set; }
+    public bool? IncludeUsage { get; set; }
 }

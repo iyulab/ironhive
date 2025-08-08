@@ -4,6 +4,7 @@ namespace IronHive.Providers.OpenAI.ChatCompletion;
 
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(OpenAIFunctionTool), "function")]
+[JsonDerivedType(typeof(OpenAICustomTool), "custom")]
 public abstract class OpenAITool
 { }
 
@@ -28,5 +29,23 @@ public class OpenAIFunctionTool : OpenAITool
         /// </summary>
         [JsonPropertyName("strict")]
         public bool Strict { get; } = false;
+    }
+}
+
+public class OpenAICustomTool : OpenAITool
+{
+    [JsonPropertyName("custom")]
+    public required CustomSchema Custom { get; set; }
+
+    public class CustomSchema
+    {
+        [JsonPropertyName("name")]
+        public required string Name { get; set; }
+
+        [JsonPropertyName("description")]
+        public string? Description { get; set; }
+
+        [JsonPropertyName("format")]
+        public object? Format { get; set; }
     }
 }

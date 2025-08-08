@@ -4,14 +4,14 @@ namespace IronHive.Providers.Anthropic.Messages;
 
 internal class MessagesRequest
 {
-    [JsonPropertyName("max_tokens")]
-    public required int MaxTokens { get; set; }
+    [JsonPropertyName("model")]
+    public required string Model { get; set; }
 
     [JsonPropertyName("messages")]
     public required IEnumerable<Message> Messages { get; set; }
 
-    [JsonPropertyName("model")]
-    public required string Model { get; set; }
+    [JsonPropertyName("max_tokens")]
+    public required int MaxTokens { get; set; }
 
     /// <summary>
     /// (Not Use) Container ID of the tool that is running in.

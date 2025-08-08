@@ -24,6 +24,13 @@ public class OpenAIEmbeddingGenerator : IEmbeddingGenerator
     public required string ProviderName { get; init; }
 
     /// <inheritdoc />
+    public void Dispose()
+    {
+        _client.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
+    /// <inheritdoc />
     public async Task<IEnumerable<float>> EmbedAsync(
         string modelId, 
         string input, 
@@ -132,5 +139,4 @@ public class OpenAIEmbeddingGenerator : IEmbeddingGenerator
 
         return batches;
     }
-
 }

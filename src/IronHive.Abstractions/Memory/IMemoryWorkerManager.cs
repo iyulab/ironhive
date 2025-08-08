@@ -7,6 +7,11 @@
 public interface IMemoryWorkerManager : IDisposable
 {
     /// <summary>
+    /// 작업 진행 상황을 알리는 이벤트입니다.
+    /// </summary>
+    event EventHandler<MemoryPipelineEventArgs>? Progressed;
+
+    /// <summary>
     /// 현재 워커 매니저가 실행 중인지 여부를 나타냅니다.
     /// </summary>
     bool IsRunning { get; }

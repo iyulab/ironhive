@@ -33,7 +33,7 @@ public class OpenAIChatCompletionClient : OpenAIClientBase
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         request.Stream = true;
-        request.StreamOptions = new ChatCompletionStreamOptions { InCludeUsage = true };
+        request.StreamOptions = new ChatCompletionStreamOptions { IncludeUsage = true };
         var json = JsonSerializer.Serialize(request, _jsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         using var _request = new HttpRequestMessage(HttpMethod.Post, OpenAIConstants.PostChatCompletionPath.RemovePreffix('/'));

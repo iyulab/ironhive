@@ -18,23 +18,23 @@ public class ChatChoice
     [JsonPropertyName("index")]
     public int Index { get; set; }
 
-    [JsonPropertyName("message")]
-    public AssistantChatMessage? Message { get; set; }
-
     [JsonPropertyName("logprobs")]
     public ChatLogProbs? LogProbs { get; set; }
+
+    [JsonPropertyName("message")]
+    public ChatChoiceMessage? Message { get; set; }
 }
 
 public class ChatChoiceDelta
 {
+    [JsonPropertyName("delta")]
+    public ChatChoiceMessageDelta? Delta { get; set; }
+
     [JsonPropertyName("finish_reason")]
     public ChatFinishReason? FinishReason { get; set; }
 
     [JsonPropertyName("index")]
     public int Index { get; set; }
-
-    [JsonPropertyName("delta")]
-    public AssistantChatMessage? Delta { get; set; }
 
     [JsonPropertyName("logprobs")]
     public ChatLogProbs? LogProbs { get; set; }

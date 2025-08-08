@@ -3,7 +3,7 @@
 /// <summary>
 /// 모델 정보를 제공하는 서비스의 인터페이스입니다.
 /// </summary>
-public interface IModelCatalogProvider
+public interface IModelCatalogProvider : IDisposable
 {
     /// <summary>
     /// 공급자의 이름을 가져옵니다.

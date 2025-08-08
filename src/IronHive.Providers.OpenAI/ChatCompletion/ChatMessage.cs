@@ -42,8 +42,11 @@ public class UserChatMessage : ChatMessage
 
 public class AssistantChatMessage : ChatMessage
 {
-    [JsonPropertyName("name")]
-    public string? Name { get; set; }
+    /// <summary>
+    /// If the audio output modality is requested
+    /// </summary>
+    [JsonPropertyName("audio")]
+    public AudioContent? Audio { get; set; }
 
     /// <summary>
     /// The content is necessary when ToolCalls is null.
@@ -51,26 +54,23 @@ public class AssistantChatMessage : ChatMessage
     [JsonPropertyName("content")]
     public string? Content { get; set; }
 
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
     [JsonPropertyName("refusal")]
     public string? Refusal { get; set; }
-
-    /// <summary>
-    /// when using web search tools, urls are returned.
-    /// </summary>
-    [JsonPropertyName("annotations")]
-    public object? Annotations { get; set; }
-
-    /// <summary>
-    /// If the audio output modality is requested
-    /// </summary>
-    [JsonPropertyName("audio")]
-    public object? Audio { get; set; }
 
     /// <summary>
     /// the tools that the assistant calls.
     /// </summary>
     [JsonPropertyName("tool_calls")]
     public ICollection<OpenAIFunctionToolCall>? ToolCalls { get; set; }
+
+    public class AudioContent
+    {
+        [JsonPropertyName("id")]
+        public required string Id { get; set; }
+    }
 }
 
 /// <summary>
