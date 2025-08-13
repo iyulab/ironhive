@@ -21,6 +21,13 @@ public class OllamaModelCatalogProvider : IModelCatalogProvider
     public required string ProviderName { get; init; }
 
     /// <inheritdoc />
+    public void Dispose()
+    {
+        _client.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
+    /// <inheritdoc />
     public async Task<IEnumerable<ModelSummary>> ListModelsAsync(
         CancellationToken cancellationToken = default)
     {

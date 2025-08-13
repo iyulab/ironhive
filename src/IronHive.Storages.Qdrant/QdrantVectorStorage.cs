@@ -45,6 +45,14 @@ public class QdrantVectorStorage : IVectorStorage
     }
 
     /// <inheritdoc />
+    public async Task<bool> CollectionExistsAsync(
+        string collectionName, 
+        CancellationToken cancellationToken = default)
+    {
+        return await _client.CollectionExistsAsync(collectionName, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task<VectorCollection?> GetCollectionInfoAsync(
         string collectionName,
         CancellationToken cancellationToken = default)

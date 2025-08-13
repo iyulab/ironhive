@@ -21,6 +21,13 @@ public class OllamaEmbeddingGenerator : IEmbeddingGenerator
     public required string ProviderName { get; init; }
 
     /// <inheritdoc />
+    public void Dispose()
+    {
+        _client.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
+    /// <inheritdoc />
     public async Task<IEnumerable<float>> EmbedAsync(
         string model, 
         string input, 
