@@ -1,6 +1,6 @@
-﻿using IronHive.Abstractions.Storages;
+﻿using System.Text.Json;
 using System.Collections.Concurrent;
-using System.Text.Json;
+using IronHive.Abstractions.Storages;
 
 namespace IronHive.Core.Storages;
 
@@ -98,25 +98,8 @@ public class LocalQueueStorage<T> : IQueueStorage<T>
                 // 메시지 파일을 잠금상태로 변경합니다.
                 File.Move(queueFilePath, lockedFilePath);
 
-                // (파일명: "{enqueueTicks}_{expirationInfo}.lock")
-                var parts = Path.GetFileNameWithoutExtension(lockedFilePath).Split('_');
-                // 파일명이 잘못된 경우 삭제합니다.
-                if (parts.Length != 2)
-                {
-                    File.Delete(lockedFilePath);
-                    continue;
-                }
-                // TTL이 만료된 파일인 경우 삭제합니다.
-                if (long.TryParse(parts[1], out long expirationTicks))
-                {
-                    if (expirationTicks != 0 && (DateTime.UtcNow.Ticks > expirationTicks))
-                    {
-                        File.Delete(lockedFilePath);
-                        continue;
-                    }
-                }
-                // 만료 정보가 잘못된 파일인 경우(숫자X) 삭제합니다.
-                else
+                // 파일이 유효하지 않거나 만료된 경우, 해당 파일을 삭제하고 다음 파일로 넘어갑니다.
+                if (LocalQueueStorage<T>.IsInvalidOrExpired(lockedFilePath))
                 {
                     File.Delete(lockedFilePath);
                     continue;
@@ -229,9 +212,17 @@ public class LocalQueueStorage<T> : IQueueStorage<T>
         {
             try
             {
+                // 유효하지 않거나 만료된 파일은 삭제합니다.
+                if (LocalQueueStorage<T>.IsInvalidOrExpired(filePath))
+                {
+                    File.Delete(filePath);
+                }
                 // 대상 파일을 큐 파일로 이동합니다.
-                var queueFilePath = Path.ChangeExtension(filePath, $".{MessageExtension}");
-                File.Move(filePath, queueFilePath, overwrite: false);
+                else
+                {
+                    var queueFilePath = Path.ChangeExtension(filePath, $".{MessageExtension}");
+                    File.Move(filePath, queueFilePath, overwrite: false);
+                }
             }
             catch (IOException)
             {
@@ -240,5 +231,38 @@ public class LocalQueueStorage<T> : IQueueStorage<T>
 
             await Task.CompletedTask;
         });
+    }
+
+    /// <summary>
+    /// 파일 경로를 기반으로 파일명의 유효성과 메시지 만료 여부를 검사합니다.
+    /// </summary>
+    /// <returns>파일이 유효하지 않거나 만료된 경우 true, 유효한 경우 false</returns>
+    private static bool IsInvalidOrExpired(string filePath)
+    {
+        // 파일명: "{enqueueTicks}_{expirationTicks}.ext"
+        var parts = Path.GetFileNameWithoutExtension(filePath).Split('_');
+
+        // 파일명 형식이 잘못됨
+        if (parts.Length != 2)
+        {
+            return true;
+        }
+
+        // TTL이 설정되었고, 현재 시간이 만료 시간을 지났다면 유효하지 않음
+        if (long.TryParse(parts[1], out long expirationTicks))
+        {
+            if (expirationTicks != 0 && DateTime.UtcNow.Ticks > expirationTicks)
+            {
+                return true;
+            }
+        }
+        // 만료 정보가 숫자가 아닌 경우 유효하지 않음
+        else
+        {
+            return true;
+        }
+
+        // 유효한 파일
+        return false;
     }
 }
