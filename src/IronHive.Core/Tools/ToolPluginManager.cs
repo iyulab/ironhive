@@ -1,4 +1,5 @@
-﻿using IronHive.Abstractions.Tools;
+﻿using IronHive.Abstractions;
+using IronHive.Abstractions.Tools;
 
 namespace IronHive.Core.Tools;
 
@@ -7,19 +8,25 @@ public class ToolPluginManager : IToolPluginManager
 {
     private const char Separator = '_';
 
+    public ToolPluginManager()
+        : this(Enumerable.Empty<IToolPlugin>())
+    { }
+
     public ToolPluginManager(IEnumerable<IToolPlugin> plugins)
     {
-        Plugins = plugins.ToDictionary(plugin => plugin.PluginName, plugin => plugin);
+        Plugins = new KeyedCollection<IToolPlugin>(
+            plugins,
+            plugin => plugin.PluginName);
     }
 
     /// <inheritdoc />
-    public IDictionary<string, IToolPlugin> Plugins { get; }
+    public IKeyedCollection<IToolPlugin> Plugins { get; }
 
     /// <inheritdoc />
     public async Task<IEnumerable<ToolDescriptor>> ListAsync(
         CancellationToken cancellationToken = default)
     {
-        var tasks = Plugins.Select(async kvp =>
+        var tasks = Plugins.GetAll().Select(async kvp =>
         {
             var (pluginName, plugin) = (kvp.Key, kvp.Value);
             var tools = await plugin.ListAsync(cancellationToken);
@@ -50,7 +57,7 @@ public class ToolPluginManager : IToolPluginManager
         if (parts.Length != 2 || string.IsNullOrWhiteSpace(parts[0]) || string.IsNullOrWhiteSpace(parts[1]))
             throw new ArgumentException($"Invalid tool name '{name}'.");
 
-        if (!Plugins.TryGetValue(parts[0], out var plugin))
+        if (!Plugins.TryGet(parts[0], out var plugin))
             throw new KeyNotFoundException($"Tool Plugin '{parts[0]}' not found.");
 
         return await plugin.InvokeAsync(parts[1], input, cancellationToken);

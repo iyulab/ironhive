@@ -1,16 +1,24 @@
-﻿using IronHive.Abstractions.Files;
+﻿using IronHive.Abstractions;
+using IronHive.Abstractions.Files;
 
 namespace IronHive.Core.Files;
 
 /// <inheritdoc />
 public class FileStorageManager : IFileStorageManager
 {
-    private readonly Dictionary<string, IFileStorage> _storages;
+    public FileStorageManager()
+        : this(Enumerable.Empty<IFileStorage>())
+    { }
 
     public FileStorageManager(IEnumerable<IFileStorage> storages)
     {
-        _storages = storages.ToDictionary(s => s.StorageName, s => s);
+        Storages = new KeyedCollection<IFileStorage>(
+            storages,
+            storage => storage.StorageName);
     }
+
+    /// <inheritdoc />
+    public IKeyedCollection<IFileStorage> Storages { get; }
 
     /// <inheritdoc />
     public async Task<IEnumerable<string>> ListAsync(
@@ -19,7 +27,7 @@ public class FileStorageManager : IFileStorageManager
         int depth = 1,
         CancellationToken cancellationToken = default)
     {
-        if (!_storages.TryGetValue(storage, out var service))
+        if (!Storages.TryGet(storage, out var service))
             throw new ArgumentException($"저장소 '{storage}'을(를) 찾을 수 없습니다.", nameof(storage));
         
         var result = await service.ListAsync(prefix, depth, cancellationToken);
@@ -32,7 +40,7 @@ public class FileStorageManager : IFileStorageManager
         string path,
         CancellationToken cancellationToken = default)
     {
-        if (!_storages.TryGetValue(storage, out var service))
+        if (!Storages.TryGet(storage, out var service))
             throw new ArgumentException($"저장소 '{storage}'을(를) 찾을 수 없습니다.", nameof(storage));
 
         var result = await service.ExistsAsync(path, cancellationToken);
@@ -45,7 +53,7 @@ public class FileStorageManager : IFileStorageManager
         string filePath,
         CancellationToken cancellationToken = default)
     {
-        if (!_storages.TryGetValue(storage, out var service))
+        if (!Storages.TryGet(storage, out var service))
             throw new ArgumentException($"저장소 '{storage}'을(를) 찾을 수 없습니다.", nameof(storage));
 
         var result = await service.ReadFileAsync(filePath, cancellationToken);
@@ -60,7 +68,7 @@ public class FileStorageManager : IFileStorageManager
         bool overwrite = true,
         CancellationToken cancellationToken = default)
     {
-        if (!_storages.TryGetValue(storage, out var service))
+        if (!Storages.TryGet(storage, out var service))
             throw new ArgumentException($"저장소 '{storage}'을(를) 찾을 수 없습니다.", nameof(storage));
 
         await service.WriteFileAsync(filePath, data, overwrite, cancellationToken);
@@ -72,7 +80,7 @@ public class FileStorageManager : IFileStorageManager
         string path,
         CancellationToken cancellationToken = default)
     {
-        if (!_storages.TryGetValue(storage, out var service))
+        if (!Storages.TryGet(storage, out var service))
             throw new ArgumentException($"저장소 '{storage}'을(를) 찾을 수 없습니다.", nameof(storage));
 
         await service.DeleteAsync(path, cancellationToken);

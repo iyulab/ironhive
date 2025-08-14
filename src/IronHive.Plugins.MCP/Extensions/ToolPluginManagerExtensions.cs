@@ -10,12 +10,12 @@ public static class ToolPluginManagerExtensions
     /// </summary>
     /// <param name="pluginName">등록할 MCP 서버 이름</param>
     /// <param name="server">MCP 서버 설정 객체</param>
-    public static bool TryAddMcpToolPlugin(
+    public static void AddMcpToolPlugin(
         this IToolPluginManager manager, 
         string pluginName,
         IMcpServerConfig config)
     {
-        return manager.Plugins.TryAdd(pluginName, new McpToolPlugin(config)
+        manager.Plugins.Add(new McpToolPlugin(config)
         {
             PluginName = pluginName
         });

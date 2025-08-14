@@ -8,7 +8,7 @@ public interface IToolPluginManager
     /// <summary>
     /// 각 이름으로 등록된 툴 플러그인들입니다.
     /// </summary>
-    IDictionary<string, IToolPlugin> Plugins { get; }
+    IKeyedCollection<IToolPlugin> Plugins { get; }
 
     /// <summary>
     /// 모든 등록된 플러그인에서 사용할 수 있는 툴 목록을 비동기적으로 가져옵니다.

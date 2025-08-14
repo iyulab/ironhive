@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using IronHive.Abstractions;
 using IronHive.Abstractions.Catalog;
 
 namespace IronHive.Core.Services;
@@ -6,12 +7,18 @@ namespace IronHive.Core.Services;
 /// <inheritdoc />
 public class ModelCatalogService : IModelCatalogService
 {
-    private readonly Dictionary<string, IModelCatalogProvider> _providers;
+    public ModelCatalogService()
+        : this(Enumerable.Empty<IModelCatalogProvider>())
+    { }
 
     public ModelCatalogService(IEnumerable<IModelCatalogProvider> providers)
     {
-        _providers = providers.ToDictionary(p => p.ProviderName, p => p);
+        Providers = new KeyedCollection<IModelCatalogProvider>(
+            providers,
+            provider => provider.ProviderName);
     }
+
+    public IKeyedCollection<IModelCatalogProvider> Providers { get; }
 
     /// <inheritdoc />
     public async Task<IEnumerable<ModelSummary>> ListModelsAsync(
@@ -20,7 +27,7 @@ public class ModelCatalogService : IModelCatalogService
     {
         if (!string.IsNullOrWhiteSpace(provider))
         {
-            if (_providers.TryGetValue(provider, out var service))
+            if (Providers.TryGet(provider, out var service))
             {
                 return await service.ListModelsAsync(cancellationToken);
             }
@@ -31,7 +38,7 @@ public class ModelCatalogService : IModelCatalogService
         }
         else
         {
-            var tasks = _providers.Values.Select(async p =>
+            var tasks = Providers.Values.Select(async p =>
             {
                 try
                 {
@@ -55,7 +62,7 @@ public class ModelCatalogService : IModelCatalogService
         string modelId, 
         CancellationToken cancellationToken = default)
     {
-        if (_providers.TryGetValue(provider, out var service))
+        if (Providers.TryGet(provider, out var service))
         {
             return await service.FindModelAsync(modelId, cancellationToken);
         }

@@ -6,6 +6,11 @@
 public interface IFileStorageManager
 {
     /// <summary>
+    /// 저장소를 관리하는 컬렉션입니다.
+    /// </summary>
+    public IKeyedCollection<IFileStorage> Storages { get; }
+
+    /// <summary>
     /// 지정한 저장소 및 접두어(prefix)를 기준으로,
     /// 해당 경로에 존재하는 파일 및 디렉터리 목록을 비동기적으로 가져옵니다.
     /// </summary>

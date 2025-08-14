@@ -14,6 +14,7 @@ public partial class LocalVectorStorage : IVectorStorage
     private const string CollectionMetaTableName = "collections_meta";
     private static readonly Regex _collPattern = new Regex(@"^[A-Za-z][A-Za-z0-9_]*$", RegexOptions.Compiled);
     private readonly LiteDatabase _db;
+    private readonly object _lock = new();
 
     public LocalVectorStorage(LocalVectorConfig config)
     {
@@ -43,7 +44,7 @@ public partial class LocalVectorStorage : IVectorStorage
         CancellationToken cancellationToken = default)
     {
         var meta = _db.GetCollection<VectorCollection>(CollectionMetaTableName);
-        var exists = meta.Exists(x => x.Name == collectionName);
+        var exists = meta.Exists(x => x.Name == collectionName) && _db.CollectionExists(collectionName);
 
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(exists);
@@ -62,14 +63,14 @@ public partial class LocalVectorStorage : IVectorStorage
     }
 
     /// <inheritdoc />
-    public Task CreateCollectionAsync(
+    public async Task CreateCollectionAsync(
         VectorCollection collection,
         CancellationToken cancellationToken = default)
     {
-        var collectionName = EnsureCollectionName(collection.Name);
-        if (_db.CollectionExists(collectionName))
-            throw new InvalidOperationException($"Collection '{collectionName}' already exists.");
-        var coll = _db.GetCollection<VectorRecord>(collectionName);
+        collection.Name = EnsureCollectionName(collection.Name);
+        if (await CollectionExistsAsync(collection.Name, cancellationToken))
+            throw new InvalidOperationException($"Collection '{collection.Name}' already exists.");
+        var coll = _db.GetCollection<VectorRecord>(collection.Name);
         cancellationToken.ThrowIfCancellationRequested();
 
         // LiteDB는 컬렉션 생성 기능을 따로 제공하지 않고, 자동으로 생성되므로,
@@ -89,10 +90,15 @@ public partial class LocalVectorStorage : IVectorStorage
 
         // 메타 테이블에 등록
         var meta = _db.GetCollection<VectorCollection>(CollectionMetaTableName);
-        meta.Upsert(collection);
+        lock (_lock)
+        {
+            if (!meta.Exists(p => p.Name == collection.Name))
+            {
+                meta.Insert(collection);
+            }
+        }
 
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.CompletedTask;
     }
 
     /// <inheritdoc />

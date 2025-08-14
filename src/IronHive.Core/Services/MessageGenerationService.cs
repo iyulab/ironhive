@@ -1,5 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Threading.Channels;
+using IronHive.Abstractions;
 using IronHive.Abstractions.Message;
 using IronHive.Abstractions.Message.Content;
 using IronHive.Abstractions.Message.Roles;
@@ -11,21 +12,29 @@ namespace IronHive.Core.Services;
 /// <inheritdoc />
 public class MessageGenerationService : IMessageGenerationService
 {
-    private readonly Dictionary<string, IMessageGenerator> _providers;
     private readonly IToolPluginManager _plugins;
 
-    public MessageGenerationService(IEnumerable<IMessageGenerator> providers, IToolPluginManager plugins)
+    public MessageGenerationService(IToolPluginManager plugins)
+        : this(plugins, Enumerable.Empty<IMessageGenerator>())
+    { }
+
+    public MessageGenerationService(IToolPluginManager plugins, IEnumerable<IMessageGenerator> generators)
     {
-        _providers = providers.ToDictionary(p => p.ProviderName, p => p);
         _plugins = plugins;
+        Generators = new KeyedCollection<IMessageGenerator>(
+            generators,
+            generator => generator.ProviderName);
     }
+
+    /// <inheritdoc />
+    public IKeyedCollection<IMessageGenerator> Generators { get; }
 
     /// <inheritdoc />
     public async Task<MessageResponse> GenerateMessageAsync(
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (!_providers.TryGetValue(request.Provider, out var provider))
+        if (!Generators.TryGet(request.Provider, out var provider))
             throw new KeyNotFoundException($"Service key '{request.Provider}' not found.");
 
         // 요청 준비
@@ -93,7 +102,7 @@ public class MessageGenerationService : IMessageGenerationService
         MessageGenerationRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        if (!_providers.TryGetValue(request.Provider, out var provider))
+        if (!Generators.TryGet(request.Provider, out var provider))
             throw new KeyNotFoundException($"Service key '{request.Provider}' not found.");
 
         string messageId = request.Messages.LastOrDefault() is AssistantMessage lastMessage

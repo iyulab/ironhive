@@ -23,7 +23,7 @@ public class McpServerManager : IMcpServerManager
 
     public void Add(string serverName, IMcpServerConfig config)
     {
-        _tools.TryAddMcpToolPlugin(serverName, config);
+        _tools.AddMcpToolPlugin(serverName, config);
         _servers[serverName] = new object();
     }
 
@@ -35,7 +35,7 @@ public class McpServerManager : IMcpServerManager
 
     public async Task ConnectAsync(string serverName, IMcpServerConfig config, CancellationToken cancellationToken)
     {
-        var plugin = _tools.Plugins[serverName] as McpToolPlugin;
+        var plugin = _tools.Plugins.Get(serverName) as McpToolPlugin;
         if (plugin != null)
         {
             await plugin.ConnectAsync();
@@ -44,7 +44,7 @@ public class McpServerManager : IMcpServerManager
 
     public async Task DisconnectAsync(string serverName, CancellationToken cancellationToken)
     {
-        var plugin = _tools.Plugins[serverName] as McpToolPlugin;
+        var plugin = _tools.Plugins.Get(serverName) as McpToolPlugin;
         if (plugin != null)
         {
             await plugin.DisconnectAsync();
