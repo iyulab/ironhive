@@ -4,11 +4,11 @@
 /// 상위 객체의 판별자 이름을 지정합니다.
 /// </summary>
 [AttributeUsage(AttributeTargets.Interface | AttributeTargets.Class, AllowMultiple = false)]
-public class PolymorphicNameAttribute : Attribute
+public class JsonPolymorphicNameAttribute : Attribute
 {
     public string Name { get; }
 
-    public PolymorphicNameAttribute(string name)
+    public JsonPolymorphicNameAttribute(string name)
     {
         Name = name;
     }
@@ -18,11 +18,11 @@ public class PolymorphicNameAttribute : Attribute
 /// 파생 클래스의 판별자 값을 지정합니다.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
-public class PolymorphicValueAttribute : Attribute
+public class JsonPolymorphicValueAttribute : Attribute
 {
     public string Value { get; }
 
-    public PolymorphicValueAttribute(string value)
+    public JsonPolymorphicValueAttribute(string value)
     {
         Value = value;
     }

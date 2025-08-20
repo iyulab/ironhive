@@ -11,7 +11,7 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IHiveServiceBuilder AddHiveServiceCore(this IServiceCollection services)
     {
-        services.TryAddSingleton<IHiveMind, HiveMind>();
+        services.TryAddSingleton<IHiveService, HiveService>();
         var builder = new HiveServiceBuilder(services);
         return builder;
     }

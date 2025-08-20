@@ -4,6 +4,7 @@ using IronHive.Abstractions.Message;
 using IronHive.Abstractions.Message.Content;
 using IronHive.Abstractions.Message.Roles;
 using IronHive.Providers.Anthropic.Messages;
+using MessageContent = IronHive.Abstractions.Message.MessageContent;
 using TextMessageContent = IronHive.Abstractions.Message.Content.TextMessageContent;
 using AnthropicTextMessageContent = IronHive.Providers.Anthropic.Messages.TextMessageContent;
 using ThinkingMessageContent = IronHive.Abstractions.Message.Content.ThinkingMessageContent;
@@ -43,7 +44,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
         var req = request.ToAnthropic();
         var res = await _client.PostMessagesAsync(req, cancellationToken);
 
-        var content = new List<Abstractions.Message.MessageContent>();
+        var content = new List<MessageContent>();
         foreach (var item in res.Content ?? [])
         {
             // 추론 생성
@@ -80,7 +81,8 @@ public class AnthropicMessageGenerator : IMessageGenerator
                 content.Add(new ToolMessageContent
                 {
                     Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
-                    Name = tool.Name ?? string.Empty,
+                    Key = tool.Name ?? string.Empty,
+                    Name = request.Tools.FirstOrDefault(t => t.Key == tool.Name)?.Name ?? string.Empty,
                     Input = JsonSerializer.Serialize(tool.Input)
                 });
             }
@@ -122,17 +124,9 @@ public class AnthropicMessageGenerator : IMessageGenerator
     {
         var req = request.ToAnthropic();
 
-        #region 인덱스 수동 관리
-        // ┌───────────────────────────────────────
-        // │ xAI Messages API: index 직접 관리
-        // └───────────────────────────────────────
-        // xAI의 Messages API에서 index 응답을 받지 못하므로
-        // index를 직접 관리합니다.
-        int index = 0;
-        #endregion
-
         var id = string.Empty;
         var model = string.Empty;
+        int index = 0;
         var usage = new MessageTokenUsage();
         await foreach (var res in _client.PostStreamingMessagesAsync(req, cancellationToken))
         {
@@ -198,7 +192,8 @@ public class AnthropicMessageGenerator : IMessageGenerator
                         Content = new ToolMessageContent
                         {
                             Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
-                            Name = tool.Name ?? string.Empty,
+                            Key = tool.Name ?? string.Empty,
+                            Name = request.Tools.FirstOrDefault(t => t.Key == tool.Name)?.Name ?? string.Empty,
                         }
                     };
                 }

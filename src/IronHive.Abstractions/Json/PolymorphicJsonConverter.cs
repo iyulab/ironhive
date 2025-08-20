@@ -26,7 +26,7 @@ public class PolymorphicJsonConverter<T> : JsonConverter<T> where T : class
     /// </summary>
     public PolymorphicJsonConverter()
     {
-        var attr = typeof(T).GetCustomAttribute<PolymorphicNameAttribute>();
+        var attr = typeof(T).GetCustomAttribute<JsonPolymorphicNameAttribute>();
         _discriminatorName = attr?.Name ?? DefaultDiscriminatorName;
         _discriminatorComparison = DefaultDiscriminatorComparison;
         _typeMapper = _cachedTypeMapper.Value;
@@ -122,7 +122,7 @@ public class PolymorphicJsonConverter<T> : JsonConverter<T> where T : class
             if (type == null) continue;
 
             // 파생 클래스에서 어트리뷰트가 지정되지 않은 것은 건너뜁니다.
-            var discriminatorValueAttr = type.GetCustomAttribute<PolymorphicValueAttribute>();
+            var discriminatorValueAttr = type.GetCustomAttribute<JsonPolymorphicValueAttribute>();
             if (discriminatorValueAttr == null) continue;
 
             // 중복 판별자 값이 있는 경우 예외를 발생시킵니다.

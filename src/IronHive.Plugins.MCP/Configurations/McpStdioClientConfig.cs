@@ -7,7 +7,7 @@ namespace IronHive.Plugins.MCP.Configurations;
 /// 명령줄 프로세스를 통해 표준 입력(stdin)과 출력(stdout)을 사용하여 MCP 통신을 처리합니다.
 /// 로컬 환경에서 AI 모델과 외부 도구 간의 통합에 적합합니다.
 /// </summary>
-public class McpStdioServerConfig : IMcpServerConfig
+public class McpStdioClientConfig : IMcpClientConfig
 {
     /// <summary>
     /// MCP 서버로 실행할 외부 프로그램 또는 명령을 지정합니다.
@@ -52,7 +52,7 @@ public class McpStdioServerConfig : IMcpServerConfig
 
     public override bool Equals(object? obj)
     {
-        return obj is McpStdioServerConfig server &&
+        return obj is McpStdioClientConfig server &&
                Command == server.Command &&
                EqualityComparer<IEnumerable<string>?>.Default.Equals(Arguments, server.Arguments) &&
                EqualityComparer<Dictionary<string, string?>?>.Default.Equals(EnvironmentVariables, server.EnvironmentVariables) &&

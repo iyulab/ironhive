@@ -99,6 +99,7 @@ public class MemoryWorkerManager : IMemoryWorkerManager
         await Task.WhenAll(tasks);
 
         Interlocked.Exchange(ref _state, 0);
+        var list = new List<string>();
     }
 
     /// <summary>
@@ -114,8 +115,6 @@ public class MemoryWorkerManager : IMemoryWorkerManager
         // 워커를 백그라운드에서 실행하고 관리 목록에 추가
         Task.Run(worker.StartAsync);
         _workers.Add(worker);
-
-        Console.WriteLine($"[INFO] Worker scaled up. Current count: {_workers.Count}");
     }
 
     /// <summary>
@@ -130,10 +129,9 @@ public class MemoryWorkerManager : IMemoryWorkerManager
             worker.StateChanged -= OnWorkerStateChanged;
             _ = worker.StopAsync(false).ContinueWith(t =>
             {
+                worker.Progressed -= OnWorkerProgressed;
                 worker.Dispose();
             });
-
-            Console.WriteLine($"[INFO] Worker scaled down. Current count: {_workers.Count}");
         }
     }
 

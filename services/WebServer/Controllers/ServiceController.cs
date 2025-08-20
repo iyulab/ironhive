@@ -14,19 +14,16 @@ namespace WebServer.Controllers;
 public class ServiceController : ControllerBase
 {
     private readonly IModelCatalogService _model;
-    private readonly IMessageGenerationService _generator;
-    private readonly IToolPluginManager _plugins;
+    private readonly IMessageGenerationService _service;
     private readonly JsonSerializerOptions _jsonOptions;
     
     public ServiceController(
         IModelCatalogService model,
-        IMessageGenerationService chat,
-        IToolPluginManager plugins,
+        IMessageGenerationService service,
         IOptions<JsonOptions> jsonOptions)
     {
         _model = model;
-        _generator = chat;
-        _plugins = plugins;
+        _service = service;
         _jsonOptions = jsonOptions.Value.JsonSerializerOptions;
     }
 
@@ -70,15 +67,15 @@ public class ServiceController : ControllerBase
         CancellationToken cancellationToken)
     {
         request.System = $"Current UTC Time: {DateTime.UtcNow}\n" + request.System;
-        request.Tools = await _plugins.ListAsync(cancellationToken);
-        
+        request.Tools = _service.Tools.ToList();
+
         try
         {
             Response.Headers.Connection = "keep-alive";
             Response.Headers.CacheControl = "no-cache";
             Response.ContentType = "text/event-stream; charset=utf-8";
             
-            await foreach (var result in _generator.GenerateStreamingMessageAsync(request, cancellationToken))
+            await foreach (var result in _service.GenerateStreamingMessageAsync(request, cancellationToken))
             {
                 await WriteEventAsync(result, "delta");
             }

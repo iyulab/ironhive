@@ -6,20 +6,22 @@
 - IHiveMind
 
 ### AI Services
-- IMessageGenerationService        => Singleton                                   => Required
+- IMessageGenerationService        => Singleton                                      => Required
   - IMessageGenerator[]
-- IEmbeddingGenerationService      => Singleton                                   => Required
+  - IToolPlugin[]
+- IEmbeddingGenerationService      => Singleton                                      => Required
   - IEmbeddingGenerator[]
 
 ### File Services
-- IFileStorageManger               => Singleton                                   => Required
+- IFileStorageManger               => Singleton                                      => Required
   - IFileStorage[]
-- IFileDecoderManager              => Singleton                                   => Required
+- IFileDecoderManager              => Singleton                                      => Required
   - IFileDecoder[]
   
 ### Memory Services
 - IMemoryService
-- IMemoryWorker
-- IQueueStorage                 => Singleton                                      => Required
-- IVectorStorage                => Singleton                                      => Required
-- IPipelineHandler[]            => Singleton | Scoped | Transient                 => Optional
+  - IMemoryWorkerManager
+    - IMemoryWorker
+  - IQueueStorage                  => Singleton                                      => Required
+  - IVectorStorage                 => Singleton                                      => Required
+  - IPipelineHandler[]             => Singleton | Scoped | Transient                 => Optional

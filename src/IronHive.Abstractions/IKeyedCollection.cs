@@ -16,11 +16,6 @@ public interface IKeyedCollection<T> : ICollection<T>
     IReadOnlyCollection<T> Values { get; }
 
     /// <summary>
-    /// 컬렉션에 등록된 모든 아이템과 그 키를 읽기 전용으로 반환합니다.
-    /// </summary>
-    IReadOnlyDictionary<string, T> GetAll();
-
-    /// <summary>
     /// 지정된 키에 해당하는 아이템을 반환합니다.
     /// 해당하는 아이템이 없으면 <c>null</c>을 반환합니다.
     /// </summary>
@@ -43,6 +38,13 @@ public interface IKeyedCollection<T> : ICollection<T>
     bool ContainsKey(string key);
 
     /// <summary>
+    /// 아이템의 키(구현체의 key selector로 계산)가 이미 존재하면 교체하고,
+    /// 존재하지 않으면 추가합니다.
+    /// </summary>
+    /// <param name="item">추가 또는 교체할 아이템.</param>
+    void Set(T item);
+
+    /// <summary>
     /// 지정된 키의 아이템을 제거합니다.
     /// 아이템 존재 여부를 반환합니다.
     /// </summary>
@@ -51,9 +53,7 @@ public interface IKeyedCollection<T> : ICollection<T>
     bool Remove(string key);
 
     /// <summary>
-    /// 아이템의 키(구현체의 key selector로 계산)가 이미 존재하면 교체하고,
-    /// 존재하지 않으면 추가합니다.
+    /// 컬렉션에 등록된 모든 아이템과 그 키를 읽기 전용의 딕셔너리로 반환합니다.
     /// </summary>
-    /// <param name="item">추가 또는 교체할 아이템.</param>
-    void Set(T item);
+    IReadOnlyDictionary<string, T> ToDictionary();
 }

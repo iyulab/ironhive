@@ -7,7 +7,7 @@ namespace IronHive.Plugins.MCP.Configurations;
 /// HTTP를 통한 서버-클라이언트 단방향 실시간 이벤트 스트리밍을 사용하여 MCP 통신을 처리합니다.
 /// 웹 기반 환경에서 AI 모델과 외부 서비스 간의 통합에 적합합니다.
 /// </summary>
-public class McpSseServerConfig : IMcpServerConfig
+public class McpSseClientConfig : IMcpClientConfig
 {
     /// <summary>
     /// SSE 연결을 설정할 MCP 서버의 HTTP 엔드포인트 URL입니다.
@@ -47,7 +47,7 @@ public class McpSseServerConfig : IMcpServerConfig
 
     public override bool Equals(object? obj)
     {
-        return obj is McpSseServerConfig server &&
+        return obj is McpSseClientConfig server &&
                EqualityComparer<Uri>.Default.Equals(Endpoint, server.Endpoint) &&
                EqualityComparer<Dictionary<string, string>?>.Default.Equals(AdditionalHeaders, server.AdditionalHeaders) &&
                ConnectionTimeout.Equals(server.ConnectionTimeout) &&

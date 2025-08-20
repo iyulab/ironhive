@@ -30,6 +30,11 @@ public class ToolMessageContent : MessageContent
     public required string Id { get; set; }
 
     /// <summary>
+    /// 도구를 식별하기 위한 유니크한 이름입니다.
+    /// </summary>
+    public required string Key { get; set; }
+
+    /// <summary>
     /// 도구 이름입니다.
     /// </summary>
     public required string Name { get; set; }
@@ -117,12 +122,12 @@ public class ToolMessageContent : MessageContent
     /// <summary>
     /// 현재 도구가 승인을 요구하는지 확인합니다.
     /// </summary>
-    public bool RequiresApproval(IEnumerable<ToolDescriptor> descriptors)
+    public bool RequiresApproval(IEnumerable<ITool> tools)
     {
-        var descriptor = descriptors.FirstOrDefault(d => d.Name == Name);
-        if (descriptor == null)
+        var tool = tools.FirstOrDefault(d => d.Key == Key);
+        if (tool == null)
             throw new InvalidOperationException($"Tool descriptor not found for tool: {Name}");
         
-        return descriptor.RequiresApproval;
+        return tool.RequiresApproval;
     }
 }

@@ -1,5 +1,4 @@
-﻿using IronHive.Abstractions.Message;
-using IronHive.Abstractions.Message.Content;
+﻿using IronHive.Abstractions.Message.Content;
 using IronHive.Providers.OpenAI.ChatCompletion;
 using UserMessage = IronHive.Abstractions.Message.Roles.UserMessage;
 using AssistantMessage = IronHive.Abstractions.Message.Roles.AssistantMessage;
@@ -7,11 +6,14 @@ using OpenAIMessage = IronHive.Providers.OpenAI.ChatCompletion.ChatMessage;
 using TextMessageContent = IronHive.Abstractions.Message.Content.TextMessageContent;
 using ImageMessageContent = IronHive.Abstractions.Message.Content.ImageMessageContent;
 
-namespace IronHive.Providers.OpenAI;
+namespace IronHive.Abstractions.Message;
 
-internal static class MessageGenerationRequestExtensions
+public static class MessageGenerationRequestExtensions
 {
-    internal static ChatCompletionRequest ToOpenAI(this MessageGenerationRequest request)
+    /// <summary>
+    /// 메시지 생성 요청을 OpenAI의 ChatCompletionRequest로 변환합니다.
+    /// </summary>
+    public static ChatCompletionRequest ToOpenAI(this MessageGenerationRequest request)
     {
         var isReasoning = IsReasoningModel(request);
 
@@ -91,11 +93,10 @@ internal static class MessageGenerationRequestExtensions
                             am.ToolCalls ??= [];
                             am.ToolCalls.Add(new OpenAIFunctionToolCall
                             {
-                                //Index = tool.Index,
                                 Id = tool.Id,
                                 Function = new OpenAIFunctionToolCall.FunctionSchema
                                 {
-                                    Name = tool.Name,
+                                    Name = tool.Key,
                                     Arguments = tool.Input
                                 }
                             });
@@ -143,7 +144,7 @@ internal static class MessageGenerationRequestExtensions
             {
                 Function = new OpenAIFunctionTool.FunctionSchema
                 {
-                    Name = t.Name,
+                    Name = t.Key,
                     Description = t.Description,
                     Parameters = t.Parameters
                 }

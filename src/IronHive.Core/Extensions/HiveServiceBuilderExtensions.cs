@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using IronHive.Core.Storages;
-using IronHive.Abstractions.Tools;
 using IronHive.Core.Tools;
 using IronHive.Core.Memory.Handlers;
 using IronHive.Core.Files.Decoders;
@@ -12,16 +11,14 @@ public static class HiveServiceBuilderExtensions
     /// <summary>
     /// 내장 기능 툴 플러그인을 등록합니다.
     /// </summary>
-    public static IHiveServiceBuilder AddFunctionToolPlugin<T>(this IHiveServiceBuilder builder, string pluginName) 
+    public static IHiveServiceBuilder AddFunctionTool<T>(this IHiveServiceBuilder builder) 
         where T : class
     {
-        builder.Services.AddSingleton<IToolPlugin, FunctionToolPlugin<T>>(sp =>
+        var tools = FunctionToolFactory.CreateFromType<T>();
+        foreach (var tool in tools)
         {
-            return new FunctionToolPlugin<T>(sp)
-            {
-                PluginName = pluginName
-            };
-        });
+            builder.AddTool(tool);
+        }
         return builder;
     }
 

@@ -64,7 +64,7 @@ public class AssistantChatMessage : ChatMessage
     /// the tools that the assistant calls.
     /// </summary>
     [JsonPropertyName("tool_calls")]
-    public ICollection<OpenAIFunctionToolCall>? ToolCalls { get; set; }
+    public ICollection<OpenAIToolCall>? ToolCalls { get; set; }
 
     public class AudioContent
     {

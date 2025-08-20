@@ -53,13 +53,6 @@ public class KeyedCollection<T> : IKeyedCollection<T> where T : class
     public bool IsReadOnly => false;
 
     /// <inheritdoc />
-    public IReadOnlyDictionary<string, T> GetAll()
-    {
-        // 라이브 뷰(스냅샷 아님). 필요 시 호출부에서 ToDictionary 사용.
-        return new ReadOnlyDictionary<string, T>(_items);
-    }
-
-    /// <inheritdoc />
     public T? Get(string key)
     {
         return TryGet(key, out var item) ? item : null;
@@ -80,6 +73,13 @@ public class KeyedCollection<T> : IKeyedCollection<T> where T : class
     }
 
     /// <inheritdoc />
+    public void Set(T item)
+    {
+        var key = NormalizeKey(_keySelector(item));
+        _items[key] = item; // 추가 또는 교체
+    }
+
+    /// <inheritdoc />
     public bool Remove(string key)
     {
         key = NormalizeKey(key);
@@ -87,10 +87,10 @@ public class KeyedCollection<T> : IKeyedCollection<T> where T : class
     }
 
     /// <inheritdoc />
-    public void Set(T item)
+    public IReadOnlyDictionary<string, T> ToDictionary()
     {
-        var key = NormalizeKey(_keySelector(item));
-        _items[key] = item; // 추가 또는 교체
+        // 라이브 뷰(스냅샷 아님). 필요 시 호출부에서 ToDictionary 사용.
+        return new ReadOnlyDictionary<string, T>(_items);
     }
 
     /// <inheritdoc />

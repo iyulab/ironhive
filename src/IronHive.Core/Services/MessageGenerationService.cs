@@ -12,22 +12,25 @@ namespace IronHive.Core.Services;
 /// <inheritdoc />
 public class MessageGenerationService : IMessageGenerationService
 {
-    private readonly IToolPluginManager _plugins;
-
-    public MessageGenerationService(IToolPluginManager plugins)
-        : this(plugins, Enumerable.Empty<IMessageGenerator>())
+    public MessageGenerationService()
+        : this([], [])
     { }
 
-    public MessageGenerationService(IToolPluginManager plugins, IEnumerable<IMessageGenerator> generators)
+    public MessageGenerationService(IEnumerable<IMessageGenerator> generators, IEnumerable<ITool> tools)
     {
-        _plugins = plugins;
         Generators = new KeyedCollection<IMessageGenerator>(
             generators,
             generator => generator.ProviderName);
+        Tools = new KeyedCollection<ITool>(
+            tools,
+            tool => tool.Key);
     }
 
     /// <inheritdoc />
     public IKeyedCollection<IMessageGenerator> Generators { get; }
+
+    /// <inheritdoc />
+    public IKeyedCollection<ITool> Tools { get; }
 
     /// <inheritdoc />
     public async Task<MessageResponse> GenerateMessageAsync(
@@ -241,7 +244,7 @@ public class MessageGenerationService : IMessageGenerationService
         AssistantMessage message,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var maxConcurrent = 3; // 동시 실행할 최대 도구 호출 수
+        const int maxConcurrent = 3; // 동시 실행할 최대 도구 호출 수
         var semaphore = new SemaphoreSlim(maxConcurrent, maxConcurrent);
         var channel = Channel.CreateBounded<StreamingMessageResponse>(new BoundedChannelOptions(maxConcurrent * 4)
         {
@@ -253,13 +256,13 @@ public class MessageGenerationService : IMessageGenerationService
         foreach (var (item, idx) in message.Content.Select((x, i) => (x, i)))
         {
             // 툴이 아닌 아이템 건너뛰기
-            if (item is not ToolMessageContent tool)
+            if (item is not ToolMessageContent tmc)
                 continue;
             // 이미 완료된 툴 건너뛰기
-            if (tool.IsCompleted)
+            if (tmc.IsCompleted)
                 continue;
             // 승인되지 않은 툴 건너뛰기
-            if (tool.Status != ToolContentStatus.Approved)
+            if (tmc.Status != ToolContentStatus.Approved)
                 continue;
             
             var task = Task.Run(async () =>
@@ -268,33 +271,36 @@ public class MessageGenerationService : IMessageGenerationService
                 
                 try
                 {
-                    tool.ChangeToInProgress();
+                    tmc.ChangeToInProgress();
                     await channel.Writer.WriteAsync(new StreamingContentUpdatedResponse
                     {
                         Index = idx,
                         Updated = new ToolUpdatedContent
                         {
-                            Status = tool.Status,
-                            Output = tool.Output
+                            Status = tmc.Status,
+                            Output = tmc.Output
                         }
                     }, cancellationToken);
 
-                    var input = new ToolInput(tool.Input);
-                    var output = await _plugins.InvokeAsync(tool.Name, input, cancellationToken);
-                    tool.CompleteExecution(output);
+                    var input = new ToolInput(tmc.Input);
+                    var output = Tools.TryGet(tmc.Key, out var tool)
+                        ? await tool.InvokeAsync(input, cancellationToken)
+                        : ToolOutput.Failure($"도구 [{tmc.Key}]를 찾을 수 없습니다. 이름에 오타가 없는지 확인하거나 사용 가능한 도구 목록을 참조하세요.");
+
+                    tmc.CompleteExecution(output);
                     await channel.Writer.WriteAsync(new StreamingContentUpdatedResponse
-                    { 
+                    {
                         Index = idx,
-                        Updated = new ToolUpdatedContent 
-                        { 
-                            Status = tool.Status,
-                            Output = tool.Output
+                        Updated = new ToolUpdatedContent
+                        {
+                            Status = tmc.Status,
+                            Output = tmc.Output
                         }
                     }, cancellationToken);
                 }
                 catch (Exception ex)
                 {
-                    throw new InvalidOperationException($"Error processing tool content for {tool.Name} at index {idx}.", ex);
+                    throw new InvalidOperationException($"Error processing tool content for {tmc.Name} at index {idx}.", ex);
                 }
                 finally
                 {
@@ -311,10 +317,6 @@ public class MessageGenerationService : IMessageGenerationService
             try
             {
                 await Task.WhenAll(tasks);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("An error occurred while processing tool content.", ex);
             }
             finally
             {

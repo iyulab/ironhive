@@ -1,5 +1,4 @@
 ﻿using System.Collections;
-using System.Diagnostics.CodeAnalysis;
 
 namespace IronHive.Abstractions.Tools;
 
@@ -25,8 +24,10 @@ public class ToolInput : IReadOnlyDictionary<string, object?>
     /// <param name="input">입력 객체 (보통 익명 객체 또는 Dictionary)</param>
     public ToolInput(object? input)
     {
-        _items = input?.ConvertTo<Dictionary<string, object?>>()
-                 ?? new Dictionary<string, object?>(StringComparer.Ordinal);
+        _items = input is null
+                 ? new Dictionary<string, object?>(StringComparer.Ordinal)
+                 : input.ConvertTo<Dictionary<string, object?>>()
+                 ?? throw new ArgumentException("입력 객체는 Dictionary<string, object?> 형식이어야 합니다.", nameof(input));
     }
 
     /// <summary>
@@ -45,7 +46,7 @@ public class ToolInput : IReadOnlyDictionary<string, object?>
 
     public bool ContainsKey(string key) => _items.ContainsKey(key);
 
-    public bool TryGetValue(string key, [MaybeNullWhen(false)] out object? value)
+    public bool TryGetValue(string key, out object? value)
         => _items.TryGetValue(key, out value);
 
     public IEnumerator<KeyValuePair<string, object?>> GetEnumerator()

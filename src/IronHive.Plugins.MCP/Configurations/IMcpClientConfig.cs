@@ -8,9 +8,9 @@ namespace IronHive.Plugins.MCP.Configurations;
 /// 여러 유형의 MCP 서버 구현을 위한 다형성을 지원합니다.
 /// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
-[JsonDerivedType(typeof(McpStdioServerConfig), "stdio")]
-[JsonDerivedType(typeof(McpSseServerConfig), "sse")]
-public interface IMcpServerConfig
+[JsonDerivedType(typeof(McpStdioClientConfig), "stdio")]
+[JsonDerivedType(typeof(McpSseClientConfig), "sse")]
+public interface IMcpClientConfig
 {
     /// <summary>
     /// MCP 클라이언트가 생성될 때 자동으로 서버에 연결할지 여부를 나타냅니다.

@@ -31,7 +31,7 @@ public class MessageGenerationRequest : MessageGenerationParameters
     /// <summary>
     /// 모델에서 사용 가능한 도구(툴) 목록입니다.
     /// </summary>
-    public IEnumerable<ToolDescriptor> Tools { get; set; } = [];
+    public IEnumerable<ITool> Tools { get; set; } = [];
 
     /// <summary>
     /// 모델의 사고 노력 수준을 정의합니다.

@@ -1,24 +1,23 @@
 ﻿using System.Data;
 using ModelContextProtocol.Client;
-using IronHive.Abstractions.Tools;
 using IronHive.Plugins.MCP.Configurations;
+using IronHive.Plugins.MCP;
 
 namespace IronHive.Plugins.MCP;
 
 /// <summary>
-/// MCP (ModelContext Protocol) 클라이언트를 기반으로 도구 호출 기능을 제공하는 플러그인 클래스입니다.
+/// MCP (ModelContext Protocol) 클라이언트를 기반으로 연결을 관리합니다.
 /// MCP 서버와의 통신을 통해 도구 목록을 조회하거나 도구를 실행하는 기능을 제공합니다.
 /// </summary>
-public class McpToolPlugin : IToolPlugin
+public class McpClient
 {
-    private readonly IMcpServerConfig _config;
+    private readonly IMcpClientConfig _config;
     private readonly SemaphoreSlim _lock = new(1, 1);
 
-    private volatile bool _isDisposed = false;
     private IMcpClient? _client;
-    private IEnumerable<ToolDescriptor> _cache = [];
-    
-    public McpToolPlugin(IMcpServerConfig config)
+    private volatile bool _isDisposed = false;
+
+    public McpClient(IMcpClientConfig config)
     {
         _config = config;
 
@@ -26,14 +25,16 @@ public class McpToolPlugin : IToolPlugin
         if (_config.AutoConnectOnCreated)
             _ = Task.Run(async () => await ConnectAsync());
     }
-
-    /// <inheritdoc />
-    public required string PluginName { get; init; }
+    
+    /// <summary>
+    /// 현재 연결된 서버의 이름을 나타냅니다.
+    /// <summary>
+    public required string ServerName { get; init; }
 
     /// <summary>
     /// 현재 MCP 서버와의 연결 상태를 나타냅니다.
     /// </summary>
-    public McpConnectionState ConnectionState { get; private set; } = McpConnectionState.Disconnected;
+    public McpConnectionState State { get; private set; } = McpConnectionState.Disconnected;
 
     /// <summary>
     /// MCP 서버에 연결이 성공했을 때 발생하는 이벤트입니다.
@@ -50,54 +51,13 @@ public class McpToolPlugin : IToolPlugin
     {
         if (_isDisposed) return;
         _isDisposed = true;
-
-        DisconnectAsync().GetAwaiter().GetResult();
+        if (_client != null)
+        {
+            _client.DisposeAsync().GetAwaiter().GetResult();
+            _client = null;
+        }
         _lock.Dispose();
         GC.SuppressFinalize(this);
-    }
-
-    /// <inheritdoc />
-    public async Task<IEnumerable<ToolDescriptor>> ListAsync(
-        CancellationToken cancellationToken = default)
-    {
-        if (_client == null)
-            return [];
-
-        if (_cache.Any())
-            return _cache;
-
-        var tools = await _client.ListToolsAsync(cancellationToken: cancellationToken);
-        _cache = tools.Select(t => new ToolDescriptor
-        {
-            Name = t.Name,
-            Description = t.Description,
-            Parameters = t.JsonSchema,
-            RequiresApproval = true
-        });
-
-        return _cache;
-    }
-
-    /// <inheritdoc />
-    public async Task<ToolOutput> InvokeAsync(
-        string name,
-        ToolInput input,
-        CancellationToken cancellationToken = default)
-    {
-        if (_client == null)
-            throw new InvalidOperationException("MCP client is not initialized. Please connect to a server first.");
-
-        var result = await _client.CallToolAsync(
-            toolName: name,
-            arguments: input,
-            cancellationToken: cancellationToken);
-
-        var text = result.Content.Select(c => c.Text?.Trim());
-        var content = string.Join("\n", text);
-
-        return result.IsError
-            ? ToolOutput.Failure(content)
-            : ToolOutput.Success(content);
     }
 
     /// <summary>
@@ -107,16 +67,13 @@ public class McpToolPlugin : IToolPlugin
         McpClientOptions? options = null,
         CancellationToken cancellationToken = default)
     {
-        if (ConnectionState == McpConnectionState.Connected || ConnectionState == McpConnectionState.Connecting)
+        if (State != McpConnectionState.Disconnected)
             return;
 
         await _lock.WaitAsync(cancellationToken);
         try
         {
-            // 기존 연결이 있다면 해제합니다.
-            await DisconnectAsync(cancellationToken);
-
-            ConnectionState = McpConnectionState.Connecting;
+            State = McpConnectionState.Connecting;
 
             var transport = CreateTransport(_config);
             _client = await McpClientFactory.CreateAsync(
@@ -124,16 +81,16 @@ public class McpToolPlugin : IToolPlugin
                 clientOptions: options,
                 cancellationToken: cancellationToken);
 
-            // 연결을 시도해 봅니다.
+            // 서버와의 연결을 확인합니다.
             await _client.PingAsync(cancellationToken: cancellationToken);
 
-            ConnectionState = McpConnectionState.Connected;
-            Connected?.Invoke(this, new McpConnectedEventArgs(PluginName));
+            State = McpConnectionState.Connected;
+            Connected?.Invoke(this, new McpConnectedEventArgs(ServerName));
         }
         catch (Exception ex)
         {
-            ConnectionState = McpConnectionState.Disconnected;
-            Disconnected?.Invoke(this, new McpDisconnectedEventArgs(PluginName, ex));
+            State = McpConnectionState.Disconnected;
+            Disconnected?.Invoke(this, new McpDisconnectedEventArgs(ServerName, ex));
         }
         finally
         {
@@ -146,18 +103,18 @@ public class McpToolPlugin : IToolPlugin
     /// </summary>
     public async Task DisconnectAsync(CancellationToken cancellationToken = default)
     {
-        if (_client == null || ConnectionState == McpConnectionState.Disconnected)
+        if (_client == null || State != McpConnectionState.Connected)
             return;
 
         await _lock.WaitAsync(cancellationToken);
         try
         {
+            State = McpConnectionState.Disconnecting;
             await _client.DisposeAsync();
             _client = null;
-            _cache = [];
 
-            ConnectionState = McpConnectionState.Disconnected;
-            Disconnected?.Invoke(this, new McpDisconnectedEventArgs(PluginName));
+            State = McpConnectionState.Disconnected;
+            Disconnected?.Invoke(this, new McpDisconnectedEventArgs(ServerName));
         }
         finally
         {
@@ -165,14 +122,31 @@ public class McpToolPlugin : IToolPlugin
         }
     }
 
+    /// <inheritdoc />
+    public async Task<IEnumerable<McpTool>> ListToolsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        if (_client == null)
+            return [];
+
+        var tools = await _client.ListToolsAsync(cancellationToken: cancellationToken);
+        return tools.Select(t =>
+        {
+            return new McpTool(t)
+            {
+                ServerName = ServerName,
+            };
+        });
+    }
+
     /// <summary>
     /// 전송 계층을 생성합니다.
     /// </summary>
-    private static IClientTransport CreateTransport(IMcpServerConfig server)
+    private static IClientTransport CreateTransport(IMcpClientConfig server)
     {
         return server switch
         {
-            McpStdioServerConfig stdio => new StdioClientTransport(new StdioClientTransportOptions
+            McpStdioClientConfig stdio => new StdioClientTransport(new StdioClientTransportOptions
             {
                 Command = stdio.Command,
                 Arguments = stdio.Arguments?.ToList(),
@@ -180,7 +154,7 @@ public class McpToolPlugin : IToolPlugin
                 ShutdownTimeout = stdio.ShutdownTimeout,
                 WorkingDirectory = stdio.WorkingDirectory
             }),
-            McpSseServerConfig sse => new SseClientTransport(new SseClientTransportOptions
+            McpSseClientConfig sse => new SseClientTransport(new SseClientTransportOptions
             {
                 Endpoint = sse.Endpoint,
                 AdditionalHeaders = sse.AdditionalHeaders,

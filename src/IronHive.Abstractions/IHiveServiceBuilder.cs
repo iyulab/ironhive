@@ -20,24 +20,24 @@ public interface IHiveServiceBuilder
     IServiceCollection Services { get; }
 
     /// <summary>
-    /// 모델 제공자를 싱글턴으로 등록합니다.
+    /// 새로운 모델 제공자를 등록합니다.
     /// </summary>
     IHiveServiceBuilder AddModelCatalogProvider(IModelCatalogProvider provider);
 
     /// <summary>
-    /// 메시지 생성기를 싱글턴으로 등록합니다.
+    /// 새로운 메시지 생성기를 등록합니다.
     /// </summary>
     IHiveServiceBuilder AddMessageGenerator(IMessageGenerator provider);
 
     /// <summary>
-    /// 임베딩 생성기를 싱글턴으로 등록합니다.
+    /// 새로운 임베딩 생성기를 등록합니다.
     /// </summary>
     IHiveServiceBuilder AddEmbeddingGenerator(IEmbeddingGenerator provider);
 
     /// <summary>
-    /// 툴 플러그인을 싱글턴으로 등록합니다.
+    /// 툴을 등록합니다.
     /// </summary>
-    IHiveServiceBuilder AddToolPlugin(IToolPlugin plugin);
+    IHiveServiceBuilder AddTool(ITool tool);
 
     /// <summary>
     /// 벡터 스토리지를 싱글턴으로 등록합니다.
@@ -79,7 +79,7 @@ public interface IHiveServiceBuilder
     IHiveServiceBuilder AddFileDecoder(IFileDecoder decoder);
 
     /// <summary>
-    /// 서비스 컬렉션을 사용하지 않는 독립적인 HiveMind 인스턴스를 생성합니다.
+    /// HiveService 인스턴스를 생성합니다.
     /// </summary>
-    IHiveMind BuildHiveMind();
+    IHiveService Build();
 }
