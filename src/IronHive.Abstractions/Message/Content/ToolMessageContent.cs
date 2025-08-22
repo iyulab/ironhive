@@ -30,11 +30,6 @@ public class ToolMessageContent : MessageContent
     public required string Id { get; set; }
 
     /// <summary>
-    /// 도구를 식별하기 위한 유니크한 이름입니다.
-    /// </summary>
-    public required string Key { get; set; }
-
-    /// <summary>
     /// 도구 이름입니다.
     /// </summary>
     public required string Name { get; set; }
@@ -124,7 +119,7 @@ public class ToolMessageContent : MessageContent
     /// </summary>
     public bool RequiresApproval(IEnumerable<ITool> tools)
     {
-        var tool = tools.FirstOrDefault(d => d.Key == Key);
+        var tool = tools.FirstOrDefault(d => d.Name == Name);
         if (tool == null)
             throw new InvalidOperationException($"Tool descriptor not found for tool: {Name}");
         

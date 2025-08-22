@@ -62,19 +62,16 @@ public class OpenAIMessageGenerator : IMessageGenerator
                 var tc = new ToolMessageContent
                 { 
                     Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
-                    Key = string.Empty,
                     Name = string.Empty,
                 };
                 if (tool is OpenAIFunctionToolCall func)
                 {
-                    tc.Key = func.Function?.Name ?? string.Empty;
-                    tc.Name = request.Tools?.FirstOrDefault(t => t.Key == tc.Key)?.Name ?? string.Empty;
+                    tc.Name = func.Function?.Name ?? string.Empty;
                     tc.Input = func.Function?.Arguments ?? string.Empty;
                 }
                 else if (tool is OpenAICustomToolCall custom)
                 {
-                    tc.Key = custom.Custom?.Name ?? string.Empty;
-                    tc.Name = request.Tools?.FirstOrDefault(t => t.Key == tc.Key)?.Name ?? string.Empty;
+                    tc.Name = custom.Custom?.Name ?? string.Empty;
                     tc.Input = custom.Custom?.Input ?? string.Empty;
                 }
                 else
@@ -210,8 +207,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
                                 current = (index + 1, new ToolMessageContent
                                 {
                                     Id = func.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
-                                    Key = func.Function?.Name ?? string.Empty,
-                                    Name = request.Tools?.FirstOrDefault(t => t.Key == func.Function?.Name)?.Name ?? string.Empty,
+                                    Name = func.Function?.Name ?? string.Empty,
                                     Input = func.Function?.Arguments,
                                 });
                                 currentToolIndex = funcIndex;
@@ -233,8 +229,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
                             current = (index + 1, new ToolMessageContent
                             {
                                 Id = func.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
-                                Key = func.Function?.Name ?? string.Empty,
-                                Name = request.Tools?.FirstOrDefault(t => t.Key == func.Function?.Name)?.Name ?? string.Empty,
+                                Name = func.Function?.Name ?? string.Empty,
                                 Input = func.Function?.Arguments,
                             });
                             currentToolIndex = funcIndex;
@@ -251,8 +246,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
                         current = (0, new ToolMessageContent
                         {
                             Id = func.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
-                            Key = func.Function?.Name ?? string.Empty,
-                            Name = request.Tools?.FirstOrDefault(t => t.Key == func.Function?.Name)?.Name ?? string.Empty,
+                            Name = func.Function?.Name ?? string.Empty,
                             Input = func.Function?.Arguments,
                         });
                         currentToolIndex = funcIndex;

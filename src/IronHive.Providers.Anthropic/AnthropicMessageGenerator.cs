@@ -81,8 +81,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
                 content.Add(new ToolMessageContent
                 {
                     Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
-                    Key = tool.Name ?? string.Empty,
-                    Name = request.Tools.FirstOrDefault(t => t.Key == tool.Name)?.Name ?? string.Empty,
+                    Name = tool.Name ?? string.Empty,
                     Input = JsonSerializer.Serialize(tool.Input)
                 });
             }
@@ -192,8 +191,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
                         Content = new ToolMessageContent
                         {
                             Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
-                            Key = tool.Name ?? string.Empty,
-                            Name = request.Tools.FirstOrDefault(t => t.Key == tool.Name)?.Name ?? string.Empty,
+                            Name = tool.Name ?? string.Empty,
                         }
                     };
                 }

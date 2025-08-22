@@ -13,7 +13,7 @@ namespace IronHive.Plugins.MCP.Configurations;
 public interface IMcpClientConfig
 {
     /// <summary>
-    /// MCP 클라이언트가 생성될 때 자동으로 서버에 연결할지 여부를 나타냅니다.
+    /// 연결할 MCP 서버의 이름입니다.
     /// </summary>
-    bool AutoConnectOnCreated { get; set; }
+    string ServerName { get; set; }
 }

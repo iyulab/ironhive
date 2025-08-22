@@ -66,31 +66,18 @@ public class KeyedCollection<T> : IKeyedCollection<T> where T : class
     }
 
     /// <inheritdoc />
+    public bool Contains(T item)
+    {
+        var key = NormalizeKey(_keySelector(item));
+        return _items.TryGetValue(key, out var existing)
+            && EqualityComparer<T>.Default.Equals(existing, item);
+    }
+
+    /// <inheritdoc />
     public bool ContainsKey(string key)
     {
         key = NormalizeKey(key);
         return _items.ContainsKey(key);
-    }
-
-    /// <inheritdoc />
-    public void Set(T item)
-    {
-        var key = NormalizeKey(_keySelector(item));
-        _items[key] = item; // 추가 또는 교체
-    }
-
-    /// <inheritdoc />
-    public bool Remove(string key)
-    {
-        key = NormalizeKey(key);
-        return _items.TryRemove(key, out _);
-    }
-
-    /// <inheritdoc />
-    public IReadOnlyDictionary<string, T> ToDictionary()
-    {
-        // 라이브 뷰(스냅샷 아님). 필요 시 호출부에서 ToDictionary 사용.
-        return new ReadOnlyDictionary<string, T>(_items);
     }
 
     /// <inheritdoc />
@@ -102,11 +89,10 @@ public class KeyedCollection<T> : IKeyedCollection<T> where T : class
     }
 
     /// <inheritdoc />
-    public bool Contains(T item)
+    public void Set(T item)
     {
         var key = NormalizeKey(_keySelector(item));
-        return _items.TryGetValue(key, out var existing)
-            && EqualityComparer<T>.Default.Equals(existing, item);
+        _items[key] = item; // 추가 또는 교체
     }
 
     /// <inheritdoc />
@@ -119,6 +105,25 @@ public class KeyedCollection<T> : IKeyedCollection<T> where T : class
     }
 
     /// <inheritdoc />
+    public bool Remove(string key)
+    {
+        key = NormalizeKey(key);
+        return _items.TryRemove(key, out _);
+    }
+
+    /// <inheritdoc />
+    public int RemoveAll(Predicate<T> match)
+    {
+        int count = 0;
+        foreach (var item in _items.Values)
+        {
+            if (match(item) && Remove(item))
+                count++;
+        }
+        return count;
+    }
+
+    /// <inheritdoc />
     public void Clear() => _items.Clear();
 
     /// <inheritdoc />
@@ -127,6 +132,13 @@ public class KeyedCollection<T> : IKeyedCollection<T> where T : class
         // 스냅샷 후 복사
         var snapshot = _items.Values.ToArray();
         snapshot.CopyTo(array, arrayIndex);
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyDictionary<string, T> ToDictionary()
+    {
+        // 라이브 뷰(스냅샷 아님). 필요 시 호출부에서 ToDictionary 사용.
+        return new ReadOnlyDictionary<string, T>(_items);
     }
 
     /// <inheritdoc />

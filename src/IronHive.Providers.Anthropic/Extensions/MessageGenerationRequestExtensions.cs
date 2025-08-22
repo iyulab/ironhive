@@ -125,7 +125,7 @@ internal static class MessageGenerationRequestExtensions
                             am.Content.Add(new ToolUseMessageContent
                             {
                                 Id = tool.Id,
-                                Name = tool.Key,
+                                Name = tool.Name,
                                 Input = !string.IsNullOrWhiteSpace(tool.Input)
                                     ? new ToolInput(tool.Input)
                                     : new object()
@@ -170,7 +170,7 @@ internal static class MessageGenerationRequestExtensions
             Thinking = budgetTokens,
             Tools = request.Tools.Select(t => new CustomAnthropicTool
             {
-                Name = t.Key,
+                Name = t.Name,
                 Description = t.Description,
                 InputSchema = t.Parameters ?? new ObjectJsonSchema()
             })

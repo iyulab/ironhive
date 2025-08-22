@@ -12,18 +12,25 @@ namespace IronHive.Core.Services;
 /// <inheritdoc />
 public class MessageGenerationService : IMessageGenerationService
 {
-    public MessageGenerationService()
-        : this([], [])
+    private readonly IServiceProvider _services;
+
+    public MessageGenerationService(IServiceProvider services)
+        : this(services, [], [])
     { }
 
-    public MessageGenerationService(IEnumerable<IMessageGenerator> generators, IEnumerable<ITool> tools)
+    public MessageGenerationService(
+        IServiceProvider services,
+        IEnumerable<IMessageGenerator> generators, 
+        IEnumerable<ITool> tools)
     {
+        _services = services;
+
         Generators = new KeyedCollection<IMessageGenerator>(
             generators,
             generator => generator.ProviderName);
         Tools = new KeyedCollection<ITool>(
             tools,
-            tool => tool.Key);
+            tool => tool.Name);
     }
 
     /// <inheritdoc />
@@ -282,10 +289,10 @@ public class MessageGenerationService : IMessageGenerationService
                         }
                     }, cancellationToken);
 
-                    var input = new ToolInput(tmc.Input);
-                    var output = Tools.TryGet(tmc.Key, out var tool)
+                    var input = new ToolInput(tmc.Input, _services);
+                    var output = Tools.TryGet(tmc.Name, out var tool)
                         ? await tool.InvokeAsync(input, cancellationToken)
-                        : ToolOutput.Failure($"도구 [{tmc.Key}]를 찾을 수 없습니다. 이름에 오타가 없는지 확인하거나 사용 가능한 도구 목록을 참조하세요.");
+                        : ToolOutput.Failure($"도구 [{tmc.Name}]를 찾을 수 없습니다. 이름에 오타가 없는지 확인하거나 사용 가능한 도구 목록을 참조하세요.");
 
                     tmc.CompleteExecution(output);
                     await channel.Writer.WriteAsync(new StreamingContentUpdatedResponse

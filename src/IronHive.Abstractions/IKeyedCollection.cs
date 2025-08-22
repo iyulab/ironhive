@@ -53,6 +53,13 @@ public interface IKeyedCollection<T> : ICollection<T>
     bool Remove(string key);
 
     /// <summary>
+    /// 일치하는 모든 아이템을 제거합니다.
+    /// </summary>
+    /// <param name="match">제거할 아이템을 결정하는 조건.</param>
+    /// <returns>제거된 아이템의 수.</returns>
+    int RemoveAll(Predicate<T> match);
+
+    /// <summary>
     /// 컬렉션에 등록된 모든 아이템과 그 키를 읽기 전용의 딕셔너리로 반환합니다.
     /// </summary>
     IReadOnlyDictionary<string, T> ToDictionary();

@@ -36,7 +36,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         {
             var generators = _components.OfType<IMessageGenerator>();
             var tools = _components.OfType<ITool>();
-            return new MessageGenerationService(generators, tools);
+            return new MessageGenerationService(sp, generators, tools);
         });
         Services.TryAddSingleton<IEmbeddingGenerationService>(sp =>
         {

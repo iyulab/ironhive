@@ -5,7 +5,7 @@ namespace IronHive.Core.Files;
 /// <inheritdoc />
 public class FileDecoderManager : IFileDecoderManager
 {
-    private readonly IDictionary<string, string> _mapper = new MimeTypeMapper();
+    private readonly IDictionary<string, string> _mapper = new FileContentTypeMapper();
     private readonly IEnumerable<IFileDecoder> _decoders;
 
     public FileDecoderManager(IEnumerable<IFileDecoder> decoders)

@@ -24,10 +24,7 @@ public class McpTool : ITool
     public required string ServerName { get; init; }
 
     /// <inheritdoc />
-    public string Key => $"mcp_{ServerName}_{_tool.Name}";
-
-    /// <inheritdoc />
-    public string Name => _tool.Name;
+    public string Name => $"mcp_{ServerName}_{_tool.Name}";
 
     /// <inheritdoc />
     public string Description => _tool.Description;
@@ -51,7 +48,7 @@ public class McpTool : ITool
 
         var text = result.Content.Select(c => c.Text?.Trim());
         var content = string.Join("\n", text);
-
+        
         return result.IsError
             ? ToolOutput.Failure(content)
             : ToolOutput.Success(content);

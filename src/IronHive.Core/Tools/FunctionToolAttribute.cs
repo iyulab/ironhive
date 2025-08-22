@@ -22,9 +22,9 @@ public class FunctionToolAttribute : Attribute
     public bool RequiresApproval { get; set; } = false;
 
     /// <summary>
-    /// 도구 사용시 제한 시간입니다. 기본값은 1분입니다.
+    /// 도구 사용시 제한 시간입니다. 초 단위로 지정하며, 기본값은 1분(60초)입니다.
     /// </summary>
-    public TimeSpan Timeout { get; set; } = TimeSpan.FromMinutes(1);
+    public long Timeout { get; set; } = 60;
 
     /// <summary>
     /// 기본 생성자입니다.

@@ -96,7 +96,7 @@ public static class MessageGenerationRequestExtensions
                                 Id = tool.Id,
                                 Function = new OpenAIFunctionToolCall.FunctionSchema
                                 {
-                                    Name = tool.Key,
+                                    Name = tool.Name,
                                     Arguments = tool.Input
                                 }
                             });
@@ -144,7 +144,7 @@ public static class MessageGenerationRequestExtensions
             {
                 Function = new OpenAIFunctionTool.FunctionSchema
                 {
-                    Name = t.Key,
+                    Name = t.Name,
                     Description = t.Description,
                     Parameters = t.Parameters
                 }

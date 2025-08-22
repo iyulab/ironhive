@@ -6,12 +6,7 @@
 public interface ITool
 {
     /// <summary>
-    /// 현재 도구를 식별하기 위한 유니크한 이름입니다.
-    /// </summary>
-    string Key { get; }
-
-    /// <summary>
-    /// 도구의 이름입니다.
+    /// 도구의 이름입니다. 다른 도구와 구분되도록 고유해야 합니다.
     /// </summary>
     string Name { get; }
 

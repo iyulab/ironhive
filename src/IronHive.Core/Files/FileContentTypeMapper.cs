@@ -6,7 +6,7 @@ namespace IronHive.Core.Files;
 /// <summary>
 /// 파일 확장자와 MIME 타입 간의 매핑을 제공하는 클래스입니다.
 /// </summary>
-public class MimeTypeMapper : IDictionary<string, string>
+public class FileContentTypeMapper : IDictionary<string, string>
 {
     private readonly Dictionary<string, string> _items = new(StringComparer.OrdinalIgnoreCase)
     {

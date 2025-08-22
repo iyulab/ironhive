@@ -13,7 +13,6 @@ public sealed class FunctionTool : ITool
 {
     private readonly MethodInfo _method;
     private readonly object? _target; // 인스턴스에 바인딩된 경우
-    private readonly IServiceProvider? _provider; // DI를 통한 생성이 필요한 경우
 
     /// <summary>
     /// 델리게이트를 받아 대상 메서드/인스턴스를 설정합니다.
@@ -25,17 +24,13 @@ public sealed class FunctionTool : ITool
     }
 
     /// <summary>
-    /// <see cref="MethodInfo"/> 와 (선택) <see cref="IServiceProvider"/> 를 받아
+    /// <see cref="MethodInfo"/>를 받아
     /// 순수 실행기로 동작합니다. 인스턴스가 필요하면 DI를 통해 생성합니다.
     /// </summary>
-    public FunctionTool(MethodInfo method, IServiceProvider? provider = null)
+    public FunctionTool(MethodInfo method)
     {
         _method = method;
-        _provider = provider;
     }
-
-    /// <inheritdoc />
-    public string Key => $"func_{Name}";
 
     /// <inheritdoc />
     public required string Name { get; init; }
@@ -50,9 +45,10 @@ public sealed class FunctionTool : ITool
     public bool RequiresApproval { get; set; } = false;
 
     /// <summary>
-    /// 도구 호출의 최대 실행 시간(타임아웃)입니다. 기본값은 1분입니다.
+    /// 도구 호출의 최대 실행 시간(타임아웃)입니다.
+    /// 단위는 초이며, 기본값은 60초입니다.
     /// </summary>
-    public TimeSpan Timeout { get; set; } = TimeSpan.FromMinutes(1);
+    public long Timeout { get; set; } = 60;
 
     /// <inheritdoc />
     public async Task<ToolOutput> InvokeAsync(
@@ -60,12 +56,12 @@ public sealed class FunctionTool : ITool
         CancellationToken cancellationToken = default)
     {
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeoutCts.CancelAfter(Timeout);
+        timeoutCts.CancelAfter(TimeSpan.FromSeconds(Timeout));
 
         try
         {
             // 대상 인스턴스 준비
-            var target = _target ?? GetOrCreateInstance(_method.DeclaringType, _provider);
+            var target = _target ?? GetOrCreateInstance(_method.DeclaringType, input.ServiceProvider);
 
             // 인자 바인딩
             var parameters = _method.GetParameters();
@@ -78,7 +74,7 @@ public sealed class FunctionTool : ITool
                 return await HandleDynamicResultAsync(raw, _method.ReturnType, timeoutCts.Token);
             }, timeoutCts.Token);
 
-            var delayTask = Task.Delay(Timeout, timeoutCts.Token);
+            var delayTask = Task.Delay(TimeSpan.FromSeconds(Timeout), timeoutCts.Token);
             var completed = await Task.WhenAny(execTask, delayTask).ConfigureAwait(false);
             if (completed != execTask)
             {

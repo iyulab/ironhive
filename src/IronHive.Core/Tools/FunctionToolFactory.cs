@@ -17,19 +17,16 @@ public static class FunctionToolFactory
     /// <summary>
     /// public/non-public 인스턴스/정적 메서드 중 FunctionToolAttribute가 붙은 메서드를 찾아 툴 모음으로 만듭니다.
     /// </summary>
-    public static IEnumerable<ITool> CreateFromType<T>(
-        IServiceProvider? provider = null)
+    public static IEnumerable<ITool> CreateFromType<T>()
         where T : class
     {
-        return CreateFromType(typeof(T), provider);
+        return CreateFromType(typeof(T));
     }
 
     /// <summary>
     /// public/non-public 인스턴스/정적 메서드 중 FunctionToolAttribute가 붙은 메서드를 찾아 툴 모음으로 만듭니다.
     /// </summary>
-    public static IEnumerable<ITool> CreateFromType(
-        Type type,
-        IServiceProvider? provider = null)
+    public static IEnumerable<ITool> CreateFromType(Type type)
     {
         var tools = new List<ITool>();
         var methods = type.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
@@ -41,14 +38,16 @@ public static class FunctionToolFactory
             var name = attr.Name ?? method.Name;
             var desc = attr.Description ?? method.GetCustomAttribute<DescriptionAttribute>()?.Description ?? string.Empty;
             var requires = attr.RequiresApproval;
+            var timeout = attr.Timeout;
             var parameters = BuildJsonSchemaParameters(method);
             
-            tools.Add(new FunctionTool(method, provider)
+            tools.Add(new FunctionTool(method)
             {
-                Name = name,
+                Name = $"func_{name}",
                 Description = desc,
                 Parameters = parameters,
-                RequiresApproval = requires
+                RequiresApproval = requires,
+                Timeout = timeout
             });
         }
         return tools;
@@ -61,7 +60,8 @@ public static class FunctionToolFactory
         Delegate function,
         string name,
         string description,
-        bool requiresApproval = false)
+        bool requiresApproval = false,
+        long timeout = 60)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("툴 이름은 비어있을 수 없습니다.", nameof(name));
@@ -73,10 +73,11 @@ public static class FunctionToolFactory
 
         return new FunctionTool(function)
         {
-            Name = name,
+            Name = $"func_{name}",
             Description = description,
             Parameters = parameters,
-            RequiresApproval = requiresApproval
+            RequiresApproval = requiresApproval,
+            Timeout = timeout
         };
     }
 

@@ -9,6 +9,10 @@ namespace IronHive.Plugins.MCP.Configurations;
 /// </summary>
 public class McpSseClientConfig : IMcpClientConfig
 {
+    /// <inheritdoc />
+    [JsonPropertyName("name")]
+    public required string ServerName { get; set; }
+
     /// <summary>
     /// SSE 연결을 설정할 MCP 서버의 HTTP 엔드포인트 URL입니다.
     /// 예: "http://localhost:8000/sse"
@@ -39,15 +43,10 @@ public class McpSseClientConfig : IMcpClientConfig
     [JsonPropertyName("stream")]
     public bool UseStreamableHttp { get; set; } = false;
 
-    /// <summary>
-    /// MCP 클라이언트가 생성될 때 자동으로 서버에 연결할지 여부를 나타냅니다.
-    /// 기본 값은 true입니다.
-    /// </summary>
-    public bool AutoConnectOnCreated { get; set; } = true;
-
     public override bool Equals(object? obj)
     {
         return obj is McpSseClientConfig server &&
+               ServerName == server.ServerName &&
                EqualityComparer<Uri>.Default.Equals(Endpoint, server.Endpoint) &&
                EqualityComparer<Dictionary<string, string>?>.Default.Equals(AdditionalHeaders, server.AdditionalHeaders) &&
                ConnectionTimeout.Equals(server.ConnectionTimeout) &&
@@ -56,6 +55,6 @@ public class McpSseClientConfig : IMcpClientConfig
 
     public override int GetHashCode()
     {
-        return HashCode.Combine(Endpoint, AdditionalHeaders, ConnectionTimeout, UseStreamableHttp);
+        return HashCode.Combine(ServerName, Endpoint, AdditionalHeaders, ConnectionTimeout, UseStreamableHttp);
     }
 }

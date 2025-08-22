@@ -9,6 +9,10 @@ namespace IronHive.Plugins.MCP.Configurations;
 /// </summary>
 public class McpStdioClientConfig : IMcpClientConfig
 {
+    /// <inheritdoc />
+    [JsonPropertyName("name")]
+    public required string ServerName { get; set; }
+
     /// <summary>
     /// MCP 서버로 실행할 외부 프로그램 또는 명령을 지정합니다.
     /// 이 명령은 MCP 프로토콜을 통한 통신을 지원해야 합니다.
@@ -44,15 +48,10 @@ public class McpStdioClientConfig : IMcpClientConfig
     [JsonPropertyName("directory")]
     public string? WorkingDirectory { get; set; }
 
-    /// <summary>
-    /// MCP 클라이언트가 생성될 때 자동으로 서버에 연결할지 여부를 나타냅니다.
-    /// 기본값은 false입니다.
-    /// </summary>
-    public bool AutoConnectOnCreated { get; set; } = false;
-
     public override bool Equals(object? obj)
     {
         return obj is McpStdioClientConfig server &&
+               ServerName == server.ServerName &&
                Command == server.Command &&
                EqualityComparer<IEnumerable<string>?>.Default.Equals(Arguments, server.Arguments) &&
                EqualityComparer<Dictionary<string, string?>?>.Default.Equals(EnvironmentVariables, server.EnvironmentVariables) &&
@@ -62,6 +61,6 @@ public class McpStdioClientConfig : IMcpClientConfig
 
     public override int GetHashCode()
     {
-        return HashCode.Combine(Command, Arguments, EnvironmentVariables, ShutdownTimeout, WorkingDirectory);
+        return HashCode.Combine(ServerName, Command, Arguments, EnvironmentVariables, ShutdownTimeout, WorkingDirectory);
     }
 }
