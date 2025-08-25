@@ -61,7 +61,7 @@ public sealed class FunctionTool : ITool
         try
         {
             // 대상 인스턴스 준비
-            var target = _target ?? GetOrCreateInstance(_method.DeclaringType, input.ServiceProvider);
+            var target = _target ?? GetOrCreateInstance(_method.DeclaringType, input.Services);
 
             // 인자 바인딩
             var parameters = _method.GetParameters();
@@ -143,9 +143,28 @@ public sealed class FunctionTool : ITool
         {
             var param = parameters[i];
             var name = param.Name ?? throw new InvalidOperationException("Parameter name cannot be null.");
+            var attrs = param.GetCustomAttributes();
 
+            // 특정 키 서비스 주입
+            if (attrs.Any(a => a is FromKeyedServicesAttribute kattr))
+            {
+                var key = (attrs.First(a => a is FromKeyedServicesAttribute) as FromKeyedServicesAttribute)!.Key;
+                var services = input.Services?.GetKeyedServices(param.ParameterType, key);
+                args[i] = param.ParameterType.IsArray ? services : services?.FirstOrDefault();
+            }
+            // 특정 서비스 주입
+            else if (attrs.Any(a => a is FromServicesAttribute))
+            {
+                var services = input.Services?.GetServices(param.ParameterType);
+                args[i] = param.ParameterType.IsArray ? services : services?.FirstOrDefault();
+            }
+            // 툴 옵션 주입
+            else if (attrs.Any(a => a is FromToolOptionsAttribute) && input.Options is not null)
+            {
+                args[i] = input.Options.ConvertTo(param.ParameterType);
+            }
             // 취소 토큰인 경우
-            if (param.ParameterType == typeof(CancellationToken))
+            else if (param.ParameterType == typeof(CancellationToken))
             {
                 args[i] = cancellationToken;
             }

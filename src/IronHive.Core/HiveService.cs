@@ -26,7 +26,7 @@ public class HiveService : IHiveService
     /// <inheritDoc />
     public IHiveService SetMessageGenerator(IMessageGenerator generator)
     {
-        var service = Services.GetRequiredService<IMessageGenerationService>();
+        var service = Services.GetRequiredService<IMessageService>();
         service.Generators.Set(generator);
         return this;
     }
@@ -34,7 +34,7 @@ public class HiveService : IHiveService
     /// <inheritDoc />
     public IHiveService SetEmbeddingGenerator(IEmbeddingGenerator generator)
     {
-        var service = Services.GetRequiredService<IEmbeddingGenerationService>();
+        var service = Services.GetRequiredService<IEmbeddingService>();
         service.Generators.Set(generator);
         return this;
     }
@@ -50,7 +50,7 @@ public class HiveService : IHiveService
     /// <inheritDoc />
     public IHiveService RemoveMessageGenerator(string name)
     {
-        var service = Services.GetRequiredService<IMessageGenerationService>();
+        var service = Services.GetRequiredService<IMessageService>();
         service.Generators.Remove(name);
         return this;
     }
@@ -58,7 +58,7 @@ public class HiveService : IHiveService
     /// <inheritDoc />
     public IHiveService RemoveEmbeddingGenerator(string name)
     {
-        var service = Services.GetRequiredService<IEmbeddingGenerationService>();
+        var service = Services.GetRequiredService<IEmbeddingService>();
         service.Generators.Remove(name);
         return this;
     }

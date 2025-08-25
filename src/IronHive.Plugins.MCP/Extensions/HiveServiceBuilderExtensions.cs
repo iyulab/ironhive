@@ -27,7 +27,7 @@ public static class HiveServiceBuilderExtensions
     {
         builder.Services.AddSingleton(sp =>
         {
-            var service = sp.GetRequiredService<IMessageGenerationService>();
+            var service = sp.GetRequiredService<IMessageService>();
             var manager = new McpClientManager(service);
             foreach (var config in configs)
             {

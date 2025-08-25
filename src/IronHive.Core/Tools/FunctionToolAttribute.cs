@@ -7,6 +7,25 @@
 public class FunctionToolAttribute : Attribute
 {
     /// <summary>
+    /// 기본 생성자입니다.
+    /// </summary>
+    public FunctionToolAttribute()
+    { }
+
+    /// <summary>
+    /// 이름, 설명을 지정하는 생성자입니다.
+    /// </summary>
+    /// <param name="name">도구의 이름</param>
+    /// <param name="description">도구의 설명</param>
+    public FunctionToolAttribute(
+        string? name = null,
+        string? description = null)
+    {
+        Name = name;
+        Description = description;
+    }
+
+    /// <summary>
     /// 도구의 이름입니다.
     /// </summary>
     public string? Name { get; set; }
@@ -25,23 +44,4 @@ public class FunctionToolAttribute : Attribute
     /// 도구 사용시 제한 시간입니다. 초 단위로 지정하며, 기본값은 1분(60초)입니다.
     /// </summary>
     public long Timeout { get; set; } = 60;
-
-    /// <summary>
-    /// 기본 생성자입니다.
-    /// </summary>
-    public FunctionToolAttribute()
-    { }
-
-    /// <summary>
-    /// 이름, 설명을 지정하는 생성자입니다.
-    /// </summary>
-    /// <param name="name">도구의 이름</param>
-    /// <param name="description">도구의 설명</param>
-    public FunctionToolAttribute(
-        string? name = null,
-        string? description = null)
-    {
-        Name = name;
-        Description = description;
-    }
 }

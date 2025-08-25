@@ -4,13 +4,13 @@ using IronHive.Abstractions.Embedding;
 namespace IronHive.Core.Services;
 
 /// <inheritdoc />
-public class EmbeddingGenerationService : IEmbeddingGenerationService
+public class EmbeddingService : IEmbeddingService
 {
-    public EmbeddingGenerationService()
+    public EmbeddingService()
         : this(Enumerable.Empty<IEmbeddingGenerator>())
     { }
 
-    public EmbeddingGenerationService(IEnumerable<IEmbeddingGenerator> generators)
+    public EmbeddingService(IEnumerable<IEmbeddingGenerator> generators)
     {
         Generators = new KeyedCollection<IEmbeddingGenerator>(
             generators,

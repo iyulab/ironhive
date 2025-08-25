@@ -3,7 +3,7 @@
 /// <summary>
 /// 다양한 임베딩 프로바이더를 통합하여 임베딩을 생성하는 서비스 인터페이스입니다.
 /// </summary>
-public interface IEmbeddingGenerationService
+public interface IEmbeddingService
 {
     /// <summary>
     /// 임베딩 생성기를 관리하는 컬렉션입니다.

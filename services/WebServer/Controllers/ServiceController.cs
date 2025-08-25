@@ -2,8 +2,6 @@
 using Microsoft.Extensions.Options;
 using System.Text;
 using System.Text.Json;
-using Microsoft.AspNetCore.StaticFiles;
-using IronHive.Abstractions.Tools;
 using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Message;
 
@@ -14,12 +12,12 @@ namespace WebServer.Controllers;
 public class ServiceController : ControllerBase
 {
     private readonly IModelCatalogService _model;
-    private readonly IMessageGenerationService _service;
+    private readonly IMessageService _service;
     private readonly JsonSerializerOptions _jsonOptions;
     
     public ServiceController(
         IModelCatalogService model,
-        IMessageGenerationService service,
+        IMessageService service,
         IOptions<JsonOptions> jsonOptions)
     {
         _model = model;
@@ -31,7 +29,7 @@ public class ServiceController : ControllerBase
     [HttpPost("upload")]
     public async Task<ActionResult> UploadAsync(
         [FromForm] IFormFile[] files,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var dic = @"C:\\temp";
         var fileInfos = new List<object>();
@@ -55,7 +53,7 @@ public class ServiceController : ControllerBase
     [HttpGet("models")]
     public async Task<ActionResult> GetModelsAsync(
         [FromQuery(Name = "provider")] string? provider,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var models = await _model.ListModelsAsync(provider, cancellationToken);
         return Ok(models);
@@ -63,11 +61,10 @@ public class ServiceController : ControllerBase
 
     [HttpPost("conversation")]
     public async Task ConversationAsync(
-        [FromBody] MessageGenerationRequest request,
-        CancellationToken cancellationToken)
+        [FromBody] MessageRequest request,
+        CancellationToken cancellationToken = default)
     {
-        request.System = $"Current UTC Time: {DateTime.UtcNow}\n" + request.System;
-        request.Tools = _service.Tools.ToList();
+        request.Instruction = $"Current UTC Time: {DateTime.UtcNow}\n" + request.Instruction;
 
         try
         {

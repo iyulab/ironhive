@@ -32,16 +32,16 @@ public class HiveServiceBuilder : IHiveServiceBuilder
             var providers = _components.OfType<IModelCatalogProvider>();
             return new ModelCatalogService(providers);
         });
-        Services.TryAddSingleton<IMessageGenerationService>(sp =>
+        Services.TryAddSingleton<IMessageService>(sp =>
         {
             var generators = _components.OfType<IMessageGenerator>();
             var tools = _components.OfType<ITool>();
-            return new MessageGenerationService(sp, generators, tools);
+            return new MessageService(sp, generators, tools);
         });
-        Services.TryAddSingleton<IEmbeddingGenerationService>(sp =>
+        Services.TryAddSingleton<IEmbeddingService>(sp =>
         {
             var providers = _components.OfType<IEmbeddingGenerator>();
-            return new EmbeddingGenerationService(providers);
+            return new EmbeddingService(providers);
         });
         
         // File 서비스

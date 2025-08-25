@@ -7,14 +7,13 @@ using System.Text.Json;
 
 namespace IronHive.Plugins.OpenAPI;
 
-public class OpenApiToolPlugin : IToolPlugin
+[Obsolete("이 도구는 완성되지 않았으며, 향후 버전에서 개선될 예정입니다.")]
+public class OpenApiTool : ITool
 {
-    public required string PluginName { get; init; }
-
     private readonly OpenApiDocument _document;
     private readonly Dictionary<string, (OpenApiOperation operation, string path, OperationType method)> _operations;
 
-    public OpenApiToolPlugin(Stream openApiStream)
+    public OpenApiTool(Stream openApiStream)
     {
         var reader = new OpenApiStreamReader();
         _document = reader.Read(openApiStream, out var diagnostic);
@@ -30,49 +29,26 @@ public class OpenApiToolPlugin : IToolPlugin
         }
     }
 
+    public string Name { get; init; }
+
+    public string Description { get; init; }
+
+    public object? Parameters { get; init; }
+
+    public bool RequiresApproval { get; set; }
+
     public void Dispose()
     {
         GC.SuppressFinalize(this);
     }
 
-    public Task<IEnumerable<ToolDescriptor>> ListAsync(CancellationToken cancellationToken = default)
-    {
-        var tools = _operations.Select(op =>
-        {
-            //var parameters = op.Value.operation.Parameters?.ToDictionary(
-            //    p => p.Name,
-            //    p =>
-            //    {
-            //        return p.Schema.Type switch
-            //        {
-            //            "string" => new StringJsonSchema(p.Description),
-            //            "integer" => new IntegerJsonSchema(p.Description),
-            //            "number" => new NumberJsonSchema(p.Description),
-            //            "boolean" => new BooleanJsonSchema(p.Description),
-            //            _ => new ObjectJsonSchema()
-            //        };
-            //    });
-
-            return new ToolDescriptor
-            {
-                Name = op.Key,
-                Description = op.Value.operation.Summary ?? op.Value.operation.Description,
-                Parameters = null,
-                RequiresApproval = false
-            };
-        });
-
-        return Task.FromResult(tools);
-    }
-
     public async Task<ToolOutput> InvokeAsync(
-        string name,
         ToolInput input,
         CancellationToken cancellationToken = default)
     {
-        if (!_operations.TryGetValue(name, out var operationInfo))
+        if (!_operations.TryGetValue(string.Empty, out var operationInfo))
         {
-            return ToolOutput.NotFound(name);
+            return ToolOutput.Failure("OpenAPI 문서에서 유효한 operationId를 찾을 수 없습니다.");
         }
 
         var (operation, path, method) = operationInfo;
@@ -164,4 +140,5 @@ public class OpenApiToolPlugin : IToolPlugin
             return ToolOutput.Failure($"예외 발생: {ex.Message}");
         }
     }
+
 }

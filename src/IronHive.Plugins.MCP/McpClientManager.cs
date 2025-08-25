@@ -10,9 +10,9 @@ namespace IronHive.Plugins.MCP;
 public class McpClientManager
 {
     private readonly ConcurrentDictionary<string, McpSession> _sessions = new();
-    private readonly IMessageGenerationService _service;
+    private readonly IMessageService _service;
 
-    public McpClientManager(IMessageGenerationService service)
+    public McpClientManager(IMessageService service)
     {
         _service = service;
     }

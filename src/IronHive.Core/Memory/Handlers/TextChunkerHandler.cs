@@ -9,9 +9,9 @@ namespace IronHive.Core.Memory.Handlers;
 /// </summary>
 public class TextChunkerHandler : IMemoryPipelineHandler
 {
-    private readonly IEmbeddingGenerationService _embedder;
+    private readonly IEmbeddingService _embedder;
 
-    public TextChunkerHandler(IEmbeddingGenerationService embedder)
+    public TextChunkerHandler(IEmbeddingService embedder)
     {
         _embedder = embedder;
     }

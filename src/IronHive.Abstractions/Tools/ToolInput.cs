@@ -13,22 +13,26 @@ public class ToolInput : IReadOnlyDictionary<string, object?>
     /// <summary>
     /// 주어진 입력 객체를 딕셔너리 형태로 변환하여 래핑합니다.
     /// </summary>
-    /// <param name="input">입력 객체 (보통 익명 객체 또는 Dictionary)</param>
-    /// <param name="provider">서비스 프로바이더 (선택적)</param>
-    public ToolInput(object? input = null, IServiceProvider? provider = null)
+    public ToolInput(object? input = null, IServiceProvider? services = null, object? options = null)
     {
         _items = input is null
                  ? new Dictionary<string, object?>(StringComparer.Ordinal)
                  : input.ConvertTo<Dictionary<string, object?>>()
                  ?? throw new ArgumentException("입력 객체는 Dictionary<string, object?> 형식이어야 합니다.", nameof(input));
 
-        ServiceProvider = provider;
+        Services = services;
+        Options = options;
     }
 
     /// <summary>
     /// 서비스 프로바이더를 설정합니다.
     /// </summary>
-    public IServiceProvider? ServiceProvider { get; set; }
+    public IServiceProvider? Services { get; set; }
+
+    /// <summary>
+    /// 툴 옵션을 설정합니다.
+    /// </summary>
+    public object? Options { get; set; }
 
     /// <summary>
     /// 키에 해당하는 값을 가져옵니다. 존재하지 않으면 null 반환.

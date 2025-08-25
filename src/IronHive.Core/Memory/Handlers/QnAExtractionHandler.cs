@@ -21,7 +21,7 @@ public class QnAExtractionHandler : IMemoryPipelineHandler
         @"<qa>\s*<q>\s*(.*?)\s*</q>\s*<a>\s*(.*?)\s*</a>\s*</qa>",
         RegexOptions.Singleline | RegexOptions.Compiled);
 
-    private readonly IMessageGenerationService _service;
+    private readonly IMessageService _service;
 
     public class Options
     {
@@ -29,7 +29,7 @@ public class QnAExtractionHandler : IMemoryPipelineHandler
         public required string Model { get; set; }
     }
 
-    public QnAExtractionHandler(IMessageGenerationService chat)
+    public QnAExtractionHandler(IMessageService chat)
     {
         _service = chat;
     }
@@ -44,11 +44,11 @@ public class QnAExtractionHandler : IMemoryPipelineHandler
             var dialogues = new List<Dialogue>();
             foreach (var chunk in chunks)
             {
-                var request = new MessageGenerationRequest
+                var request = new MessageRequest
                 {
                     Provider = options.Provider,
                     Model = options.Model,  
-                    System = GetInstructions(),
+                    Instruction = GetInstructions(),
                     Messages = [new UserMessage
                     {
                         Id = Guid.NewGuid().ToShort(),

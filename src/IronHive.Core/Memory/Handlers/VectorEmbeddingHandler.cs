@@ -10,10 +10,10 @@ namespace IronHive.Core.Memory.Handlers;
 /// </summary>
 public class VectorEmbeddingHandler : IMemoryPipelineHandler
 {
-    private readonly IEmbeddingGenerationService _embedder;
+    private readonly IEmbeddingService _embedder;
     private readonly IVectorStorage _storage;
 
-    public VectorEmbeddingHandler(IEmbeddingGenerationService embedder, IVectorStorage storage)
+    public VectorEmbeddingHandler(IEmbeddingService embedder, IVectorStorage storage)
     {
         _embedder = embedder;
         _storage = storage;

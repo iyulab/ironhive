@@ -101,7 +101,8 @@ public static class FunctionToolFactory
             if (param.ParameterType == typeof(CancellationToken))
                 continue;
             // 특정 서비스의 경우
-            if (param.GetCustomAttribute<FromKeyedServicesAttribute>() != null)
+            if (param.GetCustomAttributes().Any(a => a is FromToolOptionsAttribute || 
+                    a is FromServicesAttribute || a is FromKeyedServicesAttribute))
                 continue;
 
             var description = param.GetCustomAttribute<DescriptionAttribute>()?.Description;

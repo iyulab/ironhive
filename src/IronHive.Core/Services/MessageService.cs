@@ -10,15 +10,15 @@ using IronHive.Core.Utilities;
 namespace IronHive.Core.Services;
 
 /// <inheritdoc />
-public class MessageGenerationService : IMessageGenerationService
+public class MessageService : IMessageService
 {
     private readonly IServiceProvider _services;
 
-    public MessageGenerationService(IServiceProvider services)
+    public MessageService(IServiceProvider services)
         : this(services, [], [])
     { }
 
-    public MessageGenerationService(
+    public MessageService(
         IServiceProvider services,
         IEnumerable<IMessageGenerator> generators, 
         IEnumerable<ITool> tools)
@@ -41,7 +41,7 @@ public class MessageGenerationService : IMessageGenerationService
 
     /// <inheritdoc />
     public async Task<MessageResponse> GenerateMessageAsync(
-        MessageGenerationRequest request,
+        MessageRequest request,
         CancellationToken cancellationToken = default)
     {
         if (!Generators.TryGet(request.Provider, out var provider))
@@ -55,13 +55,27 @@ public class MessageGenerationService : IMessageGenerationService
 
         // 루프 시작
         var counter = new LimitedCounter(request.MaxLoopCount);
+        var req = new MessageGenerationRequest
+        {
+            Model = request.Model,
+            Messages = request.Messages,
+            System = request.Instruction,
+            Tools = Tools.Where(t => request.Tools.Contains(t.Name, StringComparer.OrdinalIgnoreCase)),
+            ThinkingEffort = request.ThinkingEffort,
+            TopK = request.TopK,
+            TopP = request.TopP,
+            Temperature = request.Temperature,
+            StopSequences = request.StopSequences,
+            MaxTokens = request.MaxTokens,
+        };
+
         do
         {
             // 마지막 메시지가 어시스턴트 메시지인 경우, 툴 사용을 확인하고, 메시지를 이어갑니다.
-            if (request.Messages.LastOrDefault() is AssistantMessage last)
+            if (req.Messages.LastOrDefault() is AssistantMessage last)
             {
                 message = last;
-                await foreach (var _ in ProcessToolContentAsync(message, cancellationToken))
+                await foreach (var _ in ProcessToolContentAsync(message, request.ToolOptions, cancellationToken))
                 { }
             }
             else
@@ -69,14 +83,14 @@ public class MessageGenerationService : IMessageGenerationService
                 message = new AssistantMessage { Id = Guid.NewGuid().ToString() };
             }
 
-            var res = await provider.GenerateMessageAsync(request, cancellationToken);
+            var res = await provider.GenerateMessageAsync(req, cancellationToken);
 
             foreach (var content in res.Message?.Content ?? [])
             {
                 // 툴 컨텐츠의 경우 승인 요구사항을 확인하고 반영합니다.
                 if (content is ToolMessageContent tool)
                 {
-                    if (tool.RequiresApproval(request.Tools))
+                    if (tool.RequiresApproval(req.Tools))
                         tool.ChangeToPaused();
                     else
                         tool.ChangeToApproved();
@@ -87,9 +101,9 @@ public class MessageGenerationService : IMessageGenerationService
             }
 
             // 요청 메시지의 마지막이 어시스턴트가 아닌 경우, 메시지를 추가합니다.
-            if (request.Messages.LastOrDefault() is not AssistantMessage)
+            if (req.Messages.LastOrDefault() is not AssistantMessage)
             {
-                request.Messages.Add(message);
+                req.Messages.Add(message);
             }
             reason = res.DoneReason; // 생성 종료 이유 업데이트
             usage = res.TokenUsage; // 토큰 사용량 업데이트
@@ -109,7 +123,7 @@ public class MessageGenerationService : IMessageGenerationService
 
     /// <inheritdoc />
     public async IAsyncEnumerable<StreamingMessageResponse> GenerateStreamingMessageAsync(
-        MessageGenerationRequest request,
+        MessageRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         if (!Generators.TryGet(request.Provider, out var provider))
@@ -131,12 +145,25 @@ public class MessageGenerationService : IMessageGenerationService
         // 루프 시작
         bool next;
         var counter = new LimitedCounter(request.MaxLoopCount);
+        var req = new MessageGenerationRequest
+        {
+            Model = request.Model,
+            Messages = request.Messages,
+            System = request.Instruction,
+            Tools = Tools.Where(t => request.Tools.Contains(t.Name, StringComparer.OrdinalIgnoreCase)),
+            ThinkingEffort = request.ThinkingEffort,
+            TopK = request.TopK,
+            TopP = request.TopP,
+            Temperature = request.Temperature,
+            StopSequences = request.StopSequences,
+            MaxTokens = request.MaxTokens,
+        };
         do
         {
             // 마지막 메시지가 어시스턴트 메시지인 경우, 툴 사용을 확인하고, 메시지를 이어갑니다.
-            if (request.Messages.LastOrDefault() is AssistantMessage message)
+            if (req.Messages.LastOrDefault() is AssistantMessage message)
             {
-                await foreach (var res in ProcessToolContentAsync(message, cancellationToken))
+                await foreach (var res in ProcessToolContentAsync(message, request.ToolOptions, cancellationToken))
                 {
                     yield return res;
                 }
@@ -149,7 +176,7 @@ public class MessageGenerationService : IMessageGenerationService
 
             // 현재 루프에서 생성된 컨텐츠를 저장할 메시지 컨텐츠 스택 객체
             var stack = new List<MessageContent>();
-            await foreach (var res in provider.GenerateStreamingMessageAsync(request, cancellationToken))
+            await foreach (var res in provider.GenerateStreamingMessageAsync(req, cancellationToken))
             {
                 if (res is StreamingMessageBeginResponse mbr)
                 {
@@ -203,7 +230,7 @@ public class MessageGenerationService : IMessageGenerationService
                 if (content is ToolMessageContent tool)
                 {
                     // 툴 컨텐츠의 경우 승인 요구사항을 확인하고 반영합니다.
-                    if (tool.RequiresApproval(request.Tools))
+                    if (tool.RequiresApproval(req.Tools))
                         tool.ChangeToPaused();
                     else
                         tool.ChangeToApproved();
@@ -222,9 +249,9 @@ public class MessageGenerationService : IMessageGenerationService
             }
 
             // 요청 메시지의 마지막이 어시스턴트가 아닌 경우, 메시지를 추가합니다.
-            if (request.Messages.LastOrDefault() is not AssistantMessage)
+            if (req.Messages.LastOrDefault() is not AssistantMessage)
             {
-                request.Messages.Add(message);
+                req.Messages.Add(message);
             }
 
             // 다음 루프를 계속 진행할지 여부를 결정합니다.
@@ -249,6 +276,7 @@ public class MessageGenerationService : IMessageGenerationService
     /// </summary>
     private async IAsyncEnumerable<StreamingMessageResponse> ProcessToolContentAsync(
         AssistantMessage message,
+        IDictionary<string, object> toolOptions,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         const int maxConcurrent = 3; // 동시 실행할 최대 도구 호출 수
@@ -289,7 +317,8 @@ public class MessageGenerationService : IMessageGenerationService
                         }
                     }, cancellationToken);
 
-                    var input = new ToolInput(tmc.Input, _services);
+                    var options = toolOptions.TryGetValue(tmc.Name, out var opts) ? opts : null;
+                    var input = new ToolInput(tmc.Input, _services, options);
                     var output = Tools.TryGet(tmc.Name, out var tool)
                         ? await tool.InvokeAsync(input, cancellationToken)
                         : ToolOutput.Failure($"도구 [{tmc.Name}]를 찾을 수 없습니다. 이름에 오타가 없는지 확인하거나 사용 가능한 도구 목록을 참조하세요.");

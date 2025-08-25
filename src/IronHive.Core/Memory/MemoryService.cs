@@ -11,14 +11,14 @@ public class MemoryService : IMemoryService
     private readonly IServiceProvider _services;
     private readonly IQueueStorage<MemoryPipelineRequest> _queue;
     private readonly IVectorStorage _vector;
-    private readonly IEmbeddingGenerationService _embedder;
+    private readonly IEmbeddingService _embedder;
 
     public MemoryService(IServiceProvider services)
     {
         _services = services;
         _queue = services.GetRequiredService<IQueueStorage<MemoryPipelineRequest>>();
         _vector = services.GetRequiredService<IVectorStorage>();
-        _embedder = services.GetRequiredService<IEmbeddingGenerationService>();
+        _embedder = services.GetRequiredService<IEmbeddingService>();
     }
 
     /// <inheritdoc />
