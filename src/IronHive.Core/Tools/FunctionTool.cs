@@ -143,47 +143,45 @@ public sealed class FunctionTool : ITool
         {
             var param = parameters[i];
             var name = param.Name ?? throw new InvalidOperationException("Parameter name cannot be null.");
-            var attrs = param.GetCustomAttributes();
 
-            // 특정 키 서비스 주입
-            if (attrs.Any(a => a is FromKeyedServicesAttribute kattr))
+            // 1) 특정 키 서비스 주입
+            if (param.GetCustomAttribute<FromKeyedServicesAttribute>() is { } keyedAttr)
             {
-                var key = (attrs.First(a => a is FromKeyedServicesAttribute) as FromKeyedServicesAttribute)!.Key;
-                var services = input.Services?.GetKeyedServices(param.ParameterType, key);
+                var services = input.Services?.GetKeyedServices(param.ParameterType, keyedAttr.Key);
                 args[i] = param.ParameterType.IsArray ? services : services?.FirstOrDefault();
             }
-            // 특정 서비스 주입
-            else if (attrs.Any(a => a is FromServicesAttribute))
+            // 2) 특정 서비스 주입
+            else if (param.IsDefined(typeof(FromServicesAttribute)))
             {
                 var services = input.Services?.GetServices(param.ParameterType);
                 args[i] = param.ParameterType.IsArray ? services : services?.FirstOrDefault();
             }
-            // 툴 옵션 주입
-            else if (attrs.Any(a => a is FromToolOptionsAttribute) && input.Options is not null)
+            // 3) 툴 옵션 주입
+            else if (param.GetCustomAttribute<FromToolOptionsAttribute>() is not null && input.Options is not null)
             {
                 args[i] = input.Options.ConvertTo(param.ParameterType);
             }
-            // 취소 토큰인 경우
+            // 4) 취소 토큰인 경우
             else if (param.ParameterType == typeof(CancellationToken))
             {
                 args[i] = cancellationToken;
             }
-            // 인자가 존재하는 경우
+            // 5) 인자가 존재하는 경우
             else if (input.TryGetValue(name, out var value))
             {
                 args[i] = value.ConvertTo(param.ParameterType);
             }    
-            // 인자가 존재하지 않고, 기본값이 있는 경우
+            // 6) 인자가 존재하지 않지만, 기본값이 있는 경우
             else if (param.HasDefaultValue)
             {
                 args[i] = param.DefaultValue;
             }
-            // 인자가 존재하지 않고, 선택적 인자인 경우
+            // 7) 인자가 존재하지 않지만, 선택적 인자인 경우
             else if (param.IsOptional)
             {
                 args[i] = Type.Missing;
             }
-            // 인자가 존재하지 않고, 필수 인자인 경우
+            // 8) 인자가 존재하지 않고, 필수 인자인 경우
             else
             {
                 throw new ArgumentException($"Parameter '{name}' is required");

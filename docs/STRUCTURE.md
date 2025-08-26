@@ -2,14 +2,11 @@
 
 ## Service Classification
 
-### Root Service
-- IHiveMind
-
 ### AI Services
-- IMessageGenerationService        => Singleton                                      => Required
+- IMessageService             => Singleton                                      => Required
   - IMessageGenerator[]
   - IToolPlugin[]
-- IEmbeddingGenerationService      => Singleton                                      => Required
+- IEmbeddingService           => Singleton                                      => Required
   - IEmbeddingGenerator[]
 
 ### File Services
@@ -19,9 +16,9 @@
   - IFileDecoder[]
   
 ### Memory Services
-- IMemoryService
+- IMemoryService              => Singleton                          => Required
+  - IQueueStorage
+  - IVectorStorage
+  - IPipelineHandler[]        => Singleton | Scoped | Transient     => Optional
   - IMemoryWorkerManager
     - IMemoryWorker
-  - IQueueStorage                  => Singleton                                      => Required
-  - IVectorStorage                 => Singleton                                      => Required
-  - IPipelineHandler[]             => Singleton | Scoped | Transient                 => Optional
