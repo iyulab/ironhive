@@ -1,6 +1,7 @@
 ﻿using System.Data;
 using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Tools;
+using ModelContextProtocol;
 using ModelContextProtocol.Client;
 
 namespace IronHive.Plugins.MCP;
@@ -46,10 +47,10 @@ public class McpTool : ITool
             serializerOptions: null,
             cancellationToken: cancellationToken);
 
-        var text = result.Content.Select(c => c.Text?.Trim());
+        var text = result.Content.Select(c => c.ToString());
         var content = string.Join("\n", text);
         
-        return result.IsError
+        return result.IsError.GetValueOrDefault(true)
             ? ToolOutput.Failure(content)
             : ToolOutput.Success(content);
     }

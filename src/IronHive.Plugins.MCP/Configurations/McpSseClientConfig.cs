@@ -35,26 +35,17 @@ public class McpSseClientConfig : IMcpClientConfig
     [JsonPropertyName("timeout")]
     public TimeSpan ConnectionTimeout { get; set; } = TimeSpan.FromSeconds(30);
 
-    /// <summary>
-    /// HTTP 통신에서 스트리밍 방식 사용 여부를 지정합니다.
-    /// true로 설정 시 청크 단위의 스트리밍 응답을 처리하며, 대용량 데이터 전송에 효율적입니다.
-    /// 기본값은 false입니다.
-    /// </summary>
-    [JsonPropertyName("stream")]
-    public bool UseStreamableHttp { get; set; } = false;
-
     public override bool Equals(object? obj)
     {
         return obj is McpSseClientConfig server &&
                ServerName == server.ServerName &&
                EqualityComparer<Uri>.Default.Equals(Endpoint, server.Endpoint) &&
                EqualityComparer<Dictionary<string, string>?>.Default.Equals(AdditionalHeaders, server.AdditionalHeaders) &&
-               ConnectionTimeout.Equals(server.ConnectionTimeout) &&
-               UseStreamableHttp == server.UseStreamableHttp;
+               ConnectionTimeout.Equals(server.ConnectionTimeout);
     }
 
     public override int GetHashCode()
     {
-        return HashCode.Combine(ServerName, Endpoint, AdditionalHeaders, ConnectionTimeout, UseStreamableHttp);
+        return HashCode.Combine(ServerName, Endpoint, AdditionalHeaders, ConnectionTimeout);
     }
 }

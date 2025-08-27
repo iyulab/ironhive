@@ -213,26 +213,30 @@ public class McpSession : IAsyncDisposable
     /// <summary>
     /// 전송 계층을 생성합니다.
     /// </summary>
-    private static IClientTransport CreateTransport(IMcpClientConfig server)
+    private static IClientTransport CreateTransport(IMcpClientConfig config)
     {
-        return server switch
+        return config switch
         {
             McpStdioClientConfig stdio => new StdioClientTransport(new StdioClientTransportOptions
             {
+                Name = stdio.ServerName,
                 Command = stdio.Command,
                 Arguments = stdio.Arguments?.ToList(),
                 EnvironmentVariables = stdio.EnvironmentVariables,
                 ShutdownTimeout = stdio.ShutdownTimeout,
-                WorkingDirectory = stdio.WorkingDirectory
+                WorkingDirectory = stdio.WorkingDirectory,
+                //StandardErrorLines = (str) => Console.Error.WriteLine(str),
             }),
             McpSseClientConfig sse => new SseClientTransport(new SseClientTransportOptions
             {
+                Name = sse.ServerName,
                 Endpoint = sse.Endpoint,
                 AdditionalHeaders = sse.AdditionalHeaders,
                 ConnectionTimeout = sse.ConnectionTimeout,
-                UseStreamableHttp = sse.UseStreamableHttp
+                //OAuth = sse.OAuth,
+                //TransportMode = sse.TransportMode
             }),
-            _ => throw new NotSupportedException($"서버 타입 {server.GetType().Name}은(는) 지원되지 않습니다.")
+            _ => throw new NotSupportedException($"서버 타입 {config.GetType().Name}은(는) 지원되지 않습니다.")
         };
     }
 
