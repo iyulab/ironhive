@@ -1,12 +1,33 @@
-# 1´Ü°è: ºôµå ´Ü°è
+# Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 
-# ºôµå ÆÄÀÏ º¹»ç
+# Install curl for health checks
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+# ë¹„íŠ¹ê¶Œ ì‚¬ìš©ì ìƒì„±
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# wwwroot ë””ë ‰í„°ë¦¬ ìƒì„± ë° ê¶Œí•œ ì„¤ì •
+RUN mkdir -p /var/app/wwwroot && chown -R appuser:appuser /var/app/wwwroot
+RUN chown -R appuser:appuser /app
+
+# ë¹Œë“œëœ íŒŒì¼ ë³µì‚¬ (GitHub Actionsì—ì„œ ë¹Œë“œë¨)
 COPY bin/Publish .
 
-# ASP.NET Core Æ÷Æ® ³ëÃâ
+# í™˜ê²½ ë³€ìˆ˜ ì„¤ì •
+ENV ASPNETCORE_ENVIRONMENT=Production
+ENV ASPNETCORE_URLS=http://+:80
+
+# ì‚¬ìš©ì ë³€ê²½
+USER appuser
+
+# ASP.NET Core í¬íŠ¸ ì„¤ì •
 EXPOSE 80
 
-# ¾ÖÇÃ¸®ÄÉÀÌ¼Ç ½ÇÇà
+# í—¬ìŠ¤ì²´í¬ ì¶”ê°€
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost/system/healthz || exit 1
+
+# ì• í”Œë¦¬ì¼€ì´ì…˜ ì‹¤í–‰
 ENTRYPOINT ["dotnet", "WebServer.dll"]

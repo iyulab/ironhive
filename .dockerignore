@@ -1,0 +1,60 @@
+# .dockerignore file for IronHive
+
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+docs/
+deploy/README.md
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Build artifacts
+**/bin/
+**/obj/
+**/out/
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+
+# IDE files
+.vs/
+.vscode/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Node modules (if any)
+node_modules/
+npm-debug.log*
+
+# Docker files
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# Test results
+TestResults/
+*.trx
+
+# Deployment scripts
+deploy/

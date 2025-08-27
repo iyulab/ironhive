@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  ironhive-web:
+    build:
+      context: ./services/WebServer
+      dockerfile: Dockerfile
+    container_name: ironhive-web
+    ports:
+      - "8080:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - OPENAI_KEY=${OPENAI_KEY:-}
+      - ANTHROPIC_KEY=${ANTHROPIC_KEY:-}
+      - GOOGLE_KEY=${GOOGLE_KEY:-}
+      - XAI_KEY=${XAI_KEY:-}
+      - GPUSTACK_KEY=${GPUSTACK_KEY:-}
+    volumes:
+      - ./data/wwwroot:/var/app/wwwroot
+      - ./data/logs:/var/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/system/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - ironhive-network
+
+networks:
+  ironhive-network:
+    driver: bridge
+
+volumes:
+  ironhive-data:
+    driver: local

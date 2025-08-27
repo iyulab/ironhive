@@ -13,8 +13,45 @@ public class SystemController : ControllerBase
     [HttpGet("healthz")]
     public async Task<ActionResult> GetHealthAsync()
     {
-        await Task.CompletedTask;
-        return Ok("ok");
+        try
+        {
+            var healthInfo = new
+            {
+                status = "healthy",
+                timestamp = DateTime.UtcNow,
+                uptime = Environment.TickCount64,
+                environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Unknown",
+                version = Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "Unknown",
+                checks = new
+                {
+                    memory = new
+                    {
+                        status = "ok",
+                        workingSet = GC.GetTotalMemory(false)
+                    },
+                    runtime = new
+                    {
+                        status = "ok",
+                        framework = RuntimeInformation.FrameworkDescription,
+                        osDescription = RuntimeInformation.OSDescription
+                    }
+                }
+            };
+            
+            await Task.CompletedTask;
+            return Ok(healthInfo);
+        }
+        catch (Exception ex)
+        {
+            var errorInfo = new
+            {
+                status = "unhealthy",
+                timestamp = DateTime.UtcNow,
+                error = ex.Message
+            };
+            
+            return StatusCode(503, errorInfo);
+        }
     }
 
     [HttpGet("time")]
@@ -34,8 +71,106 @@ public class SystemController : ControllerBase
         }
 
         var version = assembly.GetName().Version;
+        var buildTime = GetBuildTime();
+        
+        var versionInfo = new
+        {
+            version = version?.ToString() ?? "Unknown",
+            buildTime = buildTime,
+            environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Unknown",
+            runtime = new
+            {
+                framework = RuntimeInformation.FrameworkDescription,
+                os = RuntimeInformation.OSDescription,
+                architecture = RuntimeInformation.OSArchitecture.ToString()
+            },
+            deployment = new
+            {
+                startTime = Process.GetCurrentProcess().StartTime,
+                uptime = TimeSpan.FromMilliseconds(Environment.TickCount64),
+                workingDirectory = Environment.CurrentDirectory
+            }
+        };
+        
         await Task.CompletedTask;
-        return Ok(version);
+        return Ok(versionInfo);
+    }
+
+    [HttpGet("status")]
+    public async Task<ActionResult> GetDeploymentStatusAsync()
+    {
+        try
+        {
+            var process = Process.GetCurrentProcess();
+            var status = new
+            {
+                application = new
+                {
+                    name = "IronHive",
+                    status = "running",
+                    version = Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "Unknown",
+                    environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Unknown"
+                },
+                system = new
+                {
+                    startTime = process.StartTime,
+                    uptime = DateTime.UtcNow - process.StartTime,
+                    processId = process.Id,
+                    threads = process.Threads.Count,
+                    workingSet = process.WorkingSet64,
+                    gcMemory = GC.GetTotalMemory(false)
+                },
+                deployment = new
+                {
+                    deploymentTime = GetBuildTime(),
+                    workingDirectory = Environment.CurrentDirectory,
+                    runtime = RuntimeInformation.FrameworkDescription,
+                    platform = RuntimeInformation.OSDescription
+                }
+            };
+            
+            await Task.CompletedTask;
+            return Ok(status);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    private static DateTime GetBuildTime()
+    {
+        const string buildVersionMetadataPrefix = "+build";
+        var attribute = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
+        if (attribute?.InformationalVersion != null)
+        {
+            var value = attribute.InformationalVersion;
+            var index = value.IndexOf(buildVersionMetadataPrefix);
+            if (index > 0)
+            {
+                var buildTimeString = value.Substring(index + buildVersionMetadataPrefix.Length);
+                if (DateTime.TryParse(buildTimeString, out var buildTime))
+                {
+                    return buildTime;
+                }
+            }
+        }
+        
+        // Fallback to file creation time
+        try
+        {
+            var assembly = Assembly.GetEntryAssembly();
+            if (assembly != null && !string.IsNullOrEmpty(assembly.Location))
+            {
+                return new FileInfo(assembly.Location).CreationTime;
+            }
+        }
+        catch
+        {
+            // Ignore errors
+        }
+        
+        return DateTime.MinValue;
     }
 
     [HttpGet("crash")]
