@@ -7,6 +7,7 @@ namespace IronHive.Abstractions.Memory;
 /// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(VectorMemoryTarget), "vector")]
+[JsonDerivedType(typeof(GraphMemoryTarget), "graph")]
 public interface IMemoryTarget
 { }
 
@@ -27,12 +28,18 @@ public class VectorMemoryTarget : MemoryTargetBase
     public required string CollectionName { get; set; }
 
     /// <summary>
-    /// 임베딩 모델 제공자의 이름입니다.
+    /// 임베딩 제공자
     /// </summary>
     public required string EmbeddingProvider { get; set; }
 
     /// <summary>
-    /// 임베딩 모델의 이름입니다.
+    /// 임베딩 모델 이름
     /// </summary>
     public required string EmbeddingModel { get; set; }
 }
+
+/// <summary>
+/// 메모리를 저장할 그래프DB 스토리지를 나타내는 클래스입니다.
+/// </summary>
+public class GraphMemoryTarget : MemoryTargetBase
+{ }

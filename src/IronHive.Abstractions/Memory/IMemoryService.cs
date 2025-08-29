@@ -8,6 +8,21 @@ namespace IronHive.Abstractions.Memory;
 public interface IMemoryService
 {
     /// <summary>
+    /// 메모리 큐 스토리지를 설정하거나 가져옵니다.
+    /// </summary>
+    IQueueStorage<MemoryPipelineContext<object>> QueueStorage { get; set; }
+
+    /// <summary>
+    /// 메모리 벡터 스토리지를 설정하거나 가져옵니다.
+    /// </summary>
+    IVectorStorage VectorStorage { get; set; }
+
+    /// <summary>
+    /// 메모리 작업자 서비스입니다.
+    /// </summary>
+    IMemoryWorkerService Workers { get; }
+
+    /// <summary>
     /// 지정된 접두사로 시작하는 벡터 컬렉션 목록을 비동기적으로 반환합니다.
     /// </summary>
     Task<IEnumerable<VectorCollection>> ListCollectionsAsync(        
@@ -59,8 +74,6 @@ public interface IMemoryService
     Task QueueIndexSourceAsync(
         string collectionName,
         IMemorySource source,
-        IEnumerable<string> steps,
-        IDictionary<string, object?>? handlerOptions = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -73,8 +86,6 @@ public interface IMemoryService
     Task IndexSourceAsync(
         string collectionName,
         IMemorySource source,
-        IEnumerable<string> steps,
-        IDictionary<string, object?>? handlerOptions = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

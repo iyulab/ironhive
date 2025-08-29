@@ -1,24 +1,74 @@
 ﻿using IronHive.Abstractions;
 using IronHive.Abstractions.Files;
+using IronHive.Abstractions.Storages;
 
 namespace IronHive.Core.Files;
 
 /// <inheritdoc />
-public class FileStorageManager : IFileStorageManager
+public class FileService : IFileService
 {
-    public FileStorageManager()
+    // 파일 확장자와 MIME 타입 매핑 객체
+    private readonly FileContentTypeMapper _mapper = new();
+
+    public FileService()
         : this(Enumerable.Empty<IFileStorage>())
     { }
 
-    public FileStorageManager(IEnumerable<IFileStorage> storages)
+    public FileService(IEnumerable<IFileStorage> storages, IEnumerable<IFileDecoder>? decoders = null)
     {
         Storages = new KeyedCollection<IFileStorage>(
             storages,
             storage => storage.StorageName);
+        Decoders = decoders?.ToList() ?? new List<IFileDecoder>();
     }
 
     /// <inheritdoc />
-    public IKeyedCollection<IFileStorage> Storages { get; }
+    public Abstractions.KeyedCollection<IFileStorage> Storages { get; }
+
+    /// <inheritdoc />
+    public ICollection<IFileDecoder> Decoders { get; }
+
+    /// <inheritdoc />
+    public IEnumerable<string> SupportedExtensions
+    {
+        get
+        {
+            return _mapper.Where(kvp => Decoders.Any(d => d.SupportsMimeType(kvp.Value)))
+                .Select(kvp => kvp.Key)
+                .Distinct();
+        }
+    }
+
+    /// <inheritdoc />
+    public IEnumerable<string> SupportedMimeTypes
+    {         
+        get
+        {
+            return _mapper.Where(kvp => Decoders.Any(d => d.SupportsMimeType(kvp.Value)))
+                .Select(kvp => kvp.Value)
+                .Distinct();
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<string> DecodeAsync(
+        string fileName, 
+        Stream data, 
+        CancellationToken cancellationToken = default)
+    {
+        var extension = Path.GetExtension(fileName);
+        if (_mapper.TryGetValue(extension, out var mimeType))
+        {
+            var decoder = Decoders.FirstOrDefault(d => d.SupportsMimeType(mimeType))
+                ?? throw new NotSupportedException($"Decoder not found for MIME type: {mimeType}");
+
+            return await decoder.DecodeAsync(data, cancellationToken);
+        }
+        else
+        {
+            throw new NotSupportedException($"Not supported file extension: {extension}");
+        }
+    }
 
     /// <inheritdoc />
     public async Task<IEnumerable<string>> ListAsync(

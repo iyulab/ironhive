@@ -39,4 +39,12 @@ public interface IEmbeddingGenerator : IDisposable
         string modelId,
         string input,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 지정된 모델을 사용하여 다수의 입력 문자열의 토큰수를 계산합니다. .
+    /// </summary>
+    Task<IEnumerable<EmbeddingTokens>> CountTokensBatchAsync(
+        string modelId,
+        IEnumerable<string> inputs,
+        CancellationToken cancellationToken = default);
 }

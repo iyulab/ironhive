@@ -4,15 +4,10 @@
 /// 메모리 기반 작업을 처리하는 워커들의 수명을 관리하고,
 /// 워크로드에 따라 자동으로 확장 및 축소할 수 있는 워커 매니저의 인터페이스입니다.
 /// </summary>
-public interface IMemoryWorkerManager : IDisposable
+public interface IMemoryWorkerService : IDisposable
 {
     /// <summary>
-    /// 작업 진행 상황을 알리는 이벤트입니다.
-    /// </summary>
-    event EventHandler<MemoryPipelineEventArgs>? Progressed;
-
-    /// <summary>
-    /// 현재 워커 매니저가 실행 중인지 여부를 나타냅니다.
+    /// 현재 워커 서비스가 실행 중인지 여부를 나타냅니다.
     /// </summary>
     bool IsRunning { get; }
 

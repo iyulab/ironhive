@@ -18,7 +18,7 @@ public class EmbeddingService : IEmbeddingService
     }
 
     /// <inheritdoc />
-    public IKeyedCollection<IEmbeddingGenerator> Generators { get; }
+    public Abstractions.KeyedCollection<IEmbeddingGenerator> Generators { get; }
 
     /// <inheritdoc />
     public async Task<IEnumerable<float>> EmbedAsync(
@@ -59,6 +59,20 @@ public class EmbeddingService : IEmbeddingService
             throw new KeyNotFoundException($"Service key '{provider}' not found.");
 
         var result = await service.CountTokensAsync(modelId, input, cancellationToken);
+        return result;
+    }
+
+    /// <inheritdoc />
+    public Task<IEnumerable<EmbeddingTokens>> CountTokensBatchAsync(
+        string provider, 
+        string modelId, 
+        IEnumerable<string> inputs, 
+        CancellationToken cancellationToken = default)
+    {
+        if (!Generators.TryGet(provider, out var service))
+            throw new KeyNotFoundException($"Service key '{provider}' not found.");
+
+        var result = service.CountTokensBatchAsync(modelId, inputs, cancellationToken);
         return result;
     }
 }

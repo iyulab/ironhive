@@ -1,15 +1,12 @@
 ﻿using System.Collections.Concurrent;
-using Microsoft.Extensions.DependencyInjection;
 using IronHive.Abstractions.Memory;
 
 namespace IronHive.Core.Memory;
 
-/// <summary>
-/// IMemoryWorker 인스턴스를 관리하고 동적으로 확장/축소하는 오토 스케일링 관리자입니다.
-/// </summary>
-public class MemoryWorkerManager : IMemoryWorkerManager
+/// <inheritdoc />
+public class MemoryWorkerService : IMemoryWorkerService
 {
-    private readonly IServiceProvider _services;
+    private readonly IMemoryService _memory;
     private readonly ConcurrentBag<IMemoryWorker> _workers = new();
     private readonly object _lock = new();
 
@@ -17,13 +14,10 @@ public class MemoryWorkerManager : IMemoryWorkerManager
     private int _minWorkers = 1;
     private int _maxWorkers = 10;
 
-    public MemoryWorkerManager(IServiceProvider services)
+    public MemoryWorkerService(IMemoryService memory)
     {
-        _services = services;
+        _memory = memory;
     }
-
-    /// <inheritdoc />
-    public event EventHandler<MemoryPipelineEventArgs>? Progressed;
 
     /// <inheritdoc />
     public bool IsRunning => Volatile.Read(ref _state) == 1;
@@ -89,7 +83,6 @@ public class MemoryWorkerManager : IMemoryWorkerManager
             if (_workers.TryTake(out var worker))
             {
                 worker.StateChanged -= OnWorkerStateChanged;
-                worker.Progressed -= OnWorkerProgressed;
                 tasks.Add(worker.StopAsync(false).ContinueWith(t =>
                 {
                     worker.Dispose();
@@ -108,9 +101,8 @@ public class MemoryWorkerManager : IMemoryWorkerManager
     private void ScaleUp()
     {
         // 새로운 워커 인스턴스 생성
-        var worker = _services.GetService<IMemoryWorker>() ?? new MemoryWorker(_services);
+        var worker = new MemoryWorker(_memory);
         worker.StateChanged += OnWorkerStateChanged;
-        worker.Progressed += OnWorkerProgressed;
 
         // 워커를 백그라운드에서 실행하고 관리 목록에 추가
         Task.Run(worker.StartAsync);
@@ -129,7 +121,6 @@ public class MemoryWorkerManager : IMemoryWorkerManager
             worker.StateChanged -= OnWorkerStateChanged;
             _ = worker.StopAsync(false).ContinueWith(t =>
             {
-                worker.Progressed -= OnWorkerProgressed;
                 worker.Dispose();
             });
         }
@@ -175,13 +166,5 @@ public class MemoryWorkerManager : IMemoryWorkerManager
                 }
                 break;
         }
-    }
-
-    /// <summary>
-    /// 워커의 진행 상황이벤트를 전달합니다.
-    /// </summary>
-    private void OnWorkerProgressed(object? sender, MemoryPipelineEventArgs e)
-    {
-        Progressed?.Invoke(sender, e);
     }
 }

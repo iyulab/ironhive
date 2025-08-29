@@ -23,6 +23,7 @@ public class RabbitMQueueStorage<T> : IQueueStorage<T>
         _jsonOptions = config.JsonOptions;
     }
 
+    /// <inheritdoc />
     public void Dispose()
     {
         _conn?.Dispose();

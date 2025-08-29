@@ -1,7 +1,7 @@
 ﻿using Amazon;
 using Amazon.S3;
 using Amazon.S3.Model;
-using IronHive.Abstractions.Files;
+using IronHive.Abstractions.Storages;
 using System.Net;
 using AmazonS3ClientConfig = Amazon.S3.AmazonS3Config;
 
@@ -87,7 +87,7 @@ public class AmazonS3FileStorage : IFileStorage
             // 다음 페이지가 있는 경우, ContinuationToken을 설정하여 다음 페이지를 요청합니다.
             request.ContinuationToken = response.NextContinuationToken;
         }
-        while (response.IsTruncated); // 페이지 처리가 끝날 때까지 반복
+        while (response.IsTruncated ?? false); // 페이지 처리가 끝날 때까지 반복
 
         return result;
     }
@@ -194,7 +194,7 @@ public class AmazonS3FileStorage : IFileStorage
                 objects.AddRange(listResponse.S3Objects.Select(obj => new KeyVersion { Key = obj.Key }));
                 listRequest.ContinuationToken = listResponse.NextContinuationToken;
             }
-            while (listResponse.IsTruncated);
+            while (listResponse.IsTruncated ?? false);
 
             if (objects.Count != 0)
             {

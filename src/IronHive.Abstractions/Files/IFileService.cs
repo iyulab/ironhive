@@ -1,14 +1,42 @@
-﻿namespace IronHive.Abstractions.Files;
+﻿using IronHive.Abstractions.Storages;
+
+namespace IronHive.Abstractions.Files;
 
 /// <summary>
 /// 파일 관련 작업을 수행하는 서비스 입니다.
 /// </summary>
-public interface IFileStorageManager
+public interface IFileService
 {
     /// <summary>
     /// 저장소를 관리하는 컬렉션입니다.
     /// </summary>
-    public IKeyedCollection<IFileStorage> Storages { get; }
+    KeyedCollection<IFileStorage> Storages { get; }
+
+    /// <summary>
+    /// 파일 디코더를 관리하는 컬렉션입니다.
+    /// </summary>
+    ICollection<IFileDecoder> Decoders { get; }
+
+    /// <summary>
+    /// 등록된 디코더들이 지원하는 파일 확장자 목록을 반환
+    /// </summary>
+    IEnumerable<string> SupportedExtensions { get; }
+
+    /// <summary>
+    /// 등록된 디코더들이 지원하는 MIME 타입 목록을 반환
+    /// </summary>
+    IEnumerable<string> SupportedMimeTypes { get; }
+
+    /// <summary>
+    /// 지정된 파일 스트림을 디코딩
+    /// </summary>
+    /// <param name="fileName">파일 경로 또는 이름 (확장자 확인용)</param>
+    /// <param name="data">파일 스트림</param>
+    /// <returns>디코딩된 문자열</returns>
+    Task<string> DecodeAsync(
+        string fileName,
+        Stream data,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 지정한 저장소 및 접두어(prefix)를 기준으로,

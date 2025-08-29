@@ -20,14 +20,19 @@ public interface IHiveServiceBuilder
     IServiceCollection Services { get; }
 
     /// <summary>
+    /// Hive 서비스의 파일 서비스를 구성하기 위한 빌더를 가져옵니다.
+    /// </summary>
+    IFileServiceBuilder File { get; }
+
+    /// <summary>
+    /// Hive 서비스의 메모리를 구성하기 위한 빌더를 가져옵니다.
+    /// </summary>
+    IMemoryServiceBuilder Memory { get; }
+
+    /// <summary>
     /// 새로운 모델 제공자를 등록합니다.
     /// </summary>
     IHiveServiceBuilder AddModelCatalogProvider(IModelCatalogProvider provider);
-
-    /// <summary>
-    /// 새로운 메시지 생성기를 등록합니다.
-    /// </summary>
-    IHiveServiceBuilder AddMessageGenerator(IMessageGenerator provider);
 
     /// <summary>
     /// 새로운 임베딩 생성기를 등록합니다.
@@ -35,48 +40,14 @@ public interface IHiveServiceBuilder
     IHiveServiceBuilder AddEmbeddingGenerator(IEmbeddingGenerator provider);
 
     /// <summary>
-    /// 툴을 등록합니다.
+    /// 새로운 메시지 생성기를 등록합니다.
     /// </summary>
-    IHiveServiceBuilder AddTool(ITool tool);
+    IHiveServiceBuilder AddMessageGenerator(IMessageGenerator provider);
 
     /// <summary>
-    /// 벡터 스토리지를 싱글턴으로 등록합니다.
-    /// 하나의 벡터 스토리지만 등록할 수 있으며, 이후 등록은 기존 것을 대체합니다.
+    /// 새로운 툴을 등록합니다.
     /// </summary>
-    IHiveServiceBuilder WithVectorStorage(IVectorStorage storage);
-
-    /// <summary>
-    /// 메모리 큐 스토리지를 싱글턴으로 등록합니다.
-    /// 하나의 큐 스토리지만 등록할 수 있으며, 이후 등록은 기존 것을 대체합니다.
-    /// </summary>
-    IHiveServiceBuilder WithMemoryQueueStorage(IQueueStorage<MemoryPipelineRequest> storage);
-
-    /// <summary>
-    /// 메모리 파이프라인 핸들러를 등록합니다.
-    /// </summary>
-    /// <param name="serviceKey">메모리 서비스에서 파이프라인 단계로 사용될 고유 키입니다.</param>
-    /// <param name="lifetime">서비스 수명 주기입니다.</param>
-    /// <param name="implementationFactory">
-    /// 파이프라인 핸들러 인스턴스를 생성하는 팩토리 메서드입니다.
-    /// 첫 번째 매개변수는 서비스 프로바이더, 두 번째는 서비스 키입니다.
-    /// null이면 기본 구현이 사용됩니다.
-    /// </param>
-    IHiveServiceBuilder AddMemoryPipelineHandler<TImplementation>(
-        string serviceKey,
-        ServiceLifetime lifetime = ServiceLifetime.Singleton,
-        Func<IServiceProvider, object?, TImplementation>? implementationFactory = null)
-        where TImplementation : class, IMemoryPipelineHandler;
-
-    /// <summary>
-    /// 파일 저장소 구현을 싱글턴으로 등록합니다.
-    /// </summary>
-    IHiveServiceBuilder AddFileStorage(IFileStorage storage);
-
-    /// <summary>
-    /// 하나 이상의 파일 디코더를 싱글턴으로 등록합니다.
-    /// 디코더의 순서가 중요하며, 첫 번째로 일치하는 디코더가 사용됩니다.
-    /// </summary>
-    IHiveServiceBuilder AddFileDecoder(IFileDecoder decoder);
+    IHiveServiceBuilder AddMessageTool(ITool tool);
 
     /// <summary>
     /// HiveService 인스턴스를 생성합니다.

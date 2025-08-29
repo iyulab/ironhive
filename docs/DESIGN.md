@@ -1,8 +1,9 @@
 - builder
-	- Providers: IKeyedCollection<IProvider>
-		- AddModelCatalogProvider()
-		- AddMessageGenerator()
-		- AddEmbeddingGenerator()
+	- AddModelCatalogProvider()
+	- AddMessageGenerator()
+	- AddMessageTool()
+	- AddEmbeddingGenerator()
+
 	- Files: IFileServiceBuilder
 		- SetDetector()
 		- AddStorage()
@@ -10,10 +11,7 @@
 	- Memory: IMemoryServiceBuilder
 		- SetVectorStorage()
 		- SetQueueStorage()
-
-		- Workers
-			- AddPipelineHandler()
-			- ConfigWorkers()
+		- SetMemoryPipeline()
 
 - service
 	- AgentService
@@ -23,14 +21,22 @@
 		- Detector or Resolver or Analyzer
 		- Storages
 		- Decoders
-
-		- SetDetector()
 	- MemoryService
 		- Generators<Embedding>
 		- Vector
 		- Queue
-		- Workers
-			- Pipelines
+		- Pipeline
 
 		- SetVectorStorage()
 		- SetQueueStorage()
+		- SetMemoryPipeline()
+	
+	- MemoryWorkerService(기본 주입 or CreateWorker()로 생성?)
+		- IMemoryService 주입	
+	
+- HiveService
+	- File { get; }
+	- Memory { get; }
+
+	- CreateAgent()
+	- CreateMemoryWorker()

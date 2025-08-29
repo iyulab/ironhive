@@ -1,8 +1,8 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using IronHive.Core.Storages;
 using IronHive.Core.Tools;
-using IronHive.Core.Memory.Handlers;
 using IronHive.Core.Files.Decoders;
+using IronHive.Core.Memory.Pipelines;
 
 namespace IronHive.Abstractions;
 
@@ -17,7 +17,7 @@ public static class HiveServiceBuilderExtensions
         var tools = FunctionToolFactory.CreateFromType<T>();
         foreach (var tool in tools)
         {
-            builder.AddTool(tool);
+            builder.AddMessageTool(tool);
         }
         return builder;
     }
@@ -27,7 +27,7 @@ public static class HiveServiceBuilderExtensions
     /// </summary>
     public static IHiveServiceBuilder AddLocalFileStorage(this IHiveServiceBuilder builder, string storageName)
     {
-        builder.AddFileStorage(new LocalFileStorage
+        builder.File.AddStorage(new LocalFileStorage
         {
             StorageName = storageName
         });
@@ -39,11 +39,11 @@ public static class HiveServiceBuilderExtensions
     /// </summary>
     public static IHiveServiceBuilder AddDefaultFileDecoders(this IHiveServiceBuilder builder)
     {
-        builder.AddFileDecoder(new TextDecoder());
-        builder.AddFileDecoder(new WordDecoder());
-        builder.AddFileDecoder(new PDFDecoder());
-        builder.AddFileDecoder(new PPTDecoder());
-        builder.AddFileDecoder(new ImageDecoder());
+        builder.File.AddDecoder(new TextDecoder());
+        builder.File.AddDecoder(new WordDecoder());
+        builder.File.AddDecoder(new PDFDecoder());
+        builder.File.AddDecoder(new PPTDecoder());
+        builder.File.AddDecoder(new ImageDecoder());
         return builder;
     }
 
@@ -52,10 +52,10 @@ public static class HiveServiceBuilderExtensions
     /// </summary>
     public static IHiveServiceBuilder AddDefaultPipelineHandlers(this IHiveServiceBuilder builder)
     {
-        builder.AddMemoryPipelineHandler<TextExtractionHandler>("extract_text");
-        builder.AddMemoryPipelineHandler<TextChunkerHandler>("split_text");
-        builder.AddMemoryPipelineHandler<QnAExtractionHandler>("gen_QnA");
-        builder.AddMemoryPipelineHandler<VectorEmbeddingHandler>("gen_vectors");
+        //builder.AddMemoryPipelineHandler<TextExtractionPipeline>("extract_text");
+        //builder.AddMemoryPipelineHandler<TextChunkingPipeline>("split_text");
+        //builder.AddMemoryPipelineHandler<DialogueExtractionPipeline>("gen_QnA");
+        //builder.AddMemoryPipelineHandler<TextEmbeddingPipeline>("gen_vectors");
         return builder;
     }
 
@@ -65,80 +65,5 @@ public static class HiveServiceBuilderExtensions
     public static bool ContainsAny<TService>(this IHiveServiceBuilder builder)
     {
         return builder.Services.Any(x => x.ServiceType == typeof(TService));
-    }
-
-    /// <summary>
-    /// Service 등록 로직 처리
-    /// </summary>
-    public static void AddService<TService, TImplementation>(
-        this IHiveServiceBuilder builder,
-        ServiceLifetime? lifetime,
-        Func<IServiceProvider, TImplementation>? implementationFactory = null)
-        where TService : class
-        where TImplementation : class, TService
-    {
-        if (lifetime == ServiceLifetime.Singleton)
-        {
-            if (implementationFactory != null)
-                builder.Services.AddSingleton<TService, TImplementation>(implementationFactory);
-            else
-                builder.Services.AddSingleton<TService, TImplementation>();
-        }
-        else if (lifetime == ServiceLifetime.Scoped)
-        {
-            if (implementationFactory != null)
-                builder.Services.AddScoped<TService, TImplementation>(implementationFactory);
-            else
-                builder.Services.AddScoped<TService, TImplementation>();
-        }
-        else if (lifetime == ServiceLifetime.Transient)
-        {
-            if (implementationFactory != null)
-                builder.Services.AddTransient<TService, TImplementation>(implementationFactory);
-            else
-                builder.Services.AddTransient<TService, TImplementation>();
-        }
-        else
-        {
-            throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, null);
-        }
-    }
-
-    /// <summary>
-    /// Keyed Service 등록 로직 처리
-    /// </summary>
-    public static void AddKeyedService<TService, TImplementation>(
-        this IHiveServiceBuilder builder,
-        string serviceKey,
-        ServiceLifetime? lifetime,
-        Func<IServiceProvider, object?, TImplementation>? implementationFactory = null)
-        where TService : class
-        where TImplementation : class, TService
-    {
-        if (lifetime == ServiceLifetime.Singleton)
-        {
-            if (implementationFactory != null)
-                builder.Services.AddKeyedSingleton<TService, TImplementation>(serviceKey, implementationFactory);
-            else
-                builder.Services.AddKeyedSingleton<TService, TImplementation>(serviceKey);
-        }
-        else if (lifetime == ServiceLifetime.Scoped)
-        {
-            if (implementationFactory != null)
-                builder.Services.AddKeyedScoped<TService, TImplementation>(serviceKey, implementationFactory);
-            else
-                builder.Services.AddKeyedScoped<TService, TImplementation>(serviceKey);
-        }
-        else if (lifetime == ServiceLifetime.Transient)
-        {
-            if (implementationFactory != null)
-                builder.Services.AddKeyedTransient<TService, TImplementation>(serviceKey, implementationFactory);
-            else
-                builder.Services.AddKeyedTransient<TService, TImplementation>(serviceKey);
-        }
-        else
-        {
-            throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, null);
-        }
     }
 }

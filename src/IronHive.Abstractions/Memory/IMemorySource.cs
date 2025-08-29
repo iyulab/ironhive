@@ -45,22 +45,12 @@ public class FileMemorySource : MemorySourceBase
     /// <summary>
     /// 파일이 저장된 스토리지의 이름을 나타냅니다.
     /// </summary>
-    public required string Storage { get; set; }
+    public required string StorageName { get; set; }
 
     /// <summary>
     /// 파일의 경로를 나타냅니다. 이 경로는 스토리지 내에서 파일을 식별하는 데 사용됩니다.
     /// </summary>
     public required string FilePath { get; set; }
-
-    /// <summary>
-    /// 파일의 MIME 타입을 나타냅니다. 예를 들어, "image/png", "application/pdf" 등입니다.
-    /// </summary>
-    public string? MimeType { get; set; }
-
-    /// <summary>
-    /// 파일의 크기를 바이트 단위로 나타냅니다. 이 속성은 파일의 크기를 알 수 있게 해줍니다.
-    /// </summary>
-    public long? FileSize { get; set; }
 }
 
 /// <summary>

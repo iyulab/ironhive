@@ -2,24 +2,46 @@
 using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Storages;
 using IronHive.Abstractions.Embedding;
+using IronHive.Abstractions.Pipelines;
 
 namespace IronHive.Core.Memory;
 
 /// <inheritdoc />
 public class MemoryService : IMemoryService
 {
-    private readonly IServiceProvider _services;
-    private readonly IQueueStorage<MemoryPipelineRequest> _queue;
+    private readonly IQueueStorage<MemoryPipelineContext<object>> _queue;
     private readonly IVectorStorage _vector;
     private readonly IEmbeddingService _embedder;
+    private readonly IPipelineRunner<MemoryPipelineContext<object>, MemoryPipelineContext<object>> _pipeline;
 
-    public MemoryService(IServiceProvider services)
+    public MemoryService(
+        IQueueStorage<MemoryPipelineContext<object>> queue,
+        IVectorStorage vector,
+        IEmbeddingService embedder,
+        IPipelineRunner<MemoryPipelineContext<object>, MemoryPipelineContext<object>> pipeline)
     {
-        _services = services;
-        _queue = services.GetRequiredService<IQueueStorage<MemoryPipelineRequest>>();
-        _vector = services.GetRequiredService<IVectorStorage>();
-        _embedder = services.GetRequiredService<IEmbeddingService>();
+        _queue = queue;
+        _vector = vector;
+        _embedder = embedder;
+        _pipeline = pipeline;
+
+        Workers = new MemoryWorkerService(this);
     }
+
+    public IQueueStorage<MemoryPipelineContext<object>> QueueStorage 
+    {
+        get => _queue;
+        set => throw new NotImplementedException(); 
+    }
+    
+    public IVectorStorage VectorStorage 
+    {
+        get => _vector;
+        set => throw new NotImplementedException(); 
+    }
+
+    /// <inheritdoc />
+    public IMemoryWorkerService Workers { get; }
 
     /// <inheritdoc />
     public async Task<IEnumerable<VectorCollection>> ListCollectionsAsync( 
@@ -75,15 +97,13 @@ public class MemoryService : IMemoryService
     /// <inheritdoc />
     public async Task QueueIndexSourceAsync(
         string collectionName, 
-        IMemorySource source, 
-        IEnumerable<string> steps, 
-        IDictionary<string, object?>? handlerOptions = null, 
+        IMemorySource source,
         CancellationToken cancellationToken = default)
     {   
         var collection = await _vector.GetCollectionInfoAsync(collectionName, cancellationToken)
             ?? throw new InvalidOperationException($"Collection '{collectionName}' does not exist.");
 
-        var request = new MemoryPipelineRequest
+        var ctx = new MemoryPipelineContext<object>
         {
             Source = source,
             Target = new VectorMemoryTarget
@@ -92,25 +112,19 @@ public class MemoryService : IMemoryService
                 EmbeddingProvider = collection.EmbeddingProvider,
                 EmbeddingModel = collection.EmbeddingModel,
             },
-            Steps = steps,
-            HandlerOptions = handlerOptions,
         };
-        await _queue.EnqueueAsync(request, cancellationToken);
+        await _queue.EnqueueAsync(ctx, cancellationToken);
     }
 
     /// <inheritdoc />
     public async Task IndexSourceAsync(
         string collectionName, 
-        IMemorySource source, 
-        IEnumerable<string> steps, 
-        IDictionary<string, object?>? handlerOptions = null, 
+        IMemorySource source,
         CancellationToken cancellationToken = default)
     {
         var collection = await _vector.GetCollectionInfoAsync(collectionName, cancellationToken)
             ?? throw new InvalidOperationException($"Collection '{collectionName}' does not exist.");
-
-        var worker = new MemoryWorker(_services);
-        var request = new MemoryPipelineRequest
+        var ctx = new MemoryPipelineContext<object>
         {
             Source = source,
             Target = new VectorMemoryTarget
@@ -119,10 +133,8 @@ public class MemoryService : IMemoryService
                 EmbeddingProvider = collection.EmbeddingProvider,
                 EmbeddingModel = collection.EmbeddingModel,
             },
-            Steps = steps,
-            HandlerOptions = handlerOptions,
         };
-        await worker.ExecuteAsync(request, cancellationToken);
+        await _pipeline.InvokeAsync(ctx, cancellationToken);
     }
 
     /// <inheritdoc />

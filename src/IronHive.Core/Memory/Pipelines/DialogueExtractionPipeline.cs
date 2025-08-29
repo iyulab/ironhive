@@ -1,10 +1,12 @@
-﻿using IronHive.Abstractions.Memory;
+﻿using DocumentFormat.OpenXml.InkML;
+using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Message;
 using IronHive.Abstractions.Message.Content;
 using IronHive.Abstractions.Message.Roles;
+using IronHive.Abstractions.Pipelines;
 using System.Text.RegularExpressions;
 
-namespace IronHive.Core.Memory.Handlers;
+namespace IronHive.Core.Memory.Pipelines;
 
 public class Dialogue
 {
@@ -13,9 +15,9 @@ public class Dialogue
 }
 
 /// <summary>
-/// QnAExtractionHandler는 주어진 텍스트에서 Q&A 쌍을 추출하는 메모리 파이프라인 핸들러입니다.
+/// DialogueExtractionPipeline는 주어진 텍스트에서 Q&A 쌍을 추출하는 메모리 파이프라인 핸들러입니다.
 /// </summary>
-public class QnAExtractionHandler : IMemoryPipelineHandler
+public class DialogueExtractionPipeline : IPipeline<MemoryPipelineContext<IEnumerable<string>>, MemoryPipelineContext<IEnumerable<Dialogue>>>
 {
     private static readonly Regex DialogueRegex = new Regex(
         @"<qa>\s*<q>\s*(.*?)\s*</q>\s*<a>\s*(.*?)\s*</a>\s*</qa>",
@@ -23,53 +25,48 @@ public class QnAExtractionHandler : IMemoryPipelineHandler
 
     private readonly IMessageService _service;
 
-    public class Options
-    {
-        public required string Provider { get; set; }
-        public required string Model { get; set; }
-    }
-
-    public QnAExtractionHandler(IMessageService chat)
+    public DialogueExtractionPipeline(IMessageService chat)
     {
         _service = chat;
     }
 
-    public async Task<MemoryPipelineContext> ProcessAsync(MemoryPipelineContext context, CancellationToken cancellationToken)
+    public required string Provider { get; init; }
+    
+    public required string Model { get; init; }
+
+    /// <inheritdoc />
+    public async Task<MemoryPipelineContext<IEnumerable<Dialogue>>> InvokeAsync(
+        MemoryPipelineContext<IEnumerable<string>> input, 
+        CancellationToken cancellationToken = default)
     {
-        if (context.Payload.TryConvertTo<IEnumerable<string>>(out var chunks))
+        var dialogues = new List<Dialogue>();
+        foreach (var chunk in input.Payload ?? [])
         {
-            var options = context.Options.ConvertTo<Options>()
-                ?? throw new InvalidOperationException($"Must provide options for {nameof(QnAExtractionHandler)}");
-
-            var dialogues = new List<Dialogue>();
-            foreach (var chunk in chunks)
+            var request = new MessageRequest
             {
-                var request = new MessageRequest
+                Provider = Provider,
+                Model = Model,
+                Instruction = GetInstructions(),
+                Messages = [new UserMessage
                 {
-                    Provider = options.Provider,
-                    Model = options.Model,  
-                    Instruction = GetInstructions(),
-                    Messages = [new UserMessage
-                    {
-                        Id = Guid.NewGuid().ToShort(),
-                        Content = [ new TextMessageContent { Value = $"generate QnA pairs in this information:\n\n{chunk}" } ]
-                    }],
-                    Temperature = 0.0f,
-                    TopP = 0.5f
-                };
-                var result = await _service.GenerateMessageAsync(request, cancellationToken);
-                var text = result.Message?.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value
-                    ?? throw new InvalidOperationException("No response from the chat completion service.");
-                dialogues.AddRange(ParseFrom(text));
-            }
-            context.Payload = dialogues;
+                    Id = Guid.NewGuid().ToShort(),
+                    Content = [ new TextMessageContent { Value = $"generate QnA pairs in this information:\n\n{chunk}" } ]
+                }],
+                Temperature = 0.0f,
+                TopP = 0.5f
+            };
+            var result = await _service.GenerateMessageAsync(request, cancellationToken);
+            var text = result.Message?.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value
+                ?? throw new InvalidOperationException("No response from the chat completion service.");
+            dialogues.AddRange(ParseFrom(text));
+        }
 
-            return context;
-        }
-        else
+        return new MemoryPipelineContext<IEnumerable<Dialogue>>
         {
-            throw new InvalidOperationException("The document content is not a string.");
-        }
+            Source = input.Source,
+            Target = input.Target,
+            Payload = dialogues
+        };
     }
 
     // 결과 텍스트를 정규식으로 파싱하여 QnA 쌍을 추출합니다.

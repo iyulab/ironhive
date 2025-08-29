@@ -1,6 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using IronHive.Abstractions.Memory;
-using IronHive.Abstractions.Storages;
+﻿using IronHive.Abstractions.Memory;
 
 namespace IronHive.Core.Memory;
 
@@ -9,24 +7,19 @@ public class MemoryWorker : IMemoryWorker
 {
     private const int DequeueInterval = 1000; // 1초
 
-    private readonly IServiceProvider _services;
-    private readonly IQueueStorage<MemoryPipelineRequest> _queue;
+    private readonly IMemoryService _memory;
 
     private int _state = (int)MemoryWorkerState.Stopped;
     private TaskCompletionSource<bool>? _tcs = null;
     private CancellationTokenSource? _cts = null;
 
-    public MemoryWorker(IServiceProvider services)
+    public MemoryWorker(IMemoryService memory)
     {
-        _services = services;
-        _queue = services.GetRequiredService<IQueueStorage<MemoryPipelineRequest>>();
+        _memory = memory;
     }
 
     /// <inheritdoc />
     public event EventHandler<MemoryWorkerState>? StateChanged;
-
-    /// <inheritdoc />
-    public event EventHandler<MemoryPipelineEventArgs>? Progressed;
 
     /// <inheritdoc />
     public MemoryWorkerState State
@@ -58,7 +51,6 @@ public class MemoryWorker : IMemoryWorker
             _tcs = null;
 
             StateChanged = null;
-            Progressed = null;
         }
         GC.SuppressFinalize(this);
     }
@@ -84,14 +76,20 @@ public class MemoryWorker : IMemoryWorker
                 if (State == MemoryWorkerState.StopRequested)
                     break;
 
-                var msg = await _queue.DequeueAsync(_cts.Token);
+                var msg = await _memory.QueueStorage.DequeueAsync(_cts.Token);
                 if (msg != null)
                 {
                     State = MemoryWorkerState.Processing;
-                    await ExecuteAsync(msg.Payload, _cts.Token);
+                    var collName = msg.Payload.Target is VectorMemoryTarget vt 
+                        ? vt.CollectionName 
+                        : throw new InvalidOperationException("VectorMemoryTarget의 CollectionName이 지정되지 않았습니다.");
+                    await _memory.IndexSourceAsync(
+                        collName,
+                        msg.Payload.Source,
+                        _cts.Token);
                     Console.WriteLine($"[INFO] Processed message: {msg.Payload.Source.Id}");
                     if (msg.Tag != null)
-                        await _queue.AckAsync(msg.Tag, _cts.Token);
+                        await _memory.QueueStorage.AckAsync(msg.Tag, _cts.Token);
                 }
                 else
                 {
@@ -132,52 +130,6 @@ public class MemoryWorker : IMemoryWorker
         if (tcs != null)
         {
             await tcs.Task;
-        }
-    }
-
-    /// <inheritdoc />
-    public async Task ExecuteAsync(
-        MemoryPipelineRequest request, 
-        CancellationToken cancellationToken = default)
-    {
-        var sourceId = request.Source.Id;
-        var options = request.HandlerOptions ?? new Dictionary<string, object?>();
-        var context = new MemoryPipelineContext
-        {
-            Source = request.Source,
-            Target = request.Target,
-        };
-        var steps = new Queue<string>(request.Steps);
-
-        try
-        {
-            Progressed?.Invoke(this, new MemoryPipelineEventArgs(PipelineStatus.Started, context));
-
-            while (!cancellationToken.IsCancellationRequested && steps.TryDequeue(out var step))
-            {
-                if (string.IsNullOrWhiteSpace(step))
-                    continue;
-
-                context.CurrentStep = step;
-                context.Options = options.TryGetValue(step, out var option) ? option : null;
-
-#pragma warning disable IDE0063 // 간단한 using 문을 사용하지 않습니다.
-                using (var scope = _services.CreateScope())
-                {
-                    var handler = scope.ServiceProvider.GetRequiredKeyedService<IMemoryPipelineHandler>(step);
-                    
-                    Progressed?.Invoke(this, new MemoryPipelineEventArgs(PipelineStatus.ProcessBefore, context));
-                    context = await handler.ProcessAsync(context, cancellationToken);
-                    Progressed?.Invoke(this, new MemoryPipelineEventArgs(PipelineStatus.ProcessAfter, context));
-                }
-#pragma warning restore IDE0063
-            }
-
-            Progressed?.Invoke(this, new MemoryPipelineEventArgs(PipelineStatus.Completed, context));
-        }
-        catch (Exception ex)
-        {
-            Progressed?.Invoke(this, new MemoryPipelineErrorEventArgs(context, ex));
         }
     }
 }

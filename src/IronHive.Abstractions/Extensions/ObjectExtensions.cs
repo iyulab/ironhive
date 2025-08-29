@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics;
 using System.Runtime.Serialization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -38,7 +37,8 @@ public static class ObjectExtensions
     /// <param name="options">JsonSerializer 옵션 (선택)</param>
     /// <returns>변환 성공 여부</returns>
     public static bool TryConvertTo(
-        this object? obj, Type target, 
+        this object? obj, 
+        Type target, 
         [MaybeNullWhen(false)] out object value, 
         JsonSerializerOptions? options = null)
     {
@@ -160,6 +160,6 @@ public static class ObjectExtensions
         var json = JsonSerializer.Serialize(obj, JsonDefaultOptions.CopyOptions);
         var clone = JsonSerializer.Deserialize<T>(json, JsonDefaultOptions.CopyOptions)
             ?? throw new SerializationException("Failed to deserialize the object after serialization.");
-        return clone;        
+        return clone;
     }
 }

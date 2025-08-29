@@ -1,4 +1,4 @@
-﻿using IronHive.Abstractions.Files;
+﻿using IronHive.Abstractions.Storages;
 using System.Runtime.InteropServices;
 
 namespace IronHive.Core.Storages;

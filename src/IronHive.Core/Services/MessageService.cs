@@ -34,10 +34,10 @@ public class MessageService : IMessageService
     }
 
     /// <inheritdoc />
-    public IKeyedCollection<IMessageGenerator> Generators { get; }
+    public Abstractions.KeyedCollection<IMessageGenerator> Generators { get; }
 
     /// <inheritdoc />
-    public IKeyedCollection<ITool> Tools { get; }
+    public Abstractions.KeyedCollection<ITool> Tools { get; }
 
     /// <inheritdoc />
     public async Task<MessageResponse> GenerateMessageAsync(

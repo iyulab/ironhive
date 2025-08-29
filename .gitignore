@@ -25,4 +25,5 @@ package-lock.json
 dist/
 
 # User Files
-test/
+tests/
+exps/

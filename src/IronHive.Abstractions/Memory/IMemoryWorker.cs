@@ -18,19 +18,14 @@ public enum MemoryWorkerState
 public interface IMemoryWorker : IDisposable
 {
     /// <summary>
-    /// 작업자의 상태가 변경될 때 발생하는 이벤트입니다.
-    /// </summary>
-    event EventHandler<MemoryWorkerState>? StateChanged;
-
-    /// <summary>
-    /// 작업 진행 상황을 알리는 이벤트입니다.
-    /// </summary>
-    event EventHandler<MemoryPipelineEventArgs>? Progressed;
-
-    /// <summary>
     /// 현재 작업이 실행 중인지 여부를 나타냅니다.
     /// </summary>
     MemoryWorkerState State { get; }
+
+    /// <summary>
+    /// 작업자의 상태가 변경될 때 발생하는 이벤트입니다.
+    /// </summary>
+    event EventHandler<MemoryWorkerState>? StateChanged;
 
     /// <summary>
     /// 지속적으로 작업을 수행하는 메서드입니다.
@@ -42,11 +37,4 @@ public interface IMemoryWorker : IDisposable
     /// </summary>
     /// <param name="force">작업을 즉시 중단합니다.</param>
     Task StopAsync(bool force = false);
-
-    /// <summary>
-    /// 지정된 요청에 따라 작업을 수행하는 메서드입니다.
-    /// </summary>
-    Task ExecuteAsync(
-        MemoryPipelineRequest request,
-        CancellationToken cancellationToken = default);
 }

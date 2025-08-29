@@ -72,4 +72,14 @@ public class OllamaEmbeddingGenerator : IEmbeddingGenerator
         // Ollama does not support token counting directly.
         throw new NotImplementedException();
     }
+
+    /// <inheritdoc />
+    public Task<IEnumerable<EmbeddingTokens>> CountTokensBatchAsync(
+        string modelId, 
+        IEnumerable<string> inputs, 
+        CancellationToken cancellationToken = default)
+    {
+        // Ollama does not support token counting directly.
+        throw new NotImplementedException();
+    }
 }

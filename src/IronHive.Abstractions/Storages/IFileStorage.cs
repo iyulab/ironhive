@@ -1,4 +1,4 @@
-﻿namespace IronHive.Abstractions.Files;
+﻿namespace IronHive.Abstractions.Storages;
 
 /// <summary>
 /// 파일 저장소 연결을 위한 인터페이스입니다.

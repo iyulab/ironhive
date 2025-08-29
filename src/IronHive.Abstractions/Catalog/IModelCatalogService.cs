@@ -8,7 +8,7 @@ public interface IModelCatalogService
     /// <summary>
     /// 제공자별로 모델 정보를 제공하는 서비스 컬렉션입니다.
     /// </summary>
-    IKeyedCollection<IModelCatalogProvider> Providers { get; }
+    KeyedCollection<IModelCatalogProvider> Providers { get; }
 
     /// <summary>
     /// 사용 가능한 모든 모델 목록을 비동기적으로 가져옵니다.

@@ -1,19 +1,31 @@
 ﻿using IronHive.Abstractions;
 using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Embedding;
+using IronHive.Abstractions.Files;
+using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Message;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace IronHive.Core;
 
+/// <inheritdoc />
 public class HiveService : IHiveService
 {
-    public IServiceProvider Services { get; }
-
     public HiveService(IServiceProvider services)
     {
         Services = services;
+        File = services.GetRequiredService<IFileService>();
+        Memory = services.GetRequiredService<IMemoryService>();
     }
+
+    /// <inheritdoc />
+    public IServiceProvider Services { get; }
+
+    /// <inheritdoc />
+    public IFileService File { get; }
+
+    /// <inheritdoc />
+    public IMemoryService Memory { get; }
 
     /// <inheritDoc />
     public IHiveService SetModelCatalogProvider(IModelCatalogProvider provider)

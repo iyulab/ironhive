@@ -3,7 +3,7 @@
 /// <summary>
 /// 문자열 키를 기반으로 아이템을 관리하는 컬렉션을 정의합니다.
 /// </summary>
-public interface IKeyedCollection<T> : ICollection<T>
+public interface KeyedCollection<T> : ICollection<T>
 {
     /// <summary>
     /// 모든 키를 반환합니다.

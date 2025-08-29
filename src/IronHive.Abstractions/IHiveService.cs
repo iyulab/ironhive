@@ -1,5 +1,7 @@
 ﻿using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Embedding;
+using IronHive.Abstractions.Files;
+using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Message;
 
 namespace IronHive.Abstractions;
@@ -13,6 +15,16 @@ public interface IHiveService
     /// 서비스 제공자
     /// </summary>
     IServiceProvider Services { get; }
+
+    /// <summary>
+    /// 파일 서비스
+    /// </summary>
+    IFileService File { get; }
+
+    /// <summary>
+    /// 메모리 서비스
+    /// </summary>
+    IMemoryService Memory { get; }
 
     /// <summary>
     /// 모델 제공자를 등록합니다. 기존 제공자가 있으면 대체됩니다.

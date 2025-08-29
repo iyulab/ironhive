@@ -1,5 +1,4 @@
 ﻿using System.Net;
-using IronHive.Abstractions;
 using IronHive.Abstractions.Catalog;
 
 namespace IronHive.Core.Services;
@@ -18,7 +17,7 @@ public class ModelCatalogService : IModelCatalogService
             provider => provider.ProviderName);
     }
 
-    public IKeyedCollection<IModelCatalogProvider> Providers { get; }
+    public Abstractions.KeyedCollection<IModelCatalogProvider> Providers { get; }
 
     /// <inheritdoc />
     public async Task<IEnumerable<ModelSummary>> ListModelsAsync(

@@ -8,7 +8,6 @@ using IronHive.Abstractions.Files;
 using IronHive.Core.Services;
 using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Message;
-using IronHive.Abstractions.Storages;
 using IronHive.Core.Files;
 using IronHive.Core.Memory;
 
@@ -18,9 +17,9 @@ namespace IronHive.Core;
 public class HiveServiceBuilder : IHiveServiceBuilder
 {
     /// <summary>
-    /// 임시 서비스 컴포넌트 저장소
+    /// 임시 서비스 저장소
     /// </summary>
-    private readonly List<object> _components = [];
+    private readonly List<object> _items = [];
 
     public HiveServiceBuilder(IServiceCollection? services = null)
     {
@@ -29,109 +28,59 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         // AI 서비스
         Services.TryAddSingleton<IModelCatalogService>(sp =>
         {
-            var providers = _components.OfType<IModelCatalogProvider>();
+            var providers = _items.OfType<IModelCatalogProvider>();
             return new ModelCatalogService(providers);
         });
         Services.TryAddSingleton<IMessageService>(sp =>
         {
-            var generators = _components.OfType<IMessageGenerator>();
-            var tools = _components.OfType<ITool>();
+            var generators = _items.OfType<IMessageGenerator>();
+            var tools = _items.OfType<ITool>();
             return new MessageService(sp, generators, tools);
         });
         Services.TryAddSingleton<IEmbeddingService>(sp =>
         {
-            var providers = _components.OfType<IEmbeddingGenerator>();
-            return new EmbeddingService(providers);
+            var generators = _items.OfType<IEmbeddingGenerator>();
+            return new EmbeddingService(generators);
         });
-        
-        // File 서비스
-        Services.TryAddSingleton<IFileStorageManager>(sp =>
-        {
-            var storages = _components.OfType<IFileStorage>();
-            return new FileStorageManager(storages);
-        });
-        Services.TryAddSingleton<IFileDecoderManager, FileDecoderManager>();
 
-        // 메모리 서비스
-        // !! (TODO) 메모리 서비스는 따로 빌더 패턴으로 구성하는 것이 좋음,
-        // 1. SetQueueStorage
-        // 2. SetVectorStorage
-        // 3. SetEmbedder
-        // 4. SetWorkers()  워커설정 객체
-        // 5. SetPipeline() 빌더 패턴으로 파이프라인 구성 
-        Services.TryAddSingleton<IMemoryService, MemoryService>();
-        Services.TryAddSingleton<IMemoryWorkerManager, MemoryWorkerManager>();
+        File = new FileServiceBuilder(Services);
+        Memory = new MemoryServiceBuilder(Services);
     }
 
     /// <inheritdoc />
     public IServiceCollection Services { get; }
 
     /// <inheritdoc />
-    public IHiveServiceBuilder AddModelCatalogProvider(IModelCatalogProvider provider)
-    {
-        _components.Add(provider);
-        return this;
-    }
+    public IFileServiceBuilder File { get; }
 
     /// <inheritdoc />
-    public IHiveServiceBuilder AddMessageGenerator(IMessageGenerator generator)
+    public IMemoryServiceBuilder Memory { get; }
+
+    /// <inheritdoc />
+    public IHiveServiceBuilder AddModelCatalogProvider(IModelCatalogProvider provider)
     {
-        _components.Add(generator);
+        _items.Add(provider);
         return this;
     }
 
     /// <inheritdoc />
     public IHiveServiceBuilder AddEmbeddingGenerator(IEmbeddingGenerator generator)
     {
-        _components.Add(generator);
+        _items.Add(generator);
         return this;
     }
 
     /// <inheritdoc />
-    public IHiveServiceBuilder AddFileStorage(IFileStorage storage)
+    public IHiveServiceBuilder AddMessageGenerator(IMessageGenerator generator)
     {
-        _components.Add(storage);
+        _items.Add(generator);
         return this;
     }
 
     /// <inheritdoc />
-    public IHiveServiceBuilder AddTool(ITool tool)
+    public IHiveServiceBuilder AddMessageTool(ITool tool)
     {
-        _components.Add(tool);
-        return this;
-    }
-
-    /// <inheritdoc />
-    public IHiveServiceBuilder AddFileDecoder(IFileDecoder decoder)
-    {
-        Services.AddSingleton(decoder);
-        return this;
-    }
-
-    /// <inheritdoc />
-    public IHiveServiceBuilder WithVectorStorage(IVectorStorage storage)
-    {
-        Services.RemoveAll<IVectorStorage>();
-        Services.AddSingleton(storage);
-        return this;
-    }
-
-    /// <inheritdoc />
-    public IHiveServiceBuilder WithMemoryQueueStorage(IQueueStorage<MemoryPipelineRequest> storage)
-    {
-        Services.RemoveAll<IQueueStorage<MemoryPipelineRequest>>();
-        Services.AddSingleton(storage);
-        return this;
-    }
-
-    /// <inheritdoc />
-    public IHiveServiceBuilder AddMemoryPipelineHandler<TImplementation>(
-        string serviceKey,
-        ServiceLifetime lifetime = ServiceLifetime.Singleton,
-        Func<IServiceProvider, object?, TImplementation>? implementationFactory = null)
-        where TImplementation : class, IMemoryPipelineHandler
-    {
-        this.AddKeyedService<IMemoryPipelineHandler, TImplementation>(serviceKey, lifetime, implementationFactory);
+        _items.Add(tool);
         return this;
     }
 
