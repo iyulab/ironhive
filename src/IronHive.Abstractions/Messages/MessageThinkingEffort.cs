@@ -1,4 +1,4 @@
-﻿namespace IronHive.Abstractions.Message;
+﻿namespace IronHive.Abstractions.Messages;
 
 /// <summary>
 /// LLM의 추론 과정에서 사용할 생각의 깊이를 나타내는 열거형입니다.

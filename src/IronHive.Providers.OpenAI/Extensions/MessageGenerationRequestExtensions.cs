@@ -1,10 +1,11 @@
-﻿using IronHive.Abstractions.Message.Content;
-using IronHive.Providers.OpenAI.ChatCompletion;
-using UserMessage = IronHive.Abstractions.Message.Roles.UserMessage;
-using AssistantMessage = IronHive.Abstractions.Message.Roles.AssistantMessage;
+﻿using IronHive.Providers.OpenAI.ChatCompletion;
+using UserMessage = IronHive.Abstractions.Messages.Roles.UserMessage;
+using AssistantMessage = IronHive.Abstractions.Messages.Roles.AssistantMessage;
 using OpenAIMessage = IronHive.Providers.OpenAI.ChatCompletion.ChatMessage;
-using TextMessageContent = IronHive.Abstractions.Message.Content.TextMessageContent;
-using ImageMessageContent = IronHive.Abstractions.Message.Content.ImageMessageContent;
+using TextMessageContent = IronHive.Abstractions.Messages.Content.TextMessageContent;
+using ImageMessageContent = IronHive.Abstractions.Messages.Content.ImageMessageContent;
+using IronHive.Abstractions.Messages;
+using IronHive.Abstractions.Messages.Content;
 
 namespace IronHive.Abstractions.Message;
 

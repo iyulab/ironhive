@@ -1,4 +1,6 @@
-﻿namespace IronHive.Abstractions.Message.Content;
+﻿using IronHive.Abstractions.Messages;
+
+namespace IronHive.Abstractions.Messages.Content;
 
 /// <summary>
 /// PDF, Word, PPT 등의 문서들의 내용을 담은 컨텐츠 입니다.

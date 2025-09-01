@@ -1,7 +1,7 @@
 ﻿using IronHive.Abstractions.Tools;
 using System.Text.Json.Serialization;
 
-namespace IronHive.Abstractions.Message;
+namespace IronHive.Abstractions.Messages;
 
 /// <summary>
 /// 메시지 생성 요청을 위한 상세 매개변수를 포함하는 클래스입니다.

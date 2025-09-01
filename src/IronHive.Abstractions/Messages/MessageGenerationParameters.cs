@@ -1,4 +1,4 @@
-﻿namespace IronHive.Abstractions.Message;
+﻿namespace IronHive.Abstractions.Messages;
 
 /// <summary>
 /// 텍스트를 생성할 때 사용할 설정을 정의합니다.

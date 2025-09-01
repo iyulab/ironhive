@@ -1,4 +1,4 @@
-﻿namespace IronHive.Abstractions.Message;
+﻿namespace IronHive.Abstractions.Messages;
 
 /// <summary>
 /// LLM 작업에서 채팅 응답이 중단된 사유를 나타내는 열거형입니다.

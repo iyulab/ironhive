@@ -1,4 +1,4 @@
-﻿namespace IronHive.Abstractions.Message;
+﻿namespace IronHive.Abstractions.Messages;
 
 /// <summary>
 /// LLM(대규모 언어 모델) 사용 시 토큰 사용량을 나타내는 클래스입니다.

@@ -11,45 +11,21 @@ public class MemoryWorkerService : IMemoryWorkerService
     private readonly object _lock = new();
 
     private int _state = 0; // 0: 정지됨, 1: 실행 중
-    private int _minWorkers = 1;
-    private int _maxWorkers = 10;
 
-    public MemoryWorkerService(IMemoryService memory)
+    public MemoryWorkerService(IMemoryService memory, MemoryWorkerConfig config)
     {
         _memory = memory;
+        Config = config;
     }
 
     /// <inheritdoc />
     public bool IsRunning => Volatile.Read(ref _state) == 1;
 
     /// <inheritdoc />
-    public int CurrentWorkers => _workers.Count;
+    public int Count => _workers.Count;
 
     /// <inheritdoc />
-    public int MinWorkers 
-    { 
-        get => Volatile.Read(ref _minWorkers);
-        set
-        {
-            // 최소 워커 수가 1 이상이어야 하며, 현재 워커 수보다 작아야 함
-            if (value < 1 || value > MaxWorkers)
-                throw new ArgumentOutOfRangeException(nameof(MinWorkers), "MinWorkers must be between 1 and MaxWorkers.");
-            Interlocked.Exchange(ref _minWorkers, value);
-        }
-    }
-
-    /// <inheritdoc />
-    public int MaxWorkers
-    {
-        get => Volatile.Read(ref _maxWorkers);
-        set
-        {
-            // 최대 워커 수가 최소 워커 수 이상이어야 함
-            if (value < MinWorkers)
-                throw new ArgumentOutOfRangeException(nameof(MaxWorkers), "MaxWorkers must be greater than or equal to MinWorkers.");
-            Interlocked.Exchange(ref _maxWorkers, value);
-        }
-    }
+    public MemoryWorkerConfig Config { get; private set; }
 
     /// <inheritdoc />
     public void Dispose()
@@ -59,13 +35,16 @@ public class MemoryWorkerService : IMemoryWorkerService
     }
 
     /// <inheritdoc />
-    public Task StartAsync()
+    public Task StartAsync(MemoryWorkerConfig? config = null)
     {
         if (Interlocked.CompareExchange(ref _state, 1, 0) != 0)
             return Task.CompletedTask;
 
+        if (config is not null)
+            Config = config;
+
         // 초기(최소) 워커 생성 및 시작
-        for (int i = 0; i < MinWorkers; i++)
+        for (int i = 0; i < Config.MinCount; i++)
         {
             ScaleUp();
         }
@@ -101,7 +80,11 @@ public class MemoryWorkerService : IMemoryWorkerService
     private void ScaleUp()
     {
         // 새로운 워커 인스턴스 생성
-        var worker = new MemoryWorker(_memory);
+        var worker = new MemoryWorker(_memory)
+        {
+            QueueName = Config.QueueName,
+            DequeueInterval = TimeSpan.FromMilliseconds(Config.QueueInterval)
+        };
         worker.StateChanged += OnWorkerStateChanged;
 
         // 워커를 백그라운드에서 실행하고 관리 목록에 추가
@@ -140,7 +123,7 @@ public class MemoryWorkerService : IMemoryWorkerService
             case MemoryWorkerState.Processing:
                 lock (_lock)
                 {
-                    if (_workers.Count < MaxWorkers)
+                    if (_workers.Count < Config.MaxCount)
                     {
                         ScaleUp();
                     }
@@ -151,7 +134,7 @@ public class MemoryWorkerService : IMemoryWorkerService
             case MemoryWorkerState.Idle:
                 lock (_lock)
                 {
-                    if (_workers.Count > MinWorkers)
+                    if (_workers.Count > Config.MinCount)
                     {
                         ScaleDown();
                     }

@@ -1,9 +1,10 @@
 ﻿using IronHive.Abstractions;
+using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Memory;
-using IronHive.Abstractions.Message;
+using IronHive.Abstractions.Messages;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace IronHive.Core;
@@ -14,7 +15,7 @@ public class HiveService : IHiveService
     public HiveService(IServiceProvider services)
     {
         Services = services;
-        File = services.GetRequiredService<IFileService>();
+        Files = services.GetRequiredService<IFileService>();
         Memory = services.GetRequiredService<IMemoryService>();
     }
 
@@ -22,10 +23,28 @@ public class HiveService : IHiveService
     public IServiceProvider Services { get; }
 
     /// <inheritdoc />
-    public IFileService File { get; }
+    public IFileService Files { get; }
 
     /// <inheritdoc />
     public IMemoryService Memory { get; }
+
+    /// <inheritdoc />
+    public IHiveAgent CreateAgentFromYaml(string yaml)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc />
+    public IHiveAgent CreateAgentFromToml(string toml)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritDoc />
+    public IHiveAgent CreateAgentFromJson(string json)
+    {
+        throw new NotImplementedException();
+    }
 
     /// <inheritDoc />
     public IHiveService SetModelCatalogProvider(IModelCatalogProvider provider)

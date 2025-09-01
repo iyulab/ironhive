@@ -7,7 +7,7 @@ namespace IronHive.Storages.RabbitMQ;
 /// <summary>
 /// RabbitMQ를 사용하여 큐 스토리지를 구현한 클래스입니다.
 /// </summary>
-public class RabbitMQueueStorage<T> : IQueueStorage<T>
+public class RabbitMQueueStorage : IQueueStorage
 {
     private readonly RabbitMQConfig _config;
     private readonly string _queueName;
@@ -22,6 +22,9 @@ public class RabbitMQueueStorage<T> : IQueueStorage<T>
         _queueName = config.QueueName;
         _jsonOptions = config.JsonOptions;
     }
+
+    /// <inheritdoc />
+    public required string StorageName { get; init; }
 
     /// <inheritdoc />
     public void Dispose()
@@ -47,7 +50,7 @@ public class RabbitMQueueStorage<T> : IQueueStorage<T>
     }
 
     /// <inheritdoc />
-    public async Task EnqueueAsync(T message, CancellationToken cancellationToken = default)
+    public async Task EnqueueAsync<T>(T message, CancellationToken cancellationToken = default)
     {
         var channel = await GetOrCreateChannelAsync();
 
@@ -62,7 +65,7 @@ public class RabbitMQueueStorage<T> : IQueueStorage<T>
     }
 
     /// <inheritdoc />
-    public async Task<QueueMessage<T>?> DequeueAsync(CancellationToken cancellationToken = default)
+    public async Task<QueueMessage<T>?> DequeueAsync<T>(CancellationToken cancellationToken = default)
     {
         var channel = await GetOrCreateChannelAsync();
 

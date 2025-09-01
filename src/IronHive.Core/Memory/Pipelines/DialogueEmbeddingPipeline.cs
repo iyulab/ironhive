@@ -9,7 +9,7 @@ namespace IronHive.Core.Memory.Pipelines;
 /// VectorEmbeddingHandler는 주어진 메모리 소스에서 벡터 임베딩을 생성하고,
 /// 벡터 스토리지에 저장하는 메모리 파이프라인 핸들러입니다.
 /// </summary>
-public class DialogueEmbeddingPipeline : IPipeline<MemoryPipelineContext<IEnumerable<Dialogue>>, MemoryPipelineContext<object>>
+public class DialogueEmbeddingPipeline : IPipeline<PipelineContext<IEnumerable<Dialogue>>, PipelineContext>
 {
     private readonly IEmbeddingService _embedder;
     private readonly IVectorStorage _storage;
@@ -21,8 +21,8 @@ public class DialogueEmbeddingPipeline : IPipeline<MemoryPipelineContext<IEnumer
     }
 
     /// <inheritdoc />
-    public async Task<MemoryPipelineContext<object>> InvokeAsync(
-        MemoryPipelineContext<IEnumerable<Dialogue>> input, 
+    public async Task<PipelineContext> InvokeAsync(
+        PipelineContext<IEnumerable<Dialogue>> input, 
         CancellationToken cancellationToken = default)
     {
         if (input.Target is not VectorMemoryTarget target)
@@ -56,11 +56,10 @@ public class DialogueEmbeddingPipeline : IPipeline<MemoryPipelineContext<IEnumer
         }
 
         await _storage.UpsertVectorsAsync(target.CollectionName, points, cancellationToken);
-        return new MemoryPipelineContext<object>
+        return new PipelineContext
         {
             Source = input.Source,
             Target = input.Target,
-            Payload = null
         };
     }
 }

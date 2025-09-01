@@ -5,8 +5,6 @@ namespace IronHive.Core.Memory;
 /// <inheritdoc />
 public class MemoryWorker : IMemoryWorker
 {
-    private const int DequeueInterval = 1000; // 1초
-
     private readonly IMemoryService _memory;
 
     private int _state = (int)MemoryWorkerState.Stopped;
@@ -19,7 +17,10 @@ public class MemoryWorker : IMemoryWorker
     }
 
     /// <inheritdoc />
-    public event EventHandler<MemoryWorkerState>? StateChanged;
+    public required string QueueName { get; init; }
+
+    /// <inheritdoc />
+    public required TimeSpan DequeueInterval { get; init; }
 
     /// <inheritdoc />
     public MemoryWorkerState State
@@ -36,6 +37,9 @@ public class MemoryWorker : IMemoryWorker
             }
         }
     }
+
+    /// <inheritdoc />
+    public event EventHandler<MemoryWorkerState>? StateChanged;
 
     /// <inheritdoc />
     public void Dispose()
@@ -75,26 +79,22 @@ public class MemoryWorker : IMemoryWorker
             {
                 if (State == MemoryWorkerState.StopRequested)
                     break;
+                if (!_memory.Queues.TryGet(QueueName, out var queue))
+                    throw new InvalidOperationException($"Queue storage key '{QueueName}' not found.");
 
-                var msg = await _memory.QueueStorage.DequeueAsync(_cts.Token);
+                var msg = await queue.DequeueAsync<PipelineContext>(_cts.Token);
                 if (msg != null)
                 {
                     State = MemoryWorkerState.Processing;
-                    var collName = msg.Payload.Target is VectorMemoryTarget vt 
-                        ? vt.CollectionName 
-                        : throw new InvalidOperationException("VectorMemoryTarget의 CollectionName이 지정되지 않았습니다.");
-                    await _memory.IndexSourceAsync(
-                        collName,
-                        msg.Payload.Source,
-                        _cts.Token);
-                    Console.WriteLine($"[INFO] Processed message: {msg.Payload.Source.Id}");
+                    await _memory.IndexSourceAsync(msg.Payload.Source, msg.Payload.Target, _cts.Token);
+                    
                     if (msg.Tag != null)
-                        await _memory.QueueStorage.AckAsync(msg.Tag, _cts.Token);
+                        await queue.AckAsync(msg.Tag, _cts.Token);
                 }
                 else
                 {
                     State = MemoryWorkerState.Idle;
-                    await Task.Delay(Math.Max(DequeueInterval, 100), _cts.Token);
+                    await Task.Delay(DequeueInterval, _cts.Token);
                 }
             }
         }

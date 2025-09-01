@@ -1,7 +1,6 @@
 ﻿namespace IronHive.Abstractions.Files;
 
 /// <summary>
-/// 파일 디코더 인터페이스입니다.
 /// 스트림 데이터에서 텍스트를 추출하고, 지정된 MIME 타입에 대한 지원 여부를 확인합니다.
 /// </summary>
 public interface IFileDecoder

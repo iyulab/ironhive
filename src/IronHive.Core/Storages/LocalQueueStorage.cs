@@ -7,7 +7,7 @@ namespace IronHive.Core.Storages;
 /// <summary>
 /// 로컬 파일시스템을 이용한 큐 스토리지 구현
 /// </summary>
-public class LocalQueueStorage<T> : IQueueStorage<T>
+public class LocalQueueStorage : IQueueStorage
 {
     private const string MessageExtension = "qmsg";
     private const string LockExtension = "qlock";
@@ -28,6 +28,9 @@ public class LocalQueueStorage<T> : IQueueStorage<T>
 
         Directory.CreateDirectory(_directoryPath);
     }
+
+    /// <inheritdoc />
+    public required string StorageName { get; init; }
 
     /// <inheritdoc />
     public void Dispose()
@@ -55,7 +58,7 @@ public class LocalQueueStorage<T> : IQueueStorage<T>
     }
 
     /// <inheritdoc />
-    public async Task EnqueueAsync(T message, CancellationToken cancellationToken = default)
+    public async Task EnqueueAsync<T>(T message, CancellationToken cancellationToken = default)
     {
         // 현재 UTC 시간을 기준으로 enqueueTicks를 생성합니다.
         var enqueueTicks = DateTime.UtcNow.Ticks;
@@ -71,7 +74,7 @@ public class LocalQueueStorage<T> : IQueueStorage<T>
     }
 
     /// <inheritdoc />
-    public async Task<QueueMessage<T>?> DequeueAsync(CancellationToken cancellationToken = default)
+    public async Task<QueueMessage<T>?> DequeueAsync<T>(CancellationToken cancellationToken = default)
     {
         // 캐시가 비어있으면 디렉토리에서 파일을 가져와서 캐시에 추가합니다.
         if (_cache.IsEmpty)
@@ -99,7 +102,7 @@ public class LocalQueueStorage<T> : IQueueStorage<T>
                 File.Move(queueFilePath, lockedFilePath);
 
                 // 파일이 유효하지 않거나 만료된 경우, 해당 파일을 삭제하고 다음 파일로 넘어갑니다.
-                if (LocalQueueStorage<T>.IsInvalidOrExpired(lockedFilePath))
+                if (IsInvalidOrExpired(lockedFilePath))
                 {
                     File.Delete(lockedFilePath);
                     continue;
@@ -213,7 +216,7 @@ public class LocalQueueStorage<T> : IQueueStorage<T>
             try
             {
                 // 유효하지 않거나 만료된 파일은 삭제합니다.
-                if (LocalQueueStorage<T>.IsInvalidOrExpired(filePath))
+                if (IsInvalidOrExpired(filePath))
                 {
                     File.Delete(filePath);
                 }

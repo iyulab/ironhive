@@ -9,7 +9,7 @@ namespace IronHive.Core.Memory.Pipelines;
 /// <summary>
 /// TextExtractionHandler는 주어진 메모리 소스에서 텍스트를 추출하는 메모리 파이프라인 핸들러입니다.
 /// </summary>
-public class TextExtractionPipeline : IPipeline<MemoryPipelineContext<object?>, MemoryPipelineContext<string>>
+public class TextExtractionPipeline : IPipeline<PipelineContext, PipelineContext<string>>
 {
     private readonly IFileService _service;
 
@@ -19,8 +19,8 @@ public class TextExtractionPipeline : IPipeline<MemoryPipelineContext<object?>, 
     }
 
     /// <inheritdoc />
-    public async Task<MemoryPipelineContext<string>> InvokeAsync(
-        MemoryPipelineContext<object?> input, 
+    public async Task<PipelineContext<string>> InvokeAsync(
+        PipelineContext input, 
         CancellationToken cancellationToken = default)
     {
         string text;
@@ -53,7 +53,7 @@ public class TextExtractionPipeline : IPipeline<MemoryPipelineContext<object?>, 
             throw new NotSupportedException($"Unsupported source type: {input.Source.GetType().Name}");
         }
 
-        return new MemoryPipelineContext<string>
+        return new PipelineContext<string>
         {
             Source = input.Source,
             Target = input.Target,

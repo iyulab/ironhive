@@ -1,7 +1,7 @@
-﻿using IronHive.Abstractions.Message.Content;
+﻿using IronHive.Abstractions.Messages.Content;
 using System.Text.Json.Serialization;
 
-namespace IronHive.Abstractions.Message;
+namespace IronHive.Abstractions.Messages;
 
 /// <summary>
 /// 콘텐츠 블록의 기본 객체입니다.

@@ -1,4 +1,4 @@
-﻿using IronHive.Abstractions.Message;
+﻿using IronHive.Abstractions.Messages;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using System.Text;

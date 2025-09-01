@@ -1,6 +1,6 @@
 ﻿using IronHive.Abstractions.Tools;
 
-namespace IronHive.Abstractions.Message;
+namespace IronHive.Abstractions.Messages;
 
 /// <summary>
 /// 메시지 생성 서비스를 정의하는 인터페이스입니다.
@@ -10,12 +10,12 @@ public interface IMessageService
     /// <summary>
     /// 메시지 생성기를 관리하는 컬렉션입니다.
     /// </summary>
-    KeyedCollection<IMessageGenerator> Generators { get; }
+    IKeyedCollection<IMessageGenerator> Generators { get; }
 
     /// <summary>
     /// 툴을 관리하는 컬렉션입니다.
     /// </summary>
-    KeyedCollection<ITool> Tools { get; }
+    IKeyedCollection<ITool> Tools { get; }
 
     /// <summary>
     /// 주어진 요청을 기반으로 채팅 응답 메시지를 생성합니다.

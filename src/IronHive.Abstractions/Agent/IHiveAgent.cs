@@ -1,46 +1,64 @@
-﻿using IronHive.Abstractions.Message;
+﻿using IronHive.Abstractions.Messages;
 
 namespace IronHive.Abstractions.Agent;
 
 /// <summary>
-/// Represents an agent in the Hive system.
+/// Hive 시스템의 에이전트를 나타냅니다.
 /// </summary>
 public interface IHiveAgent
 {
     /// <summary>
-    /// the model provider service key of the agent.
+    /// 에이전트가 기본으로 사용할 모델 제공자(서비스 키)입니다.
     /// </summary>
-    string Provider { get; set; }
+    string DefaultProvider { get; set; }
 
     /// <summary>
-    /// the model name used by the agent.
+    /// 에이전트가 기본으로 사용할 모델 이름입니다.
     /// </summary>
-    string Model { get; set; }
+    string DefaultModel { get; set; }
 
     /// <summary>
-    /// the name of the agent.
+    /// 에이전트의 이름입니다.
     /// </summary>
     string Name { get; set; }
 
     /// <summary>
-    /// the description of the agent.
+    /// 에이전트에 대한 설명입니다.
     /// </summary>
     string Description { get; set; }
 
     /// <summary>
-    /// instructions for the agent.
+    /// 에이전트 동작을 안내하는 지침(시스템 프롬프트 등)입니다.
     /// </summary>
     string? Instructions { get; set; }
 
     /// <summary>
-    /// the tools available to the agent.
-    /// key is the service key of the tool handler.
-    /// value is the tool handler options object.
+    /// 에이전트가 사용할 수 있는 도구의 서비스 키 목록입니다.
     /// </summary>
-    IDictionary<string, object?>? Tools { get; set; }
+    IEnumerable<string> Tools { get; set; }
 
     /// <summary>
-    /// the parameters for text generation inference.
+    /// 도구 핸들러별 옵션입니다.
+    /// 키는 도구 핸들러의 서비스 키이며, 값은 해당 옵션 객체입니다.
+    /// </summary>
+    IDictionary<string, object?> ToolOptions { get; set; }
+
+    /// <summary>
+    /// 텍스트 생성(추론) 매개변수입니다. (예: 온도, 최대 토큰 수 등)
     /// </summary>
     MessageGenerationParameters? Parameters { get; set; }
+
+    /// <summary>
+    /// 메시지를 처리합니다.
+    /// </summary>
+    Task<MessageResponse> InvokeAsync(
+        IEnumerable<Message> messages,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 메시지를 스트리밍 방식으로 처리합니다.
+    /// </summary>
+    IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingAsync(
+        IEnumerable<Message> messages,
+        CancellationToken cancellationToken = default);
 }

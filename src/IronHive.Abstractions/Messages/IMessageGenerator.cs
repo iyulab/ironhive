@@ -1,4 +1,4 @@
-﻿namespace IronHive.Abstractions.Message;
+﻿namespace IronHive.Abstractions.Messages;
 
 /// <summary>
 /// 메시지 생성기 공급자를 정의하는 인터페이스입니다.

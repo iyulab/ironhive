@@ -9,7 +9,7 @@ public class PipelineBuilder<TInput, TOutput> : IPipelineBuilder<TInput, TOutput
     private readonly IPipelineHook? _hook;
     private readonly IServiceProvider? _services;
 
-    private PipelineBuilder(IReadOnlyList<PipelineStep> steps, IPipelineHook? hook, IServiceProvider? services)
+    public PipelineBuilder(IReadOnlyList<PipelineStep> steps, IPipelineHook? hook, IServiceProvider? services)
     {
         _steps = steps;
         _hook = hook;
@@ -35,6 +35,18 @@ public class PipelineBuilder<TInput, TOutput> : IPipelineBuilder<TInput, TOutput
     }
 
     /// <inheritdoc />
+    public IPipelineBuilder<TInput> Add(
+        string name,
+        IPipeline<TOutput> pipeline)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Pipeline step must have a non-empty name", nameof(name));
+
+        var finalstep = new PipelineFinalStep(name, new ObjectPipeline<TOutput>(pipeline));
+        return new PipelineBuilder<TInput>(_steps, finalstep, _hook);
+    }
+
+    /// <inheritdoc />
     public IPipelineBuilder<TInput, TNext> Add<TImplementation, TNext>(
         string name,
         Func<IServiceProvider, TImplementation>? factory = null)
@@ -52,11 +64,34 @@ public class PipelineBuilder<TInput, TOutput> : IPipelineBuilder<TInput, TOutput
     }
 
     /// <inheritdoc />
+    public  IPipelineBuilder<TInput> Add<TImplementation>(
+        string name, 
+        Func<IServiceProvider, TImplementation>? factory)
+        where TImplementation : class, IPipeline<TOutput>
+    {
+        if (_services == null)
+            throw new InvalidOperationException("ServiceProvider is required to resolve pipeline by type");
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Pipeline step must have a non-empty name", nameof(name));
+        factory ??= (sp) => sp.GetRequiredService<TImplementation>();
+        var pipeline = new ServiceFactoryPipeline<TOutput>(_services, factory);
+        return Add(name, pipeline);
+    }
+
+    /// <inheritdoc />
     public IPipelineBuilder<TInput, TNext> Add<TNext>(
         string name,
         Func<TOutput, CancellationToken, Task<TNext>> function)
     {
         return Add(name, new DelegatePipeline<TOutput, TNext>(function));
+    }
+
+    /// <inheritdoc />
+    public IPipelineBuilder<TInput> Add(
+        string name, 
+        Func<TOutput, CancellationToken, Task> function)
+    {
+        return Add(name, new DelegatePipeline<TOutput>(function));
     }
 
     /// <inheritdoc />
@@ -79,5 +114,26 @@ public class PipelineBuilder<TInput, TOutput> : IPipelineBuilder<TInput, TOutput
     public IPipelineRunner<TInput, TOutput> Build()
     {
         return new PipelineRunner<TInput, TOutput>(_steps, _hook);
+    }
+}
+
+/// <inheritdoc />
+public class PipelineBuilder<TInput> : IPipelineBuilder<TInput>
+{
+    private readonly IReadOnlyList<PipelineStep> _steps;
+    private readonly PipelineFinalStep _finalStep;
+    private readonly IPipelineHook? _hook;
+
+    public PipelineBuilder(IReadOnlyList<PipelineStep> steps, PipelineFinalStep finalStep, IPipelineHook? hook)
+    {
+        _steps = steps;
+        _finalStep = finalStep;
+        _hook = hook;
+    }
+
+    /// <inheritdoc />
+    public IPipelineRunner<TInput> Build()
+    {
+        return new PipelineRunner<TInput>(_steps, _finalStep, _hook);
     }
 }

@@ -1,7 +1,7 @@
 ﻿using IronHive.Abstractions.Tools;
 using System.Text.Json.Serialization;
 
-namespace IronHive.Abstractions.Message;
+namespace IronHive.Abstractions.Messages;
 
 /// <summary>
 /// 메시지 생성 요청을 위한 상세 매개변수를 포함하는 클래스입니다.
@@ -36,7 +36,7 @@ public class MessageRequest : MessageGenerationParameters
     /// <summary>
     /// 모델에서 사용 가능한 도구들의 옵션 목록입니다.
     /// </summary>
-    public IDictionary<string, object> ToolOptions { get; set; } = new Dictionary<string, object>();
+    public IDictionary<string, object?> ToolOptions { get; set; } = new Dictionary<string, object?>();
 
     /// <summary>
     /// 모델의 사고 노력 수준을 정의합니다.

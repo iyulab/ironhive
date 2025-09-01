@@ -8,7 +8,7 @@ namespace IronHive.Core;
 /// <summary>
 /// 문자열 키로 아이템을 관리하는 스레드-세이프 컬렉션 구현입니다.
 /// </summary>
-public class KeyedCollection<T> : Abstractions.KeyedCollection<T> where T : class
+public class KeyedCollection<T> : IKeyedCollection<T> where T : class
 {
     private readonly Func<T, string> _keySelector;
     private readonly ConcurrentDictionary<string, T> _items;

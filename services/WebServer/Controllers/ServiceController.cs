@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Message;
+using IronHive.Abstractions.Messages;
 
 namespace WebServer.Controllers;
 

@@ -3,81 +3,100 @@ using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Storages;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Pipelines;
+using IronHive.Abstractions;
 
 namespace IronHive.Core.Memory;
 
 /// <inheritdoc />
 public class MemoryService : IMemoryService
 {
-    private readonly IQueueStorage<MemoryPipelineContext<object>> _queue;
-    private readonly IVectorStorage _vector;
+    private readonly IServiceProvider _services;
     private readonly IEmbeddingService _embedder;
-    private readonly IPipelineRunner<MemoryPipelineContext<object>, MemoryPipelineContext<object>> _pipeline;
+    private IPipelineRunner<PipelineContext> _pipeline;
 
     public MemoryService(
-        IQueueStorage<MemoryPipelineContext<object>> queue,
-        IVectorStorage vector,
+        IServiceProvider services,
         IEmbeddingService embedder,
-        IPipelineRunner<MemoryPipelineContext<object>, MemoryPipelineContext<object>> pipeline)
+        IEnumerable<IQueueStorage> queues,
+        IEnumerable<IVectorStorage> vectors,
+        IPipelineRunner<PipelineContext> pipeline)
     {
-        _queue = queue;
-        _vector = vector;
+        _services = services;
         _embedder = embedder;
+        Queues = new KeyedCollection<IQueueStorage>(queues, q => q.StorageName);
+        Vectors = new KeyedCollection<IVectorStorage>(vectors, v => v.StorageName);
         _pipeline = pipeline;
-
-        Workers = new MemoryWorkerService(this);
-    }
-
-    public IQueueStorage<MemoryPipelineContext<object>> QueueStorage 
-    {
-        get => _queue;
-        set => throw new NotImplementedException(); 
-    }
-    
-    public IVectorStorage VectorStorage 
-    {
-        get => _vector;
-        set => throw new NotImplementedException(); 
     }
 
     /// <inheritdoc />
-    public IMemoryWorkerService Workers { get; }
+    public IKeyedCollection<IQueueStorage> Queues { get; }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<VectorCollection>> ListCollectionsAsync( 
+    public IKeyedCollection<IVectorStorage> Vectors { get; }
+
+    /// <inheritdoc />
+    public void SetPipeline(PipelineBuildDelegate configure)
+    {
+        _pipeline = configure(PipelineFactory.Create<PipelineContext>(_services));
+    }
+
+    /// <inheritdoc />
+    public IMemoryWorkerService CreateWorkers(MemoryWorkerConfig config)
+    {
+        return new MemoryWorkerService(this, config);
+    }
+
+    /// <inheritdoc />
+    public async Task<IEnumerable<VectorCollection>> ListCollectionsAsync(
+        string storageName,
         CancellationToken cancellationToken = default)
     {
-        return await _vector.ListCollectionsAsync(cancellationToken);
+        if (!Vectors.TryGet(storageName, out var vector))
+            throw new KeyNotFoundException($"Vector storage key '{storageName}' not found.");
+
+        return await vector.ListCollectionsAsync(cancellationToken);
     }
 
     /// <inheritdoc />
     public async Task<bool> CollectionExistsAsync(
+        string storageName,
         string collectionName, 
         CancellationToken cancellationToken = default)
     {
-        return await _vector.CollectionExistsAsync(collectionName, cancellationToken);
+        if (!Vectors.TryGet(storageName, out var vector))
+            throw new KeyNotFoundException($"Vector storage key '{storageName}' not found.");
+
+        return await vector.CollectionExistsAsync(collectionName, cancellationToken);
     }
 
     /// <inheritdoc />
     public async Task<VectorCollection?> GetCollectionInfoAsync(
+        string storageName,
         string collectionName, 
         CancellationToken cancellationToken = default)
     {
-        return await _vector.GetCollectionInfoAsync(collectionName, cancellationToken);
+        if (!Vectors.TryGet(storageName, out var vector))
+            throw new KeyNotFoundException($"Vector storage key '{storageName}' not found.");
+
+        return await vector.GetCollectionInfoAsync(collectionName, cancellationToken);
     }
 
     /// <inheritdoc />
     public async Task CreateCollectionAsync(
+        string storageName,
         string collectionName,
         string embeddingProvider,
         string embeddingModel,
         CancellationToken cancellationToken = default)
     {
+        if (!Vectors.TryGet(storageName, out var vector))
+            throw new KeyNotFoundException($"Vector storage key '{storageName}' not found.");
+
         const string sample = "dimension calculation sample";
         var embeddings = await _embedder.EmbedAsync(embeddingProvider, embeddingModel, sample, cancellationToken)
             ?? throw new InvalidOperationException("Failed to get embeddings for dimension calculation.");
 
-        await _vector.CreateCollectionAsync(new VectorCollection
+        await vector.CreateCollectionAsync(new VectorCollection
         {
             Name = collectionName,
             Dimensions = embeddings.Count(),
@@ -88,47 +107,67 @@ public class MemoryService : IMemoryService
 
     /// <inheritdoc />
     public async Task DeleteCollectionAsync(
+        string storageName,
         string collectionName, 
         CancellationToken cancellationToken = default)
     {
-        await _vector.DeleteCollectionAsync(collectionName, cancellationToken);
+        if (!Vectors.TryGet(storageName, out var vector))
+            throw new KeyNotFoundException($"Vector storage key '{storageName}' not found.");
+        await vector.DeleteCollectionAsync(collectionName, cancellationToken);
     }
 
     /// <inheritdoc />
     public async Task QueueIndexSourceAsync(
-        string collectionName, 
+        string queueName,
         IMemorySource source,
+        IMemoryTarget target,
         CancellationToken cancellationToken = default)
-    {   
-        var collection = await _vector.GetCollectionInfoAsync(collectionName, cancellationToken)
-            ?? throw new InvalidOperationException($"Collection '{collectionName}' does not exist.");
+    {
+        if (target is not VectorMemoryTarget vt)
+            throw new InvalidOperationException("currently only VectorMemoryTarget is supported.");
 
-        var ctx = new MemoryPipelineContext<object>
+        if (!Vectors.TryGet(vt.StorageName, out var vector))
+            throw new KeyNotFoundException($"Vector storage key '{vt.StorageName}' not found.");
+        var collection = await vector.GetCollectionInfoAsync(vt.CollectionName, cancellationToken)
+            ?? throw new InvalidOperationException($"Collection '{vt.CollectionName}' does not exist.");
+
+        var ctx = new PipelineContext
         {
             Source = source,
             Target = new VectorMemoryTarget
             {
+                StorageName = vt.StorageName,
                 CollectionName = collection.Name,
                 EmbeddingProvider = collection.EmbeddingProvider,
                 EmbeddingModel = collection.EmbeddingModel,
             },
         };
+
+        if (!Queues.TryGet(queueName, out var _queue))
+            throw new KeyNotFoundException($"Queue storage key '{queueName}' not found.");
         await _queue.EnqueueAsync(ctx, cancellationToken);
     }
 
     /// <inheritdoc />
     public async Task IndexSourceAsync(
-        string collectionName, 
         IMemorySource source,
+        IMemoryTarget target,
         CancellationToken cancellationToken = default)
     {
-        var collection = await _vector.GetCollectionInfoAsync(collectionName, cancellationToken)
-            ?? throw new InvalidOperationException($"Collection '{collectionName}' does not exist.");
-        var ctx = new MemoryPipelineContext<object>
+        if (target is not VectorMemoryTarget vt)
+            throw new InvalidOperationException("currently only VectorMemoryTarget is supported.");
+
+        if (!Vectors.TryGet(vt.StorageName, out var vector))
+            throw new KeyNotFoundException($"Vector storage key '{vt.StorageName}' not found.");
+
+        var collection = await vector.GetCollectionInfoAsync(vt.CollectionName, cancellationToken)
+            ?? throw new InvalidOperationException($"Collection '{vt.CollectionName}' does not exist.");
+        var ctx = new PipelineContext
         {
             Source = source,
             Target = new VectorMemoryTarget
             {
+                StorageName = vector.StorageName,
                 CollectionName = collection.Name,
                 EmbeddingProvider = collection.EmbeddingProvider,
                 EmbeddingModel = collection.EmbeddingModel,
@@ -139,17 +178,22 @@ public class MemoryService : IMemoryService
 
     /// <inheritdoc />
     public async Task DeleteSourceAsync(
+        string storageName,
         string collectionName, 
         string sourceId, 
         CancellationToken cancellationToken = default)
     {
+        if (!Vectors.TryGet(storageName, out var vector))
+            throw new KeyNotFoundException($"Vector storage key '{storageName}' not found.");
+
         var filter = new VectorRecordFilter();
         filter.AddSourceId(sourceId);
-        await _vector.DeleteVectorsAsync(collectionName, filter, cancellationToken);
+        await vector.DeleteVectorsAsync(collectionName, filter, cancellationToken);
     }
 
     /// <inheritdoc />
     public async Task<VectorSearchResult> SearchSimilarAsync(
+        string storageName,
         string collectionName,
         string query,
         float minScore = 0,
@@ -157,7 +201,10 @@ public class MemoryService : IMemoryService
         IEnumerable<string>? sourceIds = null,
         CancellationToken cancellationToken = default)
     {
-        var collection = await _vector.GetCollectionInfoAsync(collectionName, cancellationToken)
+        if (!Vectors.TryGet(storageName, out var vector))
+            throw new KeyNotFoundException($"Vector storage key '{storageName}' not found.");
+
+        var collection = await vector.GetCollectionInfoAsync(collectionName, cancellationToken)
             ?? throw new InvalidOperationException($"Collection '{collectionName}' does not exist.");
 
         VectorRecordFilter? filter = null;
@@ -167,10 +214,14 @@ public class MemoryService : IMemoryService
             filter.AddSourceIds(sourceIds);
         }
 
-        var vector = await _embedder.EmbedAsync(collection.EmbeddingProvider, collection.EmbeddingModel, query, cancellationToken);
-        var records = await _vector.SearchVectorsAsync(
+        var embeddings = await _embedder.EmbedAsync(
+            provider: collection.EmbeddingProvider, 
+            modelId: collection.EmbeddingModel, 
+            input: query, 
+            cancellationToken: cancellationToken);
+        var records = await vector.SearchVectorsAsync(
             collectionName: collection.Name,
-            vector: vector,
+            vector: embeddings,
             minScore: minScore,
             limit: limit,
             filter: filter,

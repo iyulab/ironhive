@@ -1,6 +1,7 @@
-﻿using IronHive.Abstractions.Message.Content;
+﻿using IronHive.Abstractions.Messages;
+using IronHive.Abstractions.Messages.Content;
 
-namespace IronHive.Abstractions.Message.Roles;
+namespace IronHive.Abstractions.Messages.Roles;
 
 /// <summary>
 /// 어시스턴트 메시지를 나타내는 클래스입니다.

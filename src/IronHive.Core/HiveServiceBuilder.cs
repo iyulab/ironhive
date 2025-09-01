@@ -7,9 +7,9 @@ using IronHive.Abstractions;
 using IronHive.Abstractions.Files;
 using IronHive.Core.Services;
 using IronHive.Abstractions.Catalog;
-using IronHive.Abstractions.Message;
 using IronHive.Core.Files;
 using IronHive.Core.Memory;
+using IronHive.Abstractions.Messages;
 
 namespace IronHive.Core;
 
@@ -43,7 +43,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
             return new EmbeddingService(generators);
         });
 
-        File = new FileServiceBuilder(Services);
+        Files = new FileServiceBuilder(Services);
         Memory = new MemoryServiceBuilder(Services);
     }
 
@@ -51,7 +51,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     public IServiceCollection Services { get; }
 
     /// <inheritdoc />
-    public IFileServiceBuilder File { get; }
+    public IFileServiceBuilder Files { get; }
 
     /// <inheritdoc />
     public IMemoryServiceBuilder Memory { get; }

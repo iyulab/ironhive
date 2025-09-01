@@ -7,6 +7,11 @@
 public interface IVectorStorage : IDisposable
 {
     /// <summary>
+    /// 스토리지의 이름을 가져옵니다.
+    /// </summary>
+    string StorageName { get; }
+
+    /// <summary>
     /// 모든 벡터 컬렉션들을 비동기적으로 반환합니다.
     /// </summary>
     /// <returns>컬렉션 정보의 나열</returns>

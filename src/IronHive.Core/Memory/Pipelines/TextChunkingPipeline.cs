@@ -8,7 +8,7 @@ namespace IronHive.Core.Memory.Pipelines;
 /// <summary>
 /// TextChunkerHandler는 주어진 텍스트를 청크로 나누는 메모리 파이프라인 핸들러입니다.
 /// </summary>
-public class TextChunkingPipeline : IPipeline<MemoryPipelineContext<string>, MemoryPipelineContext<IEnumerable<string>>>
+public class TextChunkingPipeline : IPipeline<PipelineContext<string>, PipelineContext<IEnumerable<string>>>
 {
     private readonly IEmbeddingService _embedder;
 
@@ -27,8 +27,8 @@ public class TextChunkingPipeline : IPipeline<MemoryPipelineContext<string>, Mem
     /// 2. 줄바꿈(\n) => 쉼표 또는 마침표(, .) => 공백 ( ) 순의 청크 방법론 고려
     /// 3. 속도를 위해 병렬 처리
     /// </summary>
-    public async Task<MemoryPipelineContext<IEnumerable<string>>> InvokeAsync(
-        MemoryPipelineContext<string> input, 
+    public async Task<PipelineContext<IEnumerable<string>>> InvokeAsync(
+        PipelineContext<string> input, 
         CancellationToken cancellationToken = default)
     {
         var target = input.Target.ConvertTo<VectorMemoryTarget>()
@@ -88,7 +88,7 @@ public class TextChunkingPipeline : IPipeline<MemoryPipelineContext<string>, Mem
         if (chunks.Count == 0)
             throw new InvalidOperationException("the document content is empty");
 
-        return new MemoryPipelineContext<IEnumerable<string>>
+        return new PipelineContext<IEnumerable<string>>
         {
             Source = input.Source,
             Target = input.Target,

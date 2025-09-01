@@ -1,11 +1,12 @@
 ﻿using System.Runtime.CompilerServices;
 using IronHive.Abstractions.Message;
-using IronHive.Abstractions.Message.Content;
 using IronHive.Providers.OpenAI.ChatCompletion;
-using MessageGenerationRequest = IronHive.Abstractions.Message.MessageGenerationRequest;
-using TextMessageContent = IronHive.Abstractions.Message.Content.TextMessageContent;
-using AssistantMessage = IronHive.Abstractions.Message.Roles.AssistantMessage;
-using MessageContent = IronHive.Abstractions.Message.MessageContent;
+using MessageGenerationRequest = IronHive.Abstractions.Messages.MessageGenerationRequest;
+using TextMessageContent = IronHive.Abstractions.Messages.Content.TextMessageContent;
+using AssistantMessage = IronHive.Abstractions.Messages.Roles.AssistantMessage;
+using MessageContent = IronHive.Abstractions.Messages.MessageContent;
+using IronHive.Abstractions.Messages;
+using IronHive.Abstractions.Messages.Content;
 
 namespace IronHive.Providers.OpenAI;
 

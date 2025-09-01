@@ -1,4 +1,6 @@
-﻿namespace IronHive.Abstractions.Message.Roles;
+﻿using IronHive.Abstractions.Messages;
+
+namespace IronHive.Abstractions.Messages.Roles;
 
 /// <summary>
 /// 유저 메시지를 나타내는 클래스입니다.

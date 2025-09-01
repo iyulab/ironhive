@@ -18,7 +18,7 @@ public class EmbeddingService : IEmbeddingService
     }
 
     /// <inheritdoc />
-    public Abstractions.KeyedCollection<IEmbeddingGenerator> Generators { get; }
+    public IKeyedCollection<IEmbeddingGenerator> Generators { get; }
 
     /// <inheritdoc />
     public async Task<IEnumerable<float>> EmbedAsync(

@@ -1,4 +1,4 @@
-﻿using IronHive.Abstractions.Message;
+﻿using IronHive.Abstractions.Messages;
 using IronHive.Plugins.MCP;
 using IronHive.Plugins.MCP.Configurations;
 using Microsoft.Extensions.DependencyInjection;

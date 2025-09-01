@@ -1,17 +1,17 @@
 ﻿using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Tools;
-using IronHive.Abstractions.Message;
-using IronHive.Abstractions.Message.Content;
-using IronHive.Abstractions.Message.Roles;
 using IronHive.Providers.Anthropic.Messages;
 using AnthropicMessage = IronHive.Providers.Anthropic.Messages.Message;
-using TextMessageContent = IronHive.Abstractions.Message.Content.TextMessageContent;
+using TextMessageContent = IronHive.Abstractions.Messages.Content.TextMessageContent;
 using AnthropicTextMessageContent = IronHive.Providers.Anthropic.Messages.TextMessageContent;
-using ImageMessageContent = IronHive.Abstractions.Message.Content.ImageMessageContent;
-using DocumentMessageContent = IronHive.Abstractions.Message.Content.DocumentMessageContent;
+using ImageMessageContent = IronHive.Abstractions.Messages.Content.ImageMessageContent;
+using DocumentMessageContent = IronHive.Abstractions.Messages.Content.DocumentMessageContent;
 using AnthropicImageMessageContent = IronHive.Providers.Anthropic.Messages.ImageMessageContent;
-using ThinkingMessageContent = IronHive.Abstractions.Message.Content.ThinkingMessageContent;
+using ThinkingMessageContent = IronHive.Abstractions.Messages.Content.ThinkingMessageContent;
 using AnthropicThinkingMessageContent = IronHive.Providers.Anthropic.Messages.ThinkingMessageContent;
+using IronHive.Abstractions.Messages;
+using IronHive.Abstractions.Messages.Content;
+using IronHive.Abstractions.Messages.Roles;
 
 namespace IronHive.Providers.Anthropic;
 

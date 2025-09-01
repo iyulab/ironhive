@@ -1,8 +1,9 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Text.Json;
 using IronHive.Abstractions.Message;
-using IronHive.Abstractions.Message.Content;
-using IronHive.Abstractions.Message.Roles;
+using IronHive.Abstractions.Messages.Content;
+using IronHive.Abstractions.Messages.Roles;
+using IronHive.Abstractions.Messages;
 using IronHive.Providers.Ollama.Chat;
 
 namespace IronHive.Providers.Ollama;

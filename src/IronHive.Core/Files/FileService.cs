@@ -23,7 +23,7 @@ public class FileService : IFileService
     }
 
     /// <inheritdoc />
-    public Abstractions.KeyedCollection<IFileStorage> Storages { get; }
+    public IKeyedCollection<IFileStorage> Storages { get; }
 
     /// <inheritdoc />
     public ICollection<IFileDecoder> Decoders { get; }
@@ -48,6 +48,21 @@ public class FileService : IFileService
                 .Select(kvp => kvp.Value)
                 .Distinct();
         }
+    }
+
+    /// <inheritdoc />
+    public string GetContentType(string fileName)
+    {
+        var extension = Path.GetExtension(fileName);
+        if (!_mapper.TryGetValue(extension, out var mimeType))
+            throw new NotSupportedException($"Not supported file extension: {extension}");
+        return mimeType;
+    }
+
+    /// <inheritdoc />
+    public void SetContentType(string extension, string mimeType)
+    {
+        _mapper[extension] = mimeType;
     }
 
     /// <inheritdoc />

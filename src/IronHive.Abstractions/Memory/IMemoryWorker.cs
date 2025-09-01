@@ -1,7 +1,7 @@
 ﻿namespace IronHive.Abstractions.Memory;
 
 /// <summary>
-/// 파이프라인 작업자의 상태를 나타내는 열거형입니다.
+/// 작업자의 상태를 나타내는 열거형입니다.
 /// </summary>
 public enum MemoryWorkerState
 {
@@ -13,12 +13,22 @@ public enum MemoryWorkerState
 }
 
 /// <summary>
-/// 작업 수행을 담당하는 인터페이스입니다.
+/// 작업 수행을 담당하는 가장 작은 단위의 작업자(Worker)입니다.
 /// </summary>
 public interface IMemoryWorker : IDisposable
 {
     /// <summary>
-    /// 현재 작업이 실행 중인지 여부를 나타냅니다.
+    /// 현재 작업자가 처리하는 큐의 이름을 나타냅니다.
+    /// </summary>
+    string QueueName { get; }
+
+    /// <summary>
+    /// 현재 작업자가 메시지를 큐에서 꺼내는 간격을 나타냅니다.
+    /// </summary>
+    TimeSpan DequeueInterval { get; }
+
+    /// <summary>
+    /// 현재 작업자의 상태를 나타냅니다.
     /// </summary>
     MemoryWorkerState State { get; }
 
@@ -35,6 +45,9 @@ public interface IMemoryWorker : IDisposable
     /// <summary>
     /// 실행중인 작업을 중지하는 메서드입니다.
     /// </summary>
-    /// <param name="force">작업을 즉시 중단합니다.</param>
+    /// <param name="force">
+    /// 만약 true이면 현재 작업중인 작업을 강제로 중지합니다. 
+    /// false이면 현재 작업이 완료될 때까지 기다린후 중지합니다.
+    /// </param>
     Task StopAsync(bool force = false);
 }

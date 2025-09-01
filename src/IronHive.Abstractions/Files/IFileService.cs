@@ -10,7 +10,7 @@ public interface IFileService
     /// <summary>
     /// 저장소를 관리하는 컬렉션입니다.
     /// </summary>
-    KeyedCollection<IFileStorage> Storages { get; }
+    IKeyedCollection<IFileStorage> Storages { get; }
 
     /// <summary>
     /// 파일 디코더를 관리하는 컬렉션입니다.
@@ -26,6 +26,16 @@ public interface IFileService
     /// 등록된 디코더들이 지원하는 MIME 타입 목록을 반환
     /// </summary>
     IEnumerable<string> SupportedMimeTypes { get; }
+
+    /// <summary>
+    /// 지정된 파일 이름(파일경로도 가능)의 확장자에 해당하는 MIME 타입을 반환
+    /// </summary>
+    string GetContentType(string fileName);
+
+    /// <summary>
+    /// 파일 확장자에 해당하는 MIME 타입을 설정합니다.
+    /// </summary>
+    void SetContentType(string extension, string mimeType);
 
     /// <summary>
     /// 지정된 파일 스트림을 디코딩

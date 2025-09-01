@@ -1,6 +1,6 @@
-﻿using IronHive.Abstractions.Message.Roles;
+﻿using IronHive.Abstractions.Messages.Roles;
 
-namespace IronHive.Abstractions.Message;
+namespace IronHive.Abstractions.Messages;
 
 /// <summary>
 /// 메시지 응답의 결과를 나타내는 클래스입니다.

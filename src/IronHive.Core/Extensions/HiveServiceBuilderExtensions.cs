@@ -27,7 +27,7 @@ public static class HiveServiceBuilderExtensions
     /// </summary>
     public static IHiveServiceBuilder AddLocalFileStorage(this IHiveServiceBuilder builder, string storageName)
     {
-        builder.File.AddStorage(new LocalFileStorage
+        builder.Files.AddStorage(new LocalFileStorage
         {
             StorageName = storageName
         });
@@ -39,11 +39,11 @@ public static class HiveServiceBuilderExtensions
     /// </summary>
     public static IHiveServiceBuilder AddDefaultFileDecoders(this IHiveServiceBuilder builder)
     {
-        builder.File.AddDecoder(new TextDecoder());
-        builder.File.AddDecoder(new WordDecoder());
-        builder.File.AddDecoder(new PDFDecoder());
-        builder.File.AddDecoder(new PPTDecoder());
-        builder.File.AddDecoder(new ImageDecoder());
+        builder.Files.AddDecoder(new TextDecoder());
+        builder.Files.AddDecoder(new WordDecoder());
+        builder.Files.AddDecoder(new PDFDecoder());
+        builder.Files.AddDecoder(new PPTDecoder());
+        builder.Files.AddDecoder(new ImageDecoder());
         return builder;
     }
 

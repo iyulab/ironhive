@@ -1,7 +1,8 @@
-﻿using IronHive.Abstractions.Tools;
+﻿using IronHive.Abstractions.Messages;
+using IronHive.Abstractions.Tools;
 using System.Text.Json.Serialization;
 
-namespace IronHive.Abstractions.Message.Content;
+namespace IronHive.Abstractions.Messages.Content;
 
 /// <summary>
 /// 도구(툴) 실행 상태를 나타내는 열거형입니다.

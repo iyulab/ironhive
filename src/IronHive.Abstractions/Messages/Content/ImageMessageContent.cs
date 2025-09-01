@@ -1,4 +1,6 @@
-﻿namespace IronHive.Abstractions.Message.Content;
+﻿using IronHive.Abstractions.Messages;
+
+namespace IronHive.Abstractions.Messages.Content;
 
 /// <summary>
 /// 이미지 콘텐츠 블록을 나타냅니다

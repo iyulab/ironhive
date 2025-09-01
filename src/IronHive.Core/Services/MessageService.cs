@@ -1,9 +1,9 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using IronHive.Abstractions;
-using IronHive.Abstractions.Message;
-using IronHive.Abstractions.Message.Content;
-using IronHive.Abstractions.Message.Roles;
+using IronHive.Abstractions.Messages;
+using IronHive.Abstractions.Messages.Content;
+using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Utilities;
 
@@ -34,10 +34,10 @@ public class MessageService : IMessageService
     }
 
     /// <inheritdoc />
-    public Abstractions.KeyedCollection<IMessageGenerator> Generators { get; }
+    public IKeyedCollection<IMessageGenerator> Generators { get; }
 
     /// <inheritdoc />
-    public Abstractions.KeyedCollection<ITool> Tools { get; }
+    public IKeyedCollection<ITool> Tools { get; }
 
     /// <inheritdoc />
     public async Task<MessageResponse> GenerateMessageAsync(
@@ -276,7 +276,7 @@ public class MessageService : IMessageService
     /// </summary>
     private async IAsyncEnumerable<StreamingMessageResponse> ProcessToolContentAsync(
         AssistantMessage message,
-        IDictionary<string, object> toolOptions,
+        IDictionary<string, object?> toolOptions,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         const int maxConcurrent = 3; // 동시 실행할 최대 도구 호출 수

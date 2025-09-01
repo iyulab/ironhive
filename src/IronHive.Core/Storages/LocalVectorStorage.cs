@@ -21,6 +21,9 @@ public partial class LocalVectorStorage : IVectorStorage
         _db = CreateLiteDatabase(config);
     }
 
+    /// <inheritdoc />
+    public required string StorageName { get; init; }
+
     public void Dispose()
     {
         _db.Dispose();

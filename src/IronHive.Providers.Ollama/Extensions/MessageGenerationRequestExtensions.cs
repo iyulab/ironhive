@@ -1,6 +1,7 @@
 ﻿using System.Text.Json;
-using IronHive.Abstractions.Message.Content;
-using IronHive.Abstractions.Message.Roles;
+using IronHive.Abstractions.Messages;
+using IronHive.Abstractions.Messages.Content;
+using IronHive.Abstractions.Messages.Roles;
 using IronHive.Providers.Ollama;
 using IronHive.Providers.Ollama.Chat;
 using OllamaMessage = IronHive.Providers.Ollama.Chat.Message;

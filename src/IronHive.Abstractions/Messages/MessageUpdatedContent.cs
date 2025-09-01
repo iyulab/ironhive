@@ -1,7 +1,7 @@
-﻿using IronHive.Abstractions.Message.Content;
+﻿using IronHive.Abstractions.Messages.Content;
 using System.Text.Json.Serialization;
 
-namespace IronHive.Abstractions.Message;
+namespace IronHive.Abstractions.Messages;
 
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(ThinkingUpdatedContent), "thinking")]

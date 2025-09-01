@@ -1,8 +1,7 @@
-﻿using DocumentFormat.OpenXml.InkML;
-using IronHive.Abstractions.Memory;
-using IronHive.Abstractions.Message;
-using IronHive.Abstractions.Message.Content;
-using IronHive.Abstractions.Message.Roles;
+﻿using IronHive.Abstractions.Memory;
+using IronHive.Abstractions.Messages;
+using IronHive.Abstractions.Messages.Roles;
+using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Pipelines;
 using System.Text.RegularExpressions;
 
@@ -17,7 +16,7 @@ public class Dialogue
 /// <summary>
 /// DialogueExtractionPipeline는 주어진 텍스트에서 Q&A 쌍을 추출하는 메모리 파이프라인 핸들러입니다.
 /// </summary>
-public class DialogueExtractionPipeline : IPipeline<MemoryPipelineContext<IEnumerable<string>>, MemoryPipelineContext<IEnumerable<Dialogue>>>
+public class DialogueExtractionPipeline : IPipeline<PipelineContext<IEnumerable<string>>, PipelineContext<IEnumerable<Dialogue>>>
 {
     private static readonly Regex DialogueRegex = new Regex(
         @"<qa>\s*<q>\s*(.*?)\s*</q>\s*<a>\s*(.*?)\s*</a>\s*</qa>",
@@ -35,8 +34,8 @@ public class DialogueExtractionPipeline : IPipeline<MemoryPipelineContext<IEnume
     public required string Model { get; init; }
 
     /// <inheritdoc />
-    public async Task<MemoryPipelineContext<IEnumerable<Dialogue>>> InvokeAsync(
-        MemoryPipelineContext<IEnumerable<string>> input, 
+    public async Task<PipelineContext<IEnumerable<Dialogue>>> InvokeAsync(
+        PipelineContext<IEnumerable<string>> input, 
         CancellationToken cancellationToken = default)
     {
         var dialogues = new List<Dialogue>();
@@ -61,7 +60,7 @@ public class DialogueExtractionPipeline : IPipeline<MemoryPipelineContext<IEnume
             dialogues.AddRange(ParseFrom(text));
         }
 
-        return new MemoryPipelineContext<IEnumerable<Dialogue>>
+        return new PipelineContext<IEnumerable<Dialogue>>
         {
             Source = input.Source,
             Target = input.Target,

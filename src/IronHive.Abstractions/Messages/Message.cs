@@ -1,7 +1,7 @@
 ﻿using System.Text.Json.Serialization;
-using IronHive.Abstractions.Message.Roles;
+using IronHive.Abstractions.Messages.Roles;
 
-namespace IronHive.Abstractions.Message;
+namespace IronHive.Abstractions.Messages;
 
 /// <summary>
 /// 메시지의 기본 객체입니다.

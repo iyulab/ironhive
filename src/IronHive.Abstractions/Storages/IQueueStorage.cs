@@ -3,8 +3,13 @@
 /// <summary>
 /// 큐를 저장하고 관리하는 스토리지를 나타내는 인터페이스입니다.
 /// </summary>
-public interface IQueueStorage<T> : IDisposable
+public interface IQueueStorage : IDisposable
 {
+    /// <summary>
+    /// 스토리지의 이름을 가져옵니다.
+    /// </summary>
+    string StorageName { get; }
+
     /// <summary>
     /// 큐에 있는 메시지의 개수를 가져옵니다. (처리 중인 메시지는 제외)
     /// </summary>
@@ -18,9 +23,9 @@ public interface IQueueStorage<T> : IDisposable
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 메시지를 큐에 추가합니다.
+    /// 지정된 타입의 메시지를 큐에 추가합니다.
     /// </summary>
-    Task EnqueueAsync(
+    Task EnqueueAsync<T>(
         T message,
         CancellationToken cancellationToken = default);
 
@@ -29,7 +34,7 @@ public interface IQueueStorage<T> : IDisposable
     /// 반드시 명시적으로 확인(Ack)을 해야 영구적으로 제거됩니다.
     /// </summary>
     /// <returns>최근 메시지, 또는 큐가 비어 있으면 null 반환</returns>
-    Task<QueueMessage<T>?> DequeueAsync(
+    Task<QueueMessage<T>?> DequeueAsync<T>(
         CancellationToken cancellationToken = default);
 
     /// <summary>

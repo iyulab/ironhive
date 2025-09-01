@@ -23,6 +23,11 @@ public abstract class MemoryTargetBase : IMemoryTarget
 public class VectorMemoryTarget : MemoryTargetBase
 {
     /// <summary>
+    /// 벡터스토리지의 이름입니다.
+    /// </summary>
+    public required string StorageName { get; set; }
+
+    /// <summary>
     /// 벡터스토리지의 컬렉션 이름입니다.
     /// </summary>
     public required string CollectionName { get; set; }
@@ -42,4 +47,9 @@ public class VectorMemoryTarget : MemoryTargetBase
 /// 메모리를 저장할 그래프DB 스토리지를 나타내는 클래스입니다.
 /// </summary>
 public class GraphMemoryTarget : MemoryTargetBase
-{ }
+{
+    /// <summary>
+    /// 그래프 스토리지의 이름입니다.
+    /// </summary>
+    public required string StorageName { get; set; }
+}

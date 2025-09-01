@@ -18,7 +18,7 @@ public interface IPipelineHook
     /// <param name="cancellationToken">취소 토큰.</param>
     ValueTask BeforeAsync(
         string name,
-        object input,
+        object? input,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -29,7 +29,7 @@ public interface IPipelineHook
     /// <param name="cancellationToken">취소 토큰.</param>
     ValueTask AfterAsync(
         string name,
-        object output,
+        object? output,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -50,5 +50,5 @@ public interface IPipelineHook
     /// <param name="cancellationToken">취소를 알린 토큰.</param>
     ValueTask CancelAsync(
         string name,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken = default);
 }

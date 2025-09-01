@@ -4,8 +4,7 @@ using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Tools;
 using IronHive.Abstractions.Catalog;
-using IronHive.Abstractions.Message;
-using IronHive.Abstractions.Storages;
+using IronHive.Abstractions.Messages;
 
 namespace IronHive.Abstractions;
 
@@ -22,7 +21,7 @@ public interface IHiveServiceBuilder
     /// <summary>
     /// Hive 서비스의 파일 서비스를 구성하기 위한 빌더를 가져옵니다.
     /// </summary>
-    IFileServiceBuilder File { get; }
+    IFileServiceBuilder Files { get; }
 
     /// <summary>
     /// Hive 서비스의 메모리를 구성하기 위한 빌더를 가져옵니다.
