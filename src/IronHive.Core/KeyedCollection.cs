@@ -41,16 +41,16 @@ public class KeyedCollection<T> : IKeyedCollection<T> where T : class
     }
 
     /// <inheritdoc />
-    public IReadOnlyCollection<string> Keys => _items.Keys.ToArray();
-
-    /// <inheritdoc />
-    public IReadOnlyCollection<T> Values => _items.Values.ToArray();
+    public bool IsReadOnly => false;
 
     /// <inheritdoc />
     public int Count => _items.Count;
 
     /// <inheritdoc />
-    public bool IsReadOnly => false;
+    public IReadOnlyCollection<string> Keys => _items.Keys.ToArray();
+
+    /// <inheritdoc />
+    public IReadOnlyCollection<T> Values => _items.Values.ToArray();
 
     /// <inheritdoc />
     public T? Get(string key)
@@ -92,7 +92,7 @@ public class KeyedCollection<T> : IKeyedCollection<T> where T : class
     public void Set(T item)
     {
         var key = NormalizeKey(_keySelector(item));
-        _items[key] = item; // 추가 또는 교체
+        _items[key] = item;
     }
 
     /// <inheritdoc />
@@ -127,6 +127,12 @@ public class KeyedCollection<T> : IKeyedCollection<T> where T : class
     public void Clear() => _items.Clear();
 
     /// <inheritdoc />
+    public IEnumerator<T> GetEnumerator() => _items.Values.GetEnumerator();
+
+    /// <inheritdoc />
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+    /// <inheritdoc />
     public void CopyTo(T[] array, int arrayIndex)
     {
         // 스냅샷 후 복사
@@ -140,12 +146,6 @@ public class KeyedCollection<T> : IKeyedCollection<T> where T : class
         // 라이브 뷰(스냅샷 아님). 필요 시 호출부에서 ToDictionary 사용.
         return new ReadOnlyDictionary<string, T>(_items);
     }
-
-    /// <inheritdoc />
-    public IEnumerator<T> GetEnumerator() => _items.Values.GetEnumerator();
-
-    /// <inheritdoc />
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     /// <summary>
     /// 키를 정규화합니다.

@@ -1,17 +1,10 @@
-﻿using IronHive.Abstractions.Storages;
-
-namespace IronHive.Abstractions.Files;
+﻿namespace IronHive.Abstractions.Files;
 
 /// <summary>
 /// 파일 관련 작업을 수행하는 서비스 입니다.
 /// </summary>
 public interface IFileService
 {
-    /// <summary>
-    /// 저장소를 관리하는 컬렉션입니다.
-    /// </summary>
-    IKeyedCollection<IFileStorage> Storages { get; }
-
     /// <summary>
     /// 파일 디코더를 관리하는 컬렉션입니다.
     /// </summary>

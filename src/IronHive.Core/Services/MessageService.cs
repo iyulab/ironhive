@@ -13,38 +13,25 @@ namespace IronHive.Core.Services;
 public class MessageService : IMessageService
 {
     private readonly IServiceProvider _services;
-
-    public MessageService(IServiceProvider services)
-        : this(services, [], [])
-    { }
+    private readonly IKeyedCollection<IMessageGenerator> _generators;
+    private readonly IToolCollection _tools;
 
     public MessageService(
-        IServiceProvider services,
-        IEnumerable<IMessageGenerator> generators, 
-        IEnumerable<ITool> tools)
+        IServiceProvider services, 
+        IKeyedCollection<IMessageGenerator> generators,
+        IToolCollection tools)
     {
         _services = services;
-
-        Generators = new KeyedCollection<IMessageGenerator>(
-            generators,
-            generator => generator.ProviderName);
-        Tools = new KeyedCollection<ITool>(
-            tools,
-            tool => tool.Name);
+        _generators = generators;
+        _tools = tools;
     }
-
-    /// <inheritdoc />
-    public IKeyedCollection<IMessageGenerator> Generators { get; }
-
-    /// <inheritdoc />
-    public IKeyedCollection<ITool> Tools { get; }
 
     /// <inheritdoc />
     public async Task<MessageResponse> GenerateMessageAsync(
         MessageRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (!Generators.TryGet(request.Provider, out var provider))
+        if (!_generators.TryGet(request.Provider, out var provider))
             throw new KeyNotFoundException($"Service key '{request.Provider}' not found.");
 
         // 요청 준비
@@ -60,7 +47,7 @@ public class MessageService : IMessageService
             Model = request.Model,
             Messages = request.Messages,
             System = request.Instruction,
-            Tools = Tools.Where(t => request.Tools.Contains(t.Name, StringComparer.OrdinalIgnoreCase)),
+            Tools = _tools.WhereBy(request.Tools),
             ThinkingEffort = request.ThinkingEffort,
             TopK = request.TopK,
             TopP = request.TopP,
@@ -90,7 +77,7 @@ public class MessageService : IMessageService
                 // 툴 컨텐츠의 경우 승인 요구사항을 확인하고 반영합니다.
                 if (content is ToolMessageContent tool)
                 {
-                    if (tool.RequiresApproval(req.Tools))
+                    if (req.Tools.RequiresApproval(tool.Name))
                         tool.ChangeToPaused();
                     else
                         tool.ChangeToApproved();
@@ -126,7 +113,7 @@ public class MessageService : IMessageService
         MessageRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        if (!Generators.TryGet(request.Provider, out var provider))
+        if (!_generators.TryGet(request.Provider, out var provider))
             throw new KeyNotFoundException($"Service key '{request.Provider}' not found.");
 
         string messageId = request.Messages.LastOrDefault() is AssistantMessage lastMessage
@@ -150,7 +137,7 @@ public class MessageService : IMessageService
             Model = request.Model,
             Messages = request.Messages,
             System = request.Instruction,
-            Tools = Tools.Where(t => request.Tools.Contains(t.Name, StringComparer.OrdinalIgnoreCase)),
+            Tools = _tools.WhereBy(request.Tools),
             ThinkingEffort = request.ThinkingEffort,
             TopK = request.TopK,
             TopP = request.TopP,
@@ -158,6 +145,7 @@ public class MessageService : IMessageService
             StopSequences = request.StopSequences,
             MaxTokens = request.MaxTokens,
         };
+
         do
         {
             // 마지막 메시지가 어시스턴트 메시지인 경우, 툴 사용을 확인하고, 메시지를 이어갑니다.
@@ -230,7 +218,7 @@ public class MessageService : IMessageService
                 if (content is ToolMessageContent tool)
                 {
                     // 툴 컨텐츠의 경우 승인 요구사항을 확인하고 반영합니다.
-                    if (tool.RequiresApproval(req.Tools))
+                    if (req.Tools.RequiresApproval(tool.Name))
                         tool.ChangeToPaused();
                     else
                         tool.ChangeToApproved();
@@ -319,7 +307,7 @@ public class MessageService : IMessageService
 
                     var options = toolOptions.TryGetValue(tmc.Name, out var opts) ? opts : null;
                     var input = new ToolInput(tmc.Input, _services, options);
-                    var output = Tools.TryGet(tmc.Name, out var tool)
+                    var output = _tools.TryGet(tmc.Name, out var tool)
                         ? await tool.InvokeAsync(input, cancellationToken)
                         : ToolOutput.Failure($"도구 [{tmc.Name}]를 찾을 수 없습니다. 이름에 오타가 없는지 확인하거나 사용 가능한 도구 목록을 참조하세요.");
 

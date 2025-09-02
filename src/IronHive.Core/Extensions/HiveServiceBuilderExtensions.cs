@@ -17,7 +17,7 @@ public static class HiveServiceBuilderExtensions
         var tools = FunctionToolFactory.CreateFromType<T>();
         foreach (var tool in tools)
         {
-            builder.AddMessageTool(tool);
+            builder.Agents.AddTool(tool);
         }
         return builder;
     }
@@ -27,7 +27,7 @@ public static class HiveServiceBuilderExtensions
     /// </summary>
     public static IHiveServiceBuilder AddLocalFileStorage(this IHiveServiceBuilder builder, string storageName)
     {
-        builder.Files.AddStorage(new LocalFileStorage
+        builder.AddFileStorage(new LocalFileStorage
         {
             StorageName = storageName
         });

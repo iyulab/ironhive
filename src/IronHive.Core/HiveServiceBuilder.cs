@@ -10,45 +10,44 @@ using IronHive.Abstractions.Catalog;
 using IronHive.Core.Files;
 using IronHive.Core.Memory;
 using IronHive.Abstractions.Messages;
+using IronHive.Abstractions.Agent;
+using IronHive.Abstractions.Queue;
+using IronHive.Abstractions.Vector;
+using IronHive.Core.Agent;
 
 namespace IronHive.Core;
 
 /// <inheritdoc />
 public class HiveServiceBuilder : IHiveServiceBuilder
 {
-    /// <summary>
-    /// 임시 서비스 저장소
-    /// </summary>
-    private readonly List<object> _items = [];
+    private readonly IKeyedCollectionGroup<IKeyedProvider> _providers;
+    private readonly IKeyedCollectionGroup<IKeyedStorage> _storages;
 
     public HiveServiceBuilder(IServiceCollection? services = null)
     {
         Services = services ?? new ServiceCollection();
 
-        // AI 서비스
-        Services.TryAddSingleton<IModelCatalogService>(sp =>
-        {
-            var providers = _items.OfType<IModelCatalogProvider>();
-            return new ModelCatalogService(providers);
-        });
-        Services.TryAddSingleton<IMessageService>(sp =>
-        {
-            var generators = _items.OfType<IMessageGenerator>();
-            var tools = _items.OfType<ITool>();
-            return new MessageService(sp, generators, tools);
-        });
-        Services.TryAddSingleton<IEmbeddingService>(sp =>
-        {
-            var generators = _items.OfType<IEmbeddingGenerator>();
-            return new EmbeddingService(generators);
-        });
+        // 등록된 Provider 및 Storage 관리
+        _providers = new KeyedCollectionGroup<IKeyedProvider>(p => p.ProviderName);
+        _storages = new KeyedCollectionGroup<IKeyedStorage>(s => s.StorageName);
+        Services.AddSingleton(_providers);
+        Services.AddSingleton(_storages);
 
+        // AI 서비스
+        Services.TryAddSingleton<IModelCatalogService>();
+        Services.TryAddSingleton<IEmbeddingService>();
+
+        // 서비스 빌더
+        Agents = new AgentServiceBuilder(Services);
         Files = new FileServiceBuilder(Services);
         Memory = new MemoryServiceBuilder(Services);
     }
 
     /// <inheritdoc />
     public IServiceCollection Services { get; }
+
+    /// <inheritdoc />
+    public IAgentServiceBuilder Agents { get; }
 
     /// <inheritdoc />
     public IFileServiceBuilder Files { get; }
@@ -59,29 +58,43 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     /// <inheritdoc />
     public IHiveServiceBuilder AddModelCatalogProvider(IModelCatalogProvider provider)
     {
-        _items.Add(provider);
+        _providers.Add(provider);
         return this;
     }
 
     /// <inheritdoc />
     public IHiveServiceBuilder AddEmbeddingGenerator(IEmbeddingGenerator generator)
     {
-        _items.Add(generator);
+        _providers.Add(generator);
         return this;
     }
 
     /// <inheritdoc />
     public IHiveServiceBuilder AddMessageGenerator(IMessageGenerator generator)
     {
-        _items.Add(generator);
+        _providers.Add(generator);
         return this;
     }
 
     /// <inheritdoc />
-    public IHiveServiceBuilder AddMessageTool(ITool tool)
+    public IFileServiceBuilder AddFileStorage(IFileStorage storage)
     {
-        _items.Add(tool);
-        return this;
+        _storages.Add(storage);
+        return Files;
+    }
+
+    /// <inheritdoc />
+    public IMemoryServiceBuilder AddQueueStorage(IQueueStorage storage)
+    {
+        _storages.Add(storage);
+        return Memory;
+    }
+
+    /// <inheritdoc />
+    public IMemoryServiceBuilder AddVectorStorage(IVectorStorage storage)
+    {
+        _storages.Add(storage);
+        return Memory;
     }
 
     /// <inheritdoc />

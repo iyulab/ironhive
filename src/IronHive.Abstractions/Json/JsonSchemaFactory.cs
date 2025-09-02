@@ -1,9 +1,6 @@
 ﻿using System.Reflection;
 using System.Runtime.CompilerServices;
-using Json.Schema;
-using Json.Schema.Generation;
 using DescriptionAttribute = System.ComponentModel.DescriptionAttribute;
-using JsonSchemaNet = Json.Schema.JsonSchema;
 using RequiredAttribute = System.ComponentModel.DataAnnotations.RequiredAttribute;
 
 namespace IronHive.Abstractions.Json;
@@ -13,18 +10,6 @@ namespace IronHive.Abstractions.Json;
 /// </summary>
 public static class JsonSchemaFactory
 {
-    /// <summary>
-    /// Json.Schema 라이브러리를 사용하여 .NET 제네릭 타입으로부터 JSON 스키마를 생성합니다.
-    /// </summary>
-    [Obsolete("대신 CreateFrom<T>() 메서드를 사용하세요. 이 메서드는 향후 버전에서 제거될 예정입니다.")]
-    public static JsonSchemaNet CreateNew<T>()
-    {
-        var schema = new JsonSchemaBuilder()
-            .FromType<T>()
-            .Build();
-        return schema;
-    }
-
     /// <summary>
     /// 지정한 .NET 타입 T로부터 JSON 스키마를 생성합니다.
     /// </summary>

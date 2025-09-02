@@ -1,6 +1,6 @@
 ﻿using IronHive.Abstractions.Memory;
 
-namespace IronHive.Abstractions.Storages;
+namespace IronHive.Abstractions.Vector;
 
 /// <summary>
 /// 점수(score)를 포함하는 벡터 정보를 나타내는 클래스입니다.

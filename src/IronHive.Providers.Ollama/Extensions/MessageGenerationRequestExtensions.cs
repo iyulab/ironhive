@@ -96,13 +96,13 @@ internal static class MessageGenerationRequestExtensions
             Model = request.Model,
             Messages = _messages,
             // 동작하지 않는 모델 존재
-            Tools = request?.Tools.Select(t =>
+            Tools = request?.Tools?.Select(t =>
             {
                 return new Tool
                 {
                     Function = new FunctionTool
                     {
-                        Name = t.Name,
+                        Name = t.UniqueName,
                         Description = t.Description,
                         Parameters = t.Parameters
                     }

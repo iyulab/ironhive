@@ -1,17 +1,10 @@
-﻿using IronHive.Abstractions.Storages;
-
-namespace IronHive.Abstractions.Files;
+﻿namespace IronHive.Abstractions.Files;
 
 /// <summary>
 /// IFileService 빌더 인터페이스입니다.
 /// </summary>
 public interface IFileServiceBuilder
 {
-    /// <summary>
-    /// 파일 저장소를 추가합니다.
-    /// </summary>
-    IFileServiceBuilder AddStorage(IFileStorage storage);
-
     /// <summary>
     /// 파일 디코더를 추가합니다.
     /// </summary>

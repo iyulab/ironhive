@@ -1,4 +1,4 @@
-﻿namespace IronHive.Abstractions.Storages;
+﻿namespace IronHive.Abstractions.Vector;
 
 /// <summary>
 /// Vector Storage에서 사용할 필터링 조건을 나타냅니다.

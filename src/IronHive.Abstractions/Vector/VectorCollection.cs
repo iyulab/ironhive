@@ -1,4 +1,4 @@
-﻿namespace IronHive.Abstractions.Storages;
+﻿namespace IronHive.Abstractions.Vector;
 
 /// <summary>
 /// 벡터 스토리지의 컬렉션을 나타내는 클래스입니다.

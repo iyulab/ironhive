@@ -1,15 +1,10 @@
-﻿namespace IronHive.Abstractions.Storages;
+﻿namespace IronHive.Abstractions.Files;
 
 /// <summary>
 /// 파일 저장소 연결을 위한 인터페이스입니다.
 /// </summary>
-public interface IFileStorage : IDisposable
+public interface IFileStorage : IKeyedStorage
 {
-    /// <summary>
-    /// 저장소의 이름을 반환합니다.
-    /// </summary>
-    string StorageName { get; }
-
     /// <summary>
     /// 지정한 접두어(prefix)를 가진 폴더 내의 파일 및 디렉토리의 목록을 반환합니다.
     /// 디렉토리는 '/'로 끝나는 문자열로 반환됩니다.

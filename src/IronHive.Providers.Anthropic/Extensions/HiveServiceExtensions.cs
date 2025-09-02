@@ -1,4 +1,6 @@
-﻿using IronHive.Providers.Anthropic;
+﻿using IronHive.Abstractions.Catalog;
+using IronHive.Abstractions.Messages;
+using IronHive.Providers.Anthropic;
 
 namespace IronHive.Abstractions;
 
@@ -12,11 +14,11 @@ public static class HiveServiceExtensions
         string name,
         AnthropicConfig config)
     {
-        service.SetModelCatalogProvider(new AnthropicModelCatalogProvider(config)
+        service.Providers.Set<IModelCatalogProvider>(new AnthropicModelCatalogProvider(config)
         {
             ProviderName = name
         });
-        service.SetMessageGenerator(new AnthropicMessageGenerator(config)
+        service.Providers.Set<IMessageGenerator>(new AnthropicMessageGenerator(config)
         {
             ProviderName = name
         });
@@ -30,8 +32,8 @@ public static class HiveServiceExtensions
         this IHiveService service,
         string name)
     {
-        service.RemoveModelCatalogProvider(name);
-        service.RemoveMessageGenerator(name);
+        service.Providers.Remove<IModelCatalogProvider>(name);
+        service.Providers.Remove<IMessageGenerator>(name);
         return service;
     }
 }

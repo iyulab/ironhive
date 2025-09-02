@@ -2,7 +2,7 @@
 using System.Numerics.Tensors;
 using LiteDB;
 using IronHive.Abstractions.Memory;
-using IronHive.Abstractions.Storages;
+using IronHive.Abstractions.Vector;
 
 namespace IronHive.Core.Storages;
 
@@ -12,7 +12,6 @@ namespace IronHive.Core.Storages;
 public partial class LocalVectorStorage : IVectorStorage
 {
     private const string CollectionMetaTableName = "collections_meta";
-    private static readonly Regex _collPattern = new Regex(@"^[A-Za-z][A-Za-z0-9_]*$", RegexOptions.Compiled);
     private readonly LiteDatabase _db;
     private readonly object _lock = new();
 
@@ -24,6 +23,11 @@ public partial class LocalVectorStorage : IVectorStorage
     /// <inheritdoc />
     public required string StorageName { get; init; }
 
+    // 컬렉션 이름 검증용 정규식
+    [GeneratedRegex("^[A-Za-z][A-Za-z0-9_]*$", RegexOptions.Compiled)]
+    private static partial Regex CollectionRegex();
+
+    /// <inheritdoc />
     public void Dispose()
     {
         _db.Dispose();
@@ -274,7 +278,7 @@ public partial class LocalVectorStorage : IVectorStorage
         if (string.IsNullOrWhiteSpace(collectionName))
             throw new ArgumentNullException(nameof(collectionName));
 
-        if (!_collPattern.IsMatch(collectionName))
+        if (!CollectionRegex().IsMatch(collectionName))
             throw new ArgumentException("Invalid collection name. The name must contain only English letters, numbers, and underscores, and must start with an English letter.");
 
         if (string.Equals(collectionName, CollectionMetaTableName, StringComparison.OrdinalIgnoreCase))

@@ -6,19 +6,12 @@ namespace IronHive.Core.Services;
 /// <inheritdoc />
 public class EmbeddingService : IEmbeddingService
 {
-    public EmbeddingService()
-        : this(Enumerable.Empty<IEmbeddingGenerator>())
-    { }
+    private readonly IKeyedCollection<IEmbeddingGenerator> _generators;
 
-    public EmbeddingService(IEnumerable<IEmbeddingGenerator> generators)
+    public EmbeddingService(IKeyedCollection<IEmbeddingGenerator> generators)
     {
-        Generators = new KeyedCollection<IEmbeddingGenerator>(
-            generators,
-            generator => generator.ProviderName);
+        _generators = generators;
     }
-
-    /// <inheritdoc />
-    public IKeyedCollection<IEmbeddingGenerator> Generators { get; }
 
     /// <inheritdoc />
     public async Task<IEnumerable<float>> EmbedAsync(
@@ -27,7 +20,7 @@ public class EmbeddingService : IEmbeddingService
         string input,
         CancellationToken cancellationToken = default)
     {
-        if (!Generators.TryGet(provider, out var service))
+        if (!_generators.TryGet(provider, out var service))
             throw new KeyNotFoundException($"Service key '{provider}' not found.");
 
         var result = await service.EmbedAsync(modelId, input, cancellationToken);
@@ -41,7 +34,7 @@ public class EmbeddingService : IEmbeddingService
         IEnumerable<string> inputs,
         CancellationToken cancellationToken = default)
     {
-        if (!Generators.TryGet(provider, out var service))
+        if (!_generators.TryGet(provider, out var service))
             throw new KeyNotFoundException($"Service key '{provider}' not found.");
 
         var result = await service.EmbedBatchAsync(modelId, inputs, cancellationToken);
@@ -55,7 +48,7 @@ public class EmbeddingService : IEmbeddingService
         string input, 
         CancellationToken cancellationToken = default)
     {
-        if (!Generators.TryGet(provider, out var service))
+        if (!_generators.TryGet(provider, out var service))
             throw new KeyNotFoundException($"Service key '{provider}' not found.");
 
         var result = await service.CountTokensAsync(modelId, input, cancellationToken);
@@ -69,7 +62,7 @@ public class EmbeddingService : IEmbeddingService
         IEnumerable<string> inputs, 
         CancellationToken cancellationToken = default)
     {
-        if (!Generators.TryGet(provider, out var service))
+        if (!_generators.TryGet(provider, out var service))
             throw new KeyNotFoundException($"Service key '{provider}' not found.");
 
         var result = service.CountTokensBatchAsync(modelId, inputs, cancellationToken);

@@ -1,5 +1,4 @@
 ﻿using IronHive.Abstractions.Tools;
-using System.Text.Json.Serialization;
 
 namespace IronHive.Abstractions.Messages;
 
@@ -26,7 +25,7 @@ public class MessageGenerationRequest : MessageGenerationParameters
     /// <summary>
     /// 모델에서 사용 가능한 도구(툴) 목록입니다.
     /// </summary>
-    public IEnumerable<ITool> Tools { get; set; } = [];
+    public IToolCollection? Tools { get; set; }
 
     /// <summary>
     /// 모델의 사고 노력 수준을 정의합니다.

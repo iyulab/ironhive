@@ -8,7 +8,7 @@ namespace IronHive.Core.Agent;
 /// <summary>
 /// 채팅 에이전트의 기본 구현체입니다.
 /// </summary>
-public class HiveChatAgent : IHiveAgent
+public class ChatAgent : IAgent
 {
     private readonly IHiveService _service;
 
@@ -36,7 +36,7 @@ public class HiveChatAgent : IHiveAgent
     /// <inheritdoc />
     public MessageGenerationParameters? Parameters { get; set; }
 
-    public HiveChatAgent(IHiveService service)
+    public ChatAgent(IHiveService service)
     {
         _service = service;
     }

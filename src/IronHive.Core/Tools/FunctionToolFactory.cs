@@ -44,7 +44,7 @@ public static class FunctionToolFactory
             
             tools.Add(new FunctionTool(method)
             {
-                Name = $"func_{name}",
+                Name = name,
                 Description = desc,
                 Parameters = parameters,
                 RequiresApproval = requires,
@@ -74,7 +74,7 @@ public static class FunctionToolFactory
 
         return new FunctionTool(function)
         {
-            Name = $"func_{name}",
+            Name = name,
             Description = description,
             Parameters = parameters,
             RequiresApproval = requiresApproval,
@@ -108,7 +108,8 @@ public static class FunctionToolFactory
 
             var description = param.GetCustomAttribute<DescriptionAttribute>()?.Description;
             var schema = JsonSchemaFactory.CreateFrom(param.ParameterType, description);
-            properties[param.Name!] = schema;
+            if (!properties.TryAdd(param.Name, schema))
+                throw new InvalidOperationException($"동일한 이름의 매개변수 '{param.Name}'가 이미 존재합니다.");
 
             // 필수속성일 경우
             if (!param.IsOptional)

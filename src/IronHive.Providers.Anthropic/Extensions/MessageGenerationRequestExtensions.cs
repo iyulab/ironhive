@@ -168,9 +168,9 @@ internal static class MessageGenerationRequestExtensions
             TopK = isThinking ? null : request.TopK,
             StopSequences = request.StopSequences,
             Thinking = budgetTokens,
-            Tools = request.Tools.Select(t => new CustomAnthropicTool
+            Tools = request.Tools?.Select(t => new CustomAnthropicTool
             {
-                Name = t.Name,
+                Name = t.UniqueName,
                 Description = t.Description,
                 InputSchema = t.Parameters ?? new ObjectJsonSchema()
             })

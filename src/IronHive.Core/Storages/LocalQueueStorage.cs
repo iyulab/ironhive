@@ -1,6 +1,6 @@
 ﻿using System.Text.Json;
 using System.Collections.Concurrent;
-using IronHive.Abstractions.Storages;
+using IronHive.Abstractions.Queue;
 
 namespace IronHive.Core.Storages;
 

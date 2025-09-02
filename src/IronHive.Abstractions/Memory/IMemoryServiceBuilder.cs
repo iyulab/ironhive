@@ -1,5 +1,4 @@
 ﻿using IronHive.Abstractions.Pipelines;
-using IronHive.Abstractions.Storages;
 
 namespace IronHive.Abstractions.Memory;
 
@@ -16,16 +15,6 @@ public delegate IPipelineRunner<PipelineContext> PipelineBuildDelegate(
 /// </summary>
 public interface IMemoryServiceBuilder
 {
-    /// <summary>
-    /// 큐 저장소를 설정합니다.
-    /// </summary>
-    IMemoryServiceBuilder AddQueueStorage(IQueueStorage storage);
-
-    /// <summary>
-    /// 벡터 저장소를 설정합니다.
-    /// </summary>
-    IMemoryServiceBuilder AddVectorStorage(IVectorStorage storage);
-
     /// <summary>
     /// 메모리 파이프라인을 설정합니다.
     /// </summary>

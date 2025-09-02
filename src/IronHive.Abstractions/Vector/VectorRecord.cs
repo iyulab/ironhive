@@ -1,6 +1,6 @@
 ﻿using IronHive.Abstractions.Memory;
 
-namespace IronHive.Abstractions.Storages;
+namespace IronHive.Abstractions.Vector;
 
 /// <summary>
 /// 벡터 데이터를 나타내는 레코드 클래스입니다.

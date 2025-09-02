@@ -1,4 +1,4 @@
-﻿using IronHive.Abstractions.Storages;
+﻿using IronHive.Abstractions.Vector;
 
 namespace IronHive.Abstractions.Memory;
 
@@ -7,16 +7,6 @@ namespace IronHive.Abstractions.Memory;
 /// </summary>
 public interface IMemoryService
 {
-    /// <summary>
-    /// 메모리 큐 스토리지들의 컬렉션을 반환합니다.
-    /// </summary>
-    IKeyedCollection<IQueueStorage> Queues { get; }
-
-    /// <summary>
-    /// 벡터 스토리지들의 컬렉션을 반환합니다.
-    /// </summary>
-    IKeyedCollection<IVectorStorage> Vectors { get; }
-
     /// <summary>
     /// 설정된 파이프라인을 다시 재구성 합니다.
     /// </summary>

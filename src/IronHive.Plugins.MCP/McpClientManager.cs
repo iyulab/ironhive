@@ -1,4 +1,5 @@
-﻿using IronHive.Abstractions.Messages;
+﻿using IronHive.Abstractions.Agent;
+using IronHive.Abstractions.Messages;
 using IronHive.Plugins.MCP.Configurations;
 using System.Collections.Concurrent;
 
@@ -10,11 +11,11 @@ namespace IronHive.Plugins.MCP;
 public class McpClientManager
 {
     private readonly ConcurrentDictionary<string, McpSession> _sessions = new();
-    private readonly IMessageService _service;
+    private readonly IAgentService _agent;
 
-    public McpClientManager(IMessageService service)
+    public McpClientManager(IAgentService agent)
     {
-        _service = service;
+        _agent = agent;
     }
 
     /// <summary>
@@ -90,7 +91,7 @@ public class McpClientManager
 
             foreach (var tool in t.Result)
             {
-                _service.Tools.Set(tool);
+                _agent.Tools.Set(tool);
             }
         });
     }
@@ -103,7 +104,7 @@ public class McpClientManager
         if (sender is not McpSession client)
             return;
 
-        _service.Tools.RemoveAll(t =>
+        _agent.Tools.RemoveAll(t =>
         {
             if (t is not McpTool tool)
                 return false;
@@ -120,7 +121,7 @@ public class McpClientManager
         if (sender is not McpSession client)
             return;
 
-        _service.Tools.RemoveAll(t =>
+        _agent.Tools.RemoveAll(t =>
         {
             if (t is not McpTool tool)
                 return false;

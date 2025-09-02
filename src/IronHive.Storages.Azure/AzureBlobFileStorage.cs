@@ -1,7 +1,7 @@
 ﻿using Azure;
 using Azure.Storage;
 using Azure.Storage.Blobs;
-using IronHive.Abstractions.Storages;
+using IronHive.Abstractions.Files;
 
 namespace IronHive.Storages.Azure;
 

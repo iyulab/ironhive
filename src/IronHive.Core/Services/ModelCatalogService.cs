@@ -7,18 +7,12 @@ namespace IronHive.Core.Services;
 /// <inheritdoc />
 public class ModelCatalogService : IModelCatalogService
 {
-    public ModelCatalogService()
-        : this(Enumerable.Empty<IModelCatalogProvider>())
-    { }
+    private readonly IKeyedCollection<IModelCatalogProvider> _providers;
 
-    public ModelCatalogService(IEnumerable<IModelCatalogProvider> providers)
+    public ModelCatalogService(IKeyedCollectionGroup<IKeyedProvider> providers)
     {
-        Providers = new KeyedCollection<IModelCatalogProvider>(
-            providers,
-            provider => provider.ProviderName);
+        _providers = providers.Of<IModelCatalogProvider>();
     }
-
-    public IKeyedCollection<IModelCatalogProvider> Providers { get; }
 
     /// <inheritdoc />
     public async Task<IEnumerable<ModelSummary>> ListModelsAsync(
@@ -27,7 +21,7 @@ public class ModelCatalogService : IModelCatalogService
     {
         if (!string.IsNullOrWhiteSpace(provider))
         {
-            if (Providers.TryGet(provider, out var service))
+            if (_providers.TryGet(provider, out var service))
             {
                 return await service.ListModelsAsync(cancellationToken);
             }
@@ -38,7 +32,7 @@ public class ModelCatalogService : IModelCatalogService
         }
         else
         {
-            var tasks = Providers.Values.Select(async p =>
+            var tasks = _providers.Values.Select(async p =>
             {
                 try
                 {
@@ -62,7 +56,7 @@ public class ModelCatalogService : IModelCatalogService
         string modelId, 
         CancellationToken cancellationToken = default)
     {
-        if (Providers.TryGet(provider, out var service))
+        if (_providers.TryGet(provider, out var service))
         {
             return await service.FindModelAsync(modelId, cancellationToken);
         }

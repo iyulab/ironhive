@@ -1,4 +1,4 @@
-﻿namespace IronHive.Abstractions.Storages;
+﻿namespace IronHive.Abstractions.Vector;
 
 /// <summary>
 /// 벡터 검색 결과를 나타내는 클래스입니다.

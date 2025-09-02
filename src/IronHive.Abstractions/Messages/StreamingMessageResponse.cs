@@ -43,7 +43,7 @@ public class StreamingContentDeltaResponse : StreamingMessageResponse
 }
 
 /// <summary>
-/// 메시지 컨텐츠 부분 업데이트
+/// 메시지 컨텐츠 전체 업데이트
 /// </summary>
 public class StreamingContentUpdatedResponse : StreamingMessageResponse
 {

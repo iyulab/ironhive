@@ -1,5 +1,4 @@
-﻿using IronHive.Abstractions.Messages;
-using IronHive.Abstractions.Tools;
+﻿using IronHive.Abstractions.Tools;
 using System.Text.Json.Serialization;
 
 namespace IronHive.Abstractions.Messages.Content;
@@ -14,6 +13,7 @@ public enum ToolContentStatus
     Approved, // 도구가 승인된 상태입니다.
     Rejected, // 도구가 거부된 상태입니다.
     InProgress, // 도구가 실행 중인 상태입니다.
+    
     Success,  // 도구 실행이 성공한 상태입니다. (결과가 정상적으로 반환된 상태입니다.)
     Failure, // 도구 실행이 실패한 상태입니다. (오류가 발생한 상태입니다.)
 }
@@ -113,17 +113,5 @@ public class ToolMessageContent : MessageContent
             Status = ToolContentStatus.Failure;
             Output = $"Execution failed: {output.Data}";
         }
-    }
-
-    /// <summary>
-    /// 현재 도구가 승인을 요구하는지 확인합니다.
-    /// </summary>
-    public bool RequiresApproval(IEnumerable<ITool> tools)
-    {
-        var tool = tools.FirstOrDefault(d => d.Name == Name);
-        if (tool == null)
-            throw new InvalidOperationException($"Tool descriptor not found for tool: {Name}");
-        
-        return tool.RequiresApproval;
     }
 }

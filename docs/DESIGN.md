@@ -1,38 +1,45 @@
 - builder
+	- providers
+	- storages
+
 	- AddModelCatalogProvider()
 	- AddEmbeddingGenerator()
 	- AddMessageGenerator()
-	- AddMessageTool()
-
+	
+	- AddFileStorage()
+	- AddQueueStorage()
+	- AddVectorStorage()
+	
+	- Agent: IAgentServiceBuilder
+		- AddTool()
 	- Files: IFileServiceBuilder
-		- AddStorage()
 		- AddDecoder()
 	- Memory: IMemoryServiceBuilder
-		- AddVectorStorage()
-		- AddQueueStorage()
 		- SetPipeline()
 
 - service
+	- Providers
+	- Storages
+	
 	- AgentService
-		- Generators<Message>
 		- Tools
 	- FileService
-		- Detector or Resolver or Analyzer
-		- Storages<File>
 		- Decoders
 	- MemoryService
-		- Generators<Embedding>
-		- Storages<Queue>
-		- Storages<Vector>
 		- Pipeline
 
 		- SetPipeline()
+		- CreateWorkers()
 	
 	- MemoryWorkerService(기본 주입 or CreateWorker()로 생성?)
 		- IMemoryService 주입
 	
 - HiveService
+	- Services { get; }
+	
+	- Providers { get; }
+	- Storages { get; }
+
+	- Agents { get; }
 	- Files { get; }
 	- Memory { get; }
-
-	- CreateAgent()

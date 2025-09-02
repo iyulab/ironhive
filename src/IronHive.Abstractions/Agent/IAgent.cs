@@ -3,9 +3,9 @@
 namespace IronHive.Abstractions.Agent;
 
 /// <summary>
-/// Hive 시스템의 에이전트를 나타냅니다.
+/// 에이전트를 나타냅니다.
 /// </summary>
-public interface IHiveAgent
+public interface IAgent
 {
     /// <summary>
     /// 에이전트가 기본으로 사용할 모델 제공자(서비스 키)입니다.

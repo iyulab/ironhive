@@ -1,4 +1,4 @@
-﻿namespace IronHive.Abstractions.Storages;
+﻿namespace IronHive.Abstractions.Queue;
 
 /// <summary>
 /// 큐에서 전달되는 메시지를 나타내는 제네릭 클래스입니다.

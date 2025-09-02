@@ -1,10 +1,7 @@
 ﻿using IronHive.Abstractions;
 using IronHive.Abstractions.Agent;
-using IronHive.Abstractions.Catalog;
-using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Memory;
-using IronHive.Abstractions.Messages;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace IronHive.Core;
@@ -15,6 +12,11 @@ public class HiveService : IHiveService
     public HiveService(IServiceProvider services)
     {
         Services = services;
+
+        Providers = services.GetRequiredService<IKeyedCollectionGroup<IKeyedProvider>>();
+        Storages = services.GetRequiredService<IKeyedCollectionGroup<IKeyedStorage>>();
+
+        Agents = services.GetRequiredService<IAgentService>();
         Files = services.GetRequiredService<IFileService>();
         Memory = services.GetRequiredService<IMemoryService>();
     }
@@ -22,75 +24,19 @@ public class HiveService : IHiveService
     /// <inheritdoc />
     public IServiceProvider Services { get; }
 
+    /// <inheritDoc />
+    public IKeyedCollectionGroup<IKeyedProvider> Providers { get; }
+
+    /// <inheritDoc />
+    public IKeyedCollectionGroup<IKeyedStorage> Storages { get; }
+
+
+    /// <inheritdoc />
+    public IAgentService Agents { get; }    
+    
     /// <inheritdoc />
     public IFileService Files { get; }
 
     /// <inheritdoc />
     public IMemoryService Memory { get; }
-
-    /// <inheritdoc />
-    public IHiveAgent CreateAgentFromYaml(string yaml)
-    {
-        throw new NotImplementedException();
-    }
-
-    /// <inheritdoc />
-    public IHiveAgent CreateAgentFromToml(string toml)
-    {
-        throw new NotImplementedException();
-    }
-
-    /// <inheritDoc />
-    public IHiveAgent CreateAgentFromJson(string json)
-    {
-        throw new NotImplementedException();
-    }
-
-    /// <inheritDoc />
-    public IHiveService SetModelCatalogProvider(IModelCatalogProvider provider)
-    {
-        var service = Services.GetRequiredService<IModelCatalogService>();
-        service.Providers.Set(provider);
-        return this;
-    }
-
-    /// <inheritDoc />
-    public IHiveService SetMessageGenerator(IMessageGenerator generator)
-    {
-        var service = Services.GetRequiredService<IMessageService>();
-        service.Generators.Set(generator);
-        return this;
-    }
-
-    /// <inheritDoc />
-    public IHiveService SetEmbeddingGenerator(IEmbeddingGenerator generator)
-    {
-        var service = Services.GetRequiredService<IEmbeddingService>();
-        service.Generators.Set(generator);
-        return this;
-    }
-
-    /// <inheritDoc />
-    public IHiveService RemoveModelCatalogProvider(string name)
-    {
-        var service = Services.GetRequiredService<IModelCatalogService>();
-        service.Providers.Remove(name);
-        return this;
-    }
-
-    /// <inheritDoc />
-    public IHiveService RemoveMessageGenerator(string name)
-    {
-        var service = Services.GetRequiredService<IMessageService>();
-        service.Generators.Remove(name);
-        return this;
-    }
-
-    /// <inheritDoc />
-    public IHiveService RemoveEmbeddingGenerator(string name)
-    {
-        var service = Services.GetRequiredService<IEmbeddingService>();
-        service.Generators.Remove(name);
-        return this;
-    }
 }

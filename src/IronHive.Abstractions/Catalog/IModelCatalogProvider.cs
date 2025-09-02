@@ -3,13 +3,8 @@
 /// <summary>
 /// 모델 정보를 제공하는 서비스의 인터페이스입니다.
 /// </summary>
-public interface IModelCatalogProvider : IDisposable
+public interface IModelCatalogProvider : IKeyedProvider
 {
-    /// <summary>
-    /// 공급자의 이름을 가져옵니다.
-    /// </summary>
-    string ProviderName { get; }
-
     /// <summary>
     /// 사용 가능한 모델 목록을 비동기적으로 반환합니다.
     /// </summary>

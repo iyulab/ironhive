@@ -5,6 +5,7 @@ using System.Text.Json;
 using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Message;
 using IronHive.Abstractions.Messages;
+using IronHive.Abstractions.Agent;
 
 namespace WebServer.Controllers;
 
@@ -13,16 +14,16 @@ namespace WebServer.Controllers;
 public class ServiceController : ControllerBase
 {
     private readonly IModelCatalogService _model;
-    private readonly IMessageService _service;
+    private readonly IAgentService _agent;
     private readonly JsonSerializerOptions _jsonOptions;
     
     public ServiceController(
         IModelCatalogService model,
-        IMessageService service,
+        IAgentService agent,
         IOptions<JsonOptions> jsonOptions)
     {
         _model = model;
-        _service = service;
+        _agent = agent;
         _jsonOptions = jsonOptions.Value.JsonSerializerOptions;
     }
 
@@ -66,14 +67,16 @@ public class ServiceController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         request.Instruction = $"Current UTC Time: {DateTime.UtcNow}\n" + request.Instruction;
+        request.Tools = _agent.Tools.Keys;
 
         try
         {
             Response.Headers.Connection = "keep-alive";
             Response.Headers.CacheControl = "no-cache";
             Response.ContentType = "text/event-stream; charset=utf-8";
-            
-            await foreach (var result in _service.GenerateStreamingMessageAsync(request, cancellationToken))
+
+            // TODO 추가
+            await foreach (var result in _agent.GenerateStreamingMessageAsync(request, cancellationToken))
             {
                 await WriteEventAsync(result, "delta");
             }

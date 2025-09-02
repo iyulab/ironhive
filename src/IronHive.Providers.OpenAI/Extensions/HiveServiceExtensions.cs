@@ -1,4 +1,7 @@
-﻿using IronHive.Providers.OpenAI;
+﻿using IronHive.Abstractions.Catalog;
+using IronHive.Abstractions.Embedding;
+using IronHive.Abstractions.Messages;
+using IronHive.Providers.OpenAI;
 
 namespace IronHive.Abstractions;
 
@@ -12,15 +15,15 @@ public static class HiveServiceExtensions
         string name,
         OpenAIConfig config)
     {
-        service.SetModelCatalogProvider(new OpenAIModelCatalogProvider(config)
+        service.Providers.Set<IModelCatalogProvider>(new OpenAIModelCatalogProvider(config)
         {
             ProviderName = name
         });
-        service.SetMessageGenerator(new OpenAIMessageGenerator(config)
+        service.Providers.Set<IMessageGenerator>(new OpenAIMessageGenerator(config)
         {
             ProviderName = name
         });
-        service.SetEmbeddingGenerator(new OpenAIEmbeddingGenerator(config)
+        service.Providers.Set<IEmbeddingGenerator>(new OpenAIEmbeddingGenerator(config)
         {
             ProviderName = name
         });
@@ -34,9 +37,9 @@ public static class HiveServiceExtensions
         this IHiveService service,
         string name)
     {
-        service.RemoveModelCatalogProvider(name);
-        service.RemoveMessageGenerator(name);
-        service.RemoveEmbeddingGenerator(name);
+        service.Providers.Remove<IModelCatalogProvider>(name);
+        service.Providers.Remove<IMessageGenerator>(name);
+        service.Providers.Remove<IEmbeddingGenerator>(name);
         return service;
     }
 }

@@ -1,7 +1,7 @@
 ﻿using Amazon;
 using Amazon.S3;
 using Amazon.S3.Model;
-using IronHive.Abstractions.Storages;
+using IronHive.Abstractions.Files;
 using System.Net;
 using AmazonS3ClientConfig = Amazon.S3.AmazonS3Config;
 

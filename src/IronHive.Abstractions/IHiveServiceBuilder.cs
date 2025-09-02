@@ -1,10 +1,13 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using IronHive.Abstractions.Agent;
+using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Memory;
-using IronHive.Abstractions.Tools;
-using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Messages;
+using IronHive.Abstractions.Queue;
+using IronHive.Abstractions.Tools;
+using IronHive.Abstractions.Vector;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace IronHive.Abstractions;
 
@@ -17,6 +20,11 @@ public interface IHiveServiceBuilder
     /// Hive 서비스 등록에 사용되는 서비스 컬렉션을 가져옵니다.
     /// </summary>
     IServiceCollection Services { get; }
+
+    /// <summary>
+    /// Hive 서비스의 에이전트를 구성하기 위한 빌더를 가져옵니다.
+    /// </summary>
+    IAgentServiceBuilder Agents { get; }
 
     /// <summary>
     /// Hive 서비스의 파일 서비스를 구성하기 위한 빌더를 가져옵니다.
@@ -44,9 +52,19 @@ public interface IHiveServiceBuilder
     IHiveServiceBuilder AddMessageGenerator(IMessageGenerator provider);
 
     /// <summary>
-    /// 새로운 툴을 등록합니다.
+    /// 파일 저장소를 추가합니다.
     /// </summary>
-    IHiveServiceBuilder AddMessageTool(ITool tool);
+    IFileServiceBuilder AddFileStorage(IFileStorage storage);
+
+    /// <summary>
+    /// 큐 저장소를 설정합니다.
+    /// </summary>
+    IMemoryServiceBuilder AddQueueStorage(IQueueStorage storage);
+
+    /// <summary>
+    /// 벡터 저장소를 설정합니다.
+    /// </summary>
+    IMemoryServiceBuilder AddVectorStorage(IVectorStorage storage);
 
     /// <summary>
     /// HiveService 인스턴스를 생성합니다.

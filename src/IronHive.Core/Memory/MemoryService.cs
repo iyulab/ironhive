@@ -1,9 +1,10 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using IronHive.Abstractions.Memory;
-using IronHive.Abstractions.Storages;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Pipelines;
 using IronHive.Abstractions;
+using IronHive.Abstractions.Queue;
+using IronHive.Abstractions.Vector;
 
 namespace IronHive.Core.Memory;
 
@@ -12,27 +13,20 @@ public class MemoryService : IMemoryService
 {
     private readonly IServiceProvider _services;
     private readonly IEmbeddingService _embedder;
+    private readonly IKeyedCollection<IQueueStorage> _queues;
+    private readonly IKeyedCollection<IVectorStorage> _vectors;
     private IPipelineRunner<PipelineContext> _pipeline;
 
-    public MemoryService(
-        IServiceProvider services,
-        IEmbeddingService embedder,
-        IEnumerable<IQueueStorage> queues,
-        IEnumerable<IVectorStorage> vectors,
-        IPipelineRunner<PipelineContext> pipeline)
+    public MemoryService(IServiceProvider services, IPipelineRunner<PipelineContext> pipeline)
     {
         _services = services;
-        _embedder = embedder;
-        Queues = new KeyedCollection<IQueueStorage>(queues, q => q.StorageName);
-        Vectors = new KeyedCollection<IVectorStorage>(vectors, v => v.StorageName);
+        _embedder = services.GetRequiredService<IEmbeddingService>();
+
+        var storages = services.GetRequiredService<IKeyedCollectionGroup<IKeyedStorage>>();
+        _queues = storages.Of<IQueueStorage>();
+        _vectors = storages.Of<IVectorStorage>();
         _pipeline = pipeline;
     }
-
-    /// <inheritdoc />
-    public IKeyedCollection<IQueueStorage> Queues { get; }
-
-    /// <inheritdoc />
-    public IKeyedCollection<IVectorStorage> Vectors { get; }
 
     /// <inheritdoc />
     public void SetPipeline(PipelineBuildDelegate configure)
@@ -51,7 +45,7 @@ public class MemoryService : IMemoryService
         string storageName,
         CancellationToken cancellationToken = default)
     {
-        if (!Vectors.TryGet(storageName, out var vector))
+        if (!_vectors.TryGet(storageName, out var vector))
             throw new KeyNotFoundException($"Vector storage key '{storageName}' not found.");
 
         return await vector.ListCollectionsAsync(cancellationToken);
@@ -63,7 +57,7 @@ public class MemoryService : IMemoryService
         string collectionName, 
         CancellationToken cancellationToken = default)
     {
-        if (!Vectors.TryGet(storageName, out var vector))
+        if (!_vectors.TryGet(storageName, out var vector))
             throw new KeyNotFoundException($"Vector storage key '{storageName}' not found.");
 
         return await vector.CollectionExistsAsync(collectionName, cancellationToken);
@@ -75,7 +69,7 @@ public class MemoryService : IMemoryService
         string collectionName, 
         CancellationToken cancellationToken = default)
     {
-        if (!Vectors.TryGet(storageName, out var vector))
+        if (!_vectors.TryGet(storageName, out var vector))
             throw new KeyNotFoundException($"Vector storage key '{storageName}' not found.");
 
         return await vector.GetCollectionInfoAsync(collectionName, cancellationToken);
@@ -89,7 +83,7 @@ public class MemoryService : IMemoryService
         string embeddingModel,
         CancellationToken cancellationToken = default)
     {
-        if (!Vectors.TryGet(storageName, out var vector))
+        if (!_vectors.TryGet(storageName, out var vector))
             throw new KeyNotFoundException($"Vector storage key '{storageName}' not found.");
 
         const string sample = "dimension calculation sample";
@@ -111,7 +105,7 @@ public class MemoryService : IMemoryService
         string collectionName, 
         CancellationToken cancellationToken = default)
     {
-        if (!Vectors.TryGet(storageName, out var vector))
+        if (!_vectors.TryGet(storageName, out var vector))
             throw new KeyNotFoundException($"Vector storage key '{storageName}' not found.");
         await vector.DeleteCollectionAsync(collectionName, cancellationToken);
     }
@@ -126,7 +120,7 @@ public class MemoryService : IMemoryService
         if (target is not VectorMemoryTarget vt)
             throw new InvalidOperationException("currently only VectorMemoryTarget is supported.");
 
-        if (!Vectors.TryGet(vt.StorageName, out var vector))
+        if (!_vectors.TryGet(vt.StorageName, out var vector))
             throw new KeyNotFoundException($"Vector storage key '{vt.StorageName}' not found.");
         var collection = await vector.GetCollectionInfoAsync(vt.CollectionName, cancellationToken)
             ?? throw new InvalidOperationException($"Collection '{vt.CollectionName}' does not exist.");
@@ -143,7 +137,7 @@ public class MemoryService : IMemoryService
             },
         };
 
-        if (!Queues.TryGet(queueName, out var _queue))
+        if (!_queues.TryGet(queueName, out var _queue))
             throw new KeyNotFoundException($"Queue storage key '{queueName}' not found.");
         await _queue.EnqueueAsync(ctx, cancellationToken);
     }
@@ -157,7 +151,7 @@ public class MemoryService : IMemoryService
         if (target is not VectorMemoryTarget vt)
             throw new InvalidOperationException("currently only VectorMemoryTarget is supported.");
 
-        if (!Vectors.TryGet(vt.StorageName, out var vector))
+        if (!_vectors.TryGet(vt.StorageName, out var vector))
             throw new KeyNotFoundException($"Vector storage key '{vt.StorageName}' not found.");
 
         var collection = await vector.GetCollectionInfoAsync(vt.CollectionName, cancellationToken)
@@ -183,7 +177,7 @@ public class MemoryService : IMemoryService
         string sourceId, 
         CancellationToken cancellationToken = default)
     {
-        if (!Vectors.TryGet(storageName, out var vector))
+        if (!_vectors.TryGet(storageName, out var vector))
             throw new KeyNotFoundException($"Vector storage key '{storageName}' not found.");
 
         var filter = new VectorRecordFilter();
@@ -201,7 +195,7 @@ public class MemoryService : IMemoryService
         IEnumerable<string>? sourceIds = null,
         CancellationToken cancellationToken = default)
     {
-        if (!Vectors.TryGet(storageName, out var vector))
+        if (!_vectors.TryGet(storageName, out var vector))
             throw new KeyNotFoundException($"Vector storage key '{storageName}' not found.");
 
         var collection = await vector.GetCollectionInfoAsync(collectionName, cancellationToken)

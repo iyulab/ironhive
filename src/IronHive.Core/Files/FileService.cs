@@ -1,29 +1,21 @@
 ﻿using IronHive.Abstractions;
 using IronHive.Abstractions.Files;
-using IronHive.Abstractions.Storages;
+using System.Text.RegularExpressions;
 
 namespace IronHive.Core.Files;
 
 /// <inheritdoc />
-public class FileService : IFileService
+public partial class FileService : IFileService
 {
+    private readonly IKeyedCollection<IFileStorage> _storages;
     // 파일 확장자와 MIME 타입 매핑 객체
     private readonly FileContentTypeMapper _mapper = new();
 
-    public FileService()
-        : this(Enumerable.Empty<IFileStorage>())
-    { }
-
-    public FileService(IEnumerable<IFileStorage> storages, IEnumerable<IFileDecoder>? decoders = null)
+    public FileService(IKeyedCollectionGroup<IKeyedStorage> storages, IEnumerable<IFileDecoder>? decoders = null)
     {
-        Storages = new KeyedCollection<IFileStorage>(
-            storages,
-            storage => storage.StorageName);
+        _storages = storages.Of<IFileStorage>();
         Decoders = decoders?.ToList() ?? new List<IFileDecoder>();
     }
-
-    /// <inheritdoc />
-    public IKeyedCollection<IFileStorage> Storages { get; }
 
     /// <inheritdoc />
     public ICollection<IFileDecoder> Decoders { get; }
@@ -50,6 +42,10 @@ public class FileService : IFileService
         }
     }
 
+    // 확장자 검증용 정규식
+    [GeneratedRegex(@"^\.[a-zA-Z0-9]+$", RegexOptions.Compiled)]
+    private static partial Regex ExtensionRegex();
+
     /// <inheritdoc />
     public string GetContentType(string fileName)
     {
@@ -62,6 +58,16 @@ public class FileService : IFileService
     /// <inheritdoc />
     public void SetContentType(string extension, string mimeType)
     {
+        if (string.IsNullOrWhiteSpace(extension))
+            throw new ArgumentException("확장자는 비어 있을 수 없습니다.", nameof(extension));
+
+        if (!extension.StartsWith('.'))
+            extension = "." + extension;
+
+        // 확장자 검증 (예: .jpg, .png, .html 등)
+        if (!ExtensionRegex().IsMatch(extension))
+            throw new ArgumentException($"잘못된 확장자 형식입니다: {extension}", nameof(extension));
+
         _mapper[extension] = mimeType;
     }
 
@@ -92,7 +98,7 @@ public class FileService : IFileService
         int depth = 1,
         CancellationToken cancellationToken = default)
     {
-        if (!Storages.TryGet(storage, out var service))
+        if (!_storages.TryGet(storage, out var service))
             throw new ArgumentException($"저장소 '{storage}'을(를) 찾을 수 없습니다.", nameof(storage));
         
         var result = await service.ListAsync(prefix, depth, cancellationToken);
@@ -105,7 +111,7 @@ public class FileService : IFileService
         string path,
         CancellationToken cancellationToken = default)
     {
-        if (!Storages.TryGet(storage, out var service))
+        if (!_storages.TryGet(storage, out var service))
             throw new ArgumentException($"저장소 '{storage}'을(를) 찾을 수 없습니다.", nameof(storage));
 
         var result = await service.ExistsAsync(path, cancellationToken);
@@ -118,7 +124,7 @@ public class FileService : IFileService
         string filePath,
         CancellationToken cancellationToken = default)
     {
-        if (!Storages.TryGet(storage, out var service))
+        if (!_storages.TryGet(storage, out var service))
             throw new ArgumentException($"저장소 '{storage}'을(를) 찾을 수 없습니다.", nameof(storage));
 
         var result = await service.ReadFileAsync(filePath, cancellationToken);
@@ -133,7 +139,7 @@ public class FileService : IFileService
         bool overwrite = true,
         CancellationToken cancellationToken = default)
     {
-        if (!Storages.TryGet(storage, out var service))
+        if (!_storages.TryGet(storage, out var service))
             throw new ArgumentException($"저장소 '{storage}'을(를) 찾을 수 없습니다.", nameof(storage));
 
         await service.WriteFileAsync(filePath, data, overwrite, cancellationToken);
@@ -145,7 +151,7 @@ public class FileService : IFileService
         string path,
         CancellationToken cancellationToken = default)
     {
-        if (!Storages.TryGet(storage, out var service))
+        if (!_storages.TryGet(storage, out var service))
             throw new ArgumentException($"저장소 '{storage}'을(를) 찾을 수 없습니다.", nameof(storage));
 
         await service.DeleteAsync(path, cancellationToken);

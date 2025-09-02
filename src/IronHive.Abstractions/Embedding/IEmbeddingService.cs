@@ -6,11 +6,6 @@
 public interface IEmbeddingService
 {
     /// <summary>
-    /// 임베딩 생성기를 관리하는 컬렉션입니다.
-    /// </summary>
-    public IKeyedCollection<IEmbeddingGenerator> Generators { get; }
-
-    /// <summary>
     /// 지정된 프로바이더와 모델을 사용하여 단일 입력에 대한 임베딩을 생성합니다.
     /// </summary>
     /// <param name="provider">사용할 공급자의 이름입니다.</param>

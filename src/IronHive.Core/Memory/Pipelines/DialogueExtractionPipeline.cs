@@ -16,12 +16,8 @@ public class Dialogue
 /// <summary>
 /// DialogueExtractionPipeline는 주어진 텍스트에서 Q&A 쌍을 추출하는 메모리 파이프라인 핸들러입니다.
 /// </summary>
-public class DialogueExtractionPipeline : IPipeline<PipelineContext<IEnumerable<string>>, PipelineContext<IEnumerable<Dialogue>>>
+public partial class DialogueExtractionPipeline : IPipeline<PipelineContext<IEnumerable<string>>, PipelineContext<IEnumerable<Dialogue>>>
 {
-    private static readonly Regex DialogueRegex = new Regex(
-        @"<qa>\s*<q>\s*(.*?)\s*</q>\s*<a>\s*(.*?)\s*</a>\s*</qa>",
-        RegexOptions.Singleline | RegexOptions.Compiled);
-
     private readonly IMessageService _service;
 
     public DialogueExtractionPipeline(IMessageService chat)
@@ -32,6 +28,10 @@ public class DialogueExtractionPipeline : IPipeline<PipelineContext<IEnumerable<
     public required string Provider { get; init; }
     
     public required string Model { get; init; }
+
+    // QnA 쌍을 추출하기 위한 정규식입니다.
+    [GeneratedRegex(@"<qa>\s*<q>\s*(.*?)\s*</q>\s*<a>\s*(.*?)\s*</a>\s*</qa>", RegexOptions.Singleline | RegexOptions.Compiled)]
+    private static partial Regex DialogueRegex();
 
     /// <inheritdoc />
     public async Task<PipelineContext<IEnumerable<Dialogue>>> InvokeAsync(
@@ -72,7 +72,7 @@ public class DialogueExtractionPipeline : IPipeline<PipelineContext<IEnumerable<
     private static List<Dialogue> ParseFrom(string text)
     {
         var dialogues = new List<Dialogue>();
-        var matches = DialogueRegex.Matches(text);
+        var matches = DialogueRegex().Matches(text);
 
         foreach (Match match in matches)
         {

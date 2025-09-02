@@ -141,11 +141,11 @@ public static class MessageGenerationRequestExtensions
                 MessageThinkingEffort.High => ChatReasoningEffort.High,
                 _ => null
             },
-            Tools = request.Tools.Select(t => new OpenAIFunctionTool
+            Tools = request.Tools?.Select(t => new OpenAIFunctionTool
             {
                 Function = new OpenAIFunctionTool.FunctionSchema
                 {
-                    Name = t.Name,
+                    Name = t.UniqueName,
                     Description = t.Description,
                     Parameters = t.Parameters
                 }

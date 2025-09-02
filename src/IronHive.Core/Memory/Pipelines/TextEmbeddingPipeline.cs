@@ -1,7 +1,7 @@
 ﻿using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Pipelines;
-using IronHive.Abstractions.Storages;
+using IronHive.Abstractions.Vector;
 
 namespace IronHive.Core.Memory.Pipelines;
 

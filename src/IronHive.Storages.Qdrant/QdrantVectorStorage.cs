@@ -5,7 +5,7 @@ using Qdrant.Client.Grpc;
 using static Qdrant.Client.Grpc.Conditions;
 using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Memory;
-using IronHive.Abstractions.Storages;
+using IronHive.Abstractions.Vector;
 
 namespace IronHive.Storages.Qdrant;
 
