@@ -13,21 +13,23 @@ namespace IronHive.Storages.Amazon;
 public class AmazonS3FileStorage : IFileStorage
 {
     private readonly AmazonS3Client _client;
+    private readonly AmazonS3Config _config;
 
     public AmazonS3FileStorage(AmazonS3Config config)
     {
         if (string.IsNullOrWhiteSpace(config.BucketName))
             throw new ArgumentException("S3 버킷 이름이 필요합니다.", nameof(config.BucketName));
 
-        BucketName = config.BucketName;
+        _config = config;
         _client = CreateClient(config);
     }
 
+    /// <summary>
+    /// 설정된 S3 버킷 이름을 나타냅니다.
+    /// </summary>
+    public string BucketName => _config.BucketName;
+
     /// <inheritdoc />
-    public required string StorageName { get; init; }
-
-    public string BucketName { get; }
-
     public void Dispose()
     {
         _client.Dispose();
@@ -227,7 +229,7 @@ public class AmazonS3FileStorage : IFileStorage
     /// <summary>
     /// AWS 클라이언트 생성
     /// </summary>
-    private AmazonS3Client CreateClient(AmazonS3Config config)
+    private static AmazonS3Client CreateClient(AmazonS3Config config)
     {
         if (string.IsNullOrWhiteSpace(config.AccessKey))
             throw new ArgumentException("AWS IAM 액세스 키가 필요합니다.");

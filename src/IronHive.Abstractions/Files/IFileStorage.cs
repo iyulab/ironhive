@@ -1,9 +1,11 @@
-﻿namespace IronHive.Abstractions.Files;
+﻿using IronHive.Abstractions.Collections;
+
+namespace IronHive.Abstractions.Files;
 
 /// <summary>
 /// 파일 저장소 연결을 위한 인터페이스입니다.
 /// </summary>
-public interface IFileStorage : IKeyedStorage
+public interface IFileStorage : IStorageItem
 {
     /// <summary>
     /// 지정한 접두어(prefix)를 가진 폴더 내의 파일 및 디렉토리의 목록을 반환합니다.

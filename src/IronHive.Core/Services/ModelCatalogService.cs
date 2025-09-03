@@ -1,33 +1,38 @@
 ﻿using System.Net;
-using IronHive.Abstractions;
 using IronHive.Abstractions.Catalog;
+using IronHive.Abstractions.Collections;
 
 namespace IronHive.Core.Services;
 
 /// <inheritdoc />
 public class ModelCatalogService : IModelCatalogService
 {
-    private readonly IKeyedCollection<IModelCatalogProvider> _providers;
+    private readonly IProviderCollection _providers;
 
-    public ModelCatalogService(IKeyedCollectionGroup<IKeyedProvider> providers)
+    public ModelCatalogService(IProviderCollection providers)
     {
-        _providers = providers.Of<IModelCatalogProvider>();
+        _providers = providers;
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<ModelSummary>> ListModelsAsync(
+    public async Task<IEnumerable<ModelSpecItem>> ListModelsAsync(
         string? provider = null,
         CancellationToken cancellationToken = default)
     {
         if (!string.IsNullOrWhiteSpace(provider))
         {
-            if (_providers.TryGet(provider, out var service))
+            if (_providers.TryGet<IModelCatalog>(provider, out var service))
             {
-                return await service.ListModelsAsync(cancellationToken);
+                var models = await service.ListModelsAsync(cancellationToken);
+                return models.Select(m => new ModelSpecItem
+                {
+                    Provider = provider,
+                    Model = m
+                });
             }
             else
             {
-                return Enumerable.Empty<ModelSummary>();
+                return Enumerable.Empty<ModelSpecItem>();
             }
         }
         else
@@ -51,18 +56,36 @@ public class ModelCatalogService : IModelCatalogService
     }
 
     /// <inheritdoc />
-    public async Task<ModelDetails?> FindModelAsync(
+    public async Task<IEnumerable<ModelSpecItem<T>>> ListModelsAsync<T>(
+        string? provider, 
+        CancellationToken cancellationToken = default)
+        where T : IModelSpec
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc />
+    public async Task<ModelSpecItem?> FindModelAsync(
         string provider, 
         string modelId, 
         CancellationToken cancellationToken = default)
     {
-        if (_providers.TryGet(provider, out var service))
+        if (_providers.TryGet<IModelCatalog>(provider, out var service))
         {
-            return await service.FindModelAsync(modelId, cancellationToken);
+            var model = await service.FindModelAsync(modelId, cancellationToken);
+            return model is not null 
+                ? new ModelSpecItem
+                {
+                    Provider = provider,
+                    Model = model
+                }
+                : null;
         }
         else
         {
             return null;
         }
     }
+
+    
 }

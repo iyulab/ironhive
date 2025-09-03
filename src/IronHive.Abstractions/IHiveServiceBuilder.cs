@@ -24,12 +24,12 @@ public interface IHiveServiceBuilder
     /// <summary>
     /// Hive 서비스의 에이전트를 구성하기 위한 빌더를 가져옵니다.
     /// </summary>
-    IAgentServiceBuilder Agents { get; }
+    IAgentServiceBuilder Agent { get; }
 
     /// <summary>
     /// Hive 서비스의 파일 서비스를 구성하기 위한 빌더를 가져옵니다.
     /// </summary>
-    IFileServiceBuilder Files { get; }
+    IFileServiceBuilder File { get; }
 
     /// <summary>
     /// Hive 서비스의 메모리를 구성하기 위한 빌더를 가져옵니다.
@@ -39,32 +39,37 @@ public interface IHiveServiceBuilder
     /// <summary>
     /// 새로운 모델 제공자를 등록합니다.
     /// </summary>
-    IHiveServiceBuilder AddModelCatalogProvider(IModelCatalogProvider provider);
+    IHiveServiceBuilder AddModelCatalog(string providerName, IModelCatalog catalog);
 
     /// <summary>
     /// 새로운 임베딩 생성기를 등록합니다.
     /// </summary>
-    IHiveServiceBuilder AddEmbeddingGenerator(IEmbeddingGenerator provider);
+    IHiveServiceBuilder AddEmbeddingGenerator(string providerName, IEmbeddingGenerator generator);
 
     /// <summary>
     /// 새로운 메시지 생성기를 등록합니다.
     /// </summary>
-    IHiveServiceBuilder AddMessageGenerator(IMessageGenerator provider);
+    IHiveServiceBuilder AddMessageGenerator(string providerName, IMessageGenerator generator);
 
     /// <summary>
     /// 파일 저장소를 추가합니다.
     /// </summary>
-    IFileServiceBuilder AddFileStorage(IFileStorage storage);
+    IHiveServiceBuilder AddFileStorage(string storageName, IFileStorage storage);
 
     /// <summary>
     /// 큐 저장소를 설정합니다.
     /// </summary>
-    IMemoryServiceBuilder AddQueueStorage(IQueueStorage storage);
+    IHiveServiceBuilder AddQueueStorage(string storageName, IQueueStorage storage);
 
     /// <summary>
     /// 벡터 저장소를 설정합니다.
     /// </summary>
-    IMemoryServiceBuilder AddVectorStorage(IVectorStorage storage);
+    IHiveServiceBuilder AddVectorStorage(string storageName, IVectorStorage storage);
+
+    /// <summary>
+    /// 툴을 추가합니다.
+    /// </summary>
+    IHiveServiceBuilder AddTool(ITool tool);
 
     /// <summary>
     /// HiveService 인스턴스를 생성합니다.

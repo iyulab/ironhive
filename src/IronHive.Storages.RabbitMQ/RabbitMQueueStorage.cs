@@ -10,8 +10,6 @@ namespace IronHive.Storages.RabbitMQ;
 public class RabbitMQueueStorage : IQueueStorage
 {
     private readonly RabbitMQConfig _config;
-    private readonly string _queueName;
-    private readonly JsonSerializerOptions _jsonOptions;
 
     private IConnection? _conn;
     private IChannel? _channel;
@@ -19,12 +17,12 @@ public class RabbitMQueueStorage : IQueueStorage
     public RabbitMQueueStorage(RabbitMQConfig config)
     {
         _config = config;
-        _queueName = config.QueueName;
-        _jsonOptions = config.JsonOptions;
     }
 
-    /// <inheritdoc />
-    public required string StorageName { get; init; }
+    /// <summary>
+    /// 현재 설정된 큐 이름을 나타냅니다.
+    /// </summary>
+    public string QueueName => _config.QueueName;
 
     /// <inheritdoc />
     public void Dispose()
@@ -38,7 +36,7 @@ public class RabbitMQueueStorage : IQueueStorage
     public async Task<int> CountAsync(CancellationToken cancellationToken = default)
     {
         var channel = await GetOrCreateChannelAsync();
-        var count = await channel.MessageCountAsync(_queueName, cancellationToken);
+        var count = await channel.MessageCountAsync(QueueName, cancellationToken);
         return (int)count;
     }
 
@@ -46,7 +44,7 @@ public class RabbitMQueueStorage : IQueueStorage
     public async Task ClearAsync(CancellationToken cancellationToken = default)
     {
         var channel = await GetOrCreateChannelAsync();
-        await channel.QueuePurgeAsync(_queueName, cancellationToken);
+        await channel.QueuePurgeAsync(QueueName, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -54,10 +52,10 @@ public class RabbitMQueueStorage : IQueueStorage
     {
         var channel = await GetOrCreateChannelAsync();
 
-        var body = JsonSerializer.SerializeToUtf8Bytes(message, _jsonOptions);
+        var body = JsonSerializer.SerializeToUtf8Bytes(message, _config.JsonOptions);
         await channel.BasicPublishAsync(
             exchange: "",
-            routingKey: _queueName,
+            routingKey: QueueName,
             mandatory: false,
             body: body,
             cancellationToken: cancellationToken
@@ -69,12 +67,12 @@ public class RabbitMQueueStorage : IQueueStorage
     {
         var channel = await GetOrCreateChannelAsync();
 
-        var result = await channel.BasicGetAsync(_queueName, autoAck: false, cancellationToken);
+        var result = await channel.BasicGetAsync(QueueName, autoAck: false, cancellationToken);
         if (result == null)
             return null;
 
         var body = result.Body.ToArray();
-        var message = JsonSerializer.Deserialize<T>(body, _jsonOptions)
+        var message = JsonSerializer.Deserialize<T>(body, _config.JsonOptions)
             ?? throw new JsonException("Failed to deserialize message.");
 
         return new QueueMessage<T>

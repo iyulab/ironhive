@@ -11,13 +11,14 @@ public static class HiveServiceBuilderExtensions
     /// <summary>
     /// 내장 기능 툴 플러그인을 등록합니다.
     /// </summary>
-    public static IHiveServiceBuilder AddFunctionTool<T>(this IHiveServiceBuilder builder) 
+    public static IHiveServiceBuilder AddFunctionTool<T>(
+        this IHiveServiceBuilder builder) 
         where T : class
     {
         var tools = FunctionToolFactory.CreateFromType<T>();
         foreach (var tool in tools)
         {
-            builder.Agents.AddTool(tool);
+            builder.AddTool(tool);
         }
         return builder;
     }
@@ -25,12 +26,11 @@ public static class HiveServiceBuilderExtensions
     /// <summary>
     /// 로컬 디스크 파일 스토리지를 등록합니다.
     /// </summary>
-    public static IHiveServiceBuilder AddLocalFileStorage(this IHiveServiceBuilder builder, string storageName)
+    public static IHiveServiceBuilder AddLocalFileStorage(
+        this IHiveServiceBuilder builder, 
+        string storageName)
     {
-        builder.AddFileStorage(new LocalFileStorage
-        {
-            StorageName = storageName
-        });
+        builder.AddFileStorage(storageName, new LocalFileStorage());
         return builder;
     }
 
@@ -39,11 +39,11 @@ public static class HiveServiceBuilderExtensions
     /// </summary>
     public static IHiveServiceBuilder AddDefaultFileDecoders(this IHiveServiceBuilder builder)
     {
-        builder.Files.AddDecoder(new TextDecoder());
-        builder.Files.AddDecoder(new WordDecoder());
-        builder.Files.AddDecoder(new PDFDecoder());
-        builder.Files.AddDecoder(new PPTDecoder());
-        builder.Files.AddDecoder(new ImageDecoder());
+        builder.File.AddDecoder(new TextDecoder());
+        builder.File.AddDecoder(new WordDecoder());
+        builder.File.AddDecoder(new PDFDecoder());
+        builder.File.AddDecoder(new PPTDecoder());
+        builder.File.AddDecoder(new ImageDecoder());
         return builder;
     }
 

@@ -1,4 +1,4 @@
-﻿using IronHive.Abstractions;
+﻿using IronHive.Abstractions.Collections;
 using IronHive.Abstractions.Files;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -16,7 +16,7 @@ public class FileServiceBuilder : IFileServiceBuilder
         _services = services ?? new ServiceCollection();
         _services.TryAddSingleton<IFileService>((sp) =>
         {
-            var storages = sp.GetRequiredService<IKeyedCollectionGroup<IKeyedStorage>>();
+            var storages = sp.GetRequiredService<IStorageCollection>();
             return new FileService(storages, _decoders);
         });
     }

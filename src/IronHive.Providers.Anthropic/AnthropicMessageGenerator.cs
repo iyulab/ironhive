@@ -27,9 +27,6 @@ public class AnthropicMessageGenerator : IMessageGenerator
     }
 
     /// <inheritdoc />
-    public required string ProviderName { get; init; }
-
-    /// <inheritdoc />
     public void Dispose()
     {
         _client.Dispose();

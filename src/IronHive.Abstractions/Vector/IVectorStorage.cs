@@ -1,10 +1,12 @@
-﻿namespace IronHive.Abstractions.Vector;
+﻿using IronHive.Abstractions.Collections;
+
+namespace IronHive.Abstractions.Vector;
 
 /// <summary>
 /// 벡터 스토리지와 관련된 기본 기능을 제공하는 인터페이스입니다.
 /// 이 인터페이스는 벡터 컬렉션의 생성, 삭제, 검색 등의 작업을 비동기적으로 수행합니다.
 /// </summary>
-public interface IVectorStorage : IKeyedStorage
+public interface IVectorStorage : IStorageItem
 {
     /// <summary>
     /// 모든 벡터 컬렉션들을 비동기적으로 반환합니다.

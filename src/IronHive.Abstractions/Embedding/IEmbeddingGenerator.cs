@@ -1,9 +1,11 @@
-﻿namespace IronHive.Abstractions.Embedding;
+﻿using IronHive.Abstractions.Collections;
+
+namespace IronHive.Abstractions.Embedding;
 
 /// <summary>
 /// 임베딩을 생성하는 기능을 제공하는 서비스 인터페이스입니다.
 /// </summary>
-public interface IEmbeddingGenerator : IKeyedProvider
+public interface IEmbeddingGenerator : IProviderItem
 {
     /// <summary>
     /// 지정된 모델을 사용하여 단일 입력에 대한 임베딩을 생성합니다.

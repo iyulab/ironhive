@@ -30,9 +30,6 @@ public class LocalQueueStorage : IQueueStorage
     }
 
     /// <inheritdoc />
-    public required string StorageName { get; init; }
-
-    /// <inheritdoc />
     public void Dispose()
     {
         _cache.Clear();

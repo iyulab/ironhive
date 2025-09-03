@@ -20,9 +20,6 @@ public partial class LocalVectorStorage : IVectorStorage
         _db = CreateLiteDatabase(config);
     }
 
-    /// <inheritdoc />
-    public required string StorageName { get; init; }
-
     // 컬렉션 이름 검증용 정규식
     [GeneratedRegex("^[A-Za-z][A-Za-z0-9_]*$", RegexOptions.Compiled)]
     private static partial Regex CollectionRegex();

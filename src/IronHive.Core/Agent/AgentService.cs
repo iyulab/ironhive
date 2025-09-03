@@ -1,6 +1,6 @@
 ﻿using IronHive.Abstractions.Agent;
+using IronHive.Abstractions.Collections;
 using IronHive.Abstractions.Messages;
-using IronHive.Abstractions.Tools;
 
 namespace IronHive.Core.Agent;
 
@@ -9,14 +9,10 @@ public class AgentService : IAgentService
 {
     private readonly IMessageService _messages;
 
-    public AgentService(IMessageService message, IToolCollection tools)
+    public AgentService(IMessageService message)
     {
         _messages = message;
-        Tools = tools;
     }
-
-    /// <inheritdoc />
-    public IToolCollection Tools { get; }
 
     /// <inheritdoc />
     public IAgent CreateAgentFromJson(string json)

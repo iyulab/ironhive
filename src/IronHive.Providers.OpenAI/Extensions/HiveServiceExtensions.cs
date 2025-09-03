@@ -12,21 +12,15 @@ public static class HiveServiceExtensions
     /// </summary>
     public static IHiveService SetOpenAIProviders(
         this IHiveService service,
-        string name,
+        string providerName,
         OpenAIConfig config)
     {
-        service.Providers.Set<IModelCatalogProvider>(new OpenAIModelCatalogProvider(config)
-        {
-            ProviderName = name
-        });
-        service.Providers.Set<IMessageGenerator>(new OpenAIMessageGenerator(config)
-        {
-            ProviderName = name
-        });
-        service.Providers.Set<IEmbeddingGenerator>(new OpenAIEmbeddingGenerator(config)
-        {
-            ProviderName = name
-        });
+        service.Providers.Set<IModelCatalog, OpenAIModelCatalog>(
+            providerName, new OpenAIModelCatalog(config));
+        service.Providers.Set<IMessageGenerator, OpenAIMessageGenerator>(
+            providerName, new OpenAIMessageGenerator(config));
+        service.Providers.Set<IEmbeddingGenerator, OpenAIEmbeddingGenerator>(
+            providerName, new OpenAIEmbeddingGenerator(config));
         return service;
     }
 
@@ -35,11 +29,11 @@ public static class HiveServiceExtensions
     /// </summary>
     public static IHiveService RemoveOpenAIProviders(
         this IHiveService service,
-        string name)
+        string providerName)
     {
-        service.Providers.Remove<IModelCatalogProvider>(name);
-        service.Providers.Remove<IMessageGenerator>(name);
-        service.Providers.Remove<IEmbeddingGenerator>(name);
+        service.Providers.Remove<IModelCatalog>(providerName);
+        service.Providers.Remove<IMessageGenerator>(providerName);
+        service.Providers.Remove<IEmbeddingGenerator>(providerName);
         return service;
     }
 }

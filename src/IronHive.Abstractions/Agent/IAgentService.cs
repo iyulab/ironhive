@@ -1,4 +1,4 @@
-﻿using IronHive.Abstractions.Tools;
+﻿using IronHive.Abstractions.Collections;
 
 namespace IronHive.Abstractions.Agent;
 
@@ -7,11 +7,6 @@ namespace IronHive.Abstractions.Agent;
 /// </summary>
 public interface IAgentService
 {
-    /// <summary>
-    /// Agent가 사용하는 도구 모음입니다.
-    /// </summary>
-    IToolCollection Tools { get; }
-
     /// <summary>
     /// 에이전트 서비스를 Yaml 문자열로부터 생성합니다.
     /// 

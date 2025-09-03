@@ -9,21 +9,12 @@ public static class HiveServiceBuilderExtensions
     /// </summary>
     public static IHiveServiceBuilder AddOpenAIProviders(
         this IHiveServiceBuilder builder, 
-        string name,
+        string providerName,
         OpenAIConfig config)
     {
-        builder.AddModelCatalogProvider(new OpenAIModelCatalogProvider(config)
-        {
-            ProviderName = name
-        });
-        builder.AddMessageGenerator(new OpenAIMessageGenerator(config)
-        {
-            ProviderName = name
-        });
-        builder.AddEmbeddingGenerator(new OpenAIEmbeddingGenerator(config)
-        { 
-            ProviderName = name 
-        });
+        builder.AddModelCatalog(providerName, new OpenAIModelCatalog(config));
+        builder.AddMessageGenerator(providerName, new OpenAIMessageGenerator(config));
+        builder.AddEmbeddingGenerator(providerName, new OpenAIEmbeddingGenerator(config));
         return builder;
     }
 }

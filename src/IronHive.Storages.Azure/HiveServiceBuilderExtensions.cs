@@ -12,10 +12,7 @@ public static class HiveServiceBuilderExtensions
         string storageName,
         AzureBlobConfig config)
     {
-        builder.AddFileStorage(new AzureBlobFileStorage(config)
-        {
-            StorageName = storageName
-        });
+        builder.AddFileStorage(storageName, new AzureBlobFileStorage(config));
         return builder;
     }
 }

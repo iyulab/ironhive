@@ -12,10 +12,7 @@ public static class HiveServiceBuilderExtensions
         string storageName,
         AmazonS3Config config)
     {
-        builder.AddFileStorage(new AmazonS3FileStorage(config)
-        {
-            StorageName = storageName
-        });
+        builder.AddFileStorage(storageName, new AmazonS3FileStorage(config));
         return builder;
     }
 }

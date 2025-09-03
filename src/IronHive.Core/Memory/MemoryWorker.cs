@@ -81,23 +81,24 @@ public class MemoryWorker : IMemoryWorker
                     break;
 
                 // TODO: 큐 스토리지 가져올 방법 강구
-                if (!_memory.Queues.TryGet(QueueName, out var queue))
-                    throw new InvalidOperationException($"Queue storage key '{QueueName}' not found.");
+                throw new Exception();
+                //if (!_memory.Queues.TryGet(QueueName, out var queue))
+                //    throw new InvalidOperationException($"Queue storage key '{QueueName}' not found.");
 
-                var msg = await queue.DequeueAsync<PipelineContext>(_cts.Token);
-                if (msg != null)
-                {
-                    State = MemoryWorkerState.Processing;
-                    await _memory.IndexSourceAsync(msg.Payload.Source, msg.Payload.Target, _cts.Token);
+                //var msg = await queue.DequeueAsync<PipelineContext>(_cts.Token);
+                //if (msg != null)
+                //{
+                //    State = MemoryWorkerState.Processing;
+                //    await _memory.IndexSourceAsync(msg.Payload.Source, msg.Payload.Target, _cts.Token);
 
-                    if (msg.Tag != null)
-                        await queue.AckAsync(msg.Tag, _cts.Token);
-                }
-                else
-                {
-                    State = MemoryWorkerState.Idle;
-                    await Task.Delay(DequeueInterval, _cts.Token);
-                }
+                //    if (msg.Tag != null)
+                //        await queue.AckAsync(msg.Tag, _cts.Token);
+                //}
+                //else
+                //{
+                //    State = MemoryWorkerState.Idle;
+                //    await Task.Delay(DequeueInterval, _cts.Token);
+                //}
             }
         }
         catch (Exception ex)

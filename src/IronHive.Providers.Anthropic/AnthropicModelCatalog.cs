@@ -3,22 +3,19 @@ using IronHive.Providers.Anthropic.Catalog;
 
 namespace IronHive.Providers.Anthropic;
 
-public class AnthropicModelCatalogProvider : IModelCatalogProvider
+public class AnthropicModelCatalog : IModelCatalog
 {
     private readonly AnthropicModelsClient _client;
 
-    public AnthropicModelCatalogProvider(AnthropicConfig config)
+    public AnthropicModelCatalog(AnthropicConfig config)
     {
         _client = new AnthropicModelsClient(config);
     }
 
-    public AnthropicModelCatalogProvider(string apiKey)
+    public AnthropicModelCatalog(string apiKey)
     {
         _client = new AnthropicModelsClient(apiKey);
     }
-
-    /// <inheritdoc />
-    public required string ProviderName { get; init; }
 
     /// <inheritdoc />
     public void Dispose()
@@ -28,7 +25,7 @@ public class AnthropicModelCatalogProvider : IModelCatalogProvider
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<ModelSummary>> ListModelsAsync(
+    public async Task<IEnumerable<IModelSpec>> ListModelsAsync(
         CancellationToken cancellationToken = default)
     {
         var req = new AnthropicListModelsRequest
@@ -37,25 +34,24 @@ public class AnthropicModelCatalogProvider : IModelCatalogProvider
         };
         var res = await _client.GetModelsAsync(req, cancellationToken);
 
-        return res.Data.Select(m => new ModelSummary
+        return res.Data.Select(m => new ModelSpec
         {
-            Provider = ProviderName,
             ModelId = m.Id,
             DisplayName = m.DisplayName,
+            CreatedAt = m.CreatedAt,
         });
     }
 
     /// <inheritdoc />
-    public async Task<ModelDetails?> FindModelAsync(
+    public async Task<IModelSpec?> FindModelAsync(
         string modelId, 
         CancellationToken cancellationToken = default)
     {
         var model = await _client.GetModelAsync(modelId, cancellationToken);
 
         return model is not null
-            ? new ModelDetails
+            ? new ModelSpec
             {
-                Provider = ProviderName,
                 ModelId = model.Id,
                 DisplayName = model.DisplayName,
                 CreatedAt = model.CreatedAt,

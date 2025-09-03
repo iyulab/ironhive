@@ -13,9 +13,6 @@ public class LocalFileStorage : IFileStorage
     private readonly int _maxBufferSize = 1_048_576;   // 최대 1MB
     private readonly int _minBufferSize = 4_096;       // 최소 4KB
 
-    /// <inheritdoc />
-    public required string StorageName { get; init; }
-
     public void Dispose()
     {
         GC.SuppressFinalize(this);

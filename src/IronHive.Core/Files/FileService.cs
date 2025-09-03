@@ -1,4 +1,4 @@
-﻿using IronHive.Abstractions;
+﻿using IronHive.Abstractions.Collections;
 using IronHive.Abstractions.Files;
 using System.Text.RegularExpressions;
 
@@ -7,14 +7,14 @@ namespace IronHive.Core.Files;
 /// <inheritdoc />
 public partial class FileService : IFileService
 {
-    private readonly IKeyedCollection<IFileStorage> _storages;
+    private readonly IStorageCollection _storages;
     // 파일 확장자와 MIME 타입 매핑 객체
     private readonly FileContentTypeMapper _mapper = new();
 
-    public FileService(IKeyedCollectionGroup<IKeyedStorage> storages, IEnumerable<IFileDecoder>? decoders = null)
+    public FileService(IStorageCollection storages, IEnumerable<IFileDecoder>? decoders = null)
     {
-        _storages = storages.Of<IFileStorage>();
-        Decoders = decoders?.ToList() ?? new List<IFileDecoder>();
+        _storages = storages;
+        Decoders = decoders?.ToList() ?? [];
     }
 
     /// <inheritdoc />
@@ -98,7 +98,7 @@ public partial class FileService : IFileService
         int depth = 1,
         CancellationToken cancellationToken = default)
     {
-        if (!_storages.TryGet(storage, out var service))
+        if (!_storages.TryGet<IFileStorage>(storage, out var service))
             throw new ArgumentException($"저장소 '{storage}'을(를) 찾을 수 없습니다.", nameof(storage));
         
         var result = await service.ListAsync(prefix, depth, cancellationToken);
@@ -111,7 +111,7 @@ public partial class FileService : IFileService
         string path,
         CancellationToken cancellationToken = default)
     {
-        if (!_storages.TryGet(storage, out var service))
+        if (!_storages.TryGet<IFileStorage>(storage, out var service))
             throw new ArgumentException($"저장소 '{storage}'을(를) 찾을 수 없습니다.", nameof(storage));
 
         var result = await service.ExistsAsync(path, cancellationToken);
@@ -124,7 +124,7 @@ public partial class FileService : IFileService
         string filePath,
         CancellationToken cancellationToken = default)
     {
-        if (!_storages.TryGet(storage, out var service))
+        if (!_storages.TryGet<IFileStorage>(storage, out var service))
             throw new ArgumentException($"저장소 '{storage}'을(를) 찾을 수 없습니다.", nameof(storage));
 
         var result = await service.ReadFileAsync(filePath, cancellationToken);
@@ -139,7 +139,7 @@ public partial class FileService : IFileService
         bool overwrite = true,
         CancellationToken cancellationToken = default)
     {
-        if (!_storages.TryGet(storage, out var service))
+        if (!_storages.TryGet<IFileStorage>(storage, out var service))
             throw new ArgumentException($"저장소 '{storage}'을(를) 찾을 수 없습니다.", nameof(storage));
 
         await service.WriteFileAsync(filePath, data, overwrite, cancellationToken);
@@ -151,7 +151,7 @@ public partial class FileService : IFileService
         string path,
         CancellationToken cancellationToken = default)
     {
-        if (!_storages.TryGet(storage, out var service))
+        if (!_storages.TryGet<IFileStorage>(storage, out var service))
             throw new ArgumentException($"저장소 '{storage}'을(를) 찾을 수 없습니다.", nameof(storage));
 
         await service.DeleteAsync(path, cancellationToken);

@@ -1,4 +1,5 @@
 ﻿using IronHive.Abstractions.Agent;
+using IronHive.Abstractions.Collections;
 using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Memory;
 
@@ -17,22 +18,27 @@ public interface IHiveService
     /// <summary>
     /// AI 서비스 공급자
     /// </summary>
-    IKeyedCollectionGroup<IKeyedProvider> Providers { get; }
+    IProviderCollection Providers { get; }
 
     /// <summary>
     /// 스토리지 서비스 공급자
     /// </summary>
-    IKeyedCollectionGroup<IKeyedStorage> Storages { get; }
+    IStorageCollection Storages { get; }
+
+    /// <summary>
+    /// 툴 서비스 공급자
+    /// </summary>
+    IToolCollection Tools { get; }
 
     /// <summary>
     /// 에이전트 서비스
     /// </summary>
-    IAgentService Agents { get; }
+    IAgentService Agent { get; }
 
     /// <summary>
     /// 파일 서비스
     /// </summary>
-    IFileService Files { get; }
+    IFileService File { get; }
 
     /// <summary>
     /// 메모리 서비스

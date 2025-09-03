@@ -11,17 +11,13 @@ public static class HiveServiceExtensions
     /// </summary>
     public static IHiveService SetAnthropicProviders(
         this IHiveService service,
-        string name,
+        string providerName,
         AnthropicConfig config)
     {
-        service.Providers.Set<IModelCatalogProvider>(new AnthropicModelCatalogProvider(config)
-        {
-            ProviderName = name
-        });
-        service.Providers.Set<IMessageGenerator>(new AnthropicMessageGenerator(config)
-        {
-            ProviderName = name
-        });
+        service.Providers.Set<IModelCatalog, AnthropicModelCatalog>(
+            providerName, new AnthropicModelCatalog(config));
+        service.Providers.Set<IMessageGenerator, AnthropicMessageGenerator>(
+            providerName, new AnthropicMessageGenerator(config));
         return service;
     }
 
@@ -30,10 +26,10 @@ public static class HiveServiceExtensions
     /// </summary>
     public static IHiveService RemoveAnthropicProviders(
         this IHiveService service,
-        string name)
+        string providerName)
     {
-        service.Providers.Remove<IModelCatalogProvider>(name);
-        service.Providers.Remove<IMessageGenerator>(name);
+        service.Providers.Remove<IModelCatalog>(providerName);
+        service.Providers.Remove<IMessageGenerator>(providerName);
         return service;
     }
 }

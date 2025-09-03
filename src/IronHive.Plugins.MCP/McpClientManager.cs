@@ -1,5 +1,4 @@
-﻿using IronHive.Abstractions.Agent;
-using IronHive.Abstractions.Messages;
+﻿using IronHive.Abstractions.Collections;
 using IronHive.Plugins.MCP.Configurations;
 using System.Collections.Concurrent;
 
@@ -11,11 +10,11 @@ namespace IronHive.Plugins.MCP;
 public class McpClientManager
 {
     private readonly ConcurrentDictionary<string, McpSession> _sessions = new();
-    private readonly IAgentService _agent;
+    private readonly IToolCollection _tools;
 
-    public McpClientManager(IAgentService agent)
+    public McpClientManager(IToolCollection tools)
     {
-        _agent = agent;
+        _tools = tools;
     }
 
     /// <summary>
@@ -79,7 +78,7 @@ public class McpClientManager
     /// <summary>
     /// Mcp 서버에 연결된 클라이언트가 연결되었을 때 작동하는 기본 이벤트 핸들러입니다.
     /// </summary>
-    private void OnClientConnected(object? sender, McpConnectedEventArgs e)
+    private void OnClientConnected(object? sender, McpConnectionEventArgs e)
     {
         if (sender is not McpSession client)
             return;
@@ -91,7 +90,7 @@ public class McpClientManager
 
             foreach (var tool in t.Result)
             {
-                _agent.Tools.Set(tool);
+                _tools.Set(tool);
             }
         });
     }
@@ -99,12 +98,12 @@ public class McpClientManager
     /// <summary>
     /// Mcp 서버와의 연결이 해제되었을 때 작동하는 기본 이벤트 핸들러입니다.
     /// </summary>
-    private void OnClientDisconnected(object? sender, McpDisconnectedEventArgs e)
+    private void OnClientDisconnected(object? sender, McpConnectionEventArgs e)
     {
         if (sender is not McpSession client)
             return;
 
-        _agent.Tools.RemoveAll(t =>
+        _tools.RemoveAll(t =>
         {
             if (t is not McpTool tool)
                 return false;
@@ -121,7 +120,7 @@ public class McpClientManager
         if (sender is not McpSession client)
             return;
 
-        _agent.Tools.RemoveAll(t =>
+        _tools.RemoveAll(t =>
         {
             if (t is not McpTool tool)
                 return false;

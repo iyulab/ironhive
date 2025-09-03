@@ -42,12 +42,12 @@ public class McpSession : IAsyncDisposable
     /// <summary>
     /// MCP 서버에 연결이 성공했을 때 발생하는 이벤트입니다.
     /// </summary>
-    public event EventHandler<McpConnectedEventArgs>? Connected;
+    public event EventHandler<McpConnectionEventArgs>? Connected;
 
     /// <summary>
     /// MCP 서버와의 연결이 해제되었을 때 발생하는 이벤트입니다.
     /// </summary>
-    public event EventHandler<McpDisconnectedEventArgs>? Disconnected;
+    public event EventHandler<McpConnectionEventArgs>? Disconnected;
 
     /// <summary>
     /// MCP 서버와의 연결 중 오류가 발생했을 때 발생하는 이벤트입니다.
@@ -250,11 +250,11 @@ public class McpSession : IAsyncDisposable
         
         if (state == McpConnectionState.Connected)
         {
-            Connected?.Invoke(this, new McpConnectedEventArgs(ServerName));
+            Connected?.Invoke(this, new McpConnectionEventArgs(ServerName));
         }
         else if (state == McpConnectionState.Disconnected)
         {
-            Disconnected?.Invoke(this, new McpDisconnectedEventArgs(ServerName));
+            Disconnected?.Invoke(this, new McpConnectionEventArgs(ServerName));
         }
         else if (state == McpConnectionState.Errored)
         {

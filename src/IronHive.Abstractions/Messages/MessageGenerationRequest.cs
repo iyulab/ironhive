@@ -1,4 +1,4 @@
-﻿using IronHive.Abstractions.Tools;
+﻿using IronHive.Abstractions.Collections;
 
 namespace IronHive.Abstractions.Messages;
 

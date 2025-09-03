@@ -9,21 +9,12 @@ public static class HiveServiceBuilderExtensions
     /// </summary>
     public static IHiveServiceBuilder AddOllamaProviders(
         this IHiveServiceBuilder builder,
-        string name,
+        string providerName,
         OllamaConfig config)
     {
-        builder.AddModelCatalogProvider(new OllamaModelCatalogProvider(config)
-        {
-            ProviderName = name
-        });
-        builder.AddMessageGenerator(new OllamaMessageGenerator(config)
-        {
-            ProviderName = name
-        });
-        builder.AddEmbeddingGenerator(new OllamaEmbeddingGenerator(config)
-        {
-            ProviderName = name
-        });
+        builder.AddModelCatalog(providerName, new OllamaModelCatalog(config));
+        builder.AddMessageGenerator(providerName, new OllamaMessageGenerator(config));
+        builder.AddEmbeddingGenerator(providerName, new OllamaEmbeddingGenerator(config));
         return builder;
     }
 }

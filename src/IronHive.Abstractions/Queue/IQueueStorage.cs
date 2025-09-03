@@ -1,9 +1,11 @@
-﻿namespace IronHive.Abstractions.Queue;
+﻿using IronHive.Abstractions.Collections;
+
+namespace IronHive.Abstractions.Queue;
 
 /// <summary>
 /// 큐를 저장하고 관리하는 스토리지를 나타내는 인터페이스입니다.
 /// </summary>
-public interface IQueueStorage : IKeyedStorage
+public interface IQueueStorage : IStorageItem
 {
     /// <summary>
     /// 큐에 있는 메시지의 개수를 가져옵니다. (처리 중인 메시지는 제외)

@@ -11,18 +11,20 @@ namespace IronHive.Storages.Azure;
 public class AzureBlobFileStorage : IFileStorage
 {
     private readonly BlobContainerClient _client;
-    
+    private readonly AzureBlobConfig _config;
+
     public AzureBlobFileStorage(AzureBlobConfig config)
     {
-        ContainerName = config.ContainerName;
+        _config = config;
         _client = CreateClient(config);
     }
 
+    /// <summary>
+    /// Azure Blob 컨테이너 이름
+    /// </summary>
+    public string ContainerName => _config.ContainerName;
+
     /// <inheritdoc />
-    public required string StorageName { get; init; }
-
-    public string ContainerName { get; }
-
     public void Dispose()
     {
         GC.SuppressFinalize(this);

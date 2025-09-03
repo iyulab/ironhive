@@ -9,17 +9,11 @@ public static class HiveServiceBuilderExtensions
     /// </summary>
     public static IHiveServiceBuilder AddAnthropicProviders(
         this IHiveServiceBuilder builder,
-        string name, 
+        string providerName, 
         AnthropicConfig config)
     {
-        builder.AddModelCatalogProvider(new AnthropicModelCatalogProvider(config)
-        { 
-            ProviderName = name
-        });
-        builder.AddMessageGenerator(new AnthropicMessageGenerator(config)
-        {
-            ProviderName = name
-        });
+        builder.AddModelCatalog(providerName, new AnthropicModelCatalog(config));
+        builder.AddMessageGenerator(providerName, new AnthropicMessageGenerator(config));
         return builder;
     }
 }

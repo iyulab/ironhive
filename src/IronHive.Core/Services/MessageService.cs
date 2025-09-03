@@ -1,6 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Threading.Channels;
-using IronHive.Abstractions;
+using IronHive.Abstractions.Collections;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Messages.Roles;
@@ -13,16 +13,16 @@ namespace IronHive.Core.Services;
 public class MessageService : IMessageService
 {
     private readonly IServiceProvider _services;
-    private readonly IKeyedCollection<IMessageGenerator> _generators;
+    private readonly IProviderCollection _providers;
     private readonly IToolCollection _tools;
 
     public MessageService(
         IServiceProvider services, 
-        IKeyedCollection<IMessageGenerator> generators,
+        IProviderCollection providers,
         IToolCollection tools)
     {
         _services = services;
-        _generators = generators;
+        _providers = providers;
         _tools = tools;
     }
 
@@ -31,7 +31,7 @@ public class MessageService : IMessageService
         MessageRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (!_generators.TryGet(request.Provider, out var provider))
+        if (!_providers.TryGet<IMessageGenerator>(request.Provider, out var generator))
             throw new KeyNotFoundException($"Service key '{request.Provider}' not found.");
 
         // 요청 준비
@@ -70,7 +70,7 @@ public class MessageService : IMessageService
                 message = new AssistantMessage { Id = Guid.NewGuid().ToString() };
             }
 
-            var res = await provider.GenerateMessageAsync(req, cancellationToken);
+            var res = await generator.GenerateMessageAsync(req, cancellationToken);
 
             foreach (var content in res.Message?.Content ?? [])
             {
@@ -113,7 +113,7 @@ public class MessageService : IMessageService
         MessageRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        if (!_generators.TryGet(request.Provider, out var provider))
+        if (!_providers.TryGet<IMessageGenerator>(request.Provider, out var generator))
             throw new KeyNotFoundException($"Service key '{request.Provider}' not found.");
 
         string messageId = request.Messages.LastOrDefault() is AssistantMessage lastMessage
@@ -164,7 +164,7 @@ public class MessageService : IMessageService
 
             // 현재 루프에서 생성된 컨텐츠를 저장할 메시지 컨텐츠 스택 객체
             var stack = new List<MessageContent>();
-            await foreach (var res in provider.GenerateStreamingMessageAsync(req, cancellationToken))
+            await foreach (var res in generator.GenerateStreamingMessageAsync(req, cancellationToken))
             {
                 if (res is StreamingMessageBeginResponse mbr)
                 {

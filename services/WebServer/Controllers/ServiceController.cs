@@ -76,10 +76,10 @@ public class ServiceController : ControllerBase
             Response.ContentType = "text/event-stream; charset=utf-8";
 
             // TODO 추가
-            await foreach (var result in _agent.GenerateStreamingMessageAsync(request, cancellationToken))
-            {
-                await WriteEventAsync(result, "delta");
-            }
+            //await foreach (var result in _agent.GenerateStreamingMessageAsync(request, cancellationToken))
+            //{
+            //    await WriteEventAsync(result, "delta");
+            //}
         }
         catch(OperationCanceledException ex)
         {

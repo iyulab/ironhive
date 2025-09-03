@@ -29,8 +29,6 @@ public class QdrantVectorStorage : IVectorStorage
     }
 
     /// <inheritdoc />
-    public required string StorageName { get; init; }
-
     public void Dispose()
     {
         _client.Dispose();

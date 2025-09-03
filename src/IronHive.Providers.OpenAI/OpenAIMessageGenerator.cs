@@ -25,9 +25,6 @@ public class OpenAIMessageGenerator : IMessageGenerator
     }
 
     /// <inheritdoc />
-    public required string ProviderName { get; init; }
-
-    /// <inheritdoc />
     public void Dispose()
     {
         _client.Dispose();

@@ -14,32 +14,38 @@ using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Queue;
 using IronHive.Abstractions.Vector;
 using IronHive.Core.Agent;
+using IronHive.Abstractions.Collections;
+using IronHive.Core.Collections;
 
 namespace IronHive.Core;
 
 /// <inheritdoc />
 public class HiveServiceBuilder : IHiveServiceBuilder
 {
-    private readonly IKeyedCollectionGroup<IKeyedProvider> _providers;
-    private readonly IKeyedCollectionGroup<IKeyedStorage> _storages;
+    private readonly IProviderCollection _providers;
+    private readonly IStorageCollection _storages;
+    private readonly IToolCollection _tools;
 
     public HiveServiceBuilder(IServiceCollection? services = null)
     {
         Services = services ?? new ServiceCollection();
 
         // 등록된 Provider 및 Storage 관리
-        _providers = new KeyedCollectionGroup<IKeyedProvider>(p => p.ProviderName);
-        _storages = new KeyedCollectionGroup<IKeyedStorage>(s => s.StorageName);
+        _providers = new ProviderCollection();
+        _storages = new StorageCollection();
+        _tools = new ToolCollection();
         Services.AddSingleton(_providers);
         Services.AddSingleton(_storages);
+        Services.AddSingleton(_tools);
 
         // AI 서비스
         Services.TryAddSingleton<IModelCatalogService>();
         Services.TryAddSingleton<IEmbeddingService>();
+        Services.TryAddSingleton<IMessageService>();
 
         // 서비스 빌더
-        Agents = new AgentServiceBuilder(Services);
-        Files = new FileServiceBuilder(Services);
+        Agent = new AgentServiceBuilder(Services);
+        File = new FileServiceBuilder(Services);
         Memory = new MemoryServiceBuilder(Services);
     }
 
@@ -47,54 +53,61 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     public IServiceCollection Services { get; }
 
     /// <inheritdoc />
-    public IAgentServiceBuilder Agents { get; }
+    public IAgentServiceBuilder Agent { get; }
 
     /// <inheritdoc />
-    public IFileServiceBuilder Files { get; }
+    public IFileServiceBuilder File { get; }
 
     /// <inheritdoc />
     public IMemoryServiceBuilder Memory { get; }
 
     /// <inheritdoc />
-    public IHiveServiceBuilder AddModelCatalogProvider(IModelCatalogProvider provider)
+    public IHiveServiceBuilder AddModelCatalog(string providerName, IModelCatalog provider)
     {
-        _providers.Add(provider);
+        _providers.TryAdd<IModelCatalog, IModelCatalog>(providerName, provider);
         return this;
     }
 
     /// <inheritdoc />
-    public IHiveServiceBuilder AddEmbeddingGenerator(IEmbeddingGenerator generator)
+    public IHiveServiceBuilder AddEmbeddingGenerator(string providerName, IEmbeddingGenerator generator)
     {
-        _providers.Add(generator);
+        _providers.TryAdd<IEmbeddingGenerator, IEmbeddingGenerator>(providerName, generator);
         return this;
     }
 
     /// <inheritdoc />
-    public IHiveServiceBuilder AddMessageGenerator(IMessageGenerator generator)
+    public IHiveServiceBuilder AddMessageGenerator(string providerName, IMessageGenerator generator)
     {
-        _providers.Add(generator);
+        _providers.TryAdd<IMessageGenerator, IMessageGenerator>(providerName, generator);
         return this;
     }
 
     /// <inheritdoc />
-    public IFileServiceBuilder AddFileStorage(IFileStorage storage)
+    public IHiveServiceBuilder AddFileStorage(string storageName, IFileStorage storage)
     {
-        _storages.Add(storage);
-        return Files;
+        _storages.TryAdd<IFileStorage, IFileStorage>(storageName, storage);
+        return this;
     }
 
     /// <inheritdoc />
-    public IMemoryServiceBuilder AddQueueStorage(IQueueStorage storage)
+    public IHiveServiceBuilder AddQueueStorage(string storageName, IQueueStorage storage)
     {
-        _storages.Add(storage);
-        return Memory;
+        _storages.TryAdd<IQueueStorage, IQueueStorage>(storageName, storage);
+        return this;
     }
 
     /// <inheritdoc />
-    public IMemoryServiceBuilder AddVectorStorage(IVectorStorage storage)
+    public IHiveServiceBuilder AddVectorStorage(string storageName, IVectorStorage storage)
     {
-        _storages.Add(storage);
-        return Memory;
+        _storages.TryAdd<IVectorStorage, IVectorStorage>(storageName, storage);
+        return this;
+    }
+
+    /// <inheritdoc />
+    public IHiveServiceBuilder AddTool(ITool tool)
+    {
+        _tools.Add(tool);
+        return this;
     }
 
     /// <inheritdoc />

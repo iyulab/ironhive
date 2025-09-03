@@ -1,9 +1,11 @@
-﻿namespace IronHive.Abstractions.Messages;
+﻿using IronHive.Abstractions.Collections;
+
+namespace IronHive.Abstractions.Messages;
 
 /// <summary>
 /// 메시지 생성기 공급자를 정의하는 인터페이스입니다.
 /// </summary>
-public interface IMessageGenerator : IKeyedProvider
+public interface IMessageGenerator : IProviderItem
 {
     /// <summary>
     /// 주어진 요청을 기반으로 채팅 응답 메시지를 생성합니다.
