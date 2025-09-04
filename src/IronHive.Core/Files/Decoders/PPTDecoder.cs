@@ -8,7 +8,7 @@ namespace IronHive.Core.Files.Decoders;
 /// <summary>
 /// PPT 파일 디코더 클래스입니다.
 /// </summary>
-public class PPTDecoder : IFileDecoder
+public class PPTDecoder : IFileDecoder<string>
 {
     /// <inheritdoc />
     public bool SupportsMimeType(string mimeType)

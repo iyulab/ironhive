@@ -8,7 +8,7 @@ namespace IronHive.Core.Files.Decoders;
 /// <summary>
 /// Word 파일 디코더 클래스입니다.
 /// </summary>
-public class WordDecoder : IFileDecoder
+public class WordDecoder : IFileDecoder<string>
 {
     /// <inheritdoc />
     public bool SupportsMimeType(string mimeType)

@@ -1,15 +1,15 @@
 ﻿using System.Net;
 using IronHive.Abstractions.Catalog;
-using IronHive.Abstractions.Collections;
+using IronHive.Abstractions.Registries;
 
 namespace IronHive.Core.Services;
 
 /// <inheritdoc />
 public class ModelCatalogService : IModelCatalogService
 {
-    private readonly IProviderCollection _providers;
+    private readonly IProviderRegistry _providers;
 
-    public ModelCatalogService(IProviderCollection providers)
+    public ModelCatalogService(IProviderRegistry providers)
     {
         _providers = providers;
     }
@@ -21,9 +21,9 @@ public class ModelCatalogService : IModelCatalogService
     {
         if (!string.IsNullOrWhiteSpace(provider))
         {
-            if (_providers.TryGet<IModelCatalog>(provider, out var service))
+            if (_providers.TryGet<IModelCatalog>(provider, out var catalog))
             {
-                var models = await service.ListModelsAsync(cancellationToken);
+                var models = await catalog.ListModelsAsync(cancellationToken);
                 return models.Select(m => new ModelSpecItem
                 {
                     Provider = provider,
@@ -37,16 +37,21 @@ public class ModelCatalogService : IModelCatalogService
         }
         else
         {
-            var tasks = _providers.Values.Select(async p =>
+            var tasks = _providers.Entries<IModelCatalog>().Select(async (kvp) =>
             {
                 try
                 {
-                    return await p.ListModelsAsync(cancellationToken);
+                    var models = await kvp.Value.ListModelsAsync(cancellationToken);
+                    return models.Select(m => new ModelSpecItem
+                    {
+                        Provider = kvp.Key,
+                        Model = m
+                    });
                 }
                 catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
                 {
                     // 401 Unauthorized는 무시
-                    return Enumerable.Empty<ModelSummary>();
+                    return Enumerable.Empty<ModelSpecItem>();
                 }
             });
 
@@ -59,9 +64,15 @@ public class ModelCatalogService : IModelCatalogService
     public async Task<IEnumerable<ModelSpecItem<T>>> ListModelsAsync<T>(
         string? provider, 
         CancellationToken cancellationToken = default)
-        where T : IModelSpec
+        where T : class, IModelSpec
     {
-        throw new NotImplementedException();
+        var models = await ListModelsAsync(provider, cancellationToken);
+        return models.Where(m => m.Model is T)
+                     .Select(m => new ModelSpecItem<T>
+                     {
+                         Provider = m.Provider,
+                         Model = (T)m.Model
+                     });
     }
 
     /// <inheritdoc />

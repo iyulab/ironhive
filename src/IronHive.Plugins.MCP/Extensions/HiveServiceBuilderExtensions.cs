@@ -1,4 +1,4 @@
-﻿using IronHive.Abstractions.Agent;
+﻿using IronHive.Abstractions.Tools;
 using IronHive.Plugins.MCP;
 using IronHive.Plugins.MCP.Configurations;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,8 +27,8 @@ public static class HiveServiceBuilderExtensions
     {
         builder.Services.AddSingleton(sp =>
         {
-            var agent = sp.GetRequiredService<IAgentService>();
-            var manager = new McpClientManager(agent);
+            var tools = sp.GetRequiredService<IToolCollection>();
+            var manager = new McpClientManager(tools);
             foreach (var config in configs)
             {
                 manager.AddOrUpdate(config);

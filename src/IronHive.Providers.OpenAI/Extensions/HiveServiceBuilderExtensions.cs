@@ -5,7 +5,7 @@ namespace IronHive.Abstractions;
 public static class HiveServiceBuilderExtensions
 {
     /// <summary>
-    /// Adds OpenAI providers to the Hive service builder.
+    /// OpenAI의 모든 서비스들을 지정된 이름으로 설정합니다.
     /// </summary>
     public static IHiveServiceBuilder AddOpenAIProviders(
         this IHiveServiceBuilder builder, 

@@ -4,7 +4,7 @@ using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Pipelines;
 using IronHive.Abstractions.Queue;
 using IronHive.Abstractions.Vector;
-using IronHive.Abstractions.Collections;
+using IronHive.Abstractions.Registries;
 
 namespace IronHive.Core.Memory;
 
@@ -13,14 +13,14 @@ public class MemoryService : IMemoryService
 {
     private readonly IServiceProvider _services;
     private readonly IEmbeddingService _embedder;
-    private readonly IStorageCollection _storages;
+    private readonly IStorageRegistry _storages;
     private IPipelineRunner<PipelineContext> _pipeline;
 
     public MemoryService(IServiceProvider services, IPipelineRunner<PipelineContext> pipeline)
     {
         _services = services;
         _embedder = services.GetRequiredService<IEmbeddingService>();
-        _storages = services.GetRequiredService<IStorageCollection>();
+        _storages = services.GetRequiredService<IStorageRegistry>();
         _pipeline = pipeline;
     }
 

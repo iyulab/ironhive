@@ -15,15 +15,4 @@ public static class ServiceCollectionExtensions
         var builder = new HiveServiceBuilder(services);
         return builder;
     }
-
-    /// <summary>
-    /// 기본 IronHive 서비스를 등록합니다.
-    /// </summary>
-    public static IHiveServiceBuilder AddDefaultHiveServices(this IServiceCollection services)
-    {
-        var builder = services.AddHiveServiceCore();
-        builder.AddDefaultFileDecoders();
-        builder.AddDefaultPipelineHandlers();
-        return builder;
-    }
 }

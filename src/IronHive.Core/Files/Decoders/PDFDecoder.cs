@@ -8,7 +8,7 @@ namespace IronHive.Core.Files.Decoders;
 /// <summary>
 /// PDF 파일 디코더 클래스입니다.
 /// </summary>
-public class PDFDecoder : IFileDecoder
+public class PDFDecoder : IFileDecoder<string>
 {
     /// <inheritdoc />
     public bool SupportsMimeType(string mimeType)

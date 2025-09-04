@@ -1,8 +1,9 @@
 ﻿using IronHive.Abstractions;
 using IronHive.Abstractions.Agent;
-using IronHive.Abstractions.Collections;
 using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Memory;
+using IronHive.Abstractions.Registries;
+using IronHive.Abstractions.Tools;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace IronHive.Core;
@@ -14,12 +15,11 @@ public class HiveService : IHiveService
     {
         Services = services;
 
-        Providers = services.GetRequiredService<IProviderCollection>();
-        Storages = services.GetRequiredService<IStorageCollection>();
+        Providers = services.GetRequiredService<IProviderRegistry>();
+        Storages = services.GetRequiredService<IStorageRegistry>();
         Tools = services.GetRequiredService<IToolCollection>();
 
         Agent = services.GetRequiredService<IAgentService>();
-        File = services.GetRequiredService<IFileService>();
         Memory = services.GetRequiredService<IMemoryService>();
     }
 
@@ -27,20 +27,17 @@ public class HiveService : IHiveService
     public IServiceProvider Services { get; }
 
     /// <inheritDoc />
-    public IProviderCollection Providers { get; }
+    public IProviderRegistry Providers { get; }
 
     /// <inheritDoc />
-    public IStorageCollection Storages { get; }
+    public IStorageRegistry Storages { get; }
 
     /// <inheritdoc />
     public IToolCollection Tools { get; }
 
 
     /// <inheritdoc />
-    public IAgentService Agent { get; }    
-    
-    /// <inheritdoc />
-    public IFileService File { get; }
+    public IAgentService Agent { get; }
 
     /// <inheritdoc />
     public IMemoryService Memory { get; }

@@ -1,5 +1,4 @@
 ﻿using IronHive.Abstractions.Agent;
-using IronHive.Abstractions.Collections;
 using IronHive.Abstractions.Messages;
 
 namespace IronHive.Core.Agent;

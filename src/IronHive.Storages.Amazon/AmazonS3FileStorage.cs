@@ -1,8 +1,8 @@
-﻿using Amazon;
+﻿using System.Net;
+using IronHive.Abstractions.Files;
+using Amazon;
 using Amazon.S3;
 using Amazon.S3.Model;
-using IronHive.Abstractions.Files;
-using System.Net;
 using AmazonS3ClientConfig = Amazon.S3.AmazonS3Config;
 
 namespace IronHive.Storages.Amazon;
@@ -95,35 +95,22 @@ public class AmazonS3FileStorage : IFileStorage
     }
 
     /// <inheritdoc />
-    public async Task<bool> ExistsAsync(
-        string path,
+    public async Task<bool> ExistsFileAsync(
+        string filePath,
         CancellationToken cancellationToken = default)
     {
-        if (IsDirectory(path))
+        if (IsDirectory(filePath))
+            throw new ArgumentException("디렉터리 경로로 파일 존재 여부를 확인할 수 없습니다.", nameof(filePath));
+
+        try
         {
-            // 디렉터리인 경우, 해당 prefix로 시작하는 객체가 있는지 확인합니다.
-            var response = await _client.ListObjectsV2Async(new ListObjectsV2Request
-            {
-                BucketName = BucketName,
-                Prefix = path,
-                MaxKeys = 1
-            }, cancellationToken).ConfigureAwait(false);
-            cancellationToken.ThrowIfCancellationRequested();
-            return response.KeyCount > 0;
+            // 개별 객체 메타데이터를 가져와 존재 여부 확인
+            var metadata = await _client.GetObjectMetadataAsync(BucketName, filePath, cancellationToken);
+            return metadata != null;
         }
-        else
+        catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
-            try
-            {
-                // 개별 객체 메타데이터를 가져와 존재 여부 확인
-                var metadata = await _client.GetObjectMetadataAsync(BucketName, path, cancellationToken).ConfigureAwait(false);
-                cancellationToken.ThrowIfCancellationRequested();
-                return metadata != null;
-            }
-            catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
-            {
-                return false;
-            }
+            return false;
         }
     }
 
@@ -132,9 +119,7 @@ public class AmazonS3FileStorage : IFileStorage
         string filePath,
         CancellationToken cancellationToken = default)
     {
-        if (IsDirectory(filePath))
-            throw new ArgumentException("디렉터리 경로로 파일을 읽을 수 없습니다.", nameof(filePath));
-        if (!await ExistsAsync(filePath, cancellationToken).ConfigureAwait(false))
+        if (!await ExistsFileAsync(filePath, cancellationToken))
             throw new FileNotFoundException($"파일을 찾을 수 없습니다: {filePath}");
 
         // S3에서 객체를 가져와 메모리 스트림에 복사합니다.
@@ -153,9 +138,7 @@ public class AmazonS3FileStorage : IFileStorage
         bool overwrite = true,
         CancellationToken cancellationToken = default)
     {
-        if (IsDirectory(filePath))
-            throw new ArgumentException("디렉터리 경로로 파일을 쓸 수 없습니다.", nameof(filePath));
-        if (!overwrite && await ExistsAsync(filePath, cancellationToken).ConfigureAwait(false))
+        if (!overwrite && await ExistsFileAsync(filePath, cancellationToken))
             throw new IOException($"파일이 이미 존재합니다: {filePath}");
 
         // S3 PutObjectRequest에 스트림 전달
@@ -172,49 +155,56 @@ public class AmazonS3FileStorage : IFileStorage
     }
 
     /// <inheritdoc />
-    public async Task DeleteAsync(
-        string path,
+    public async Task DeleteFileAsync(
+        string filePath,
         CancellationToken cancellationToken = default)
     {
-        if (IsDirectory(path))
+        if (IsDirectory(filePath))
+            throw new ArgumentException("디렉터리 경로로 파일을 삭제할 수 없습니다.", nameof(filePath));
+
+        // 개별 객체 삭제
+        await _client.DeleteObjectAsync(BucketName, filePath, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task DeleteDirectoryAsync(
+        string directoryPath, 
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsDirectory(directoryPath))
+            throw new ArgumentException("디렉터리 경로는 '/'로 끝나야 합니다.", nameof(directoryPath));
+
+        // 디렉터리인 경우 해당 prefix로 시작하는 모든 객체를 삭제합니다.
+        var listRequest = new ListObjectsV2Request
         {
-            // 디렉터리인 경우 해당 prefix로 시작하는 모든 객체를 삭제합니다.
-            var listRequest = new ListObjectsV2Request
-            {
-                BucketName = BucketName,
-                Prefix = path
-            };
+            BucketName = BucketName,
+            Prefix = directoryPath
+        };
 
-            ListObjectsV2Response listResponse;
-            var objects = new List<KeyVersion>();
+        ListObjectsV2Response listResponse;
+        var objects = new List<KeyVersion>();
 
-            do
-            {
-                listResponse = await _client.ListObjectsV2Async(listRequest, cancellationToken).ConfigureAwait(false);
-                cancellationToken.ThrowIfCancellationRequested();
+        do
+        {
+            listResponse = await _client.ListObjectsV2Async(listRequest, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
 
-                objects.AddRange(listResponse.S3Objects.Select(obj => new KeyVersion { Key = obj.Key }));
-                listRequest.ContinuationToken = listResponse.NextContinuationToken;
-            }
-            while (listResponse.IsTruncated ?? false);
-
-            if (objects.Count != 0)
-            {
-                // S3에서는 한 번에 최대 1000개 삭제 가능
-                foreach (var chunks in objects.Chunk(1000))
-                {
-                    var res = await _client.DeleteObjectsAsync(new DeleteObjectsRequest
-                    {
-                        BucketName = BucketName,
-                        Objects = chunks.ToList()
-                    }, cancellationToken).ConfigureAwait(false);
-                }
-            }
+            objects.AddRange(listResponse.S3Objects.Select(obj => new KeyVersion { Key = obj.Key }));
+            listRequest.ContinuationToken = listResponse.NextContinuationToken;
         }
-        else
+        while (listResponse.IsTruncated ?? false);
+
+        if (objects.Count != 0)
         {
-            // 개별 객체 삭제
-            await _client.DeleteObjectAsync(BucketName, path, cancellationToken).ConfigureAwait(false);
+            // S3에서는 한 번에 최대 1000개 삭제 가능
+            foreach (var chunks in objects.Chunk(1000))
+            {
+                var res = await _client.DeleteObjectsAsync(new DeleteObjectsRequest
+                {
+                    BucketName = BucketName,
+                    Objects = chunks.ToList()
+                }, cancellationToken).ConfigureAwait(false);
+            }
         }
     }
 

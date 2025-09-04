@@ -5,7 +5,7 @@ namespace IronHive.Core.Files.Decoders;
 /// <summary>
 /// 이미지 파일 디코더 클래스입니다.
 /// </summary>
-public class ImageDecoder : IFileDecoder
+public class ImageDecoder : IFileDecoder<string>
 {
     /// <inheritdoc />
     public bool SupportsMimeType(string mimeType)

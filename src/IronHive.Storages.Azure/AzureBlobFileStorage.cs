@@ -1,7 +1,7 @@
-﻿using Azure;
+﻿using IronHive.Abstractions.Files;
+using Azure;
 using Azure.Storage;
 using Azure.Storage.Blobs;
-using IronHive.Abstractions.Files;
 
 namespace IronHive.Storages.Azure;
 
@@ -70,26 +70,16 @@ public class AzureBlobFileStorage : IFileStorage
     }
 
     /// <inheritdoc />
-    public async Task<bool> ExistsAsync(
-        string path, 
+    public async Task<bool> ExistsFileAsync(
+        string filePath, 
         CancellationToken cancellationToken = default)
     {
-        if (IsDirectory(path))
-        {
-            // 디렉토리 경로인 경우 해당 prefix로 시작하는 blob이 하나라도 있으면 true 반환
-            await foreach (var _ in _client.GetBlobsAsync(prefix: path, cancellationToken: cancellationToken))
-            {
-                // 하나라도 발견되면 디렉토리가 존재하는 것으로 판단
-                return true;
-            }
-            return false;
-        }
-        else
-        {
-            var blob = _client.GetBlobClient(path);
-            var response = await blob.ExistsAsync(cancellationToken).ConfigureAwait(false);
-            return response.Value;
-        }
+        if (IsDirectory(filePath))
+            throw new ArgumentException("디렉터리 경로로 파일 존재 여부를 확인할 수 없습니다.", nameof(filePath));
+        
+        var blob = _client.GetBlobClient(filePath);
+        var response = await blob.ExistsAsync(cancellationToken).ConfigureAwait(false);
+        return response.Value;
     }
 
     /// <inheritdoc />
@@ -97,9 +87,7 @@ public class AzureBlobFileStorage : IFileStorage
         string filePath, 
         CancellationToken cancellationToken = default)
     {
-        if (IsDirectory(filePath))
-            throw new ArgumentException("디렉터리 경로로 파일을 읽을 수 없습니다.", nameof(filePath));
-        if (!await ExistsAsync(filePath, cancellationToken).ConfigureAwait(false))
+        if (!await ExistsFileAsync(filePath, cancellationToken).ConfigureAwait(false))
             throw new FileNotFoundException($"파일을 찾을 수 없습니다: {filePath}");
 
         var blob = _client.GetBlobClient(filePath);
@@ -116,9 +104,7 @@ public class AzureBlobFileStorage : IFileStorage
         bool overwrite = true,
         CancellationToken cancellationToken = default)
     {
-        if (IsDirectory(filePath))
-            throw new ArgumentException("디렉터리 경로로 파일을 쓸 수 없습니다.", nameof(filePath));
-        if (!overwrite && await ExistsAsync(filePath, cancellationToken).ConfigureAwait(false))
+        if (!overwrite && await ExistsFileAsync(filePath, cancellationToken).ConfigureAwait(false))
             throw new IOException($"파일이 이미 존재합니다: {filePath}");
 
         // 파일 업로드 또는 덮어쓰기
@@ -128,23 +114,30 @@ public class AzureBlobFileStorage : IFileStorage
     }
 
     /// <inheritdoc />
-    public async Task DeleteAsync(
+    public async Task DeleteFileAsync(
         string path, 
         CancellationToken cancellationToken = default)
     {
         if (IsDirectory(path))
+            throw new ArgumentException("디렉터리 경로로 파일을 삭제할 수 없습니다.", nameof(path));
+
+        var blob = _client.GetBlobClient(path);
+        await blob.DeleteIfExistsAsync(cancellationToken: cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task DeleteDirectoryAsync(
+        string directoryPath, 
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsDirectory(directoryPath))
+            throw new ArgumentException("디렉터리 경로는 '/'로 끝나야 합니다.", nameof(directoryPath));
+
+        // 디렉터리 경로인 경우, 해당 prefix로 시작하는 모든 blob 삭제
+        await foreach (var blobItem in _client.GetBlobsAsync(prefix: directoryPath, cancellationToken: cancellationToken))
         {
-            // 디렉터리 경로인 경우, 해당 prefix로 시작하는 모든 blob 삭제
-            await foreach (var blobItem in _client.GetBlobsAsync(prefix: path, cancellationToken: cancellationToken))
-            {
-                var blobClient = _client.GetBlobClient(blobItem.Name);
-                await blobClient.DeleteIfExistsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
-            }
-        }
-        else
-        {
-            var blob = _client.GetBlobClient(path);
-            await blob.DeleteIfExistsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+            var blobClient = _client.GetBlobClient(blobItem.Name);
+            await blobClient.DeleteIfExistsAsync(cancellationToken: cancellationToken);
         }
     }
 

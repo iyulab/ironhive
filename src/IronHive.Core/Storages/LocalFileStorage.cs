@@ -67,28 +67,27 @@ public class LocalFileStorage : IFileStorage
     }
 
     /// <inheritdoc />
-    public Task<bool> ExistsAsync(
-        string path, 
+    public Task<bool> ExistsFileAsync(
+        string filePath, 
         CancellationToken cancellationToken = default)
     {
-        path = EnsurePath(path);
-        var isExists = IsDirectory(path)
-            ? Directory.Exists(path)
-            : File.Exists(path);
+        filePath = EnsurePath(filePath);
+        if (IsDirectory(filePath))
+            throw new ArgumentException("디렉토리 경로로 파일 존재 여부를 확인할 수 없습니다.", nameof(filePath));
+
         cancellationToken.ThrowIfCancellationRequested();
+        var isExists = File.Exists(filePath);
         return Task.FromResult(isExists);
     }
 
     /// <inheritdoc />
     public async Task<Stream> ReadFileAsync(
-        string filePath, 
+        string filePath,
         CancellationToken cancellationToken = default)
     {
         filePath = EnsurePath(filePath);
-        if (!await ExistsAsync(filePath, cancellationToken))
+        if (!await ExistsFileAsync(filePath, cancellationToken))
             throw new FileNotFoundException($"파일을 찾을 수 없습니다: {filePath}");
-        if (IsDirectory(filePath))
-            throw new ArgumentException("디렉토리 경로로 파일을 읽을 수 없습니다.", nameof(filePath));
 
         await using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, _defaultBufferSize, FileOptions.Asynchronous);
         var memoryStream = new MemoryStream();
@@ -129,28 +128,28 @@ public class LocalFileStorage : IFileStorage
     }
 
     /// <inheritdoc />
-    public Task DeleteAsync(
-        string path,
+    public Task DeleteFileAsync(
+        string filePath,
         CancellationToken cancellationToken = default)
     {
-        path = EnsurePath(path);
-        if (IsDirectory(path))
-        {
-            // 디렉토리 삭제
-            Directory.Delete(path, recursive: true);
-        }
-        else
-        {
-            // 파일 삭제
-            File.Delete(path);
+        filePath = EnsurePath(filePath);
+        if (IsDirectory(filePath))
+            throw new ArgumentException("디렉토리 경로로 파일을 삭제할 수 없습니다.", nameof(filePath));
 
-            // 상위 디렉터리 확인 후, 비어있으면 삭제
-            var dicInfo = Directory.GetParent(path);
-            if (dicInfo != null && !dicInfo.EnumerateFileSystemInfos().Any())
-            {
-                Directory.Delete(dicInfo.FullName);
-            }
-        }
+        cancellationToken.ThrowIfCancellationRequested();
+        File.Delete(filePath);
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public Task DeleteDirectoryAsync(
+        string directoryPath, 
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsDirectory(directoryPath))
+            throw new ArgumentException("디렉토리 경로가 아닙니다.", nameof(directoryPath));
+        
+        Directory.Delete(directoryPath, true);
         return Task.CompletedTask;
     }
 

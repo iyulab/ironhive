@@ -1,13 +1,14 @@
-﻿using System.Collections;
+﻿using IronHive.Abstractions.Files;
 using System.Diagnostics.CodeAnalysis;
 
-namespace IronHive.Core.Files;
+namespace IronHive.Core.Files.Detectors;
 
-/// <summary>
-/// 파일 확장자와 MIME 타입 간의 매핑을 제공하는 클래스입니다.
-/// </summary>
-public class FileContentTypeMapper : IDictionary<string, string>
+/// <inheritdoc />
+public class BasicFileMediaTypeDetector : IFileMediaTypeDetector
 {
+    /// <summary>
+    /// 하드 코딩된 확장자→MIME 매핑 테이블
+    /// </summary>
     private readonly Dictionary<string, string> _items = new(StringComparer.OrdinalIgnoreCase)
     {
         { ".323", "text/h323" },
@@ -389,47 +390,30 @@ public class FileContentTypeMapper : IDictionary<string, string>
         { ".zip", "application/x-zip-compressed" }
     };
 
-    public string this[string key] 
+    /// <inheritdoc />
+    public IEnumerable<string> Extensions => _items.Keys;
+
+    /// <inheritdoc />
+    public IEnumerable<string> MediaTypes => _items.Values;
+
+    /// <inheritdoc />
+    public string? Detect(string fileName)
+        => TryDetect(fileName, out var mimeType) ? mimeType : null;
+
+    /// <inheritdoc />
+    public bool TryDetect(string fileName, [MaybeNullWhen(false)] out string mimeType)
     {
-        get => _items[key];
-        set => _items[key] = value;
-    }
-
-    public ICollection<string> Keys => _items.Keys;
-
-    public ICollection<string> Values => _items.Values;
-
-    public int Count => _items.Count;
-
-    public bool IsReadOnly => false;
-
-    public void Add(string key, string value) => _items.Add(key, value);
-
-    public void Add(KeyValuePair<string, string> item) => _items.Add(item.Key, item.Value);
-
-    public bool Contains(KeyValuePair<string, string> item) => _items.Contains(item);
-
-    public bool ContainsKey(string key) => _items.ContainsKey(key);
-
-    public bool TryGetValue(string key, [MaybeNullWhen(false)] out string value) => _items.TryGetValue(key, out value);
-
-    public bool Remove(string key) => _items.Remove(key);
-
-    public bool Remove(KeyValuePair<string, string> item) => _items.Remove(item.Key);
-
-    public void Clear() => _items.Clear();
-
-    public IEnumerator<KeyValuePair<string, string>> GetEnumerator() => _items.GetEnumerator();
-
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-    public void CopyTo(KeyValuePair<string, string>[] array, int arrayIndex)
-    {
-        if (array == null) throw new ArgumentNullException(nameof(array));
-        if (arrayIndex < 0 || arrayIndex + Count > array.Length) throw new ArgumentOutOfRangeException(nameof(arrayIndex));
-        foreach (var item in _items)
+        if (string.IsNullOrWhiteSpace(fileName))
         {
-            array[arrayIndex++] = item;
+            mimeType = null;
+            return false;
         }
+        var ext = Path.GetExtension(fileName);
+        if (string.IsNullOrWhiteSpace(ext))
+        {
+            mimeType = null;
+            return false;
+        }
+        return _items.TryGetValue(ext, out mimeType);
     }
 }

@@ -22,19 +22,10 @@ public interface IHiveServiceBuilder
     IServiceCollection Services { get; }
 
     /// <summary>
-    /// Hive 서비스의 에이전트를 구성하기 위한 빌더를 가져옵니다.
-    /// </summary>
-    IAgentServiceBuilder Agent { get; }
-
-    /// <summary>
-    /// Hive 서비스의 파일 서비스를 구성하기 위한 빌더를 가져옵니다.
-    /// </summary>
-    IFileServiceBuilder File { get; }
-
-    /// <summary>
     /// Hive 서비스의 메모리를 구성하기 위한 빌더를 가져옵니다.
     /// </summary>
     IMemoryServiceBuilder Memory { get; }
+
 
     /// <summary>
     /// 새로운 모델 제공자를 등록합니다.

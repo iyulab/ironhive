@@ -1,16 +1,15 @@
 ﻿using System.Reflection;
+using System.ComponentModel;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Tools;
-using System.ComponentModel;
-using Microsoft.AspNetCore.Mvc;
 
 namespace IronHive.Core.Tools;
 
 /// <summary>
 /// FunctionTool을 생성하는 팩토리.
 /// - 특정 타입의 메서드에서 생성
-/// - 인스턴스 바운딩 방식으로 생성
 /// - 임의의 Delegate에서 생성
 /// </summary>
 public static class FunctionToolFactory
@@ -18,16 +17,16 @@ public static class FunctionToolFactory
     /// <summary>
     /// public/non-public 인스턴스/정적 메서드 중 FunctionToolAttribute가 붙은 메서드를 찾아 툴 모음으로 만듭니다.
     /// </summary>
-    public static IEnumerable<ITool> CreateFromType<T>()
+    public static IEnumerable<ITool> CreateFrom<T>()
         where T : class
     {
-        return CreateFromType(typeof(T));
+        return CreateFrom(typeof(T));
     }
 
     /// <summary>
     /// public/non-public 인스턴스/정적 메서드 중 FunctionToolAttribute가 붙은 메서드를 찾아 툴 모음으로 만듭니다.
     /// </summary>
-    public static IEnumerable<ITool> CreateFromType(Type type)
+    public static IEnumerable<ITool> CreateFrom(Type type)
     {
         var tools = new List<ITool>();
         var methods = type.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
@@ -57,7 +56,7 @@ public static class FunctionToolFactory
     /// <summary>
     /// 단일 Delegate에서 툴을 생성합니다.
     /// </summary>
-    public static ITool CreateFromFunction(
+    public static ITool CreateFrom(
         Delegate function,
         string name,
         string description,
@@ -102,7 +101,7 @@ public static class FunctionToolFactory
             if (param.ParameterType == typeof(CancellationToken))
                 continue;
             // 특정 서비스의 경우
-            if (param.GetCustomAttributes().Any(a => a is FromToolOptionsAttribute || 
+            if (param.GetCustomAttributes().Any(a => a is FromOptionsAttribute || 
                     a is FromServicesAttribute || a is FromKeyedServicesAttribute))
                 continue;
 

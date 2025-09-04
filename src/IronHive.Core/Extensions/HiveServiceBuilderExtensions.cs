@@ -2,20 +2,20 @@
 using IronHive.Core.Storages;
 using IronHive.Core.Tools;
 using IronHive.Core.Files.Decoders;
-using IronHive.Core.Memory.Pipelines;
+using IronHive.Abstractions.Files;
+using IronHive.Core.Files.Detectors;
 
 namespace IronHive.Abstractions;
 
 public static class HiveServiceBuilderExtensions
 {
     /// <summary>
-    /// 내장 기능 툴 플러그인을 등록합니다.
+    /// 내장 함수 도구를 <typeparamref name="T"/> 타입에서 모두 찾아 등록합니다.
     /// </summary>
-    public static IHiveServiceBuilder AddFunctionTool<T>(
-        this IHiveServiceBuilder builder) 
+    public static IHiveServiceBuilder AddFunctionToolsFrom<T>(this IHiveServiceBuilder builder) 
         where T : class
     {
-        var tools = FunctionToolFactory.CreateFromType<T>();
+        var tools = FunctionToolFactory.CreateFrom<T>();
         foreach (var tool in tools)
         {
             builder.AddTool(tool);
@@ -35,15 +35,41 @@ public static class HiveServiceBuilderExtensions
     }
 
     /// <summary>
+    /// 로컬 벡터 스토리지를 등록합니다.
+    /// </summary>
+    public static IHiveServiceBuilder AddLocalVectorStorage(
+        this IHiveServiceBuilder builder, 
+        string storageName,
+        LocalVectorConfig config)
+    {
+        builder.AddVectorStorage(storageName, new LocalVectorStorage(config));
+        return builder;
+    }
+
+    /// <summary>
+    /// 로컬 큐 스토리지를 등록합니다.
+    /// </summary>
+    public static IHiveServiceBuilder AddLocalQueueStorage(
+        this IHiveServiceBuilder builder,
+        string storageName,
+        LocalQueueConfig config)
+    {
+        builder.AddQueueStorage(storageName, new LocalQueueStorage(config));
+        return builder;
+    }
+
+    /// <summary>
     /// "text", "word", "pdf", "ppt", "image" 등 기본 파일 디코더를 등록합니다.
     /// </summary>
-    public static IHiveServiceBuilder AddDefaultFileDecoders(this IHiveServiceBuilder builder)
+    public static IHiveServiceBuilder AddFileExtractor(this IHiveServiceBuilder builder)
     {
-        builder.File.AddDecoder(new TextDecoder());
-        builder.File.AddDecoder(new WordDecoder());
-        builder.File.AddDecoder(new PDFDecoder());
-        builder.File.AddDecoder(new PPTDecoder());
-        builder.File.AddDecoder(new ImageDecoder());
+        builder.Services.AddSingleton<IFileDecoder<string>, TextDecoder>();
+        builder.Services.AddSingleton<IFileDecoder<string>, WordDecoder>();
+        builder.Services.AddSingleton<IFileDecoder<string>, PDFDecoder>();
+        builder.Services.AddSingleton<IFileDecoder<string>, PPTDecoder>();
+        builder.Services.AddSingleton<IFileDecoder<string>, ImageDecoder>();
+        builder.Services.AddSingleton<IFileMediaTypeDetector, BasicFileMediaTypeDetector>();
+        builder.Services.AddSingleton<IFileExtractionService<string>, FileExtractionService<string>>();
         return builder;
     }
 
@@ -57,13 +83,5 @@ public static class HiveServiceBuilderExtensions
         //builder.AddMemoryPipelineHandler<DialogueExtractionPipeline>("gen_QnA");
         //builder.AddMemoryPipelineHandler<TextEmbeddingPipeline>("gen_vectors");
         return builder;
-    }
-
-    /// <summary>
-    /// 지정 타입의 서비스가 하나라도 등록되어 있는지 확인합니다.
-    /// </summary>
-    public static bool ContainsAny<TService>(this IHiveServiceBuilder builder)
-    {
-        return builder.Services.Any(x => x.ServiceType == typeof(TService));
     }
 }

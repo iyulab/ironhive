@@ -1,4 +1,4 @@
-﻿using IronHive.Abstractions.Collections;
+﻿using IronHive.Abstractions.Tools;
 using IronHive.Plugins.MCP.Configurations;
 using System.Collections.Concurrent;
 

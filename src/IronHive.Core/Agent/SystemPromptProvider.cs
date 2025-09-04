@@ -1,7 +1,7 @@
 ﻿using IronHive.Abstractions.Agent;
 using Scriban;
 
-namespace IronHive.Core.Services;
+namespace IronHive.Core.Agent;
 
 /// <inheritdoc />
 public class SystemPromptProvider : IPromptProvider

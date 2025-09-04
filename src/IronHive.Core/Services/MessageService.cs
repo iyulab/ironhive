@@ -1,9 +1,9 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Threading.Channels;
-using IronHive.Abstractions.Collections;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Messages.Roles;
+using IronHive.Abstractions.Registries;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Utilities;
 
@@ -13,12 +13,12 @@ namespace IronHive.Core.Services;
 public class MessageService : IMessageService
 {
     private readonly IServiceProvider _services;
-    private readonly IProviderCollection _providers;
+    private readonly IProviderRegistry _providers;
     private readonly IToolCollection _tools;
 
     public MessageService(
         IServiceProvider services, 
-        IProviderCollection providers,
+        IProviderRegistry providers,
         IToolCollection tools)
     {
         _services = services;

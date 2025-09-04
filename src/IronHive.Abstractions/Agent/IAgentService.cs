@@ -1,6 +1,4 @@
-﻿using IronHive.Abstractions.Collections;
-
-namespace IronHive.Abstractions.Agent;
+﻿namespace IronHive.Abstractions.Agent;
 
 /// <summary>
 /// Agent 서비스를 나타냅니다.

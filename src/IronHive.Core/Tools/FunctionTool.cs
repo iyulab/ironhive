@@ -164,7 +164,7 @@ public sealed class FunctionTool : ITool
                 args[i] = param.ParameterType.IsArray ? services : services?.FirstOrDefault();
             }
             // 3) 툴 옵션 주입
-            else if (param.GetCustomAttribute<FromToolOptionsAttribute>() is not null && input.Options is not null)
+            else if (param.GetCustomAttribute<FromOptionsAttribute>() is not null && input.Options is not null)
             {
                 args[i] = input.Options.ConvertTo(param.ParameterType);
             }

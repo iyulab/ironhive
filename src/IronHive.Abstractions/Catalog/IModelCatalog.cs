@@ -1,4 +1,4 @@
-﻿using IronHive.Abstractions.Collections;
+﻿using IronHive.Abstractions.Registries;
 
 namespace IronHive.Abstractions.Catalog;
 

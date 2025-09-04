@@ -5,7 +5,7 @@ namespace IronHive.Abstractions;
 public static class HiveServiceBuilderExtensions
 {
     /// <summary>
-    /// Adds Ollama providers to the Hive service builder.
+    /// Ollama의 모든 서비스들을 지정된 이름으로 설정합니다.
     /// </summary>
     public static IHiveServiceBuilder AddOllamaProviders(
         this IHiveServiceBuilder builder,

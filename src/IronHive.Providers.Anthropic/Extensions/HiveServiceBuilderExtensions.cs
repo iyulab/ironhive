@@ -5,7 +5,7 @@ namespace IronHive.Abstractions;
 public static class HiveServiceBuilderExtensions
 {
     /// <summary>
-    /// Adds the Anthropic providers to the Hive service builder.
+    /// Anthropic의 모든 서비스들을 지정된 이름으로 설정합니다.
     /// </summary>
     public static IHiveServiceBuilder AddAnthropicProviders(
         this IHiveServiceBuilder builder,

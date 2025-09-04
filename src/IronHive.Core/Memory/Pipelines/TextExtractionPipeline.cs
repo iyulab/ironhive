@@ -11,11 +11,13 @@ namespace IronHive.Core.Memory.Pipelines;
 /// </summary>
 public class TextExtractionPipeline : IPipeline<PipelineContext, PipelineContext<string>>
 {
-    private readonly IFileService _service;
+    private readonly IFileStorageService _storages;
+    private readonly IFileExtractionService<string> _extractor;
 
-    public TextExtractionPipeline(IFileService service)
+    public TextExtractionPipeline(IFileStorageService storages, IFileExtractionService<string> extractor)
     {
-        _service = service;
+        _storages = storages;
+        _extractor = extractor;
     }
 
     /// <inheritdoc />
@@ -30,11 +32,11 @@ public class TextExtractionPipeline : IPipeline<PipelineContext, PipelineContext
         }
         else if (input.Source is FileMemorySource fileSource)
         {
-            using var stream = await _service.ReadFileAsync(
-                storage: fileSource.StorageName,
+            using var stream = await _storages.ReadFileAsync(
+                storageName: fileSource.StorageName,
                 filePath: fileSource.FilePath,
                 cancellationToken: cancellationToken);
-            text = await _service.DecodeAsync(
+            text = await _extractor.DecodeAsync(
                 fileName: fileSource.FilePath,
                 data: stream,
                 cancellationToken: cancellationToken);

@@ -1,14 +1,14 @@
-﻿using IronHive.Abstractions.Collections;
-using IronHive.Abstractions.Embedding;
+﻿using IronHive.Abstractions.Embedding;
+using IronHive.Abstractions.Registries;
 
 namespace IronHive.Core.Services;
 
 /// <inheritdoc />
 public class EmbeddingService : IEmbeddingService
 {
-    private readonly IProviderCollection _providers;
+    private readonly IProviderRegistry _providers;
 
-    public EmbeddingService(IProviderCollection providers)
+    public EmbeddingService(IProviderRegistry providers)
     {
         _providers = providers;
     }
