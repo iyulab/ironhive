@@ -19,7 +19,7 @@ public sealed class OpenApiTool : ITool
 
     public bool RequiresApproval { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
-    public Task<ToolOutput> InvokeAsync(ToolInput input, CancellationToken cancellationToken = default)
+    public Task<IToolOutput> InvokeAsync(ToolInput input, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }

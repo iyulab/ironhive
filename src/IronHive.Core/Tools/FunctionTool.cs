@@ -58,7 +58,7 @@ public sealed class FunctionTool : ITool
     public long Timeout { get; set; } = 60;
 
     /// <inheritdoc />
-    public async Task<ToolOutput> InvokeAsync(
+    public async Task<IToolOutput> InvokeAsync(
         ToolInput input,
         CancellationToken cancellationToken = default)
     {
@@ -92,7 +92,7 @@ public sealed class FunctionTool : ITool
                 // 타임아웃: 내부 작업에 취소 신호 전파
                 timeoutCts.Cancel();
                 _ = execTask.ContinueWith(t => { var _ = t.Exception; }, TaskContinuationOptions.OnlyOnFaulted);
-                return ToolOutput.Failure("The function execution was cancelled due to timeout.");
+                return new ToolTimeoutOutput();
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -100,24 +100,25 @@ public sealed class FunctionTool : ITool
             var result = await execTask.ConfigureAwait(false);
             var json = JsonSerializer.Serialize(result, JsonDefaultOptions.Options);
 
+            // TODO: 결과 JSON 변환이 두번 발생. 최적화 필요
             return json.Length > 30_000
-                ? ToolOutput.Failure("The function output is too large to return. Please try again with different parameters.")
-                : ToolOutput.Success(json);
+                ? new ToolExcessiveOutput()
+                : new ToolSuccessOutput(result);
         }
         catch (OperationCanceledException)
         {
             if (cancellationToken.IsCancellationRequested)
                 throw; // 호출자에서 처리
             
-            return ToolOutput.Failure("The function execution was cancelled due to timeout.");
+            return new ToolTimeoutOutput();
         }
         catch (TargetInvocationException ex) when (ex.InnerException is not null)
         {
-            return ToolOutput.Failure(ex.InnerException.Message);
+            return new ToolFailureOutput(ex.InnerException);
         }
         catch (Exception ex)
         {
-            return ToolOutput.Failure(ex.Message);
+            return new ToolFailureOutput(ex);
         }
     }
 

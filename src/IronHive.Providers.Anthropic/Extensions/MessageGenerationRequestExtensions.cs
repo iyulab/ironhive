@@ -133,8 +133,8 @@ internal static class MessageGenerationRequestExtensions
                             um.Content.Add(new ToolResultMessageContent
                             {
                                 ToolUseId = tool.Id,
-                                IsError = tool.IsError,
-                                Content = tool.Output ?? string.Empty,
+                                IsError = tool.Output != null && !tool.Output.IsSuccess,
+                                Content = tool.Output?.Result ?? string.Empty,
                             });
                         }
                         else

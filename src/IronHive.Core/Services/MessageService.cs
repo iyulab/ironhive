@@ -228,7 +228,6 @@ public class MessageService : IMessageService
                         Index = message.Content.Count,
                         Updated = new ToolUpdatedContent
                         {
-                            Status = tool.Status,
                             Output = tool.Output
                         }
                     };
@@ -300,7 +299,6 @@ public class MessageService : IMessageService
                         Index = idx,
                         Updated = new ToolUpdatedContent
                         {
-                            Status = tmc.Status,
                             Output = tmc.Output
                         }
                     }, cancellationToken);
@@ -309,7 +307,7 @@ public class MessageService : IMessageService
                     var input = new ToolInput(tmc.Input, _services, options);
                     var output = _tools.TryGet(tmc.Name, out var tool)
                         ? await tool.InvokeAsync(input, cancellationToken)
-                        : ToolOutput.Failure($"도구 [{tmc.Name}]를 찾을 수 없습니다. 이름에 오타가 없는지 확인하거나 사용 가능한 도구 목록을 참조하세요.");
+                        : new ToolFailureOutput($"Tool '{tmc.Name}' not found.");
 
                     tmc.CompleteExecution(output);
                     await channel.Writer.WriteAsync(new StreamingContentUpdatedResponse
@@ -317,7 +315,6 @@ public class MessageService : IMessageService
                         Index = idx,
                         Updated = new ToolUpdatedContent
                         {
-                            Status = tmc.Status,
                             Output = tmc.Output
                         }
                     }, cancellationToken);
@@ -374,7 +371,7 @@ public class MessageService : IMessageService
         if (endReason == MessageDoneReason.StopSequence)
             return false;
         // 도구 승인 요청이 있는 경우 종료
-        if (message.RequiresApproval)
+        if (message.Content.OfType<ToolMessageContent>().Any(t => !t.IsApproved))
             return false;
 
         return true;

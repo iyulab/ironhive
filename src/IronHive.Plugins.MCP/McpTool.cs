@@ -45,7 +45,7 @@ public class McpTool : ITool
     public bool RequiresApproval { get; set; } = true;
 
     /// <inheritdoc />
-    public async Task<ToolOutput> InvokeAsync(
+    public async Task<IToolOutput> InvokeAsync(
         ToolInput input,
         CancellationToken cancellationToken = default)
     {
@@ -58,8 +58,9 @@ public class McpTool : ITool
         var text = result.Content.Select(c => c.ToString());
         var content = string.Join("\n", text);
         
+        // TODO: MCP 호출 결과 확인 필요
         return result.IsError.GetValueOrDefault(true)
-            ? ToolOutput.Failure(content)
-            : ToolOutput.Success(content);
+            ? new ToolFailureOutput(content ?? "Unknown error")
+            : new ToolSuccessOutput(content);
     }
 }

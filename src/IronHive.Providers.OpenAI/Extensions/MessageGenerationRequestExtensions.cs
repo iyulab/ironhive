@@ -106,7 +106,7 @@ public static class MessageGenerationRequestExtensions
                             tml.Add(new ToolChatMessage
                             {
                                 ID = tool.Id ?? string.Empty,
-                                Content = tool.Output ?? string.Empty
+                                Content = tool.Output?.Result ?? string.Empty
                             });
                         }
                         else

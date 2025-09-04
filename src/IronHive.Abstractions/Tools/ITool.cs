@@ -38,7 +38,7 @@ public interface ITool
     /// 도구를 실행하는 비동기 메서드입니다.
     /// 입력 데이터를 받아 처리한 뒤, 결과를 <see cref="ToolOutput"/> 으로 반환합니다.
     /// </summary>
-    Task<ToolOutput> InvokeAsync(
+    Task<IToolOutput> InvokeAsync(
         ToolInput input,
         CancellationToken cancellationToken = default);
 }
