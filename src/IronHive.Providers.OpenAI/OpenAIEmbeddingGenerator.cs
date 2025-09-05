@@ -5,6 +5,11 @@ using Tiktoken.Encodings;
 
 namespace IronHive.Providers.OpenAI;
 
+/// <summary>
+/// <para>OpenAI에서 제공하는 임베딩 모델을 사용하여 텍스트 임베딩을 생성하는 클래스입니다.</para>
+/// 토큰 카운팅은 <c>cl100k_base</c> 토크나이저를 사용합니다.
+/// <see href="https://cookbook.openai.com/examples/how_to_count_tokens_with_tiktoken" />을 참고하세요.
+/// </summary>
 public class OpenAIEmbeddingGenerator : IEmbeddingGenerator
 {
     private readonly OpenAIEmbeddingClient _client;
@@ -86,9 +91,6 @@ public class OpenAIEmbeddingGenerator : IEmbeddingGenerator
         string input, 
         CancellationToken cancellationToken = default)
     {
-        // OpenAI Embedding models use the cl100k_base tokenizer
-        // see https://cookbook.openai.com/examples/how_to_count_tokens_with_tiktoken
-
         var count = _tokenizer.CountTokens(input);
         return await Task.FromResult(count);
     }

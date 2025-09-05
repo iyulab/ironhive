@@ -11,3 +11,6 @@
 
 ## Plugins
 - OpenAPI 확장 추가
+
+# Storages
+- LocalVectorStorage를 Sqlite로 변경(sqlite-vec으로 확장, 사전빌드 파일 필요)

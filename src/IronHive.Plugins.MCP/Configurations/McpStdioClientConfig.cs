@@ -10,42 +10,36 @@ namespace IronHive.Plugins.MCP.Configurations;
 public class McpStdioClientConfig : IMcpClientConfig
 {
     /// <inheritdoc />
-    [JsonPropertyName("name")]
     public required string ServerName { get; set; }
 
     /// <summary>
     /// MCP 서버로 실행할 외부 프로그램 또는 명령을 지정합니다.
     /// 이 명령은 MCP 프로토콜을 통한 통신을 지원해야 합니다.
     /// </summary>
-    [JsonPropertyName("command")]
     public required string Command { get; set; }
 
     /// <summary>
     /// 명령 실행 시 전달할 명령줄 인수 목록입니다.
     /// 서버 구성과 동작을 제어하는 데 사용됩니다.
     /// </summary>
-    [JsonPropertyName("args")]
     public IEnumerable<string>? Arguments { get; set; }
 
     /// <summary>
     /// 서버 프로세스 실행 시 설정할 환경 변수 컬렉션입니다.
     /// 서버 동작을 구성하거나 필요한 정보를 프로세스에 전달하는 데 사용됩니다.
     /// </summary>
-    [JsonPropertyName("env")]
     public Dictionary<string, string?>? EnvironmentVariables { get; set; }
 
     /// <summary>
     /// 서버 종료 요청 후 강제 종료까지 대기하는 최대 시간입니다.
     /// 기본값은 5초입니다.
     /// </summary>
-    [JsonPropertyName("timeout")]
     public TimeSpan ShutdownTimeout { get; set; } = TimeSpan.FromSeconds(5);
 
     /// <summary>
     /// 서버 프로세스가 실행될 작업 디렉터리 경로입니다.
     /// 상대 경로 참조 및 리소스 액세스에 영향을 줍니다.
     /// </summary>
-    [JsonPropertyName("directory")]
     public string? WorkingDirectory { get; set; }
 
     public override bool Equals(object? obj)

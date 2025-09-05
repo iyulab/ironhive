@@ -1,4 +1,4 @@
-import { MessageContent, ToolContentStauts } from "./Request";
+import { MessageContent } from "./Request";
 
 export type StreamingMessageResponse = (
   StreamingMessageBeginResponse |
@@ -89,8 +89,7 @@ export interface ThinkingMessageUpdatedContent {
 
 export interface ToolMessageUpdatedResponse {
   type: "tool";
-  status: ToolContentStauts;
-  output?: string;
+  output?: { isSuccess: boolean; result: string };
 }
 
 export interface MessageTokenUsage {

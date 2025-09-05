@@ -10,21 +10,18 @@ namespace IronHive.Plugins.MCP.Configurations;
 public class McpSseClientConfig : IMcpClientConfig
 {
     /// <inheritdoc />
-    [JsonPropertyName("name")]
     public required string ServerName { get; set; }
 
     /// <summary>
     /// SSE 연결을 설정할 MCP 서버의 HTTP 엔드포인트 URL입니다.
     /// 예: "http://localhost:8000/sse"
     /// </summary>
-    [JsonPropertyName("url")]
     public required Uri Endpoint { get; set; }
 
     /// <summary>
     /// HTTP 요청 시 포함할 추가 헤더 컬렉션입니다.
     /// 인증, 콘텐츠 타입 지정 등에 사용됩니다.
     /// </summary>
-    [JsonPropertyName("headers")]
     public Dictionary<string, string>? AdditionalHeaders { get; set; }
 
     /// <summary>
@@ -32,7 +29,6 @@ public class McpSseClientConfig : IMcpClientConfig
     /// 지정된 시간 내에 연결이 설정되지 않으면 타임아웃 예외가 발생합니다.
     /// 기본값은 30초입니다.
     /// </summary>
-    [JsonPropertyName("timeout")]
     public TimeSpan ConnectionTimeout { get; set; } = TimeSpan.FromSeconds(30);
 
     public override bool Equals(object? obj)

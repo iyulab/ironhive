@@ -16,10 +16,7 @@ public class MessageService : IMessageService
     private readonly IProviderRegistry _providers;
     private readonly IToolCollection _tools;
 
-    public MessageService(
-        IServiceProvider services, 
-        IProviderRegistry providers,
-        IToolCollection tools)
+    public MessageService(IServiceProvider services, IProviderRegistry providers, IToolCollection tools)
     {
         _services = services;
         _providers = providers;
@@ -38,7 +35,6 @@ public class MessageService : IMessageService
         MessageDoneReason? reason;
         MessageTokenUsage? usage;
         AssistantMessage? message;
-        bool next;
 
         // 루프 시작
         var counter = new LimitedCounter(request.MaxLoopCount);
@@ -47,7 +43,7 @@ public class MessageService : IMessageService
             Model = request.Model,
             Messages = request.Messages,
             System = request.Instruction,
-            Tools = _tools.WhereBy(request.Tools),
+            Tools = _tools.FilterBy(request.Tools.Select(t => t.Name)),
             ThinkingEffort = request.ThinkingEffort,
             TopK = request.TopK,
             TopP = request.TopP,
@@ -62,7 +58,7 @@ public class MessageService : IMessageService
             if (req.Messages.LastOrDefault() is AssistantMessage last)
             {
                 message = last;
-                await foreach (var _ in ProcessToolContentAsync(message, request.ToolOptions, cancellationToken))
+                await foreach (var _ in ProcessToolContentAsync(message, request.Tools, cancellationToken))
                 { }
             }
             else
@@ -72,21 +68,11 @@ public class MessageService : IMessageService
 
             var res = await generator.GenerateMessageAsync(req, cancellationToken);
 
+            // 컨텐츠 추가
             foreach (var content in res.Message?.Content ?? [])
             {
-                // 툴 컨텐츠의 경우 승인 요구사항을 확인하고 반영합니다.
-                if (content is ToolMessageContent tool)
-                {
-                    if (req.Tools.RequiresApproval(tool.Name))
-                        tool.ChangeToPaused();
-                    else
-                        tool.ChangeToApproved();
-                }
-                
-                // 컨텐츠 추가
                 message.Content.Add(content);
             }
-
             // 요청 메시지의 마지막이 어시스턴트가 아닌 경우, 메시지를 추가합니다.
             if (req.Messages.LastOrDefault() is not AssistantMessage)
             {
@@ -95,10 +81,8 @@ public class MessageService : IMessageService
             reason = res.DoneReason; // 생성 종료 이유 업데이트
             usage = res.TokenUsage; // 토큰 사용량 업데이트
 
-            counter.Increment();
-            next = ShouldContinue(reason, message, counter, cancellationToken);
         }
-        while (next);
+        while (counter.TryIncrement() && ShouldContinue(reason, message, cancellationToken));
 
         return new MessageResponse
         {
@@ -122,6 +106,7 @@ public class MessageService : IMessageService
         string model = request.Model;
         MessageDoneReason? reason = null;
         MessageTokenUsage? usage = null;
+        AssistantMessage? message = null;
 
         // 메시지 생성 시작
         yield return new StreamingMessageBeginResponse
@@ -130,14 +115,13 @@ public class MessageService : IMessageService
         };
 
         // 루프 시작
-        bool next;
         var counter = new LimitedCounter(request.MaxLoopCount);
         var req = new MessageGenerationRequest
         {
             Model = request.Model,
             Messages = request.Messages,
             System = request.Instruction,
-            Tools = _tools.WhereBy(request.Tools),
+            Tools = _tools.FilterBy(request.Tools.Select(t => t.Name)),
             ThinkingEffort = request.ThinkingEffort,
             TopK = request.TopK,
             TopP = request.TopP,
@@ -149,9 +133,10 @@ public class MessageService : IMessageService
         do
         {
             // 마지막 메시지가 어시스턴트 메시지인 경우, 툴 사용을 확인하고, 메시지를 이어갑니다.
-            if (req.Messages.LastOrDefault() is AssistantMessage message)
+            if (req.Messages.LastOrDefault() is AssistantMessage last)
             {
-                await foreach (var res in ProcessToolContentAsync(message, request.ToolOptions, cancellationToken))
+                message = last;
+                await foreach (var res in ProcessToolContentAsync(message, request.Tools, cancellationToken))
                 {
                     yield return res;
                 }
@@ -215,37 +200,15 @@ public class MessageService : IMessageService
             // 스택에 있는 컨텐츠를 메시지에 추가합니다.
             foreach (var content in stack)
             {
-                if (content is ToolMessageContent tool)
-                {
-                    // 툴 컨텐츠의 경우 승인 요구사항을 확인하고 반영합니다.
-                    if (req.Tools.RequiresApproval(tool.Name))
-                        tool.ChangeToPaused();
-                    else
-                        tool.ChangeToApproved();
-
-                    yield return new StreamingContentUpdatedResponse
-                    {
-                        Index = message.Content.Count,
-                        Updated = new ToolUpdatedContent
-                        {
-                            Output = tool.Output
-                        }
-                    };
-                }
                 message.Content.Add(content);
             }
-
             // 요청 메시지의 마지막이 어시스턴트가 아닌 경우, 메시지를 추가합니다.
             if (req.Messages.LastOrDefault() is not AssistantMessage)
             {
                 req.Messages.Add(message);
             }
-
-            // 다음 루프를 계속 진행할지 여부를 결정합니다.
-            counter.Increment();
-            next = ShouldContinue(reason, message, counter, cancellationToken);
         }
-        while (next);
+        while (counter.TryIncrement() && ShouldContinue(reason, message, cancellationToken));
 
         // 마지막 메시지를 전달 합니다.
         yield return new StreamingMessageDoneResponse
@@ -263,7 +226,7 @@ public class MessageService : IMessageService
     /// </summary>
     private async IAsyncEnumerable<StreamingMessageResponse> ProcessToolContentAsync(
         AssistantMessage message,
-        IDictionary<string, object?> toolOptions,
+        IEnumerable<ToolItem> toolItems,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         const int maxConcurrent = 3; // 동시 실행할 최대 도구 호출 수
@@ -284,7 +247,7 @@ public class MessageService : IMessageService
             if (tmc.IsCompleted)
                 continue;
             // 승인되지 않은 툴 건너뛰기
-            if (tmc.Status != ToolContentStatus.Approved)
+            if (!tmc.IsApproved)
                 continue;
             
             var task = Task.Run(async () =>
@@ -293,23 +256,17 @@ public class MessageService : IMessageService
                 
                 try
                 {
-                    tmc.ChangeToInProgress();
-                    await channel.Writer.WriteAsync(new StreamingContentUpdatedResponse
+                    await channel.Writer.WriteAsync(new StreamingContentInProgressResponse
                     {
                         Index = idx,
-                        Updated = new ToolUpdatedContent
-                        {
-                            Output = tmc.Output
-                        }
                     }, cancellationToken);
 
-                    var options = toolOptions.TryGetValue(tmc.Name, out var opts) ? opts : null;
-                    var input = new ToolInput(tmc.Input, _services, options);
-                    var output = _tools.TryGet(tmc.Name, out var tool)
+                    var options = toolItems.FirstOrDefault(t => string.Equals(t.Name, tmc.Name))?.Options;
+                    var input = new ToolInput(tmc.Input, options, _services);
+                    tmc.Output = _tools.TryGet(tmc.Name, out var tool)
                         ? await tool.InvokeAsync(input, cancellationToken)
-                        : new ToolFailureOutput($"Tool '{tmc.Name}' not found.");
+                        : ToolOutput.Failure($"Could not find tool '{tmc.Name}', invocation failed.");
 
-                    tmc.CompleteExecution(output);
                     await channel.Writer.WriteAsync(new StreamingContentUpdatedResponse
                     {
                         Index = idx,
@@ -355,14 +312,10 @@ public class MessageService : IMessageService
     /// <summary>
     /// 루프를 계속 진행할지 여부를 결정합니다.
     /// </summary>
-    private static bool ShouldContinue(MessageDoneReason? endReason, AssistantMessage message, LimitedCounter counter, CancellationToken token)
+    private static bool ShouldContinue(MessageDoneReason? endReason, AssistantMessage? message, CancellationToken token)
     {
-        // 취소 요청이 있는 경우 종료 Throw
-        if (token.IsCancellationRequested)
-            throw new OperationCanceledException(token);
-        // 최대 루프 카운트 초과할 경우 종료 Throw
-        if (counter.ReachedMax)
-            throw new InvalidOperationException("Max loop count exceeded.");
+        // 취소 요청 시 종료
+        token.ThrowIfCancellationRequested();
 
         // 정상 종료일 경우 종료
         if (endReason == MessageDoneReason.EndTurn)
@@ -371,7 +324,7 @@ public class MessageService : IMessageService
         if (endReason == MessageDoneReason.StopSequence)
             return false;
         // 도구 승인 요청이 있는 경우 종료
-        if (message.Content.OfType<ToolMessageContent>().Any(t => !t.IsApproved))
+        if (message != null && message.Content.OfType<ToolMessageContent>().Any(t => !t.IsApproved))
             return false;
 
         return true;

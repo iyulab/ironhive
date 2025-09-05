@@ -10,9 +10,7 @@ public static class EnumerableExtensions
     /// <param name="source">나눌 원본 배열입니다.</param>
     /// <param name="maxTokens">각 배열이 가질 수 있는 최대 토큰 수입니다.</param>
     /// <returns>토큰 제한에 따라 나누어진 <see cref="EmbeddingTokens"/> 배열의 컬렉션입니다.</returns>
-    public static IEnumerable<IEnumerable<EmbeddingTokens>> ChunkBy(
-        this IEnumerable<EmbeddingTokens> source,
-        int maxTokens)
+    public static IEnumerable<IEnumerable<EmbeddingTokens>> ChunkBy(this IEnumerable<EmbeddingTokens> source, int maxTokens)
     {
         if (maxTokens < 1)
             throw new ArgumentOutOfRangeException(nameof(maxTokens), "maxTokens must be greater than zero.");

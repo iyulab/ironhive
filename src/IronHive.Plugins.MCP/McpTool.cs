@@ -36,16 +36,16 @@ public class McpTool : ITool
     public string Name => _tool.Name;
 
     /// <inheritdoc />
-    public string Description => _tool.Description;
+    public string? Description => _tool.Description;
 
     /// <inheritdoc />
     public object? Parameters => _tool.JsonSchema;
 
     /// <inheritdoc />
-    public bool RequiresApproval { get; set; } = true;
+    public required bool RequiresApproval { get; init; }
 
     /// <inheritdoc />
-    public async Task<IToolOutput> InvokeAsync(
+    public async Task<ToolOutput> InvokeAsync(
         ToolInput input,
         CancellationToken cancellationToken = default)
     {
@@ -60,7 +60,7 @@ public class McpTool : ITool
         
         // TODO: MCP 호출 결과 확인 필요
         return result.IsError.GetValueOrDefault(true)
-            ? new ToolFailureOutput(content ?? "Unknown error")
-            : new ToolSuccessOutput(content);
+            ? ToolOutput.Failure(content)
+            : ToolOutput.Success(content);
     }
 }

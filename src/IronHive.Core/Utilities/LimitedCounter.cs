@@ -1,54 +1,50 @@
 ﻿namespace IronHive.Core.Utilities;
 
 /// <summary>
-/// 최대치가 정해진 계수기.
+/// 최대치가 정해진 카운터.
 /// </summary>
 public class LimitedCounter
 {
     /// <summary>
+    /// 현재 카운트가 최대치에 도달했는지 여부
+    /// </summary>
+    public bool HasLimit => Count >= MaximumCount;
+
+    /// <summary>
     /// 현재 카운트 값
     /// </summary>
-    public int Current { get; private set; }
+    public int Count { get; private set; }
 
     /// <summary>
     /// 최대 카운트 값
     /// </summary>
-    public int Max { get; }
+    public int MaximumCount { get; }
 
     /// <summary>
     /// 남은 카운트 수
     /// </summary>
-    public int Remaining => Max - Current;
+    public int RemainingCount => MaximumCount - Count;
 
     /// <summary>
     /// 다음 카운트가 가능한지 여부
     /// </summary>
-    public bool HasCapacity => Current < Max;
+    public bool CanIncrement => Count < MaximumCount;
 
-    /// <summary>
-    /// 현재 카운트가 최대치에 도달했는지 여부
-    /// </summary>
-    public bool ReachedMax => Current >= Max;
-
-    /// <summary>
-    /// 최대치가 정해진 계수기를 생성합니다.
-    /// </summary>
-    /// <param name="max">최대 카운트 값</param>
     public LimitedCounter(int max)
     {
-        Current = 0;
-        Max = max < 1 ? 1 : max;
+        Count = 0;
+        MaximumCount = max < 1 ? 1 : max;
     }
 
     /// <summary>
     /// 카운트를 증가시킵니다.
     /// </summary>
     /// <returns>증가 성공 여부</returns>
-    public bool Increment()
+    public bool TryIncrement()
     {
-        if (HasCapacity)
+        if (CanIncrement)
         {
-            Current++;
+            Count++;
             return true;
         }
         return false;
@@ -59,6 +55,6 @@ public class LimitedCounter
     /// </summary>
     public void Reset()
     {
-        Current = 0;
+        Count = 0;
     }
 }

@@ -1,0 +1,5 @@
+- AutoGen(https://github.com/microsoft/autogen)
+- AgencySwarm(https://agency-swarm.ai/welcome/overview)
+- CrewAI(https://docs.crewai.com/en/introduction)
+- Prompty(https://prompty.ai/welcome/)
+- 

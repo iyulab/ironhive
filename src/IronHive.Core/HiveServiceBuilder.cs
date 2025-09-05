@@ -14,6 +14,9 @@ using IronHive.Core.Services;
 using IronHive.Core.Files;
 using IronHive.Core.Tools;
 using IronHive.Core.Registries;
+using IronHive.Abstractions.Registries;
+using IronHive.Abstractions.Agent;
+using IronHive.Core.Agent;
 
 namespace IronHive.Core;
 
@@ -28,16 +31,22 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     {
         Services = services ?? new ServiceCollection();
 
-        // 등록된 Provider 및 Storage 관리
-        Services.AddSingleton(_providers);
-        Services.AddSingleton(_storages);
-        Services.AddSingleton(_tools);
+        // 레지스트리 한번만 등록하도록 방지
+        ThrowIfServiceExists<IProviderRegistry>();
+        ThrowIfServiceExists<IStorageRegistry>();
+        ThrowIfServiceExists<IToolCollection>();
+        // 레지스트리 등록
+        Services.AddSingleton<IProviderRegistry>(_providers);
+        Services.AddSingleton<IStorageRegistry>(_storages);
+        Services.AddSingleton<IToolCollection>(_tools);
 
         // 기본 서비스 등록
-        Services.TryAddSingleton<IFileStorageService, FileStorageService>();
         Services.TryAddSingleton<IModelCatalogService, ModelCatalogService>();
         Services.TryAddSingleton<IMessageService, MessageService>();
         Services.TryAddSingleton<IEmbeddingService, EmbeddingService>();
+        Services.TryAddSingleton<IFileStorageService, FileStorageService>();
+
+        Services.TryAddSingleton<IAgentService, AgentService>();
 
         // 서비스 빌더
         Memory = new MemoryServiceBuilder(Services);
@@ -103,5 +112,15 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     {
         var provider = Services.BuildServiceProvider();
         return new HiveService(provider);
+    }
+
+    /// <summary>
+    /// 지정타입의 서비스가 하나라도 존재하는지 확인하고, 존재하면 예외를 발생시킵니다.
+    /// </summary>
+    private void ThrowIfServiceExists<T>()
+        where T : class
+    {
+        if (Services.Any(d => d.ServiceType == typeof(T)))
+            throw new InvalidOperationException($"{typeof(T).Name} is already registered, the registration must be done only once.");
     }
 }

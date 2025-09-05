@@ -24,17 +24,12 @@ public class AssistantMessage : Message
     public string? Model { get; set; }
 
     /// <summary>
-    /// 메시지가 생성된 시간입니다.
-    /// </summary>
-    public DateTime? Timestamp { get; set; }
-
-    /// <summary>
-    /// Tool 사용을 기준으로 아이템을 분리합니다.
+    /// LLM의 툴 사용 템플릿에 맞추기 위해 Tool 컨텐츠를 기준으로 컨텐츠들을 그룹화합니다.
     /// Tool 컨텐츠들 다음 항목부터 새 그룹으로 분리됩니다.
     /// 예) [ThinkingContent, ToolContent, ToolContent, TextContent, ToolContent, TextContent]
     ///  => [ThinkingContent, ToolContent, ToolContent], [TextContent, ToolContent], [TextContent]
     /// </summary>
-    public IEnumerable<IEnumerable<MessageContent>> SplitContentByTool()
+    public IEnumerable<IEnumerable<MessageContent>> GroupContentByToolBoundary()
     {
         if (Content.Count == 0)
             return Enumerable.Empty<IEnumerable<MessageContent>>();

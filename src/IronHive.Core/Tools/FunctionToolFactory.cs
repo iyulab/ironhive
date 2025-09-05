@@ -36,7 +36,7 @@ public static class FunctionToolFactory
             if (attr is null) continue;
 
             var name = attr.Name ?? method.Name;
-            var desc = attr.Description ?? method.GetCustomAttribute<DescriptionAttribute>()?.Description ?? string.Empty;
+            var desc = attr.Description ?? method.GetCustomAttribute<DescriptionAttribute>()?.Description;
             var requires = attr.RequiresApproval;
             var timeout = attr.Timeout;
             var parameters = BuildJsonSchemaParameters(method);
@@ -58,26 +58,31 @@ public static class FunctionToolFactory
     /// </summary>
     public static ITool CreateFrom(
         Delegate function,
-        string name,
-        string description,
-        bool requiresApproval = false,
-        long timeout = 60)
+        DelegateDescriptor descriptor)
     {
-        if (string.IsNullOrWhiteSpace(name))
-            throw new ArgumentException("툴 이름은 비어있을 수 없습니다.", nameof(name));
-        if (string.IsNullOrWhiteSpace(description))
-            throw new ArgumentException("툴 설명은 비어있을 수 없습니다.", nameof(description));
+        if (string.IsNullOrWhiteSpace(descriptor.Name))
+            throw new ArgumentException("툴 이름은 비어있을 수 없습니다.", nameof(descriptor.Name));
 
         var method = function.Method;
         var parameters = BuildJsonSchemaParameters(method);
+        if (parameters is not null && descriptor.ParameterDescriptions is not null)
+        {
+            foreach (var param in parameters.Properties)
+            {
+                if (descriptor.ParameterDescriptions.TryGetValue(param.Key, out var paramDesc))
+                {
+                    param.Value.Description = paramDesc;
+                }
+            }
+        }
 
         return new FunctionTool(function)
         {
-            Name = name,
-            Description = description,
+            Name = descriptor.Name,
+            Description = descriptor.Description,
             Parameters = parameters,
-            RequiresApproval = requiresApproval,
-            Timeout = timeout
+            RequiresApproval = descriptor.RequiresApproval,
+            Timeout = descriptor.Timeout
         };
     }
 
@@ -121,4 +126,20 @@ public static class FunctionToolFactory
             Required = required.Count > 0 ? required : null,
         };
     }
+}
+
+/// <summary>
+/// Delegate 함수의 메타데이터를 설명하는 객체.
+/// </summary>
+public record DelegateDescriptor
+{
+    public required string Name { get; set; }
+    
+    public string? Description { get; set; }
+    
+    public IDictionary<string, string>? ParameterDescriptions { get; set; }
+    
+    public bool RequiresApproval { get; set; } = false;
+
+    public long Timeout { get; set; } = 60;
 }

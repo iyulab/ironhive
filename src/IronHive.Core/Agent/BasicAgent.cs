@@ -1,22 +1,21 @@
-﻿using IronHive.Abstractions;
-using IronHive.Abstractions.Agent;
+﻿using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Messages;
-using Microsoft.Extensions.DependencyInjection;
+using IronHive.Abstractions.Tools;
 
 namespace IronHive.Core.Agent;
 
 /// <summary>
 /// 채팅 에이전트의 기본 구현체입니다.
 /// </summary>
-public class ChatAgent : IAgent
+public class BasicAgent : IAgent
 {
-    private readonly IHiveService _service;
+    private readonly IMessageService _message;
 
     /// <inheritdoc />
-    public required string DefaultProvider { get; set; }
+    public required string Provider { get; set; }
 
     /// <inheritdoc />
-    public required string DefaultModel { get; set; }
+    public required string Model { get; set; }
 
     /// <inheritdoc />
     public required string Name { get; set; }
@@ -25,20 +24,17 @@ public class ChatAgent : IAgent
     public required string Description { get; set; }
 
     /// <inheritdoc />
-    public string? Instructions { get; set; }
+    public string? Instruction { get; set; }
 
     /// <inheritdoc />
-    public IEnumerable<string> Tools { get; set; } = Array.Empty<string>();
-
-    /// <inheritdoc />
-    public IDictionary<string, object?> ToolOptions { get; set; } = new Dictionary<string, object?>();
+    public IEnumerable<ToolItem>? Tools { get; set; }
 
     /// <inheritdoc />
     public MessageGenerationParameters? Parameters { get; set; }
 
-    public ChatAgent(IHiveService service)
+    public BasicAgent(IMessageService service)
     {
-        _service = service;
+        _message = service;
     }
 
     /// <inheritdoc />
@@ -46,9 +42,8 @@ public class ChatAgent : IAgent
         IEnumerable<Message> messages, 
         CancellationToken cancellationToken = default)
     {
-        var generator = _service.Services.GetRequiredService<IMessageService>();
         var request = CreateRequest(messages);
-        return generator.GenerateMessageAsync(request, cancellationToken);
+        return _message.GenerateMessageAsync(request, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -56,20 +51,18 @@ public class ChatAgent : IAgent
         IEnumerable<Message> messages, 
         CancellationToken cancellationToken = default)
     {
-        var generator = _service.Services.GetRequiredService<IMessageService>();
         var request = CreateRequest(messages);
-        return generator.GenerateStreamingMessageAsync(request, cancellationToken);
+        return _message.GenerateStreamingMessageAsync(request, cancellationToken);
     }
 
     // 만들기...
     private MessageRequest CreateRequest(IEnumerable<Message> messages) => new()
     {
         Messages = messages.ToList(),
-        Provider = DefaultProvider,
-        Model = DefaultModel,
-        Instruction = Instructions,
-        Tools = Tools,
-        ToolOptions = ToolOptions,
+        Provider = Provider,
+        Model = Model,
+        Instruction = Instruction,
+        Tools = Tools ?? [],
         MaxTokens = Parameters?.MaxTokens,
         StopSequences = Parameters?.StopSequences,
         Temperature = Parameters?.Temperature,

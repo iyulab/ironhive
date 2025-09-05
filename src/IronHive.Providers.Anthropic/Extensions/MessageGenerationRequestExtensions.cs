@@ -76,8 +76,7 @@ internal static class MessageGenerationRequestExtensions
             // AI 메시지
             else if (message is AssistantMessage assistant)
             {
-                var groups = assistant.SplitContentByTool();
-
+                var groups = assistant.GroupContentByToolBoundary();
                 foreach (var group in groups)
                 {
                     var am = new AnthropicMessage(MessageRole.Assistant);

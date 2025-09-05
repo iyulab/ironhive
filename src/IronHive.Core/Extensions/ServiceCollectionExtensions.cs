@@ -7,7 +7,7 @@ namespace Microsoft.Extensions.DependencyInjection;
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// 서비스 Collection에 IronHive 서비스를 등록합니다.
+    /// Service Collection에 IronHive 서비스를 등록합니다.
     /// </summary>
     public static IHiveServiceBuilder AddHiveServiceCore(this IServiceCollection services)
     {

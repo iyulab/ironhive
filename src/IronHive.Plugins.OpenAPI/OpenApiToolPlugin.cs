@@ -13,13 +13,13 @@ public sealed class OpenApiTool : ITool
 
     public string Name => throw new NotImplementedException();
 
-    public string Description => throw new NotImplementedException();
+    public string? Description => throw new NotImplementedException();
 
     public object? Parameters => throw new NotImplementedException();
 
     public bool RequiresApproval { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
-    public Task<IToolOutput> InvokeAsync(ToolInput input, CancellationToken cancellationToken = default)
+    public Task<ToolOutput> InvokeAsync(ToolInput input, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }

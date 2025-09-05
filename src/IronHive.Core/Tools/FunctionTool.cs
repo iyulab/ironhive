@@ -43,13 +43,13 @@ public sealed class FunctionTool : ITool
     public required string Name { get; init; }
     
     /// <inheritdoc />
-    public required string Description { get; init; }
+    public required string? Description { get; init; }
 
     /// <inheritdoc />
     public required object? Parameters { get; init; }
 
     /// <inheritdoc />
-    public bool RequiresApproval { get; set; } = false;
+    public required bool RequiresApproval { get; init; }
 
     /// <summary>
     /// 도구 호출의 최대 실행 시간(타임아웃)입니다.
@@ -58,7 +58,7 @@ public sealed class FunctionTool : ITool
     public long Timeout { get; set; } = 60;
 
     /// <inheritdoc />
-    public async Task<IToolOutput> InvokeAsync(
+    public async Task<ToolOutput> InvokeAsync(
         ToolInput input,
         CancellationToken cancellationToken = default)
     {
@@ -92,7 +92,7 @@ public sealed class FunctionTool : ITool
                 // 타임아웃: 내부 작업에 취소 신호 전파
                 timeoutCts.Cancel();
                 _ = execTask.ContinueWith(t => { var _ = t.Exception; }, TaskContinuationOptions.OnlyOnFaulted);
-                return new ToolTimeoutOutput();
+                return ToolOutput.Failure($"The tool execution was cancelled due to timeout ({Timeout} seconds).");
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -102,23 +102,23 @@ public sealed class FunctionTool : ITool
 
             // TODO: 결과 JSON 변환이 두번 발생. 최적화 필요
             return json.Length > 30_000
-                ? new ToolExcessiveOutput()
-                : new ToolSuccessOutput(result);
+                ? ToolOutput.Failure("The result is too large to return. Please try again with different parameters.")
+                : ToolOutput.Success(json);
         }
         catch (OperationCanceledException)
         {
             if (cancellationToken.IsCancellationRequested)
                 throw; // 호출자에서 처리
             
-            return new ToolTimeoutOutput();
+            return ToolOutput.Failure($"The tool execution was cancelled due to timeout ({Timeout} seconds).");
         }
         catch (TargetInvocationException ex) when (ex.InnerException is not null)
         {
-            return new ToolFailureOutput(ex.InnerException);
+            return ToolOutput.Failure(ex.InnerException.Message);
         }
         catch (Exception ex)
         {
-            return new ToolFailureOutput(ex);
+            return ToolOutput.Failure(ex.Message);
         }
     }
 

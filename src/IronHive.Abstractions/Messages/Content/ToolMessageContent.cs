@@ -15,7 +15,7 @@ public class ToolMessageContent : MessageContent
     /// <summary>
     /// 현재 도구가 실행이 승인되었는지를 나타냅니다.
     /// </summary>
-    public bool IsApproved { get; set; } = false;
+    public required bool IsApproved { get; set; }
 
     /// <summary>
     /// 블록의 고유 ID입니다. 서비스 제공자가 ID를 제공할 경우 해당 ID를 사용합니다.
@@ -35,5 +35,5 @@ public class ToolMessageContent : MessageContent
     /// <summary>
     /// 현재 도구의 결과 데이터입니다.
     /// </summary>
-    public IToolOutput? Output { get; set; }
+    public ToolOutput? Output { get; set; }
 }

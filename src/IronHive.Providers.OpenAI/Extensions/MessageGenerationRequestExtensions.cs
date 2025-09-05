@@ -72,7 +72,7 @@ public static class MessageGenerationRequestExtensions
             else if (message is AssistantMessage assistant)
             {
                 // AI 메시지
-                foreach (var group in assistant.SplitContentByTool())
+                foreach (var group in assistant.GroupContentByToolBoundary())
                 {
                     var am = new AssistantChatMessage();
                     var tml = new List<ToolChatMessage>();

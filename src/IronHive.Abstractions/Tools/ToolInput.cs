@@ -13,7 +13,7 @@ public class ToolInput : IReadOnlyDictionary<string, object?>
     /// <summary>
     /// 주어진 입력 객체를 딕셔너리 형태로 변환하여 래핑합니다.
     /// </summary>
-    public ToolInput(object? input = null, IServiceProvider? services = null, object? options = null)
+    public ToolInput(object? input = null, object? options = null, IServiceProvider? services = null)
     {
         _items = input is null
                  ? new Dictionary<string, object?>(StringComparer.Ordinal)
@@ -25,14 +25,14 @@ public class ToolInput : IReadOnlyDictionary<string, object?>
     }
 
     /// <summary>
+    /// 툴에 전달할 옵션을 설정합니다.
+    /// </summary>
+    public object? Options { get; set; }
+
+    /// <summary>
     /// 서비스 프로바이더를 설정합니다.
     /// </summary>
     public IServiceProvider? Services { get; set; }
-
-    /// <summary>
-    /// 툴 옵션을 설정합니다.
-    /// </summary>
-    public object? Options { get; set; }
 
     /// <summary>
     /// 키에 해당하는 값을 가져옵니다. 존재하지 않으면 null 반환.

@@ -6,6 +6,7 @@ using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Message;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Agent;
+using IronHive.Abstractions.Tools;
 
 namespace WebServer.Controllers;
 
@@ -14,16 +15,19 @@ namespace WebServer.Controllers;
 public class ServiceController : ControllerBase
 {
     private readonly IModelCatalogService _model;
-    private readonly IAgentService _agent;
+    private readonly IMessageService _message;
+    private readonly IToolCollection _tools;
     private readonly JsonSerializerOptions _jsonOptions;
     
     public ServiceController(
         IModelCatalogService model,
-        IAgentService agent,
+        IMessageService message,
+        IToolCollection tools,
         IOptions<JsonOptions> jsonOptions)
     {
         _model = model;
-        _agent = agent;
+        _message = message;
+        _tools = tools;
         _jsonOptions = jsonOptions.Value.JsonSerializerOptions;
     }
 
@@ -67,7 +71,7 @@ public class ServiceController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         request.Instruction = $"Current UTC Time: {DateTime.UtcNow}\n" + request.Instruction;
-        //request.Tools = _agent.Tools.Keys;
+        request.Tools = _tools.Select(t => new ToolItem { Name = t.UniqueName });
 
         try
         {
@@ -75,11 +79,10 @@ public class ServiceController : ControllerBase
             Response.Headers.CacheControl = "no-cache";
             Response.ContentType = "text/event-stream; charset=utf-8";
 
-            // TODO 추가
-            //await foreach (var result in _agent.GenerateStreamingMessageAsync(request, cancellationToken))
-            //{
-            //    await WriteEventAsync(result, "delta");
-            //}
+            await foreach (var result in _message.GenerateStreamingMessageAsync(request, cancellationToken))
+            {
+                await WriteEventAsync(result, "delta");
+            }
         }
         catch(OperationCanceledException ex)
         {

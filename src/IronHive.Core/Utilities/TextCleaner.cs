@@ -3,7 +3,7 @@
 namespace IronHive.Core.Utilities;
 
 /// <summary>
-/// 텍스트 정리 유틸리티 클래스입니다.
+/// 일반 텍스트를 정리하는 유틸리티.
 /// </summary>
 public static partial class TextCleaner
 {
@@ -22,15 +22,15 @@ public static partial class TextCleaner
     /// <summary>
     /// 입력된 텍스트를 정리하여 불필요한 공백과 과도한 줄 바꿈을 제거합니다.
     /// </summary>
-    /// <param name="input">정리할 원본 텍스트</param>
+    /// <param name="text">정리할 원본 텍스트</param>
     /// <returns>정리된 텍스트</returns>
-    public static string Clean(string input)
+    public static string Clean(string text)
     {
-        if (string.IsNullOrWhiteSpace(input))
+        if (string.IsNullOrWhiteSpace(text))
             return string.Empty;
 
         // 1. 줄바꿈 정규화: CRLF 또는 CR을 LF로 변환
-        string cleanedText = LineBreaksRegex().Replace(input, "\n");
+        string cleanedText = LineBreaksRegex().Replace(text, "\n");
 
         // 2. 줄바꿈 정리: 3개 이상의 줄바꿈을 2개로 줄임
         cleanedText = MultipleLineBreaksRegex().Replace(cleanedText, "\n\n");

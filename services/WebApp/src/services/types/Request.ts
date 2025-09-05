@@ -41,22 +41,14 @@ export interface ThinkingMessageContent {
   value?: string;
 }
 
-export type ToolContentStauts = (
-  "waiting" | 
-  "paused" | 
-  "approved" |
-  "rejected" |
-  "inProgress" |
-  "success" | 
-  "failure");
-
 export interface ToolMessageContent {
   type: "tool";
-  status: ToolContentStauts;
+  isCompleted?: boolean;
+  isApproved?: boolean;
   id?: string;
   name?: string;
   input?: string;
-  output?: string;
+  output?: { isSuccess: boolean; result: string };
 }
 
 export type MessageContent = (

@@ -77,6 +77,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
             {
                 content.Add(new ToolMessageContent
                 {
+                    IsApproved = !request.Tools!.TryGet(tool.Name!, out var t) || !t.RequiresApproval,
                     Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
                     Name = tool.Name ?? string.Empty,
                     Input = JsonSerializer.Serialize(tool.Input)
@@ -103,7 +104,6 @@ public class AnthropicMessageGenerator : IMessageGenerator
                 Id = res.Id,
                 Model = res.Model,
                 Content = content,
-                Timestamp = DateTime.UtcNow
             },
             TokenUsage = new MessageTokenUsage
             {
@@ -187,6 +187,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
                         Index = index,
                         Content = new ToolMessageContent
                         {
+                            IsApproved = !request.Tools!.TryGet(tool.Name!, out var t) || !t.RequiresApproval,
                             Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
                             Name = tool.Name ?? string.Empty,
                         }

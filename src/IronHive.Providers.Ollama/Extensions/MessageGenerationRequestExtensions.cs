@@ -81,7 +81,7 @@ internal static class MessageGenerationRequestExtensions
                             }
                         });
                         tm.Content ??= string.Empty;
-                        tm.Content += JsonSerializer.Serialize(tool.Output);
+                        tm.Content += JsonSerializer.Serialize(tool.Output?.Result);
                     }
 
                     _messages.Add(am);

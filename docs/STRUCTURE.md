@@ -2,23 +2,33 @@
 
 ## Service Classification
 
+### Services Container
+- IProviderRegistry         => Singleton                                      => Required
+  - IProvider[]
+- IStorageRegistry          => Singleton                                      => Required
+  - IStorage[]
+- IToolCollection           => Singleton                                      => Required
+  - ITool[]
+
 ### AI Services
+- IModelCatalogService      => Singleton                                      => Required
+  - IProviderRegistry
 - IMessageService             => Singleton                                      => Required
-  - IMessageGenerator[]
-  - IToolPlugin[]
+  - IProviderRegistry
+  - IToolCollection
 - IEmbeddingService           => Singleton                                      => Required
-  - IEmbeddingGenerator[]
+  - IProviderRegistry
 
 ### File Services
-- IFileStorageManger               => Singleton                                      => Required
-  - IFileStorage[]
-- IFileDecoderManager              => Singleton                                      => Required
+- IFileStorageService               => Singleton                                      => Required
+  - IStorageRegistry
+- IFileExtractionService              => Singleton                                      => Required
+  - IFileMediaTypeDetector
   - IFileDecoder[]
   
 ### Memory Services
 - IMemoryService              => Singleton                          => Required
-  - IQueueStorage
-  - IVectorStorage
-  - IPipelineHandler[]        => Singleton | Scoped | Transient     => Optional
-  - IMemoryWorkerManager
-    - IMemoryWorker
+  - IStorageRegistry
+  - IEmbeddingService
+- IMemoryWorkerService
+  - IStorageRegistry

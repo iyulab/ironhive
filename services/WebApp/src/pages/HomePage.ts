@@ -2,7 +2,7 @@ import { LitElement, PropertyValues, css, html, nothing } from "lit";
 import { customElement, query, queryAll, state } from "lit/decorators.js";
 import { repeat } from "lit/directives/repeat.js";
 
-import type { Alert, BlockItem, TextBlock, ToolBlockItem, Message as UcMessage } from "@iyulab/chat-components";
+import type { Alert, BlockItem, TextBlock, ToolBlockItem, ToolBlockStatus, Message as UcMessage } from "@iyulab/chat-components";
 import { CanceledError, CancelToken } from '@iyulab/http-client';
 
 import { Api, AssistantMessage, Message, MessageContent, MessageGenerationRequest, ToolMessageContent, type ModelSummary } from "../services";
@@ -183,7 +183,7 @@ export class HomePage extends LitElement {
     const last = this.messages.at(-1);
     const content = last?.content.at(index) as ToolMessageContent;
     if (!content) return;
-    content.status = isApproved ? 'approved' : 'rejected';
+    content.isApproved = isApproved;
     this.pausedCount --;
 
     if (this.pausedCount <= 0) {
@@ -241,17 +241,25 @@ export class HomePage extends LitElement {
       }
 
       if (content.type === 'tool') {
-        return { 
-          type: 'tool', 
-          status : content.status,
-          name: content.name, 
-          input: content.input, 
-          output: content.output
+        return {
+          type: 'tool',
+          status: this.getToolStatus(content),
+          name: content.name,
+          input: content.input,
+          output: content.output?.result
         } as ToolBlockItem;
       }
 
       return { type: 'text', value: '' };
     });
+  }
+
+  private getToolStatus(content: ToolMessageContent) : ToolBlockStatus {
+    if (content.output) {
+      return content.output.isSuccess ? 'success' : 'failure';
+    } else {
+      return content.isApproved ? 'pending' : 'paused';
+    }
   }
 
   private generate = async () => {
@@ -305,14 +313,18 @@ export class HomePage extends LitElement {
           if (content?.type === 'thinking' && res.updated.type === 'thinking') {
             content.id = res.updated.id;
           } else if (content?.type === 'tool' && res.updated.type === 'tool') {
-            content.status = res.updated.status;
             content.output = res.updated.output;
-            if (content.status === 'paused') {
+            if (content.isApproved === false) {
               this.pausedCount++;
             }
           }
         } else if (res.type === 'message.content.in_progress') {
-          continue;
+          const msgEl = this.messageEls[this.messageEls.length - 1];
+          const content = msgEl?.items?.at(res.index);
+          if (content?.type === 'tool') {
+            content.status = 'inProgress';
+            msgEl.requestUpdate();
+          }
         } else if (res.type === 'message.content.completed') {
           continue;
         } else if (res.type === 'message.done') {

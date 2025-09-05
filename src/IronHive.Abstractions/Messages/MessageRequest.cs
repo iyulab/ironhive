@@ -29,14 +29,9 @@ public class MessageRequest : MessageGenerationParameters
     public ICollection<Message> Messages { get; set; } = [];
 
     /// <summary>
-    /// 모델에서 사용 가능한 도구들의 이름 목록입니다.
+    /// 모델이 사용 가능한 도구들의 목록입니다.
     /// </summary>
-    public IEnumerable<string> Tools { get; set; } = [];
-
-    /// <summary>
-    /// 모델에서 사용 가능한 도구들의 옵션 목록입니다.
-    /// </summary>
-    public IDictionary<string, object?> ToolOptions { get; set; } = new Dictionary<string, object?>();
+    public IEnumerable<ToolItem> Tools { get; set; } = [];
 
     /// <summary>
     /// 모델의 사고 노력 수준을 정의합니다.

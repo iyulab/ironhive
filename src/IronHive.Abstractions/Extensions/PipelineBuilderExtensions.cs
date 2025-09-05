@@ -1,6 +1,7 @@
-﻿using System.Reflection;
+﻿using IronHive.Abstractions.Pipelines;
+using System.Reflection;
 
-namespace IronHive.Abstractions.Pipelines;
+namespace IronHive.Abstractions.Extensions;
 
 public static class PipelineBuilderExtensions
 {
@@ -63,7 +64,7 @@ public static class PipelineBuilderExtensions
             ?? type.FullName
             ?? throw new InvalidOperationException("Pipeline must have a name");
 
-        return builder.Add<TImplementation>(name, factory);
+        return builder.Add(name, factory);
     }
 
     /// <summary>

@@ -5,40 +5,38 @@ namespace IronHive.Core.Tools;
 /// <inheritdoc />
 public class ToolCollection : KeyedCollection<string, ITool>, IToolCollection
 {
-    public ToolCollection() : this(Enumerable.Empty<ITool>())
+    private readonly IServiceProvider? _services;
+
+    /// <summary>
+    /// 기본 툴 컬렉션을 초기화합니다.
+    /// </summary>
+    public ToolCollection(IServiceProvider? services = null) 
+        : this(Enumerable.Empty<ITool>(), StringComparer.Ordinal, services)
     { }
 
-    public ToolCollection(IEnumerable<ITool> tools, IEqualityComparer<string>? comparer = null)
+    /// <summary>
+    /// 툴 배열을 받아 초기화합니다.
+    /// </summary>
+    public ToolCollection(IEnumerable<ITool> tools, StringComparer? comparer = null, IServiceProvider? services = null)
         : base(t => t.UniqueName, tools, comparer)
     {
+        _services = services;
+
         foreach (var tool in tools)
-        {
             Add(tool);
-        }
     }
 
     /// <inheritdoc />
-    public bool RequiresApproval(string key)
+    public IToolCollection FilterBy(IEnumerable<string> names)
     {
-        ArgumentNullException.ThrowIfNull(key);
-        return TryGet(key, out var tool) && tool.RequiresApproval;
-    }
-
-    /// <inheritdoc />
-    public IToolCollection WhereBy(IEnumerable<string> keys)
-    {
-        ArgumentNullException.ThrowIfNull(keys);
-
-        var result = new ToolCollection();
+        ArgumentNullException.ThrowIfNull(names);
 
         // 중복 키를 제거하고, 존재하는 항목만 안전하게 복사
-        foreach (var key in new HashSet<string>(keys, StringComparer.OrdinalIgnoreCase))
+        var result = new ToolCollection();
+        foreach (var name in new HashSet<string>(names, StringComparer.OrdinalIgnoreCase))
         {
-            if (TryGet(key, out var tool))
-            {
-                // Set: 중복 키 대비 안전
+            if (TryGet(name, out var tool))
                 result.Set(tool);
-            }
         }
         return result;
     }

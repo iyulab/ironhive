@@ -206,6 +206,7 @@ public class McpSession : IAsyncDisposable
             return new McpTool(t)
             {
                 ServerName = ServerName,
+                RequiresApproval = true,
             };
         });
     }

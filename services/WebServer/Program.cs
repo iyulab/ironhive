@@ -8,6 +8,7 @@ using dotenv.net;
 using WebServer.Controllers;
 using IronHive.Core.Files.Decoders;
 using IronHive.Abstractions.Files;
+using Microsoft.Data.Sqlite;
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {

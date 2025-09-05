@@ -59,16 +59,19 @@ public class OpenAIMessageGenerator : IMessageGenerator
             {
                 var tc = new ToolMessageContent
                 { 
+                    IsApproved = true,
                     Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
                     Name = string.Empty,
                 };
                 if (tool is OpenAIFunctionToolCall func)
                 {
+                    tc.IsApproved = !request.Tools!.TryGet(func.Function?.Name!, out var t) || !t.RequiresApproval;
                     tc.Name = func.Function?.Name ?? string.Empty;
                     tc.Input = func.Function?.Arguments ?? string.Empty;
                 }
                 else if (tool is OpenAICustomToolCall custom)
                 {
+                    tc.IsApproved = !request.Tools!.TryGet(custom.Custom?.Name!, out var t) || !t.RequiresApproval;
                     tc.Name = custom.Custom?.Name ?? string.Empty;
                     tc.Input = custom.Custom?.Input ?? string.Empty;
                 }
@@ -96,7 +99,6 @@ public class OpenAIMessageGenerator : IMessageGenerator
                 Name = null,
                 Model = res.Model,
                 Content = content,
-                Timestamp = DateTime.UtcNow,
             },
             TokenUsage = new MessageTokenUsage
             {
@@ -204,6 +206,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
                                 };
                                 current = (index + 1, new ToolMessageContent
                                 {
+                                    IsApproved = !request.Tools!.TryGet(func.Function?.Name!, out var t) || !t.RequiresApproval,
                                     Id = func.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
                                     Name = func.Function?.Name ?? string.Empty,
                                     Input = func.Function?.Arguments,
@@ -226,6 +229,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
                             };
                             current = (index + 1, new ToolMessageContent
                             {
+                                IsApproved = !request.Tools!.TryGet(func.Function?.Name!, out var t) || !t.RequiresApproval,
                                 Id = func.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
                                 Name = func.Function?.Name ?? string.Empty,
                                 Input = func.Function?.Arguments,
@@ -243,6 +247,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
                     {
                         current = (0, new ToolMessageContent
                         {
+                            IsApproved = !request.Tools!.TryGet(func.Function?.Name!, out var t) || !t.RequiresApproval,
                             Id = func.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
                             Name = func.Function?.Name ?? string.Empty,
                             Input = func.Function?.Arguments,

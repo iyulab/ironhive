@@ -5,6 +5,7 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "00. docs", "00. docs", "{C5D07BAA-9B0C-4DBD-A39A-6043C34F1443}"
 	ProjectSection(SolutionItems) = preProject
+		docs\AGENT.md = docs\AGENT.md
 		docs\DESIGN.md = docs\DESIGN.md
 		docs\ENDREASON.md = docs\ENDREASON.md
 		docs\STRUCTURE.md = docs\STRUCTURE.md
