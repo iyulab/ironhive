@@ -9,7 +9,7 @@ public class PipelineBuilder<TInput, TOutput> : IPipelineBuilder<TInput, TOutput
     private readonly IPipelineHook? _hook;
     private readonly IServiceProvider? _services;
 
-    public PipelineBuilder(IReadOnlyList<PipelineStep> steps, IPipelineHook? hook, IServiceProvider? services)
+    private PipelineBuilder(IReadOnlyList<PipelineStep> steps, IPipelineHook? hook, IServiceProvider? services)
     {
         _steps = steps;
         _hook = hook;

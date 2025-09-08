@@ -3,7 +3,7 @@
 namespace IronHive.Abstractions.Memory;
 
 /// <summary>
-/// "text", "file", "web" 중 하나의 소스를 나타내는 인터페이스입니다.
+/// "text", "file", "web" 중 하나의 소스를 나타내는 객체입니다.
 /// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(TextMemorySource), "text")]
@@ -17,9 +17,7 @@ public interface IMemorySource
     string Id { get; set; }
 }
 
-/// <summary>
-/// 메모리 소스의 기본 클래스입니다.
-/// </summary>
+/// <inheritdoc />
 public abstract class MemorySourceBase : IMemorySource
 {
     /// <inheritdoc />

@@ -17,14 +17,19 @@ public interface IMemoryWorkerService : IDisposable
     int Count { get; }
 
     /// <summary>
-    /// 현재 서비스의 설정값을 가져옵니다.
+    /// 최소 실행 가능한 워커의 수를 반환합니다.
     /// </summary>
-    MemoryWorkerConfig Config { get; }
+    int MinCount { get; }
+
+    /// <summary>
+    /// 최대 실행 가능한 워커의 수를 반환합니다.
+    /// </summary>
+    int MaxCount { get; }
 
     /// <summary>
     /// 설정에 따라 서비스를 시작하고, 초기 워커들을 생성하여 실행합니다.
     /// </summary>
-    Task StartAsync(MemoryWorkerConfig? config = null);
+    Task StartAsync();
 
     /// <summary>
     /// 모든 워커를 중지시키고 대기합니다.

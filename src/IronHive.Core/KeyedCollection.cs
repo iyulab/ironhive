@@ -1,4 +1,5 @@
 ﻿using IronHive.Abstractions;
+using IronHive.Core.Utilities;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
@@ -70,6 +71,14 @@ public class KeyedCollection<TKey, TItem> : IKeyedCollection<TKey, TItem>
     }
 
     /// <inheritdoc />
+    public void AddRange(IEnumerable<TItem> items)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        foreach (var item in items)
+            Add(item);
+    }
+
+    /// <inheritdoc />
     public virtual void Set(TItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
@@ -78,10 +87,24 @@ public class KeyedCollection<TKey, TItem> : IKeyedCollection<TKey, TItem>
     }
 
     /// <inheritdoc />
+    public void SetRange(IEnumerable<TItem> items)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        foreach (var item in items)
+            Set(item);
+    }
+
+    /// <inheritdoc />
     public virtual bool Remove(TKey key)
     {
         ArgumentNullException.ThrowIfNull(key);
-        return _items.TryRemove(key, out _);
+
+        if (_items.TryRemove(key, out var item))
+        {
+            DisposalHelper.DisposeSafely(item);
+            return true;
+        }
+        return false;
     }
 
     /// <inheritdoc />
@@ -91,8 +114,13 @@ public class KeyedCollection<TKey, TItem> : IKeyedCollection<TKey, TItem>
         var key = _keySelector(item);
 
         // 정확한 (key, value) 쌍 제거 시도
-        return ((ICollection<KeyValuePair<TKey, TItem>>)_items)
-            .Remove(new KeyValuePair<TKey, TItem>(key, item));
+        if (((ICollection<KeyValuePair<TKey, TItem>>)_items)
+            .Remove(new KeyValuePair<TKey, TItem>(key, item)))
+        {
+            DisposalHelper.DisposeSafely(item);
+            return true;
+        }
+        return false;
     }
 
     /// <inheritdoc />
@@ -104,7 +132,10 @@ public class KeyedCollection<TKey, TItem> : IKeyedCollection<TKey, TItem>
         foreach (var kvp in _items.ToArray()) // 스냅샷 후 안전 순회
         {
             if (match(kvp.Value) && ((ICollection<KeyValuePair<TKey, TItem>>)_items).Remove(kvp))
+            {
+                DisposalHelper.DisposeSafely(kvp.Value);
                 removed++;
+            }
         }
         return removed;
     }

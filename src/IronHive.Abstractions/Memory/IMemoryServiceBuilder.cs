@@ -16,6 +16,16 @@ public delegate IPipelineRunner<PipelineContext> PipelineBuildDelegate(
 public interface IMemoryServiceBuilder
 {
     /// <summary>
+    /// 메모리 저장소로 사용할 대상을 설정합니다.
+    /// </summary>
+    IMemoryServiceBuilder Use(IMemoryTarget target);
+
+    /// <summary>
+    /// 메모리 파이프라인에서 사용할 큐 스토리지를 설정합니다.
+    /// </summary>
+    IMemoryServiceBuilder SetWorker(MemoryWorkerConfig config);
+
+    /// <summary>
     /// 메모리 파이프라인을 설정합니다.
     /// </summary>
     IMemoryServiceBuilder SetPipeline(PipelineBuildDelegate configure);

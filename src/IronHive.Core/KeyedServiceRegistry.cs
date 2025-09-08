@@ -1,4 +1,5 @@
 ﻿using IronHive.Abstractions;
+using IronHive.Core.Utilities;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 
@@ -103,7 +104,7 @@ public class KeyedServiceRegistry<TKey, TBase> : IKeyedServiceRegistry<TKey, TBa
         if (!bucket.TryRemove(key, out var item))
             return false;
 
-        DisposeSafely(item);
+        DisposalHelper.DisposeSafely(item);
         return true;
     }
 
@@ -115,7 +116,7 @@ public class KeyedServiceRegistry<TKey, TBase> : IKeyedServiceRegistry<TKey, TBa
         {
             if (bucket.TryRemove(key, out var item))
             {
-                DisposeSafely(item);
+                DisposalHelper.DisposeSafely(item);
                 removed++;
             }
         }
@@ -136,31 +137,4 @@ public class KeyedServiceRegistry<TKey, TBase> : IKeyedServiceRegistry<TKey, TBa
     private ConcurrentDictionary<TKey, TBase> GetOrCreateBucket<TDerived>()
         where TDerived : class, TBase
         => _buckets.GetOrAdd(typeof(TDerived), _ => new ConcurrentDictionary<TKey, TBase>(_comparer));
-
-    /// <summary>
-    /// 아이템이 IDisposable 또는 IAsyncDisposable을 구현하는 경우 Dispose를 호출합니다.
-    /// - IAsyncDisposable이 있으면 우선적으로 DisposeAsync 호출
-    /// - 예외는 모두 무시 (silently)
-    /// </summary>
-    private static void DisposeSafely(TBase item)
-    {
-        try
-        {
-            if (item is IAsyncDisposable ad)
-            {
-                // 비차단: 흘려보내되, 예외는 내부에서 처리
-                _ = ad.DisposeAsync().AsTask().ContinueWith(_ => { /* swallow */ });
-                return;
-            }
-
-            if (item is IDisposable d)
-            {
-                d.Dispose();
-            }
-        }
-        catch
-        {
-            // Silently
-        }
-    }
 }

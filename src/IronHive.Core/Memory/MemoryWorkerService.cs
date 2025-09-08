@@ -1,21 +1,24 @@
-﻿using System.Collections.Concurrent;
-using IronHive.Abstractions.Memory;
+﻿using IronHive.Abstractions.Memory;
+using IronHive.Abstractions.Pipelines;
+using IronHive.Abstractions.Queue;
+using System.Collections.Concurrent;
 
 namespace IronHive.Core.Memory;
 
 /// <inheritdoc />
 public class MemoryWorkerService : IMemoryWorkerService
 {
-    private readonly IMemoryService _memory;
+    private readonly IQueueStorage _queue;
+    private readonly IPipelineRunner<PipelineContext> _pipeline;
     private readonly ConcurrentBag<IMemoryWorker> _workers = new();
     private readonly object _lock = new();
 
     private int _state = 0; // 0: 정지됨, 1: 실행 중
 
-    public MemoryWorkerService(IMemoryService memory, MemoryWorkerConfig config)
+    public MemoryWorkerService(IQueueStorage queue, IPipelineRunner<PipelineContext> pipeline)
     {
-        _memory = memory;
-        Config = config;
+        _queue = queue;
+        _pipeline = pipeline;
     }
 
     /// <inheritdoc />
@@ -25,7 +28,13 @@ public class MemoryWorkerService : IMemoryWorkerService
     public int Count => _workers.Count;
 
     /// <inheritdoc />
-    public MemoryWorkerConfig Config { get; private set; }
+    public required int MinCount { get; init; }
+
+    /// <inheritdoc />
+    public required int MaxCount { get; init; }
+
+    /// <inheritdoc />
+    public required TimeSpan DequeueInterval { get; init; }
 
     /// <inheritdoc />
     public void Dispose()
@@ -35,16 +44,13 @@ public class MemoryWorkerService : IMemoryWorkerService
     }
 
     /// <inheritdoc />
-    public Task StartAsync(MemoryWorkerConfig? config = null)
+    public Task StartAsync()
     {
         if (Interlocked.CompareExchange(ref _state, 1, 0) != 0)
             return Task.CompletedTask;
 
-        if (config is not null)
-            Config = config;
-
         // 초기(최소) 워커 생성 및 시작
-        for (int i = 0; i < Config.MinCount; i++)
+        for (int i = 0; i < MinCount; i++)
         {
             ScaleUp();
         }
@@ -80,10 +86,9 @@ public class MemoryWorkerService : IMemoryWorkerService
     private void ScaleUp()
     {
         // 새로운 워커 인스턴스 생성
-        var worker = new MemoryWorker(_memory)
+        var worker = new MemoryWorker(_queue, _pipeline)
         {
-            QueueName = Config.QueueName,
-            DequeueInterval = TimeSpan.FromMilliseconds(Config.QueueInterval)
+            DequeueInterval = DequeueInterval
         };
         worker.StateChanged += OnWorkerStateChanged;
 
@@ -123,7 +128,7 @@ public class MemoryWorkerService : IMemoryWorkerService
             case MemoryWorkerState.Processing:
                 lock (_lock)
                 {
-                    if (_workers.Count < Config.MaxCount)
+                    if (_workers.Count < MaxCount)
                     {
                         ScaleUp();
                     }
@@ -134,7 +139,7 @@ public class MemoryWorkerService : IMemoryWorkerService
             case MemoryWorkerState.Idle:
                 lock (_lock)
                 {
-                    if (_workers.Count > Config.MinCount)
+                    if (_workers.Count > MinCount)
                     {
                         ScaleDown();
                     }

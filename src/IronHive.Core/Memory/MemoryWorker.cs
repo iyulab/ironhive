@@ -1,23 +1,24 @@
 ﻿using IronHive.Abstractions.Memory;
+using IronHive.Abstractions.Pipelines;
+using IronHive.Abstractions.Queue;
 
 namespace IronHive.Core.Memory;
 
 /// <inheritdoc />
 public class MemoryWorker : IMemoryWorker
 {
-    private readonly IMemoryService _memory;
+    private readonly IQueueStorage _queue;
+    private readonly IPipelineRunner<PipelineContext> _pipeline;
 
     private int _state = (int)MemoryWorkerState.Stopped;
     private TaskCompletionSource<bool>? _tcs = null;
     private CancellationTokenSource? _cts = null;
 
-    public MemoryWorker(IMemoryService memory)
+    public MemoryWorker(IQueueStorage queue, IPipelineRunner<PipelineContext> pipeline)
     {
-        _memory = memory;
+        _queue = queue;
+        _pipeline = pipeline;
     }
-
-    /// <inheritdoc />
-    public required string QueueName { get; init; }
 
     /// <inheritdoc />
     public required TimeSpan DequeueInterval { get; init; }
@@ -80,25 +81,20 @@ public class MemoryWorker : IMemoryWorker
                 if (State == MemoryWorkerState.StopRequested)
                     break;
 
-                // TODO: 큐 스토리지 가져올 방법 강구
-                throw new Exception();
-                //if (!_memory.Queues.TryGet(QueueName, out var queue))
-                //    throw new InvalidOperationException($"Queue storage key '{QueueName}' not found.");
+                var msg = await _queue.DequeueAsync<PipelineContext>(_cts.Token);
+                if (msg != null)
+                {
+                    State = MemoryWorkerState.Processing;
+                    await _pipeline.InvokeAsync(msg.Payload, _cts.Token);
 
-                //var msg = await queue.DequeueAsync<PipelineContext>(_cts.Token);
-                //if (msg != null)
-                //{
-                //    State = MemoryWorkerState.Processing;
-                //    await _memory.IndexSourceAsync(msg.Payload.Source, msg.Payload.Target, _cts.Token);
-
-                //    if (msg.Tag != null)
-                //        await queue.AckAsync(msg.Tag, _cts.Token);
-                //}
-                //else
-                //{
-                //    State = MemoryWorkerState.Idle;
-                //    await Task.Delay(DequeueInterval, _cts.Token);
-                //}
+                    if (msg.Tag != null)
+                        await _queue.AckAsync(msg.Tag, _cts.Token);
+                }
+                else
+                {
+                    State = MemoryWorkerState.Idle;
+                    await Task.Delay(DequeueInterval, _cts.Token);
+                }
             }
         }
         catch (Exception ex)

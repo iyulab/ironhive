@@ -1,8 +1,6 @@
-﻿using IronHive.Abstractions.Agent;
-using IronHive.Abstractions.Catalog;
+﻿using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Files;
-using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Queue;
 using IronHive.Abstractions.Tools;
@@ -20,11 +18,6 @@ public interface IHiveServiceBuilder
     /// Hive 서비스 등록에 사용되는 서비스 컬렉션을 가져옵니다.
     /// </summary>
     IServiceCollection Services { get; }
-
-    /// <summary>
-    /// Hive 서비스의 메모리를 구성하기 위한 빌더를 가져옵니다.
-    /// </summary>
-    IMemoryServiceBuilder Memory { get; }
 
 
     /// <summary>

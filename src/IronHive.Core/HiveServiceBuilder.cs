@@ -1,12 +1,10 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using IronHive.Abstractions.Embedding;
-using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Tools;
 using IronHive.Abstractions;
 using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Catalog;
-using IronHive.Core.Memory;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Queue;
 using IronHive.Abstractions.Vector;
@@ -15,8 +13,6 @@ using IronHive.Core.Files;
 using IronHive.Core.Tools;
 using IronHive.Core.Registries;
 using IronHive.Abstractions.Registries;
-using IronHive.Abstractions.Agent;
-using IronHive.Core.Agent;
 
 namespace IronHive.Core;
 
@@ -31,11 +27,10 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     {
         Services = services ?? new ServiceCollection();
 
-        // 레지스트리 한번만 등록하도록 방지
-        ThrowIfServiceExists<IProviderRegistry>();
-        ThrowIfServiceExists<IStorageRegistry>();
-        ThrowIfServiceExists<IToolCollection>();
-        // 레지스트리 등록
+        // 레지스트리 등록 확인 및 등록
+        ThrowIfExists<IProviderRegistry>();
+        ThrowIfExists<IStorageRegistry>();
+        ThrowIfExists<IToolCollection>();
         Services.AddSingleton<IProviderRegistry>(_providers);
         Services.AddSingleton<IStorageRegistry>(_storages);
         Services.AddSingleton<IToolCollection>(_tools);
@@ -45,18 +40,10 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         Services.TryAddSingleton<IMessageService, MessageService>();
         Services.TryAddSingleton<IEmbeddingService, EmbeddingService>();
         Services.TryAddSingleton<IFileStorageService, FileStorageService>();
-
-        Services.TryAddSingleton<IAgentService, AgentService>();
-
-        // 서비스 빌더
-        Memory = new MemoryServiceBuilder(Services);
     }
 
     /// <inheritdoc />
     public IServiceCollection Services { get; }
-
-    /// <inheritdoc />
-    public IMemoryServiceBuilder Memory { get; }
 
     /// <inheritdoc />
     public IHiveServiceBuilder AddModelCatalog(string providerName, IModelCatalog provider)
@@ -117,7 +104,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     /// <summary>
     /// 지정타입의 서비스가 하나라도 존재하는지 확인하고, 존재하면 예외를 발생시킵니다.
     /// </summary>
-    private void ThrowIfServiceExists<T>()
+    private void ThrowIfExists<T>()
         where T : class
     {
         if (Services.Any(d => d.ServiceType == typeof(T)))

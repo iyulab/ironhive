@@ -42,16 +42,17 @@ public interface IHiveService
     #region 핵심 서비스 영역
 
     /// <summary>
-    /// 에이전트 서비스  
-    /// 에이전트의 생성, 실행, 관리 등의 기능을 담당합니다.
+    /// 에이전트 서비스를 Yaml 문자열로부터 생성합니다.
     /// </summary>
-    IAgentService Agent { get; }
+    IAgent CreateAgentFromYaml(string yaml);
+
+    //IAgent CreateAgentFromToml(string toml);
+    //IAgent CreateAgentFromJson(string json);
 
     /// <summary>
-    /// 메모리 서비스  
-    /// 애플리케이션의 단기/장기 메모리를 관리하고 조회할 수 있는 기능을 제공합니다.
+    /// 벡터 메모리 서비스를 빌더 함수를 통해 생성합니다.
     /// </summary>
-    IMemoryService Memory { get; }
+    IMemoryService CreateVectorMemory(Func<IMemoryServiceBuilder, IMemoryServiceBuilder> configure);
 
     #endregion
 }

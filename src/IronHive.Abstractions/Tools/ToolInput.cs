@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Text.Json;
 
 namespace IronHive.Abstractions.Tools;
 
@@ -25,37 +26,42 @@ public class ToolInput : IReadOnlyDictionary<string, object?>
     }
 
     /// <summary>
-    /// 툴에 전달할 옵션을 설정합니다.
+    /// 툴에 전달되는 추가 옵션입니다.
     /// </summary>
     public object? Options { get; set; }
 
     /// <summary>
-    /// 서비스 프로바이더를 설정합니다.
+    /// 툴 실행에 필요한 서비스 제공자입니다.
     /// </summary>
     public IServiceProvider? Services { get; set; }
 
-    /// <summary>
-    /// 키에 해당하는 값을 가져옵니다. 존재하지 않으면 null 반환.
-    /// </summary>
+    /// <inheritdoc />
     public object? this[string key]
     {
         get => _items.TryGetValue(key, out var value) ? value : null;
     }
 
+    /// <inheritdoc />
     public IEnumerable<string> Keys => _items.Keys;
 
+    /// <inheritdoc />
     public IEnumerable<object?> Values => _items.Values;
 
+    /// <inheritdoc />
     public int Count => _items.Count;
 
+    /// <inheritdoc />
     public bool ContainsKey(string key) => _items.ContainsKey(key);
 
-    public bool TryGetValue(string key, out object? value)
-        => _items.TryGetValue(key, out value);
+    /// <inheritdoc />
+    public bool TryGetValue(string key, out object? value) => _items.TryGetValue(key, out value);
+    
+    /// <inheritdoc />
+    public IEnumerator<KeyValuePair<string, object?>> GetEnumerator() => _items.GetEnumerator();
 
-    public IEnumerator<KeyValuePair<string, object?>> GetEnumerator()
-        => _items.GetEnumerator();
+    /// <inheritdoc />
+    IEnumerator IEnumerable.GetEnumerator() => _items.GetEnumerator();
 
-    IEnumerator IEnumerable.GetEnumerator()
-        => _items.GetEnumerator();
+    /// <inheritdoc />
+    public override string? ToString() => JsonSerializer.Serialize(_items);
 }

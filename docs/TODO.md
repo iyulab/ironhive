@@ -9,6 +9,10 @@
 - GoogleAI 확장 추가
 - XAI 확장추가
 
+- ImageGenerator 기능 추가
+- VideoGenerator 기능 추가
+- AudioGenerator 기능 추가(TTS, STT?, Music))
+
 ## Plugins
 - OpenAPI 확장 추가
 

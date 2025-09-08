@@ -34,11 +34,23 @@ public interface IKeyedCollection<TKey, TItem> : ICollection<TItem>
     bool ContainsKey(TKey key);
 
     /// <summary>
+    /// 여러 항목을 컬렉션에 추가합니다. (키 중복 시 추가하지 않음)
+    /// </summary>
+    /// <param name="items">추가할 항목들</param>
+    void AddRange(IEnumerable<TItem> items);
+
+    /// <summary>
     /// 항목을 컬렉션에 추가하거나, 동일 키가 이미 존재하면 해당 항목을 교체합니다.  
     /// 데이터의 최신 상태를 보장할 때 유용합니다.
     /// </summary>
     /// <param name="item">추가하거나 교체할 항목</param>
     void Set(TItem item);
+
+    /// <summary>
+    /// 여러 항목을 컬렉션에 추가하거나 교체합니다. (키 중복 시 교체)
+    /// </summary>
+    /// <param name="items">추가/교체할 항목들</param>
+    void SetRange(IEnumerable<TItem> items);
 
     /// <summary>
     /// 지정한 키에 해당하는 항목을 제거합니다.  

@@ -1,9 +1,9 @@
 ﻿using IronHive.Abstractions;
 using IronHive.Abstractions.Agent;
-using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Registries;
 using IronHive.Abstractions.Tools;
+using IronHive.Core.Memory;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace IronHive.Core;
@@ -18,9 +18,6 @@ public class HiveService : IHiveService
         Providers = services.GetRequiredService<IProviderRegistry>();
         Storages = services.GetRequiredService<IStorageRegistry>();
         Tools = services.GetRequiredService<IToolCollection>();
-
-        Agent = services.GetRequiredService<IAgentService>();
-        Memory = services.GetRequiredService<IMemoryService>();
     }
 
     /// <inheritdoc />
@@ -35,10 +32,16 @@ public class HiveService : IHiveService
     /// <inheritdoc />
     public IToolCollection Tools { get; }
 
+    /// <inheritdoc />
+    public IAgent CreateAgentFromYaml(string yaml)
+    {
+        throw new NotImplementedException();
+    }
 
     /// <inheritdoc />
-    public IAgentService Agent { get; }
-
-    /// <inheritdoc />
-    public IMemoryService Memory { get; }
+    public IMemoryService CreateVectorMemory(Func<IMemoryServiceBuilder, IMemoryServiceBuilder> configure)
+    {
+        var builder = configure(new MemoryServiceBuilder(Services));
+        return builder.Build();
+    }
 }

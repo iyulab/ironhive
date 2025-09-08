@@ -18,16 +18,6 @@ public enum MemoryWorkerState
 public interface IMemoryWorker : IDisposable
 {
     /// <summary>
-    /// 현재 작업자가 처리하는 큐의 이름을 나타냅니다.
-    /// </summary>
-    string QueueName { get; }
-
-    /// <summary>
-    /// 현재 작업자가 메시지를 큐에서 꺼내는 간격을 나타냅니다.
-    /// </summary>
-    TimeSpan DequeueInterval { get; }
-
-    /// <summary>
     /// 현재 작업자의 상태를 나타냅니다.
     /// </summary>
     MemoryWorkerState State { get; }
