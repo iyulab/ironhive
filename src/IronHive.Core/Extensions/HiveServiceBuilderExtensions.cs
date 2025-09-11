@@ -12,7 +12,7 @@ public static class HiveServiceBuilderExtensions
     /// <summary>
     /// 내장 함수 도구를 <typeparamref name="T"/> 타입에서 모두 찾아 등록합니다.
     /// </summary>
-    public static IHiveServiceBuilder AddFunctionToolsFrom<T>(this IHiveServiceBuilder builder) 
+    public static IHiveServiceBuilder AddFunctionTool<T>(this IHiveServiceBuilder builder) 
         where T : class
     {
         var tools = FunctionToolFactory.CreateFrom<T>();

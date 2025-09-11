@@ -1,4 +1,6 @@
-﻿using IronHive.Providers.Anthropic;
+﻿using IronHive.Abstractions.Catalog;
+using IronHive.Abstractions.Messages;
+using IronHive.Providers.Anthropic;
 
 namespace IronHive.Abstractions;
 
@@ -10,10 +12,15 @@ public static class HiveServiceExtensions
     public static IHiveService SetAnthropicProviders(
         this IHiveService service,
         string providerName,
-        AnthropicConfig config)
+        AnthropicConfig config,
+        AnthropicServiceType serviceType = AnthropicServiceType.All)
     {
-        service.Providers.SetModelCatalog(providerName, new AnthropicModelCatalog(config));
-        service.Providers.SetMessageGenerator(providerName, new AnthropicMessageGenerator(config));
+        if (serviceType.HasFlag(AnthropicServiceType.Messages))
+            service.Providers.SetMessageGenerator(providerName, new AnthropicMessageGenerator(config));
+
+        if (serviceType.HasFlag(AnthropicServiceType.Models))
+            service.Providers.SetModelCatalog(providerName, new AnthropicModelCatalog(config));
+
         return service;
     }
 
@@ -22,9 +29,15 @@ public static class HiveServiceExtensions
     /// </summary>
     public static IHiveService RemoveAnthropicProviders(
         this IHiveService service,
-        string providerName)
+        string providerName,
+        AnthropicServiceType serviceType = AnthropicServiceType.All)
     {
-        service.Providers.RemoveAll(providerName);
+        if (serviceType.HasFlag(AnthropicServiceType.Messages))
+            service.Providers.Remove<IMessageGenerator>(providerName);
+
+        if (serviceType.HasFlag(AnthropicServiceType.Models))
+            service.Providers.Remove<IModelCatalog>(providerName);
+
         return service;
     }
 }

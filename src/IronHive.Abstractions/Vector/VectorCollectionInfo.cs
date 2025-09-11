@@ -3,7 +3,7 @@
 /// <summary>
 /// 벡터 스토리지의 컬렉션을 나타내는 클래스입니다.
 /// </summary>
-public class VectorCollection
+public class VectorCollectionInfo
 {
     /// <summary>
     /// 벡터 컬렉션의 이름

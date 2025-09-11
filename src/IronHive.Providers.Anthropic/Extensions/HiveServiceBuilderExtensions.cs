@@ -10,10 +10,15 @@ public static class HiveServiceBuilderExtensions
     public static IHiveServiceBuilder AddAnthropicProviders(
         this IHiveServiceBuilder builder,
         string providerName, 
-        AnthropicConfig config)
+        AnthropicConfig config,
+        AnthropicServiceType serviceType = AnthropicServiceType.All)
     {
-        builder.AddModelCatalog(providerName, new AnthropicModelCatalog(config));
-        builder.AddMessageGenerator(providerName, new AnthropicMessageGenerator(config));
+        if (serviceType.HasFlag(AnthropicServiceType.Messages))
+            builder.AddMessageGenerator(providerName, new AnthropicMessageGenerator(config));
+
+        if (serviceType.HasFlag(AnthropicServiceType.Models))
+            builder.AddModelCatalog(providerName, new AnthropicModelCatalog(config));
+
         return builder;
     }
 }

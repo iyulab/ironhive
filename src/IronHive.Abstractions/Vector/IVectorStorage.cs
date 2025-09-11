@@ -12,7 +12,7 @@ public interface IVectorStorage : IStorageItem
     /// 모든 벡터 컬렉션들을 비동기적으로 반환합니다.
     /// </summary>
     /// <returns>컬렉션 정보의 나열</returns>
-    Task<IEnumerable<VectorCollection>> ListCollectionsAsync(
+    Task<IEnumerable<VectorCollectionInfo>> ListCollectionsAsync(
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -28,7 +28,7 @@ public interface IVectorStorage : IStorageItem
     /// </summary>
     /// <param name="collectionName">확인할 컬렉션의 이름</param>
     /// <returns>해당하는 컬렉션의 정보, 없다면 null</returns>
-    Task<VectorCollection?> GetCollectionInfoAsync(
+    Task<VectorCollectionInfo?> GetCollectionInfoAsync(
         string collectionName,
         CancellationToken cancellationToken = default);
 
@@ -37,7 +37,7 @@ public interface IVectorStorage : IStorageItem
     /// </summary>
     /// <param name="collection">새로 생성할 벡터 컬렉션의 정보</param>
     Task CreateCollectionAsync(
-        VectorCollection collection,
+        VectorCollectionInfo collection,
         CancellationToken cancellationToken = default);
 
     /// <summary>

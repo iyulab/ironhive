@@ -11,14 +11,14 @@ public class ToolCollection : KeyedCollection<string, ITool>, IToolCollection
     /// 기본 툴 컬렉션을 초기화합니다.
     /// </summary>
     public ToolCollection(IServiceProvider? services = null) 
-        : this(Enumerable.Empty<ITool>(), null, services)
+        : this([], null, services)
     { }
 
     /// <summary>
     /// 비교자와 서비스 공급자를 받아 초기화합니다.
     /// </summary>
     public ToolCollection(StringComparer comparer, IServiceProvider? services = null)
-        : this(Enumerable.Empty<ITool>(), comparer, services)
+        : this([], comparer, services)
     { }
 
     /// <summary>

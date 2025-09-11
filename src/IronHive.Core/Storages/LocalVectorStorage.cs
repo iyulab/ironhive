@@ -32,10 +32,10 @@ public partial class LocalVectorStorage : IVectorStorage
     }
 
     /// <inheritdoc />
-    public Task<IEnumerable<VectorCollection>> ListCollectionsAsync(
+    public Task<IEnumerable<VectorCollectionInfo>> ListCollectionsAsync(
         CancellationToken cancellationToken = default)
     {
-        var meta = _db.GetCollection<VectorCollection>(CollectionMetaTableName);
+        var meta = _db.GetCollection<VectorCollectionInfo>(CollectionMetaTableName);
         var result = meta.FindAll();
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -47,7 +47,7 @@ public partial class LocalVectorStorage : IVectorStorage
         string collectionName, 
         CancellationToken cancellationToken = default)
     {
-        var meta = _db.GetCollection<VectorCollection>(CollectionMetaTableName);
+        var meta = _db.GetCollection<VectorCollectionInfo>(CollectionMetaTableName);
         var exists = meta.Exists(x => x.Name == collectionName) && _db.CollectionExists(collectionName);
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -55,11 +55,11 @@ public partial class LocalVectorStorage : IVectorStorage
     }
 
     /// <inheritdoc />
-    public Task<VectorCollection?> GetCollectionInfoAsync(
+    public Task<VectorCollectionInfo?> GetCollectionInfoAsync(
         string collectionName,
         CancellationToken cancellationToken = default)
     {
-        var meta = _db.GetCollection<VectorCollection>(CollectionMetaTableName);
+        var meta = _db.GetCollection<VectorCollectionInfo>(CollectionMetaTableName);
         var coll = meta.FindOne(x => x.Name == collectionName);
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -68,7 +68,7 @@ public partial class LocalVectorStorage : IVectorStorage
 
     /// <inheritdoc />
     public async Task CreateCollectionAsync(
-        VectorCollection collection,
+        VectorCollectionInfo collection,
         CancellationToken cancellationToken = default)
     {
         collection.Name = EnsureCollectionName(collection.Name);
@@ -93,7 +93,7 @@ public partial class LocalVectorStorage : IVectorStorage
         coll.EnsureIndex(p => p.Source.Id);
 
         // 메타 테이블에 등록
-        var meta = _db.GetCollection<VectorCollection>(CollectionMetaTableName);
+        var meta = _db.GetCollection<VectorCollectionInfo>(CollectionMetaTableName);
         lock (_lock)
         {
             if (!meta.Exists(p => p.Name == collection.Name))
@@ -122,7 +122,7 @@ public partial class LocalVectorStorage : IVectorStorage
         _db.DropCollection(collectionName);
 
         // 메타 테이블에서 삭제
-        var meta = _db.GetCollection<VectorCollection>(CollectionMetaTableName);
+        var meta = _db.GetCollection<VectorCollectionInfo>(CollectionMetaTableName);
         meta.DeleteMany(p => p.Name == collectionName);
 
         cancellationToken.ThrowIfCancellationRequested();

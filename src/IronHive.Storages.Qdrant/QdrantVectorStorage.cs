@@ -16,10 +16,6 @@ public class QdrantVectorStorage : IVectorStorage
 {
     // Qdrant에서 사용할 기본 텍스트용 벡터의 이름입니다.
     private const string DefaultVectorsName = "text";
-    // 컬렉션 별칭의 접두사와 구분자를 정의합니다.
-    // Qdrant에서 컬렉션 별칭은 커스텀 메타데이터를 저장하는 데 사용됩니다.
-    private const string CollectionAliasPrefix = "vc_meta";
-    private const string CollectionAliasSeparator = "|";
 
     private readonly QdrantClient _client;
 
@@ -36,11 +32,11 @@ public class QdrantVectorStorage : IVectorStorage
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<VectorCollection>> ListCollectionsAsync(
+    public async Task<IEnumerable<VectorCollectionInfo>> ListCollectionsAsync(
         CancellationToken cancellationToken = default)
     {
         var aliases = await _client.ListAliasesAsync(cancellationToken);
-        var colls = aliases.Select(a => ParseCollectionAlias(a.AliasName))
+        var colls = aliases.Select(a => QdrantAliasHelper.Parse(a.AliasName))
             .DistinctBy(c => c.Name);
         return colls;
     }
@@ -54,20 +50,20 @@ public class QdrantVectorStorage : IVectorStorage
     }
 
     /// <inheritdoc />
-    public async Task<VectorCollection?> GetCollectionInfoAsync(
+    public async Task<VectorCollectionInfo?> GetCollectionInfoAsync(
         string collectionName,
         CancellationToken cancellationToken = default)
     {
         var aliases = await _client.ListCollectionAliasesAsync(collectionName, cancellationToken);
-        var alias = aliases.FirstOrDefault();
+        var alias = aliases.ElementAtOrDefault(0);
         if (alias == null) return null;
 
-        return ParseCollectionAlias(alias);
+        return QdrantAliasHelper.Parse(alias);
     }
 
     /// <inheritdoc />
     public async Task CreateCollectionAsync(
-        VectorCollection collection,
+        VectorCollectionInfo collection,
         CancellationToken cancellationToken = default)
     {
         collection.Name = EnsureCollectionName(collection.Name);
@@ -109,7 +105,7 @@ public class QdrantVectorStorage : IVectorStorage
             cancellationToken: cancellationToken);
 
         // Alias 생성
-        var collectionAlias = CreateCollectionAlias(collection);
+        var collectionAlias = QdrantAliasHelper.Create(collection);
         await _client.CreateAliasAsync(
             aliasName: collectionAlias,
             collectionName: collection.Name,
@@ -345,39 +341,6 @@ public class QdrantVectorStorage : IVectorStorage
     }
 
     /// <summary>
-    /// 컬렉션 별칭에서 컬렉션 정보를 추출하여 VectorCollection 객체로 반환합니다.
-    /// </summary>
-    private static VectorCollection ParseCollectionAlias(string collectionAlias)
-    {
-        var parts = collectionAlias.Split(CollectionAliasSeparator);
-        if (parts.Length != 5 || !long.TryParse(parts[4].Trim(), out var dimensions))
-            throw new ArgumentException("Invalid collection alias format", nameof(collectionAlias));
-
-        return new VectorCollection
-        {
-            Name = parts[1],
-            EmbeddingProvider = parts[2],
-            EmbeddingModel = parts[3],
-            Dimensions = dimensions
-        };
-    }
-
-    /// <summary>
-    /// 컬렉션 관련정보를 저장하기 위한 용도로 Qdrant의 컬렉션 별칭을 생성합니다.
-    /// </summary>
-    private static string CreateCollectionAlias(VectorCollection collection)
-    {
-        var collectionAlias = string.Join(CollectionAliasSeparator,
-            CollectionAliasPrefix,
-            collection.Name,
-            collection.EmbeddingProvider,
-            collection.EmbeddingModel,
-            collection.Dimensions);
-
-        return collectionAlias;
-    }
-
-    /// <summary>
     /// Qdrant 컬렉션 이름의 유효성을 검사하고, 반환합니다.
     /// </summary>
     public static string EnsureCollectionName(string collectionName)
@@ -393,8 +356,8 @@ public class QdrantVectorStorage : IVectorStorage
         if (collectionName.Length < 1 || collectionName.Length > 255)
             throw new ArgumentException("collection name is too long", nameof(collectionName));
 
-        if (collectionName.StartsWith(CollectionAliasPrefix, StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException($"collection name cannot start with '{CollectionAliasPrefix}'", nameof(collectionName));
+        if (collectionName.StartsWith(QdrantAliasHelper.Prefix, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException($"collection name cannot start with '{QdrantAliasHelper.Prefix}'", nameof(collectionName));
 
         return collectionName;
     }

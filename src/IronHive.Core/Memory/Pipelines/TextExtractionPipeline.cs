@@ -1,15 +1,14 @@
-﻿using DocumentFormat.OpenXml.InkML;
-using HtmlAgilityPack;
+﻿using HtmlAgilityPack;
 using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Memory;
-using IronHive.Abstractions.Pipelines;
+using IronHive.Abstractions.Workflow;
 
 namespace IronHive.Core.Memory.Pipelines;
 
 /// <summary>
 /// TextExtractionHandler는 주어진 메모리 소스에서 텍스트를 추출하는 메모리 파이프라인 핸들러입니다.
 /// </summary>
-public class TextExtractionPipeline : IPipeline<PipelineContext, PipelineContext<string>>
+public class TextExtractionPipeline : IMemoryPipeline
 {
     private readonly IFileStorageService _storages;
     private readonly IFileExtractionService<string> _extractor;
@@ -21,16 +20,16 @@ public class TextExtractionPipeline : IPipeline<PipelineContext, PipelineContext
     }
 
     /// <inheritdoc />
-    public async Task<PipelineContext<string>> InvokeAsync(
-        PipelineContext input, 
+    public async Task<TaskStepResult> ExecuteAsync(
+        MemoryContext context, 
         CancellationToken cancellationToken = default)
     {
         string text;
-        if (input.Source is TextMemorySource textSource)
+        if (context.Source is TextMemorySource textSource)
         {
             text = textSource.Value;
         }
-        else if (input.Source is FileMemorySource fileSource)
+        else if (context.Source is FileMemorySource fileSource)
         {
             using var stream = await _storages.ReadFileAsync(
                 storageName: fileSource.StorageName,
@@ -41,7 +40,7 @@ public class TextExtractionPipeline : IPipeline<PipelineContext, PipelineContext
                 data: stream,
                 cancellationToken: cancellationToken);
         }
-        else if (input.Source is WebMemorySource webSource)
+        else if (context.Source is WebMemorySource webSource)
         {
             using var client = new HttpClient();
             var html = await client.GetStringAsync(webSource.Url, cancellationToken);
@@ -52,14 +51,10 @@ public class TextExtractionPipeline : IPipeline<PipelineContext, PipelineContext
         }
         else
         {
-            throw new NotSupportedException($"Unsupported source type: {input.Source.GetType().Name}");
+            throw new NotSupportedException($"Unsupported source type: {context.Source.GetType().Name}");
         }
 
-        return new PipelineContext<string>
-        {
-            Source = input.Source,
-            Target = input.Target,
-            Payload = text
-        };
+        context.Payload = text;
+        return TaskStepResult.Success();
     }
 }

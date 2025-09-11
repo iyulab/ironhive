@@ -1,6 +1,6 @@
 ﻿using IronHive.Abstractions.Memory;
-using IronHive.Abstractions.Pipelines;
 using IronHive.Abstractions.Queue;
+using IronHive.Abstractions.Workflow;
 using System.Collections.Concurrent;
 
 namespace IronHive.Core.Memory;
@@ -9,13 +9,14 @@ namespace IronHive.Core.Memory;
 public class MemoryWorkerService : IMemoryWorkerService
 {
     private readonly IQueueStorage _queue;
-    private readonly IPipelineRunner<PipelineContext> _pipeline;
+    private readonly IWorkflow<MemoryContext> _pipeline;
+
     private readonly ConcurrentBag<IMemoryWorker> _workers = new();
     private readonly object _lock = new();
 
     private int _state = 0; // 0: 정지됨, 1: 실행 중
 
-    public MemoryWorkerService(IQueueStorage queue, IPipelineRunner<PipelineContext> pipeline)
+    public MemoryWorkerService(IQueueStorage queue, IWorkflow<MemoryContext> pipeline)
     {
         _queue = queue;
         _pipeline = pipeline;
@@ -28,13 +29,13 @@ public class MemoryWorkerService : IMemoryWorkerService
     public int Count => _workers.Count;
 
     /// <inheritdoc />
-    public required int MinCount { get; init; }
+    public int MinCount { get; set; } = 1;
 
     /// <inheritdoc />
-    public required int MaxCount { get; init; }
+    public int MaxCount { get; set; } = 10;
 
     /// <inheritdoc />
-    public required TimeSpan DequeueInterval { get; init; }
+    public TimeSpan DequeueInterval { get; private set; } = TimeSpan.FromSeconds(5);
 
     /// <inheritdoc />
     public void Dispose()
@@ -44,10 +45,13 @@ public class MemoryWorkerService : IMemoryWorkerService
     }
 
     /// <inheritdoc />
-    public Task StartAsync()
+    public Task StartAsync(TimeSpan? interval = null)
     {
         if (Interlocked.CompareExchange(ref _state, 1, 0) != 0)
             return Task.CompletedTask;
+
+        if (interval.HasValue)
+            DequeueInterval = interval.Value;
 
         // 초기(최소) 워커 생성 및 시작
         for (int i = 0; i < MinCount; i++)

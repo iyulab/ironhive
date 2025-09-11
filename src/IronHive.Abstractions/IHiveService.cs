@@ -2,6 +2,7 @@
 using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Registries;
 using IronHive.Abstractions.Tools;
+using IronHive.Abstractions.Workflow;
 
 namespace IronHive.Abstractions;
 
@@ -11,13 +12,13 @@ namespace IronHive.Abstractions;
 /// </summary>
 public interface IHiveService
 {
+    #region 관리 리소스 영역
+
     /// <summary>
     /// 서비스 공급자  
     /// 애플리케이션에서 필요한 서비스 인스턴스를 제공하는 DI(Dependency Injection) 컨테이너입니다.
     /// </summary>
     IServiceProvider Services { get; }
-
-    #region 관리 리소스 영역
 
     /// <summary>
     /// AI 서비스 공급자 레지스트리  
@@ -42,17 +43,24 @@ public interface IHiveService
     #region 핵심 서비스 영역
 
     /// <summary>
+    /// 메모리 서비스를 제공합니다.
+    /// </summary>
+    IMemoryService Memory { get; }
+
+    /// <summary>
+    /// 에이전트 서비스를 Yaml 문자열로부터 생성합니다.
+    /// </summary>
+    IAgent CreateAgentFrom(AgentCard card);
+
+    /// <summary>
     /// 에이전트 서비스를 Yaml 문자열로부터 생성합니다.
     /// </summary>
     IAgent CreateAgentFromYaml(string yaml);
 
-    //IAgent CreateAgentFromToml(string toml);
-    //IAgent CreateAgentFromJson(string json);
-
     /// <summary>
-    /// 벡터 메모리 서비스를 빌더 함수를 통해 생성합니다.
+    /// 메모리 작업 서비스를 생성합니다.
     /// </summary>
-    IMemoryService CreateVectorMemory(Func<IMemoryServiceBuilder, IMemoryServiceBuilder> configure);
+    IAgent CreateMemoryWorker(string queueName, WorkflowDefinition definition);
 
     #endregion
 }

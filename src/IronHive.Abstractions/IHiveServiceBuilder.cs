@@ -5,6 +5,7 @@ using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Queue;
 using IronHive.Abstractions.Tools;
 using IronHive.Abstractions.Vector;
+using IronHive.Abstractions.Workflow;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace IronHive.Abstractions;
@@ -54,6 +55,11 @@ public interface IHiveServiceBuilder
     /// 툴을 추가합니다.
     /// </summary>
     IHiveServiceBuilder AddTool(ITool tool);
+
+    /// <summary>
+    /// 작업들을 DI 컨테이너에 등록합니다.
+    /// </summary>
+    IHiveServiceBuilder AddWorkflowStep<T>(string stepName, T? step) where T : class, IWorkflowStep;
 
     /// <summary>
     /// HiveService 인스턴스를 생성합니다.

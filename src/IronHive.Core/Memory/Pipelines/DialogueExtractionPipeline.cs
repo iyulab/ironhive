@@ -1,8 +1,9 @@
-﻿using IronHive.Abstractions.Memory;
+﻿using DocumentFormat.OpenXml.EMMA;
+using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Messages;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Pipelines;
+using IronHive.Abstractions.Messages.Roles;
+using IronHive.Abstractions.Workflow;
 using System.Text.RegularExpressions;
 
 namespace IronHive.Core.Memory.Pipelines;
@@ -16,35 +17,37 @@ public class Dialogue
 /// <summary>
 /// DialogueExtractionPipeline는 주어진 텍스트에서 Q&A 쌍을 추출하는 메모리 파이프라인 핸들러입니다.
 /// </summary>
-public partial class DialogueExtractionPipeline : IPipeline<PipelineContext<IEnumerable<string>>, PipelineContext<IEnumerable<Dialogue>>>
+public partial class DialogueExtractionPipeline : IMemoryPipeline<DialogueExtractionPipeline.Options>
 {
-    private readonly IMessageService _service;
+    private readonly IMessageService _messages;
 
-    public DialogueExtractionPipeline(IMessageService chat)
+    public DialogueExtractionPipeline(IMessageService messages)
     {
-        _service = chat;
+        _messages = messages;
     }
 
-    public required string Provider { get; init; }
-    
-    public required string Model { get; init; }
+    public record Options(string Provider, string Model);
 
     // QnA 쌍을 추출하기 위한 정규식입니다.
     [GeneratedRegex(@"<qa>\s*<q>\s*(.*?)\s*</q>\s*<a>\s*(.*?)\s*</a>\s*</qa>", RegexOptions.Singleline | RegexOptions.Compiled)]
     private static partial Regex DialogueRegex();
 
     /// <inheritdoc />
-    public async Task<PipelineContext<IEnumerable<Dialogue>>> InvokeAsync(
-        PipelineContext<IEnumerable<string>> input, 
+    public async Task<TaskStepResult> ExecuteAsync(
+        MemoryContext context, 
+        Options options, 
         CancellationToken cancellationToken = default)
     {
+        if (context.Payload is not IEnumerable<string> chunks)
+            throw new InvalidOperationException("payload is not a IEnumerable<string>");
+
         var dialogues = new List<Dialogue>();
-        foreach (var chunk in input.Payload ?? [])
+        foreach (var chunk in chunks)
         {
             var request = new MessageRequest
             {
-                Provider = Provider,
-                Model = Model,
+                Provider = options.Provider,
+                Model = options.Model,
                 Instruction = GetInstructions(),
                 Messages = [new UserMessage
                 {
@@ -54,18 +57,15 @@ public partial class DialogueExtractionPipeline : IPipeline<PipelineContext<IEnu
                 Temperature = 0.0f,
                 TopP = 0.5f
             };
-            var result = await _service.GenerateMessageAsync(request, cancellationToken);
+            var result = await _messages.GenerateMessageAsync(request, cancellationToken);
             var text = result.Message?.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value
                 ?? throw new InvalidOperationException("No response from the chat completion service.");
             dialogues.AddRange(ParseFrom(text));
         }
 
-        return new PipelineContext<IEnumerable<Dialogue>>
-        {
-            Source = input.Source,
-            Target = input.Target,
-            Payload = dialogues
-        };
+        context.Payload = dialogues;
+
+        return TaskStepResult.Success();
     }
 
     // 결과 텍스트를 정규식으로 파싱하여 QnA 쌍을 추출합니다.

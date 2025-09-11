@@ -13,6 +13,9 @@ using IronHive.Core.Files;
 using IronHive.Core.Tools;
 using IronHive.Core.Registries;
 using IronHive.Abstractions.Registries;
+using IronHive.Abstractions.Workflow;
+using IronHive.Core.Memory;
+using IronHive.Abstractions.Memory;
 
 namespace IronHive.Core;
 
@@ -33,13 +36,14 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         ThrowIfExists<IToolCollection>();
         Services.AddSingleton<IProviderRegistry>(_providers);
         Services.AddSingleton<IStorageRegistry>(_storages);
-        Services.AddSingleton<IToolCollection>(_tools);
+        Services.AddSingleton<IToolCollection>(sp => new ToolCollection(_tools, null, sp));
 
         // 기본 서비스 등록
         Services.TryAddSingleton<IModelCatalogService, ModelCatalogService>();
         Services.TryAddSingleton<IMessageService, MessageService>();
         Services.TryAddSingleton<IEmbeddingService, EmbeddingService>();
         Services.TryAddSingleton<IFileStorageService, FileStorageService>();
+        Services.TryAddSingleton<IMemoryService, MemoryService>();
     }
 
     /// <inheritdoc />
@@ -91,6 +95,17 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     public IHiveServiceBuilder AddTool(ITool tool)
     {
         _tools.Add(tool);
+        return this;
+    }
+
+    /// <inheritdoc />
+    public IHiveServiceBuilder AddWorkflowStep<T>(string stepName, T? step)
+        where T : class, IWorkflowStep
+    {
+        if (step is not null)
+            Services.AddKeyedSingleton<IWorkflowStep>(stepName, step);
+        else
+            Services.AddKeyedTransient<IWorkflowStep, T>(stepName);
         return this;
     }
 

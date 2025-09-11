@@ -1,6 +1,6 @@
 ﻿using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Memory;
-using IronHive.Abstractions.Pipelines;
+using IronHive.Abstractions.Workflow;
 using System.Text;
 
 namespace IronHive.Core.Memory.Pipelines;
@@ -8,7 +8,7 @@ namespace IronHive.Core.Memory.Pipelines;
 /// <summary>
 /// TextChunkerHandler는 주어진 텍스트를 청크로 나누는 메모리 파이프라인 핸들러입니다.
 /// </summary>
-public class TextChunkingPipeline : IPipeline<PipelineContext<string>, PipelineContext<IEnumerable<string>>>
+public class TextChunkingPipeline : IMemoryPipeline<TextChunkingPipeline.Options>
 {
     private readonly IEmbeddingService _embedder;
 
@@ -17,7 +17,7 @@ public class TextChunkingPipeline : IPipeline<PipelineContext<string>, PipelineC
         _embedder = embedder;
     }
 
-    public int ChunkSize { get; init; } = 2048;
+    public record Options(int ChunkSize = 2048);
 
     /// <summary>
     /// 텍스트를 청크로 나누는 핸들러입니다.
@@ -27,16 +27,17 @@ public class TextChunkingPipeline : IPipeline<PipelineContext<string>, PipelineC
     /// 2. 줄바꿈(\n) => 쉼표 또는 마침표(, .) => 공백 ( ) 순의 청크 방법론 고려
     /// 3. 속도를 위해 병렬 처리
     /// </summary>
-    public async Task<PipelineContext<IEnumerable<string>>> InvokeAsync(
-        PipelineContext<string> input, 
+    public async Task<TaskStepResult> ExecuteAsync(
+        MemoryContext context, 
+        Options options, 
         CancellationToken cancellationToken = default)
     {
-        var target = input.Target.ConvertTo<VectorMemoryTarget>()
-            ?? throw new InvalidOperationException("target is not a VectorMemoryTarget");
-        if (string.IsNullOrWhiteSpace(input.Payload))
-            throw new InvalidOperationException("the document content is empty");
+        if (context.Target is not VectorMemoryTarget target)
+            throw new InvalidOperationException("target is not a MemoryVectorTarget");
+        if (context.Payload is not string text)
+            throw new InvalidOperationException("payload is not a string");
 
-        var lines = input.Payload.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+        var lines = text.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
         var chunks = new List<string>();
 
         long total = 0;
@@ -53,7 +54,7 @@ public class TextChunkingPipeline : IPipeline<PipelineContext<string>, PipelineC
                 continue; // Skip empty
 
             // 라인이 넘칠 경우
-            if (tokenCount > ChunkSize)
+            if (tokenCount > options.ChunkSize)
             {
                 if (sb.Length > 0)
                 {
@@ -62,7 +63,7 @@ public class TextChunkingPipeline : IPipeline<PipelineContext<string>, PipelineC
                     total = 0;
                 }
 
-                var chars = line.Chunk(ChunkSize);
+                var chars = line.Chunk(options.ChunkSize);
                 foreach (var c in chars)
                 {
                     chunks.Add(c.ToString()!);
@@ -70,7 +71,7 @@ public class TextChunkingPipeline : IPipeline<PipelineContext<string>, PipelineC
                 continue;
             }
 
-            if (total + tokenCount > ChunkSize)
+            if (total + tokenCount > options.ChunkSize)
             {
                 chunks.Add(sb.ToString());
                 sb.Clear();
@@ -88,11 +89,8 @@ public class TextChunkingPipeline : IPipeline<PipelineContext<string>, PipelineC
         if (chunks.Count == 0)
             throw new InvalidOperationException("the document content is empty");
 
-        return new PipelineContext<IEnumerable<string>>
-        {
-            Source = input.Source,
-            Target = input.Target,
-            Payload = chunks
-        };
+        context.Payload = chunks;
+
+        return TaskStepResult.Success();
     }
 }

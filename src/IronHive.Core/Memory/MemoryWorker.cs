@@ -1,6 +1,6 @@
 ﻿using IronHive.Abstractions.Memory;
-using IronHive.Abstractions.Pipelines;
 using IronHive.Abstractions.Queue;
+using IronHive.Abstractions.Workflow;
 
 namespace IronHive.Core.Memory;
 
@@ -8,13 +8,13 @@ namespace IronHive.Core.Memory;
 public class MemoryWorker : IMemoryWorker
 {
     private readonly IQueueStorage _queue;
-    private readonly IPipelineRunner<PipelineContext> _pipeline;
+    private readonly IWorkflow<MemoryContext> _pipeline;
 
     private int _state = (int)MemoryWorkerState.Stopped;
     private TaskCompletionSource<bool>? _tcs = null;
     private CancellationTokenSource? _cts = null;
 
-    public MemoryWorker(IQueueStorage queue, IPipelineRunner<PipelineContext> pipeline)
+    public MemoryWorker(IQueueStorage queue, IWorkflow<MemoryContext> pipeline)
     {
         _queue = queue;
         _pipeline = pipeline;
@@ -81,11 +81,11 @@ public class MemoryWorker : IMemoryWorker
                 if (State == MemoryWorkerState.StopRequested)
                     break;
 
-                var msg = await _queue.DequeueAsync<PipelineContext>(_cts.Token);
+                var msg = await _queue.DequeueAsync<MemoryContext>(_cts.Token);
                 if (msg != null)
                 {
                     State = MemoryWorkerState.Processing;
-                    await _pipeline.InvokeAsync(msg.Payload, _cts.Token);
+                    await _pipeline.RunAsync(msg.Payload, _cts.Token);
 
                     if (msg.Tag != null)
                         await _queue.AckAsync(msg.Tag, _cts.Token);
