@@ -16,8 +16,7 @@ public class FileExtractionService<T> : IFileExtractionService<T>
         _decoders = (decoders ?? Enumerable.Empty<IFileDecoder<T>>()).ToList();
 
         _supportedExts = new(() => _detector.Extensions
-                .Select(ext => _detector.Detect(ext) ?? "")
-                .Where(type => _decoders.Any(d => d.SupportsMimeType(type)))
+                .Where(ext => _detector.TryDetect(ext, out var mime) && _decoders.Any(d => d.SupportsMimeType(mime)))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToArray());
 

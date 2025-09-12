@@ -15,6 +15,10 @@ public partial class LocalVectorStorage : IVectorStorage
     private readonly LiteDatabase _db;
     private readonly object _lock = new();
 
+    public LocalVectorStorage(string filePath)
+        : this(new LocalVectorConfig { Path = filePath })
+    { }
+
     public LocalVectorStorage(LocalVectorConfig config)
     {
         _db = CreateLiteDatabase(config);

@@ -28,7 +28,6 @@ public class ToolCollection : KeyedCollection<string, ITool>, IToolCollection
         : base(t => t.UniqueName, tools, comparer)
     {
         _services = services;
-        AddRange(tools);
     }
 
     /// <inheritdoc />

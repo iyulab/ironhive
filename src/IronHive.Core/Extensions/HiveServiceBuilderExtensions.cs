@@ -61,7 +61,7 @@ public static class HiveServiceBuilderExtensions
     /// <summary>
     /// "text", "word", "pdf", "ppt", "image" 등 기본 파일 디코더를 등록합니다.
     /// </summary>
-    public static IHiveServiceBuilder AddFileExtractor(this IHiveServiceBuilder builder)
+    public static IHiveServiceBuilder AddBasicFileExtractor(this IHiveServiceBuilder builder)
     {
         builder.Services.AddSingleton<IFileDecoder<string>, TextDecoder>();
         builder.Services.AddSingleton<IFileDecoder<string>, WordDecoder>();
@@ -70,18 +70,6 @@ public static class HiveServiceBuilderExtensions
         builder.Services.AddSingleton<IFileDecoder<string>, ImageDecoder>();
         builder.Services.AddSingleton<IFileMediaTypeDetector, BasicFileMediaTypeDetector>();
         builder.Services.AddSingleton<IFileExtractionService<string>, FileExtractionService<string>>();
-        return builder;
-    }
-
-    /// <summary>
-    /// "extract_text", "split_text", "gen_QnA", "gen_vectors" 등 기본 파이프라인 핸들러를 등록합니다.
-    /// </summary>
-    public static IHiveServiceBuilder AddDefaultPipelineHandlers(this IHiveServiceBuilder builder)
-    {
-        //builder.AddMemoryPipelineHandler<TextExtractionPipeline>("extract_text");
-        //builder.AddMemoryPipelineHandler<TextChunkingPipeline>("split_text");
-        //builder.AddMemoryPipelineHandler<DialogueExtractionPipeline>("gen_QnA");
-        //builder.AddMemoryPipelineHandler<TextEmbeddingPipeline>("gen_vectors");
         return builder;
     }
 }

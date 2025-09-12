@@ -19,6 +19,10 @@ public class LocalQueueStorage : IQueueStorage
     private readonly JsonSerializerOptions _jsonOptions;
     private readonly ConcurrentQueue<string> _cache = new();
 
+    public LocalQueueStorage(string directoryPath)
+        : this(new LocalQueueConfig { DirectoryPath = directoryPath })
+    { }
+
     public LocalQueueStorage(LocalQueueConfig config)
     {
         _directoryPath = config.DirectoryPath;

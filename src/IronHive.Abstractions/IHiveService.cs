@@ -60,7 +60,9 @@ public interface IHiveService
     /// <summary>
     /// 메모리 작업 서비스를 생성합니다.
     /// </summary>
-    IAgent CreateMemoryWorker(string queueName, WorkflowDefinition definition);
+    IMemoryWorkerService CreateMemoryWorker(
+        string queueName, 
+        Action<WorkflowBuilder<MemoryContext>> action);
 
     #endregion
 }

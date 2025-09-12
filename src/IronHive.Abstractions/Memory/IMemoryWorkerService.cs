@@ -1,4 +1,6 @@
-﻿namespace IronHive.Abstractions.Memory;
+﻿using IronHive.Abstractions.Workflow;
+
+namespace IronHive.Abstractions.Memory;
 
 /// <summary>
 /// 메모리 기반 작업을 처리하는 워커들의 수명을 관리하고,
@@ -25,6 +27,11 @@ public interface IMemoryWorkerService : IDisposable
     /// 최대 실행 가능한 워커의 수를 설정하거나 가져옵니다.
     /// </summary>
     int MaxCount { get; set; }
+
+    /// <summary>
+    /// 파이프라인의 진행 상황을 알리는 이벤트
+    /// </summary>
+    event EventHandler<WorkflowEventArgs<MemoryContext>>? Progressed;
 
     /// <summary>
     /// 설정에 따라 서비스를 시작하고, 초기 워커들을 생성하여 실행합니다.

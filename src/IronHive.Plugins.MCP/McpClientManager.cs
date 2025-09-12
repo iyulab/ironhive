@@ -1,6 +1,7 @@
 ﻿using IronHive.Abstractions.Tools;
 using IronHive.Plugins.MCP.Configurations;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 
 namespace IronHive.Plugins.MCP;
 
@@ -18,23 +19,33 @@ public class McpClientManager
     }
 
     /// <summary>
-    /// 모든 Mcp 서버에 대한 McpSession 인스턴스를 반환합니다.
+    /// 등록된 MCP 서버들의 Session을 반환합니다.
     /// </summary>
-    public IReadOnlyCollection<McpSession> GetAll()
-    {
-        return _sessions.Values.ToArray();
-    }
+    public IReadOnlyCollection<McpSession> Sessions => _sessions.Values.ToArray();
 
     /// <summary>
     /// 해당 서버 이름에 대한 McpSession 인스턴스를 반환합니다.
     /// </summary>
     /// <param name="serverName">서버의 이름입니다.</param>
     /// <returns>지정된 서버 이름의 McpSession 인스턴스를 반환합니다. 존재하지 않는 경우 null을 반환합니다.</returns>
-    public McpSession? Get(string serverName)
+    public McpSession? GetSession(string serverName)
+        => TryGetSession(serverName, out var session) ? session : null;
+
+    /// <summary>
+    /// 해당 서버 이름에 대한 McpSession 인스턴스를 안전하게 반환합니다.
+    /// </summary>
+    /// <param name="serverName">서버의 이름입니다.</param>
+    /// <param name="session">지정된 서버 이름의 McpSession 인스턴스입니다.</param>
+    /// <returns>지정된 서버 이름의 McpSession 인스턴스가 존재하는 경우 true, 그렇지 않은 경우 false를 반환합니다.</returns>
+    public bool TryGetSession(string serverName, [MaybeNullWhen(false)] out McpSession session)
     {
         if (_sessions.TryGetValue(serverName, out var client))
-            return client;
-        return null;
+        {
+            session = client;
+            return true;
+        }
+        session = null;
+        return false;
     }
 
     /// <summary>

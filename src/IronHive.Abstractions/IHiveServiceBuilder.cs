@@ -59,7 +59,8 @@ public interface IHiveServiceBuilder
     /// <summary>
     /// 작업들을 DI 컨테이너에 등록합니다.
     /// </summary>
-    IHiveServiceBuilder AddWorkflowStep<T>(string stepName, T? step) where T : class, IWorkflowStep;
+    IHiveServiceBuilder AddWorkflowStep<T>(string stepName, T? step = null) 
+        where T : class, IWorkflowStep;
 
     /// <summary>
     /// HiveService 인스턴스를 생성합니다.

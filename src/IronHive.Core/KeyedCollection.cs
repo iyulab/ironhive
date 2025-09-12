@@ -25,8 +25,7 @@ public class KeyedCollection<TKey, TItem> : IKeyedCollection<TKey, TItem>
 
         if (items != null)
         {
-            foreach (var item in items)
-                Add(item);
+            AddRange(items);
         }
     }
 

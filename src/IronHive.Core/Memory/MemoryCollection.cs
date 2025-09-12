@@ -48,8 +48,8 @@ public class MemoryCollection : IMemoryCollection
             },
         };
 
-        if (!_storages.TryGet<IQueueStorage>(StorageName, out var queue))
-            throw new InvalidOperationException($"Vector storage '{StorageName}' is not registered.");
+        if (!_storages.TryGet<IQueueStorage>(queueName, out var queue))
+            throw new InvalidOperationException($"queue storage '{queueName}' is not registered.");
         await queue.EnqueueAsync(ctx, cancellationToken);
     }
 

@@ -2,42 +2,38 @@
 using IronHive.Abstractions.Messages;
 using IronHive.Providers.Anthropic;
 
-namespace IronHive.Abstractions;
+namespace IronHive.Abstractions.Registries;
 
-public static class HiveServiceExtensions
+public static class ProviderRegistryExtensions
 {
     /// <summary>
     /// Anthropic의 모든 서비스들을 지정된 이름으로 설정합니다.
     /// </summary>
-    public static IHiveService SetAnthropicProviders(
-        this IHiveService service,
+    public static void SetAnthropicProviders(
+        this IProviderRegistry providers,
         string providerName,
         AnthropicConfig config,
         AnthropicServiceType serviceType = AnthropicServiceType.All)
     {
         if (serviceType.HasFlag(AnthropicServiceType.Messages))
-            service.Providers.SetMessageGenerator(providerName, new AnthropicMessageGenerator(config));
+            providers.SetMessageGenerator(providerName, new AnthropicMessageGenerator(config));
 
         if (serviceType.HasFlag(AnthropicServiceType.Models))
-            service.Providers.SetModelCatalog(providerName, new AnthropicModelCatalog(config));
-
-        return service;
+            providers.SetModelCatalog(providerName, new AnthropicModelCatalog(config));
     }
 
     /// <summary>
     /// 지정된 이름에 해당하는 모든 Anthropic 서비스를 제거합니다.
     /// </summary>
-    public static IHiveService RemoveAnthropicProviders(
-        this IHiveService service,
+    public static void RemoveAnthropicProviders(
+        this IProviderRegistry providers,
         string providerName,
         AnthropicServiceType serviceType = AnthropicServiceType.All)
     {
         if (serviceType.HasFlag(AnthropicServiceType.Messages))
-            service.Providers.Remove<IMessageGenerator>(providerName);
+            providers.Remove<IMessageGenerator>(providerName);
 
         if (serviceType.HasFlag(AnthropicServiceType.Models))
-            service.Providers.Remove<IModelCatalog>(providerName);
-
-        return service;
+            providers.Remove<IModelCatalog>(providerName);
     }
 }

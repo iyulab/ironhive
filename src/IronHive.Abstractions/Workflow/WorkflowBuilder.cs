@@ -64,6 +64,16 @@ public class WorkflowBuilder<TContext>
         return this;
     }
 
+    public IWorkflow<TContext> Build()
+    {
+        return new WorkflowEngine<TContext>(_steps)
+        {
+            Id = _definition.Id,
+            Version = _definition.Version,
+            Nodes = _definition.Steps
+        };
+    }
+
     /// <summary>
     /// 스텝을 찾거나 생성하여 추가합니다.
     /// </summary>

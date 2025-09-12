@@ -3,15 +3,15 @@ using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Messages;
 using IronHive.Providers.OpenAI;
 
-namespace IronHive.Abstractions;
+namespace IronHive.Abstractions.Registries;
 
-public static class HiveServiceExtensions
+public static class ProviderRegistryExtensions
 {
     /// <summary>
     /// OpenAI의 모든 서비스들을 지정된 이름으로 설정합니다.
     /// </summary>
-    public static IHiveService SetOpenAIProviders(
-        this IHiveService service,
+    public static void SetOpenAIProviders(
+        this IProviderRegistry providers,
         string providerName,
         OpenAIConfig config,
         OpenAIServiceType serviceType = OpenAIServiceType.All)
@@ -20,34 +20,30 @@ public static class HiveServiceExtensions
             throw new ArgumentException("ChatCompletion and Responses cannot be enabled at the same time.");
 
         if (serviceType.HasFlag(OpenAIServiceType.Models))
-            service.Providers.SetModelCatalog(providerName, new OpenAIModelCatalog(config));
+            providers.SetModelCatalog(providerName, new OpenAIModelCatalog(config));
 
         if (serviceType.HasFlag(OpenAIServiceType.ChatCompletion))
-            service.Providers.SetMessageGenerator(providerName, new OpenAIMessageGenerator(config));
+            providers.SetMessageGenerator(providerName, new OpenAIMessageGenerator(config));
         
         if (serviceType.HasFlag(OpenAIServiceType.Embeddings))
-            service.Providers.SetEmbeddingGenerator(providerName, new OpenAIEmbeddingGenerator(config));
-        
-        return service;
+            providers.SetEmbeddingGenerator(providerName, new OpenAIEmbeddingGenerator(config));
     }
 
     /// <summary>
     /// 지정된 이름에 해당하는 모든 OpenAI 서비스를 제거합니다.
     /// </summary>
-    public static IHiveService RemoveOpenAIProviders(
-        this IHiveService service,
+    public static void RemoveOpenAIProviders(
+        this IProviderRegistry providers,
         string providerName,
         OpenAIServiceType serviceType = OpenAIServiceType.All)
     {
         if (serviceType.HasFlag(OpenAIServiceType.Models))
-            service.Providers.Remove<IModelCatalog>(providerName);
+            providers.Remove<IModelCatalog>(providerName);
 
         if (serviceType.HasFlag(OpenAIServiceType.ChatCompletion) || serviceType.HasFlag(OpenAIServiceType.Responses))
-            service.Providers.Remove<IMessageGenerator>(providerName);
+            providers.Remove<IMessageGenerator>(providerName);
 
         if (serviceType.HasFlag(OpenAIServiceType.Embeddings))
-            service.Providers.Remove<IEmbeddingGenerator>(providerName);
-
-        return service;
+            providers.Remove<IEmbeddingGenerator>(providerName);
     }
 }

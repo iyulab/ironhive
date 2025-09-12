@@ -99,7 +99,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     }
 
     /// <inheritdoc />
-    public IHiveServiceBuilder AddWorkflowStep<T>(string stepName, T? step)
+    public IHiveServiceBuilder AddWorkflowStep<T>(string stepName, T? step = null)
         where T : class, IWorkflowStep
     {
         if (step is not null)

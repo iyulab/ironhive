@@ -20,6 +20,7 @@ public class MemoryWorkerService : IMemoryWorkerService
     {
         _queue = queue;
         _pipeline = pipeline;
+        _pipeline.Progressed += (s, e) => Progressed?.Invoke(this, e);
     }
 
     /// <inheritdoc />
@@ -38,9 +39,13 @@ public class MemoryWorkerService : IMemoryWorkerService
     public TimeSpan DequeueInterval { get; private set; } = TimeSpan.FromSeconds(5);
 
     /// <inheritdoc />
+    public event EventHandler<WorkflowEventArgs<MemoryContext>>? Progressed;
+
+    /// <inheritdoc />
     public void Dispose()
     {
         Task.Run(() => StopAsync(true)).Wait();
+        Progressed = null;
         GC.SuppressFinalize(this);
     }
 

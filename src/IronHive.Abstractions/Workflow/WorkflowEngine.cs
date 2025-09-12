@@ -27,15 +27,48 @@ public sealed class WorkflowEngine<TContext> : IWorkflow<TContext>
     public event EventHandler<WorkflowEventArgs<TContext>>? Progressed;
 
     /// <inheritdoc />
-    public Task RunAsync(TContext context, CancellationToken ct = default)
-        => RunNodesAsync(Nodes, context, ct);
+    public async Task RunAsync(TContext context, CancellationToken ct = default)
+    {
+        try
+        {
+            OnStarted(context);
+            await RunNodesAsync(Nodes, context, ct);
+            OnCompleted(context);
+        }
+        catch (OperationCanceledException)
+        {
+            OnFailed(context, null, null, new TaskCanceledException("워크플로우 실행이 취소되었습니다."));
+            throw;
+        }
+        catch (Exception ex)
+        {
+            OnFailed(context, null, null, ex);
+            throw;
+        }
+    }
 
     /// <inheritdoc />
-    public Task RunFromAsync(string nodeId, TContext context, CancellationToken ct = default)
+    public async Task RunFromAsync(string nodeId, TContext context, CancellationToken ct = default)
     {
         var rest = SeekToNode(Nodes, nodeId)
                    ?? throw new InvalidOperationException($"nodeId '{nodeId}'를 찾을 수 없습니다.");
-        return RunNodesAsync(rest, context, ct);
+
+        try
+        {
+            OnStarted(context);
+            await RunNodesAsync(rest, context, ct);
+            OnCompleted(context);
+        }
+        catch (OperationCanceledException)
+        {
+            OnFailed(context, nodeId, null, new TaskCanceledException("워크플로우 실행이 취소되었습니다."));
+            throw;
+        }
+        catch (Exception ex)
+        {
+            OnFailed(context, nodeId, null, ex);
+            throw;
+        }
     }
 
     /// <summary>
@@ -55,32 +88,23 @@ public sealed class WorkflowEngine<TContext> : IWorkflow<TContext>
                 _ => null
             };
 
-            OnStarted(ctx, node.Id, stepName);
-            try
+            OnStepBefore(ctx, node.Id, stepName);
+            switch (node)
             {
-                switch (node)
-                {
-                    case TaskNode t:
-                        await ExecuteTaskNode(t, ctx, ct);
-                        break;
-                    case ConditionNode c:
-                        var branch = await ExecuteConditionNode(c, ctx, ct);
-                        await RunNodesAsync(branch, ctx, ct);
-                        break;
-                    case ParallelNode p:
-                        await ExecuteParallelNode(p, ctx, ct);
-                        break;
-                    case EndNode:
-                        return;
-                }
-
-                OnSucceeded(ctx, node.Id, stepName);
+                case TaskNode t:
+                    await ExecuteTaskNode(t, ctx, ct);
+                    break;
+                case ConditionNode c:
+                    var branch = await ExecuteConditionNode(c, ctx, ct);
+                    await RunNodesAsync(branch, ctx, ct);
+                    break;
+                case ParallelNode p:
+                    await ExecuteParallelNode(p, ctx, ct);
+                    break;
+                case EndNode:
+                    return;
             }
-            catch (Exception ex)
-            {
-                OnFailed(ctx, node.Id, stepName, ex);
-                throw; // 실패 시 전체 중단
-            }
+            OnStepAfter(ctx, node.Id, stepName);
         }
     }
 
@@ -176,31 +200,45 @@ public sealed class WorkflowEngine<TContext> : IWorkflow<TContext>
     }
 
     // --- 이벤트 ---
-    private void OnStarted(TContext context, string? nodeId, string? step) =>
+    private void OnStarted(TContext context) =>
         Progressed?.Invoke(this, new WorkflowEventArgs<TContext>
         {
-            Status = WorkflowProgressStatus.Started,
-            Context = context,
-            NodeId = nodeId,
-            Step = step,
+            Type = WorkflowProgressType.Started,
+            Context = context
         });
 
-    private void OnSucceeded(TContext context, string? nodeId, string? step) =>
+    private void OnStepBefore(TContext context, string? nodeId, string? step) =>
         Progressed?.Invoke(this, new WorkflowEventArgs<TContext>
         {
-            Status = WorkflowProgressStatus.Succeeded,
+            Type = WorkflowProgressType.OnStepBefore,
             Context = context,
             NodeId = nodeId,
-            Step = step
+            StepName = step,
+        });
+
+    private void OnStepAfter(TContext context, string? nodeId, string? step) =>
+        Progressed?.Invoke(this, new WorkflowEventArgs<TContext>
+        {
+            Type = WorkflowProgressType.OnStepAfter,
+            Context = context,
+            NodeId = nodeId,
+            StepName = step,
+        });
+
+    private void OnCompleted(TContext context) =>
+        Progressed?.Invoke(this, new WorkflowEventArgs<TContext>
+        {
+            Type = WorkflowProgressType.Completed,
+            Context = context,
         });
 
     private void OnFailed(TContext context, string? nodeId, string? step, Exception? ex = null) =>
         Progressed?.Invoke(this, new WorkflowEventArgs<TContext>
         {
-            Status = WorkflowProgressStatus.Failed,
+            Type = WorkflowProgressType.Faulted,
             Context = context,
             NodeId = nodeId,
-            Step = step,
+            StepName = step,
             Exception = ex
         });
 }
