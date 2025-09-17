@@ -1,4 +1,6 @@
-﻿namespace IronHive.Abstractions.Workflow;
+﻿using Microsoft.Extensions.DependencyInjection;
+
+namespace IronHive.Abstractions.Workflow;
 
 /// <summary>
 /// 워크플로우의 스텝 체인을 구성하는 빌더입니다.
@@ -130,7 +132,13 @@ public class WorkflowStepBuilder<TContext>
     /// </summary>
     private void AddStep<TStep>(string name) where TStep : class, IWorkflowStep
     {
-        var step = _services.GetKeyedServiceOrCreate<TStep>(name);
+        var step = _services is null
+            ? Activator.CreateInstance(typeof(TStep)) as IWorkflowStep
+            : _services.GetKeyedService<IWorkflowStep>(name)
+              ?? ActivatorUtilities.CreateInstance<TStep>(_services);
+        if (step is null)
+            throw new InvalidOperationException($"'{typeof(TStep).FullName}' 스텝을 생성할 수 없습니다.");
+
         _steps.TryAdd(name, step);
     }
 

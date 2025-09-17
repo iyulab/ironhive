@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using Microsoft.Extensions.DependencyInjection;
+using System.Text.Json;
 using YamlDotNet.Serialization;
 
 namespace IronHive.Abstractions.Workflow;
@@ -47,7 +48,7 @@ public class WorkflowFactory
         var steps = new Dictionary<string, IWorkflowStep>(StringComparer.OrdinalIgnoreCase);
         foreach (var name in names)
         {
-            var step = _services?.GetKeyedServiceOrCreate<IWorkflowStep>(name)
+            var step = _services?.GetKeyedService<IWorkflowStep>(name)
                        ?? throw new InvalidOperationException($"'{name}' 스텝이 DI에 등록되지 않았습니다.");
             steps[name] = step;
         }
