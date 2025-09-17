@@ -69,13 +69,13 @@ public class MemoryCollection : IMemoryCollection
     /// <inheritdoc />
     public async Task<VectorSearchResult> SemanticSearchAsync(
         string query,
-        MemorySearchOptions? options = null,
+        SearchOptions? options = null,
         CancellationToken cancellationToken = default)
     {
         if (!_storages.TryGet<IVectorStorage>(StorageName, out var storage))
             throw new InvalidOperationException($"Vector storage '{StorageName}' is not registered.");
 
-        options ??= new MemorySearchOptions();
+        options ??= new SearchOptions();
         var sourceIds = options.SourceIds;
         VectorRecordFilter? filter = null;
         if (sourceIds != null && sourceIds.Any())

@@ -20,7 +20,7 @@ public class RabbitMQConfig
     /// <summary>
     /// 인증에 사용할 사용자 이름, Default: "guest"
     /// </summary>
-    public string Username { get; set; } = "guest";
+    public string UserName { get; set; } = "guest";
 
     /// <summary>
     /// 인증에 사용할 비밀번호, Default: "guest"
@@ -28,9 +28,9 @@ public class RabbitMQConfig
     public string Password { get; set; } = "guest";
 
     /// <summary>
-    /// 사용할 Queue 이름, Default: "pipeline"
+    /// 사용할 Queue 이름
     /// </summary>
-    public string QueueName { get; set; } = "pipeline";
+    public required string QueueName { get; set; }
 
     /// <summary>
     /// RabbitMQ 가상 호스트 이름, 예: "/"
@@ -39,9 +39,9 @@ public class RabbitMQConfig
     public string VirtualHost { get; set; } = "/";
 
     /// <summary>
-    /// 메시지의 TTL(Time-To-Live) (초 단위 설정)    
+    /// 메시지의 TTL(Time-To-Live) (ms 단위 설정)    
     /// </summary>
-    public int? MessageTTLSecs { get; set; }
+    public int? MessageTTL { get; set; }
 
     /// <summary>
     /// SSL 사용 여부

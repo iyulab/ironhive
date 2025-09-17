@@ -6,7 +6,7 @@ namespace IronHive.Abstractions.Catalog;
 /// 다형 직렬화를 위한 모델 사양의 기본 인터페이스입니다.
 /// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
-[JsonDerivedType(typeof(ModelSpec), "generic")]
+[JsonDerivedType(typeof(GenericModelSpec), "generic")]
 [JsonDerivedType(typeof(ChatModelSpec), "chat")]
 [JsonDerivedType(typeof(EmbeddingModelSpec), "embedding")]
 public interface IModelSpec

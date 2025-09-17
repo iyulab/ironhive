@@ -11,7 +11,7 @@ public enum SearchMode
 /// <summary>
 /// 검색 동작에 필요한 옵션을 지정하는 설정 클래스입니다.
 /// </summary>
-public sealed record MemorySearchOptions
+public sealed record SearchOptions
 {
     /// <summary>
     /// 검색 모드 (기본값: CosineSimilarity).

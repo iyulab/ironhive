@@ -85,10 +85,8 @@ public class MemoryWorker : IMemoryWorker
                 if (msg != null)
                 {
                     State = MemoryWorkerState.Processing;
-                    await _pipeline.RunAsync(msg.Payload, _cts.Token);
-
-                    if (msg.Tag != null)
-                        await _queue.AckAsync(msg.Tag, _cts.Token);
+                    await _pipeline.RunAsync(msg.Body, _cts.Token);
+                    await msg.CompleteAsync(_cts.Token);
                 }
                 else
                 {

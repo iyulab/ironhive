@@ -3,7 +3,7 @@
 /// <summary>
 /// 모든 모델이 공유하는 공통 스펙입니다.
 /// </summary>
-public record ModelSpec : IModelSpec
+public record GenericModelSpec : IModelSpec
 {
     /// <inheritdoc />
     public required string ModelId { get; init; }

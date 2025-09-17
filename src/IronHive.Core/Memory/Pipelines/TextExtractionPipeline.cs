@@ -54,7 +54,7 @@ public class TextExtractionPipeline : IMemoryPipeline
             throw new NotSupportedException($"Unsupported source type: {context.Source.GetType().Name}");
         }
 
-        context.Payload = text;
+        context.Items.Add("text", text);
         return TaskStepResult.Success();
     }
 }

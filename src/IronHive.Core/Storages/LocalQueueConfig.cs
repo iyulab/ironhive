@@ -20,9 +20,14 @@ public class LocalQueueConfig
     public TimeSpan? TimeToLive { get; set; }
 
     /// <summary>
-    /// 큐 메시지를 캐싱하기 위한 큐의 크기입니다.
+    /// 큐 메시지를 캐싱하기 위한 큐의 크기입니다. (기본값: 100)
     /// </summary>
-    public int CacheQueueSize { get; set; } = 100;
+    public int CacheSize { get; set; } = 100;
+
+    /// <summary>
+    /// 이벤트를 발생시킬지 여부를 나타냅니다. (기본값: false)
+    /// </summary>
+    public bool EnableRaisingEvents { get; set; } = false;
 
     /// <summary>
     /// 메시지 파일의 변환 옵션입니다.

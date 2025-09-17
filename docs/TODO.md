@@ -18,3 +18,5 @@
 
 # Storages
 - LocalVectorStorage를 Sqlite로 변경(sqlite-vec으로 확장, 사전빌드 파일 필요)
+- QueueStorage에 Dequeue 또는 Consume 시 Hidden_Timeout 고려 및 추가
+- 

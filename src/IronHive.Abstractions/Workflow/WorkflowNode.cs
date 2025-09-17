@@ -6,60 +6,64 @@ namespace IronHive.Abstractions.Workflow;
 [JsonDerivedType(typeof(TaskNode), "task")]
 [JsonDerivedType(typeof(ConditionNode), "condition")]
 [JsonDerivedType(typeof(ParallelNode), "parallel")]
-[JsonDerivedType(typeof(EndNode), "end")]
-public abstract class WorkflowNode
+public abstract record WorkflowNode
 {
-    // 그래프 노드의 식별자
+    /// <summary>노드 식별자</summary>
     public string? Id { get; init; }
 }
 
-public sealed class TaskNode : WorkflowNode
+/// <summary>작업(step)을 실행하는 노드</summary>
+public sealed record TaskNode : WorkflowNode
 {
-    // 실행할 step 이름 (레지스트리에 등록된 이름)
+    /// <summary>실행할 step 이름</summary>
     public required string Step { get; init; }
 
-    // 스텝에서 사용할 옵션 (정의 시점에 자유형으로 넣고 런타임에 TOptions로 역직렬화)
+    /// <summary>스텝 옵션 (런타임에 역직렬화)</summary>
     public object? With { get; init; }
 }
 
-public sealed class ConditionNode : WorkflowNode
+/// <summary>조건에 따라 다음 노드를 고르는 분기 노드</summary>
+public sealed record ConditionNode : WorkflowNode
 {
-    // 분기 판단을 수행할 step 이름 (IWorkflowCondition)
+    /// <summary>분기 판단 step 이름 (IWorkflowCondition)</summary>
     public required string Step { get; init; }
 
-    // 분기키(string) → 다음 실행 노드들(순차 실행)
+    /// <summary>분기 키 → 실행 노드들(순차)</summary>
     public required Dictionary<string, IEnumerable<WorkflowNode>> Branches { get; init; } = new();
+
+    /// <summary>해당 키가 없을 때 실행할 기본 브랜치</summary>
+    public IEnumerable<WorkflowNode>? DefaultBranch { get; init; }
 }
 
-public enum JoinMethod
+/// <summary>병렬 병합 방식</summary>
+public enum JoinMode
 {
-    // 모든 브랜치가 성공해야 다음으로 진행 (예외 발생 시 중단)
+    /// <summary>모두 성공 시 진행 (실패 시 중단)</summary>
     WaitAll,
 
-    // 하나라도 성공하면 다음으로 진행(남은 작업 계속 수행)
+    /// <summary>하나라도 성공하면 진행 (나머지는 계속)</summary>
     WaitAny,
 }
 
-public enum ContextMethod
+/// <summary>병렬 시 컨텍스트 처리 방식</summary>
+public enum ContextMode
 {
-    // 각 브랜치가 복사된 컨텍스트에서 실행됨 (기본값)
-    Copyed,
+    /// <summary>브랜치마다 복사된 컨텍스트</summary>
+    Copied,
 
-    // 모든 브랜치가 동일한 컨텍스트를 공유함 (주의: 동시성 문제 발생 가능)
+    /// <summary>모든 브랜치가 동일 컨텍스트 공유</summary>
     Shared,
 }
 
-public sealed class ParallelNode : WorkflowNode
+/// <summary>병렬 실행 노드</summary>
+public sealed record ParallelNode : WorkflowNode
 {
-    // 병합 방식
-    public JoinMethod JoinMode { get; init; } = JoinMethod.WaitAll;
+    /// <summary>병합 방식</summary>
+    public required JoinMode Join { get; init; }
 
-    // 컨텍스트 모드
-    public ContextMethod ContextMode { get; init; } = ContextMethod.Copyed;
+    /// <summary>컨텍스트 처리 방식</summary>
+    public required ContextMode Context { get; init; }
 
-    // 병렬 실행할 각 브랜치의 노드들(순차 실행)
+    /// <summary>각 브랜치의 실행 노드들(순차)</summary>
     public required IEnumerable<IEnumerable<WorkflowNode>> Branches { get; init; } = [];
 }
-
-public sealed class EndNode : WorkflowNode
-{ }

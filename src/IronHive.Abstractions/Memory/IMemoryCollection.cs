@@ -52,6 +52,6 @@ public interface IMemoryCollection
     /// <param name="options">검색 옵션</param>
     Task<VectorSearchResult> SemanticSearchAsync(
         string query,
-        MemorySearchOptions? options = null,
+        SearchOptions? options = null,
         CancellationToken cancellationToken = default);
 }

@@ -34,7 +34,7 @@ public class TextChunkingPipeline : IMemoryPipeline<TextChunkingPipeline.Options
     {
         if (context.Target is not VectorMemoryTarget target)
             throw new InvalidOperationException("target is not a MemoryVectorTarget");
-        if (context.Payload is not string text)
+        if (!context.Items.TryGetValue<string>("text", out var text))
             throw new InvalidOperationException("payload is not a string");
 
         var lines = text.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
@@ -89,8 +89,7 @@ public class TextChunkingPipeline : IMemoryPipeline<TextChunkingPipeline.Options
         if (chunks.Count == 0)
             throw new InvalidOperationException("the document content is empty");
 
-        context.Payload = chunks;
-
+        context.Items.Add("chunks", chunks);
         return TaskStepResult.Success();
     }
 }

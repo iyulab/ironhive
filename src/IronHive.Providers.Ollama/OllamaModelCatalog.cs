@@ -29,7 +29,7 @@ public class OllamaModelCatalog : IModelCatalog
         CancellationToken cancellationToken = default)
     {
         var models = await _client.GetModelsAsync(cancellationToken);
-        return models.Select(m => new ModelSpec
+        return models.Select(m => new GenericModelSpec
         {
             ModelId = m.Name,
             CreatedAt = m.ModifiedAt,
@@ -45,7 +45,7 @@ public class OllamaModelCatalog : IModelCatalog
         var model = await _client.GetModelAsync(modelId, cancellationToken);
 
         return model is not null
-            ? new ModelSpec
+            ? new GenericModelSpec
             {
                 ModelId = modelId,
             }

@@ -1,6 +1,7 @@
-﻿using System.Text.Json;
+﻿using IronHive.Abstractions.Queue;
 using RabbitMQ.Client;
-using IronHive.Abstractions.Queue;
+using RabbitMQ.Client.Events;
+using System.Text.Json;
 
 namespace IronHive.Storages.RabbitMQ;
 
@@ -12,7 +13,13 @@ public class RabbitMQueueStorage : IQueueStorage
     private readonly RabbitMQConfig _config;
 
     private IConnection? _conn;
-    private IChannel? _channel;
+
+    // 채널을 역할별로 분리
+    private IChannel? _pubChannel;   // 발행 전용
+    private IChannel? _mgmChannel;   // 관리 전용 (BasicGet/Count/Purge)
+
+    // 발행 직렬화 (채널은 스레드-세이프 아님)
+    private readonly SemaphoreSlim _pubLock = new(1, 1);
 
     public RabbitMQueueStorage(RabbitMQConfig config)
     {
@@ -27,15 +34,54 @@ public class RabbitMQueueStorage : IQueueStorage
     /// <inheritdoc />
     public void Dispose()
     {
+        _pubChannel?.Dispose();
+        _mgmChannel?.Dispose();
+
         _conn?.Dispose();
-        _channel?.Dispose();
         GC.SuppressFinalize(this);
+    }
+
+    /// <inheritdoc />
+    public async Task<IQueueConsumer> CreateConsumerAsync<T>(
+        Func<IQueueMessage<T>, Task> onReceived, 
+        CancellationToken cancellationToken = default)
+    {
+        // 소비 전용 채널 생성
+        var conn = await GetOrCreateConnectionAsync(cancellationToken);
+        var channel = await conn.CreateChannelAsync(new CreateChannelOptions(false, false, null, 1), cancellationToken);
+        await DeclareQueueAsync(channel, cancellationToken);
+        await channel.BasicQosAsync(0, 1, false, cancellationToken);
+
+        var consumer = new AsyncEventingBasicConsumer(channel);
+        consumer.ReceivedAsync += async (ch, ea) =>
+        {
+            try
+            {
+                var body = JsonSerializer.Deserialize<T>(ea.Body.ToArray(), _config.JsonOptions)
+                    ?? throw new JsonException("Failed to deserialize message.");
+                var msg = new RabbitMQMessage<T>(channel)
+                {
+                    Body = body,
+                    DeliveryTag = ea.DeliveryTag,
+                };
+                await onReceived(msg);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] Consumer error: {ex.Message}");
+                await channel.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: false);
+            }
+        };
+        return new RabbitMQConsumer(consumer)
+        {
+            QueueName = QueueName,
+        };
     }
 
     /// <inheritdoc />
     public async Task<int> CountAsync(CancellationToken cancellationToken = default)
     {
-        var channel = await GetOrCreateChannelAsync();
+        var channel = await GetOrCreateMgmChannelAsync(cancellationToken);
         var count = await channel.MessageCountAsync(QueueName, cancellationToken);
         return (int)count;
     }
@@ -43,29 +89,49 @@ public class RabbitMQueueStorage : IQueueStorage
     /// <inheritdoc />
     public async Task ClearAsync(CancellationToken cancellationToken = default)
     {
-        var channel = await GetOrCreateChannelAsync();
+        var channel = await GetOrCreateMgmChannelAsync(cancellationToken);
         await channel.QueuePurgeAsync(QueueName, cancellationToken);
     }
 
     /// <inheritdoc />
     public async Task EnqueueAsync<T>(T message, CancellationToken cancellationToken = default)
     {
-        var channel = await GetOrCreateChannelAsync();
+        var channel = await GetOrCreatePubChannelAsync(cancellationToken);
 
         var body = JsonSerializer.SerializeToUtf8Bytes(message, _config.JsonOptions);
-        await channel.BasicPublishAsync(
-            exchange: "",
-            routingKey: QueueName,
-            mandatory: false,
-            body: body,
-            cancellationToken: cancellationToken
-        );
+        var props = new BasicProperties
+        {
+            MessageId = Guid.NewGuid().ToString(),
+            Persistent = true, // delivery mode 2
+            ContentType = "application/json",
+            Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
+        };
+
+        // 발행 타임아웃, 무한 대기 방지
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cts.CancelAfter(TimeSpan.FromSeconds(10));
+        
+        await _pubLock.WaitAsync(cancellationToken);
+        try
+        {
+            await channel.BasicPublishAsync(
+                exchange: string.Empty,     // 기본 Direct Exchange를 사용하여 큐에 메시지 게시
+                routingKey: QueueName,
+                mandatory: false,           // 메시지가 라우팅되지 않아도 오류를 발생시키지 않음(true일시 Basic.Return 이벤트 필요)
+                body: body,
+                basicProperties: props,
+                cancellationToken: cancellationToken);
+        }
+        finally
+        {
+            _pubLock.Release();
+        }
     }
 
     /// <inheritdoc />
-    public async Task<QueueMessage<T>?> DequeueAsync<T>(CancellationToken cancellationToken = default)
+    public async Task<IQueueMessage<T>?> DequeueAsync<T>(CancellationToken cancellationToken = default)
     {
-        var channel = await GetOrCreateChannelAsync();
+        var channel = await GetOrCreateMgmChannelAsync(cancellationToken);
 
         var result = await channel.BasicGetAsync(QueueName, autoAck: false, cancellationToken);
         if (result == null)
@@ -75,98 +141,85 @@ public class RabbitMQueueStorage : IQueueStorage
         var message = JsonSerializer.Deserialize<T>(body, _config.JsonOptions)
             ?? throw new JsonException("Failed to deserialize message.");
 
-        return new QueueMessage<T>
+        return new RabbitMQMessage<T>(channel)
         {
-            Payload = message,
-            Tag = result.DeliveryTag
+            Body = message,
+            DeliveryTag = result.DeliveryTag,
         };
     }
 
-    /// <inheritdoc />
-    public async Task AckAsync(object tag, CancellationToken cancellationToken = default)
+    /// <summary> 발행용 채널 </summary>
+    private async Task<IChannel> GetOrCreatePubChannelAsync(CancellationToken ct)
     {
-        var channel = await GetOrCreateChannelAsync();
+        var conn = await GetOrCreateConnectionAsync(ct);
+        if (_pubChannel is { IsOpen: true }) return _pubChannel;
 
-        if (tag is not ulong rabbitTag)
-            throw new InvalidOperationException("Invalid rabbitMq tag.");
+        _pubChannel?.Dispose();
+        _pubChannel = await conn.CreateChannelAsync(new CreateChannelOptions(true, true), ct);
 
-        // 동일 채널의 Tag에 대해서만 Ack 처리 가능
-        await channel.BasicAckAsync(rabbitTag, false, cancellationToken);
+        await DeclareQueueAsync(_pubChannel, ct);
+        return _pubChannel;
     }
 
-    /// <inheritdoc />
-    public async Task NackAsync(object tag, bool requeue = false, CancellationToken cancellationToken = default)
+    /// <summary> 관리용 채널 (BasicGet, Count, Purge 등) </summary>
+    private async Task<IChannel> GetOrCreateMgmChannelAsync(CancellationToken ct)
     {
-        var channel = await GetOrCreateChannelAsync();
+        var conn = await GetOrCreateConnectionAsync(ct);
+        if (_mgmChannel is { IsOpen: true }) return _mgmChannel;
 
-        if (tag is not ulong rabbitTag)
-            throw new InvalidOperationException("Invalid rabbitMq tag.");
+        _mgmChannel?.Dispose();
+        _mgmChannel = await conn.CreateChannelAsync(null, ct);
 
-        // 동일 채널의 Tag에 대해서만 Ack 처리 가능
-        await channel.BasicNackAsync(rabbitTag, false, requeue, cancellationToken);
+        await DeclareQueueAsync(_mgmChannel, ct);
+        return _mgmChannel;
     }
 
-    /// <summary>
-    /// RabbitMQ 커넥션과 채널이 열려 있는지 확인하고, 필요시 재연결합니다.
-    /// </summary>
-    private async Task<IChannel> GetOrCreateChannelAsync()
+    /// <summary> RabbitMQ 커넥션 생성/재생성 </summary>
+    private async Task<IConnection> GetOrCreateConnectionAsync(CancellationToken ct)
     {
-        if (_conn == null || !_conn.IsOpen)
-        {
-            _channel?.Dispose();
-            _conn?.Dispose();
-            _conn = await CreateConnectionAsync(_config);
-        }
+        if (_conn is { IsOpen: true })
+            return _conn;
 
-        if (_channel == null || !_channel.IsOpen)
-        {
-            _channel?.Dispose();
-            _channel = await CreateChannelAsync(_conn, _config);
-        }
+        // 기존 채널 정리 (연결 재생성 시)
+        _pubChannel?.Dispose(); _pubChannel = null;
+        _mgmChannel?.Dispose(); _mgmChannel = null;
 
-        return _channel;
-    }
-
-    /// <summary>
-    /// RabbitMQ 채널 생성
-    /// </summary>
-    private static async Task<IChannel> CreateChannelAsync(IConnection conn, RabbitMQConfig config)
-    {
-        var channel = await conn.CreateChannelAsync();
-        var args = new Dictionary<string, object?>();
-        
-        if (config.MessageTTLSecs.HasValue && config.MessageTTLSecs > 0)
-        {
-            // 메시지 TTL 설정, ms 단위로 변환
-            args.Add("x-message-ttl", config.MessageTTLSecs.Value * 1_000);
-        }
-
-        channel.QueueDeclareAsync(
-            queue: config.QueueName,
-            durable: true,
-            exclusive: false,
-            autoDelete: false,
-            arguments: args
-        ).Wait();
-        return channel;
-    }
-
-    /// <summary>
-    /// RabbitMQ 커넥션 생성
-    /// </summary>
-    private static async Task<IConnection> CreateConnectionAsync(RabbitMQConfig config)
-    {
+        _conn?.Dispose();
         var factory = new ConnectionFactory
         {
-            HostName = config.Host,
-            Port = config.Port,
-            UserName = config.Username,
-            Password = config.Password,
-            VirtualHost = config.VirtualHost,
-            Ssl = { Enabled = config.SslEnabled }
+            HostName = _config.Host,
+            Port = _config.Port,
+            UserName = _config.UserName,
+            Password = _config.Password,
+            VirtualHost = _config.VirtualHost,
+            Ssl = { Enabled = _config.SslEnabled },
+            AutomaticRecoveryEnabled = true,
+            TopologyRecoveryEnabled = true,
+            NetworkRecoveryInterval = TimeSpan.FromSeconds(10),
         };
 
-        var conn = await factory.CreateConnectionAsync();
-        return conn;
+        _conn = await factory.CreateConnectionAsync(ct);
+        return _conn;
+    }
+
+    /// <summary> RabbitMQ 큐를 선언합니다. </summary>
+    private async Task DeclareQueueAsync(IChannel channel, CancellationToken ct)
+    {
+        var args = new Dictionary<string, object?>
+        {
+            { "x-queue-type", "quorum" }, // 고가용성/내구성 제공 최신 큐 타입
+        };
+        if (_config.MessageTTL.HasValue && _config.MessageTTL > 0)
+        {
+            args["x-message-ttl"] = _config.MessageTTL.Value;
+        }
+
+        await channel.QueueDeclareAsync(
+            queue: _config.QueueName,
+            durable: true,      // 서버 재시작 후에도 큐가 유지되도록 설정
+            exclusive: false,   // 여러 커넥션에서 접근 가능
+            autoDelete: false,  // 마지막 소비자가 연결을 끊어도 큐가 삭제되지 않도록 설정
+            arguments: args,
+            cancellationToken: ct);
     }
 }

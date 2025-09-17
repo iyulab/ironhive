@@ -51,16 +51,16 @@ public class HiveService : IHiveService
     }
 
     /// <inheritdoc />
-    public IMemoryWorkerService CreateMemoryWorker(
-        string queueName,
-        Action<WorkflowBuilder<MemoryContext>> action)
+    public IMemoryWorkerManager CreateMemoryWorkers(
+        string queueStorageName,
+        Action<WorkflowStepBuilder<MemoryContext>> action)
     {
-        if (!Storages.TryGet<IQueueStorage>(queueName, out var storage))
-            throw new InvalidOperationException($"큐 스토리지 '{queueName}'(이)가 등록되어 있지 않습니다.");
+        if (!Storages.TryGet<IQueueStorage>(queueStorageName, out var storage))
+            throw new InvalidOperationException($"큐 스토리지 '{queueStorageName}'(이)가 등록되어 있지 않습니다.");
 
-        var builder = new WorkflowFactory(Services).CreateBuilder<MemoryContext>();
+        var builder = new WorkflowFactory(Services).CreateBuilder().StartWith<MemoryContext>();
         action(builder);
         var workflow = builder.Build();
-        return new MemoryWorkerService(storage, workflow);
+        return new MemoryWorkerManager(storage, workflow);
     }
 }

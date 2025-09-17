@@ -1,7 +1,8 @@
 ﻿namespace IronHive.Abstractions.Workflow;
 
 /// <summary>
-/// 
+/// 워크플로우의 실행을 관리하는 제네릭 엔진 클래스입니다.
+/// 정의된 노드(Nodes)에 따라 순차, 조건부, 병렬 실행 흐름을 제어합니다.
 /// </summary>
 public sealed class WorkflowEngine<TContext> : IWorkflow<TContext>
 {
@@ -9,17 +10,17 @@ public sealed class WorkflowEngine<TContext> : IWorkflow<TContext>
 
     public WorkflowEngine(IReadOnlyDictionary<string, IWorkflowStep> steps)
     {
-        _steps = new Dictionary<string, IWorkflowStep>(steps, StringComparer.OrdinalIgnoreCase);
+        _steps = steps;
     }
 
     /// <inheritdoc />
-    public string? Id { get; init; }
+    public string? Name { get; init; }
 
     /// <inheritdoc />
     public Version? Version { get; init; }
 
     /// <summary>
-    /// 실행 노드들 (순차 실행)
+    /// 워크플로우를 구성하는 노드들의 시퀀스입니다. 여기에 정의된 순서대로 워크플로우가 실행됩니다.
     /// </summary>
     public required IEnumerable<WorkflowNode> Nodes { get; init; }
 
@@ -27,54 +28,82 @@ public sealed class WorkflowEngine<TContext> : IWorkflow<TContext>
     public event EventHandler<WorkflowEventArgs<TContext>>? Progressed;
 
     /// <inheritdoc />
-    public async Task RunAsync(TContext context, CancellationToken ct = default)
+    public async Task RunAsync(TContext context, CancellationToken cancellationToken = default)
     {
         try
         {
             OnStarted(context);
-            await RunNodesAsync(Nodes, context, ct);
+            await RunSequenceAsync(Nodes, context, cancellationToken);
             OnCompleted(context);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            OnFailed(context, null, null, new TaskCanceledException("워크플로우 실행이 취소되었습니다."));
-            throw;
+            OnCancelled(context);
         }
         catch (Exception ex)
         {
             OnFailed(context, null, null, ex);
-            throw;
         }
     }
 
     /// <inheritdoc />
-    public async Task RunFromAsync(string nodeId, TContext context, CancellationToken ct = default)
+    public async Task RunFromAsync(string nodeId, TContext context, CancellationToken cancellationToken = default)
     {
-        var rest = SeekToNode(Nodes, nodeId)
+        var nodes = SeekTo(Nodes, nodeId)
                    ?? throw new InvalidOperationException($"nodeId '{nodeId}'를 찾을 수 없습니다.");
 
         try
         {
             OnStarted(context);
-            await RunNodesAsync(rest, context, ct);
+            await RunSequenceAsync(nodes, context, cancellationToken);
             OnCompleted(context);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            OnFailed(context, nodeId, null, new TaskCanceledException("워크플로우 실행이 취소되었습니다."));
-            throw;
+            OnCancelled(context);
         }
         catch (Exception ex)
         {
             OnFailed(context, nodeId, null, ex);
-            throw;
         }
     }
 
     /// <summary>
-    /// 노드를 순차적으로 실행합니다.
+    /// 노드 트리 구조를 재귀적으로 탐색하여, 지정된 `nodeId`와 일치하는 노드를 찾고, 그 노드부터 시작하는 시퀀스를 반환합니다.
     /// </summary>
-    private async Task RunNodesAsync(IEnumerable<WorkflowNode> nodes, TContext ctx, CancellationToken ct)
+    private static IEnumerable<WorkflowNode>? SeekTo(IEnumerable<WorkflowNode> nodes, string nodeId)
+    {
+        foreach (var n in nodes)
+        {
+            if ((n.Id ?? string.Empty) == nodeId)
+                return nodes.SkipWhile(x => x != n);
+
+            if (n is ConditionNode c)
+            {
+                foreach (var b in c.Branches.Values)
+                {
+                    var branches = SeekTo(b, nodeId);
+                    if (branches != null) return branches;
+                }
+            }
+
+            if (n is ParallelNode p)
+            {
+                foreach (var b in p.Branches)
+                {
+                    var branches = SeekTo(b, nodeId);
+                    if (branches != null) return branches;
+                }
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// 제공된 노드 시퀀스를 순차적으로 실행합니다.
+    /// 재귀적으로 호출되어 조건 분기 등의 흐름을 처리합니다.
+    /// </summary>
+    private async Task RunSequenceAsync(IEnumerable<WorkflowNode> nodes, TContext ctx, CancellationToken ct)
     {
         foreach (var node in nodes)
         {
@@ -84,34 +113,33 @@ public sealed class WorkflowEngine<TContext> : IWorkflow<TContext>
                 TaskNode t => t.Step,
                 ConditionNode c => c.Step,
                 ParallelNode p => null,
-                EndNode => null,
                 _ => null
             };
 
-            OnStepBefore(ctx, node.Id, stepName);
+            OnProgressed(ctx, node.Id, stepName);
             switch (node)
             {
                 case TaskNode t:
-                    await ExecuteTaskNode(t, ctx, ct);
+                    await ExecuteTaskAsync(t, ctx, ct);
                     break;
                 case ConditionNode c:
-                    var branch = await ExecuteConditionNode(c, ctx, ct);
-                    await RunNodesAsync(branch, ctx, ct);
+                    var branch = await ExecuteConditionAsync(c, ctx, ct);
+                    await RunSequenceAsync(branch, ctx, ct);
                     break;
                 case ParallelNode p:
-                    await ExecuteParallelNode(p, ctx, ct);
+                    await ExecuteParallelAsync(p, ctx, ct);
                     break;
-                case EndNode:
-                    return;
+                default:
+                    throw new NotSupportedException($"지원하지 않는 노드 타입: {node.GetType().FullName}");
             }
-            OnStepAfter(ctx, node.Id, stepName);
+            OnProgressed(ctx, node.Id, stepName);
         }
     }
 
     /// <summary>
     /// 작업 노드 실행을 수행합니다.
     /// </summary>
-    private async Task ExecuteTaskNode(TaskNode node, TContext ctx, CancellationToken ct)
+    private async Task ExecuteTaskAsync(TaskNode node, TContext ctx, CancellationToken ct)
     {
         if (!_steps.TryGetValue(node.Step, out var step))
             throw new KeyNotFoundException($"'{node.Step}' 스텝이 등록되어 있지 않습니다.");
@@ -126,80 +154,59 @@ public sealed class WorkflowEngine<TContext> : IWorkflow<TContext>
         var options = node.With.ConvertTo(optionsType);
 
         var method = iface.GetMethod(nameof(IWorkflowTask<TContext, object?>.ExecuteAsync),
-                                     new[] { typeof(TContext), optionsType, typeof(CancellationToken) })
+                                     [typeof(TContext), optionsType, typeof(CancellationToken)])
                      ?? throw new MissingMethodException($"'{iface}'에서 ExecuteAsync 메서드를 찾을 수 없습니다.");
 
-        var task = (Task<TaskStepResult>)method.Invoke(step, new object?[] { ctx!, options, ct })!;
+        var task = (Task<TaskStepResult>)method.Invoke(step, [ctx, options, ct])!;
         var result = await task.ConfigureAwait(false);
 
-        if (result.IsError && result.Exception != null)
-            throw result.Exception;
+        if (result.IsError)
+            throw result.Exception ?? new InvalidOperationException(result.Message ?? "작업이 실패했습니다.");
     }
 
     /// <summary>
-    /// 조건 노드 실행을 수행합니다.
+    /// ConditionNode를 실행하고, 평가 결과에 따라 다음으로 실행할 브랜치(노드 시퀀스)를 반환합니다.
     /// </summary>
-    private async Task<IEnumerable<WorkflowNode>> ExecuteConditionNode(ConditionNode node, TContext ctx, CancellationToken ct)
+    private async Task<IEnumerable<WorkflowNode>> ExecuteConditionAsync(ConditionNode node, TContext ctx, CancellationToken ct)
     {
         if (!_steps.TryGetValue(node.Step, out var step) || step is not IWorkflowCondition<TContext> cond)
             throw new KeyNotFoundException($"'{node.Step}' 스텝이 등록되어 있지 않습니다.");
 
         var res = await cond.EvaluateAsync(ctx, ct);
-        if (!node.Branches.TryGetValue(res.Key, out var branch))
-            throw new InvalidOperationException($"Condition '{node.Step}' 결과 '{res.Key}'에 해당하는 브랜치가 정의되지 않았습니다.");
 
-        return branch;
+        if (node.Branches.TryGetValue(res.Key, out var branch))
+            return branch;
+        else if (node.DefaultBranch != null)
+            return node.DefaultBranch;
+        else
+            throw new InvalidOperationException($"분기 키 '{res.Key}'에 해당하는 브랜치를 찾을 수 없습니다.");
     }
 
     /// <summary>
-    /// 병렬 노드 실행을 수행합니다.
+    /// ParallelNode를 실행합니다. 정의된 Join 방식에 따라 모든 브랜치 또는 일부 브랜치가 완료될 때까지 기다립니다.
     /// </summary>
-    private async Task ExecuteParallelNode(ParallelNode node, TContext ctx, CancellationToken ct)
+    private async Task ExecuteParallelAsync(ParallelNode node, TContext ctx, CancellationToken ct)
     {
-        switch (node.JoinMode)
+        if (node.Join == JoinMode.WaitAny)
         {
-            case JoinMethod.WaitAll:
-                await Task.WhenAll(node.Branches.Select(b => RunNodesAsync(b, ctx, ct)));
-                break;
-            case JoinMethod.WaitAny:
-                await Task.WhenAny(node.Branches.Select(b => RunNodesAsync(b, ctx, ct)));
-                break;
-            default:
-                throw new NotSupportedException($"{node.JoinMode}은 지원하지 않습니다.");
+            await Task.WhenAny(node.Branches.Select(b =>
+            {
+                var bctx = node.Context == ContextMode.Copied ? ctx.Clone() : ctx;
+                return RunSequenceAsync(b, bctx, ct);
+            }));
+        }
+        else
+        {
+            await Task.WhenAll(node.Branches.Select(b =>
+            {
+                var bctx = node.Context == ContextMode.Copied ? ctx.Clone() : ctx;
+                return RunSequenceAsync(b, bctx, ct);
+            }));
         }
     }
 
-    /// <summary>
-    /// 노드를 순차로 돌면서 ID가 일치하는 노드를 찾고, 그 노드부터 끝까지의 시퀀스를 반환합니다.
-    /// </summary>
-    private static IEnumerable<WorkflowNode>? SeekToNode(IEnumerable<WorkflowNode> nodes, string nodeId)
-    {
-        foreach (var n in nodes)
-        {
-            if ((n.Id ?? string.Empty) == nodeId)
-                return nodes.SkipWhile(x => x != n);
+    #region Event Methods
 
-            if (n is ConditionNode c)
-            {
-                foreach (var b in c.Branches.Values)
-                {
-                    var found = SeekToNode(b, nodeId);
-                    if (found != null) return found;
-                }
-            }
-            else if (n is ParallelNode p)
-            {
-                foreach (var b in p.Branches)
-                {
-                    var found = SeekToNode(b, nodeId);
-                    if (found != null) return found;
-                }
-            }
-        }
-        return null;
-    }
-
-    // --- 이벤트 ---
     private void OnStarted(TContext context) =>
         Progressed?.Invoke(this, new WorkflowEventArgs<TContext>
         {
@@ -207,19 +214,10 @@ public sealed class WorkflowEngine<TContext> : IWorkflow<TContext>
             Context = context
         });
 
-    private void OnStepBefore(TContext context, string? nodeId, string? step) =>
+    private void OnProgressed(TContext context, string? nodeId, string? step) =>
         Progressed?.Invoke(this, new WorkflowEventArgs<TContext>
         {
-            Type = WorkflowProgressType.OnStepBefore,
-            Context = context,
-            NodeId = nodeId,
-            StepName = step,
-        });
-
-    private void OnStepAfter(TContext context, string? nodeId, string? step) =>
-        Progressed?.Invoke(this, new WorkflowEventArgs<TContext>
-        {
-            Type = WorkflowProgressType.OnStepAfter,
+            Type = WorkflowProgressType.Progressed,
             Context = context,
             NodeId = nodeId,
             StepName = step,
@@ -232,13 +230,22 @@ public sealed class WorkflowEngine<TContext> : IWorkflow<TContext>
             Context = context,
         });
 
+    private void OnCancelled(TContext context) =>
+        Progressed?.Invoke(this, new WorkflowEventArgs<TContext>
+        {
+            Type = WorkflowProgressType.Cancelled,
+            Context = context,
+        });
+
     private void OnFailed(TContext context, string? nodeId, string? step, Exception? ex = null) =>
         Progressed?.Invoke(this, new WorkflowEventArgs<TContext>
         {
-            Type = WorkflowProgressType.Faulted,
+            Type = WorkflowProgressType.Failed,
             Context = context,
             NodeId = nodeId,
             StepName = step,
             Exception = ex
         });
+
+    #endregion
 }

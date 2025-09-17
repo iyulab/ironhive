@@ -9,15 +9,14 @@ namespace IronHive.Core.Storages;
 /// </summary>
 public class LocalQueueStorage : IQueueStorage
 {
-    private const string MessageExtension = "qmsg";
-    private const string LockExtension = "qlock";
-    private const string DeadMessageExtension = "qdead";
+    public const string MessageExtension = ".qmsg";
+    public const string LockExtension = ".qlock";
+    public const string DeadMessageExtension = ".qdead";
 
-    private readonly string _directoryPath;
-    private readonly TimeSpan? _ttl;
-    private readonly int _cacheSize;
+    private readonly TimeSpan? _messageTtl;
     private readonly JsonSerializerOptions _jsonOptions;
     private readonly ConcurrentQueue<string> _cache = new();
+    private readonly int _cacheSize;
 
     public LocalQueueStorage(string directoryPath)
         : this(new LocalQueueConfig { DirectoryPath = directoryPath })
@@ -25,12 +24,15 @@ public class LocalQueueStorage : IQueueStorage
 
     public LocalQueueStorage(LocalQueueConfig config)
     {
-        _directoryPath = config.DirectoryPath;
-        _ttl = config.TimeToLive;
-        _cacheSize = config.CacheQueueSize > 0 ? config.CacheQueueSize : 100;
+        _messageTtl = config.TimeToLive;
         _jsonOptions = config.JsonOptions;
 
-        Directory.CreateDirectory(_directoryPath);
+        if (config.CacheSize < 1)
+            throw new ArgumentOutOfRangeException(nameof(config.CacheSize), "Cache size must be greater than zero.");
+        _cacheSize = config.CacheSize;
+
+        DirectoryPath = config.DirectoryPath;
+        Directory.CreateDirectory(DirectoryPath);
     }
 
     /// <inheritdoc />
@@ -40,59 +42,118 @@ public class LocalQueueStorage : IQueueStorage
         GC.SuppressFinalize(this);
     }
 
+    /// <summary> 큐 파일이 저장될 디렉토리 경로 </summary>
+    public string DirectoryPath { get; }
+
+    /// <summary>
+    /// 큐에 처리되지 않은 메시지(lock/dead)들을 다시 복원합니다.
+    /// </summary>
+    public void Restore()
+    {
+        var targets = new List<string>();
+        targets.AddRange(Directory.GetFiles(DirectoryPath, $"*{LockExtension}"));
+        targets.AddRange(Directory.GetFiles(DirectoryPath, $"*{DeadMessageExtension}"));
+
+        foreach (var filePath in targets)
+        {
+            try
+            {
+                var queueFilePath = Path.ChangeExtension(filePath, MessageExtension);
+                File.Move(filePath, queueFilePath, overwrite: false);
+            }
+            catch (IOException)
+            {
+                // 충돌/접근 문제 발생 무시
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<IQueueConsumer> CreateConsumerAsync<T>(
+        Func<IQueueMessage<T>, Task> onReceived, 
+        CancellationToken cancellationToken = default)
+    {
+        var consumer = new LocalQueueConsumer<T>(this)
+        {
+            OnReceived = onReceived
+        };
+
+        cancellationToken.ThrowIfCancellationRequested();
+        await Task.CompletedTask;
+        return consumer;
+    }
+
     /// <inheritdoc />
     public Task<int> CountAsync(CancellationToken cancellationToken = default)
     {
-        var count = Directory.GetFiles(_directoryPath, $"*.{MessageExtension}").Length;
+        var count = Directory.GetFiles(DirectoryPath, $"*{MessageExtension}").Length;
+        cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(count);
     }
 
     /// <inheritdoc />
     public Task ClearAsync(CancellationToken cancellationToken = default)
     {
-        if (Directory.Exists(_directoryPath))
+        if (Directory.Exists(DirectoryPath))
         {
-            Directory.Delete(_directoryPath, recursive: true);
+            cancellationToken.ThrowIfCancellationRequested();
+            Directory.Delete(DirectoryPath, recursive: true);
         }
-        Directory.CreateDirectory(_directoryPath);
+        Directory.CreateDirectory(DirectoryPath);
         return Task.CompletedTask;
     }
 
     /// <inheritdoc />
     public async Task EnqueueAsync<T>(T message, CancellationToken cancellationToken = default)
     {
-        // 현재 UTC 시간을 기준으로 enqueueTicks를 생성합니다.
-        var enqueueTicks = DateTime.UtcNow.Ticks;
-        // TTL이 설정된 경우, 만료 시간을 계산합니다. 설정 되지 않은 경우 0으로 설정합니다.
-        var expirationTicks = _ttl.HasValue ? DateTime.UtcNow.Add(_ttl.Value).Ticks : 0;
+        // 파일명은 ticks 19자리 기준으로 생성하여 정렬시 오래된 순서대로 처리되도록 합니다.
+        var now = DateTimeOffset.UtcNow;
+        var id = Guid.NewGuid().ToString("N");
+        var fileName = $"{now.Ticks:D19}_{id}{MessageExtension}";
 
-        var fileName = $"{enqueueTicks}_{expirationTicks}.{MessageExtension}";
-        var filePath = Path.Combine(_directoryPath, fileName);
+        // 메시지 직렬화 후 파일에 저장 (동시성 문제로 인해 임시파일로 저장 후 이동)
+        byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(new LocalQueuePayload<T>
+        {
+            Id = id,
+            Body = message,
+            EnqueuedAt = now,
+            ExpiresAt = _messageTtl.HasValue ? now.Add(_messageTtl.Value) : null
+        }, _jsonOptions);
 
-        // 메시지 직렬화 후 파일에 저장
-        byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(message, _jsonOptions);
-        await File.WriteAllBytesAsync(filePath, bytes, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        var tmpPath = Path.Combine(DirectoryPath, $"{fileName}.tmp");
+        var filePath = Path.Combine(DirectoryPath, fileName);
+        await File.WriteAllBytesAsync(tmpPath, bytes, cancellationToken);
+        try
+        {
+            File.Move(tmpPath, filePath, overwrite: false);
+        }
+        catch
+        {
+            try { if (File.Exists(tmpPath)) File.Delete(tmpPath); } catch { /* swallow */ }
+            throw;
+        }
     }
 
     /// <inheritdoc />
-    public async Task<QueueMessage<T>?> DequeueAsync<T>(CancellationToken cancellationToken = default)
+    public async Task<IQueueMessage<T>?> DequeueAsync<T>(CancellationToken cancellationToken = default)
     {
-        // 캐시가 비어있으면 디렉토리에서 파일을 가져와서 캐시에 추가합니다.
-        if (_cache.IsEmpty)
+        while (!cancellationToken.IsCancellationRequested)
         {
-            foreach(var file in Directory.EnumerateFiles(_directoryPath, $"*.{MessageExtension}")
-                .OrderBy(f => f).Take(_cacheSize))
+            // 캐시가 비어있으면 null 반환
+            if (!_cache.TryDequeue(out var queueFilePath))
             {
-                _cache.Enqueue(file);
+                // 캐시가 비어있고 채우지 못하면 null 반환
+                if (_cache.IsEmpty && !TryFillCache())
+                    return null;
+                // 캐시에서 다시 시도
+                if (!_cache.TryDequeue(out queueFilePath))
+                    return null;
             }
-        }
-        
-        while(_cache.TryDequeue(out var queueFilePath) || cancellationToken.IsCancellationRequested)
-        {
-            if (string.IsNullOrEmpty(queueFilePath))
-                continue;
+            if (string.IsNullOrWhiteSpace(queueFilePath))
+                return null;
 
-            var lockedFilePath = Path.ChangeExtension(queueFilePath, $".{LockExtension}");
+            var lockedFilePath = Path.ChangeExtension(queueFilePath, LockExtension);
             try
             {
                 // 큐 파일이 존재하지 않으면 건너뜁니다.
@@ -102,21 +163,23 @@ public class LocalQueueStorage : IQueueStorage
                 // 메시지 파일을 잠금상태로 변경합니다.
                 File.Move(queueFilePath, lockedFilePath);
 
-                // 파일이 유효하지 않거나 만료된 경우, 해당 파일을 삭제하고 다음 파일로 넘어갑니다.
-                if (IsInvalidOrExpired(lockedFilePath))
+                var bytes = await File.ReadAllBytesAsync(lockedFilePath, cancellationToken);
+                var payload = JsonSerializer.Deserialize<LocalQueuePayload<T>>(bytes, _jsonOptions)
+                    ?? throw new JsonException("Failed to deserialize message from queue file.");
+
+                // 메시지가 만료된 경우 파일을 삭제하고 다음 파일로 넘어갑니다.
+                if (payload.ExpiresAt.HasValue && payload.ExpiresAt.Value <= DateTimeOffset.UtcNow)
                 {
                     File.Delete(lockedFilePath);
                     continue;
                 }
 
-                var bytes = await File.ReadAllBytesAsync(lockedFilePath, cancellationToken);
-                var message = JsonSerializer.Deserialize<T>(bytes, _jsonOptions)
-                    ?? throw new JsonException("Failed to deserialize message from file.");
-
-                return new QueueMessage<T>
+                return new LocalQueueMessage<T>(lockedFilePath)
                 {
-                    Payload = message,
-                    Tag = lockedFilePath
+                    Id = payload.Id,
+                    Body = payload.Body,
+                    EnqueuedAt = payload.EnqueuedAt,
+                    ExpiresAt = payload.ExpiresAt,
                 };
             }
             // 다른 소비자가 처리 중일 경우 건너뜁니다.
@@ -133,8 +196,9 @@ public class LocalQueueStorage : IQueueStorage
                     if (!File.Exists(lockedFilePath))
                         continue;
 
-                    var deadFilePath = Path.ChangeExtension(lockedFilePath, $".{DeadMessageExtension}");
+                    var deadFilePath = Path.ChangeExtension(lockedFilePath, DeadMessageExtension);
                     File.Move(lockedFilePath, deadFilePath);
+                    File.WriteAllText(deadFilePath + ".reason", $"Time:{DateTimeOffset.UtcNow:o}\nReason:{ex}");
                 }
                 catch (IOException)
                 {
@@ -149,124 +213,19 @@ public class LocalQueueStorage : IQueueStorage
             }
         }
 
-        // 큐가 비어있으면 null 반환
-        return null;
+        throw new OperationCanceledException("Dequeue operation was canceled.", cancellationToken);
     }
 
-    /// <inheritdoc />
-    public Task AckAsync(object tag, CancellationToken cancellationToken = default)
+    /// <summary> 캐시를 채웁니다. </summary>
+    /// <returns>캐시가 비어있지 않으면 true</returns>
+    private bool TryFillCache()
     {
-        // tag는 lock 상태 파일의 경로입니다.
-        if (tag is not string lockedFilePath)
-            throw new InvalidOperationException("Invalid ack tag.");
-
-        // lock 상태 파일이 존재하지 않으면 예외를 발생시킵니다.
-        if (!File.Exists(lockedFilePath))
-            throw new FileNotFoundException($"Lock file '{lockedFilePath}' does not exist.");
-
-        // 확인된 메시지의 lock 상태 파일을 삭제합니다.
-        File.Delete(lockedFilePath);
-        
-        return Task.CompletedTask;
-    }
-
-    /// <inheritdoc />
-    public Task NackAsync(object tag, bool requeue = false, CancellationToken cancellationToken = default)
-    {
-        // tag는 lock 상태 파일의 경로입니다.
-        if (tag is not string lockedFilePath)
-            throw new InvalidOperationException("Invalid ack tag.");
-
-        // lock 상태 파일이 존재하지 않으면 예외를 발생시킵니다.
-        if (!File.Exists(lockedFilePath))
-            throw new FileNotFoundException($"Lock file '{lockedFilePath}' does not exist.");
-
-        // requeue가 true인 경우, lock 상태 파일을 원래 큐 파일로 이동합니다.
-        if (requeue)
+        foreach (var f in Directory.EnumerateFiles(DirectoryPath, $"*{MessageExtension}")
+            .OrderBy(f => Path.GetFileName(f), StringComparer.Ordinal)
+            .Take(_cacheSize))
         {
-            try
-            {
-                var queueFilePath = Path.ChangeExtension(lockedFilePath, $".{MessageExtension}");
-                File.Move(lockedFilePath, queueFilePath);
-            }
-            catch (IOException)
-            {
-                // 이동 실패 시 lock 상태에 남겨둡니다.
-            }
+            _cache.Enqueue(f);
         }
-        // 이외, lock 상태 파일을 삭제합니다.
-        else
-        {
-            File.Delete(lockedFilePath);
-        }
-
-        return Task.CompletedTask;
-    }
-
-    /// <summary>
-    /// 큐에 존재하는 처리되지 않은 메시지들을 다시 복원합니다.
-    /// </summary>
-    public async Task RestoreAsync()
-    {
-        var targets = new List<string>();
-        targets.AddRange(Directory.GetFiles(_directoryPath, $"*.{LockExtension}"));
-        targets.AddRange(Directory.GetFiles(_directoryPath, $"*.{DeadMessageExtension}"));
-
-        await Parallel.ForEachAsync(targets, async (filePath, _) =>
-        {
-            try
-            {
-                // 유효하지 않거나 만료된 파일은 삭제합니다.
-                if (IsInvalidOrExpired(filePath))
-                {
-                    File.Delete(filePath);
-                }
-                // 대상 파일을 큐 파일로 이동합니다.
-                else
-                {
-                    var queueFilePath = Path.ChangeExtension(filePath, $".{MessageExtension}");
-                    File.Move(filePath, queueFilePath, overwrite: false);
-                }
-            }
-            catch (IOException)
-            {
-                // 충돌/접근 문제 발생 시 무시
-            }
-
-            await Task.CompletedTask;
-        });
-    }
-
-    /// <summary>
-    /// 파일 경로를 기반으로 파일명의 유효성과 메시지 만료 여부를 검사합니다.
-    /// </summary>
-    /// <returns>파일이 유효하지 않거나 만료된 경우 true, 유효한 경우 false</returns>
-    private static bool IsInvalidOrExpired(string filePath)
-    {
-        // 파일명: "{enqueueTicks}_{expirationTicks}.ext"
-        var parts = Path.GetFileNameWithoutExtension(filePath).Split('_');
-
-        // 파일명 형식이 잘못됨
-        if (parts.Length != 2)
-        {
-            return true;
-        }
-
-        // TTL이 설정되었고, 현재 시간이 만료 시간을 지났다면 유효하지 않음
-        if (long.TryParse(parts[1], out long expirationTicks))
-        {
-            if (expirationTicks != 0 && DateTime.UtcNow.Ticks > expirationTicks)
-            {
-                return true;
-            }
-        }
-        // 만료 정보가 숫자가 아닌 경우 유효하지 않음
-        else
-        {
-            return true;
-        }
-
-        // 유효한 파일
-        return false;
+        return !_cache.IsEmpty;
     }
 }

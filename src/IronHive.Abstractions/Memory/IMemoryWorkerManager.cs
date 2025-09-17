@@ -6,7 +6,7 @@ namespace IronHive.Abstractions.Memory;
 /// 메모리 기반 작업을 처리하는 워커들의 수명을 관리하고,
 /// 워크로드에 따라 자동으로 워커들의 숫자가 확장 및 축소되는 워커 서비스입니다.
 /// </summary>
-public interface IMemoryWorkerService : IDisposable
+public interface IMemoryWorkerManager : IDisposable
 {
     /// <summary>
     /// 현재 서비스가 실행 중인지 여부를 나타냅니다.

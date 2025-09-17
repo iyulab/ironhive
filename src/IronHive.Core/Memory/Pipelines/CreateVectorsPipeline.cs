@@ -1,25 +1,20 @@
-﻿using DocumentFormat.OpenXml.VariantTypes;
-using IronHive.Abstractions.Embedding;
+﻿using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Memory;
-using IronHive.Abstractions.Registries;
 using IronHive.Abstractions.Vector;
 using IronHive.Abstractions.Workflow;
 
 namespace IronHive.Core.Memory.Pipelines;
 
 /// <summary>
-/// VectorEmbeddingHandler는 주어진 메모리 소스에서 벡터 임베딩을 생성하고,
-/// 벡터 스토리지에 저장하는 메모리 파이프라인 핸들러입니다.
+/// 주어진 청크에서 벡터 임베딩을 생성합니다.
 /// </summary>
-public class EmbeddingToStoragePipeline : IMemoryPipeline
+public class CreateVectorsPipeline : IMemoryPipeline
 {
-    private readonly IStorageRegistry _storages;
     private readonly IEmbeddingService _embedder;
 
-    public EmbeddingToStoragePipeline(IStorageRegistry storages, IEmbeddingService embedder)
+    public CreateVectorsPipeline(IEmbeddingService embedder)
     {
         _embedder = embedder;
-        _storages = storages;
     }
 
     /// <inheritdoc />
@@ -29,9 +24,11 @@ public class EmbeddingToStoragePipeline : IMemoryPipeline
     {
         if (context.Target is not VectorMemoryTarget target)
             throw new InvalidOperationException("target is not a MemoryVectorTarget");
+        if (!context.Items.TryGetValue("chunks", out var chunks))
+            throw new InvalidOperationException("chunks not found in context items");
 
         var points = new List<VectorRecord>();
-        if (context.Payload is IEnumerable<Dialogue> dialogues)
+        if (chunks is IEnumerable<DialogueExtractionPipeline.Dialogue> dialogues)
         {
             var embeddings = await _embedder.EmbedBatchAsync(
                     target.EmbeddingProvider,
@@ -59,7 +56,7 @@ public class EmbeddingToStoragePipeline : IMemoryPipeline
                 });
             }
         }
-        else if (context.Payload is IEnumerable<string> texts)
+        else if (chunks is IEnumerable<string> texts)
         {
             var embeddings = await _embedder.EmbedBatchAsync(
                target.EmbeddingProvider,
@@ -92,10 +89,7 @@ public class EmbeddingToStoragePipeline : IMemoryPipeline
             return TaskStepResult.Fail(new InvalidOperationException("payload is not a IEnumerable<Dialogue> or IEnumerable<string>"));
         }
 
-        if (!_storages.TryGet<IVectorStorage>(target.StorageName, out var storage))
-            throw new InvalidOperationException($"Vector storage '{target.StorageName}' is not registered.");
-
-        await storage.UpsertVectorsAsync(target.CollectionName, points, cancellationToken);
+        context.Items["vectors"] = points;
         return TaskStepResult.Success();
     }
 }

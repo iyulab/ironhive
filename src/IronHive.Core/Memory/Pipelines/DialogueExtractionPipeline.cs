@@ -1,5 +1,4 @@
-﻿using DocumentFormat.OpenXml.EMMA;
-using IronHive.Abstractions.Memory;
+﻿using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Messages.Roles;
@@ -8,14 +7,8 @@ using System.Text.RegularExpressions;
 
 namespace IronHive.Core.Memory.Pipelines;
 
-public class Dialogue
-{
-    public string Question { get; set; } = string.Empty;
-    public string Answer { get; set; } = string.Empty;
-}
-
 /// <summary>
-/// DialogueExtractionPipeline는 주어진 텍스트에서 Q&A 쌍을 추출하는 메모리 파이프라인 핸들러입니다.
+/// 주어진 텍스트에서 Q&A 쌍을 추출하는 핸들러입니다.
 /// </summary>
 public partial class DialogueExtractionPipeline : IMemoryPipeline<DialogueExtractionPipeline.Options>
 {
@@ -26,6 +19,10 @@ public partial class DialogueExtractionPipeline : IMemoryPipeline<DialogueExtrac
         _messages = messages;
     }
 
+    // QnA 쌍을 나타내는 레코드입니다.
+    public record Dialogue(string Question, string Answer);
+
+    // 파이프라인 옵션을 나타내는 레코드입니다.
     public record Options(string Provider, string Model);
 
     // QnA 쌍을 추출하기 위한 정규식입니다.
@@ -38,8 +35,8 @@ public partial class DialogueExtractionPipeline : IMemoryPipeline<DialogueExtrac
         Options options, 
         CancellationToken cancellationToken = default)
     {
-        if (context.Payload is not IEnumerable<string> chunks)
-            throw new InvalidOperationException("payload is not a IEnumerable<string>");
+        if (!context.Items.TryGetValue<IEnumerable<string>>("chunks", out var chunks))
+            throw new InvalidOperationException("chunks is not a IEnumerable<string>");
 
         var dialogues = new List<Dialogue>();
         foreach (var chunk in chunks)
@@ -63,8 +60,7 @@ public partial class DialogueExtractionPipeline : IMemoryPipeline<DialogueExtrac
             dialogues.AddRange(ParseFrom(text));
         }
 
-        context.Payload = dialogues;
-
+        context.Items.Add("chunks", dialogues);
         return TaskStepResult.Success();
     }
 
@@ -82,11 +78,7 @@ public partial class DialogueExtractionPipeline : IMemoryPipeline<DialogueExtrac
                 var answer = match.Groups[2].Value.Trim();
                 if (!string.IsNullOrEmpty(question) && !string.IsNullOrEmpty(answer))
                 {
-                    dialogues.Add(new Dialogue
-                    {
-                        Question = question,
-                        Answer = answer
-                    });
+                    dialogues.Add(new Dialogue(question, answer));
                 }
             }
         }

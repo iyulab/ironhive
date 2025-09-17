@@ -3,16 +3,15 @@
 public enum WorkflowProgressType
 {
     Started,
-    OnStepBefore,
-    OnStepAfter,
+    Progressed,
     Completed,
-    Faulted,
+    Failed,
     Cancelled
 }
 
 public sealed class WorkflowEventArgs<TContext> : EventArgs
 {
-    public string? WorkflowId { get; init; }
+    public string? WorkflowName { get; init; }
 
     public required WorkflowProgressType Type { get; init; }
     public required TContext Context { get; init; }

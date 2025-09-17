@@ -6,7 +6,7 @@ using System.Collections.Concurrent;
 namespace IronHive.Core.Memory;
 
 /// <inheritdoc />
-public class MemoryWorkerService : IMemoryWorkerService
+public class MemoryWorkerManager : IMemoryWorkerManager
 {
     private readonly IQueueStorage _queue;
     private readonly IWorkflow<MemoryContext> _pipeline;
@@ -16,7 +16,7 @@ public class MemoryWorkerService : IMemoryWorkerService
 
     private int _state = 0; // 0: 정지됨, 1: 실행 중
 
-    public MemoryWorkerService(IQueueStorage queue, IWorkflow<MemoryContext> pipeline)
+    public MemoryWorkerManager(IQueueStorage queue, IWorkflow<MemoryContext> pipeline)
     {
         _queue = queue;
         _pipeline = pipeline;

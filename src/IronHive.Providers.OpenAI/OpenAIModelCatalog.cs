@@ -30,7 +30,7 @@ public class OpenAIModelCatalog : IModelCatalog
     {
         var models = await _client.GetListModelsAsync(cancellationToken);
 
-        return models.Select(m => new ModelSpec
+        return models.Select(m => new GenericModelSpec
         {
             ModelId = m.Id,
             DisplayName = m.Id,
@@ -47,7 +47,7 @@ public class OpenAIModelCatalog : IModelCatalog
         var model = await _client.GetModelAsync(modelId, cancellationToken);
 
         return model is not null
-            ? new ModelSpec
+            ? new GenericModelSpec
             {
                 ModelId = model.Id,
                 DisplayName = model.Id,

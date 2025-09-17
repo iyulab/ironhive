@@ -34,7 +34,7 @@ public class AnthropicModelCatalog : IModelCatalog
         };
         var res = await _client.GetModelsAsync(req, cancellationToken);
 
-        return res.Data.Select(m => new ModelSpec
+        return res.Data.Select(m => new GenericModelSpec
         {
             ModelId = m.Id,
             DisplayName = m.DisplayName,
@@ -50,7 +50,7 @@ public class AnthropicModelCatalog : IModelCatalog
         var model = await _client.GetModelAsync(modelId, cancellationToken);
 
         return model is not null
-            ? new ModelSpec
+            ? new GenericModelSpec
             {
                 ModelId = model.Id,
                 DisplayName = model.DisplayName,

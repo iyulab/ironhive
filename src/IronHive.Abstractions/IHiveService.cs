@@ -40,8 +40,6 @@ public interface IHiveService
 
     #endregion
 
-    #region 핵심 서비스 영역
-
     /// <summary>
     /// 메모리 서비스를 제공합니다.
     /// </summary>
@@ -60,9 +58,7 @@ public interface IHiveService
     /// <summary>
     /// 메모리 작업 서비스를 생성합니다.
     /// </summary>
-    IMemoryWorkerService CreateMemoryWorker(
-        string queueName, 
-        Action<WorkflowBuilder<MemoryContext>> action);
-
-    #endregion
+    IMemoryWorkerManager CreateMemoryWorkers(
+        string queueStorageName,
+        Action<WorkflowStepBuilder<MemoryContext>> action);
 }
