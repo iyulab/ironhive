@@ -27,8 +27,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IronHive.Core", "src\IronHi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IronHive.Storages.Qdrant", "src\IronHive.Storages.Qdrant\IronHive.Storages.Qdrant.csproj", "{9F17257E-B07B-F0D0-82C0-B82C6390B8A0}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "30. test", "30. test", "{56FE49BB-39B3-4DE9-BDA5-6E2C5D358F4A}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IronHive.Storages.RabbitMQ", "src\IronHive.Storages.RabbitMQ\IronHive.Storages.RabbitMQ.csproj", "{AEE472F3-8D28-4A59-A5EA-43F37891C4D9}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IronHive.Storages.Azure", "src\IronHive.Storages.Azure\IronHive.Storages.Azure.csproj", "{5CF4A6AB-6A72-F608-3AA8-B671838260CF}"
@@ -49,7 +47,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IronHive.Providers.Ollama",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IronHive.Providers.OpenAI", "src\IronHive.Providers.OpenAI\IronHive.Providers.OpenAI.csproj", "{E9978F79-5D1E-D186-92D3-7BA591A27B6F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleTest", "tests\ConsoleTest.csproj", "{B46B926E-A5D1-F508-A1C2-30BFF40D9C3F}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "30. experiments", "30. experiments", "{F94E9079-E631-016F-4193-ECFB0308D062}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleTest", "experiments\ConsoleTest\ConsoleTest.csproj", "{C251D6E8-D967-4C82-8108-056286650D2F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -105,10 +105,10 @@ Global
 		{E9978F79-5D1E-D186-92D3-7BA591A27B6F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E9978F79-5D1E-D186-92D3-7BA591A27B6F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E9978F79-5D1E-D186-92D3-7BA591A27B6F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B46B926E-A5D1-F508-A1C2-30BFF40D9C3F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B46B926E-A5D1-F508-A1C2-30BFF40D9C3F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B46B926E-A5D1-F508-A1C2-30BFF40D9C3F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B46B926E-A5D1-F508-A1C2-30BFF40D9C3F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C251D6E8-D967-4C82-8108-056286650D2F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C251D6E8-D967-4C82-8108-056286650D2F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C251D6E8-D967-4C82-8108-056286650D2F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C251D6E8-D967-4C82-8108-056286650D2F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -129,7 +129,7 @@ Global
 		{DA384A5A-D5B1-5676-2709-C10168850E3A} = {BA247DA3-3956-469A-BE72-2F201561404B}
 		{A96B656F-778A-94D5-0898-60676BA52095} = {BA247DA3-3956-469A-BE72-2F201561404B}
 		{E9978F79-5D1E-D186-92D3-7BA591A27B6F} = {BA247DA3-3956-469A-BE72-2F201561404B}
-		{B46B926E-A5D1-F508-A1C2-30BFF40D9C3F} = {56FE49BB-39B3-4DE9-BDA5-6E2C5D358F4A}
+		{C251D6E8-D967-4C82-8108-056286650D2F} = {F94E9079-E631-016F-4193-ECFB0308D062}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {D53D41CC-8B85-4816-A6CC-C1161061E791}
