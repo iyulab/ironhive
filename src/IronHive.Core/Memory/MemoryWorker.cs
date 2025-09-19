@@ -1,6 +1,7 @@
 ﻿using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Queue;
 using IronHive.Abstractions.Workflow;
+using System.Collections.Concurrent;
 
 namespace IronHive.Core.Memory;
 
@@ -10,123 +11,136 @@ public class MemoryWorker : IMemoryWorker
     private readonly IQueueStorage _queue;
     private readonly IWorkflow<MemoryContext> _pipeline;
 
-    private int _state = (int)MemoryWorkerState.Stopped;
-    private TaskCompletionSource<bool>? _tcs = null;
-    private CancellationTokenSource? _cts = null;
+    private readonly ConcurrentDictionary<Task, byte> _tasks = new();
+    private readonly CancellationTokenSource _cts = new(); // 전체 수명 토큰
+
+    private SemaphoreSlim? _gate;
+    private IQueueConsumer? _consumer;
+    private int _flag = 0; // 0: 정지됨, 1: 실행 중
 
     public MemoryWorker(IQueueStorage queue, IWorkflow<MemoryContext> pipeline)
     {
         _queue = queue;
         _pipeline = pipeline;
+        _pipeline.Progressed += OnPipelineProgressed;
     }
 
     /// <inheritdoc />
-    public required TimeSpan DequeueInterval { get; init; }
+    public bool IsRunning => Volatile.Read(ref _flag) == 1;
 
     /// <inheritdoc />
-    public MemoryWorkerState State
-    {
-        get => (MemoryWorkerState)Volatile.Read(ref _state);
-        private set
-        {
-            var prev = Interlocked.Exchange(ref _state, (int)value);
-
-            // 상태가 변경되었을 때만 이벤트를 발생시킴
-            if (prev != (int)value)
-            {
-                StateChanged?.Invoke(this, value);
-            }
-        }
-    }
+    public int RunningTaskCount => _tasks.Count;
 
     /// <inheritdoc />
-    public event EventHandler<MemoryWorkerState>? StateChanged;
+    public int MaxConcurrentTasks { get; set; } = 5;
+
+    /// <inheritdoc />
+    public event EventHandler<WorkflowEventArgs<MemoryContext>>? Progressed;
 
     /// <inheritdoc />
     public void Dispose()
     {
-        try
-        {
-            _cts?.Dispose();
-            _tcs?.TrySetCanceled();
-        }
-        finally
-        {
-            _cts = null;
-            _tcs = null;
-
-            StateChanged = null;
-        }
+        StopAsync(force: true).GetAwaiter().GetResult();
+        _pipeline.Progressed -= OnPipelineProgressed;
+        _cts.Dispose();
+        Progressed = null;
         GC.SuppressFinalize(this);
     }
 
     /// <inheritdoc />
     public async Task StartAsync()
     {
-        // 중지 상태가 아닌 경우, 아무 작업도 하지 않음
-        if (Interlocked.CompareExchange(ref _state, (int)MemoryWorkerState.StartRequested, (int)MemoryWorkerState.Stopped)
-            != (int)MemoryWorkerState.Stopped)
+        if (Interlocked.CompareExchange(ref _flag, 1, 0) != 0)
             return;
 
-        // 최초 변경 수동 호출 (CompareExchange를 사용했기 때문)
-        StateChanged?.Invoke(this, State); 
+        _gate?.Dispose();
+        _gate = new SemaphoreSlim(MaxConcurrentTasks, MaxConcurrentTasks);
 
-        _cts = new CancellationTokenSource();
-        _tcs = new TaskCompletionSource<bool>();
+        _consumer = await _queue.CreateConsumerAsync<MemoryContext>(
+            onReceived: OnReceivedMessageAsync,
+            cancellationToken: default);
 
-        try
-        {
-            while (!_cts.Token.IsCancellationRequested)
-            {
-                if (State == MemoryWorkerState.StopRequested)
-                    break;
-
-                var msg = await _queue.DequeueAsync<MemoryContext>(_cts.Token);
-                if (msg != null)
-                {
-                    State = MemoryWorkerState.Processing;
-                    await _pipeline.RunAsync(msg.Body, _cts.Token);
-                    await msg.CompleteAsync(_cts.Token);
-                }
-                else
-                {
-                    State = MemoryWorkerState.Idle;
-                    await Task.Delay(DequeueInterval, _cts.Token);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[ERROR] Worker encountered an error: {ex.Message}");
-        }
-        finally
-        {
-            _cts?.Dispose();
-            _tcs?.TrySetResult(true);
-            State = MemoryWorkerState.Stopped;
-        }
+        await _consumer.StartAsync();
     }
 
     /// <inheritdoc />
     public async Task StopAsync(bool force = false)
     {
-        // 즉시 중지 요청인 경우
-        if (force)
+        // 큐 소비자를 중지하고 해제합니다.
+        if (_consumer is not null)
         {
-            _cts?.Cancel();
-            State = MemoryWorkerState.Stopped;
-        }
-        // 즉시 중지가 아닌 경우
-        else
-        {
-            State = MemoryWorkerState.StopRequested;
+            await _consumer.StopAsync();
+            _consumer.Dispose();
+            _consumer = null;
         }
 
-        // 작업이 완료될 때까지 대기
-        var tcs = _tcs;
-        if (tcs != null)
+        // 강제 중지: 전체 취소 토큰을 취소합니다.
+        if (force)
         {
-            await tcs.Task;
+            _cts.Cancel();
         }
+
+        // 실행중인 작업이 있으면 대기합니다.
+        if (!force && !_tasks.IsEmpty)
+        {
+            Task[] running = _tasks.Keys.ToArray();
+            try { await Task.WhenAll(running); } catch { /* 개별 실패 무시 */ }
+        }
+
+        // 게이트웨이 해제
+        if (_gate is not null)
+        {
+            _gate.Dispose();
+            _gate = null;
+        }
+
+        Interlocked.Exchange(ref _flag, 0);
+    }
+
+    /// <summary>
+    /// 큐에서 메시지를 수신했을 때 호출되는 비동기 메서드입니다.
+    /// </summary>
+    private async Task OnReceivedMessageAsync(IQueueMessage<MemoryContext> msg)
+    {
+        if (_gate is null)
+        {
+            await msg.DeadAsync("Worker is Stunning Down");
+            return;
+        }
+
+        //await _gate.WaitAsync(_cts.Token);
+        await _gate.WaitAsync();
+
+        var task = Task.Run(async () =>
+        {
+            try
+            {
+                await _pipeline.RunAsync(msg.Body, _cts.Token);
+                await msg.CompleteAsync();
+            }
+            catch (OperationCanceledException) when (_cts.IsCancellationRequested)
+            {
+                await msg.RequeueAsync(); // 워커가 중지 중이므로 재큐
+            }
+            catch (Exception ex)
+            {
+                await msg.DeadAsync(ex.ToString()); // 스택 포함
+            }
+            finally
+            {
+                _gate.Release();
+            }
+        }, _cts.Token);
+
+        _tasks.TryAdd(task, 0);
+        _ = task.ContinueWith(t => _tasks.TryRemove(t, out _), TaskScheduler.Default);
+    }
+
+    /// <summary>
+    /// 파이프라인이 진행될 때 호출되는 메서드입니다.
+    /// </summary>
+    private void OnPipelineProgressed(object? sender, WorkflowEventArgs<MemoryContext> e)
+    {
+        Progressed?.Invoke(this, e);
     }
 }

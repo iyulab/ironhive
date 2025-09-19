@@ -14,7 +14,7 @@ public class EmbeddingService : IEmbeddingService
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<float>> EmbedAsync(
+    public async Task<float[]> EmbedAsync(
         string provider,
         string modelId,
         string input,

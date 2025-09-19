@@ -1,32 +1,19 @@
-﻿namespace IronHive.Core.Storages;
+﻿using IronHive.Core.Utilities;
+
+namespace IronHive.Core.Storages;
 
 /// <summary>
-/// 로컬 벡터 데이터베이스 LiteDB 설정 클래스입니다.
+/// SqliteVec(vec0)을 사용하는 로컬 벡터 스토리지 설정입니다.
 /// </summary>
 public class LocalVectorConfig
 {
     /// <summary>
-    /// 벡터 데이터베이스 파일 경로입니다.
+    /// Sqlite 데이터 베이스의 파일 경로 
     /// </summary>
-    public required string Path { get; set; }
+    public required string DatabasePath { get; set; }
 
     /// <summary>
-    /// 파일 암호 (암호화 필요 시 설정)
+    /// sqlite-vec 모듈 버전 (기본값: 최신) 
     /// </summary>
-    public string? Password { get; set; }
-
-    /// <summary>
-    /// 파일 잠금 해제 (다중 프로세스 공유 가능, default: true)
-    /// </summary>
-    public bool Shared { get; set; } = true;
-
-    /// <summary>
-    /// 파일 손상 시 자동 복구 여부 (default: false)
-    /// </summary>
-    public bool AutoRebuild { get; set; } = false;
-
-    /// <summary>
-    /// LiteDB 버전 업그레이드 허용 여부 (default: false)
-    /// </summary>
-    public bool Upgrade { get; set; } = false;
+    public string Version { get; set; } = SqliteVecInstaller.DefaultVersion;
 }

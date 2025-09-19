@@ -4,65 +4,39 @@ using System.IO.Compression;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 
-namespace ConsoleTest;
+namespace IronHive.Core.Utilities;
 
 /// <summary>
 /// sqlite-vec 확장 모듈 설치 도우미
 /// </summary>
 public static class SqliteVecInstaller
 {
+    public const string DefaultVersion = "0.1.7-alpha.2";
+
     private const string BaseUri = "https://github.com/asg017/sqlite-vec/releases/download";
-    private const string DefaultVersion = "0.1.7-alpha.2";
     private const string MetaFileExtension = ".meta";
 
     /// <summary>
-    /// 지정한 디렉터리에서 sqlite-vec 확장 모듈 및 메타 정보를 반환합니다.
+    /// 지정한 디렉터리에서 sqlite-vec 확장 모듈의 정보를 가져옵니다.
     /// </summary>
     public static bool TryGetModule(
         string directoryPath,
-        [MaybeNullWhen(false)] out string modulePath,
-        [MaybeNullWhen(false)] out Dictionary<string, string> metadata)
+        [MaybeNullWhen(false)] out SqliteVecModule module)
     {
-        modulePath = null;
-        metadata = null;
+        module = null;
 
-        if (!Directory.Exists(directoryPath))
-            return false;
-
-        // 메타파일 읽기
         var metaPath = Path.Combine(directoryPath, $"vec0{MetaFileExtension}");
-        metadata = ReadMetaFile(metaPath);
-        if (metadata is null)
+        if (!File.Exists(metaPath))
             return false;
 
-        // 모듈 파일 경로
-        var binaryExt = GetBinaryExtension();
-        var filePath = Path.Combine(directoryPath, $"vec0.{binaryExt}");
-
-        if (!File.Exists(filePath))
+        module = ReadMetaFile(metaPath);
+        if (module is null)
             return false;
 
-        modulePath = filePath;
-        // 무결성 검증
-        if (!VerifyModule(modulePath, metadata))
-        {
-            modulePath = null;
-            metadata = null;
+        if (!VerifyModule(module))
             return false;
-        }
+
         return true;
-    }
-
-    /// <summary>
-    /// 모듈 파일과 메타정보 체크섬을 비교하여 무결성을 검증합니다. 
-    /// </summary>
-    public static bool VerifyModule(string modulePath, Dictionary<string, string> metadata)
-    {
-        if (!metadata.TryGetValue("checksum", out var expected))
-            return false;
-
-        var actual = ComputeSha256(modulePath);
-        return string.Equals(expected, actual, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -121,6 +95,15 @@ public static class SqliteVecInstaller
         }
     }
 
+    /// <summary>
+    /// 모듈 파일과 메타정보 체크섬을 비교하여 무결성을 검증합니다. 
+    /// </summary>
+    public static bool VerifyModule(SqliteVecModule module)
+    {
+        var checksum = ComputeSha256(module.FilePath);
+        return string.Equals(module.Checksum, checksum, StringComparison.OrdinalIgnoreCase);
+    }
+
     #region 내부 유틸
 
     /// <summary> 클라이언트 환경에 맞는 다운로드 URL 생성 </summary>
@@ -151,15 +134,6 @@ public static class SqliteVecInstaller
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) return "macos";
         throw new PlatformNotSupportedException("지원하지 않는 OS");
     }
-
-    /// <summary> 현재 프로세스의 OS별 바이너리 확장자 반환 </summary>
-    private static string GetBinaryExtension()
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return "dll";
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) return "so";
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) return "dylib";
-        throw new PlatformNotSupportedException("지원하지 않는 OS");
-    }
     
     /// <summary> 메타파일 작성 </summary>
     private static void WriteMetaFile(string modulePath, string version, Uri downloadUri)
@@ -168,14 +142,13 @@ public static class SqliteVecInstaller
 
         var lines = new List<string>
         {
-            $"name=sqlite-vec",
             $"version={version}",
+            $"file_path={modulePath}",
+            $"download_uri={downloadUri}",
             $"os={GetOsPlatform()}",
             $"cpu={GetCpuArch()}",
-            $"file={Path.GetFileName(modulePath)}",
-            $"downloadUri={downloadUri}",
-            $"installedAt={DateTime.UtcNow:O}",
-            $"checksum={checksum}"
+            $"checksum={checksum}",
+            $"installed_at={DateTime.UtcNow:O}",
         };
 
         var metaPath = Path.ChangeExtension(modulePath, MetaFileExtension);
@@ -183,15 +156,37 @@ public static class SqliteVecInstaller
     }
 
     /// <summary> 메타파일 읽기 </summary>
-    private static Dictionary<string, string>? ReadMetaFile(string metaPath)
+    private static SqliteVecModule? ReadMetaFile(string metaPath)
     {
         if (!File.Exists(metaPath))
             return null;
 
-        return File.ReadAllLines(metaPath)
+        var dic = File.ReadAllLines(metaPath)
             .Where(line => !string.IsNullOrWhiteSpace(line) && line.Contains('='))
             .Select(line => line.Split('=', 2))
             .ToDictionary(parts => parts[0].Trim(), parts => parts[1].Trim());
+
+        if (!dic.TryGetValue("version", out var version) ||
+            !dic.TryGetValue("file_path", out var filePath) ||
+            !dic.TryGetValue("download_uri", out var downloadUriStr) ||
+            !dic.TryGetValue("os", out var os) ||
+            !dic.TryGetValue("cpu", out var cpu) ||
+            !dic.TryGetValue("checksum", out var checksum) ||
+            !dic.TryGetValue("installed_at", out var installedAtStr) ||
+            !Uri.TryCreate(downloadUriStr, UriKind.Absolute, out var downloadUri) ||
+            !DateTimeOffset.TryParse(installedAtStr, out var installedAt))
+            return null;
+        
+        return new SqliteVecModule
+        {
+            FilePath = filePath,
+            Version = version,
+            DownloadUri = downloadUri,
+            OsPlatform = os,
+            CpuArch = cpu,
+            Checksum = checksum,
+            InstalledAt = installedAt,
+        };
     }
 
     /// <summary> SHA256 체크섬 계산 </summary>
@@ -204,4 +199,18 @@ public static class SqliteVecInstaller
     }
 
     #endregion
+}
+
+/// <summary>
+/// SQLite 벡터 확장 모듈 정보
+/// </summary>
+public sealed class SqliteVecModule
+{
+    public required string FilePath { get; init; }
+    public required string Version { get; init; }
+    public required Uri DownloadUri { get; init; }
+    public required string OsPlatform { get; init; }
+    public required string CpuArch { get; init; }
+    public required string Checksum { get; init; }
+    public required DateTimeOffset InstalledAt { get; init; }
 }

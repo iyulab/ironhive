@@ -2,7 +2,6 @@
 using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Registries;
 using IronHive.Abstractions.Tools;
-using IronHive.Abstractions.Workflow;
 
 namespace IronHive.Abstractions;
 
@@ -46,7 +45,7 @@ public interface IHiveService
     IMemoryService Memory { get; }
 
     /// <summary>
-    /// 에이전트 서비스를 Yaml 문자열로부터 생성합니다.
+    /// 에이전트 서비스를 주어진 정의에 따라 생성합니다.
     /// </summary>
     IAgent CreateAgentFrom(AgentCard card);
 
@@ -54,11 +53,4 @@ public interface IHiveService
     /// 에이전트 서비스를 Yaml 문자열로부터 생성합니다.
     /// </summary>
     IAgent CreateAgentFromYaml(string yaml);
-
-    /// <summary>
-    /// 메모리 작업 서비스를 생성합니다.
-    /// </summary>
-    IMemoryWorkerManager CreateMemoryWorkers(
-        string queueStorageName,
-        Action<WorkflowStepBuilder<MemoryContext>> action);
 }

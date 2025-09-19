@@ -7,6 +7,7 @@ using IronHive.Abstractions.Tools;
 using IronHive.Abstractions.Workflow;
 using IronHive.Core.Memory;
 using Microsoft.Extensions.DependencyInjection;
+using System.Runtime.CompilerServices;
 
 namespace IronHive.Core;
 
@@ -49,18 +50,19 @@ public class HiveService : IHiveService
     {
         throw new NotImplementedException();
     }
+}
 
-    /// <inheritdoc />
-    public IMemoryWorkerManager CreateMemoryWorkers(
-        string queueStorageName,
-        Action<WorkflowStepBuilder<MemoryContext>> action)
+public static class HiveServiceExtensions
+{
+    /// <summary>
+    /// 메모리 작업자를 생성합니다.
+    /// </summary>
+    public static IMemoryWorker CreateMemoryWorkerFrom(
+        this IHiveService service,
+        Func<MemoryWorkerBuilder, MemoryPipelineBuilder> configure)
     {
-        if (!Storages.TryGet<IQueueStorage>(queueStorageName, out var storage))
-            throw new InvalidOperationException($"큐 스토리지 '{queueStorageName}'(이)가 등록되어 있지 않습니다.");
-
-        var builder = new WorkflowFactory(Services).CreateBuilder().StartWith<MemoryContext>();
-        action(builder);
-        var workflow = builder.Build();
-        return new MemoryWorkerManager(storage, workflow);
+        var builder = new MemoryWorkerBuilder(service.Services);
+        var pipelineBuilder = configure(builder);
+        return pipelineBuilder.Build();
     }
 }

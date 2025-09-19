@@ -16,9 +16,8 @@ public class MemoryContext
     public required IMemoryTarget Target { get; set; }
 
     /// <summary>
-    /// 파이프라인 단계 간 공유되는 데이터입니다.
-    /// 키는 대소문자를 구분합니다.
+    /// 파이프라인 단계 간 공유되는 데이터입니다. 키는 대소문자를 구분합니다.
     /// </summary>
-    public IDictionary<string, object?> Items { get; } =
+    public IDictionary<string, object?> Payload { get; } =
         new Dictionary<string, object?>(StringComparer.Ordinal);
 }

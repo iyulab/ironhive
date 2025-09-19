@@ -100,8 +100,8 @@ public class MemoryCollection : IMemoryCollection
         return new VectorSearchResult
         {
             CollectionName = CollectionName,
-            SearchQuery = query,
-            ScoredVectors = records,
+            Query = query,
+            Results = records,
         };
     }
 }

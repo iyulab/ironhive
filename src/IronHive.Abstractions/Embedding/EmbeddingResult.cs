@@ -13,5 +13,5 @@ public class EmbeddingResult
     /// <summary>
     /// 임베딩 벡터 값을 가져오거나 설정합니다.
     /// </summary>
-    public IEnumerable<float>? Embedding { get; set; }
+    public float[]? Embedding { get; set; }
 }

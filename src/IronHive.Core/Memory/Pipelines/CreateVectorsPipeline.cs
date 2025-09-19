@@ -24,7 +24,7 @@ public class CreateVectorsPipeline : IMemoryPipeline
     {
         if (context.Target is not VectorMemoryTarget target)
             throw new InvalidOperationException("target is not a MemoryVectorTarget");
-        if (!context.Items.TryGetValue("chunks", out var chunks))
+        if (!context.Payload.TryGetValue("chunks", out var chunks))
             throw new InvalidOperationException("chunks not found in context items");
 
         var points = new List<VectorRecord>();
@@ -49,10 +49,14 @@ public class CreateVectorsPipeline : IMemoryPipeline
 
                 points.Add(new VectorRecord
                 {
-                    Id = Guid.NewGuid().ToString(),
+                    VectorId = Guid.NewGuid().ToString(),
+                    SourceId = context.Source.Id,
                     Vectors = vector,
-                    Content = content,
-                    Source = context.Source,
+                    Payload = new Dictionary<string, object?>
+                    {
+                        { "question", content.Question },
+                        { "answer", content.Answer },
+                    }
                 });
             }
         }
@@ -77,10 +81,13 @@ public class CreateVectorsPipeline : IMemoryPipeline
 
                 points.Add(new VectorRecord
                 {
-                    Id = Guid.NewGuid().ToString(),
+                    VectorId = Guid.NewGuid().ToString(),
+                    SourceId = context.Source.Id,
                     Vectors = vector,
-                    Content = content,
-                    Source = context.Source,
+                    Payload = new Dictionary<string, object?>
+                    {
+                        { "text", content },
+                    }
                 });
             }
         }
@@ -89,7 +96,7 @@ public class CreateVectorsPipeline : IMemoryPipeline
             return TaskStepResult.Fail(new InvalidOperationException("payload is not a IEnumerable<Dialogue> or IEnumerable<string>"));
         }
 
-        context.Items["vectors"] = points;
+        context.Payload["vectors"] = points;
         return TaskStepResult.Success();
     }
 }

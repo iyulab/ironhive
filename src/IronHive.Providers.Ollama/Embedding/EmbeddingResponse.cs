@@ -8,7 +8,7 @@ internal class EmbeddingResponse
     public required string Model { get; set; }
 
     [JsonPropertyName("embeddings")]
-    public required IEnumerable<IEnumerable<float>> Embeddings { get; set; }
+    public required IEnumerable<float[]> Embeddings { get; set; }
 
     [JsonPropertyName("total_duration")]
     public long TotalDuration { get; set; }

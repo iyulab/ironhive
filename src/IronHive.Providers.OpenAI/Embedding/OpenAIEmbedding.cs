@@ -8,7 +8,7 @@ public class OpenAIEmbedding
     public int? Index { get; set; }
 
     [JsonPropertyName("embedding")]
-    public IEnumerable<float>? Embedding { get; set; }
+    public float[]? Embedding { get; set; }
 
     /// <summary>
     /// "embedding" only

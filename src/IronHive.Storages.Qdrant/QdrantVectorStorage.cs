@@ -4,7 +4,6 @@ using Qdrant.Client;
 using Qdrant.Client.Grpc;
 using static Qdrant.Client.Grpc.Conditions;
 using IronHive.Abstractions.Json;
-using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Vector;
 
 namespace IronHive.Storages.Qdrant;
@@ -70,21 +69,22 @@ public class QdrantVectorStorage : IVectorStorage
         if (await _client.CollectionExistsAsync(collection.Name, cancellationToken))
             throw new InvalidOperationException($"collection {collection.Name} already exist");
 
-        var param = new VectorParams
-        {
-            Datatype = Datatype.Float32,
-            Distance = Distance.Cosine,
-            OnDisk = true,
-            Size = (ulong)collection.Dimensions
-        };
-
-        // 벡터 설정은 컬렉션 생성 이후 수정이 불가능.
-        var config = new VectorParamsMap { Map = { [DefaultVectorsName] = param } };
-
-        // 컬렉션 생성
+        // 컬렉션 생성(벡터 설정은 컬렉션 생성 이후 수정 불가능)
         await _client.CreateCollectionAsync(
             collectionName: collection.Name,
-            vectorsConfig: config,
+            vectorsConfig: new VectorParamsMap 
+            { 
+                Map = 
+                {
+                    [DefaultVectorsName] = new VectorParams
+                    {
+                        Datatype = Datatype.Float32,
+                        Distance = Distance.Cosine,
+                        Size = (ulong)collection.Dimensions,
+                        OnDisk = true,
+                    }
+                }
+            },
             cancellationToken: cancellationToken);
 
         // 인덱스 생성
@@ -161,15 +161,16 @@ public class QdrantVectorStorage : IVectorStorage
         var records = new List<VectorRecord>();
         foreach (var point in response.Result)
         {
-            var vectors = point.Vectors.Vectors.Vectors[DefaultVectorsName].Data.ToArray();
+            //var vectors = point.Vectors.Vectors.Vectors[DefaultVectorsName].Data.ToArray();
             var record = ConvertPayloadToRecord(point.Payload);
+            
             records.Add(new VectorRecord
             {
-                Id = record.Id,
-                Vectors = vectors,
-                Source = record.Source,
-                Content = record.Content,
-                LastUpsertedAt = record.LastUpsertedAt
+                VectorId = record.VectorId,
+                SourceId = record.SourceId,
+                Payload = record.Payload,
+                LastUpsertedAt = record.LastUpsertedAt,
+                Vectors = [] // 실제 벡터 데이터는 반환하지 않음
             });
         }
         return records;
@@ -184,25 +185,20 @@ public class QdrantVectorStorage : IVectorStorage
         var points = new List<PointStruct>();
         foreach (var record in records)
         {
-            record.LastUpsertedAt = DateTime.UtcNow;
-            var payload = ConvertRecordToPayload(record);
-
-            points.Add(new PointStruct
+            var point = new PointStruct
             {
-                Id = Guid.NewGuid(),
+                //Id = Guid.NewGuid(),
                 Vectors = new Dictionary<string, float[]>
                 {
                     [DefaultVectorsName] = record.Vectors.ToArray(),
-                },
-                Payload =
-                {
-                    ["vectorId"] = payload["vectorId"],
-                    ["sourceId"] = payload["sourceId"],
-                    ["source"] = payload["source"],
-                    ["content"] = payload["content"],
-                    ["lastUpsertedAt"] = payload["lastUpsertedAt"],
-                },
-            });
+                }
+            };
+            point.Payload.Add("vectorId", record.VectorId);
+            point.Payload.Add("sourceId", record.SourceId);
+            point.Payload.Add("payload", JsonSerializer.Serialize(record.Payload, JsonDefaultOptions.Options));
+            point.Payload.Add("lastUpsertedAt", new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds());
+
+            points.Add(point);
         }
 
         await _client.UpsertAsync(
@@ -229,7 +225,7 @@ public class QdrantVectorStorage : IVectorStorage
     /// <inheritdoc />
     public async Task<IEnumerable<ScoredVectorRecord>> SearchVectorsAsync(
         string collectionName,
-        IEnumerable<float> vector,
+        float[] vector,
         float minScore = 0.0f,
         int limit = 5,
         VectorRecordFilter? filter = null,
@@ -250,15 +246,17 @@ public class QdrantVectorStorage : IVectorStorage
         var records = new List<ScoredVectorRecord>();
         foreach (var point in scoredPoints)
         {
+            //var vectors = point.Vectors.Vectors.Vectors[DefaultVectorsName].Data.ToArray();
             var record = ConvertPayloadToRecord(point.Payload);
-
+            
             records.Add(new ScoredVectorRecord
             {
-                VectorId = record.Id,
                 Score = point.Score,
-                Source = record.Source,
-                Content = record.Content,
-                LastUpdatedAt = record.LastUpsertedAt,
+                VectorId = record.VectorId,
+                SourceId = record.SourceId,
+                Payload = record.Payload,
+                LastUpsertedAt = record.LastUpsertedAt,
+                Vectors = [] // 실제 벡터 데이터는 반환하지 않음
             });
         }
 
@@ -288,41 +286,24 @@ public class QdrantVectorStorage : IVectorStorage
     }
 
     /// <summary>
-    /// VectorRecord를 Qdrant에서 사용하는 Payload로 변환합니다.
-    /// </summary>
-    private static MapField<string, Value> ConvertRecordToPayload(VectorRecord record)
-    {
-        var payload = new MapField<string, Value>
-        {
-            ["vectorId"] = record.Id,
-            ["sourceId"] = record.Source.Id,
-            ["source"] = JsonSerializer.Serialize(record.Source, JsonDefaultOptions.Options),
-            ["content"] = JsonSerializer.Serialize(record.Content, JsonDefaultOptions.Options),
-            ["lastUpsertedAt"] = new DateTimeOffset(record.LastUpsertedAt).ToUnixTimeMilliseconds(),
-        };
-        return payload;
-    }
-
-    /// <summary>
     /// Qdrant에서 반환된 Point의 Payload를 VectorRecord로 변환합니다.
     /// </summary>
     private static VectorRecord ConvertPayloadToRecord(MapField<string, Value> payload)
     {
         var vectorId = payload.GetValueOrDefault("vectorId")?.StringValue ?? string.Empty;
-        var content = JsonSerializer.Deserialize<object>(
-            payload.GetValueOrDefault("content")?.StringValue ?? string.Empty);
+        var sourceId = payload.GetValueOrDefault("sourceId")?.StringValue ?? string.Empty;
+        var payloadDict = JsonSerializer.Deserialize<IDictionary<string, object?>>(
+            payload.GetValueOrDefault("payload")?.StringValue ?? "{}")
+            ?? new Dictionary<string, object?>();
         var lastUpsertedAt = DateTimeOffset.FromUnixTimeMilliseconds(
             payload.GetValueOrDefault("lastUpsertedAt")?.IntegerValue ?? 0).UtcDateTime;
-        var source = JsonSerializer.Deserialize<IMemorySource>(
-            payload.GetValueOrDefault("source")?.StringValue ?? string.Empty)
-            ?? throw new InvalidOperationException("source is required");
 
         return new VectorRecord
         {
-            Id = vectorId,
+            VectorId = vectorId,
+            SourceId = sourceId,
             Vectors = [],
-            Content = content,
-            Source = source,
+            Payload = payloadDict,
             LastUpsertedAt = lastUpsertedAt
         };
     }

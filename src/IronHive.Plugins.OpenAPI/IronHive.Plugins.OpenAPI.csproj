@@ -9,7 +9,6 @@
   <ItemGroup>
     <PackageReference Include="JsonSchema.Net" Version="7.4.0" />
     <PackageReference Include="JsonSchema.Net.OpenApi" Version="3.2.0" />
-    <PackageReference Include="Microsoft.OpenApi" Version="2.3.0" />
     <PackageReference Include="Microsoft.OpenApi.Readers" Version="1.6.25" />
   </ItemGroup>
 

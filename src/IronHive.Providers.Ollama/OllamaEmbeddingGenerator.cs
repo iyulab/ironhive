@@ -25,7 +25,7 @@ public class OllamaEmbeddingGenerator : IEmbeddingGenerator
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<float>> EmbedAsync(
+    public async Task<float[]> EmbedAsync(
         string model, 
         string input, 
         CancellationToken cancellationToken = default)
@@ -36,8 +36,8 @@ public class OllamaEmbeddingGenerator : IEmbeddingGenerator
             Input = new[] { input }
         }, cancellationToken);
 
-        return res.Embeddings.FirstOrDefault() ??
-                throw new InvalidOperationException("No embedding found for the input.");
+        return res.Embeddings.FirstOrDefault()?.ToArray()
+            ?? throw new InvalidOperationException("No embedding found for the input.");
     }
 
     /// <inheritdoc />

@@ -35,7 +35,7 @@ public partial class DialogueExtractionPipeline : IMemoryPipeline<DialogueExtrac
         Options options, 
         CancellationToken cancellationToken = default)
     {
-        if (!context.Items.TryGetValue<IEnumerable<string>>("chunks", out var chunks))
+        if (!context.Payload.TryGetValue<IEnumerable<string>>("chunks", out var chunks))
             throw new InvalidOperationException("chunks is not a IEnumerable<string>");
 
         var dialogues = new List<Dialogue>();
@@ -60,7 +60,7 @@ public partial class DialogueExtractionPipeline : IMemoryPipeline<DialogueExtrac
             dialogues.AddRange(ParseFrom(text));
         }
 
-        context.Items.Add("chunks", dialogues);
+        context.Payload.Add("chunks", dialogues);
         return TaskStepResult.Success();
     }
 

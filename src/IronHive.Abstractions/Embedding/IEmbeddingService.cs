@@ -12,7 +12,7 @@ public interface IEmbeddingService
     /// <param name="modelId">사용할 모델의 이름 또는 식별자입니다.</param>
     /// <param name="input">임베딩할 입력 문자열입니다.</param>
     /// <returns>임베딩 벡터를 반환합니다.</returns>
-    Task<IEnumerable<float>> EmbedAsync(
+    Task<float[]> EmbedAsync(
         string provider,
         string modelId,
         string input,

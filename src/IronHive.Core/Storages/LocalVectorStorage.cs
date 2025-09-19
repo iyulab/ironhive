@@ -1,290 +1,587 @@
-﻿using System.Text.RegularExpressions;
-using System.Numerics.Tensors;
-using LiteDB;
-using IronHive.Abstractions.Memory;
+﻿using System.Data;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using Microsoft.Data.Sqlite;
 using IronHive.Abstractions.Vector;
+using IronHive.Core.Utilities;
 
 namespace IronHive.Core.Storages;
 
 /// <summary>
-/// LiteDB를 이용한 로컬 벡터 스토리지 구현입니다.
+/// <para> sqlite-vec(vec0) 기반 IVectorStorage 구현체 </para>
+/// <see href="https://alexgarcia.xyz/sqlite-vec/features/vec0.html"/>
 /// </summary>
-public partial class LocalVectorStorage : IVectorStorage
+public sealed partial class LocalVectorStorage : IVectorStorage
 {
-    private const string CollectionMetaTableName = "collections_meta";
-    private readonly LiteDatabase _db;
-    private readonly object _lock = new();
+    private const string CollectionMetaTable = "vec_collections";
 
-    public LocalVectorStorage(string filePath)
-        : this(new LocalVectorConfig { Path = filePath })
-    { }
+    private readonly string _connectionString;
+    private readonly string _moduleVersion;
+
+    private volatile bool _ensuredCollMetaTable = false;
 
     public LocalVectorStorage(LocalVectorConfig config)
     {
-        _db = CreateLiteDatabase(config);
+        _connectionString = new SqliteConnectionStringBuilder
+        {
+            DataSource = config.DatabasePath,
+            Mode = SqliteOpenMode.ReadWriteCreate,
+            Cache = SqliteCacheMode.Private,
+            Pooling = true,
+            DefaultTimeout = 30,
+            ForeignKeys = true,
+            RecursiveTriggers = false,
+        }.ConnectionString;
+        _moduleVersion = config.Version;
     }
-
-    // 컬렉션 이름 검증용 정규식
-    [GeneratedRegex("^[A-Za-z][A-Za-z0-9_]*$", RegexOptions.Compiled)]
-    private static partial Regex CollectionRegex();
 
     /// <inheritdoc />
     public void Dispose()
     {
-        _db.Dispose();
         GC.SuppressFinalize(this);
     }
 
     /// <inheritdoc />
-    public Task<IEnumerable<VectorCollectionInfo>> ListCollectionsAsync(
+    public async Task<IEnumerable<VectorCollectionInfo>> ListCollectionsAsync(
         CancellationToken cancellationToken = default)
     {
-        var meta = _db.GetCollection<VectorCollectionInfo>(CollectionMetaTableName);
-        var result = meta.FindAll();
+        await EnsureCollectionMetaTableAsync();
 
-        cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(result);
+        var sql = $@"
+        SELECT name, dimensions, embedding_provider, embedding_model
+        FROM {CollectionMetaTable}
+        ORDER BY name";
+
+        using var conn = await CreateConnectionAsync();
+        var cmd = conn.CreateCommand();
+        cmd.CommandText = sql;
+        using var rdr = await cmd.ExecuteReaderAsync(cancellationToken);
+
+        var list = new List<VectorCollectionInfo>();
+        while (await rdr.ReadAsync(cancellationToken))
+        {
+            list.Add(new VectorCollectionInfo
+            {
+                Name = rdr.GetString(0),
+                Dimensions = rdr.GetInt64(1),
+                EmbeddingProvider = rdr.GetString(2),
+                EmbeddingModel = rdr.GetString(3)
+            });
+        }
+        return list;
     }
 
     /// <inheritdoc />
-    public Task<bool> CollectionExistsAsync(
+    public async Task<bool> CollectionExistsAsync(
         string collectionName, 
         CancellationToken cancellationToken = default)
     {
-        var meta = _db.GetCollection<VectorCollectionInfo>(CollectionMetaTableName);
-        var exists = meta.Exists(x => x.Name == collectionName) && _db.CollectionExists(collectionName);
+        collectionName = EnsureCollectionName(collectionName);
+        await EnsureCollectionMetaTableAsync();
 
-        cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(exists);
+        var sql = $@"SELECT COUNT(1) FROM {CollectionMetaTable} WHERE name=$n";
+
+        using var conn = await CreateConnectionAsync();
+        var cmd = conn.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Parameters.AddWithValue("$n", collectionName);
+        var result = await cmd.ExecuteScalarAsync(cancellationToken);
+        return Convert.ToInt64(result) > 0;
     }
 
     /// <inheritdoc />
-    public Task<VectorCollectionInfo?> GetCollectionInfoAsync(
-        string collectionName,
+    public async Task<VectorCollectionInfo?> GetCollectionInfoAsync(
+        string collectionName, 
         CancellationToken cancellationToken = default)
     {
-        var meta = _db.GetCollection<VectorCollectionInfo>(CollectionMetaTableName);
-        var coll = meta.FindOne(x => x.Name == collectionName);
+        collectionName = EnsureCollectionName(collectionName);
+        await EnsureCollectionMetaTableAsync();
 
-        cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(coll ?? null);
+        var sql = $@"
+        SELECT name, dimensions, embedding_provider, embedding_model
+        FROM {CollectionMetaTable} 
+        WHERE name=$n";
+
+        using var conn = await CreateConnectionAsync();
+        var cmd = conn.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Parameters.AddWithValue("$n", collectionName);
+        using var rdr = await cmd.ExecuteReaderAsync(cancellationToken);
+        if (await rdr.ReadAsync(cancellationToken))
+        {
+            return new VectorCollectionInfo
+            {
+                Name = rdr.GetString(0),
+                Dimensions = rdr.GetInt64(1),
+                EmbeddingProvider = rdr.GetString(2),
+                EmbeddingModel = rdr.GetString(3)
+            };
+        }
+        return null;
     }
 
     /// <inheritdoc />
     public async Task CreateCollectionAsync(
-        VectorCollectionInfo collection,
+        VectorCollectionInfo collection, 
         CancellationToken cancellationToken = default)
     {
         collection.Name = EnsureCollectionName(collection.Name);
-        if (await CollectionExistsAsync(collection.Name, cancellationToken))
-            throw new InvalidOperationException($"Collection '{collection.Name}' already exists.");
-        var coll = _db.GetCollection<VectorRecord>(collection.Name);
-        cancellationToken.ThrowIfCancellationRequested();
+        await EnsureCollectionMetaTableAsync();
 
-        // LiteDB는 컬렉션 생성 기능을 따로 제공하지 않고, 자동으로 생성되므로,
-        // 임의의 빈 레코드를 추가하여 컬렉션을 초기화합니다.
-        var empty = new VectorRecord
+        using var conn = await CreateConnectionAsync();
+        using var tx = await conn.BeginTransactionAsync();
+
+        // 컬렉션 메타 등록
         {
-            Id = Guid.NewGuid().ToString(),
-            Vectors = new float[collection.Dimensions],
-            Source = new TextMemorySource { Value = string.Empty },
-        };
-        coll.Upsert(empty);
-        coll.Delete(empty.Id);
+            var sql = $@"
+            INSERT INTO {CollectionMetaTable}(name, dimensions, embedding_provider, embedding_model)
+            VALUES ($n, $d, $p, $m)";
 
-        // 인덱스 생성
-        coll.EnsureIndex(p => p.Id);
-        coll.EnsureIndex(p => p.Source.Id);
-
-        // 메타 테이블에 등록
-        var meta = _db.GetCollection<VectorCollectionInfo>(CollectionMetaTableName);
-        lock (_lock)
-        {
-            if (!meta.Exists(p => p.Name == collection.Name))
-            {
-                meta.Insert(collection);
-            }
+            var insert = conn.CreateCommand();
+            insert.CommandText = sql;
+            insert.Parameters.AddWithValue("$n", collection.Name);
+            insert.Parameters.AddWithValue("$d", collection.Dimensions);
+            insert.Parameters.AddWithValue("$p", collection.EmbeddingProvider);
+            insert.Parameters.AddWithValue("$m", collection.EmbeddingModel);
+            await insert.ExecuteNonQueryAsync(cancellationToken);
         }
 
-        cancellationToken.ThrowIfCancellationRequested();
+        // 컬렉션별 일반 테이블
+        {
+            var metaTable = VecMetaTable(collection.Name);
+            var sql = $@"
+            CREATE TABLE IF NOT EXISTS {metaTable}(
+                int_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                vector_id TEXT NOT NULL UNIQUE,
+                source_id TEXT NOT NULL,
+                payload BLOB NULL,
+                last_upserted_at TEXT NOT NULL
+            )";
+
+            var cmd = conn.CreateCommand();
+            cmd.CommandText = sql;
+            await cmd.ExecuteNonQueryAsync(cancellationToken);
+
+            // 인덱스
+            cmd = conn.CreateCommand();
+            cmd.CommandText = $@"CREATE INDEX IF NOT EXISTS idx_{metaTable}_source ON {metaTable}(source_id)";
+            await cmd.ExecuteNonQueryAsync(cancellationToken);
+            cmd = conn.CreateCommand();
+            cmd.CommandText = $@"CREATE INDEX IF NOT EXISTS idx_{metaTable}_last ON {metaTable}(last_upserted_at DESC)";
+            await cmd.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        // 컬렉션별 vec0 테이블 (차원 지정)
+        {
+            var vecTable = VecTable(collection.Name);
+            var sql = $@"
+            CREATE VIRTUAL TABLE IF NOT EXISTS {vecTable} USING vec0(
+                embedding float[{collection.Dimensions}] distance_metric=cosine
+            )";
+
+            var cmd = conn.CreateCommand();
+            cmd.CommandText = sql;
+            await cmd.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await tx.CommitAsync();
     }
 
     /// <inheritdoc />
-    public Task DeleteCollectionAsync(
-        string collectionName,
+    public async Task DeleteCollectionAsync(
+        string collectionName, 
         CancellationToken cancellationToken = default)
     {
         collectionName = EnsureCollectionName(collectionName);
-        var coll = _db.GetCollection<VectorRecord>(collectionName);
-        cancellationToken.ThrowIfCancellationRequested();
+        await EnsureCollectionMetaTableAsync();
 
-        // 인덱스 삭제
-        coll.DropIndex(nameof(VectorRecord.Id));
-        coll.DropIndex(nameof(VectorRecord.Source.Id));
+        using var conn = await CreateConnectionAsync();
+        using var tx = await conn.BeginTransactionAsync();
 
-        // 컬렉션 삭제
-        _db.DropCollection(collectionName);
+        var metaTable = VecMetaTable(collectionName);
+        var vecTable = VecTable(collectionName);
 
-        // 메타 테이블에서 삭제
-        var meta = _db.GetCollection<VectorCollectionInfo>(CollectionMetaTableName);
-        meta.DeleteMany(p => p.Name == collectionName);
+        async Task DropIfExists(string type, string name)
+        {
+            var cmd = conn.CreateCommand();
+            cmd.CommandText = $"DROP {type} IF EXISTS {name}";
+            await cmd.ExecuteNonQueryAsync(cancellationToken);
+        }
 
-        cancellationToken.ThrowIfCancellationRequested();
-        return Task.CompletedTask;
+        // 컬렉션별 테이블 삭제
+        await DropIfExists("TABLE", metaTable);
+        //await DropIfExists("TABLE", $"sqlite_sequence");
+        await DropIfExists("INDEX", $"idx_{metaTable}_source"); // 인덱스 드랍은 자동으로 처리되나 안전차원에서
+        await DropIfExists("INDEX", $"idx_{metaTable}_last");
+        await DropIfExists("VIRTUAL TABLE", vecTable);
+
+        // 컬렉션 메타 삭제
+        {
+            var cmd = conn.CreateCommand();
+            cmd.CommandText = $"DELETE FROM {CollectionMetaTable} WHERE name=$n";
+            cmd.Parameters.AddWithValue("$n", collectionName);
+            await cmd.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await tx.CommitAsync();
     }
 
     /// <inheritdoc />
-    public Task<IEnumerable<VectorRecord>> FindVectorsAsync(
+    public async Task<IEnumerable<VectorRecord>> FindVectorsAsync(
         string collectionName,
         int limit = 20,
         VectorRecordFilter? filter = null,
         CancellationToken cancellationToken = default)
     {
-        collectionName = EnsureCollectionName(collectionName);
-        var coll = _db.GetCollection<VectorRecord>(collectionName);
-        cancellationToken.ThrowIfCancellationRequested();
+        using var conn = await CreateConnectionAsync();
+        var metaTable = VecMetaTable(collectionName);
 
-        var query = coll.Query();
-        if (filter != null && (filter.SourceIds.Count > 0 || filter.VectorIds.Count > 0))
+        var where = new List<string>();
+        var args = new List<SqliteParameter>();
+
+        if (filter != null && filter.VectorIds.Count > 0)
         {
-            query = query.Where(p =>
-                filter.SourceIds.Count > 0 && filter.SourceIds.Contains(p.Source.Id) ||
-                filter.VectorIds.Count > 0 && filter.VectorIds.Contains(p.Id));
+            where.Add($"vector_id IN ({JoinArrayParams("$vid", filter.VectorIds.Count)})");
+            args.AddRange(filter.VectorIds.Select((v, i) => new SqliteParameter($"$vid{i}", v)));
+        }
+        if (filter != null && filter.SourceIds.Count > 0)
+        {
+            where.Add($"source_id IN ({JoinArrayParams("$sid", filter.SourceIds.Count)})");
+            args.AddRange(filter.SourceIds.Select((v, i) => new SqliteParameter($"$sid{i}", v)));
         }
 
-        var results = query
-            .OrderByDescending(p => p.LastUpsertedAt)
-            .Limit(limit)
-            .ToEnumerable();
+        var sql = $@"
+        SELECT vector_id, source_id, payload, last_upserted_at
+        FROM {metaTable}
+        {(where.Count > 0 ? "WHERE " + string.Join(" AND ", where) : "")}
+        ORDER BY datetime(last_upserted_at) DESC
+        LIMIT $lim";
 
-        cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(results);
+        var cmd = conn.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Parameters.AddRange(args);
+        cmd.Parameters.AddWithValue("$lim", limit);
+
+        var records = new List<VectorRecord>();
+        using var rdr = await cmd.ExecuteReaderAsync(cancellationToken);
+        while (await rdr.ReadAsync(cancellationToken))
+        {
+            records.Add(new VectorRecord
+            {
+                VectorId = rdr.GetString(0),
+                SourceId = rdr.GetString(1),
+                Payload = JsonSerializer.Deserialize<IDictionary<string, object?>>(
+                    rdr.IsDBNull(2) ? null : (byte[])rdr["payload"])
+                    ?? new Dictionary<string, object?>(),
+                LastUpsertedAt = DateTimeOffset.Parse(rdr.GetString(3)).UtcDateTime,
+                Vectors = Array.Empty<float>() // 메타 조회이므로 임베딩은 비워둠
+            });
+        }
+        return records;
     }
 
     /// <inheritdoc />
-    public Task UpsertVectorsAsync(
+    public async Task UpsertVectorsAsync(
         string collectionName,
-        IEnumerable<VectorRecord> records,
+        IEnumerable<VectorRecord> vectors,
         CancellationToken cancellationToken = default)
     {
-        collectionName = EnsureCollectionName(collectionName);
-        var coll = _db.GetCollection<VectorRecord>(collectionName);
-        cancellationToken.ThrowIfCancellationRequested();
+        using var conn = await CreateConnectionAsync();
+        var vecTable = VecTable(collectionName);
+        var metaTable = VecMetaTable(collectionName);
 
-        coll.Upsert(records.Select(r =>
+        using var tx = await conn.BeginTransactionAsync();
+
+        foreach (var v in vectors)
         {
-            // Set LastUpdatedAt to current time
-            r.LastUpsertedAt = DateTime.UtcNow;
-            return r;
-        }));
+            if (v.Vectors is null) throw new ArgumentException("Vectors가 null입니다.", nameof(vectors));
 
-        cancellationToken.ThrowIfCancellationRequested();
-        return Task.CompletedTask;
+            // meta upsert
+            long intId;
+            {
+                // 먼저 존재여부 확인
+                var sel = conn.CreateCommand();
+                sel.CommandText = $@"SELECT int_id FROM {metaTable} WHERE vector_id=$vid";
+                sel.Parameters.AddWithValue("$vid", v.VectorId);
+                var existing = await sel.ExecuteScalarAsync(cancellationToken);
+
+                if (existing is long l)
+                {
+                    intId = l;
+
+                    var upd = conn.CreateCommand();
+                    upd.CommandText = $@"
+                        UPDATE {metaTable}
+                        SET source_id=$sid, payload=$p, last_upserted_at=$ts
+                        WHERE int_id=$iid";
+                    upd.Parameters.AddWithValue("$sid", v.SourceId);
+                    upd.Parameters.AddWithValue("$p", JsonSerializer.SerializeToUtf8Bytes(v.Payload));
+                    upd.Parameters.AddWithValue("$ts", DateTime.UtcNow.ToString("o"));
+                    upd.Parameters.AddWithValue("$iid", intId);
+                    await upd.ExecuteNonQueryAsync(cancellationToken);
+
+                    // vec0 업데이트
+                    var uvec = conn.CreateCommand();
+                    uvec.CommandText = $@"UPDATE {vecTable} SET embedding = $emb WHERE rowid = $iid";
+                    uvec.Parameters.AddWithValue("$emb", JsonSerializer.Serialize(v.Vectors));
+                    uvec.Parameters.AddWithValue("$iid", intId);
+                    await uvec.ExecuteNonQueryAsync(cancellationToken);
+                }
+                else
+                {
+                    var ins = conn.CreateCommand();
+                    ins.CommandText = $@"
+                        INSERT INTO {metaTable}(vector_id, source_id, payload, last_upserted_at)
+                        VALUES($vid, $sid, $p, $ts)";
+                    ins.Parameters.AddWithValue("$vid", v.VectorId);
+                    ins.Parameters.AddWithValue("$sid", v.SourceId);
+                    ins.Parameters.AddWithValue("$p", JsonSerializer.SerializeToUtf8Bytes(v.Payload));
+                    ins.Parameters.AddWithValue("$ts", DateTime.UtcNow.ToString("o"));
+                    await ins.ExecuteNonQueryAsync(cancellationToken);
+
+                    // 새 int_id
+                    var last = conn.CreateCommand();
+                    last.CommandText = "SELECT last_insert_rowid()";
+                    intId = (long)(await last.ExecuteScalarAsync(cancellationToken) ?? 0L);
+
+                    // vec0 삽입 (rowid를 int_id로 지정)
+                    var ivec = conn.CreateCommand();
+                    ivec.CommandText = $@"INSERT INTO {vecTable}(rowid, embedding) VALUES ($iid, $emb)";
+                    ivec.Parameters.AddWithValue("$iid", intId);
+                    ivec.Parameters.AddWithValue("$emb", JsonSerializer.Serialize(v.Vectors));
+                    await ivec.ExecuteNonQueryAsync(cancellationToken);
+                }
+            }
+        }
+
+        await tx.CommitAsync();
     }
 
     /// <inheritdoc />
-    public Task DeleteVectorsAsync(
+    public async Task DeleteVectorsAsync(
         string collectionName,
         VectorRecordFilter filter,
         CancellationToken cancellationToken = default)
     {
-        collectionName = EnsureCollectionName(collectionName);
-        var coll = _db.GetCollection<VectorRecord>(collectionName);
-        cancellationToken.ThrowIfCancellationRequested();
+        using var conn = await CreateConnectionAsync();
+        var vecTable = VecTable(collectionName);
+        var metaTable = VecMetaTable(collectionName);
 
-        if (filter.SourceIds.Count > 0)
-            coll.DeleteMany(p => filter.SourceIds.Contains(p.Source.Id));
+        if (filter == null || !filter.Any()) return;
+
+        // 대상 int_id 집합
+        var where = new List<string>();
+        var args = new List<SqliteParameter>();
+
         if (filter.VectorIds.Count > 0)
-            coll.DeleteMany(p => filter.VectorIds.Contains(p.Id));
+        {
+            where.Add($"vector_id IN ({JoinArrayParams("$vid", filter.VectorIds.Count)})");
+            args.AddRange(filter.VectorIds.Select((v, i) => new SqliteParameter($"$vid{i}", v)));
+        }
+        if (filter.SourceIds.Count > 0)
+        {
+            where.Add($"source_id IN ({JoinArrayParams("$sid", filter.SourceIds.Count)})");
+            args.AddRange(filter.SourceIds.Select((v, i) => new SqliteParameter($"$sid{i}", v)));
+        }
 
-        cancellationToken.ThrowIfCancellationRequested();
-        return Task.CompletedTask;
+        using var tx = await conn.BeginTransactionAsync();
+
+        var idsCmd = conn.CreateCommand();
+        idsCmd.CommandText = $@"SELECT int_id FROM {metaTable} WHERE {string.Join(" AND ", where)}";
+        idsCmd.Parameters.AddRange(args);
+
+        var intIds = new List<long>();
+        using (var rdr = await idsCmd.ExecuteReaderAsync(cancellationToken))
+        {
+            while (await rdr.ReadAsync(cancellationToken))
+                intIds.Add(rdr.GetInt64(0));
+        }
+
+        if (intIds.Count == 0) { await tx.CommitAsync(); return; }
+
+        var delVec = conn.CreateCommand();
+        delVec.CommandText = $@"DELETE FROM {vecTable} WHERE rowid IN ({JoinArrayParams("$iid", intIds.Count)})";
+        foreach (var (val, i) in intIds.Select((v, i) => (v, i)))
+            delVec.Parameters.AddWithValue($"$iid{i}", val);
+        await delVec.ExecuteNonQueryAsync(cancellationToken);
+
+        var delMeta = conn.CreateCommand();
+        delMeta.CommandText = $@"DELETE FROM {metaTable} WHERE int_id IN ({JoinArrayParams("$iid", intIds.Count)})";
+        foreach (var (val, i) in intIds.Select((v, i) => (v, i)))
+            delMeta.Parameters.AddWithValue($"$iid{i}", val);
+        await delMeta.ExecuteNonQueryAsync(cancellationToken);
+
+        await tx.CommitAsync();
     }
 
     /// <inheritdoc />
-    public Task<IEnumerable<ScoredVectorRecord>> SearchVectorsAsync(
+    public async Task<IEnumerable<ScoredVectorRecord>> SearchVectorsAsync(
         string collectionName,
-        IEnumerable<float> vector,
-        float minScore = 0,
+        float[] vector,
+        float minScore = 0.0f,
         int limit = 5,
         VectorRecordFilter? filter = null,
         CancellationToken cancellationToken = default)
     {
-        collectionName = EnsureCollectionName(collectionName);
-        var coll = _db.GetCollection<VectorRecord>(collectionName);
-        cancellationToken.ThrowIfCancellationRequested();
+        using var conn = await CreateConnectionAsync();
 
-        var query = coll.Query();
-        if (filter != null && (filter.SourceIds.Count > 0 || filter.VectorIds.Count > 0))
+        var vecTable = VecTable(collectionName);
+        var metaTable = VecMetaTable(collectionName);
+
+        var where = new List<string>();
+        var args = new List<SqliteParameter>();
+
+        if (filter != null && filter.VectorIds.Count > 0)
         {
-            query = query.Where(p =>
-                filter.SourceIds.Count > 0 && filter.SourceIds.Contains(p.Source.Id) ||
-                filter.VectorIds.Count > 0 && filter.VectorIds.Contains(p.Id));
+            where.Add($"m.vector_id IN ({JoinArrayParams("$vid", filter.VectorIds.Count)})");
+            args.AddRange(filter.VectorIds.Select((v, i) => new SqliteParameter($"$vid{i}", v)));
         }
-        
-        var records = query
-            .ToList()
-            .Select(p => new ScoredVectorRecord
-            {
-                VectorId = p.Id,
-                Score = TensorPrimitives.CosineSimilarity(vector.ToArray(), p.Vectors.ToArray()),
-                Source = p.Source,
-                Content = p.Content,
-                LastUpdatedAt = p.LastUpsertedAt 
-            })
-            .Where(p => p.Score >= minScore)
-            .OrderByDescending(p => p.Score)
-            .Take(limit)
-            .AsEnumerable();
-
-        cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(records);
-    }
-
-    /// <summary>
-    /// LiteDB 인스턴스를 생성합니다.
-    /// </summary>
-    private static LiteDatabase CreateLiteDatabase(LocalVectorConfig config)
-    {
-        var dir = Path.GetDirectoryName(config.Path);
-        if (!string.IsNullOrWhiteSpace(dir) && !Directory.Exists(dir))
-            Directory.CreateDirectory(dir);
-
-        var connectionString = new ConnectionString
+        if (filter != null && filter.SourceIds.Count > 0)
         {
-            Filename = config.Path,
-            Password = config.Password,
-            AutoRebuild = config.AutoRebuild,
-            Upgrade = config.Upgrade,
-            Connection = config.Shared ? ConnectionType.Shared : ConnectionType.Direct,
-            ReadOnly = false,
-        };
-        var mapper = new BsonMapper();
-        mapper.Entity<VectorRecord>()
-              .Id(p => p.Id);
+            where.Add($"m.source_id IN ({JoinArrayParams("$sid", filter.SourceIds.Count)})");
+            args.AddRange(filter.SourceIds.Select((v, i) => new SqliteParameter($"$sid{i}", v)));
+        }
 
-        return new LiteDatabase(connectionString, mapper);
+        var cmd = conn.CreateCommand();
+        cmd.CommandText = $@"
+            SELECT 
+                m.vector_id,
+                m.source_id,
+                m.payload,
+                m.last_upserted_at,
+                v.distance
+            FROM {vecTable} v
+            JOIN {metaTable} m ON m.int_id = v.rowid
+            WHERE v.embedding MATCH $q
+                AND k = $lim
+                {(where.Count > 0 ? "AND " + string.Join(" AND ", where) : "")}
+            ORDER BY v.distance";
+        cmd.Parameters.AddWithValue("$q", JsonSerializer.Serialize(vector));
+        cmd.Parameters.AddRange(args);
+        cmd.Parameters.AddWithValue("$lim", limit > 4096 ? 4096 : limit); // vec0 4096 제한
+
+        var records = new List<ScoredVectorRecord>();
+        using var rdr = await cmd.ExecuteReaderAsync(cancellationToken);
+        while (await rdr.ReadAsync(cancellationToken))
+        {
+            var distance = Convert.ToSingle(rdr.GetDouble(4));
+            var score = 1.0f / (1.0f + distance); // 0~1로 변환
+            if (score < minScore) continue;
+
+            records.Add(new ScoredVectorRecord
+            {
+                Score = score,
+                VectorId = rdr.GetString(0),
+                SourceId = rdr.GetString(1),
+                Payload = JsonSerializer.Deserialize<IDictionary<string, object?>>(
+                    rdr.IsDBNull(2) ? null : (byte[])rdr["payload"])
+                    ?? new Dictionary<string, object?>(),
+                LastUpsertedAt = DateTimeOffset.Parse(rdr.GetString(3)).UtcDateTime,
+                Vectors = [] // 메타 조회이므로 임베딩은 비워둠
+            });
+        }
+        return records;
     }
 
-    /// <summary>
-    /// 컬렉션 이름의 유효성을 검사하고, 소문자로 변환하여 표준화합니다.
-    /// </summary>
+    #region 내부 유틸
+
+    private static string VecTable(string name) => $"vec_{name}";
+    private static string VecMetaTable(string name) => $"vec_{name}_meta";
+
+    private static string JoinArrayParams(string prefix, int count)
+        => string.Join(", ", Enumerable.Range(0, count).Select(i => $"{prefix}{i}"));
+
+    /// <summary> sqlite-vec 모듈이 로드된 연결을 생성합니다. </summary>
+    private async Task<SqliteConnection> CreateConnectionAsync()
+    {
+        // 데이터베이스 연결
+        var conn = new SqliteConnection(_connectionString);
+        await conn.OpenAsync();
+
+        // PRAGMA 튜닝 (WAL 지속 유지)
+        using (var pragma = conn.CreateCommand())
+        {
+            pragma.CommandText = @"
+            PRAGMA journal_mode=WAL;
+            PRAGMA synchronous=NORMAL;
+            PRAGMA temp_store=MEMORY;";
+            await pragma.ExecuteNonQueryAsync();
+        }
+
+        // vec0 모듈 로드 확인
+        if (await HasVec0Async(conn))
+            return conn;
+
+        // vec0 모듈 설치
+        var dirPath = Path.GetDirectoryName(conn.DataSource)
+            ?? throw new InvalidOperationException("데이터베이스 경로를 찾을 수 없습니다.");
+        var modulePath = SqliteVecInstaller.TryGetModule(dirPath, out var module)
+            ? module.FilePath
+            : await SqliteVecInstaller.InstallAsync(dirPath, _moduleVersion);
+
+        // vec0 모듈 로드
+        conn.EnableExtensions(true);
+        conn.LoadExtension(modulePath);
+
+        return conn;
+    }
+
+    /// <summary> vec0 모듈이 로드되었는지 확인합니다. </summary>
+    private static async Task<bool> HasVec0Async(SqliteConnection conn)
+    {
+        try
+        {
+            // vec0에 있는 가장 가벼운 함수 호출 시도
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT vec_version()"; 
+            await cmd.ExecuteScalarAsync();
+            return true;
+        }
+        catch
+        {
+            // 함수가 없거나 미로딩 상태
+            return false;
+        }
+    }
+
+    /// <summary> 영문자, 숫자, 밑줄만 허용하며 숫자로 시작할 수 없는 컬렉션 이름 정규식 </summary>
+    [GeneratedRegex(@"^[A-Za-z_][A-Za-z0-9_]*$", RegexOptions.Compiled)]
+    private static partial Regex CollectionNameRegex();
+
+    /// <summary> 컬렉션 이름 유효성 검사 및 정규화 </summary>
     private static string EnsureCollectionName(string collectionName)
     {
-        // LiteDB Rules: 
-        // 1. 영문자, 숫자, 밑줄(_)만 허용됩니다.
-        // 2. 이름의 앞 첫글자는 영문자만 허용됩니다.
-        // 3. 대소문자는 구분하지 않으므로 소문자로 통일합니다.
-
         if (string.IsNullOrWhiteSpace(collectionName))
-            throw new ArgumentNullException(nameof(collectionName));
+            throw new ArgumentNullException("collection name can not be null");
 
-        if (!CollectionRegex().IsMatch(collectionName))
-            throw new ArgumentException("Invalid collection name. The name must contain only English letters, numbers, and underscores, and must start with an English letter.");
+        if (!CollectionNameRegex().IsMatch(collectionName))
+            throw new ArgumentException("컬렉션 이름은 영문자/숫자/밑줄만 가능하며 숫자로 시작할 수 없습니다.", nameof(collectionName));
 
-        if (string.Equals(collectionName, CollectionMetaTableName, StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException($"The collection name '{CollectionMetaTableName}' is reserved and cannot be used.");
+        if (collectionName.Equals(CollectionMetaTable, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("컬렉션 이름이 예약어와 충돌합니다.", nameof(collectionName));
 
+        // Sqlite는 대소문자를 구분하지 않습니다.
         return collectionName.ToLowerInvariant();
     }
+
+    /// <summary> CollectionMetaTable 테이블이 없으면 생성합니다. </summary>
+    private async Task EnsureCollectionMetaTableAsync()
+    {
+        if (_ensuredCollMetaTable) return;
+
+        using var conn = await CreateConnectionAsync();
+        var cmd = conn.CreateCommand();
+        cmd.CommandText = $@"
+            CREATE TABLE IF NOT EXISTS {CollectionMetaTable}(
+                name TEXT PRIMARY KEY,
+                dimensions INTEGER NOT NULL,
+                embedding_provider TEXT NOT NULL,
+                embedding_model TEXT NOT NULL
+            )";
+        await cmd.ExecuteNonQueryAsync();
+
+        _ensuredCollMetaTable = true;
+    }
+
+    #endregion
 }

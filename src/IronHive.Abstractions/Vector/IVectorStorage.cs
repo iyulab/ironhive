@@ -93,7 +93,7 @@ public interface IVectorStorage : IStorageItem
     /// <returns>유사도가 높은 등급을 나열한 검색 결과</returns>
     Task<IEnumerable<ScoredVectorRecord>> SearchVectorsAsync(
         string collectionName,
-        IEnumerable<float> vector,
+        float[] vector,
         float minScore = 0.0f,
         int limit = 5,
         VectorRecordFilter? filter = null,

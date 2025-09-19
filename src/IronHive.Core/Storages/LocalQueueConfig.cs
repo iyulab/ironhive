@@ -25,11 +25,6 @@ public class LocalQueueConfig
     public int CacheSize { get; set; } = 100;
 
     /// <summary>
-    /// 이벤트를 발생시킬지 여부를 나타냅니다. (기본값: false)
-    /// </summary>
-    public bool EnableRaisingEvents { get; set; } = false;
-
-    /// <summary>
     /// 메시지 파일의 변환 옵션입니다.
     /// </summary>
     public JsonSerializerOptions JsonOptions { get; set; } = new()

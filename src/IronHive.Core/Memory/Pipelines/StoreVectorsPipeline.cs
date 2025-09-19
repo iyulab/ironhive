@@ -26,7 +26,7 @@ public class StoreVectorsPipeline : IMemoryPipeline
             throw new InvalidOperationException("target is not a MemoryVectorTarget");
         if (!_storages.TryGet<IVectorStorage>(target.StorageName, out var storage))
             throw new InvalidOperationException($"Vector storage '{target.StorageName}' is not registered.");
-        if (!context.Items.TryGetValue<IEnumerable<VectorRecord>>("vectors", out var vectors))
+        if (!context.Payload.TryGetValue<IEnumerable<VectorRecord>>("vectors", out var vectors))
             throw new InvalidOperationException("vectors not found in context items");
         
         await storage.UpsertVectorsAsync(target.CollectionName, vectors, cancellationToken);

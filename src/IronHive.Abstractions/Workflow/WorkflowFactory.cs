@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using YamlDotNet.Serialization;
 
 namespace IronHive.Abstractions.Workflow;
@@ -95,8 +96,11 @@ public class WorkflowFactory
     /// <returns><see cref="IWorkflow{TContext}"/> 구현체.</returns>
     public IWorkflow<TContext> CreateFromJson<TContext>(string json)
     {
-        var def = JsonSerializer.Deserialize<WorkflowDefinition>(json)
-                  ?? throw new InvalidOperationException("JSON 역직렬화 결과가 null입니다.");
+        var def = JsonSerializer.Deserialize<WorkflowDefinition>(json, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower) }
+        }) ?? throw new InvalidOperationException("JSON 역직렬화 결과가 null입니다.");
         return CreateFrom<TContext>(def);
     }
 }

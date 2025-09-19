@@ -33,7 +33,7 @@ public class OpenAIEmbeddingGenerator : IEmbeddingGenerator
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<float>> EmbedAsync(
+    public async Task<float[]> EmbedAsync(
         string modelId, 
         string input, 
         CancellationToken cancellationToken = default)
@@ -44,8 +44,8 @@ public class OpenAIEmbeddingGenerator : IEmbeddingGenerator
             Input = [ input ]
         }, cancellationToken);
 
-        return res.Data?.FirstOrDefault()?.Embedding ??
-                throw new InvalidOperationException("No embedding found for the input.");
+        return res.Data?.FirstOrDefault()?.Embedding?.ToArray()
+            ?? throw new InvalidOperationException("No embedding found for the input.");
     }
 
     /// <inheritdoc />

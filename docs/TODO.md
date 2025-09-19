@@ -16,6 +16,10 @@
 ## Plugins
 - OpenAPI 확장 추가
 
-# Storages
-- QueueStorage에 Dequeue 또는 Consume 시 Hidden_Timeout 고려 및 추가
-- 
+## Storages
+
+## Queue Storages
+- QueueStorage에 Dequeue 또는 Consume 시 Hidden_Timeout 고려
+- RabbitMQ, Azure ServiceBus, AWS SQS, Google Pub/Sub DeadLetter 지원 확인
+
+

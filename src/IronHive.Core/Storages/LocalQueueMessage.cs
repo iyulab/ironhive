@@ -33,9 +33,7 @@ public class LocalQueueMessage<T> : LocalQueuePayload<T>, IQueueMessage<T>
     /// <inheritdoc />
     public Task CompleteAsync(CancellationToken cancellationToken = default)
     {
-        // 현재 파일이 존재하지 않으면 예외를 발생시킵니다.
-        if (!File.Exists(_filePath))
-            throw new FileNotFoundException($"Lock file '{_filePath}' does not exist.");
+        EnsureValidFile(_filePath);
 
         // 확인된 메시지 파일을 삭제합니다.
         File.Delete(_filePath);
@@ -46,8 +44,7 @@ public class LocalQueueMessage<T> : LocalQueuePayload<T>, IQueueMessage<T>
     /// <inheritdoc />
     public Task RequeueAsync(CancellationToken cancellationToken = default)
     {
-        if (!File.Exists(_filePath))
-            throw new FileNotFoundException($"Lock file '{_filePath}' does not exist.");
+        EnsureValidFile(_filePath);
 
         var directoryPath = Path.GetDirectoryName(_filePath)
             ?? throw new InvalidOperationException("Failed to get directory path from file path.");
@@ -70,9 +67,7 @@ public class LocalQueueMessage<T> : LocalQueuePayload<T>, IQueueMessage<T>
     /// <inheritdoc />
     public Task DeadAsync(string reason, CancellationToken cancellationToken = default)
     {
-        // 파일이 존재하지 않으면 예외를 발생시킵니다.
-        if (!File.Exists(_filePath))
-            throw new FileNotFoundException($"Lock file '{_filePath}' does not exist.");
+        EnsureValidFile(_filePath);
 
         try
         {
@@ -87,5 +82,18 @@ public class LocalQueueMessage<T> : LocalQueuePayload<T>, IQueueMessage<T>
         }
 
         return Task.CompletedTask;
+    }
+
+    /// <summary>파일이 유효한지 확인합니다.</summary>
+    private static void EnsureValidFile(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath))
+            throw new ArgumentException("File path cannot be null or whitespace.", nameof(filePath));
+
+        if (!File.Exists(filePath))
+            throw new FileNotFoundException($"File '{filePath}' does not exist.", filePath);
+
+        if (Path.GetExtension(filePath) != LocalQueueStorage.LockExtension)
+            throw new ArgumentException($"File '{filePath}' is not a locked queue message file.", nameof(filePath));
     }
 }

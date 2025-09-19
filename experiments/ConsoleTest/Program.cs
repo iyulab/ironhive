@@ -1,65 +1,124 @@
-﻿using ConsoleTest;
-using IronHive.Abstractions.Memory;
-using IronHive.Abstractions.Vector;
-using System.Text.Json;
+﻿using System.Text.Json;
+using IronHive.Abstractions.Tools;
 
-var dbPath = @"C:\TEMP\vectors.db";
-var storage = new SqliteVecVectorStorage(dbPath);
+namespace ConsoleTest;
 
-var collection = new VectorCollectionInfo
+internal class Program
 {
-    Name = "demo",
-    Dimensions = 4, // 벡터 차원 (예시)
-    EmbeddingProvider = "test",
-    EmbeddingModel = "dummy"
-};
-
-// 1. 컬렉션 생성 (이미 있으면 생략)
-if (!await storage.CollectionExistsAsync(collection.Name))
-{
-    Console.WriteLine("컬렉션 생성중...");
-    await storage.CreateCollectionAsync(collection);
-}
-
-// 2. 벡터 업서트 (임의 벡터)
-var rnd = new Random();
-var vectors = new[]
-{
-                new VectorRecord
-                {
-                    Id = "vec1",
-                    Source = new TextMemorySource { Id = "src1", Value = "source text" },
-                    Content = new { Note = "첫 번째 벡터" },
-                    Vectors = Enumerable.Range(0, (int)collection.Dimensions).Select(_ => (float)rnd.NextDouble()).ToArray()
-                },
-                new VectorRecord
-                {
-                    Id = "vec2",
-                    Source = new TextMemorySource { Id = "src2", Value = "source text" },
-                    Content = new { Note = "두 번째 벡터" },
-                    Vectors = Enumerable.Range(0, (int)collection.Dimensions).Select(_ => (float)rnd.NextDouble()).ToArray()
+    static async Task Main(string[] args)
+    {
+        // 1) 테스트용 OpenAPI (Swagger Petstore 축약본)
+        //    - 서버: https://petstore3.swagger.io/api/v3
+        //    - 오퍼레이션:
+        //      a) GET /pet/{petId}   (operationId: getPetById)
+        //      b) GET /pet/findByStatus (operationId: findPetsByStatus)
+        var oas = /*lang=json*/ """
+        {
+          "openapi": "3.0.3",
+          "info": { "title": "Mini Petstore", "version": "1.0.0" },
+          "servers": [{ "url": "https://petstore3.swagger.io/api/v3" }],
+          "paths": {
+            "/pet/{petId}": {
+              "get": {
+                "operationId": "getPetById",
+                "parameters": [
+                  {
+                    "name": "petId",
+                    "in": "path",
+                    "required": true,
+                    "schema": { "type": "integer", "format": "int64" }
+                  }
+                ],
+                "responses": {
+                  "200": { "description": "pet found" },
+                  "404": { "description": "pet not found" }
                 }
-            };
+              }
+            },
+            "/pet/findByStatus": {
+              "get": {
+                "operationId": "findPetsByStatus",
+                "parameters": [
+                  {
+                    "name": "status",
+                    "in": "query",
+                    "required": true,
+                    "schema": { "type": "string", "enum": ["available","pending","sold"] }
+                  }
+                ],
+                "responses": {
+                  "200": { "description": "ok" }
+                }
+              }
+            }
+          }
+        }
+        """;
 
-Console.WriteLine("벡터 저장중...");
-await storage.UpsertVectorsAsync(collection.Name, vectors);
+        // 2) Tool 생성: operationId 기반
+        var toolGetById = OpenApiTool.FromOperationId(
+            openApiContent: oas,
+            operationId: "getPetById",
+            apiName: "petstore",
+            source: "embedded"
+        );
 
-// 3. 벡터 검색 (쿼리 벡터도 랜덤)
-var queryVector = Enumerable.Range(0, (int)collection.Dimensions).Select(_ => (float)rnd.NextDouble()).ToArray();
+        var toolFindByStatus = OpenApiTool.FromOperationId(
+            openApiContent: oas,
+            operationId: "findPetsByStatus",
+            apiName: "petstore",
+            source: "embedded"
+        );
 
-Console.WriteLine("쿼리 벡터:");
-Console.WriteLine(JsonSerializer.Serialize(queryVector));
+        // 3) 입력 구성 (ToolInput는 최상위 Dictionary<string, object?> 여야 함)
+        // 3-1) GET /pet/{petId}
+        var inputGetById = new ToolInput(new Dictionary<string, object?>
+        {
+            ["path"] = new Dictionary<string, object?> { ["petId"] = 1L }, // long으로 맞춰도 되고, int도 대부분 OK
+            // ["headers"] = new Dictionary<string, object?> { ["X-Debug"] = "1" }, // 필요하면
+            // ["__serverUrl"] = "https://petstore3.swagger.io/api/v3" // 서버 오버라이드도 가능
+        });
 
-var results = await storage.SearchVectorsAsync(
-    collection.Name,
-    queryVector,
-    limit: 5
-);
+        // 3-2) GET /pet/findByStatus?status=available
+        var inputFindByStatus = new ToolInput(new Dictionary<string, object?>
+        {
+            ["query"] = new Dictionary<string, object?> { ["status"] = "available" }
+        });
 
-Console.WriteLine("\n검색 결과:");
-foreach (var r in results)
-{
-    Console.WriteLine($"ID={r.VectorId}, Score={r.Score:F4}, Content={JsonSerializer.Serialize(r.Content)}");
+        // 4) 실제 호출
+        Console.WriteLine("=== 1) GET /pet/{petId} ===");
+        var res1 = await toolGetById.InvokeAsync(inputGetById);
+        DumpToolOutput(res1);
+
+        Console.WriteLine();
+        Console.WriteLine("=== 2) GET /pet/findByStatus?status=available ===");
+        var res2 = await toolFindByStatus.InvokeAsync(inputFindByStatus);
+        DumpToolOutput(res2);
+
+        Console.WriteLine();
+        Console.WriteLine("끝! 아무 키나 누르면 종료합니다.");
+        Console.ReadKey();
+    }
+
+    private static void DumpToolOutput(ToolOutput output)
+    {
+        Console.WriteLine($"IsSuccess: {output.IsSuccess}");
+        if (!string.IsNullOrWhiteSpace(output.Result))
+        {
+            try
+            {
+                // JSON이면 이쁘게 출력
+                using var doc = JsonDocument.Parse(output.Result);
+                Console.WriteLine(JsonSerializer.Serialize(doc.RootElement, new JsonSerializerOptions
+                {
+                    WriteIndented = true
+                }));
+            }
+            catch
+            {
+                // JSON이 아니면 그대로 출력
+                Console.WriteLine(output.Result);
+            }
+        }
+    }
 }
-
-Console.WriteLine("\n테스트 완료");

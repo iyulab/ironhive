@@ -46,26 +46,42 @@ public class LocalQueueStorage : IQueueStorage
     public string DirectoryPath { get; }
 
     /// <summary>
-    /// 큐에 처리되지 않은 메시지(lock/dead)들을 다시 복원합니다.
+    /// 큐에 처리되지 않은 메시지(lock/dead)들을 다시 복원후, 복원된 메시지들의 본문을 반환합니다.
     /// </summary>
-    public void Restore()
+    public async Task<IEnumerable<T>> RestoreAsync<T>()
     {
         var targets = new List<string>();
-        targets.AddRange(Directory.GetFiles(DirectoryPath, $"*{LockExtension}"));
-        targets.AddRange(Directory.GetFiles(DirectoryPath, $"*{DeadMessageExtension}"));
+        targets.AddRange(Directory.GetFiles(DirectoryPath, $"*"));
+        //targets.AddRange(Directory.GetFiles(DirectoryPath, $"*{LockExtension}"));
+        //targets.AddRange(Directory.GetFiles(DirectoryPath, $"*{DeadMessageExtension}"));
 
+        var messages = new List<T>();
         foreach (var filePath in targets)
         {
             try
             {
-                var queueFilePath = Path.ChangeExtension(filePath, MessageExtension);
-                File.Move(filePath, queueFilePath, overwrite: false);
+                var queueFilePath = filePath;
+                // lock/dead 파일의 경우 일반 메시지 파일로 변경
+                if (filePath.EndsWith(LockExtension, StringComparison.OrdinalIgnoreCase) ||
+                    filePath.EndsWith(DeadMessageExtension, StringComparison.OrdinalIgnoreCase))
+                {
+                    queueFilePath = Path.ChangeExtension(filePath, MessageExtension);
+                    File.Move(filePath, queueFilePath, overwrite: false);
+                }
+                
+                var bytes = await File.ReadAllBytesAsync(queueFilePath);
+                var payload = JsonSerializer.Deserialize<LocalQueuePayload<T>>(bytes, _jsonOptions);
+                if (payload == null)
+                    continue;
+
+                messages.Add(payload.Body);
             }
             catch (IOException)
             {
                 // 충돌/접근 문제 발생 무시
             }
         }
+        return messages;
     }
 
     /// <inheritdoc />
