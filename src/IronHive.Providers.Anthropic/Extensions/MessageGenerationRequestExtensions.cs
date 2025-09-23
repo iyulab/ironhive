@@ -12,6 +12,7 @@ using AnthropicThinkingMessageContent = IronHive.Providers.Anthropic.Messages.Th
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Messages.Roles;
+using Json.Schema;
 
 namespace IronHive.Providers.Anthropic;
 
@@ -171,7 +172,7 @@ internal static class MessageGenerationRequestExtensions
             {
                 Name = t.UniqueName,
                 Description = t.Description,
-                InputSchema = t.Parameters ?? new ObjectJsonSchema()
+                InputSchema = t.Parameters ?? JsonSchema.FromText("{}")
             })
         };
     }

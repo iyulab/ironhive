@@ -42,7 +42,7 @@ public class McpTool : ITool
     public object? Parameters => _tool.JsonSchema;
 
     /// <inheritdoc />
-    public required bool RequiresApproval { get; init; }
+    public bool RequiresApproval { get; set; } = true;
 
     /// <inheritdoc />
     public async Task<ToolOutput> InvokeAsync(

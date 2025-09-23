@@ -136,9 +136,9 @@ public static class MessageGenerationRequestExtensions
             Stop = request.StopSequences,
             ReasoningEffort = request.ThinkingEffort switch
             {
-                MessageThinkingEffort.Low => ChatReasoningEffort.Low,
-                MessageThinkingEffort.Medium => ChatReasoningEffort.Medium,
-                MessageThinkingEffort.High => ChatReasoningEffort.High,
+                MessageThinkingEffort.Low => OpenAIReasoningEffort.Low,
+                MessageThinkingEffort.Medium => OpenAIReasoningEffort.Medium,
+                MessageThinkingEffort.High => OpenAIReasoningEffort.High,
                 _ => null
             },
             Tools = request.Tools?.Select(t => new OpenAIFunctionTool

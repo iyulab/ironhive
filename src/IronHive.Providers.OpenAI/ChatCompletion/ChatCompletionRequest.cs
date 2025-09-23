@@ -83,7 +83,7 @@ public class ChatCompletionRequest
     /// o-series model only
     /// </summary>
     [JsonPropertyName("reasoning_effort")]
-    public ChatReasoningEffort? ReasoningEffort { get; set; }
+    public OpenAIReasoningEffort? ReasoningEffort { get; set; }
 
     /// <summary>
     /// (Not Use) text or json
@@ -96,12 +96,6 @@ public class ChatCompletionRequest
     /// </summary>
     [JsonPropertyName("safety_identifier")]
     public string? SafetyIdentifier { get; set; }
-
-    /// <summary>
-    /// (Not Use)
-    /// </summary>
-    [JsonPropertyName("seed")]
-    public int? Seed { get; set; }
 
     /// <summary>
     /// (Not Use) "auto", "default"

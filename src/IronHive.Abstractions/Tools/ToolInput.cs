@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 
 namespace IronHive.Abstractions.Tools;
@@ -34,6 +35,21 @@ public class ToolInput : IReadOnlyDictionary<string, object?>
     /// 툴 실행에 필요한 서비스 제공자입니다.
     /// </summary>
     public IServiceProvider? Services { get; set; }
+
+    /// <summary>
+    /// 타입 변환을 시도하여 지정된 형식의 값을 반환합니다.
+    /// </summary>
+    public bool TryGetValue<T>(string key, [MaybeNullWhen(false)] out T value)
+    {
+        if (_items.TryGetValue(key, out var obj) && obj.TryConvertTo<T>(out var t))
+        {
+            value = t;
+            return true;
+        }
+
+        value = default;
+        return false;
+    }
 
     /// <inheritdoc />
     public object? this[string key]

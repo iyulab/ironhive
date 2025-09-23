@@ -25,24 +25,24 @@
     },
     {
       "provider": "xai",
-      "modelId": "grok-3-mini",
-      "displayName": "Grok 3.0 Mini",
-      "description": "A lightweight model that thinks before responding.",
+      "modelId": "grok-4-fast-reasoning",
+      "displayName": "Grok 4.0 Fast-R",
+      "description": "Advancement in cost-efficient reasoning model",
       "thinkable": true,
-      "inputPrice": 0.3,
+      "inputPrice": 0.2,
       "outputPrice": 0.5,
-      "contextLength": 131072,
+      "contextLength": 2000000,
       "maxOutput": null
     },
     {
       "provider": "xai",
-      "modelId": "grok-3-mini-fast",
-      "displayName": "Grok 3.0 Mini Fast",
-      "description": "A Fast response version of grok mini",
+      "modelId": "grok-4-fast-non-reasoning",
+      "displayName": "Grok 4.0 Fast-NR",
+      "description": "Advancement in cost-efficient non-reasoning model",
       "thinkable": true,
-      "inputPrice": 0.6,
-      "outputPrice": 4,
-      "contextLength": 131072,
+      "inputPrice": 0.2,
+      "outputPrice": 0.5,
+      "contextLength": 2000000,
       "maxOutput": null
     }
   ]

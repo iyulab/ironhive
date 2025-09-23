@@ -3,9 +3,7 @@ using Microsoft.Extensions.Options;
 using System.Text;
 using System.Text.Json;
 using IronHive.Abstractions.Catalog;
-using IronHive.Abstractions.Message;
 using IronHive.Abstractions.Messages;
-using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Tools;
 
 namespace WebServer.Controllers;
@@ -61,8 +59,16 @@ public class ServiceController : ControllerBase
         [FromQuery(Name = "provider")] string? provider,
         CancellationToken cancellationToken = default)
     {
-        var models = await _model.ListModelsAsync(provider, cancellationToken);
-        return Ok(models);
+        if (string.IsNullOrEmpty(provider))
+        {
+            var models = await _model.ListModelsAsync(cancellationToken);
+            return Ok(models);
+        }
+        else
+        {
+            var model = await _model.ListModelsAsync(provider, cancellationToken);
+            return Ok(model);
+        }
     }
 
     [HttpPost("conversation")]

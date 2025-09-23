@@ -1,226 +1,239 @@
 ﻿using System.Text.Json.Serialization;
-using System.Text.Json;
 
 namespace IronHive.Providers.OpenAI.Responses;
 
 /// <summary>
 /// 스트리밍으로 전달되는 모든 이벤트의 베이스 클래스
 /// </summary>
-internal class StreamingResponsesResponse
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
+[JsonDerivedType(typeof(StreamingCreatedResponse), "response.created")]
+[JsonDerivedType(typeof(StreamingInProgressResponse), "response.in_progress")]
+[JsonDerivedType(typeof(StreamingCompletedResponse), "response.completed")]
+[JsonDerivedType(typeof(StreamingFailedResponse), "response.failed")]
+[JsonDerivedType(typeof(StreamingIncompletedResponse), "response.incompleted")]
+[JsonDerivedType(typeof(StreamingOutputAddedResponse), "response.output_item.added")]
+[JsonDerivedType(typeof(StreamingOutputDoneResponse), "response.output_item.done")]
+[JsonDerivedType(typeof(StreamingContentAddedResponse), "response.content_part.added")]
+[JsonDerivedType(typeof(StreamingContentDoneResponse), "response.content_part.done")]
+[JsonDerivedType(typeof(StreamingTextDeltaResponse), "response.output_text.delta")]
+[JsonDerivedType(typeof(StreamingTextDoneResponse), "response.output_text.done")]
+[JsonDerivedType(typeof(StreamingRefusalDeltaResponse), "response.refusal.delta")]
+[JsonDerivedType(typeof(StreamingRefusalDoneResponse), "response.refusal.done")]
+[JsonDerivedType(typeof(StreamingFunctionToolDeltaResponse), "response.function_call_arguments.delta")]
+[JsonDerivedType(typeof(StreamingFunctionToolDoneResponse), "response.function_call_arguments.done")]
+[JsonDerivedType(typeof(StreamingReasoningAddedResponse), "response.reasoning_summary_part.added")]
+[JsonDerivedType(typeof(StreamingReasoningDoneResponse), "response.reasoning_summary_part.done")]
+[JsonDerivedType(typeof(StreamingReasoningSummaryDeltaResponse), "response.reasoning_summary_text.delta")]
+[JsonDerivedType(typeof(StreamingReasoningSummaryDoneResponse), "response.reasoning_summary_text.done")]
+[JsonDerivedType(typeof(StreamingReasoningTextDeltaResponse), "response.reasoning_text.delta")]
+[JsonDerivedType(typeof(StreamingReasoningTextDoneResponse), "response.reasoning_text.done")]
+[JsonDerivedType(typeof(StreamingAnnotationAddedResponse), "response.output_text.annotation.added")]
+[JsonDerivedType(typeof(StreamingQueuedResponse), "response.queued")]
+[JsonDerivedType(typeof(StreamingCustomToolDeltaResponse), "response.custom_tool_call_input.delta")]
+[JsonDerivedType(typeof(StreamingCustomToolDoneResponse), "response.custom_tool_call_input.done")]
+[JsonDerivedType(typeof(StreamingErrorResponse), "error")]
+internal abstract class StreamingResponsesResponse
 {
-    /// <summary>
-    /// 이벤트 타입 (예: "response.created", "response.output_text.delta", "response.completed", "response.error" 등)
-    /// </summary>
-    [JsonPropertyName("type")]
-    public required string Type { get; set; }
+    [JsonPropertyName("response")]
+    public required ResponsesResponse Response { get; set; }
 
-    /// <summary>
-    /// 타입별 데이터를 담고 있는 필드
-    /// </summary>
-    [JsonPropertyName("data")]
-    public JsonElement Data { get; set; }
+    [JsonPropertyName("sequence_number")]
+    public int SequenceNumber { get; set; }
 }
 
-/// <summary>
-/// "response.output_text.delta" 이벤트의 데이터 구조
-/// </summary>
-public class ResponseTextDeltaEvent
+#region Status Related
+
+internal class StreamingCreatedResponse : StreamingResponsesResponse
+{ }
+
+internal class StreamingInProgressResponse : StreamingResponsesResponse
+{ }
+
+internal class StreamingCompletedResponse : StreamingResponsesResponse
+{ }
+
+internal class StreamingFailedResponse : StreamingResponsesResponse
+{ }
+
+internal class StreamingIncompletedResponse : StreamingResponsesResponse
+{ }
+
+#endregion
+
+# region Output Item Related
+
+internal abstract class StreamingOutputResponse : StreamingResponsesResponse
 {
-    /// <summary>
-    /// 항상 "response.output_text.delta"
-    /// </summary>
-    [JsonPropertyName("type")]
-    public required string Type { get; set; }
-
-    /// <summary>
-    /// 모델이 생성한 텍스트 델타 조각
-    /// </summary>
-    [JsonPropertyName("delta")]
-    public string? Delta { get; set; }
-
-    /// <summary>
-    /// 이 델타가 속한 출력 아이템의 ID
-    /// </summary>
-    [JsonPropertyName("item_id")]
-    public string? ItemId { get; set; }
-
-    /// <summary>
-    /// 이 델타가 속한 출력 아이템 중 몇 번째인지 (인덱스)
-    /// </summary>
     [JsonPropertyName("output_index")]
     public int OutputIndex { get; set; }
+}
 
-    /// <summary>
-    /// 텍스트 델타가 콘텐츠 중 몇 번째 파트에 속하는지 (인덱스)
-    /// </summary>
+internal class StreamingOutputAddedResponse : StreamingOutputResponse
+{
+    [JsonPropertyName("item")]
+    public required ResponsesItem Item { get; set; }
+}
+
+internal class StreamingOutputDoneResponse : StreamingOutputResponse
+{
+    [JsonPropertyName("item")]
+    public required ResponsesItem Item { get; set; }
+}
+
+# endregion
+
+#region Content Related
+
+internal abstract class StreamingContentResponse : StreamingOutputResponse
+{
     [JsonPropertyName("content_index")]
-    public int ContentIndex { get; set; }
+    public required int ContentIndex { get; set; }
+
+    [JsonPropertyName("item_id")]
+    public required string ItemId { get; set; }
 }
 
-/// <summary>
-/// "response.completed" 이벤트의 데이터 구조
-/// </summary>
-public class ResponseCompletedEvent
+internal class StreamingContentAddedResponse : StreamingContentResponse
 {
-    /// <summary>
-    /// 항상 "response.completed"
-    /// </summary>
-    [JsonPropertyName("type")]
-    public required string Type { get; set; }
-
-    /// <summary>
-    /// 완료된 응답 객체의 정보
-    /// </summary>
-    [JsonPropertyName("response")]
-    public CompletedResponseInfo? Response { get; set; }
+    [JsonPropertyName("part")]
+    public required ResponsesItemPart Part { get; set; }
 }
 
-/// <summary>
-/// 응답 완료 시 함께 전달되는 응답 정보
-/// </summary>
-public class CompletedResponseInfo
+internal class StreamingContentDoneResponse : StreamingContentResponse
 {
-    /// <summary>
-    /// 응답 ID (예: "resp_67cbc9705fc08190bbe455c5ba3d6daf")
-    /// </summary>
-    [JsonPropertyName("id")]
-    public required string Id { get; set; }
-
-    /// <summary>
-    /// 생성된 시각(Unix timestamp, 초 단위)
-    /// </summary>
-    [JsonPropertyName("created_at")]
-    public double CreatedAt { get; set; }
-
-    /// <summary>
-    /// 사용된 모델 식별자 (예: "gpt-4o-2024-08-06")
-    /// </summary>
-    [JsonPropertyName("model")]
-    public string? Model { get; set; }
-
-    /// <summary>
-    /// 응답 상태 (예: "completed", "failed", "in_progress" 등)
-    /// </summary>
-    [JsonPropertyName("status")]
-    public string? Status { get; set; }
-
-    /// <summary>
-    /// (선택) 메시지 배열, 최종 결과를 포함한 전체 메시지 정보
-    /// </summary>
-    [JsonPropertyName("output")]
-    public JsonElement? Output { get; set; }
-
-    /// <summary>
-    /// (선택) 도구 호출 관련 정보 등 추가 메타데이터
-    /// </summary>
-    [JsonPropertyName("tools")]
-    public JsonElement? Tools { get; set; }
-
-    /// <summary>
-    /// (선택) 커스텀 메타데이터
-    /// </summary>
-    [JsonPropertyName("metadata")]
-    public JsonElement? Metadata { get; set; }
-
-    /// <summary>
-    /// (선택) 기타 필요한 필드를 추가로 정의할 수 있음
-    /// </summary>
-    [JsonExtensionData]
-    public Dictionary<string, JsonElement>? AdditionalProperties { get; set; }
+    [JsonPropertyName("part")]
+    public required ResponsesItemPart Part { get; set; }
 }
 
-/// <summary>
-/// "response.error" 이벤트의 데이터 구조
-/// </summary>
-public class ResponseErrorEvent
+internal class StreamingTextDeltaResponse : StreamingContentResponse
 {
-    /// <summary>
-    /// 항상 "response.error"
-    /// </summary>
-    [JsonPropertyName("type")]
-    public required string Type { get; set; }
-
-    /// <summary>
-    /// 에러 상세 정보
-    /// </summary>
-    [JsonPropertyName("error")]
-    public ErrorDetail? Error { get; set; }
-}
-
-/// <summary>
-/// 오류 발생 시 전달되는 에러 상세 객체
-/// </summary>
-public class ErrorDetail
-{
-    /// <summary>
-    /// 에러 메시지
-    /// </summary>
-    [JsonPropertyName("message")]
-    public string? Message { get; set; }
-
-    /// <summary>
-    /// 에러 유형 (예: "invalid_request_error", "rate_limit_error" 등)
-    /// </summary>
-    [JsonPropertyName("type")]
-    public required string Type { get; set; }
-
-    /// <summary>
-    /// 문제가 된 파라미터 이름 (옵션)
-    /// </summary>
-    [JsonPropertyName("param")]
-    public string? Param { get; set; }
-
-    /// <summary>
-    /// 에러 코드 (옵션)
-    /// </summary>
-    [JsonPropertyName("code")]
-    public string? Code { get; set; }
-}
-
-/// <summary>
-/// 함수 호출 인자 델타 이벤트 ("response.function_call_arguments.delta")
-/// </summary>
-public class ResponseFunctionCallArgumentsDeltaEvent
-{
-    /// <summary>
-    /// 항상 "response.function_call_arguments.delta"
-    /// </summary>
-    [JsonPropertyName("type")]
-    public required string Type { get; set; }
-
-    /// <summary>
-    /// 이 델타가 속한 호출 ID (message 또는 도구 호출 내에서의 식별자)
-    /// </summary>
-    [JsonPropertyName("call_id")]
-    public string? CallId { get; set; }
-
-    /// <summary>
-    /// JSON 문자열 형태로 점진적으로 전송되는 함수 호출 인자의 델타 조각
-    /// </summary>
     [JsonPropertyName("delta")]
-    public string? Delta { get; set; }
+    public required string Delta { get; set; }
+
+    [JsonPropertyName("logprobs")]
+    public ResponsesLogProbs? Logprobs { get; set; }
 }
 
-/// <summary>
-/// 함수 호출 인자 완료 이벤트 ("response.function_call_arguments.done")
-/// </summary>
-public class ResponseFunctionCallArgumentsDoneEvent
+internal class StreamingTextDoneResponse : StreamingContentResponse
 {
-    /// <summary>
-    /// 항상 "response.function_call_arguments.done"
-    /// </summary>
-    [JsonPropertyName("type")]
-    public required string Type { get; set; }
+    [JsonPropertyName("logprobs")]
+    public ResponsesLogProbs? Logprobs { get; set; }
 
-    /// <summary>
-    /// 최종 완성된 인자(input) JSON
-    /// </summary>
-    [JsonPropertyName("arguments")]
-    public JsonElement Arguments { get; set; }
-
-    /// <summary>
-    /// 호출 ID (message 또는 도구 호출 내에서의 식별자)
-    /// </summary>
-    [JsonPropertyName("call_id")]
-    public string? CallId { get; set; }
+    [JsonPropertyName("text")]
+    public required string Text { get; set; }
 }
+
+internal class StreamingRefusalDeltaResponse : StreamingContentResponse
+{
+    [JsonPropertyName("delta")]
+    public required string Delta { get; set; }
+}
+
+internal class StreamingRefusalDoneResponse : StreamingContentResponse
+{
+    [JsonPropertyName("refusal")]
+    public required string Refusal { get; set; }
+}
+
+internal class StreamingFunctionToolDeltaResponse : StreamingContentResponse
+{
+    [JsonPropertyName("delta")]
+    public required string Delta { get; set; }
+}
+
+internal class StreamingFunctionToolDoneResponse : StreamingContentResponse
+{
+    [JsonPropertyName("arguments")]
+    public required string Arguments { get; set; }
+}
+
+#endregion
+
+#region Reasoning Related
+
+internal abstract class StreamingReasoningResponse : StreamingOutputResponse
+{
+    [JsonPropertyName("summary_index")]
+    public required int SummaryIndex { get; set; }
+
+    [JsonPropertyName("item_id")]
+    public required string ItemId { get; set; }
+}
+
+internal class StreamingReasoningAddedResponse : StreamingReasoningResponse
+{
+    [JsonPropertyName("part")]
+    public required ResponsesSummaryReasoningItemPart Part { get; set; }
+}
+
+internal class StreamingReasoningDoneResponse : StreamingReasoningResponse
+{
+    [JsonPropertyName("part")]
+    public required ResponsesSummaryReasoningItemPart Part { get; set; }
+}
+
+internal class StreamingReasoningSummaryDeltaResponse : StreamingReasoningResponse
+{
+    [JsonPropertyName("delta")]
+    public required string Delta { get; set; }
+}
+
+internal class StreamingReasoningSummaryDoneResponse : StreamingReasoningResponse
+{
+    [JsonPropertyName("text")]
+    public required string Text { get; set; }
+}
+
+internal class StreamingReasoningTextDeltaResponse : StreamingReasoningResponse
+{
+    [JsonPropertyName("delta")]
+    public required string Delta { get; set; }
+}
+
+internal class StreamingReasoningTextDoneResponse : StreamingReasoningResponse
+{
+    [JsonPropertyName("text")]
+    public required string Text { get; set; }
+}
+
+#endregion ETC Related
+
+#region ETC Related
+
+internal class StreamingAnnotationAddedResponse : StreamingContentResponse
+{
+    [JsonPropertyName("annotation")]
+    public required object Annotation { get; set; }
+
+    [JsonPropertyName("annotation_index")]
+    public required int AnnotationIndex { get; set; }
+}
+
+internal class StreamingQueuedResponse : StreamingResponsesResponse
+{ }
+
+internal class StreamingCustomToolDeltaResponse : StreamingContentResponse
+{
+    [JsonPropertyName("delta")]
+    public required string Delta { get; set; }
+}
+
+internal class StreamingCustomToolDoneResponse : StreamingContentResponse
+{
+    [JsonPropertyName("input")]
+    public required string Input { get; set; }
+}
+
+internal class StreamingErrorResponse : StreamingResponsesResponse
+{
+    [JsonPropertyName("code")]
+    public required string Code { get; set; }
+
+    [JsonPropertyName("message")]
+    public required string Message { get; set; }
+
+    [JsonPropertyName("param")]
+    public required string Param { get; set; }
+}
+
+#endregion

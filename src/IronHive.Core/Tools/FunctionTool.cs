@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Tools;
 using Microsoft.AspNetCore.Mvc;
+using Json.Schema;
 
 namespace IronHive.Core.Tools;
 
@@ -67,6 +68,19 @@ public sealed class FunctionTool : ITool
 
         try
         {
+            // 입력 파라미터 검증
+            if (Parameters is JsonSchema schema)
+            {
+                //var vr = schema.Evaluate(jsonEl, new EvaluationOptions { OutputFormat = OutputFormat.Hierarchical });
+                //if (!vr.IsValid)
+                //{
+                //    var msgs = vr.Details.Where(d => d.HasErrors)
+                //                             .SelectMany(d => d.Errors!)
+                //                             .Select(kv => $"{kv.Key}: {kv.Value}");
+                //    throw new Exception("Parameter validation failed: " + string.Join("; ", msgs));
+                //}
+            }
+
             // 대상 인스턴스 준비
             var target = _target ?? GetOrCreateInstance(_method.DeclaringType, input.Services);
 
@@ -100,7 +114,7 @@ public sealed class FunctionTool : ITool
             var result = await execTask.ConfigureAwait(false);
             var json = JsonSerializer.Serialize(result, JsonDefaultOptions.Options);
 
-            // TODO: 결과 JSON 변환이 두번 발생. 최적화 필요
+            // TODO: 결과 크기 제한 정책 개선
             return json.Length > 30_000
                 ? ToolOutput.Failure("The result is too large to return. Please try again with different parameters.")
                 : ToolOutput.Success(json);

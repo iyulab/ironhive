@@ -2,714 +2,634 @@
 using IronHive.Abstractions.Tools;
 using Json.Schema;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.OpenApi.Any;
-using Microsoft.OpenApi.Models;
-using Microsoft.OpenApi.Readers;
-using System.Net.Http.Headers;
+using Microsoft.OpenApi;
+using Microsoft.OpenApi.Reader;
+using System.Collections;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Nodes;
-using JsonSchema = Json.Schema.JsonSchema;
 
 namespace ConsoleTest;
 
-/// <summary>
-/// OpenAPI 문서를 기반으로 HTTP 호출을 수행하는 ITool 구현체입니다.
-/// </summary>
-[JsonPolymorphicValue("openapi")]
-public sealed class OpenApiTool : ITool
+public class OpenApiSecurity
 {
-    private readonly OpenApiDocument _doc;
-    private readonly OpenApiOperation _operation;
-    private readonly string _path;
-    private readonly OperationType _method;
+    public required IOpenApiSecurityScheme Scheme { get; set; }
 
-    private readonly JsonSerializerOptions _jsonOptions;
+    public IOpenApiAuthSecret? Secret { get; set; }
 
-    /// <summary>
-    /// 고유 이름: openapi_{ApiName}_{OperationId}
-    /// </summary>
-    public string UniqueName => $"openapi_{ApiName}_{OperationId ?? $"{_method}_{_path.Trim('/').Replace('/', '_')}".ToLowerInvariant()}";
+    public IList<string>? Scopes { get; set; }
+}
 
-    /// <summary>
-    /// API(서버) 별칭. 로깅/노출용.
-    /// </summary>
-    public required string ApiName { get; init; }
+public class OpenApiProperties
+{
+    public IDictionary<string, IOpenApiParameter>? Query { get; set; }
 
-    /// <summary>
-    /// OpenAPI 문서의 원본 위치(로깅/디버깅용).
-    /// </summary>
-    public string? Source { get; init; }
+    public IDictionary<string, IOpenApiParameter>? Path { get; set; }
 
-    /// <summary>
-    /// 선택된 operationId (없으면 path+method 조합)
-    /// </summary>
-    public string? OperationId { get; }
+    public IDictionary<string, IOpenApiParameter>? Header { get; set; }
 
-    /// <inheritdoc />
-    public string? Description { get; }
+    public IDictionary<string, IOpenApiParameter>? Cookie { get; set; }
 
-    /// <inheritdoc />
-    public object? Parameters { get; }
+    public IOpenApiRequestBody? Body { get; set; }
 
-    /// <inheritdoc />
-    public required bool RequiresApproval { get; init; }
-
-    /// <summary>
-    /// 기본 요청 타임아웃(초). 기본 60초.
-    /// </summary>
-    public long TimeoutSeconds { get; set; } = 60;
-
-    /// <summary>
-    /// 서버 URL 강제 지정(선택). 미지정 시 OAS servers[0] 사용.
-    /// </summary>
-    public string? OverrideServerUrl { get; init; }
-
-    /// <summary>
-    /// 인증/전역 헤더 등 실행 옵션의 키 이름 기본값.
-    /// </summary>
-    public OpenApiToolOptionKeys OptionKeys { get; init; } = new();
-
-    private OpenApiTool(
-        OpenApiDocument doc,
-        string path,
-        OperationType method,
-        string? apiName,
-        string? source,
-        JsonObject parametersSchema,
-        string? description)
+    public JsonSchema? ToJsonSchema()
     {
-        _doc = doc;
-        _path = path;
-        _method = method;
-        _operation = doc.Paths[path].Operations[method];
-        OperationId = _operation.OperationId;
-        ApiName = apiName ?? "api";
-        Source = source;
-        Parameters = parametersSchema;
-        Description = description;
+        var builder = new JsonSchemaBuilder().Type(SchemaValueType.Object);
+        var properties = new Dictionary<string, JsonSchema>();
+        var required = new List<string>();
 
-        _jsonOptions = JsonDefaultOptions.Options; // 프로젝트 기본 옵션 활용
+        if (Query is { Count: > 0 })
+        {
+            properties["query"] = BuildParametersSchema(Query);
+            if (Query.Values.Any(p => p.Required))
+                required.Add("query");
+        }
+        if (Path is { Count: > 0 })
+        {
+            properties["path"] = BuildParametersSchema(Path);
+            if (Path.Values.Any(p => p.Required))
+                required.Add("path");
+        }
+        if (Header is { Count: > 0 })
+        {
+            properties["header"] = BuildParametersSchema(Header);
+            if (Header.Values.Any(p => p.Required))
+                required.Add("header");
+        }
+        if (Cookie is { Count: > 0 })
+        {
+            properties["cookie"] = BuildParametersSchema(Cookie);
+            if (Cookie.Values.Any(p => p.Required))
+                required.Add("cookie");
+        }
+
+        if (Body is not null && Body.Content is { Count: > 0 })
+        {
+            properties["body"] = BuildRequestBodySchema(Body);
+            if (Body.Required)
+                required.Add("body");
+        }
+
+        if (properties.Count > 0)
+            builder = builder.Properties(properties);
+        if (required.Count > 0)
+            builder = builder.Required(required.ToArray());
+        return builder.Build();
     }
 
-    /// <summary>
-    /// factory: operationId 로 선택
-    /// </summary>
-    public static OpenApiTool FromOperationId(
-        string openApiContent,
-        string operationId,
-        string? apiName = null,
-        string? source = null)
+    private static JsonSchema BuildParametersSchema(IDictionary<string, IOpenApiParameter> parameters)
     {
-        var doc = Parse(openApiContent, out _);
-        var (path, method, op) = FindOperationById(doc, operationId)
-            ?? throw new ArgumentException($"Operation '{operationId}' not found.");
-        var schema = BuildInputSchema(doc, path, method, op);
-        var desc = op.Summary ?? op.Description ?? $"Invoke {operationId}";
-        return new OpenApiTool(doc, path, method, apiName, source, schema, desc)
-        {
-            ApiName = apiName ?? "api",
-            RequiresApproval = true
-        };
+        return new JsonSchemaBuilder()
+            .Type(SchemaValueType.Object)
+            .Properties(parameters.ToDictionary(kv => kv.Key, kv => kv.Value.Schema?.ToJsonSchema() ?? JsonSchema.Empty))
+            .Required(parameters.Where(kv => kv.Value.Required).Select(kv => kv.Key).ToArray())
+            .Build();
     }
 
-    /// <summary>
-    /// factory: path + method 로 선택
-    /// </summary>
-    public static OpenApiTool FromPathAndMethod(
-        string openApiContent,
-        string path,
-        OperationType method,
-        string? apiName = null,
-        string? source = null)
+    private static JsonSchema BuildRequestBodySchema(IOpenApiRequestBody body)
     {
-        var doc = Parse(openApiContent, out _);
-        if (!doc.Paths.TryGetValue(path, out var item) || !item.Operations.TryGetValue(method, out var op))
-            throw new ArgumentException($"Operation '{method} {path}' not found.");
-        var schema = BuildInputSchema(doc, path, method, op);
-        var desc = op.Summary ?? op.Description ?? $"Invoke {method} {path}";
-        return new OpenApiTool(doc, path, method, apiName, source, schema, desc)
-        {
-            ApiName = apiName ?? "api",
-            RequiresApproval = true
-        };
+        if (body.Content is null || body.Content.Count == 0)
+            return JsonSchema.Empty;
+
+        // 스키마 하나만 지원
+        // 우선순위: application/json > text/plain > 기타
+        var contentType = body.Content.ContainsKey("application/json") ? "application/json"
+                        : body.Content.ContainsKey("text/plain") ? "text/plain"
+                        : body.Content.Keys.First();
+        var media = body.Content[contentType];
+
+        if (media.Schema is not null)
+            return media.Schema.ToJsonSchema();
+        else
+            return new JsonSchemaBuilder().Type(SchemaValueType.String).Build();
+    }
+}
+
+internal static class OpenApiUtil
+{
+    internal static bool IsUrlString(string str)
+    {
+        return Uri.TryCreate(str, UriKind.Absolute, out var u) &&
+            (u.Scheme == Uri.UriSchemeHttp || u.Scheme == Uri.UriSchemeHttps);
     }
 
-    /// <summary>
-    /// OpenAPI 문서 파싱
-    /// </summary>
-    private static OpenApiDocument Parse(string content, out OpenApiDiagnostic diag)
+    internal static bool IsRawString(string str)
     {
-        var reader = new OpenApiStringReader(new OpenApiReaderSettings
+        if (string.IsNullOrWhiteSpace(str)) return false;
+        var t = str.TrimStart();
+        return t.StartsWith("openapi:") || t.StartsWith("swagger:") ||  // YAML
+               t.StartsWith('{') || t.StartsWith('[');                  // JSON
+    }
+
+    internal static string BuildOperationId(HttpMethod method, string path)
+    {
+        var id = $"{method}_{path}";
+        id = new string(id.Select(ch => char.IsLetterOrDigit(ch) ? ch : '_').ToArray());
+        return id.ToLowerInvariant();
+    }
+
+
+    internal static string CombineUrl(string baseUrl, string relativePath)
+    {
+        if (string.IsNullOrEmpty(baseUrl)) return relativePath;
+        if (string.IsNullOrEmpty(relativePath)) return baseUrl;
+        if (baseUrl.EndsWith('/')) baseUrl = baseUrl[..^1];
+        return relativePath.StartsWith('/') ? baseUrl + relativePath : baseUrl + "/" + relativePath;
+    }
+
+    internal static bool IsSequenceButNotString(object? value) =>
+        value is IEnumerable && value is not string && value is not byte[] && value is not JsonElement;
+
+    internal static void AppendQueryParam(List<string> query, string name, object value, string style = "form", bool explode = true)
+    {
+        // 최소 구현: form + explode / non-explode, spaceDelimited, pipeDelimited, deepObject
+        if (!IsSequenceButNotString(value))
         {
-            //RuleSet = ValidationRuleSet.GetDefaultRuleSet()
-        });
-        var doc = reader.Read(content, out diag);
+            query.Add($"{Uri.EscapeDataString(name)}={Uri.EscapeDataString(value.ToString()!)}");
+            return;
+        }
+
+        var seq = ((IEnumerable)value).Cast<object?>().ToArray();
+        if (style == "spaceDelimited")
+        {
+            query.Add($"{Uri.EscapeDataString(name)}={Uri.EscapeDataString(string.Join(" ", seq))}");
+        }
+        else if (style == "pipeDelimited")
+        {
+            query.Add($"{Uri.EscapeDataString(name)}={Uri.EscapeDataString(string.Join("|", seq))}");
+        }
+        else // form
+        {
+            if (explode)
+            {
+                foreach (var item in seq)
+                    query.Add($"{Uri.EscapeDataString(name)}={Uri.EscapeDataString(item?.ToString() ?? "")}");
+            }
+            else
+            {
+                query.Add($"{Uri.EscapeDataString(name)}={Uri.EscapeDataString(string.Join(",", seq))}");
+            }
+        }
+    }
+}
+
+public sealed class OpenApiClient
+{
+    private IEnumerable<OpenApiTool>? _tools;
+
+    private OpenApiClient(OpenApiDocument doc)
+    {
+        Document = doc;
+    }
+
+    public OpenApiDocument Document { get; }
+
+    public required OpenApiClientConfig Config { get; init; }
+
+    public string ClientName => Config.ClientName;
+
+    public string? Title => Document.Info.Title;
+
+    public string? Description => Document.Info.Description ?? Document.Info.Summary;
+
+    public IEnumerable<OpenApiTag>? Tags => Document.Tags;
+
+    public static async Task<OpenApiClient> CreateAsync(OpenApiClientConfig config, CancellationToken ct = default)
+    {
+        OpenApiDocument? doc;
+        OpenApiDiagnostic? dialog;
+
+        if (OpenApiUtil.IsUrlString(config.Document))
+        {
+            (doc, dialog) = await OpenApiDocument.LoadAsync(url: config.Document, token: ct);
+        }
+        else if (OpenApiUtil.IsRawString(config.Document))
+        {
+            var settings = new OpenApiReaderSettings();
+            settings.AddYamlReader();
+            (doc, dialog) = OpenApiDocument.Parse(config.Document, settings: settings);
+        }
+        else
+        {
+            throw new Exception("unknown openapi document format");
+        }
+
+        if (dialog is not null && dialog.Errors.Count > 0)
+            throw new Exception("Failed to parse OpenAPI document: " + string.Join("; ", dialog.Errors.Select(e => e.Message)));
         if (doc is null)
-            throw new ArgumentException("Failed to parse OpenAPI document.");
-        return doc;
-    }
+            throw new Exception("Failed to load OpenAPI document.");
 
-    private static (string path, OperationType method, OpenApiOperation op)? FindOperationById(OpenApiDocument doc, string opId)
-    {
-        foreach (var (path, item) in doc.Paths)
+        return new OpenApiClient(doc)
         {
-            foreach (var (method, op) in item.Operations!)
-            {
-                if (string.Equals(op.OperationId, opId, StringComparison.Ordinal))
-                    return (path, method, op);
-            }
-        }
-        return null;
-    }
-
-    /// <summary>
-    /// LLM 입력을 위한 JSON 스키마 구성
-    /// </summary>
-    private static JsonObject BuildInputSchema(OpenApiDocument doc, string path, OperationType method, OpenApiOperation op)
-    {
-        // properties: path/query/header/cookie/body + extras
-        var props = new JsonObject();
-
-        // path/query/header/cookie parameters
-        var paramGroups = op.Parameters
-            .Concat(doc.Paths[path].Parameters ?? Enumerable.Empty<OpenApiParameter>())
-            .GroupBy(p => p.In);
-
-        foreach (var group in paramGroups)
-        {
-            var name = group.Key switch
-            {
-                ParameterLocation.Path => "path",
-                ParameterLocation.Query => "query",
-                ParameterLocation.Header => "headers",
-                ParameterLocation.Cookie => "cookies",
-                _ => "params"
-            };
-            var obj = new JsonObject();
-            foreach (var p in group)
-            {
-                obj[p.Name] = OpenApiToJsonNode.Map(p.Schema);
-            }
-            if (obj.Count > 0) props[name] = new JsonObject
-            {
-                ["type"] = "object",
-                ["properties"] = obj
-            };
-        }
-
-        // requestBody (json / form)
-        if (op.RequestBody is { } body && body.Content?.Any() == true)
-        {
-            if (TryPickBestMediaType(body.Content, out var mediaType, out var media) && media.Schema is not null)
-            {
-                props["body"] = OpenApiToJsonNode.Map(media.Schema);
-                props["bodyContentType"] = JsonValue.Create(mediaType);
-            }
-        }
-
-        // 추가 실행 옵션 (서버, 인증 등)
-        // LLM이 선택적으로 채울 수 있도록 optional 로 두되, 스키마 힌트 제공
-        props["__serverUrl"] = new JsonObject
-        {
-            ["type"] = "string",
-            ["description"] = "Override server URL. If omitted, use servers[0] from OpenAPI."
+            Config = config
         };
-        props["__auth"] = new JsonObject
+    }
+
+    public async Task<IEnumerable<OpenApiTool>> ListToolsAsync(CancellationToken cancellationToken = default)
+    {
+        if (_tools is not null) return _tools;
+
+        var tools = new List<OpenApiTool>();
+        foreach (var (path, pathItem) in Document.Paths)
         {
-            ["type"] = "object",
-            ["description"] = "Auth data (apiKey, bearer, basic). If omitted, Options에서 주입.",
-            ["properties"] = new JsonObject
+            if (pathItem.Operations is null || pathItem.Operations.Count == 0) continue;
+
+            foreach (var (method, op) in pathItem.Operations)
             {
-                ["type"] = JsonValue.Create("string"), // apiKey|bearer|basic
-                ["token"] = JsonValue.Create(string.Empty),
-                ["username"] = JsonValue.Create(string.Empty),
-                ["password"] = JsonValue.Create(string.Empty),
-                ["headerName"] = JsonValue.Create(string.Empty),
-                ["queryName"] = JsonValue.Create(string.Empty)
-            }
-        };
+                // ID 추출
+                var oid = string.IsNullOrEmpty(op.OperationId)
+                    ? OpenApiUtil.BuildOperationId(method, path)
+                    : op.OperationId;
 
-        var required = new JsonArray();
-        // path 파라미터 필수 표시
-        foreach (var p in op.Parameters.Where(p => p.In == ParameterLocation.Path && p.Required))
-        {
-            if (!required.Any()) required.Add("path");
-        }
+                // 설명 추출
+                var desc = op.Description ?? op.Summary;
 
-        var root = new JsonObject
-        {
-            ["type"] = "object",
-            ["properties"] = props
-        };
-        if (required.Count > 0) root["required"] = required;
-
-        return root;
-    }
-
-    // using Microsoft.OpenApi.Models;
-    // 반환: 성공 시 true, out 로 타입/미디어 반환
-    private static bool TryPickBestMediaType(
-        IDictionary<string, OpenApiMediaType>? content,
-        out string mediaType,
-        out OpenApiMediaType media)
-    {
-        mediaType = "";
-        media = null!;
-        if (content is null || content.Count == 0) return false;
-
-        if (content.TryGetValue("application/json", out var json)) { mediaType = "application/json"; media = json; return true; }
-        if (content.TryGetValue("multipart/form-data", out var mp)) { mediaType = "multipart/form-data"; media = mp; return true; }
-        if (content.TryGetValue("application/x-www-form-urlencoded", out var form)) { mediaType = "application/x-www-form-urlencoded"; media = form; return true; }
-
-        // 첫 항목
-        var kv = content.First();
-        mediaType = kv.Key;
-        media = kv.Value;
-        return true;
-    }
-
-
-    /// <inheritdoc />
-    public async Task<ToolOutput> InvokeAsync(
-        ToolInput input,
-        CancellationToken cancellationToken = default)
-    {
-        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeoutCts.CancelAfter(TimeSpan.FromSeconds(TimeoutSeconds));
-        try
-        {
-            var baseUrl = ResolveServerUrl(input) ?? _doc.Servers.FirstOrDefault()?.Url
-                          ?? throw new InvalidOperationException("No server URL found.");
-            baseUrl = TrimTrailingSlash(baseUrl);
-
-            var url = BuildUrl(baseUrl, _path, input);
-            using var req = new HttpRequestMessage(ToHttpMethod(_method), url);
-
-            // 헤더/쿠키/쿼리는 BuildUrl/ApplyHeaders 안에서 처리
-            ApplyHeaders(req, input);
-            ApplyAuth(req, input);
-
-            // Body
-            await ApplyBodyAsync(req, input, timeoutCts.Token).ConfigureAwait(false);
-
-            // HttpClient 준비
-            var http = GetHttpClient(input.Services);
-            http.Timeout = TimeSpan.FromSeconds(TimeoutSeconds);
-
-            var resp = await http.SendAsync(req, HttpCompletionOption.ResponseContentRead, timeoutCts.Token)
-                                 .ConfigureAwait(false);
-
-            var payload = await resp.Content.ReadAsStringAsync(timeoutCts.Token).ConfigureAwait(false);
-
-            // 성공/실패 판정: 2xx
-            if ((int)resp.StatusCode >= 200 && (int)resp.StatusCode < 300)
-            {
-                // 그대로 반환 (너무 큰 경우 제한)
-                return payload.Length > 30_000
-                    ? ToolOutput.Failure("The result is too large to return. Please try again with different parameters.")
-                    : ToolOutput.Success(payload);
-            }
-
-            // 오류: 본문 함께 반환
-            var reason = $"{(int)resp.StatusCode} {resp.ReasonPhrase}";
-            return ToolOutput.Failure(string.IsNullOrWhiteSpace(payload) ? reason : $"{reason}\n{payload}");
-        }
-        catch (OperationCanceledException)
-        {
-            if (cancellationToken.IsCancellationRequested) throw;
-            return ToolOutput.Failure($"The tool execution was cancelled due to timeout ({TimeoutSeconds} seconds).");
-        }
-        catch (Exception ex)
-        {
-            return ToolOutput.Failure(ex.Message);
-        }
-    }
-
-    private static HttpClient GetHttpClient(IServiceProvider? sp)
-        => sp?.GetService<IHttpClientFactory>()?.CreateClient("OpenApiTool")
-           ?? sp?.GetService<HttpClient>()
-           ?? new HttpClient();
-
-    private string? ResolveServerUrl(ToolInput input)
-    {
-        // 우선순위: input.__serverUrl > this.OverrideServerUrl > doc.servers[0]
-        if (input.TryGetValue("__serverUrl", out var v) && v is string s && !string.IsNullOrWhiteSpace(s)) return s;
-        if (!string.IsNullOrWhiteSpace(OverrideServerUrl)) return OverrideServerUrl;
-        return null;
-    }
-
-    private static string TrimTrailingSlash(string url)
-        => url.EndsWith("/") ? url[..^1] : url;
-
-    private static HttpMethod ToHttpMethod(OperationType t) => t switch
-    {
-        OperationType.Get => HttpMethod.Get,
-        OperationType.Put => HttpMethod.Put,
-        OperationType.Post => HttpMethod.Post,
-        OperationType.Delete => HttpMethod.Delete,
-        OperationType.Options => HttpMethod.Options,
-        OperationType.Head => HttpMethod.Head,
-        OperationType.Patch => HttpMethod.Patch,
-        OperationType.Trace => HttpMethod.Trace,
-        _ => HttpMethod.Get
-    };
-
-    private string BuildUrl(string baseUrl, string pathTemplate, ToolInput input)
-    {
-        // path params
-        var path = pathTemplate;
-        if (input.TryGetValue("path", out var pObj) && pObj is IReadOnlyDictionary<string, object?> pathDict)
-        {
-            foreach (var kv in pathDict)
-            {
-                path = path.Replace($"{{{kv.Key}}}", Uri.EscapeDataString(kv.Value?.ToString() ?? string.Empty));
-            }
-        }
-
-        var ub = new UriBuilder($"{baseUrl}{(path.StartsWith("/") ? "" : "/")}{path}");
-
-        // query params
-        if (input.TryGetValue("query", out var qObj) && qObj is IReadOnlyDictionary<string, object?> qDict)
-        {
-            var query = System.Web.HttpUtility.ParseQueryString(ub.Query);
-            foreach (var (k, v) in qDict)
-            {
-                if (v is null) continue;
-                if (v is IEnumerable<object?> arr && v is not string)
+                // 서버 목록 추출
+                var servers = op.Servers?.Count > 0 ? op.Servers.ToList()
+                    : pathItem.Servers?.Count > 0 ? pathItem.Servers.ToList()
+                    : Document.Servers?.ToList()
+                    ?? throw new Exception("not have server");
+                
+                var baseUris = new List<Uri>();
+                var baseUriStrs = new HashSet<string>();
+                foreach (var server in servers)
                 {
-                    foreach (var e in arr)
-                        query.Add(k, e?.ToString());
-                }
-                else
-                {
-                    query[k] = v.ToString();
-                }
-            }
-            ub.Query = query.ToString();
-        }
+                    if (string.IsNullOrWhiteSpace(server.Url)) continue;
 
-        return ub.Uri.ToString();
-    }
-
-    private void ApplyHeaders(HttpRequestMessage req, ToolInput input)
-    {
-        if (input.TryGetValue("headers", out var hObj) && hObj is IReadOnlyDictionary<string, object?> headers)
-        {
-            foreach (var (k, v) in headers)
-            {
-                if (string.IsNullOrWhiteSpace(k) || v is null) continue;
-                if (!req.Headers.TryAddWithoutValidation(k, v.ToString()))
-                {
-                    // content header 로 재시도
-                    req.Content ??= new StringContent(string.Empty);
-                    req.Content.Headers.TryAddWithoutValidation(k, v.ToString());
-                }
-            }
-        }
-
-        // cookies
-        if (input.TryGetValue("cookies", out var cObj) && cObj is IReadOnlyDictionary<string, object?> cookies && cookies.Count > 0)
-        {
-            var cookiePairs = string.Join("; ", cookies.Where(kv => kv.Value is not null)
-                                                       .Select(kv => $"{kv.Key}={kv.Value}"));
-            if (!string.IsNullOrEmpty(cookiePairs))
-            {
-                req.Headers.TryAddWithoutValidation("Cookie", cookiePairs);
-            }
-        }
-    }
-
-    private void ApplyAuth(HttpRequestMessage req, ToolInput input)
-    {
-        // 1) input.__auth
-        if (TryGetAuthFromInput(input, out var auth))
-        {
-            ApplyAuthCore(req, auth);
-            return;
-        }
-
-        // 2) 옵션 객체에서 가져오기 (ToolInput.Options)
-        if (input.Options is not null)
-        {
-            // 키 이름은 OptionKeys 로 유연하게
-            var opt = input.Options.ConvertTo<Dictionary<string, object?>>() ?? new();
-            var a = new OpenApiAuth();
-
-            if (opt.TryGetValue(OptionKeys.AuthType, out var t) && t is string ts) a.Type = ts;
-            if (opt.TryGetValue(OptionKeys.AuthToken, out var token) && token is string tok) a.Token = tok;
-            if (opt.TryGetValue(OptionKeys.Username, out var u) && u is string us) a.Username = us;
-            if (opt.TryGetValue(OptionKeys.Password, out var pw) && pw is string ps) a.Password = ps;
-            if (opt.TryGetValue(OptionKeys.HeaderName, out var hn) && hn is string hs) a.HeaderName = hs;
-            if (opt.TryGetValue(OptionKeys.QueryName, out var qn) && qn is string qs) a.QueryName = qs;
-
-            ApplyAuthCore(req, a);
-        }
-    }
-
-    private static bool TryGetAuthFromInput(ToolInput input, out OpenApiAuth auth)
-    {
-        auth = new OpenApiAuth();
-        if (!input.TryGetValue("__auth", out var aObj) || aObj is null) return false;
-
-        var dict = aObj.ConvertTo<Dictionary<string, object?>>();
-        if (dict is null) return false;
-
-        dict.TryGetValue("type", out var t);
-        dict.TryGetValue("token", out var token);
-        dict.TryGetValue("username", out var u);
-        dict.TryGetValue("password", out var p);
-        dict.TryGetValue("headerName", out var h);
-        dict.TryGetValue("queryName", out var q);
-
-        auth.Type = t?.ToString();
-        auth.Token = token?.ToString();
-        auth.Username = u?.ToString();
-        auth.Password = p?.ToString();
-        auth.HeaderName = h?.ToString();
-        auth.QueryName = q?.ToString();
-        return true;
-    }
-
-    private static void ApplyAuthCore(HttpRequestMessage req, OpenApiAuth auth)
-    {
-        switch (auth.Type?.ToLowerInvariant())
-        {
-            case "bearer":
-                if (!string.IsNullOrWhiteSpace(auth.Token))
-                    req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", auth.Token);
-                break;
-
-            case "basic":
-                if (!string.IsNullOrWhiteSpace(auth.Username))
-                {
-                    var raw = $"{auth.Username}:{auth.Password ?? ""}";
-                    var b64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(raw));
-                    req.Headers.Authorization = new AuthenticationHeaderValue("Basic", b64);
-                }
-                break;
-
-            case "apikey":
-            case "api-key":
-                // 기본은 X-API-Key 헤더. headerName/queryName 로 변경 가능
-                var key = auth.Token ?? string.Empty;
-                var headerName = string.IsNullOrWhiteSpace(auth.HeaderName) ? "X-API-Key" : auth.HeaderName;
-                if (!string.IsNullOrWhiteSpace(headerName))
-                {
-                    req.Headers.TryAddWithoutValidation(headerName, key);
-                }
-                else if (!string.IsNullOrWhiteSpace(auth.QueryName))
-                {
-                    // URL에 쿼리스트링으로 부착
-                    var ub = new UriBuilder(req.RequestUri!);
-                    var query = System.Web.HttpUtility.ParseQueryString(ub.Query);
-                    query.Add(auth.QueryName, key);
-                    ub.Query = query.ToString();
-                    req.RequestUri = ub.Uri;
-                }
-                break;
-
-            default:
-                // no-op
-                break;
-        }
-    }
-
-    private async Task ApplyBodyAsync(HttpRequestMessage req, ToolInput input, CancellationToken ct)
-    {
-        if (!_operation.RequestBody?.Content?.Any() ?? true) return;
-
-        // 스키마 구성 시 bodyContentType 를 넣어두었음
-        string contentType = "application/json";
-        if (input.TryGetValue("bodyContentType", out var ctObj) && ctObj is string s && !string.IsNullOrWhiteSpace(s))
-            contentType = s;
-
-        if (!input.TryGetValue("body", out var bodyObj))
-        {
-            // body 필요하지만 없는 경우: 일부 API는 optional
-            return;
-        }
-
-        switch (contentType)
-        {
-            case "application/json":
-                {
-                    var json = bodyObj is string str && IsJsonLike(str)
-                        ? str
-                        : JsonSerializer.Serialize(bodyObj, _jsonOptions);
-
-                    req.Content = new StringContent(json, Encoding.UTF8, "application/json");
-                    break;
-                }
-
-            case "application/x-www-form-urlencoded":
-                {
-                    var dict = bodyObj.ConvertTo<Dictionary<string, object?>>() ?? new();
-                    var kvs = new List<KeyValuePair<string, string>>();
-                    foreach (var (k, v) in dict)
+                    var url = server.Url;
+                    if (server.Variables is { Count: > 0 })
                     {
-                        if (v is null) continue;
-                        if (v is IEnumerable<object?> arr && v is not string)
-                            kvs.AddRange(arr.Select(e => new KeyValuePair<string, string>(k, e?.ToString() ?? "")));
-                        else
-                            kvs.Add(new KeyValuePair<string, string>(k, v.ToString() ?? ""));
-                    }
-                    req.Content = new FormUrlEncodedContent(kvs);
-                    break;
-                }
-
-            case "multipart/form-data":
-                {
-                    var dict = bodyObj.ConvertTo<Dictionary<string, object?>>() ?? new();
-                    var mp = new MultipartFormDataContent();
-                    foreach (var (k, v) in dict)
-                    {
-                        if (v is null) continue;
-
-                        // 파일(바이트) 지원: { bytes, fileName, contentType } 관례
-                        if (v is IReadOnlyDictionary<string, object?> f &&
-                            f.TryGetValue("bytes", out var bytesObj) &&
-                            bytesObj is byte[] bytes)
+                        foreach (var (key, value) in server.Variables)
                         {
-                            var fileName = f.TryGetValue("fileName", out var fn) ? fn?.ToString() ?? "file" : "file";
-                            var ctype = f.TryGetValue("contentType", out var ct2) ? ct2?.ToString() ?? "application/octet-stream" : "application/octet-stream";
-                            var content = new ByteArrayContent(bytes);
-                            content.Headers.ContentType = new MediaTypeHeaderValue(ctype);
-                            mp.Add(content, k, fileName);
-                        }
-                        else
-                        {
-                            mp.Add(new StringContent(v.ToString() ?? ""), k);
+                            if (!string.IsNullOrWhiteSpace(value.Default))
+                                baseUriStrs.Add(url.Replace($"{{{key}}}", value.Default));
+
+                            if (value.Enum is { Count: > 0 })
+                            {
+                                foreach (var v in value.Enum)
+                                {
+                                    if (!string.IsNullOrWhiteSpace(v))
+                                        baseUriStrs.Add(url.Replace($"{{{key}}}", v));
+                                }
+                            }
                         }
                     }
-                    req.Content = mp;
-                    break;
+                    else
+                    {
+                        baseUriStrs.Add(url);
+                    }
+                }
+                foreach (var u in baseUriStrs)
+                {
+                    if (Uri.TryCreate(u, UriKind.Absolute, out var uri))
+                        baseUris.Add(uri);
+                }
+                if (baseUris.Count == 0)
+                    throw new Exception("not have valid server url");
+
+                // 보안 인증 추출
+                var requires = op.Security?.Count > 0 ? op.Security
+                    : Document.Security?.Count > 0 ? Document.Security
+                    : new List<OpenApiSecurityRequirement>();
+
+                var securities = new List<OpenApiSecurity>();
+                foreach (var req in requires)
+                {
+                    foreach (var (sref, scope) in req)
+                    {
+                        var name = sref.Reference?.Id;
+                        var scheme = sref.Target;
+                        if (scheme == null || string.IsNullOrWhiteSpace(name))
+                            continue;
+
+                        if (Config.Secrets != null && Config.Secrets.TryGetValue(name, out var secret))
+                        {
+                            securities.Add(new OpenApiSecurity
+                            {
+                                Scheme = scheme,
+                                Scopes = scope,
+                                Secret = secret
+                            });
+                        }
+                    }
                 }
 
-            default:
-                // 기타 미디어타입은 문자열로 시도
-                var raw = bodyObj is string sraw ? sraw : JsonSerializer.Serialize(bodyObj, _jsonOptions);
-                req.Content = new StringContent(raw, Encoding.UTF8, contentType);
-                break;
+                // 프로퍼티 추출
+                var props = new OpenApiProperties();
+                props.Body = op.RequestBody;
+
+                var parameters = new List<IOpenApiParameter>();
+                if (pathItem.Parameters != null)
+                    parameters.AddRange(pathItem.Parameters);
+                if (op.Parameters != null)
+                    parameters.AddRange(op.Parameters);
+
+                foreach (var param in parameters)
+                {
+                    switch (param.In)
+                    {
+                        case ParameterLocation.Query:
+                            props.Query ??= new Dictionary<string, IOpenApiParameter>(StringComparer.Ordinal);
+                            if (!string.IsNullOrWhiteSpace(param.Name) && !props.Query.ContainsKey(param.Name))
+                                props.Query[param.Name] = param;
+                            break;
+                        case ParameterLocation.Path:
+                            props.Path ??= new Dictionary<string, IOpenApiParameter>(StringComparer.Ordinal);
+                            if (!string.IsNullOrWhiteSpace(param.Name) && !props.Path.ContainsKey(param.Name))
+                                props.Path[param.Name] = param;
+                            break;
+                        case ParameterLocation.Header:
+                            props.Header ??= new Dictionary<string, IOpenApiParameter>(StringComparer.OrdinalIgnoreCase);
+                            if (!string.IsNullOrWhiteSpace(param.Name) && !props.Header.ContainsKey(param.Name))
+                                props.Header[param.Name] = param;
+                            break;
+                        case ParameterLocation.Cookie:
+                            props.Cookie ??= new Dictionary<string, IOpenApiParameter>(StringComparer.Ordinal);
+                            if (!string.IsNullOrWhiteSpace(param.Name) && !props.Cookie.ContainsKey(param.Name))
+                                props.Cookie[param.Name] = param;
+                            break;
+                    }
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+                tools.Add(new OpenApiTool
+                {
+                    ClientName = ClientName,
+                    Description = desc,
+                    OperationId = oid,
+                    Method = method,
+                    Path = path,
+                    BaseUris = baseUris,
+                    Securities = securities,
+                    Properties = props,
+                    Parameters = props.ToJsonSchema(),
+                    DefaultHeaders = Config.DefaultHeaders,
+                    TimeoutSeconds = TimeSpan.FromSeconds(Config.TimeoutSeconds),
+                });
+            }
         }
 
         await Task.CompletedTask;
-    }
-
-    private static bool IsJsonLike(string s)
-    {
-        s = s.Trim();
-        return s.StartsWith("{") && s.EndsWith("}") || s.StartsWith("[") && s.EndsWith("]");
+        _tools = tools;
+        return tools.ToArray();
     }
 }
 
-/// <summary>
-/// 인증 및 부가 옵션 키 이름(호출자 옵션 객체의 키 커스터마이징)
-/// </summary>
-public sealed class OpenApiToolOptionKeys
+[JsonPolymorphicValue("openapi")]
+public sealed class OpenApiTool : ITool
 {
-    public string AuthType { get; init; } = "auth.type";
-    public string AuthToken { get; init; } = "auth.token";
-    public string Username { get; init; } = "auth.username";
-    public string Password { get; init; } = "auth.password";
-    public string HeaderName { get; init; } = "auth.headerName";
-    public string QueryName { get; init; } = "auth.queryName";
-}
+    public required string ClientName { get; init; }
 
-/// <summary>
-/// 간단 인증 구조체
-/// </summary>
-public sealed class OpenApiAuth
-{
-    public string? Type { get; set; }         // bearer | basic | apikey
-    public string? Token { get; set; }        // bearer/apikey token
-    public string? Username { get; set; }     // basic
-    public string? Password { get; set; }     // basic
-    public string? HeaderName { get; set; }   // apikey in header
-    public string? QueryName { get; set; }    // apikey in query
-}
+    public required string OperationId { get; init; }
 
-internal static class OpenApiToJsonNode
-{
-    public static JsonNode Map(OpenApiSchema? s)
+    public required HttpMethod Method { get; init; }
+
+    public required string Path { get; init; }
+
+    public required IEnumerable<Uri> BaseUris { get; init; }
+
+    public required IList<OpenApiSecurity> Securities { get; init; }
+
+    public required OpenApiProperties Properties { get; init; }
+
+    public string UniqueName => $"openapi_{ClientName}_{OperationId}";
+
+    public string? Description { get; init; }
+
+    public object? Parameters { get; init; }
+
+    public bool RequiresApproval { get; set; } = true;
+
+    public IDictionary<string, string>? DefaultHeaders { get; set; }
+
+    public TimeSpan TimeoutSeconds { get; init; }
+
+    public async Task<ToolOutput> InvokeAsync(ToolInput input, CancellationToken cancellationToken = default)
     {
-        if (s is null) return new JsonObject { ["type"] = "null" };
-
-        // $ref 간단 처리 (깊은 deref는 생략)
-        if (s.Reference?.Id is string refId && !string.IsNullOrWhiteSpace(refId))
-            return new JsonObject { ["$ref"] = $"#/components/schemas/{refId}" };
-
-        var o = new JsonObject();
-
-        // type/nullable
-        var type = s.Type;
-        if (s.Nullable && !string.IsNullOrWhiteSpace(type))
-            o["type"] = new JsonArray(type, "null");
-        else
-            o["type"] = string.IsNullOrWhiteSpace(type) ? "object" : type;
-
-        // 형식/설명/제약
-        if (!string.IsNullOrWhiteSpace(s.Format)) o["format"] = s.Format;
-        if (!string.IsNullOrWhiteSpace(s.Description)) o["description"] = s.Description;
-
-        // enum
-        if (s.Enum is { Count: > 0 })
+        using var client = CreateHttpClient(input.Services);
+        try
         {
-            var arr = new JsonArray();
-            foreach (var e in s.Enum) arr.Add(OpenApiAnyToJson(e));
-            o["enum"] = arr;
-        }
-
-        // object
-        if (o["type"]?.ToString() == "object" || s.Properties?.Count > 0)
-        {
-            var props = new JsonObject();
-            foreach (var kv in s.Properties)
-                props[kv.Key] = Map(kv.Value);
-            if (props.Count > 0) o["properties"] = props;
-
-            if (s.Required is { Count: > 0 })
+            var queue = new Queue<Uri>(BaseUris);
+            var errors = new List<Exception>();
+            while (queue.TryDequeue(out var baseUri))
             {
-                var r = new JsonArray();
-                foreach (var name in s.Required) r.Add(name);
-                o["required"] = r;
+                try
+                {
+                    var req = BuildHttpRequest(baseUri, input);
+                    using var res = await client.SendAsync(req!, cancellationToken);
+                    var text = await res.Content.ReadAsStringAsync(cancellationToken);
+                    if (!res.IsSuccessStatusCode)
+                        throw new Exception($"HTTP {(int)res.StatusCode} {res.ReasonPhrase} {text}");
+
+                    var payload = text.Length > 120_000 ? text[..120_000] : text; // JSON도 텍스트 그대로
+                    return ToolOutput.Success(payload);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    errors.Add(ex);
+                }
             }
 
-            o["additionalProperties"] = s.AdditionalPropertiesAllowed;
-            if (s.AdditionalProperties is not null)
-                o["additionalProperties"] = Map(s.AdditionalProperties);
+            if (errors.Count > 0)
+                return ToolOutput.Failure("Request failed on all servers: " + string.Join(" | ", errors.Select(e => e.Message)));
+            else
+                return ToolOutput.Failure("Request failed on all servers.");
         }
-
-        // array
-        if (o["type"]?.ToString() == "array" && s.Items is not null)
-            o["items"] = Map(s.Items);
-
-        // number/string 길이/범위 제약
-        if (s.Maximum.HasValue) o["maximum"] = s.Maximum.Value;
-        if (s.Minimum.HasValue) o["minimum"] = s.Minimum.Value;
-        if (s.ExclusiveMaximum == true) o["exclusiveMaximum"] = true;
-        if (s.ExclusiveMinimum == true) o["exclusiveMinimum"] = true;
-        if (s.MaxLength.HasValue) o["maxLength"] = s.MaxLength.Value;
-        if (s.MinLength.HasValue) o["minLength"] = s.MinLength.Value;
-        if (s.MaxItems.HasValue) o["maxItems"] = s.MaxItems.Value;
-        if (s.MinItems.HasValue) o["minItems"] = s.MinItems.Value;
-
-        return o;
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return ToolOutput.Failure("Request failed: " + ex.Message);
+        }
     }
 
-    private static JsonNode OpenApiAnyToJson(IOpenApiAny any) =>
-        any switch
+    private HttpClient CreateHttpClient(IServiceProvider? services)
+    {
+        HttpClient? client = null;
+        if (services is not null)
         {
-            OpenApiString v => JsonValue.Create(v.Value)!,
-            OpenApiInteger v => JsonValue.Create(v.Value)!,
-            OpenApiLong v => JsonValue.Create(v.Value)!,
-            OpenApiFloat v => JsonValue.Create(v.Value)!,
-            OpenApiDouble v => JsonValue.Create(v.Value)!,
-            OpenApiBoolean v => JsonValue.Create(v.Value)!,
-            OpenApiDate v => JsonValue.Create(v.Value.ToString("yyyy-MM-dd"))!,
-            OpenApiDateTime v => JsonValue.Create(v.Value.ToString("o"))!,
-            OpenApiArray arr => new JsonArray(arr.Select(OpenApiAnyToJson).ToArray()),
-            OpenApiObject obj => new JsonObject(obj.ToDictionary(k => k.Key, v => OpenApiAnyToJson(v.Value))),
-            _ => JsonValue.Create(any?.ToString())!
-        };
+            var factory = services.GetService<IHttpClientFactory>();
+            if (factory is not null)
+                client = factory.CreateClient($"OpenApiTool:{ClientName}");
+            else
+                client = services.GetService<HttpClient>();
+        }
+        client ??= new HttpClient();
+
+        if (DefaultHeaders is not null)
+        {
+            foreach (var (k, v) in DefaultHeaders)
+                client.DefaultRequestHeaders.TryAddWithoutValidation(k, v);
+        }
+        client.Timeout = TimeoutSeconds;
+        return client;
+    }
+
+    private HttpRequestMessage BuildHttpRequest(Uri baseUrl, ToolInput input)
+    {
+        // 경로 치환
+        string path = Path;
+        if (Properties.Path is not null)
+        {
+            if (input.TryGetValue<Dictionary<string, string>>("path", out var items))
+            {
+                foreach (var (name, _) in Properties.Path)
+                {
+                    if (items.TryGetValue(name, out var value) && !string.IsNullOrWhiteSpace(value))
+                        path = path.Replace($"{{{name}}}", Uri.EscapeDataString(value));
+                }
+            }
+        }
+
+        // 쿼리 문자열 구성
+        var query = new List<string>();
+        if (Properties.Query is not null)
+        {
+            if (input.TryGetValue<Dictionary<string, object>>("query", out var items))
+            {
+                foreach (var (name, _) in Properties.Query)
+                {
+                    if (items.TryGetValue(name, out var value) && value is not null)
+                    {
+                        if (value is IEnumerable seq)
+                        {
+                            foreach (var item in seq)
+                            {
+                                query.Add($"{Uri.EscapeDataString(name)}={Uri.EscapeDataString(item.ToString()!)}");
+                            }
+                        }
+                        else
+                        {
+                            query.Add($"{Uri.EscapeDataString(name)}={Uri.EscapeDataString(value.ToString()!)}");
+                        }
+                    }
+                }
+            }
+        }
+
+        var headers = new Dictionary<string, string>();
+        // 헤더 구성
+        if (Properties.Header is not null)
+        {
+            if (input.TryGetValue<Dictionary<string, object?>>("header", out var items))
+            {
+                foreach (var (name, _) in Properties.Header)
+                {
+                    if (items.TryGetValue(name, out var value) && value is not null)
+                    {
+                        headers.TryAdd(name, value.ToString()!);
+                    }
+                }
+            }
+        }
+
+        // 쿠키 구성
+        if (Properties.Cookie is not null)
+        {
+            if (input.TryGetValue<Dictionary<string, object?>>("cookie", out var items))
+            {
+                var cookies = new List<string>();
+                foreach (var (name, _) in Properties.Cookie)
+                {
+                    if (items.TryGetValue(name, out var value) && value is not null)
+                    {
+                        cookies.Add($"{name}={value}");
+                    }
+                }
+
+                if (cookies.Count > 0)
+                    headers.TryAdd("Cookie", string.Join("; ", cookies));
+            }
+        }
+
+        // 바디 구성
+        HttpContent? content = null;
+        if (Properties.Body?.Content is not null)
+        {
+            var contentType = Properties.Body.Content.ContainsKey("application/json") ? "application/json"
+                            : Properties.Body.Content.ContainsKey("text/plain") ? "text/plain"
+                            : Properties.Body.Content.Keys.First();
+
+            if (input.TryGetValue<object>("body", out var item))
+            {
+                if (contentType == "application/json")
+                {
+                    var json = JsonSerializer.Serialize(item);
+                    content = new StringContent(json, Encoding.UTF8, contentType);
+                }
+                else
+                {
+                    content = new StringContent(item?.ToString() ?? string.Empty, Encoding.UTF8, contentType);
+                }
+            }
+        }
+
+        foreach (var sec in Securities)
+        {
+            if (sec.Scheme.Type == SecuritySchemeType.ApiKey && sec.Secret is ApiKeyAuthSecret aas)
+            {
+                if (sec.Scheme.In == ParameterLocation.Path)
+                {
+                    path = path.Replace($"{{{sec.Scheme.Name}}}", Uri.EscapeDataString(aas.Value));
+                }
+                else if (sec.Scheme.In == ParameterLocation.Query)
+                {
+                    query.Add($"{Uri.EscapeDataString(sec.Scheme.Name!)}={Uri.EscapeDataString(aas.Value)}");
+                }
+                else if (sec.Scheme.In == ParameterLocation.Header)
+                {
+                    headers.TryAdd(sec.Scheme.Name!, aas.Value);
+                }
+                else if (sec.Scheme.In == ParameterLocation.Cookie)
+                {
+                    if (headers.TryGetValue("Cookie", out var exist))
+                        headers["Cookie"] = exist + "; " + $"{sec.Scheme.Name}={aas.Value}";
+                    else
+                        headers["Cookie"] = $"{sec.Scheme.Name}={aas.Value}";
+                }
+            }
+            else if ((sec.Scheme.Type == SecuritySchemeType.Http))
+            {
+                if (sec.Secret is HttpBasicAuthSecret bas)
+                {
+                    var auth = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{bas.Username}:{bas.Password}"));
+                    headers["Authorization"] = $"Basic {auth}";
+                }
+                else if (sec.Secret is HttpBearerAuthSecret bss)
+                {
+                    headers["Authorization"] = $"Bearer {bss.Token}";
+                }
+            }
+            else if (sec.Scheme.Type == SecuritySchemeType.OAuth2 || 
+                sec.Scheme.Type == SecuritySchemeType.OpenIdConnect)
+            {
+                if (sec.Secret is OAuth2AuthSecret oas)
+                {
+                    headers["Authorization"] = $"Bearer {oas.AccessToken}";
+                }
+                else if (sec.Secret is OpenIdConnectAuthSecret ois)
+                {
+                    headers["Authorization"] = $"Bearer {ois.AccessToken}";
+                }
+            }
+        }
+
+        var uriBuilder = new UriBuilder(OpenApiUtil.CombineUrl(baseUrl.ToString(), path));
+        if (query.Count > 0)
+            uriBuilder.Query = string.Join("&", query);
+        var req = new HttpRequestMessage(Method, uriBuilder.Uri);
+        
+        foreach (var (k, v) in headers)
+            req.Headers.TryAddWithoutValidation(k, v);
+
+        if (content is not null)
+            req.Content = content;
+
+        return req;
+    }
 }

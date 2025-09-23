@@ -1,9 +1,11 @@
-﻿using System.Reflection;
-using System.ComponentModel;
+﻿using IronHive.Abstractions.Tools;
+using Json.Schema;
+using Json.Schema.Generation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
-using IronHive.Abstractions.Json;
-using IronHive.Abstractions.Tools;
+using System.ComponentModel.DataAnnotations;
+using System.Reflection;
+using DescriptionAttribute = System.ComponentModel.DescriptionAttribute;
 
 namespace IronHive.Core.Tools;
 
@@ -65,16 +67,6 @@ public static class FunctionToolFactory
 
         var method = function.Method;
         var parameters = BuildJsonSchemaParameters(method);
-        if (parameters is not null && descriptor.ParameterDescriptions is not null)
-        {
-            foreach (var param in parameters.Properties)
-            {
-                if (descriptor.ParameterDescriptions.TryGetValue(param.Key, out var paramDesc))
-                {
-                    param.Value.Description = paramDesc;
-                }
-            }
-        }
 
         return new FunctionTool(function)
         {
@@ -89,7 +81,7 @@ public static class FunctionToolFactory
     /// <summary>
     /// 메서드의 파라미터 정보를 JSON 스키마로 변환합니다.
     /// </summary>
-    private static ObjectJsonSchema? BuildJsonSchemaParameters(MethodInfo method)
+    private static JsonSchema? BuildJsonSchemaParameters(MethodInfo method)
     {
         var parameters = method.GetParameters();
         if (parameters.Length == 0) return null;
@@ -102,29 +94,47 @@ public static class FunctionToolFactory
             // 이름이 없거나 out 매개변수인 경우
             if (string.IsNullOrEmpty(param.Name) || param.IsOut)
                 continue;
+
             // 취소 토큰인 경우
             if (param.ParameterType == typeof(CancellationToken))
                 continue;
+            
             // 특정 서비스의 경우
             if (param.GetCustomAttributes().Any(a => a is FromOptionsAttribute || 
                     a is FromServicesAttribute || a is FromKeyedServicesAttribute))
                 continue;
 
-            var description = param.GetCustomAttribute<DescriptionAttribute>()?.Description;
-            var schema = JsonSchemaFactory.CreateFrom(param.ParameterType, description);
-            if (!properties.TryAdd(param.Name, schema))
+            // JSON 스키마 생성
+            var pb = new JsonSchemaBuilder().FromType(param.ParameterType);
+
+            // DescriptionAttribute 또는 DisplayAttribute에서 설명 추출
+            if (param.GetCustomAttribute<DescriptionAttribute>() is { } descAttr)
+            {
+                pb = pb.Description(descAttr.Description);
+            }
+            else if (param.GetCustomAttribute<DisplayAttribute>() is { } displayAttr
+                     && !string.IsNullOrWhiteSpace(displayAttr.Description))
+            {
+                pb = pb.Description(displayAttr.Description!);
+            }
+
+            // 프로퍼티 추가
+            if (!properties.TryAdd(param.Name!, pb.Build()))
                 throw new InvalidOperationException($"동일한 이름의 매개변수 '{param.Name}'가 이미 존재합니다.");
 
-            // 필수속성일 경우
+            // 필수 여부: 파라미터가 선택적이 아니면 required에 추가
             if (!param.IsOptional)
                 required.Add(param.Name!);
+
+            // 선택 매개변수의 기본값, 필수적이지 않으므로 생략
+            //if (param.IsOptional && param.HasDefaultValue)
+            //    pb = pb.Default();
         }
 
-        return new ObjectJsonSchema
-        {
-            Properties = properties,
-            Required = required.Count > 0 ? required : null,
-        };
+        return new JsonSchemaBuilder().Type(SchemaValueType.Object)
+                                      .Properties(properties)
+                                      .Required(required)
+                                      .Build();
     }
 }
 
@@ -136,8 +146,6 @@ public record DelegateDescriptor
     public required string Name { get; set; }
     
     public string? Description { get; set; }
-    
-    public IDictionary<string, string>? ParameterDescriptions { get; set; }
     
     public bool RequiresApproval { get; set; } = false;
 

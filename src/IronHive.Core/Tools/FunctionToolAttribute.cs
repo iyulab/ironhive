@@ -17,12 +17,9 @@ public class FunctionToolAttribute : Attribute
     /// </summary>
     /// <param name="name">도구의 이름</param>
     /// <param name="description">도구의 설명</param>
-    public FunctionToolAttribute(
-        string? name = null,
-        string? description = null)
+    public FunctionToolAttribute(string? name = null)
     {
         Name = name;
-        Description = description;
     }
 
     /// <summary>
