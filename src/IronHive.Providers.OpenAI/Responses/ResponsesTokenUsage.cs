@@ -5,29 +5,29 @@ namespace IronHive.Providers.OpenAI.Responses;
 internal class ResponsesTokenUsage
 {
     [JsonPropertyName("input_tokens")]
-    public int InputTokens { get; set; }
+    public required int InputTokens { get; set; }
 
     [JsonPropertyName("input_tokens_details")]
-    public int InputTokensDetails { get; set; }
+    public required ResponsesInputTokens InputTokensDetails { get; set; }
 
     [JsonPropertyName("output_tokens")]
-    public int OutputTokens { get; set; }
+    public required int OutputTokens { get; set; }
 
     [JsonPropertyName("output_tokens_details")]
-    public ResponsesOutputTokens? OutputTokensDetails { get; set; }
+    public required ResponsesOutputTokens OutputTokensDetails { get; set; }
 
     [JsonPropertyName("total_tokens")]
-    public int TotalTokens { get; set; }
+    public required int TotalTokens { get; set; }
 }
 
 public class ResponsesInputTokens
 {
     [JsonPropertyName("cached_tokens")]
-    public int CachedTokens { get; set; }
+    public required int CachedTokens { get; set; }
 }
 
 public class ResponsesOutputTokens
 {
     [JsonPropertyName("reasoning_tokens")]
-    public int ReasoningTokens { get; set; }
+    public required int ReasoningTokens { get; set; }
 }

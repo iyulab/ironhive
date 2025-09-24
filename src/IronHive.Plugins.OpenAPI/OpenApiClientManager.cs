@@ -2,7 +2,7 @@
 using System.Diagnostics.CodeAnalysis;
 using IronHive.Abstractions.Tools;
 
-namespace ConsoleTest;
+namespace IronHive.Plugins.OpenAPI;
 
 /// <summary>
 /// OpenAPI 클라이언트를 관리하는 클래스입니다.
@@ -46,25 +46,30 @@ public sealed class OpenApiClientManager
     /// OpenAPI 클라이언트를 추가하거나 기존 클라이언트를 갱신합니다.
     /// 클라이언트에 연결된 도구들도 함께 갱신됩니다.
     /// </summary>
-    /// <param name="config">클라이언트 생성 설정</param>
-    /// <param name="cancellationToken">취소 토큰</param>
-    public async Task AddOrUpdateAsync(OpenApiClientConfig config, CancellationToken cancellationToken = default)
+    /// <param name="client">OpenApi의 클라이언트 객체입니다.</param>
+    public void AddOrUpdate(OpenApiClient client, CancellationToken cancellationToken = default)
     {
-        var client = await OpenApiClient.CreateAsync(config, cancellationToken);
-        var tools = await client.ListToolsAsync(cancellationToken);
-
-        _clients.AddOrUpdate(config.ClientName,
+        _clients.AddOrUpdate(client.ClientName,
             (_) =>
             {
                 // 새 클라이언트의 도구 등록
-                _tools.SetRange(tools);
+                client.ListToolsAsync(cancellationToken).ContinueWith(task =>
+                {
+                    _tools.SetRange(task.Result);
+                });
                 return client;
             },
-            (_, c) =>
+            (_, oc) =>
             {
-                // 기존 클라이언트의 도구 제거 후 새 도구 등록
-                _tools.RemoveAll(t => t is OpenApiTool ot && ot.ClientName.Equals(c.ClientName));
-                _tools.SetRange(tools);
+                // 새 도구 등록
+                client.ListToolsAsync(cancellationToken).ContinueWith(task =>
+                {
+                    _tools.RemoveAll(t => t is OpenApiTool ot && ot.ClientName.Equals(client.ClientName));
+                    _tools.SetRange(task.Result);
+                });
+
+                // 기존 클라이언트 리소스 해제
+                oc.Dispose();
                 return client;
             });
     }
@@ -76,9 +81,12 @@ public sealed class OpenApiClientManager
     /// <param name="clientName">제거할 클라이언트 이름</param>
     public void Remove(string clientName)
     {
-        if (_clients.TryRemove(clientName, out _))
+        if (_clients.TryRemove(clientName, out var client))
         {
+            // 클라이언트의 도구 제거
             _tools.RemoveAll(t => t is OpenApiTool ot && ot.ClientName.Equals(clientName));
+            // 리소스 해제
+            client.Dispose();
         }
     }
 }

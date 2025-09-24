@@ -1,7 +1,5 @@
 ﻿using System.Text.Json.Serialization;
 using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
-using System.Reflection;
 
 namespace IronHive.Providers.OpenAI;
 
@@ -43,5 +41,6 @@ public class OpenAIConfig
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower) },
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        AllowOutOfOrderMetadataProperties = true,
     };
 }

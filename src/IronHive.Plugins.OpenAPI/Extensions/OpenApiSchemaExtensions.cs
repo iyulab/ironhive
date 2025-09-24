@@ -1,7 +1,6 @@
 ﻿using Json.Schema;
-using Microsoft.OpenApi;
 
-namespace ConsoleTest;
+namespace Microsoft.OpenApi;
 
 public static class OpenApiSchemaExtensions
 {

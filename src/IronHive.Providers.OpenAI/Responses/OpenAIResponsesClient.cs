@@ -13,29 +13,39 @@ internal class OpenAIResponsesClient : OpenAIClientBase
 
     internal async Task<ResponsesResponse> PostResponsesAsync(
         ResponsesRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         request.Stream = false;
         var json = JsonSerializer.Serialize(request, _jsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        using var response = await _client.PostAsync(OpenAIConstants.PostChatCompletionPath.RemovePreffix('/'), content, cancellationToken);
+        using var response = await _client.PostAsync(OpenAIConstants.PostResponsesPath.RemovePreffix('/'), content, cancellationToken);
+        if (!response.IsSuccessStatusCode && response.TryExtractMessage(out string error))
+            throw new HttpRequestException(error);
         response.EnsureSuccessStatusCode();
-        var message = await response.Content.ReadFromJsonAsync<ResponsesResponse>(_jsonOptions, cancellationToken)
+
+        var jEl = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
+        Console.WriteLine(jEl);
+        var message = JsonSerializer.Deserialize<ResponsesResponse>(jEl.GetRawText(), _jsonOptions)
             ?? throw new InvalidOperationException("Failed to deserialize response.");
+
+        //var message = await response.Content.ReadFromJsonAsync<ResponsesResponse>(_jsonOptions, cancellationToken)
+        //    ?? throw new InvalidOperationException("Failed to deserialize response.");
         return message;
     }
 
     internal async IAsyncEnumerable<StreamingResponsesResponse> PostStreamingResponsesAsync(
         ResponsesRequest request,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         request.Stream = true;
         request.StreamOptions = new ResponsesStreamOptions { IncludeObfuscation = false };
         var json = JsonSerializer.Serialize(request, _jsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        using var _request = new HttpRequestMessage(HttpMethod.Post, OpenAIConstants.PostChatCompletionPath.RemovePreffix('/'));
+        using var _request = new HttpRequestMessage(HttpMethod.Post, OpenAIConstants.PostResponsesPath.RemovePreffix('/'));
         _request.Content = content;
         using var response = await _client.SendAsync(_request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        if (!response.IsSuccessStatusCode && response.TryExtractMessage(out string error))
+            throw new HttpRequestException(error);
         response.EnsureSuccessStatusCode();
 
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);

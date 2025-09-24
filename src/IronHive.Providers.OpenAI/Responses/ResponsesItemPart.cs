@@ -19,7 +19,7 @@ internal class ResponsesTextItemPart : ResponsesItemPart
     public required string Text { get; set; }
 
     [JsonPropertyName("logprobs")]
-    public required ResponsesLogProbs Logprobs { get; set; }
+    public required ICollection<ResponsesLogProbs> Logprobs { get; set; }
 }
 
 internal class ResponsesRefusalItemPart : ResponsesItemPart

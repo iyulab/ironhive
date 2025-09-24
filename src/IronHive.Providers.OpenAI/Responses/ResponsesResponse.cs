@@ -15,9 +15,10 @@ internal class ResponsesResponse
     public required bool Background { get; set; }
 
     /// <summary>
+    /// "object", { "id": string }
     /// </summary>
     [JsonPropertyName("conversation")]
-    public required string Conversation { get; set; }
+    public object? Conversation { get; set; }
 
     /// <summary>
     /// Unix 타임스탬프(초 단위)
@@ -136,7 +137,7 @@ internal class ResponsesResponse
     /// 출력 텍스트 형태
     /// </summary>
     [JsonPropertyName("text")]
-    public object? Text { get; set; }
+    public ResponsesText? Text { get; set; }
 
     /// <summary>
     /// "none", "auto", "required", ...

@@ -129,9 +129,9 @@ public sealed partial class LocalVectorStorage : IVectorStorage
         await EnsureCollectionMetaTableAsync();
 
         using var conn = await CreateConnectionAsync();
-        using var tx = await conn.BeginTransactionAsync();
+        using var tx = await conn.BeginTransactionAsync(cancellationToken);
 
-        // 컬렉션 메타 등록
+        // 컬렉션 메타데이터 등록
         {
             var sql = $@"
             INSERT INTO {CollectionMetaTable}(name, dimensions, embedding_provider, embedding_model)
@@ -146,7 +146,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
             await insert.ExecuteNonQueryAsync(cancellationToken);
         }
 
-        // 컬렉션별 일반 테이블
+        // 컬렉션별 메타 테이블
         {
             var metaTable = VecMetaTable(collection.Name);
             var sql = $@"
@@ -184,7 +184,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
             await cmd.ExecuteNonQueryAsync(cancellationToken);
         }
 
-        await tx.CommitAsync();
+        await tx.CommitAsync(cancellationToken);
     }
 
     /// <inheritdoc />
@@ -196,7 +196,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
         await EnsureCollectionMetaTableAsync();
 
         using var conn = await CreateConnectionAsync();
-        using var tx = await conn.BeginTransactionAsync();
+        using var tx = await conn.BeginTransactionAsync(cancellationToken);
 
         var metaTable = VecMetaTable(collectionName);
         var vecTable = VecTable(collectionName);
@@ -223,7 +223,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
             await cmd.ExecuteNonQueryAsync(cancellationToken);
         }
 
-        await tx.CommitAsync();
+        await tx.CommitAsync(cancellationToken);
     }
 
     /// <inheritdoc />
@@ -286,11 +286,12 @@ public sealed partial class LocalVectorStorage : IVectorStorage
         IEnumerable<VectorRecord> vectors,
         CancellationToken cancellationToken = default)
     {
+
         using var conn = await CreateConnectionAsync();
         var vecTable = VecTable(collectionName);
         var metaTable = VecMetaTable(collectionName);
 
-        using var tx = await conn.BeginTransactionAsync();
+        using var tx = await conn.BeginTransactionAsync(cancellationToken);
 
         foreach (var v in vectors)
         {
@@ -354,7 +355,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
             }
         }
 
-        await tx.CommitAsync();
+        await tx.CommitAsync(cancellationToken);
     }
 
     /// <inheritdoc />
@@ -384,7 +385,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
             args.AddRange(filter.SourceIds.Select((v, i) => new SqliteParameter($"$sid{i}", v)));
         }
 
-        using var tx = await conn.BeginTransactionAsync();
+        using var tx = await conn.BeginTransactionAsync(cancellationToken);
 
         var idsCmd = conn.CreateCommand();
         idsCmd.CommandText = $@"SELECT int_id FROM {metaTable} WHERE {string.Join(" AND ", where)}";
@@ -397,7 +398,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
                 intIds.Add(rdr.GetInt64(0));
         }
 
-        if (intIds.Count == 0) { await tx.CommitAsync(); return; }
+        if (intIds.Count == 0) { await tx.CommitAsync(cancellationToken); return; }
 
         var delVec = conn.CreateCommand();
         delVec.CommandText = $@"DELETE FROM {vecTable} WHERE rowid IN ({JoinArrayParams("$iid", intIds.Count)})";
@@ -411,7 +412,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
             delMeta.Parameters.AddWithValue($"$iid{i}", val);
         await delMeta.ExecuteNonQueryAsync(cancellationToken);
 
-        await tx.CommitAsync();
+        await tx.CommitAsync(cancellationToken);
     }
 
     /// <inheritdoc />
@@ -515,7 +516,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
         // vec0 모듈 설치
         var dirPath = Path.GetDirectoryName(conn.DataSource)
             ?? throw new InvalidOperationException("데이터베이스 경로를 찾을 수 없습니다.");
-        var modulePath = SqliteVecInstaller.TryGetModule(dirPath, out var module)
+        var modulePath = SqliteVecInstaller.TryGetModule(dirPath, out var module) && module.Version == _moduleVersion
             ? module.FilePath
             : await SqliteVecInstaller.InstallAsync(dirPath, _moduleVersion);
 

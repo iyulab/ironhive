@@ -34,28 +34,31 @@ namespace IronHive.Providers.OpenAI.Responses;
 [JsonDerivedType(typeof(StreamingErrorResponse), "error")]
 internal abstract class StreamingResponsesResponse
 {
-    [JsonPropertyName("response")]
-    public required ResponsesResponse Response { get; set; }
-
     [JsonPropertyName("sequence_number")]
     public int SequenceNumber { get; set; }
 }
 
 #region Status Related
 
-internal class StreamingCreatedResponse : StreamingResponsesResponse
+internal abstract class StreamingStatusResponse : StreamingResponsesResponse
+{
+    [JsonPropertyName("response")]
+    public required ResponsesResponse Response { get; set; }
+}
+
+internal class StreamingCreatedResponse : StreamingStatusResponse
 { }
 
-internal class StreamingInProgressResponse : StreamingResponsesResponse
+internal class StreamingInProgressResponse : StreamingStatusResponse
 { }
 
-internal class StreamingCompletedResponse : StreamingResponsesResponse
+internal class StreamingCompletedResponse : StreamingStatusResponse
 { }
 
-internal class StreamingFailedResponse : StreamingResponsesResponse
+internal class StreamingFailedResponse : StreamingStatusResponse
 { }
 
-internal class StreamingIncompletedResponse : StreamingResponsesResponse
+internal class StreamingIncompletedResponse : StreamingStatusResponse
 { }
 
 #endregion
@@ -111,13 +114,13 @@ internal class StreamingTextDeltaResponse : StreamingContentResponse
     public required string Delta { get; set; }
 
     [JsonPropertyName("logprobs")]
-    public ResponsesLogProbs? Logprobs { get; set; }
+    public ICollection<ResponsesLogProbs>? Logprobs { get; set; }
 }
 
 internal class StreamingTextDoneResponse : StreamingContentResponse
 {
     [JsonPropertyName("logprobs")]
-    public ResponsesLogProbs? Logprobs { get; set; }
+    public ICollection<ResponsesLogProbs>? Logprobs { get; set; }
 
     [JsonPropertyName("text")]
     public required string Text { get; set; }
@@ -203,7 +206,7 @@ internal class StreamingReasoningTextDoneResponse : StreamingReasoningResponse
 internal class StreamingAnnotationAddedResponse : StreamingContentResponse
 {
     [JsonPropertyName("annotation")]
-    public required object Annotation { get; set; }
+    public required ResponsesAnnotation Annotation { get; set; }
 
     [JsonPropertyName("annotation_index")]
     public required int AnnotationIndex { get; set; }
