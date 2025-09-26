@@ -16,8 +16,11 @@ internal class ResponsesFunctionTool : ResponsesTool
     [JsonPropertyName("parameters")]
     public required object Parameters { get; set; }
 
+    /// <summary>
+    /// 과도하게 엄격함 (기본: false).
+    /// </summary>
     [JsonPropertyName("strict")]
-    public bool Strict { get; set; } = true;
+    public bool Strict { get; set; } = false;
 
     [JsonPropertyName("description")]
     public string? Description { get; set; }
