@@ -1,4 +1,5 @@
 ﻿using IronHive.Providers.Anthropic;
+using IronHive.Providers.Anthropic.Share;
 
 namespace IronHive.Abstractions;
 
@@ -11,13 +12,13 @@ public static class HiveServiceBuilderExtensions
         this IHiveServiceBuilder builder,
         string providerName, 
         AnthropicConfig config,
-        AnthropicServiceType serviceType = AnthropicServiceType.All)
+        AnthropicServiceType serviceType = AnthropicServiceType.Models | AnthropicServiceType.Messages)
     {
-        if (serviceType.HasFlag(AnthropicServiceType.Messages))
-            builder.AddMessageGenerator(providerName, new AnthropicMessageGenerator(config));
-
         if (serviceType.HasFlag(AnthropicServiceType.Models))
             builder.AddModelCatalog(providerName, new AnthropicModelCatalog(config));
+
+        if (serviceType.HasFlag(AnthropicServiceType.Messages))
+            builder.AddMessageGenerator(providerName, new AnthropicMessageGenerator(config));
 
         return builder;
     }

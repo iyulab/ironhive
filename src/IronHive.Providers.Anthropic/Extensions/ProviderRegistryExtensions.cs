@@ -1,6 +1,7 @@
 ﻿using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Messages;
 using IronHive.Providers.Anthropic;
+using IronHive.Providers.Anthropic.Share;
 
 namespace IronHive.Abstractions.Registries;
 
@@ -13,7 +14,7 @@ public static class ProviderRegistryExtensions
         this IProviderRegistry providers,
         string providerName,
         AnthropicConfig config,
-        AnthropicServiceType serviceType = AnthropicServiceType.All)
+        AnthropicServiceType serviceType = AnthropicServiceType.Models | AnthropicServiceType.Messages)
     {
         if (serviceType.HasFlag(AnthropicServiceType.Messages))
             providers.SetMessageGenerator(providerName, new AnthropicMessageGenerator(config));
@@ -28,7 +29,7 @@ public static class ProviderRegistryExtensions
     public static void RemoveAnthropicProviders(
         this IProviderRegistry providers,
         string providerName,
-        AnthropicServiceType serviceType = AnthropicServiceType.All)
+        AnthropicServiceType serviceType = AnthropicServiceType.Models | AnthropicServiceType.Messages)
     {
         if (serviceType.HasFlag(AnthropicServiceType.Messages))
             providers.Remove<IMessageGenerator>(providerName);

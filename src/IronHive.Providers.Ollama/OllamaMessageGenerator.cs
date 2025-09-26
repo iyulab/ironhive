@@ -4,6 +4,8 @@ using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Tools;
 using IronHive.Providers.Ollama.Chat;
+using IronHive.Providers.Ollama.Chat.Models;
+using IronHive.Providers.Ollama.Share;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 
@@ -71,6 +73,7 @@ public class OllamaMessageGenerator : IMessageGenerator
 
         return new MessageResponse
         {
+            Id = Guid.NewGuid().ToShort(),
             DoneReason = res.DoneReason switch
             {
                 DoneReason.Stop => MessageDoneReason.EndTurn,
@@ -78,6 +81,7 @@ public class OllamaMessageGenerator : IMessageGenerator
             },
             Message = message,
             TokenUsage = null,
+            Timestamp = res.CreatedAt ?? DateTime.UtcNow,
         };
     }
 

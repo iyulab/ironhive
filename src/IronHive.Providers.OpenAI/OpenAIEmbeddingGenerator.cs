@@ -1,5 +1,7 @@
 ﻿using IronHive.Abstractions.Embedding;
 using IronHive.Providers.OpenAI.Embedding;
+using IronHive.Providers.OpenAI.Embedding.Models;
+using IronHive.Providers.OpenAI.Share;
 using Tiktoken;
 using Tiktoken.Encodings;
 

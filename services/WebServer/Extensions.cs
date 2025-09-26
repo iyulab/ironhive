@@ -2,8 +2,9 @@
 using IronHive.Providers.OpenAI;
 using IronHive.Abstractions;
 using WebServer.Tools;
-using IronHive.Abstractions.Memory;
-using IronHive.Core.Memory.Pipelines;
+
+using IronHive.Providers.OpenAI.Share;
+using IronHive.Providers.Anthropic.Share;
 
 namespace WebServer;
 
@@ -39,7 +40,7 @@ public static class Extensions
         };
 
         var core = services.AddHiveServiceCore()
-            .AddOpenAIProviders("openai", o_config)
+            .AddOpenAIProviders("openai", o_config, OpenAIServiceType.Responses)
             .AddAnthropicProviders("anthropic", a_config)
             .AddOpenAIProviders("google", g_config)
             .AddAnthropicProviders("xai", x_config)

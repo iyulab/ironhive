@@ -18,7 +18,8 @@ public class ToolMessageContent : MessageContent
     public required bool IsApproved { get; set; }
 
     /// <summary>
-    /// 블록의 고유 ID입니다. 서비스 제공자가 ID를 제공할 경우 해당 ID를 사용합니다.
+    /// 현재 툴 블록의 고유 식별자입니다. 
+    /// TollCall과 ToolResult 메시지에서 동시에 참조되는데 사용됩니다.
     /// </summary>
     public required string Id { get; set; }
 

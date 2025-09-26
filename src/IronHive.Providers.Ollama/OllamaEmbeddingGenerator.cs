@@ -1,5 +1,7 @@
 ﻿using IronHive.Abstractions.Embedding;
 using IronHive.Providers.Ollama.Embedding;
+using IronHive.Providers.Ollama.Embedding.Models;
+using IronHive.Providers.Ollama.Share;
 
 namespace IronHive.Providers.Ollama;
 

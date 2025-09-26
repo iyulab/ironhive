@@ -2,6 +2,8 @@
 using System.Text;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
+using IronHive.Providers.Anthropic.Share;
+using IronHive.Providers.Anthropic.Messages.Models;
 
 namespace IronHive.Providers.Anthropic.Messages;
 

@@ -1,6 +1,6 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
-using IronHive.Providers.OpenAI.ChatCompletion;
+using IronHive.Providers.OpenAI.ChatCompletion.Models;
 
 namespace IronHive.Providers.OpenAI.JsonConverters;
 

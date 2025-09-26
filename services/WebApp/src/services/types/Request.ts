@@ -4,7 +4,7 @@ export interface MessageGenerationRequest {
   system?: string;
   messages: Message[];
   tools?: any;
-  thinkingEffort?: "low" | "medium" | "high";
+  thinkingEffort: "none" | "low" | "medium" | "high";
   maxTokens?: number;
   temperature?: number;
   topK?: number;
@@ -36,7 +36,7 @@ export interface TextMessageContent {
 
 export interface ThinkingMessageContent {
   type: "thinking";
-  id?: string;
+  signature?: string;
   format?: "detail" | "summary" | "secure";
   value?: string;
 }

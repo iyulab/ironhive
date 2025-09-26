@@ -1,4 +1,6 @@
-﻿using System.Net.Http.Json;
+﻿using IronHive.Providers.OpenAI.Embedding.Models;
+using IronHive.Providers.OpenAI.Share;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 

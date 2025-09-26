@@ -1,4 +1,6 @@
-﻿using System.Net.Http.Json;
+﻿using IronHive.Providers.Ollama.Chat.Models;
+using IronHive.Providers.Ollama.Share;
+using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;

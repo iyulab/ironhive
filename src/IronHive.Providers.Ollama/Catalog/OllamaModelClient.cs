@@ -1,4 +1,6 @@
-﻿using System.Net.Http.Json;
+﻿using IronHive.Providers.Ollama.Catalog.Models;
+using IronHive.Providers.Ollama.Share;
+using System.Net.Http.Json;
 using System.Text.Json;
 
 namespace IronHive.Providers.Ollama.Catalog;

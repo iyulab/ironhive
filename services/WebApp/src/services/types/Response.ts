@@ -84,7 +84,7 @@ export type MessageUpdatedContent = (
 
 export interface ThinkingMessageUpdatedContent {
   type: "thinking";
-  id: string;
+  signature: string;
 }
 
 export interface ToolMessageUpdatedResponse {

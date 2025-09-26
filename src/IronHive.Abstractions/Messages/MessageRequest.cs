@@ -37,7 +37,7 @@ public class MessageRequest : MessageGenerationParameters
     /// 모델의 사고 노력 수준을 정의합니다.
     /// 설정된 경우 모델의 추론 깊이를 조절할 수 있습니다.
     /// </summary>
-    public MessageThinkingEffort? ThinkingEffort { get; set; }
+    public MessageThinkingEffort ThinkingEffort { get; set; } = MessageThinkingEffort.None;
 
     /// <summary>
     /// 도구 사용에 의한 반복 루프의 최대 반복 횟수를 제한합니다.

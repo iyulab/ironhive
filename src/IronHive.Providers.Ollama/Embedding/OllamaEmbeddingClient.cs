@@ -1,4 +1,6 @@
-﻿using System.Net.Http.Json;
+﻿using IronHive.Providers.Ollama.Embedding.Models;
+using IronHive.Providers.Ollama.Share;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 

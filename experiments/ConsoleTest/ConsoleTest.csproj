@@ -14,21 +14,11 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\IronHive.Abstractions\IronHive.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Core\IronHive.Core.csproj" />
-    <ProjectReference Include="..\..\src\IronHive.Plugins.OpenAPI\IronHive.Plugins.OpenAPI.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Providers.OpenAI\IronHive.Providers.OpenAI.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <None Update=".env">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Samples\github.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Samples\github.yaml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Samples\test.yaml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>

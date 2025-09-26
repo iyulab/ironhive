@@ -2,6 +2,8 @@
 using System.Text.Json;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
+using IronHive.Providers.OpenAI.Responses.Models;
+using IronHive.Providers.OpenAI.Share;
 
 namespace IronHive.Providers.OpenAI.Responses;
 
@@ -23,13 +25,8 @@ internal class OpenAIResponsesClient : OpenAIClientBase
             throw new HttpRequestException(error);
         response.EnsureSuccessStatusCode();
 
-        var jEl = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
-        Console.WriteLine(jEl);
-        var message = JsonSerializer.Deserialize<ResponsesResponse>(jEl.GetRawText(), _jsonOptions)
+        var message = await response.Content.ReadFromJsonAsync<ResponsesResponse>(_jsonOptions, cancellationToken)
             ?? throw new InvalidOperationException("Failed to deserialize response.");
-
-        //var message = await response.Content.ReadFromJsonAsync<ResponsesResponse>(_jsonOptions, cancellationToken)
-        //    ?? throw new InvalidOperationException("Failed to deserialize response.");
         return message;
     }
 
@@ -38,7 +35,7 @@ internal class OpenAIResponsesClient : OpenAIClientBase
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         request.Stream = true;
-        request.StreamOptions = new ResponsesStreamOptions { IncludeObfuscation = false };
+        request.StreamOptions = new ResponsesStreamOptions { IncludeObfuscation = true };
         var json = JsonSerializer.Serialize(request, _jsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         using var _request = new HttpRequestMessage(HttpMethod.Post, OpenAIConstants.PostResponsesPath.RemovePreffix('/'));
@@ -55,7 +52,7 @@ internal class OpenAIResponsesClient : OpenAIClientBase
         {
             cancellationToken.ThrowIfCancellationRequested();
             var line = await reader.ReadLineAsync(cancellationToken);
-            Console.WriteLine(line);
+            //Console.WriteLine(line);
 
             if (string.IsNullOrWhiteSpace(line))
                 continue;

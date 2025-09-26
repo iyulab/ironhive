@@ -1,4 +1,6 @@
-﻿using System.Net.Http.Json;
+﻿using IronHive.Providers.OpenAI.Catalog.Models;
+using IronHive.Providers.OpenAI.Share;
+using System.Net.Http.Json;
 using System.Text.Json;
 
 namespace IronHive.Providers.OpenAI.Catalog;

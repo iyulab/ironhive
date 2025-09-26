@@ -5,10 +5,12 @@ using IronHive.Abstractions.Messages.Roles;
 using IronHive.Providers.Anthropic.Messages;
 using MessageContent = IronHive.Abstractions.Messages.MessageContent;
 using TextMessageContent = IronHive.Abstractions.Messages.Content.TextMessageContent;
-using AnthropicTextMessageContent = IronHive.Providers.Anthropic.Messages.TextMessageContent;
+using AnthropicTextMessageContent = IronHive.Providers.Anthropic.Messages.Models.TextMessageContent;
 using ThinkingMessageContent = IronHive.Abstractions.Messages.Content.ThinkingMessageContent;
-using AnthropicThinkingMessageContent = IronHive.Providers.Anthropic.Messages.ThinkingMessageContent;
+using AnthropicThinkingMessageContent = IronHive.Providers.Anthropic.Messages.Models.ThinkingMessageContent;
 using IronHive.Abstractions.Messages;
+using IronHive.Providers.Anthropic.Share;
+using IronHive.Providers.Anthropic.Messages.Models;
 
 namespace IronHive.Providers.Anthropic;
 
@@ -50,7 +52,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
                 content.Add(new ThinkingMessageContent
                 {
                     Format = ThinkingFormat.Detailed,
-                    Id = thinking.Signature,
+                    Signature = thinking.Signature,
                     Value = thinking.Thinking,
                 });
             }
@@ -60,7 +62,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
                 content.Add(new ThinkingMessageContent
                 {
                     Format = ThinkingFormat.Secure,
-                    Id = Guid.NewGuid().ToShort(), // 보안 추론은 ID가 없으므로 임의로 생성
+                    Signature = Guid.NewGuid().ToShort(), // 보안 추론은 ID가 없으므로 임의로 생성
                     Value = redacted.Data,
                 });
             }
@@ -91,6 +93,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
 
         return new MessageResponse
         {
+            Id = res.Id,
             DoneReason = res.StopReason switch
             {
                 StopReason.ToolUse => MessageDoneReason.ToolCall,
@@ -109,7 +112,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
             {
                 InputTokens = res.Usage.InputTokens,
                 OutputTokens = res.Usage.OutputTokens
-            }
+            },
         };
     }
 
@@ -148,7 +151,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
                         Index = index,
                         Content = new ThinkingMessageContent
                         {
-                            Id = thinking.Signature,
+                            Signature = thinking.Signature,
                             Format = ThinkingFormat.Detailed,
                             Value = thinking.Thinking
                         }
@@ -217,7 +220,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
                         Index = index,
                         Updated = new ThinkingUpdatedContent
                         {
-                            Id = signature.Signature,
+                            Signature = signature.Signature,
                         }
                     };
                 }

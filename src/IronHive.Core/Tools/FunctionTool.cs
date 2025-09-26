@@ -4,7 +4,6 @@ using Microsoft.Extensions.DependencyInjection;
 using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Tools;
 using Microsoft.AspNetCore.Mvc;
-using Json.Schema;
 
 namespace IronHive.Core.Tools;
 
@@ -68,19 +67,6 @@ public sealed class FunctionTool : ITool
 
         try
         {
-            // 입력 파라미터 검증
-            if (Parameters is JsonSchema schema)
-            {
-                //var vr = schema.Evaluate(jsonEl, new EvaluationOptions { OutputFormat = OutputFormat.Hierarchical });
-                //if (!vr.IsValid)
-                //{
-                //    var msgs = vr.Details.Where(d => d.HasErrors)
-                //                             .SelectMany(d => d.Errors!)
-                //                             .Select(kv => $"{kv.Key}: {kv.Value}");
-                //    throw new Exception("Parameter validation failed: " + string.Join("; ", msgs));
-                //}
-            }
-
             // 대상 인스턴스 준비
             var target = _target ?? GetOrCreateInstance(_method.DeclaringType, input.Services);
 

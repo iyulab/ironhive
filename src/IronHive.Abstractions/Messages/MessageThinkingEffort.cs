@@ -7,6 +7,11 @@
 public enum MessageThinkingEffort
 {
     /// <summary>
+    /// 추론을 사용하지 않습니다.
+    /// </summary>
+    None,
+
+    /// <summary>
     /// 최소한의 생각을 요구합니다. 빠른 응답이 필요할 때 사용합니다.
     /// </summary>
     Low,

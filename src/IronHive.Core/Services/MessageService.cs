@@ -86,9 +86,11 @@ public class MessageService : IMessageService
 
         return new MessageResponse
         {
+            Id = message.Id,
             DoneReason = reason,
             Message = message,
             TokenUsage = usage,
+            Timestamp = message.Timestamp
         };
     }
 

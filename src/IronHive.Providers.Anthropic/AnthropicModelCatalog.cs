@@ -1,5 +1,7 @@
 ﻿using IronHive.Abstractions.Catalog;
 using IronHive.Providers.Anthropic.Catalog;
+using IronHive.Providers.Anthropic.Catalog.Models;
+using IronHive.Providers.Anthropic.Share;
 
 namespace IronHive.Providers.Anthropic;
 

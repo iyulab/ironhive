@@ -1,5 +1,6 @@
 ﻿using IronHive.Abstractions.Catalog;
 using IronHive.Providers.OpenAI.Catalog;
+using IronHive.Providers.OpenAI.Share;
 
 namespace IronHive.Providers.OpenAI;
 

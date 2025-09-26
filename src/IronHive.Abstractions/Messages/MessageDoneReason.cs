@@ -11,14 +11,14 @@ public enum MessageDoneReason
     EndTurn,
 
     /// <summary>
+    /// 모델이 툴 실행을 위한 도구 호출을 요구함
+    /// </summary>
+    ToolCall,
+
+    /// <summary>
     /// 출력 토큰의 최대 수에 도달함.
     /// </summary>
     MaxTokens,
-
-    /// <summary>
-    /// 중단(stop) 시퀀스 문자열을 만남.
-    /// </summary>
-    StopSequence,
 
     /// <summary>
     /// 필터링된(제한된) 텍스트 콘텐츠가 탐지됨.
@@ -26,7 +26,12 @@ public enum MessageDoneReason
     ContentFilter,
 
     /// <summary>
-    /// 모델이 툴 실행을 위한 도구 호출을 요구함
+    /// 중단(stop) 시퀀스 문자열을 만남.
     /// </summary>
-    ToolCall
+    StopSequence,
+
+    /// <summary>
+    /// 이외 알 수 없는 이유.
+    /// </summary>
+    Unknown
 }

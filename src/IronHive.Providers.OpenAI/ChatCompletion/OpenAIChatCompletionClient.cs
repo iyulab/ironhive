@@ -2,6 +2,8 @@
 using System.Text.Json;
 using System.Text;
 using System.Runtime.CompilerServices;
+using IronHive.Providers.OpenAI.ChatCompletion.Models;
+using IronHive.Providers.OpenAI.Share;
 
 namespace IronHive.Providers.OpenAI.ChatCompletion;
 

@@ -1,4 +1,6 @@
-﻿using System.Net.Http.Json;
+﻿using IronHive.Providers.Anthropic.Catalog.Models;
+using IronHive.Providers.Anthropic.Share;
+using System.Net.Http.Json;
 
 namespace IronHive.Providers.Anthropic.Catalog;
 

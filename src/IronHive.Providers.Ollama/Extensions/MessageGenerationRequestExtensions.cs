@@ -3,8 +3,9 @@ using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Messages.Roles;
 using IronHive.Providers.Ollama;
-using IronHive.Providers.Ollama.Chat;
-using OllamaMessage = IronHive.Providers.Ollama.Chat.Message;
+using IronHive.Providers.Ollama.Chat.Models;
+using IronHive.Providers.Ollama.Share;
+using OllamaMessage = IronHive.Providers.Ollama.Chat.Models.Message;
 
 namespace IronHive.Abstractions.Message;
 

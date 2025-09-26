@@ -1,4 +1,5 @@
 ﻿using IronHive.Providers.Ollama;
+using IronHive.Providers.Ollama.Share;
 
 namespace IronHive.Abstractions;
 
@@ -10,11 +11,18 @@ public static class HiveServiceBuilderExtensions
     public static IHiveServiceBuilder AddOllamaProviders(
         this IHiveServiceBuilder builder,
         string providerName,
-        OllamaConfig config)
+        OllamaConfig config,
+        OllamaServiceType serviceType = OllamaServiceType.Chat | OllamaServiceType.Models | OllamaServiceType.Embeddings)
     {
-        builder.AddModelCatalog(providerName, new OllamaModelCatalog(config));
-        builder.AddMessageGenerator(providerName, new OllamaMessageGenerator(config));
-        builder.AddEmbeddingGenerator(providerName, new OllamaEmbeddingGenerator(config));
+        if (serviceType.HasFlag(OllamaServiceType.Models))
+            builder.AddModelCatalog(providerName, new OllamaModelCatalog(config));
+
+        if (serviceType.HasFlag(OllamaServiceType.Chat))
+            builder.AddMessageGenerator(providerName, new OllamaMessageGenerator(config));
+
+        if (serviceType.HasFlag(OllamaServiceType.Embeddings))
+            builder.AddEmbeddingGenerator(providerName, new OllamaEmbeddingGenerator(config));
+    
         return builder;
     }
 }

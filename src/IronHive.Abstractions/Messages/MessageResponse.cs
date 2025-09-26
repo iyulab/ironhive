@@ -8,6 +8,11 @@ namespace IronHive.Abstractions.Messages;
 public class MessageResponse
 {
     /// <summary>
+    /// 응답의 고유 식별자입니다.
+    /// </summary>
+    public required string Id { get; set; }
+
+    /// <summary>
     /// 응답이 종료된 사유입니다.
     /// </summary>
     public MessageDoneReason? DoneReason { get; set; }
@@ -21,4 +26,9 @@ public class MessageResponse
     /// 요청 시 사용된 토큰 정보입니다.
     /// </summary>
     public MessageTokenUsage? TokenUsage { get; set; }
+
+    /// <summary>
+    /// 응답이 생성된 시간입니다.
+    /// </summary>
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 }

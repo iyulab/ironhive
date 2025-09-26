@@ -1,5 +1,6 @@
 ﻿using IronHive.Abstractions.Catalog;
 using IronHive.Providers.Ollama.Catalog;
+using IronHive.Providers.Ollama.Share;
 
 namespace IronHive.Providers.Ollama;
 

@@ -2,6 +2,7 @@
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Messages;
 using IronHive.Providers.OpenAI;
+using IronHive.Providers.OpenAI.Share;
 
 namespace IronHive.Abstractions.Registries;
 
@@ -14,7 +15,7 @@ public static class ProviderRegistryExtensions
         this IProviderRegistry providers,
         string providerName,
         OpenAIConfig config,
-        OpenAIServiceType serviceType = OpenAIServiceType.All)
+        OpenAIServiceType serviceType = OpenAIServiceType.ChatCompletion | OpenAIServiceType.Embeddings | OpenAIServiceType.Models)
     {
         if (serviceType.HasFlag(OpenAIServiceType.ChatCompletion) && serviceType.HasFlag(OpenAIServiceType.Responses))
             throw new ArgumentException("ChatCompletion and Responses cannot be enabled at the same time.");
@@ -23,8 +24,11 @@ public static class ProviderRegistryExtensions
             providers.SetModelCatalog(providerName, new OpenAIModelCatalog(config));
 
         if (serviceType.HasFlag(OpenAIServiceType.ChatCompletion))
-            providers.SetMessageGenerator(providerName, new OpenAIMessageGenerator(config));
+            providers.SetMessageGenerator(providerName, new OpenAIChatMessageGenerator(config));
         
+        if (serviceType.HasFlag(OpenAIServiceType.Responses))
+            providers.SetMessageGenerator(providerName, new OpenAIResponseMessageGenerator(config));
+
         if (serviceType.HasFlag(OpenAIServiceType.Embeddings))
             providers.SetEmbeddingGenerator(providerName, new OpenAIEmbeddingGenerator(config));
     }
@@ -35,7 +39,7 @@ public static class ProviderRegistryExtensions
     public static void RemoveOpenAIProviders(
         this IProviderRegistry providers,
         string providerName,
-        OpenAIServiceType serviceType = OpenAIServiceType.All)
+        OpenAIServiceType serviceType = OpenAIServiceType.ChatCompletion | OpenAIServiceType.Embeddings | OpenAIServiceType.Models)
     {
         if (serviceType.HasFlag(OpenAIServiceType.Models))
             providers.Remove<IModelCatalog>(providerName);

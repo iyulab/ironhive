@@ -23,7 +23,7 @@ export class HomePage extends LitElement {
   @state() model?: ModelSummary;
   @state() messages: Message[] = [];
   @state() usages: number = 0;
-  @state() thinking: 'low' | 'medium' | 'high' | 'none' = 'none';
+  @state() thinking: 'none' | 'low' | 'medium' | 'high' = 'none';
 
   protected firstUpdated(changedProperties: PropertyValues): void {
     super.firstUpdated(changedProperties);
@@ -100,7 +100,7 @@ export class HomePage extends LitElement {
             <uc-think-button
               ?disabled=${this.model?.thinkable === false}
               .value=${this.model?.thinkable ? this.thinking : 'none'}
-              @change-think=${this.handleChangeThink}
+              @change=${this.handleChangeThink}
             ></uc-think-button>
             <div class="flex"></div>
             <uc-button tooltip="Clear Messages"
@@ -277,7 +277,7 @@ export class HomePage extends LitElement {
         model: this.model.modelId,
         messages: this.messages,
         system: "유저가 요구하지 않는 한 너무 길게 대답하지 마세요.",
-        thinkingEffort: this.model.thinkable ? this.thinking !== 'none' ? this.thinking : undefined : undefined,
+        thinkingEffort: this.model.thinkable ? this.thinking : 'none',
         maxTokens: this.model.maxOutput,
       }
       // console.debug('요청 메시지:', request);
@@ -311,7 +311,7 @@ export class HomePage extends LitElement {
         } else if (res.type === 'message.content.updated') {
           const content = last.content.at(res.index);
           if (content?.type === 'thinking' && res.updated.type === 'thinking') {
-            content.id = res.updated.id;
+            content.signature = res.updated.signature;
           } else if (content?.type === 'tool' && res.updated.type === 'tool') {
             content.output = res.updated.output;
             if (content.isApproved === false) {

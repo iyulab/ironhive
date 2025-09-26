@@ -19,10 +19,11 @@ public static class JsonDefaultOptions
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,              // 이스케이프를 허용합니다. (ex: <, >, &, ', " 등)
         NumberHandling = JsonNumberHandling.AllowReadingFromString,         // 문자열에서 숫자 읽기 허용
         MaxDepth = 32,                                                      // 오브젝트 최대 깊이
+        TypeInfoResolver = JsonSerializerOptions.Default.TypeInfoResolver,
         Converters =
         {
-            new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower)    // Enum을 snake_case로 변환
-        },
+            new JsonStringEnumConverter()                                   // Enum을 string로 변환
+        }
     };
 
     /// <summary>

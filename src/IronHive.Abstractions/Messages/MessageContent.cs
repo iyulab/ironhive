@@ -47,7 +47,7 @@ public abstract class MessageContent
         switch ((this, updated))
         {
             case (ThinkingMessageContent thinkingContent, ThinkingUpdatedContent thinkingUpdated):
-                thinkingContent.Id = thinkingUpdated.Id;
+                thinkingContent.Signature = thinkingUpdated.Signature;
                 break;
 
             case (ToolMessageContent toolContent, ToolUpdatedContent toolUpdated):
