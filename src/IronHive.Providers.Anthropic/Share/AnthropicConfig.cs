@@ -9,7 +9,7 @@ namespace IronHive.Providers.Anthropic.Share;
 public class AnthropicConfig
 {
     /// <summary>
-    /// Gets or sets the endpoint URL for the OpenAI API.
+    /// Gets or sets the endpoint URL for the Anthropic API.
     /// Default value is "https://api.anthropic.com/v1/".
     /// </summary>
     public string BaseUrl { get; set; } = string.Empty;
