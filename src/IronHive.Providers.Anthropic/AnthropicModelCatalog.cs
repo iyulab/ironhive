@@ -1,22 +1,21 @@
 ﻿using IronHive.Abstractions.Catalog;
-using IronHive.Providers.Anthropic.Catalog;
-using IronHive.Providers.Anthropic.Catalog.Models;
-using IronHive.Providers.Anthropic.Share;
+using IronHive.Providers.Anthropic.Clients;
+using IronHive.Providers.Anthropic.Payloads.Models;
 
 namespace IronHive.Providers.Anthropic;
 
+/// <inheritdoc />
 public class AnthropicModelCatalog : IModelCatalog
 {
     private readonly AnthropicModelsClient _client;
 
+    public AnthropicModelCatalog(string apiKey)
+        : this(new AnthropicConfig { ApiKey = apiKey })
+    { }
+
     public AnthropicModelCatalog(AnthropicConfig config)
     {
         _client = new AnthropicModelsClient(config);
-    }
-
-    public AnthropicModelCatalog(string apiKey)
-    {
-        _client = new AnthropicModelsClient(apiKey);
     }
 
     /// <inheritdoc />
@@ -30,7 +29,7 @@ public class AnthropicModelCatalog : IModelCatalog
     public async Task<IEnumerable<IModelSpec>> ListModelsAsync(
         CancellationToken cancellationToken = default)
     {
-        var req = new AnthropicListModelsRequest
+        var req = new ListModelsRequest
         {
             Limit = 999,
         };

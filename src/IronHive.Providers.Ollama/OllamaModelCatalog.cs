@@ -1,21 +1,20 @@
 ﻿using IronHive.Abstractions.Catalog;
-using IronHive.Providers.Ollama.Catalog;
-using IronHive.Providers.Ollama.Share;
+using IronHive.Providers.Ollama.Clients;
 
 namespace IronHive.Providers.Ollama;
 
+/// <inheritdoc />
 public class OllamaModelCatalog : IModelCatalog
 {
     private readonly OllamaModelClient _client;
 
+    public OllamaModelCatalog(string baseUrl)
+        : this(new OllamaConfig { BaseUrl = baseUrl })
+    { }
+
     public OllamaModelCatalog(OllamaConfig? config = null)
     {
         _client = new OllamaModelClient(config);
-    }
-
-    public OllamaModelCatalog(string baseUrl)
-    {
-        _client = new OllamaModelClient(baseUrl);
     }
 
     /// <inheritdoc />

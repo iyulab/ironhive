@@ -1,7 +1,7 @@
 ﻿using IronHive.Abstractions.Catalog;
+using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Messages;
 using IronHive.Providers.Ollama;
-using IronHive.Providers.Ollama.Share;
 
 namespace IronHive.Abstractions.Registries;
 
@@ -14,13 +14,16 @@ public static class ProviderRegistryExtensions
         this IProviderRegistry providers,
         string providerName,
         OllamaConfig config,
-        OllamaServiceType serviceType = OllamaServiceType.Models | OllamaServiceType.Chat)
+        OllamaServiceType serviceType = OllamaServiceType.All)
     {
         if (serviceType.HasFlag(OllamaServiceType.Models))
             providers.SetModelCatalog(providerName, new OllamaModelCatalog(config));
 
         if (serviceType.HasFlag(OllamaServiceType.Chat))
             providers.SetMessageGenerator(providerName, new OllamaMessageGenerator(config));
+
+        if (serviceType.HasFlag(OllamaServiceType.Embeddings))
+            providers.SetEmbeddingGenerator(providerName, new OllamaEmbeddingGenerator(config));
     }
 
     /// <summary>
@@ -29,12 +32,15 @@ public static class ProviderRegistryExtensions
     public static void RemoveOllamaProviders(
         this IProviderRegistry providers,
         string providerName,
-        OllamaServiceType serviceType = OllamaServiceType.Models | OllamaServiceType.Chat)
+        OllamaServiceType serviceType = OllamaServiceType.All)
     {
         if (serviceType.HasFlag(OllamaServiceType.Models))
             providers.Remove<IModelCatalog>(providerName);
 
         if (serviceType.HasFlag(OllamaServiceType.Chat))
             providers.Remove<IMessageGenerator>(providerName);
+
+        if (serviceType.HasFlag(OllamaServiceType.Embeddings))
+            providers.Remove<IEmbeddingGenerator>(providerName);
     }
 }

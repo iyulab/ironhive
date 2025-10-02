@@ -29,25 +29,25 @@ public static class StringExtensions
     /// <summary>
     /// 문자열의 접두사를 지정한 값으로 만듭니다.
     /// </summary>
-    public static string EnsurePreffix(this string str, string value)
+    public static string EnsurePrefix(this string str, string value)
         => str.StartsWith(value) ? str : value + str;
 
     /// <summary>
     /// 문자열의 접두사를 지정한 값으로 만듭니다.
     /// </summary>
-    public static string EnsurePreffix(this string str, char value)
+    public static string EnsurePrefix(this string str, char value)
         => str.StartsWith(value) ? str : value + str;
 
     /// <summary>
     /// 문자열에 해당 접두사가 있는 경우 제거합니다.
     /// </summary>
-    public static string RemovePreffix(this string str, string value)
+    public static string RemovePrefix(this string str, string value)
         => str.StartsWith(value) ? str.Substring(value.Length) : str;
 
     /// <summary>
     /// 문자열에 해당 접두사가 있는 경우 제거합니다.
     /// </summary>
-    public static string RemovePreffix(this string str, char value)
+    public static string RemovePrefix(this string str, char value)
         => str.StartsWith(value) ? str.Substring(1) : str;
 
     /// <summary>

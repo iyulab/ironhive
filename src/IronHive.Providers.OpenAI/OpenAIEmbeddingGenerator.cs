@@ -1,7 +1,6 @@
 ﻿using IronHive.Abstractions.Embedding;
-using IronHive.Providers.OpenAI.Embedding;
-using IronHive.Providers.OpenAI.Embedding.Models;
-using IronHive.Providers.OpenAI.Share;
+using IronHive.Providers.OpenAI.Clients;
+using IronHive.Providers.OpenAI.Payloads.Embedding;
 using Tiktoken;
 using Tiktoken.Encodings;
 
@@ -17,14 +16,13 @@ public class OpenAIEmbeddingGenerator : IEmbeddingGenerator
     private readonly OpenAIEmbeddingClient _client;
     private readonly Encoder _tokenizer = new(new Cl100KBase());
 
+    public OpenAIEmbeddingGenerator(string apiKey)
+        : this(new OpenAIConfig { ApiKey = apiKey })
+    { }
+
     public OpenAIEmbeddingGenerator(OpenAIConfig config)
     {
         _client = new OpenAIEmbeddingClient(config);
-    }
-
-    public OpenAIEmbeddingGenerator(string apiKey)
-    {
-        _client = new OpenAIEmbeddingClient(apiKey);
     }
 
     /// <inheritdoc />

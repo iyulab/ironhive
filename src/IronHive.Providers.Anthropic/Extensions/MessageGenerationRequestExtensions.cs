@@ -1,20 +1,18 @@
-﻿using IronHive.Abstractions.Json;
+﻿using System.Text.Json.Nodes;
 using IronHive.Abstractions.Tools;
-using AnthropicMessage = IronHive.Providers.Anthropic.Messages.Models.Message;
-using TextMessageContent = IronHive.Abstractions.Messages.Content.TextMessageContent;
-using AnthropicTextMessageContent = IronHive.Providers.Anthropic.Messages.Models.TextMessageContent;
-using ImageMessageContent = IronHive.Abstractions.Messages.Content.ImageMessageContent;
-using DocumentMessageContent = IronHive.Abstractions.Messages.Content.DocumentMessageContent;
-using AnthropicImageMessageContent = IronHive.Providers.Anthropic.Messages.Models.ImageMessageContent;
-using ThinkingMessageContent = IronHive.Abstractions.Messages.Content.ThinkingMessageContent;
-using AnthropicThinkingMessageContent = IronHive.Providers.Anthropic.Messages.Models.ThinkingMessageContent;
-using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Messages.Roles;
-using System.Text.Json.Nodes;
-using IronHive.Providers.Anthropic.Messages.Models;
+using IronHive.Providers.Anthropic.Payloads.Messages;
+using AnthropicMessage = IronHive.Providers.Anthropic.Payloads.Messages.Message;
+using TextMessageContent = IronHive.Abstractions.Messages.Content.TextMessageContent;
+using AnthropicTextMessageContent = IronHive.Providers.Anthropic.Payloads.Messages.TextMessageContent;
+using ImageMessageContent = IronHive.Abstractions.Messages.Content.ImageMessageContent;
+using DocumentMessageContent = IronHive.Abstractions.Messages.Content.DocumentMessageContent;
+using AnthropicImageMessageContent = IronHive.Providers.Anthropic.Payloads.Messages.ImageMessageContent;
+using ThinkingMessageContent = IronHive.Abstractions.Messages.Content.ThinkingMessageContent;
+using AnthropicThinkingMessageContent = IronHive.Providers.Anthropic.Payloads.Messages.ThinkingMessageContent;
 
-namespace IronHive.Providers.Anthropic;
+namespace IronHive.Abstractions.Messages;
 
 internal static class MessageGenerationRequestExtensions
 {

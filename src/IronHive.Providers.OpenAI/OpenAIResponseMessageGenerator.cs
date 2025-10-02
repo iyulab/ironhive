@@ -3,10 +3,9 @@ using IronHive.Abstractions.Message;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Messages.Roles;
-using IronHive.Providers.OpenAI.Responses;
-using IronHive.Providers.OpenAI.Responses.Models;
-using IronHive.Providers.OpenAI.Share;
-using OpenAIStreamingContentAddedResponse = IronHive.Providers.OpenAI.Responses.Models.StreamingContentAddedResponse;
+using IronHive.Providers.OpenAI.Clients;
+using IronHive.Providers.OpenAI.Payloads.Responses;
+using OpenAIStreamingContentAddedResponse = IronHive.Providers.OpenAI.Payloads.Responses.StreamingContentAddedResponse;
 using StreamingContentAddedResponse = IronHive.Abstractions.Messages.StreamingContentAddedResponse;
 
 namespace IronHive.Providers.OpenAI;
@@ -17,9 +16,8 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
     private readonly OpenAIResponsesClient _client;
 
     public OpenAIResponseMessageGenerator(string apiKey)
-    {
-        _client = new OpenAIResponsesClient(apiKey);
-    }
+        : this(new OpenAIConfig { ApiKey = apiKey })
+    { }
 
     public OpenAIResponseMessageGenerator(OpenAIConfig config)
     {

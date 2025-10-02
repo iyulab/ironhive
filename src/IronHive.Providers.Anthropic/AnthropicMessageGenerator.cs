@@ -2,30 +2,29 @@
 using System.Runtime.CompilerServices;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Messages.Roles;
-using IronHive.Providers.Anthropic.Messages;
 using MessageContent = IronHive.Abstractions.Messages.MessageContent;
 using TextMessageContent = IronHive.Abstractions.Messages.Content.TextMessageContent;
-using AnthropicTextMessageContent = IronHive.Providers.Anthropic.Messages.Models.TextMessageContent;
+using AnthropicTextMessageContent = IronHive.Providers.Anthropic.Payloads.Messages.TextMessageContent;
 using ThinkingMessageContent = IronHive.Abstractions.Messages.Content.ThinkingMessageContent;
-using AnthropicThinkingMessageContent = IronHive.Providers.Anthropic.Messages.Models.ThinkingMessageContent;
+using AnthropicThinkingMessageContent = IronHive.Providers.Anthropic.Payloads.Messages.ThinkingMessageContent;
 using IronHive.Abstractions.Messages;
-using IronHive.Providers.Anthropic.Share;
-using IronHive.Providers.Anthropic.Messages.Models;
+using IronHive.Providers.Anthropic.Payloads.Messages;
+using IronHive.Providers.Anthropic.Clients;
 
 namespace IronHive.Providers.Anthropic;
 
+/// <inheritdoc />
 public class AnthropicMessageGenerator : IMessageGenerator
 {
     private readonly AnthropicMessagesClient _client;
 
+    public AnthropicMessageGenerator(string apiKey)
+        : this(new AnthropicConfig { ApiKey = apiKey })
+    { }
+
     public AnthropicMessageGenerator(AnthropicConfig config)
     {
         _client = new AnthropicMessagesClient(config);
-    }
-
-    public AnthropicMessageGenerator(string apiKey)
-    {
-        _client = new AnthropicMessagesClient(apiKey);
     }
 
     /// <inheritdoc />
@@ -261,7 +260,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
             // 5. 메시지 메타 데이터 이벤트
             else if (res is MessageDeltaEvent mde)
             {
-                usage.OutputTokens = mde.Usage?.OutputTokens;
+                usage.OutputTokens = mde.Usage?.OutputTokens ?? usage.OutputTokens;
 
                 yield return new StreamingMessageDoneResponse
                 {

@@ -1,6 +1,5 @@
 ﻿using IronHive.Abstractions.Catalog;
-using IronHive.Providers.OpenAI.Catalog;
-using IronHive.Providers.OpenAI.Share;
+using IronHive.Providers.OpenAI.Clients;
 
 namespace IronHive.Providers.OpenAI;
 
@@ -8,14 +7,13 @@ public class OpenAIModelCatalog : IModelCatalog
 {
     private readonly OpenAIModelsClient _client;
 
+    public OpenAIModelCatalog(string apiKey)
+        : this(new OpenAIConfig { ApiKey = apiKey })
+    { }
+
     public OpenAIModelCatalog(OpenAIConfig config)
     {
         _client = new OpenAIModelsClient(config);
-    }
-
-    public OpenAIModelCatalog(string apiKey)
-    {
-        _client = new OpenAIModelsClient(apiKey);
     }
 
     /// <inheritdoc />

@@ -73,9 +73,9 @@ public class StreamingContentCompletedResponse : StreamingMessageResponse
 /// </summary>
 public class StreamingMessageDoneResponse : StreamingMessageResponse
 {
+    public required string Id { get; set; }
     public MessageDoneReason? DoneReason { get; set; }
     public MessageTokenUsage? TokenUsage { get; set; }
-    public required string Id { get; set; }
     public required string Model { get; set; }
     public required DateTime Timestamp { get; set; }
 }

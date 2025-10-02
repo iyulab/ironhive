@@ -12,7 +12,7 @@ public static class HiveServiceBuilderExtensions
         this IHiveServiceBuilder builder,
         string providerName, 
         AnthropicConfig config,
-        AnthropicServiceType serviceType = AnthropicServiceType.Models | AnthropicServiceType.Messages)
+        AnthropicServiceType serviceType = AnthropicServiceType.All)
     {
         if (serviceType.HasFlag(AnthropicServiceType.Models))
             builder.AddModelCatalog(providerName, new AnthropicModelCatalog(config));

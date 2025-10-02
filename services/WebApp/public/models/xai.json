@@ -3,17 +3,6 @@
   "data": [
     {
       "provider": "xai",
-      "modelId": "grok-code-fast-1",
-      "displayName": "Grok Code Fast",
-      "description": "A speedy agentic coding model",
-      "thinkable": true,
-      "inputPrice": 0.2,
-      "outputPrice": 1.5,
-      "contextLength": 256000,
-      "maxOutput": null
-    },
-    {
-      "provider": "xai",
       "modelId": "grok-4",
       "displayName": "Grok 4.0",
       "description": "Latest and greatest flagship model",

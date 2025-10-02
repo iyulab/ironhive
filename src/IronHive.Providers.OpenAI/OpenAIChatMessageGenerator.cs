@@ -1,14 +1,13 @@
 ﻿using System.Runtime.CompilerServices;
 using IronHive.Abstractions.Message;
-using IronHive.Providers.OpenAI.ChatCompletion;
 using MessageGenerationRequest = IronHive.Abstractions.Messages.MessageGenerationRequest;
 using TextMessageContent = IronHive.Abstractions.Messages.Content.TextMessageContent;
 using AssistantMessage = IronHive.Abstractions.Messages.Roles.AssistantMessage;
 using MessageContent = IronHive.Abstractions.Messages.MessageContent;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Providers.OpenAI.ChatCompletion.Models;
-using IronHive.Providers.OpenAI.Share;
+using IronHive.Providers.OpenAI.Clients;
+using IronHive.Providers.OpenAI.Payloads.ChatCompletion;
 
 namespace IronHive.Providers.OpenAI;
 
@@ -17,14 +16,13 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
 {
     private readonly OpenAIChatCompletionClient _client;
 
+    public OpenAIChatMessageGenerator(string apiKey)
+        : this(new OpenAIConfig { ApiKey = apiKey})
+    { }
+
     public OpenAIChatMessageGenerator(OpenAIConfig config)
     {
         _client = new OpenAIChatCompletionClient(config);
-    }
-
-    public OpenAIChatMessageGenerator(string apiKey)
-    {
-        _client = new OpenAIChatCompletionClient(apiKey);
     }
 
     /// <inheritdoc />
@@ -106,8 +104,8 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
             },
             TokenUsage = new MessageTokenUsage
             {
-                InputTokens = res.Usage?.PromptTokens,
-                OutputTokens = res.Usage?.CompletionTokens
+                InputTokens = res.Usage?.PromptTokens ?? 0,
+                OutputTokens = res.Usage?.CompletionTokens ?? 0
             },
             Timestamp = DateTimeOffset.FromUnixTimeSeconds(res.Created).UtcDateTime
         };

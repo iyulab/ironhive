@@ -1,22 +1,21 @@
 ﻿using IronHive.Abstractions.Embedding;
-using IronHive.Providers.Ollama.Embedding;
-using IronHive.Providers.Ollama.Embedding.Models;
-using IronHive.Providers.Ollama.Share;
+using IronHive.Providers.Ollama.Clients;
+using IronHive.Providers.Ollama.Payloads.Embedding;
 
 namespace IronHive.Providers.Ollama;
 
+/// <inheritdoc />
 public class OllamaEmbeddingGenerator : IEmbeddingGenerator
 {
     private readonly OllamaEmbeddingClient _client;
 
+    public OllamaEmbeddingGenerator(string baseUrl)
+        : this(new OllamaConfig { BaseUrl = baseUrl })
+    { }
+
     public OllamaEmbeddingGenerator(OllamaConfig? config = null)
     {
         _client = new OllamaEmbeddingClient(config);
-    }
-
-    public OllamaEmbeddingGenerator(string baseUrl)
-    {
-        _client = new OllamaEmbeddingClient(baseUrl);
     }
 
     /// <inheritdoc />

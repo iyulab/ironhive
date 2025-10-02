@@ -8,24 +8,15 @@ public class MessageTokenUsage
     /// <summary>
     /// 입력에 사용된 토큰 수입니다.
     /// </summary>
-    public int? InputTokens { get; set; }
+    public int InputTokens { get; set; } = 0;
 
     /// <summary>
     /// 출력에 사용된 토큰 수입니다.
     /// </summary>
-    public int? OutputTokens { get; set; }
+    public int OutputTokens { get; set; } = 0;
 
     /// <summary>
     /// 총 사용된 토큰 수입니다. (입력 + 출력)
     /// </summary>
-    public int? TotalTokens
-    {
-        get
-        {
-            if (InputTokens.HasValue && OutputTokens.HasValue)
-                return InputTokens.Value + OutputTokens.Value;
-            else
-                return null;
-        }
-    }
+    public int TotalTokens => InputTokens + OutputTokens;
 }

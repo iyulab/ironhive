@@ -2,27 +2,25 @@
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Messages.Roles;
-using IronHive.Abstractions.Tools;
-using IronHive.Providers.Ollama.Chat;
-using IronHive.Providers.Ollama.Chat.Models;
-using IronHive.Providers.Ollama.Share;
+using IronHive.Providers.Ollama.Clients;
+using IronHive.Providers.Ollama.Payloads.Chat;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 
 namespace IronHive.Providers.Ollama;
 
+/// <inheritdoc />
 public class OllamaMessageGenerator : IMessageGenerator
 {
     private readonly OllamaChatClient _client;
 
+    public OllamaMessageGenerator(string baseUrl)
+        : this(new OllamaConfig { BaseUrl = baseUrl })
+    { }
+
     public OllamaMessageGenerator(OllamaConfig? config = null)
     {
         _client = new OllamaChatClient(config);
-    }
-
-    public OllamaMessageGenerator(string baseUrl)
-    {
-        _client = new OllamaChatClient(baseUrl);
     }
 
     /// <inheritdoc />

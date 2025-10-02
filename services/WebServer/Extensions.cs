@@ -2,9 +2,8 @@
 using IronHive.Providers.OpenAI;
 using IronHive.Abstractions;
 using WebServer.Tools;
-
-using IronHive.Providers.OpenAI.Share;
 using IronHive.Providers.Anthropic.Share;
+using IronHive.Providers.GoogleAI;
 
 namespace WebServer;
 
@@ -23,9 +22,8 @@ public static class Extensions
         {
             ApiKey = Environment.GetEnvironmentVariable("ANTHROPIC_KEY") ?? string.Empty,
         };
-        var g_config = new OpenAIConfig
+        var g_config = new GoogleAIConfig
         {
-            BaseUrl = "https://generativelanguage.googleapis.com/v1beta/openai/",
             ApiKey = Environment.GetEnvironmentVariable("GOOGLE_KEY") ?? string.Empty
         };
         var x_config = new AnthropicConfig
@@ -42,7 +40,7 @@ public static class Extensions
         var core = services.AddHiveServiceCore()
             .AddOpenAIProviders("openai", o_config, OpenAIServiceType.Responses)
             .AddAnthropicProviders("anthropic", a_config)
-            .AddOpenAIProviders("google", g_config)
+            .AddGoogleAIProviders("google", g_config)
             .AddAnthropicProviders("xai", x_config)
             .AddOpenAIProviders("iyulab", l_config)
             .AddFunctionTool<TestTool>()

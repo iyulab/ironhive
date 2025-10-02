@@ -2,15 +2,17 @@
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Messages.Roles;
-using IronHive.Providers.Ollama;
-using IronHive.Providers.Ollama.Chat.Models;
-using IronHive.Providers.Ollama.Share;
-using OllamaMessage = IronHive.Providers.Ollama.Chat.Models.Message;
+using IronHive.Providers.Ollama.Payloads;
+using IronHive.Providers.Ollama.Payloads.Chat;
+using OllamaMessage = IronHive.Providers.Ollama.Payloads.Chat.Message;
 
 namespace IronHive.Abstractions.Message;
 
 internal static class MessageGenerationRequestExtensions
 {
+    /// <summary>
+    /// 메시지 생성 요청을 Ollama의 ChatRequest로 변환합니다.
+    /// </summary>
     internal static ChatRequest ToOllama(this MessageGenerationRequest request)
     {
         var _messages = new List<OllamaMessage>();

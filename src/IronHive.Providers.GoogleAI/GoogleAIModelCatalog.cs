@@ -1,7 +1,6 @@
 ﻿using IronHive.Abstractions.Catalog;
-using IronHive.Providers.GoogleAI.Catalog;
-using IronHive.Providers.GoogleAI.Catalog.Models;
-using IronHive.Providers.GoogleAI.Share;
+using IronHive.Providers.GoogleAI.Clients;
+using IronHive.Providers.GoogleAI.Payloads.Models;
 
 namespace IronHive.Providers.GoogleAI;
 
@@ -10,14 +9,13 @@ public class GoogleAIModelCatalog : IModelCatalog
 {
     private readonly GoogleAIModelsClient _client;
 
+    public GoogleAIModelCatalog(string apiKey)
+        : this(new GoogleAIConfig { ApiKey = apiKey })
+    { }
+
     public GoogleAIModelCatalog(GoogleAIConfig config)
     {
         _client = new GoogleAIModelsClient(config);
-    }
-
-    public GoogleAIModelCatalog(string apiKey)
-    {
-        _client = new GoogleAIModelsClient(apiKey);
     }
 
     /// <inheritdoc />
@@ -35,7 +33,7 @@ public class GoogleAIModelCatalog : IModelCatalog
         var next = string.Empty;
         do
         {
-            var response = await _client.GetModelsAsync(new GoogleAIModelsRequest
+            var response = await _client.GetModelsAsync(new ModelsListRequest
             {
                 PageSize = 1000,
                 PageToken = next

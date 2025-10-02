@@ -14,7 +14,7 @@ public static class ProviderRegistryExtensions
         this IProviderRegistry providers,
         string providerName,
         AnthropicConfig config,
-        AnthropicServiceType serviceType = AnthropicServiceType.Models | AnthropicServiceType.Messages)
+        AnthropicServiceType serviceType = AnthropicServiceType.All)
     {
         if (serviceType.HasFlag(AnthropicServiceType.Messages))
             providers.SetMessageGenerator(providerName, new AnthropicMessageGenerator(config));
@@ -29,7 +29,7 @@ public static class ProviderRegistryExtensions
     public static void RemoveAnthropicProviders(
         this IProviderRegistry providers,
         string providerName,
-        AnthropicServiceType serviceType = AnthropicServiceType.Models | AnthropicServiceType.Messages)
+        AnthropicServiceType serviceType = AnthropicServiceType.All)
     {
         if (serviceType.HasFlag(AnthropicServiceType.Messages))
             providers.Remove<IMessageGenerator>(providerName);
