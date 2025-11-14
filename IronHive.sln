@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.0.31903.59
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.11205.157 d18.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "00. docs", "00. docs", "{C5D07BAA-9B0C-4DBD-A39A-6043C34F1443}"
 	ProjectSection(SolutionItems) = preProject
@@ -19,7 +19,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Providers", "Providers", "{
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Storages", "Storages", "{0E0B40CA-1316-4A75-89E7-41DF7B8D2BE0}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "20. services", "20. services", "{C8D5274F-AC00-46C7-1F8D-E88E81087A52}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "30. services", "30. services", "{C8D5274F-AC00-46C7-1F8D-E88E81087A52}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IronHive.Abstractions", "src\IronHive.Abstractions\IronHive.Abstractions.csproj", "{49E34802-0BA5-C2BD-E13F-0B074BF4E014}"
 EndProject
@@ -47,7 +47,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IronHive.Providers.Ollama",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IronHive.Providers.OpenAI", "src\IronHive.Providers.OpenAI\IronHive.Providers.OpenAI.csproj", "{E9978F79-5D1E-D186-92D3-7BA591A27B6F}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "30. experiments", "30. experiments", "{F94E9079-E631-016F-4193-ECFB0308D062}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "20. experiments", "20. experiments", "{F94E9079-E631-016F-4193-ECFB0308D062}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleTest", "experiments\ConsoleTest\ConsoleTest.csproj", "{C251D6E8-D967-4C82-8108-056286650D2F}"
 EndProject
