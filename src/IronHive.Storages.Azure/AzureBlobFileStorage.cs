@@ -11,18 +11,13 @@ namespace IronHive.Storages.Azure;
 public class AzureBlobFileStorage : IFileStorage
 {
     private readonly BlobContainerClient _client;
-    private readonly AzureBlobConfig _config;
+    private readonly AzureStorageConfig _config;
 
-    public AzureBlobFileStorage(AzureBlobConfig config)
+    public AzureBlobFileStorage(AzureStorageConfig config)
     {
         _config = config;
         _client = CreateClient(config);
     }
-
-    /// <summary>
-    /// Azure Blob 컨테이너 이름
-    /// </summary>
-    public string ContainerName => _config.ContainerName;
 
     /// <inheritdoc />
     public void Dispose()
@@ -152,27 +147,32 @@ public class AzureBlobFileStorage : IFileStorage
     /// <summary>
     /// BlobContainerClient 생성
     /// </summary>
-    private static BlobContainerClient CreateClient(AzureBlobConfig config)
+    private static BlobContainerClient CreateClient(AzureStorageConfig config)
     {
         var options = new BlobClientOptions();
         var client = config.AuthType switch
         {
-            AzureBlobAuthTypes.ConnectionString => new BlobServiceClient(config.ConnectionString, options),
-            AzureBlobAuthTypes.AccountKey => new BlobServiceClient(GetBlobStorageUri(config), GetSharedKeyCredential(config), options),
-            AzureBlobAuthTypes.SASToken => new BlobServiceClient(GetBlobStorageUri(config), GetSasTokenCredential(config), options),
-            AzureBlobAuthTypes.AzureIdentity => new BlobServiceClient(GetBlobStorageUri(config), config.TokenCredential, options),
-            _ => throw new ArgumentOutOfRangeException(nameof(config.AuthType), "알 수 없는 Azure Blob 인증 유형입니다.")
+            AzureStorageAuthTypes.ConnectionString => new BlobServiceClient(config.ConnectionString, options),
+            AzureStorageAuthTypes.AccountKey => new BlobServiceClient(GetBlobStorageUri(config), GetSharedKeyCredential(config), options),
+            AzureStorageAuthTypes.SASToken => new BlobServiceClient(GetBlobStorageUri(config), GetSasTokenCredential(config), options),
+            AzureStorageAuthTypes.AzureIdentity => new BlobServiceClient(GetBlobStorageUri(config), config.TokenCredential, options),
+            _ => throw new ArgumentOutOfRangeException(nameof(config.AuthType), "알 수 없는 Azure Storage 인증 유형입니다.")
         };
-        if (string.IsNullOrWhiteSpace(config.ContainerName))
-            throw new ArgumentException("ContainerName은 비어 있을 수 없습니다.", nameof(config.ContainerName));
+        if (string.IsNullOrWhiteSpace(config.StorageName))
+            throw new ArgumentException("ContainerName은 비어 있을 수 없습니다.", nameof(config.StorageName));
 
-        return client.GetBlobContainerClient(config.ContainerName);
+        var container = client.GetBlobContainers(prefix: config.StorageName)
+                              .FirstOrDefault(item => item.Name == config.StorageName);
+        if (container == null)
+            return client.CreateBlobContainer(config.StorageName).Value;
+        else 
+            return client.GetBlobContainerClient(config.StorageName);
     }
 
     /// <summary>
     /// AccountName을 이용한 Uri 생성
     /// </summary>
-    private static Uri GetBlobStorageUri(AzureBlobConfig config)
+    private static Uri GetBlobStorageUri(AzureStorageConfig config)
     {
         if (string.IsNullOrWhiteSpace(config.AccountName))
             throw new ArgumentException("AccountName은 비어 있을 수 없습니다.", nameof(config.AccountName));
@@ -182,7 +182,7 @@ public class AzureBlobFileStorage : IFileStorage
     /// <summary>
     /// AccountKey를 이용한 인증 방식
     /// </summary>
-    private static StorageSharedKeyCredential GetSharedKeyCredential(AzureBlobConfig config)
+    private static StorageSharedKeyCredential GetSharedKeyCredential(AzureStorageConfig config)
     {
         if (string.IsNullOrWhiteSpace(config.AccountName))
             throw new ArgumentException("AccountName은 비어 있을 수 없습니다.", nameof(config.AccountName));
@@ -192,7 +192,7 @@ public class AzureBlobFileStorage : IFileStorage
     /// <summary>
     /// SAS Token을 이용한 인증 방식
     /// </summary>
-    private static AzureSasCredential GetSasTokenCredential(AzureBlobConfig config)
+    private static AzureSasCredential GetSasTokenCredential(AzureStorageConfig config)
     {
         if (string.IsNullOrWhiteSpace(config.SASToken))
             throw new ArgumentException("SASToken은 비어 있을 수 없습니다.", nameof(config.SASToken));
