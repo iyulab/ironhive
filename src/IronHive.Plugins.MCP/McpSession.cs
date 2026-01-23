@@ -11,7 +11,7 @@ namespace IronHive.Plugins.MCP;
 public class McpSession : IAsyncDisposable
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
-    private IMcpClient? _client;
+    private McpClient? _client;
 
     public McpSession(IMcpClientConfig config)
     {
@@ -101,8 +101,8 @@ public class McpSession : IAsyncDisposable
 
             // 클라이언트를 생성합니다.
             var transport = CreateTransport(Config);
-            _client = await McpClientFactory.CreateAsync(
-                clientTransport: transport,
+            _client = await McpClient.CreateAsync(
+                transport,
                 clientOptions: options,
                 cancellationToken: cancellationToken);
 
@@ -172,8 +172,8 @@ public class McpSession : IAsyncDisposable
             // 새로운 설정으로 클라이언트를 생성합니다.
             Config = config;
             var transport = CreateTransport(Config);
-            _client = await McpClientFactory.CreateAsync(
-                clientTransport: transport,
+            _client = await McpClient.CreateAsync(
+                transport,
                 clientOptions: options,
                 cancellationToken: cancellationToken);
             
@@ -227,14 +227,12 @@ public class McpSession : IAsyncDisposable
                 WorkingDirectory = stdio.WorkingDirectory,
                 //StandardErrorLines = (str) => Console.Error.WriteLine(str),
             }),
-            McpSseClientConfig sse => new SseClientTransport(new SseClientTransportOptions
+            McpSseClientConfig sse => new HttpClientTransport(new HttpClientTransportOptions
             {
                 Name = sse.ServerName,
                 Endpoint = sse.Endpoint,
                 AdditionalHeaders = sse.AdditionalHeaders,
                 ConnectionTimeout = sse.ConnectionTimeout,
-                //OAuth = sse.OAuth,
-                //TransportMode = sse.TransportMode
             }),
             _ => throw new NotSupportedException($"서버 타입 {config.GetType().Name}은(는) 지원되지 않습니다.")
         };

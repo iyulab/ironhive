@@ -52,7 +52,6 @@ public class McpTool : ITool
         var result = await _tool.CallAsync(
             arguments: input,
             progress: null,
-            serializerOptions: null,
             cancellationToken: cancellationToken);
 
         var text = result.Content.Select(c => c.ToString());
