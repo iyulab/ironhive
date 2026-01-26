@@ -33,37 +33,37 @@ public class OpenApiProperties
     public JsonSchema? ToJsonSchema()
     {
         var builder = new JsonSchemaBuilder().Type(SchemaValueType.Object);
-        var properties = new Dictionary<string, JsonSchema>();
+        var properties = new Dictionary<string, JsonSchemaBuilder>();
         var required = new List<string>();
 
         if (Query is { Count: > 0 })
         {
-            properties["query"] = BuildParametersSchema(Query);
+            properties["query"] = BuildParametersSchemaBuiler(Query);
             if (Query.Values.Any(p => p.Required))
                 required.Add("query");
         }
         if (Path is { Count: > 0 })
         {
-            properties["path"] = BuildParametersSchema(Path);
+            properties["path"] = BuildParametersSchemaBuiler(Path);
             if (Path.Values.Any(p => p.Required))
                 required.Add("path");
         }
         if (Header is { Count: > 0 })
         {
-            properties["header"] = BuildParametersSchema(Header);
+            properties["header"] = BuildParametersSchemaBuiler(Header);
             if (Header.Values.Any(p => p.Required))
                 required.Add("header");
         }
         if (Cookie is { Count: > 0 })
         {
-            properties["cookie"] = BuildParametersSchema(Cookie);
+            properties["cookie"] = BuildParametersSchemaBuiler(Cookie);
             if (Cookie.Values.Any(p => p.Required))
                 required.Add("cookie");
         }
 
         if (Body is not null && Body.Content is { Count: > 0 })
         {
-            properties["body"] = BuildRequestBodySchema(Body);
+            properties["body"] = BuildRequestBodySchemaBuiler(Body);
             if (Body.Required)
                 required.Add("body");
         }
@@ -76,20 +76,21 @@ public class OpenApiProperties
     }
 
     /// <summary> 여러 요청 파라미터들의 JsonSchema를 생성합니다. </summary>
-    private static JsonSchema BuildParametersSchema(IDictionary<string, IOpenApiParameter> parameters)
+    private static JsonSchemaBuilder BuildParametersSchemaBuiler(IDictionary<string, IOpenApiParameter> parameters)
     {
         return new JsonSchemaBuilder()
             .Type(SchemaValueType.Object)
-            .Properties(parameters.ToDictionary(kv => kv.Key, kv => kv.Value.Schema?.ToJsonSchema() ?? JsonSchema.Empty))
-            .Required(parameters.Where(kv => kv.Value.Required).Select(kv => kv.Key).ToArray())
-            .Build();
+            .Properties(parameters.ToDictionary(
+                kv => kv.Key, 
+                kv => kv.Value.Schema?.ToJsonSchemaBuilder() ?? new JsonSchemaBuilder()))
+            .Required(parameters.Where(kv => kv.Value.Required).Select(kv => kv.Key).ToArray());
     }
 
     /// <summary> RequestBody의 JsonSchema를 생성합니다. </summary>
-    private static JsonSchema BuildRequestBodySchema(IOpenApiRequestBody body)
+    private static JsonSchemaBuilder BuildRequestBodySchemaBuiler(IOpenApiRequestBody body)
     {
         if (body.Content is null || body.Content.Count == 0)
-            return JsonSchema.Empty;
+            return new JsonSchemaBuilder();
 
         // 스키마 하나만 지원
         // 우선순위: application/json > text/plain > 기타
@@ -99,8 +100,8 @@ public class OpenApiProperties
         var media = body.Content[contentType];
 
         if (media.Schema is not null)
-            return media.Schema.ToJsonSchema();
+            return media.Schema.ToJsonSchemaBuilder();
         else
-            return new JsonSchemaBuilder().Type(SchemaValueType.String).Build();
+            return new JsonSchemaBuilder().Type(SchemaValueType.String);
     }
 }

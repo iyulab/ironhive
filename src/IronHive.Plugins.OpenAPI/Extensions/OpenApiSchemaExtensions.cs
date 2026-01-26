@@ -9,6 +9,14 @@ public static class OpenApiSchemaExtensions
     /// </summary>
     public static JsonSchema ToJsonSchema(this IOpenApiSchema schema)
     {
+        return schema.ToJsonSchemaBuilder().Build();
+    }
+
+    /// <summary>
+    /// OpenAPI 스키마를 JsonSchemaBuilder로 변환합니다.
+    /// </summary>
+    public static JsonSchemaBuilder ToJsonSchemaBuilder(this IOpenApiSchema schema)
+    {
         var builder = new JsonSchemaBuilder();
 
         if (schema.Type is not null)
@@ -42,19 +50,19 @@ public static class OpenApiSchemaExtensions
         {
             builder = builder.Properties(schema.Properties.ToDictionary(
                 kv => kv.Key,
-                kv => kv.Value.ToJsonSchema()));
+                kv => kv.Value.ToJsonSchemaBuilder()));
         }
 
         if (schema.AdditionalProperties is not null)
-            builder = builder.AdditionalProperties(schema.AdditionalProperties.ToJsonSchema());
+            builder = builder.AdditionalProperties(schema.AdditionalProperties.ToJsonSchemaBuilder());
 
         if (schema.AllOf is { Count: > 0 })
-            builder = builder.AllOf(schema.AllOf.Select(s => s.ToJsonSchema()).ToArray());
+            builder = builder.AllOf(schema.AllOf.Select(s => s.ToJsonSchemaBuilder()).ToArray());
         if (schema.AnyOf is { Count: > 0 })
-            builder = builder.AnyOf(schema.AnyOf.Select(s => s.ToJsonSchema()).ToArray());
+            builder = builder.AnyOf(schema.AnyOf.Select(s => s.ToJsonSchemaBuilder()).ToArray());
         if (schema.OneOf is { Count: > 0 })
-            builder = builder.OneOf(schema.OneOf.Select(s => s.ToJsonSchema()).ToArray());
+            builder = builder.OneOf(schema.OneOf.Select(s => s.ToJsonSchemaBuilder()).ToArray());
 
-        return builder.Build();
+        return builder;
     }
 }

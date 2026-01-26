@@ -2,6 +2,7 @@
 using Azure;
 using Azure.Storage;
 using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 
 namespace IronHive.Storages.Azure;
 
@@ -36,8 +37,11 @@ public class AzureBlobFileStorage : IFileStorage
 
         // prefix ~ delimiter 사이의 객체만 가져옵니다.
         await foreach (var item in _client.GetBlobsByHierarchyAsync(
-            delimiter: "/",
-            prefix: prefix,
+            options: new GetBlobsByHierarchyOptions
+            {
+                Prefix = prefix,
+                Delimiter = "/",
+            },
             cancellationToken: cancellationToken))
         {
             if (item.IsPrefix)
@@ -129,7 +133,10 @@ public class AzureBlobFileStorage : IFileStorage
             throw new ArgumentException("디렉터리 경로는 '/'로 끝나야 합니다.", nameof(directoryPath));
 
         // 디렉터리 경로인 경우, 해당 prefix로 시작하는 모든 blob 삭제
-        await foreach (var blobItem in _client.GetBlobsAsync(prefix: directoryPath, cancellationToken: cancellationToken))
+        await foreach (var blobItem in _client.GetBlobsAsync(options: new GetBlobsOptions
+        {
+            Prefix = directoryPath,
+        }, cancellationToken: cancellationToken))
         {
             var blobClient = _client.GetBlobClient(blobItem.Name);
             await blobClient.DeleteIfExistsAsync(cancellationToken: cancellationToken);
