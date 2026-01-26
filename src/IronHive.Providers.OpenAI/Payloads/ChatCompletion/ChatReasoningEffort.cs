@@ -3,6 +3,11 @@
 public enum ChatReasoningEffort
 {
     /// <summary>
+    /// No reasoning effort
+    /// </summary>
+    None,
+
+    /// <summary>
     /// Very low reasoning effort
     /// </summary>
     Minimal,
@@ -20,5 +25,10 @@ public enum ChatReasoningEffort
     /// <summary>
     /// High reasoning effort
     /// </summary>
-    High
+    High,
+
+    /// <summary>
+    /// Very high reasoning effort
+    /// </summary>
+    Xhigh
 }

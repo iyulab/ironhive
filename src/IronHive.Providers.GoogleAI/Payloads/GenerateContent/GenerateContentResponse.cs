@@ -27,4 +27,10 @@ internal sealed class GenerateContentResponse
 
     [JsonPropertyName("responseId")]
     public string? ResponseId { get; set; }
+
+    /// <summary>
+    /// 모델의 현재 상태입니다.
+    /// </summary>
+    [JsonPropertyName("modelState")]
+    public ModelStatus? ModelStatus { get; set; }
 }

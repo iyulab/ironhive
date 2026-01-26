@@ -35,7 +35,7 @@ public class PPTDecoder : IFileDecoder<string>
         var presentationPart = presentation.PresentationPart
             ?? throw new InvalidOperationException("Presentation part is missing.");
 
-        var slideIds = presentationPart?.Presentation.SlideIdList?.ChildElements.OfType<SlideId>().ToList()
+        var slideIds = presentationPart?.Presentation?.SlideIdList?.ChildElements.OfType<SlideId>().ToList()
             ?? throw new InvalidOperationException("Cannot find SlideIdList in the presentation.");
 
         foreach (var slideId in slideIds)
@@ -54,9 +54,9 @@ public class PPTDecoder : IFileDecoder<string>
             var slide = slidePart.Slide;
 
             // Extract all Text elements from the slide
-            var slideText = slide.Descendants<DocumentFormat.OpenXml.Drawing.Text>()
+            var slideText = slide?.Descendants<DocumentFormat.OpenXml.Drawing.Text>()
                                     .Select(t => t.Text)
-                                    .ToList();
+                                    .ToList() ?? [];
 
             // Combine the text and clean it
             var text = string.Join(Environment.NewLine, slideText).TrimEnd();

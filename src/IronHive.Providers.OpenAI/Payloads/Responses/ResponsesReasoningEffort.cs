@@ -2,8 +2,10 @@
 
 internal enum ResponsesReasoningEffort
 {
+    None,
     Minimal,
     Low,
     Medium,
-    High
+    High,
+    Xhigh
 }

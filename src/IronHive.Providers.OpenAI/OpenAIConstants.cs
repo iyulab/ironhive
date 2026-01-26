@@ -1,4 +1,4 @@
-﻿namespace IronHive.Providers.OpenAI.Clients;
+﻿namespace IronHive.Providers.OpenAI;
 
 /// <summary>
 /// <see href="https://platform.openai.com/docs/api-reference/introduction">Documentation</see>
@@ -14,5 +14,6 @@ internal class OpenAIConstants
     internal const string GetModelsPath = "/models";
     internal const string PostChatCompletionPath = "/chat/completions";
     internal const string PostResponsesPath = "/responses";
+    internal const string PostResponsesTokenCountPath = "/responses/input_tokens";
     internal const string PostEmbeddingPath = "/embeddings";
 }

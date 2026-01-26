@@ -24,8 +24,13 @@ internal class ResponsesRequest
 
     /// <summary>
     /// 응답에 포함할 추가 정보.
-    /// 1. store: false시, Reasoning Item 포함 필요: "reasoning.encrypted_content"
-    /// 2. output token log확률 분석시: "message.output_text.logprobs",
+    /// "web_search_call.action.sources": 웹 검색 도구 호출의 소스 포함.
+    /// "code_interpreter_call.outputs": 코드 인터프리터 도구 호출의 출력 포함.
+    /// "computer_call_output.output.image_url": 컴퓨터 비전 도구 호출의 출력 이미지 URL 포함.
+    /// "file_search_call.results": 파일 검색 도구 호출의 결과 포함.
+    /// "message.input_image.image_url": 입력 이미지의 URL 포함.
+    /// "message.output_text.logprobs": 출력 텍스트의 로그 확률 포함.
+    /// "reasoning.encrypted_content": 추론 암호화된 콘텐츠 포함(store: false 일시 포함).
     /// </summary>
     [JsonPropertyName("include")]
     public ICollection<string>? Include { get; set; }
@@ -52,7 +57,7 @@ internal class ResponsesRequest
     /// 최대 16개의 키-밸류 쌍을 포함할 수 있는 메타데이터 (선택).
     /// </summary>
     [JsonPropertyName("metadata")]
-    public IDictionary<string, string>? Metadata { get; set; }
+    public KeyValuePair<string, string>? Metadata { get; set; }
 
     /// <summary>
     /// OpenAI 모델 ID
@@ -77,6 +82,12 @@ internal class ResponsesRequest
     /// </summary>
     [JsonPropertyName("prompt_cache_key")]
     public string? PromptCacheKey { get; set; }
+
+    /// <summary>
+    /// 캐시를 사용할 경우 유지 기간 ("24h" 이내)
+    /// </summary>
+    [JsonPropertyName("prompt_cache_retention")]
+    public string? PromptCacheRetention { get; set; }
 
     /// <summary>
     /// gpt-5 또는 o 시리즈에서만 작동
@@ -119,11 +130,8 @@ internal class ResponsesRequest
     [JsonPropertyName("text")]
     public ResponsesText? Text { get; set; }
 
-    /// <summary>
-    /// "none", "auto", "required", ...
-    /// </summary>
     [JsonPropertyName("tool_choice")]
-    public object? ToolChoice { get; set; }
+    public ResponsesToolChoice? ToolChoice { get; set; }
 
     [JsonPropertyName("tools")]
     public IEnumerable<ResponsesTool>? Tools { get; set; }

@@ -4,8 +4,8 @@ namespace IronHive.Providers.Anthropic.Payloads.Messages;
 
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(AutoAnthropicToolChoice), "auto")]
-[JsonDerivedType(typeof(NoneAnthropicToolChoice), "none")]
 [JsonDerivedType(typeof(AnyAnthropicToolChoice), "any")]
+[JsonDerivedType(typeof(NoneAnthropicToolChoice), "none")]
 [JsonDerivedType(typeof(ManualAnthropicToolChoice), "tool")]
 internal abstract class AnthropicToolChoice
 { }
@@ -16,10 +16,7 @@ internal class AutoAnthropicToolChoice : AnthropicToolChoice
     public bool? DisaableParallelToolUse { get; set; }
 }
 
-internal class NoneAnthropicToolChoice : AnthropicToolChoice
-{ }
-
-internal class AnyAnthropicToolChoice : AnthropicToolChoice 
+internal class AnyAnthropicToolChoice : AnthropicToolChoice
 {
     [JsonPropertyName("disable_parallel_tool_use")]
     public bool? DisaableParallelToolUse { get; set; }
@@ -33,3 +30,6 @@ internal class ManualAnthropicToolChoice : AnthropicToolChoice
     [JsonPropertyName("disable_parallel_tool_use")]
     public bool? DisaableParallelToolUse { get; set; }
 }
+
+internal class NoneAnthropicToolChoice : AnthropicToolChoice
+{ }

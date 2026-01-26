@@ -179,7 +179,7 @@ internal static class MessageGenerationRequestExtensions
     /// <summary>
     /// 최대 토큰 수를 계산하고 추론 예산을 설정합니다.
     /// </summary>
-    internal static (int, EnabledThinkingEffort?) CaculateTokens(MessageGenerationRequest request)
+    internal static (int, EnabledThinkingConfig?) CaculateTokens(MessageGenerationRequest request)
     {
         // MaxToken이 필수요청사항으로 sonnet은 "64000", opus는 "32000" 이외 "8192"값을 기본으로 함
         var maxTokens = request.MaxTokens ??
@@ -202,7 +202,7 @@ internal static class MessageGenerationRequestExtensions
             });
             // 최소 "1024"토큰이상 사용하도록 강제
             budgetTokens = budgetTokens >= 1024 ? budgetTokens : 1024;
-            return (maxTokens, new EnabledThinkingEffort { BudgetTokens = budgetTokens });
+            return (maxTokens, new EnabledThinkingConfig { BudgetTokens = budgetTokens });
         }
 
         return (maxTokens, null);

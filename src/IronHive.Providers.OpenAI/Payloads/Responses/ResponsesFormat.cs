@@ -15,21 +15,15 @@ public class JsonObjectResponseFormat : ResponsesFormat { }
 
 public class JsonSchemaResponseFormat : ResponsesFormat
 {
-    [JsonPropertyName("json_schema")]
-    public required JsonFormat JsonSchema { get; set; }
+    [JsonPropertyName("name")]
+    public required string Name { get; set; }
 
-    public class JsonFormat
-    {
-        [JsonPropertyName("name")]
-        public required string Name { get; set; }
+    [JsonPropertyName("schema")]
+    public object? Schema { get; set; }
 
-        [JsonPropertyName("description")]
-        public string? Description { get; set; }
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
 
-        [JsonPropertyName("schema")]
-        public object? Schema { get; set; }
-
-        [JsonPropertyName("strict")]
-        public bool? Strict { get; set; }
-    }
+    [JsonPropertyName("strict")]
+    public bool? Strict { get; set; }
 }

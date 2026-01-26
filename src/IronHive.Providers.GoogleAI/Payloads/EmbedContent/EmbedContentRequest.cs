@@ -4,7 +4,7 @@ namespace IronHive.Providers.GoogleAI.Payloads.EmbedContent;
 
 internal class EmbedContentRequest
 {
-    [JsonPropertyName("model")]
+    [JsonIgnore]
     public required string Model { get; set; }
 
     /// <summary>

@@ -4,7 +4,7 @@ namespace IronHive.Providers.GoogleAI.Payloads.Tokens;
 
 internal class CountTokensRequest
 {
-    [JsonPropertyName("model")]
+    [JsonIgnore]
     public required string Model { get; set; }
 
     [JsonPropertyName("contents")]

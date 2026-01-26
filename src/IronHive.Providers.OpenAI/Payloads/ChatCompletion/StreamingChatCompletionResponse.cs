@@ -27,9 +27,6 @@ public class StreamingChatCompletionResponse
     [JsonPropertyName("service_tier")]
     public string? ServiceTier { get; set; }
 
-    [JsonPropertyName("system_fingerprint")]
-    public string? SystemFingerprint { get; set; }
-
     [JsonPropertyName("usage")]
     public ChatTokenUsage? Usage { get; set; }
 }

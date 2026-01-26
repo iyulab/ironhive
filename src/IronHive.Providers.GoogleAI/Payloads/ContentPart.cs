@@ -19,6 +19,12 @@ internal sealed class ContentPart
     [JsonPropertyName("thoughtSignature")]
     public string? ThoughtSignature { get; set; }
 
+    /// <summary>
+    /// 연결된 메타데이터 정보.
+    /// </summary>
+    [JsonPropertyName("partMetadata")]
+    public object? PartMetadata { get; set; }
+
     #region Modality Union Type (아래 prop중 하나만)
 
     /// <summary>순수 텍스트.</summary>

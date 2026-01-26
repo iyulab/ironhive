@@ -1,5 +1,4 @@
-﻿using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 
 namespace IronHive.Providers.GoogleAI.Payloads;
 
@@ -38,6 +37,10 @@ internal sealed class FunctionResponse
     [JsonPropertyName("response")]
     public required object Response { get; set; }
 
+    /// <summary>함수 응답의 일부 미디어 파트(대용량 응답 시).</summary>
+    [JsonPropertyName("parts")]
+    public ICollection<FunctionResponsePart>? Parts { get; set; }
+
     /// <summary> 함수 실행이 더 필요한지 여부(비동기 함수 호출 시).</summary>
     [JsonPropertyName("willContinue")]
     public bool? WillContinue { get; set; }
@@ -56,4 +59,13 @@ internal sealed class FunctionResponse
         // 대화 컨텍스트에 결과를 추가하고, 현재 생성 중인 응답에 반드시 반영함.
         INTERRUPT
     }
+}
+
+/// <summary>
+/// 일부 미디어를 포함하는 데이터 입니다.
+/// </summary>
+internal sealed class FunctionResponsePart
+{
+    [JsonPropertyName("inlineData")]
+    public BlobData? InlineData { get; set; }
 }

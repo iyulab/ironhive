@@ -70,6 +70,10 @@ internal sealed class GenerationConfig
     [JsonPropertyName("thinkingConfig")]
     public ThinkingConfig? ThinkingConfig { get; set; }
 
+    /// <summary>이미지 생성 설정(필요 모델에서 사용).</summary>
+    [JsonPropertyName("imageConfig")]
+    public ImageConfig? ImageConfig { get; set; }
+
     /// <summary>
     /// MEDIA_RESOLUTION_UNSPECIFIED, 
     /// MEDIA_RESOLUTION_LOW, 

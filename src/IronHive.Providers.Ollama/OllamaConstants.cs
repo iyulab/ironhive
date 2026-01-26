@@ -1,4 +1,4 @@
-﻿namespace IronHive.Providers.Ollama.Clients;
+﻿namespace IronHive.Providers.Ollama;
 
 /// <summary>
 /// <see href="https://docs.ollama.com/api">Document</see>

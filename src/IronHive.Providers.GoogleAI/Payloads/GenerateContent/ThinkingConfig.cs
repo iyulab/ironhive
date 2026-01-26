@@ -13,4 +13,17 @@ internal sealed class ThinkingConfig
     /// <summary>사고 토큰 예산.</summary>
     [JsonPropertyName("thinkingBudget")]
     public int? ThinkingBudget { get; set; }
+
+    /// <summary>모델의 사고 수준을 지정합니다.</summary>
+    [JsonPropertyName("thinkingLevel")]
+    public ThinkingLevel? ThinkingLevel { get; set; }
+}
+
+internal enum ThinkingLevel
+{
+    THINKING_LEVEL_UNSPECIFIED,
+    MINIMAL,
+    LOW,
+    MEDIUM,
+    HIGH
 }

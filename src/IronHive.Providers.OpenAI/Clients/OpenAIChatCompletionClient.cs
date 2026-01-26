@@ -47,10 +47,9 @@ public class OpenAIChatCompletionClient : OpenAIClientBase
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var reader = new StreamReader(stream);
 
-        while (!reader.EndOfStream)
+        string? line;
+        while ((line = await reader.ReadLineAsync(cancellationToken)) is not null)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            var line = await reader.ReadLineAsync(cancellationToken);
             //Console.WriteLine(line);
 
             if (string.IsNullOrWhiteSpace(line))

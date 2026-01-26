@@ -30,7 +30,7 @@ public class WordDecoder : IFileDecoder<string>
         using var word = WordprocessingDocument.Open(data, false)
             ?? throw new InvalidOperationException("Failed to open the Word document.");
 
-        var paragraphs = word.MainDocumentPart?.Document.Body?.Descendants<Paragraph>()?.ToList()
+        var paragraphs = word.MainDocumentPart?.Document?.Body?.Descendants<Paragraph>()?.ToList()
             ?? throw new InvalidOperationException("The document body is missing.");
 
         foreach (var p in paragraphs)

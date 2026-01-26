@@ -47,10 +47,9 @@ internal class OpenAIResponsesClient : OpenAIClientBase
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var reader = new StreamReader(stream);
 
-        while (!reader.EndOfStream)
+        string? line;
+        while ((line = await reader.ReadLineAsync(cancellationToken)) is not null)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            var line = await reader.ReadLineAsync(cancellationToken);
             //Console.WriteLine(line);
 
             if (string.IsNullOrWhiteSpace(line))
@@ -69,5 +68,21 @@ internal class OpenAIResponsesClient : OpenAIClientBase
                 }
             }
         }
+    }
+
+    internal async Task<ResponsesTokenCountResponse> PostResponsesTokenCountAsync(
+        ResponsesTokenCountRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var json = JsonSerializer.Serialize(request, _jsonOptions);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        using var response = await _client.PostAsync(OpenAIConstants.PostResponsesTokenCountPath.RemovePrefix('/'), content, cancellationToken);
+        if (!response.IsSuccessStatusCode && response.TryExtractMessage(out string error))
+            throw new HttpRequestException(error);
+        response.EnsureSuccessStatusCode();
+
+        var message = await response.Content.ReadFromJsonAsync<ResponsesTokenCountResponse>(_jsonOptions, cancellationToken)
+            ?? throw new InvalidOperationException("Failed to deserialize response.");
+        return message;
     }
 }

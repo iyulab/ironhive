@@ -6,10 +6,13 @@ namespace IronHive.Providers.GoogleAI.Payloads.GenerateContent;
 internal sealed class ToolConfig
 {
     [JsonPropertyName("functionCallingConfig")]
-    public Config? FunctionConfig { get; set; }
+    public FunctionCallConfig? FunctionConfig { get; set; }
+
+    [JsonPropertyName("retrievalConfig")]
+    public RetrievalCallConfig? RetrievalConfig { get; set; }
 
     /// <summary>함수 호출 동작 설정.</summary>
-    internal sealed class Config
+    internal sealed class FunctionCallConfig
     {
         /// <summary> 함수 호출 모드. 미지정 시 AUTO.</summary>
         [JsonPropertyName("mode")]
@@ -20,6 +23,16 @@ internal sealed class ToolConfig
         public ICollection<string>? FunctionNames { get; set; }
     }
 
+    /// <summary>검색 기반 도구 설정.</summary>
+    internal sealed class RetrievalCallConfig
+    {
+        [JsonPropertyName("latLng")]
+        public Location? LatLng { get; set; }
+
+        [JsonPropertyName("languageCode")]
+        public string? LanguageCode { get; set; }
+    }
+
     internal enum FunctionMode
     {
         MODE_UNSPECIFIED,
@@ -27,5 +40,14 @@ internal sealed class ToolConfig
         ANY,
         NONE,
         VALIDATED
+    }
+
+    internal class Location
+    {
+        [JsonPropertyName("latitude")]
+        public double Latitude { get; set; }
+
+        [JsonPropertyName("longitude")]
+        public double Longitude { get; set; }
     }
 }

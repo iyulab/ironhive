@@ -11,26 +11,38 @@ namespace IronHive.Providers.OpenAI.Payloads.Responses;
 [JsonDerivedType(typeof(StreamingCompletedResponse), "response.completed")]
 [JsonDerivedType(typeof(StreamingFailedResponse), "response.failed")]
 [JsonDerivedType(typeof(StreamingIncompleteResponse), "response.incomplete")]
+[JsonDerivedType(typeof(StreamingQueuedResponse), "response.queued")]
 [JsonDerivedType(typeof(StreamingOutputAddedResponse), "response.output_item.added")]
 [JsonDerivedType(typeof(StreamingOutputDoneResponse), "response.output_item.done")]
 [JsonDerivedType(typeof(StreamingContentAddedResponse), "response.content_part.added")]
 [JsonDerivedType(typeof(StreamingContentDoneResponse), "response.content_part.done")]
 [JsonDerivedType(typeof(StreamingTextDeltaResponse), "response.output_text.delta")]
 [JsonDerivedType(typeof(StreamingTextDoneResponse), "response.output_text.done")]
+[JsonDerivedType(typeof(StreamingAnnotationAddedResponse), "response.output_text.annotation.added")]
 [JsonDerivedType(typeof(StreamingRefusalDeltaResponse), "response.refusal.delta")]
 [JsonDerivedType(typeof(StreamingRefusalDoneResponse), "response.refusal.done")]
 [JsonDerivedType(typeof(StreamingFunctionToolDeltaResponse), "response.function_call_arguments.delta")]
 [JsonDerivedType(typeof(StreamingFunctionToolDoneResponse), "response.function_call_arguments.done")]
+[JsonDerivedType(typeof(StreamingWebsearchInProgressResponse), "response.web_search_call.in_progress")]
+[JsonDerivedType(typeof(StreamingWebsearchSearchingResponse), "response.web_search_call.searching")]
+[JsonDerivedType(typeof(StreamingWebsearchCompletedResponse), "response.web_search_call.completed")]
+[JsonDerivedType(typeof(StreamingImageGenerationCompletedResponse), "response.image_generation_call.completed")]
+[JsonDerivedType(typeof(StreamingImageGenerationGeneratingResponse), "response.image_generation_call.generating")]
+[JsonDerivedType(typeof(StreamingImageGenerationInProgressResponse), "response.image_generation_call.in_progress")]
+[JsonDerivedType(typeof(StreamingImageGenerationPartialResponse), "response.image_generation_call.partial_image")]
+[JsonDerivedType(typeof(StreamingCodeInterpeterInProgressResponse), "response.code_interpreter_call.in_progress")]
+[JsonDerivedType(typeof(StreamingCodeInterpeterInterpretingResponse), "response.code_interpreter_call.interpreting")]
+[JsonDerivedType(typeof(StreamingCodeInterpeterCompletedResponse), "response.code_interpreter_call.completed")]
+[JsonDerivedType(typeof(StreamingCodeInterpeterDeltaResponse), "response.code_interpreter_call_code.delta")]
+[JsonDerivedType(typeof(StreamingCodeInterpeterDoneResponse), "response.code_interpreter_call_code.done")]
+[JsonDerivedType(typeof(StreamingCustomToolDeltaResponse), "response.custom_tool_call_input.delta")]
+[JsonDerivedType(typeof(StreamingCustomToolDoneResponse), "response.custom_tool_call_input.done")]
 [JsonDerivedType(typeof(StreamingReasoningAddedResponse), "response.reasoning_summary_part.added")]
 [JsonDerivedType(typeof(StreamingReasoningDoneResponse), "response.reasoning_summary_part.done")]
 [JsonDerivedType(typeof(StreamingReasoningSummaryDeltaResponse), "response.reasoning_summary_text.delta")]
 [JsonDerivedType(typeof(StreamingReasoningSummaryDoneResponse), "response.reasoning_summary_text.done")]
 [JsonDerivedType(typeof(StreamingReasoningTextDeltaResponse), "response.reasoning_text.delta")]
 [JsonDerivedType(typeof(StreamingReasoningTextDoneResponse), "response.reasoning_text.done")]
-[JsonDerivedType(typeof(StreamingAnnotationAddedResponse), "response.output_text.annotation.added")]
-[JsonDerivedType(typeof(StreamingQueuedResponse), "response.queued")]
-[JsonDerivedType(typeof(StreamingCustomToolDeltaResponse), "response.custom_tool_call_input.delta")]
-[JsonDerivedType(typeof(StreamingCustomToolDoneResponse), "response.custom_tool_call_input.done")]
 [JsonDerivedType(typeof(StreamingErrorResponse), "error")]
 internal abstract class StreamingResponsesResponse
 {
@@ -60,6 +72,9 @@ internal class StreamingFailedResponse : StreamingStatusResponse
 { }
 
 internal class StreamingIncompleteResponse : StreamingStatusResponse
+{ }
+
+internal class StreamingQueuedResponse : StreamingResponsesResponse
 { }
 
 #endregion
@@ -129,6 +144,15 @@ internal class StreamingTextDoneResponse : StreamingContentResponse
     public required string Text { get; set; }
 }
 
+internal class StreamingAnnotationAddedResponse : StreamingContentResponse
+{
+    [JsonPropertyName("annotation")]
+    public required ResponsesAnnotation Annotation { get; set; }
+
+    [JsonPropertyName("annotation_index")]
+    public required int AnnotationIndex { get; set; }
+}
+
 internal class StreamingRefusalDeltaResponse : StreamingContentResponse
 {
     [JsonPropertyName("delta")]
@@ -140,16 +164,90 @@ internal class StreamingRefusalDoneResponse : StreamingContentResponse
     public required string Refusal { get; set; }
 }
 
-internal class StreamingFunctionToolDeltaResponse : StreamingContentResponse
+#endregion
+
+#region Output Item Tool Related
+
+/// <summary> 스트리밍 Tool 관련 응답의 Base </summary>
+internal abstract class StreamingToolResponse : StreamingOutputResponse
+{
+    [JsonPropertyName("item_id")]
+    public required string ItemId { get; set; }
+}
+
+internal class StreamingFunctionToolDeltaResponse : StreamingToolResponse
 {
     [JsonPropertyName("delta")]
     public required string Delta { get; set; }
 }
 
-internal class StreamingFunctionToolDoneResponse : StreamingContentResponse
+internal class StreamingFunctionToolDoneResponse : StreamingToolResponse
 {
     [JsonPropertyName("arguments")]
     public required string Arguments { get; set; }
+
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+}
+
+internal class StreamingWebsearchInProgressResponse : StreamingToolResponse
+{ }
+
+internal class StreamingWebsearchSearchingResponse : StreamingToolResponse
+{ }
+
+internal class StreamingWebsearchCompletedResponse : StreamingToolResponse
+{ }
+
+internal class StreamingImageGenerationCompletedResponse : StreamingToolResponse
+{ }
+
+internal class StreamingImageGenerationGeneratingResponse : StreamingToolResponse
+{ }
+
+internal class StreamingImageGenerationInProgressResponse : StreamingToolResponse
+{ }
+
+internal class StreamingImageGenerationPartialResponse : StreamingToolResponse
+{
+    [JsonPropertyName("partial_image_b64")]
+    public required string PartialBase64 { get; set; }
+
+    [JsonPropertyName("partial_image_index")]
+    public int ImageIndex { get; set; }
+}
+
+internal class StreamingCodeInterpeterInProgressResponse : StreamingToolResponse
+{ }
+
+internal class StreamingCodeInterpeterInterpretingResponse : StreamingToolResponse
+{ }
+
+internal class StreamingCodeInterpeterCompletedResponse : StreamingToolResponse
+{ }
+
+internal class StreamingCodeInterpeterDeltaResponse : StreamingToolResponse
+{
+    [JsonPropertyName("delta")]
+    public required string Delta { get; set; }
+}
+
+internal class StreamingCodeInterpeterDoneResponse : StreamingToolResponse
+{
+    [JsonPropertyName("code")]
+    public required string Code { get; set; }
+}
+
+internal class StreamingCustomToolDeltaResponse : StreamingToolResponse
+{
+    [JsonPropertyName("delta")]
+    public required string Delta { get; set; }
+}
+
+internal class StreamingCustomToolDoneResponse : StreamingToolResponse
+{
+    [JsonPropertyName("input")]
+    public required string Input { get; set; }
 }
 
 #endregion
@@ -204,32 +302,6 @@ internal class StreamingReasoningTextDoneResponse : StreamingReasoningResponse
 
 #endregion
 
-#region 기타 Related
-
-internal class StreamingCustomToolDeltaResponse : StreamingContentResponse
-{
-    [JsonPropertyName("delta")]
-    public required string Delta { get; set; }
-}
-
-internal class StreamingCustomToolDoneResponse : StreamingContentResponse
-{
-    [JsonPropertyName("input")]
-    public required string Input { get; set; }
-}
-
-internal class StreamingAnnotationAddedResponse : StreamingContentResponse
-{
-    [JsonPropertyName("annotation")]
-    public required ResponsesAnnotation Annotation { get; set; }
-
-    [JsonPropertyName("annotation_index")]
-    public required int AnnotationIndex { get; set; }
-}
-
-internal class StreamingQueuedResponse : StreamingResponsesResponse
-{ }
-
 internal class StreamingErrorResponse : StreamingResponsesResponse
 {
     [JsonPropertyName("code")]
@@ -241,5 +313,3 @@ internal class StreamingErrorResponse : StreamingResponsesResponse
     [JsonPropertyName("param")]
     public required string Param { get; set; }
 }
-
-#endregion

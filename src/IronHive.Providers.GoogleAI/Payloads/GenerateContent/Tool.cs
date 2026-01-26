@@ -22,7 +22,19 @@ internal sealed class Tool
     [JsonPropertyName("googleSearch")]
     public GoogleSearchTool? GoogleSearch { get; set; }
 
+    /// <summary>컴퓨터 직접 상호 작용 도구.</summary>
+    [JsonPropertyName("computerUse")]
+    public JsonObject? ComputerUse { get; set; }
+
     /// <summary>URL 컨텍스트(페이지 내용 자동 참조) 도구 사용 시 Empty JSON Object.</summary>
     [JsonPropertyName("urlContext")]
     public JsonObject? UrlContext { get; set; }
+
+    /// <summary>파일 검색 도구 사용 시</summary>
+    [JsonPropertyName("fileSearch")]
+    public JsonObject? FileSearch { get; set; }
+
+    /// <summary>구글 맵스 도구 사용 시</summary>
+    [JsonPropertyName("googleMaps")]
+    public JsonObject? GoogleMaps { get; set; }
 }

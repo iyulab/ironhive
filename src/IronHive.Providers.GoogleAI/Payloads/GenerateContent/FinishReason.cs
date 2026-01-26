@@ -17,6 +17,11 @@ internal enum FinishReason
     SPII, // 민감한 개인 식별 정보
     MALFORMED_FUNCTION_CALL, // 잘못된 함수 호출
     IMAGE_SAFETY, // 이미지 안전성
+    IMAGE_PROHIBITED_CONTENT, // 이미지 금지 콘텐츠
+    IMAGE_OTHER, // 이미지 기타 중지
+    NO_IMAGE, // 이미지 생성 실패
+    IMAGE_RECITATION, // 이미지 인용
     UNEXPECTED_TOOL_CALL, // 예상치 못한 도구 호출
-    TOO_MANY_TOOL_CALLS // 도구 호출 과다
+    TOO_MANY_TOOL_CALLS, // 도구 호출 과다,
+    MISSING_THOUGHT_SIGNATURE // 누락된 사고 서명
 }

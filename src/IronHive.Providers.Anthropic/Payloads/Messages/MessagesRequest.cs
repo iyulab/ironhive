@@ -2,31 +2,22 @@
 
 namespace IronHive.Providers.Anthropic.Payloads.Messages;
 
+/// <summary>
+/// Beta 기능들을 제외한 Anthropic 메시지 요청 페이로드입니다.
+/// </summary>
 internal class MessagesRequest
 {
-    [JsonPropertyName("model")]
-    public required string Model { get; set; }
-
-    [JsonPropertyName("messages")]
-    public required IEnumerable<Message> Messages { get; set; }
-
     [JsonPropertyName("max_tokens")]
     public required int MaxTokens { get; set; }
 
-    /// <summary>
-    /// (Not Use) Container ID of the tool that is running in.
-    /// </summary>
-    [JsonPropertyName("container")]
-    public string? Container { get; set; }
+    [JsonPropertyName("messages")]
+    public required ICollection<Message> Messages { get; set; }
 
-    /// <summary>
-    /// (Not Use)
-    /// </summary>
-    [JsonPropertyName("mcp_servers")]
-    public IEnumerable<object>? McpServers { get; set; }
+    [JsonPropertyName("model")]
+    public required string Model { get; set; }
 
     [JsonPropertyName("metadata")]
-    public object? Metadata { get; set; }
+    public UserMetadata? Metadata { get; set; }
 
     /// <summary>
     /// "auto", "standard_only"
@@ -50,7 +41,7 @@ internal class MessagesRequest
     public float? Temperature { get; set; }
 
     [JsonPropertyName("thinking")]
-    public ThinkingEffort? Thinking { get; set; }
+    public ThinkingConfig? Thinking { get; set; }
 
     [JsonPropertyName("tool_choice")]
     public AnthropicToolChoice? ToolChoice { get; set; }

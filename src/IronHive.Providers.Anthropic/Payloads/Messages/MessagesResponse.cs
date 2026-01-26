@@ -14,20 +14,14 @@ internal enum StopReason
 
 internal class MessagesResponse
 {
-    /// <summary>
-    /// (Not Use) Information about the container that the tool is running in.
-    /// </summary>
-    [JsonPropertyName("container")]
-    public object? Container { get; set; }
+    [JsonPropertyName("id")]
+    public required string Id { get; set; }
 
     /// <summary>
     /// text or tool content
     /// </summary>
     [JsonPropertyName("content")]
     public required IEnumerable<MessageContent> Content { get; set; }
-
-    [JsonPropertyName("id")]
-    public required string Id { get; set; }
 
     [JsonPropertyName("model")]
     public required string Model { get; set; }

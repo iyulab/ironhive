@@ -46,4 +46,8 @@ internal sealed class ResponseCandidate
     /// <summary>이 후보의 인덱스.</summary>
     [JsonPropertyName("index")]
     public int? Index { get; set; }
+
+    /// <summary>토큰 생성 중지 이유 설명</summary>
+    [JsonPropertyName("finishMessage")]
+    public string? FinishMessage { get; set; }
 }

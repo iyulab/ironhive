@@ -1,4 +1,4 @@
-﻿namespace IronHive.Providers.GoogleAI.Clients;
+﻿namespace IronHive.Providers.GoogleAI;
 
 /// <summary>
 /// <see href="https://ai.google.dev/api">Documentation</see>

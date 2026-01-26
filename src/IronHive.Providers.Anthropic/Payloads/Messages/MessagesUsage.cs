@@ -23,13 +23,19 @@ internal class MessagesUsage
     /// tool use count like "web_search"
     /// </summary>
     [JsonPropertyName("server_tool_use")]
-    public object? ServerToolUse { get; set; }
+    public WebSearchToolUse? WebSearchUse { get; set; }
 
     /// <summary>
     /// "standard", "priority", "batch"
     /// </summary>
     [JsonPropertyName("service_tier")]
     public string? ServiceTier { get; set; }
+
+    public sealed class WebSearchToolUse
+    {
+        [JsonPropertyName("web_search_requests")]
+        public int? Requests { get; set; }
+    }
 }
 
 internal class CacheCreation

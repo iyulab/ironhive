@@ -8,7 +8,8 @@ internal class ResponsesText
     public ResponsesFormat? Format {  get; set; }
 
     /// <summary>
-    /// 모델 응답의 세부 수준을 제어합니다. (default- medium)
+    /// 모델 응답의 세부 수준을 제어합니다.
+    /// "low", "medium", "high" 중 하나
     /// </summary>
     [JsonPropertyName("verbosity")]
     public ResponsesVerbosity? Verbosity { get; set; }

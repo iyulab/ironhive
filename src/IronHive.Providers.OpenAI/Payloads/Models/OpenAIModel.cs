@@ -9,10 +9,11 @@ namespace IronHive.Providers.OpenAI.Payloads.Models;
 public class OpenAIModel
 {
     /// <summary>
-    /// always "model"
+    /// The creation date and time of the model.
     /// </summary>
-    [JsonPropertyName("object")]
-    public string Object { get; } = "model";
+    [JsonPropertyName("created")]
+    [JsonConverter(typeof(DateTimeJsonConverter))]
+    public DateTime? Created { get; set; }
 
     /// <summary>
     /// The model ID. <br/>
@@ -21,15 +22,14 @@ public class OpenAIModel
     public string Id { get; set; } = string.Empty;
 
     /// <summary>
+    /// always "model"
+    /// </summary>
+    [JsonPropertyName("object")]
+    public string Object { get; } = "model";
+
+    /// <summary>
     /// The model owner.
     /// </summary>
     [JsonPropertyName("owned_by")]
     public string OwnedBy { get; set; } = string.Empty;
-
-    /// <summary>
-    /// The creation date and time of the model.
-    /// </summary>
-    [JsonPropertyName("created")]
-    [JsonConverter(typeof(DateTimeJsonConverter))]
-    public DateTime? Created { get; set; }
 }

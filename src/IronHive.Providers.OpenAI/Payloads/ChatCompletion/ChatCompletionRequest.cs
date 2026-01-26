@@ -80,7 +80,13 @@ public class ChatCompletionRequest
     public string? PromptCacheKey { get; set; }
 
     /// <summary>
-    /// o-series model only
+    /// (Not Use) < "24h"
+    /// </summary>
+    [JsonPropertyName("prompt_cache_retention")]
+    public string? PromptCacheRetention { get; set; }
+
+    /// <summary>
+    /// o-series and gpt-5 later models only,
     /// </summary>
     [JsonPropertyName("reasoning_effort")]
     public ChatReasoningEffort? ReasoningEffort { get; set; }
@@ -127,11 +133,8 @@ public class ChatCompletionRequest
     [JsonPropertyName("temperature")]
     public float? Temperature { get; set; }
 
-    /// <summary>
-    /// "none", "auto", ...
-    /// </summary>
     [JsonPropertyName("tool_choice")]
-    public object? ToolChoice { get; set; }
+    public ChatToolChoice? ToolChoice { get; set; }
 
     [JsonPropertyName("tools")]
     public IEnumerable<ChatTool>? Tools { get; set; }
@@ -154,11 +157,8 @@ public class ChatCompletionRequest
     [JsonPropertyName("verbosity")]
     public ChatVerbosity? Verbosity { get; set; }
 
-    /// <summary>
-    /// (Not Use) web search tool
-    /// </summary>
     [JsonPropertyName("web_search_options")]
-    public object? WebSearchOptions { get; set; }
+    public ChatWebSearchOptions? WebSearchOptions { get; set; }
 }
 
 public class ChatCompletionStreamOptions

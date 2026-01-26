@@ -12,7 +12,7 @@ internal sealed class GroundingData
     public Content? Content { get; set; }
 
     /// <summary>
-    /// Union 타입: groundingPassage 또는 semanticRetrieverChunk 중 하나.
+    /// Union 타입: 둘 중 하나.
     /// </summary>
     internal sealed class SourceData
     {

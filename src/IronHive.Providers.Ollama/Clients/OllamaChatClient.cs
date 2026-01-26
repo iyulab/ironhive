@@ -1,4 +1,5 @@
 ﻿using IronHive.Providers.Ollama.Payloads.Chat;
+using System.Diagnostics.CodeAnalysis;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -44,11 +45,9 @@ internal class OllamaChatClient : OllamaClientBase
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var reader = new StreamReader(stream);
 
-        while (!reader.EndOfStream)
+        string? line;
+        while ((line = await reader.ReadLineAsync(cancellationToken)) is not null)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var line = await reader.ReadLineAsync();
             if (string.IsNullOrWhiteSpace(line) || !line.StartsWith('{') || !line.EndsWith('}'))
                 continue;
 

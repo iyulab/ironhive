@@ -55,6 +55,8 @@ internal class GoogleAIGenerateContentClient : GoogleAIClientBase
         var sb = new StringBuilder();
         var buffer = new char[4096];
         int depth = 0;
+        bool inString = false;
+        bool escape = false;
 
         int n;
         while ((n = await reader.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken)) > 0)
@@ -63,41 +65,74 @@ internal class GoogleAIGenerateContentClient : GoogleAIClientBase
             {
                 char c = buffer[i];
 
-                // JsonObject 시작
-                if (c == '{')
-                {
-                    sb.Append(c);
-                    depth++;
-                    continue;
-                }
-
-                // 잘못된 스트림
-                if (depth < 0)
-                    throw new JsonException("Invalid JSON stream");
-
-                // JsonObject 시작 전
+                // 오브젝트 시작 전: 첫 '{' 찾기
                 if (depth == 0)
-                    continue;
-
-                // JsonObject 종료
-                if (c == '}')
                 {
-                    depth--;
+                    if (c == '{')
+                    {
+                        sb.Append(c);
+                        depth = 1;
+                        inString = false;
+                        escape = false;
+                    }
+                    continue;
                 }
 
-                // JsonObject 채우기
+                // 오브젝트 진행 중: 일단 append
                 sb.Append(c);
 
-                // 오브젝트 완성시
-                if (depth == 0)
+                // \" \\ \n 등 이스케이프 처리 중이면 이번 글자는 의미 해석 안 함
+                if (escape)
+                {   
+                    escape = false;
+                    continue;
+                }
+
+                // 문자열 안에서만 의미 있지만, 안전하게 처리
+                if (c == '\\')
                 {
-                    var jsonStr = sb.ToString();
-                    sb.Clear();
-                    var item = JsonSerializer.Deserialize<GenerateContentResponse>(jsonStr, _jsonOptions)
-                               ?? throw new JsonException("null deserialized");
-                    yield return item;
+                    escape = true;
+                    continue;
+                }
+
+                // 문자열 내부 토글
+                if (c == '"')
+                {
+                    inString = !inString;
+                    continue;
+                }
+
+                // 문자열 밖에서만 depth 카운트
+                if (!inString)
+                {
+                    if (c == '{')
+                    {
+                        depth++;
+                    }
+                    else if (c == '}')
+                    {
+                        depth--;
+                        if (depth < 0)
+                            throw new JsonException("Invalid JSON stream");
+
+                        // 오브젝트 완성
+                        if (depth == 0)
+                        {
+                            var jsonStr = sb.ToString();
+                            sb.Clear();
+
+                            var item = JsonSerializer.Deserialize<GenerateContentResponse>(jsonStr, _jsonOptions)
+                                       ?? throw new JsonException("null deserialized");
+
+                            yield return item;
+                        }
+                    }
                 }
             }
         }
+
+        // 스트림이 끝났는데 오브젝트가 덜 닫혔으면 예외
+        if (depth != 0)
+            throw new JsonException("Truncated JSON stream");
     }
 }

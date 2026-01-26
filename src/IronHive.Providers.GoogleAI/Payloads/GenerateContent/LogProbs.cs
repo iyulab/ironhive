@@ -12,6 +12,10 @@ internal sealed class LogprobsResult
     /// <summary>각 스텝에서 실제 선택된 후보.</summary>
     [JsonPropertyName("chosenCandidates")]
     public ICollection<LogprobCandidate>? Candidates { get; set; }
+
+    /// <summary>모든 토크의 로그 확률 합계입니다.</summary>
+    [JsonPropertyName("logProbabilitySum")]
+    public float? LogProbabilitySum { get; set; }
 }
 
 internal sealed class TopCandidates

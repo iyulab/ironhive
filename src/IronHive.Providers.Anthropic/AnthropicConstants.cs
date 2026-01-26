@@ -1,4 +1,4 @@
-﻿namespace IronHive.Providers.Anthropic.Clients;
+﻿namespace IronHive.Providers.Anthropic;
 
 /// <summary>
 /// <see href="https://docs.anthropic.com/en/api/getting-started">Documentation</see>
@@ -13,4 +13,5 @@ internal class AnthropicConstants
 
     internal const string GetModelsPath = "/models";
     internal const string PostMessagesPath = "/messages";
+    internal const string PostCountTokensPath = "/messages/count_tokens";
 }

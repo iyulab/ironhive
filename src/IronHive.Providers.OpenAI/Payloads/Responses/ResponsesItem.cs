@@ -4,9 +4,13 @@ namespace IronHive.Providers.OpenAI.Payloads.Responses;
 
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(ResponsesMessageItem), "message")]
-[JsonDerivedType(typeof(ResponsesReasoningItem), "reasoning")]
+[JsonDerivedType(typeof(ResponsesWebSearchToolItem), "web_search_call")]
 [JsonDerivedType(typeof(ResponsesFunctionToolCallItem), "function_call")]
 [JsonDerivedType(typeof(ResponsesFunctionToolOutputItem), "function_call_output")]
+[JsonDerivedType(typeof(ResponsesReasoningItem), "reasoning")]
+[JsonDerivedType(typeof(ResponsesCompactionItem), "compaction")]
+[JsonDerivedType(typeof(ResponsesImageGenerationItem), "image_generation_call")]
+[JsonDerivedType(typeof(ResponsesCodeInterpreterItem), "code_interpreter_call")]
 [JsonDerivedType(typeof(ResponsesCustomToolCallItem), "custom_call")]
 [JsonDerivedType(typeof(ResponsesCustomToolOutputItem), "custom_call_output")]
 [JsonDerivedType(typeof(ResponsesReferenceItem), "item_reference")]
@@ -23,6 +27,42 @@ internal class ResponsesMessageItem : ResponsesItem
 
     [JsonPropertyName("role")]
     public required ResponsesMessageRole Role { get; set; }
+
+    [JsonPropertyName("status")]
+    public ResponsesItemStatus? Status { get; set; }
+}
+
+internal class ResponsesWebSearchToolItem : ResponsesItem
+{
+    [JsonPropertyName("action")]
+    public required ResponsesWebSearchAction Action { get; set; }
+
+    [JsonPropertyName("status")]
+    public required string Status { get; set; }
+}
+
+internal class ResponsesFunctionToolCallItem : ResponsesItem
+{
+    [JsonPropertyName("arguments")]
+    public required string Arguments { get; set; }
+
+    [JsonPropertyName("call_id")]
+    public required string CallId { get; set; }
+
+    [JsonPropertyName("name")]
+    public required string Name { get; set; }
+
+    [JsonPropertyName("status")]
+    public ResponsesItemStatus? Status { get; set; }
+}
+
+internal class ResponsesFunctionToolOutputItem : ResponsesItem
+{
+    [JsonPropertyName("call_id")]
+    public required string CallId { get; set; }
+
+    [JsonPropertyName("output")]
+    public required string Output { get; set; }
 
     [JsonPropertyName("status")]
     public ResponsesItemStatus? Status { get; set; }
@@ -53,31 +93,43 @@ internal class ResponsesReasoningItem : ResponsesItem
     public ResponsesItemStatus? Status { get; set; }
 }
 
-internal class ResponsesFunctionToolCallItem : ResponsesItem
+/// <summary>
+/// "v1/responses/compact" API 사용시 반환된 항목(컨텍스트 압축)
+/// </summary>
+internal class ResponsesCompactionItem : ResponsesItem
 {
-    [JsonPropertyName("arguments")]
-    public required string Arguments { get; set; }
-
-    [JsonPropertyName("call_id")]
-    public required string CallId { get; set; }
-
-    [JsonPropertyName("name")]
-    public required string Name { get; set; }
-
-    [JsonPropertyName("status")]
-    public ResponsesItemStatus? Status { get; set; }
+    [JsonPropertyName("encrypted_content")]
+    public required string EncryptedContent { get; set; }
 }
 
-internal class ResponsesFunctionToolOutputItem : ResponsesItem
+internal class ResponsesImageGenerationItem : ResponsesItem
 {
-    [JsonPropertyName("call_id")]
-    public required string CallId { get; set; }
-
-    [JsonPropertyName("output")]
-    public required string Output { get; set; }
+    /// <summary>
+    /// generated image data encoded in base64
+    /// </summary>
+    [JsonPropertyName("result")]
+    public required string Result { get; set; }
 
     [JsonPropertyName("status")]
-    public ResponsesItemStatus? Status { get; set; }
+    public required string Status { get; set; }
+}
+
+internal class ResponsesCodeInterpreterItem : ResponsesItem
+{
+    [JsonPropertyName("code")]
+    public required string Code { get; set; }
+
+    [JsonPropertyName("container_id")]
+    public required string ContainerId { get; set; }
+    
+    [JsonPropertyName("outputs")]
+    public required ICollection<ResponsesCodeInterpreterOutput> Outputs { get; set; }
+
+    /// <summary>
+    /// "in_progress", "completed", "incomplete", "interpreting", "failed"
+    /// </summary>
+    [JsonPropertyName("status")]
+    public required string Status { get; set; }
 }
 
 internal class ResponsesCustomToolCallItem : ResponsesItem

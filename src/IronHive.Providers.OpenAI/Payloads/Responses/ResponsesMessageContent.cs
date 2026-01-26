@@ -77,11 +77,11 @@ internal class ResponsesOutputTextContent : ResponsesMessageContent
     [JsonPropertyName("annotations")]
     public ICollection<ResponsesAnnotation>? Annotations { get; set; }
 
+    [JsonPropertyName("logprobs")]
+    public ICollection<ResponsesLogProbs>? Logprobs { get; set; }
+
     [JsonPropertyName("text")]
     public required string Text { get; set; }
-
-    [JsonPropertyName("logprobs")]
-    public IEnumerable<ResponsesLogProb>? Logprobs { get; set; }
 }
 
 internal class ResponsesRefusalContent : ResponsesMessageContent

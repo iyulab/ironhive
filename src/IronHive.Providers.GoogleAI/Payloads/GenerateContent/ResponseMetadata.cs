@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
 namespace IronHive.Providers.GoogleAI.Payloads.GenerateContent;
 
@@ -50,12 +51,24 @@ internal sealed class GroundingMetadata
     [JsonPropertyName("retrievalMetadata")]
     public Metadata? RetrievalMetadata { get; set; }
 
-    /// <summary>그라운딩 청크(유니온). 여기서는 대표적으로 웹 청크만 포함.</summary>
+    /// <summary>구글 지도 토큰 리소스의 이름입니다.</summary>
+    [JsonPropertyName("googleMapsWidgetContextToken")]
+    public string? GoogleMapsToken { get; set; }
+
+    /// <summary>그라운딩 청크(유니온 타입, 셋중 하나)/summary>
     internal sealed class Chunk
     {
         /// <summary>웹 청크.</summary>
         [JsonPropertyName("web")]
         public GroundingWeb? Web { get; set; }
+
+        /// <summary>파일검색 청크</summary>
+        [JsonPropertyName("retrievedContext")]
+        public GroundingContext? Context { get; set; }
+
+        /// <summary>맵 청크</summary>
+        [JsonPropertyName("maps")]
+        public GroundingMap? Maps { get; set; }
 
         internal sealed class GroundingWeb
         {
@@ -66,6 +79,48 @@ internal sealed class GroundingMetadata
             /// <summary>타이틀.</summary>
             [JsonPropertyName("title")]
             public string? Title { get; set; }
+        }
+
+        internal sealed class GroundingContext
+        {
+            /// <summary>참조 URI.</summary>
+            [JsonPropertyName("uri")]
+            public string? Uri { get; set; }
+
+            /// <summary>문서 제목 또는 이름.</summary>
+            [JsonPropertyName("title")]
+            public string? Title { get; set; }
+
+            /// <summary>문서의 텍스트.</summary>
+            [JsonPropertyName("text")]
+            public string? Text { get; set; }
+
+            /// <summary>문서가 저장된 파일 검색 스토어.</summary>
+            [JsonPropertyName("fileSearchStore")]
+            public string? FileStore { get; set; }
+        }
+
+        internal sealed class GroundingMap
+        {
+            /// <summary>참조 URI.</summary>
+            [JsonPropertyName("uri")]
+            public string? Uri { get; set; }
+
+            /// <summary>장소의 이름</summary>
+            [JsonPropertyName("title")]
+            public string? Title { get; set; }
+
+            /// <summary>장소의 텍스트.</summary>
+            [JsonPropertyName("text")]
+            public string? Text { get; set; }
+
+            /// <summary>장소의 ID</summary>
+            [JsonPropertyName("placeId")]
+            public string? PlaceId { get; set; }
+
+            /// <summary>특정 장소의 리뷰글</summary>
+            [JsonPropertyName("placeAnswerSources")]
+            public JsonObject? AnswerSources { get; set; }
         }
     }
 

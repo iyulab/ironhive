@@ -1,8 +1,8 @@
-﻿using System.Text.Json;
-using System.Text;
+﻿using IronHive.Providers.Anthropic.Payloads.Messages;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
-using IronHive.Providers.Anthropic.Payloads.Messages;
+using System.Text;
+using System.Text.Json;
 
 namespace IronHive.Providers.Anthropic.Clients;
 
@@ -48,10 +48,9 @@ internal class AnthropicMessagesClient : AnthropicClientBase
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var reader = new StreamReader(stream);
 
-        while (!reader.EndOfStream)
+        string? line;
+        while ((line = await reader.ReadLineAsync(cancellationToken)) is not null)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            var line = await reader.ReadLineAsync(cancellationToken);
             //Console.WriteLine(line);
 
             if (string.IsNullOrWhiteSpace(line))
@@ -70,5 +69,21 @@ internal class AnthropicMessagesClient : AnthropicClientBase
                 }
             }
         }
+    }
+
+    internal async Task<TokenCountResponse> PostCountTokenAsync(
+        TokenCountRequest request,
+        CancellationToken cancellationToken)
+    {
+        var json = JsonSerializer.Serialize(request, _jsonOptions);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        using var response = await _client.PostAsync(AnthropicConstants.PostCountTokensPath.RemovePrefix('/'), content, cancellationToken);
+        if (!response.IsSuccessStatusCode && response.TryExtractMessage(out string error))
+            throw new HttpRequestException(error);
+        response.EnsureSuccessStatusCode();
+
+        var message = await response.Content.ReadFromJsonAsync<TokenCountResponse>(_jsonOptions, cancellationToken)
+            ?? throw new InvalidOperationException("Failed to deserialize response.");
+        return message;
     }
 }

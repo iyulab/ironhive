@@ -13,10 +13,14 @@ internal class ResponsesResponse
     public required bool Background { get; set; }
 
     /// <summary>
-    /// "object", { "id": string }
+    /// Unix 타임스탬프(초 단위)
     /// </summary>
+    [JsonConverter(typeof(DateTimeJsonConverter))]
+    [JsonPropertyName("completed_at")]
+    public DateTime? CompletedAt { get; set; }
+
     [JsonPropertyName("conversation")]
-    public object? Conversation { get; set; }
+    public ResponsesConversation? Conversation { get; set; }
 
     /// <summary>
     /// Unix 타임스탬프(초 단위)
@@ -59,7 +63,7 @@ internal class ResponsesResponse
     /// 최대 16개의 키-값 쌍 데이터
     /// </summary>
     [JsonPropertyName("metadata")]
-    public Dictionary<string, string>? Metadata { get; set; }
+    public KeyValuePair<string, string>? Metadata { get; set; }
 
     /// <summary>
     /// 사용된 모델 식별자
@@ -94,6 +98,9 @@ internal class ResponsesResponse
     [JsonPropertyName("prompt_cache_key")]
     public string? PromptCacheKey { get; set; }
 
+    [JsonPropertyName("prompt_cache_retention")]
+    public string? PromptCacheRetention { get; set; }
+
     [JsonPropertyName("reasoning")]
     public ResponsesReasoning? Reasoning { get; set; }
 
@@ -125,7 +132,7 @@ internal class ResponsesResponse
     /// "none", "auto", "required", ...
     /// </summary>
     [JsonPropertyName("tool_choice")]
-    public object? ToolChoice { get; set; }
+    public ResponsesToolChoice? ToolChoice { get; set; }
 
     [JsonPropertyName("tools")]
     public IEnumerable<ResponsesTool>? Tools { get; set; }
