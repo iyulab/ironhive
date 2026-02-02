@@ -132,7 +132,7 @@ public static class MessageGenerationRequestExtensions
         return new ResponsesRequest
         {
             Model = request.Model,
-            Instructions = request.System,
+            Instructions = request.SystemPrompt,
             Input = items,
             MaxOutputTokens = request.MaxTokens,
             Tools = request.Tools?.Select(t => new ResponsesFunctionTool
@@ -166,12 +166,12 @@ public static class MessageGenerationRequestExtensions
     {
         var enabledReasoning = request.ThinkingEffort != MessageThinkingEffort.None;
         var messages = new List<OpenAIMessage>();
-        if (!string.IsNullOrWhiteSpace(request.System))
+        if (!string.IsNullOrWhiteSpace(request.SystemPrompt))
         {
             if (enabledReasoning)
-                messages.Add(new DeveloperChatMessage { Content = request.System });
+                messages.Add(new DeveloperChatMessage { Content = request.SystemPrompt });
             else
-                messages.Add(new SystemChatMessage { Content = request.System });
+                messages.Add(new SystemChatMessage { Content = request.SystemPrompt });
         }
 
         foreach (var message in request.Messages)

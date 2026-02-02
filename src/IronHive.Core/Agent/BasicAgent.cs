@@ -24,7 +24,15 @@ public class BasicAgent : IAgent
     public required string Description { get; set; }
 
     /// <inheritdoc />
-    public string? Instruction { get; set; }
+    public string? SystemPrompt { get; set; }
+
+    /// <inheritdoc />
+    [Obsolete("Use SystemPrompt instead. Will be removed in v1.0.")]
+    public string? Instruction
+    {
+        get => SystemPrompt;
+        set => SystemPrompt = value;
+    }
 
     /// <inheritdoc />
     public IEnumerable<ToolItem>? Tools { get; set; }
@@ -61,7 +69,7 @@ public class BasicAgent : IAgent
         Messages = messages.ToList(),
         Provider = Provider,
         Model = Model,
-        Instruction = Instruction,
+        SystemPrompt = SystemPrompt,
         Tools = Tools ?? [],
         MaxTokens = Parameters?.MaxTokens,
         StopSequences = Parameters?.StopSequences,

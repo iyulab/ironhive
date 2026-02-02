@@ -158,9 +158,9 @@ internal static class MessageGenerationRequestExtensions
         {
             Model = request.Model,
             Contents = contents,
-            SystemInstruction = string.IsNullOrWhiteSpace(request.System) ? null : new GoogleAIContent
+            SystemInstruction = string.IsNullOrWhiteSpace(request.SystemPrompt) ? null : new GoogleAIContent
             {
-                Parts = [ new ContentPart { Text = request.System } ]
+                Parts = [ new ContentPart { Text = request.SystemPrompt } ]
             },
             Tools = 
             [

@@ -158,7 +158,7 @@ internal static class MessageGenerationRequestExtensions
         return new MessagesRequest
         {
             Model = request.Model,
-            System = request.System,
+            System = request.SystemPrompt,
             Messages = messages,
             MaxTokens = maxTokens,
             StopSequences = request.StopSequences,
