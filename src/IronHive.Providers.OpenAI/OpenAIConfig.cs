@@ -1,13 +1,14 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 using System.Text.Json;
 using System.Text.Encodings.Web;
+using IronHive.Abstractions.Http;
 
 namespace IronHive.Providers.OpenAI;
 
 /// <summary>
 /// OpenAI에 대한 설정 클래스입니다.
 /// </summary>
-public class OpenAIConfig
+public class OpenAIConfig : IProviderConfig
 {
     /// <summary>
     /// OpenAI API의 기본 URL을 가져오거나 설정합니다.
@@ -43,9 +44,29 @@ public class OpenAIConfig
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         AllowOutOfOrderMetadataProperties = true, // 다형성 역직렬화시 첫번째 속성이 아닌 경우에도 인식(성능 저하 있음)
-        Converters = 
-        { 
-            new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower) 
+        Converters =
+        {
+            new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower)
         },
     };
+
+    /// <inheritdoc />
+    public string GetDefaultBaseUrl() => OpenAIConstants.DefaultBaseUrl;
+
+    /// <inheritdoc />
+    public void ConfigureHttpClient(HttpClient client)
+    {
+        if (!string.IsNullOrWhiteSpace(ApiKey))
+            client.DefaultRequestHeaders.Add(
+                OpenAIConstants.AuthorizationHeaderName,
+                string.Format(OpenAIConstants.AuthorizationHeaderValue, ApiKey));
+
+        if (!string.IsNullOrWhiteSpace(Organization))
+            client.DefaultRequestHeaders.Add(
+                OpenAIConstants.OrganizationHeaderName, Organization);
+
+        if (!string.IsNullOrWhiteSpace(Project))
+            client.DefaultRequestHeaders.Add(
+                OpenAIConstants.ProjectHeaderName, Project);
+    }
 }
