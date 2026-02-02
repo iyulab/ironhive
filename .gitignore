@@ -25,3 +25,5 @@ package-lock.json
 dist/
 
 # User Files
+claudedocs/
+CLAUDE.md
