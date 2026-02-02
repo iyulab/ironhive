@@ -36,8 +36,8 @@ public class RabbitMQueueStorage : IQueueStorage
     {
         _pubChannel?.Dispose();
         _mgmChannel?.Dispose();
-
         _conn?.Dispose();
+        _pubLock.Dispose();
         GC.SuppressFinalize(this);
     }
 

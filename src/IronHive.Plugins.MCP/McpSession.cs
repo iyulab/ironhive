@@ -58,6 +58,7 @@ public class McpSession : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await DisconnectAsync();
+        _gate.Dispose();
         Connected = null;
         Disconnected = null;
         Errored = null;
