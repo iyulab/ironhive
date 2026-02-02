@@ -36,7 +36,10 @@ jobs:
         run: dotnet test tests/IronHive.Tests --no-build -c Release --verbosity normal
 
       - name: Pack NuGet packages
-        run: dotnet pack src/**/*.csproj --no-build -c Release -o ./nupkgs
+        run: |
+          for csproj in src/**/*.csproj; do
+            dotnet pack "$csproj" --no-build -c Release -o ./nupkgs
+          done
 
       - name: Publish to NuGet.org
         run: dotnet nuget push ./nupkgs/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
