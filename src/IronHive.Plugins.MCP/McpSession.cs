@@ -57,7 +57,7 @@ public class McpSession : IAsyncDisposable
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
-        await DisconnectAsync();
+        await DisconnectAsync().ConfigureAwait(false);
         _gate.Dispose();
         Connected = null;
         Disconnected = null;
@@ -76,7 +76,7 @@ public class McpSession : IAsyncDisposable
 
         try
         {
-            await _client.PingAsync(cancellationToken: cancellationToken);
+            await _client.PingAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
             return true;
         }
         catch (Exception ex)
@@ -93,7 +93,7 @@ public class McpSession : IAsyncDisposable
         McpClientOptions? options = null,
         CancellationToken cancellationToken = default)
     {
-        await _gate.WaitAsync(cancellationToken);
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
@@ -105,10 +105,10 @@ public class McpSession : IAsyncDisposable
             _client = await McpClient.CreateAsync(
                 transport,
                 clientOptions: options,
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken).ConfigureAwait(false);
 
             // 서버와의 연결을 확인합니다.
-            await _client.PingAsync(cancellationToken: cancellationToken);
+            await _client.PingAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
 
             UpdateState(McpConnectionState.Connected);
         }
@@ -128,13 +128,13 @@ public class McpSession : IAsyncDisposable
     public async Task DisconnectAsync(
         CancellationToken cancellationToken = default)
     {
-        await _gate.WaitAsync(cancellationToken);
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
             if (_client is not null)
             {
-                await _client.DisposeAsync();
+                await _client.DisposeAsync().ConfigureAwait(false);
                 _client = null;
             }
             
@@ -158,14 +158,14 @@ public class McpSession : IAsyncDisposable
         McpClientOptions? options = null,
         CancellationToken cancellationToken = default)
     {
-        await _gate.WaitAsync(cancellationToken);
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
             // 기존 연결을 해제합니다.
             if (_client is not null)
             {
-                await _client.DisposeAsync();
+                await _client.DisposeAsync().ConfigureAwait(false);
                 _client = null;
                 UpdateState(McpConnectionState.Disconnected);
             }
@@ -176,10 +176,10 @@ public class McpSession : IAsyncDisposable
             _client = await McpClient.CreateAsync(
                 transport,
                 clientOptions: options,
-                cancellationToken: cancellationToken);
-            
+                cancellationToken: cancellationToken).ConfigureAwait(false);
+
             // 서버와의 연결을 확인합니다.
-            await _client.PingAsync(cancellationToken: cancellationToken);
+            await _client.PingAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
             UpdateState(McpConnectionState.Connected);
         }
         catch (Exception ex)
@@ -201,7 +201,7 @@ public class McpSession : IAsyncDisposable
         if (_client == null)
             return [];
 
-        var tools = await _client.ListToolsAsync(cancellationToken: cancellationToken);
+        var tools = await _client.ListToolsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
         return tools.Select(t =>
         {
             return new McpTool(t)

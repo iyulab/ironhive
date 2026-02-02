@@ -16,16 +16,16 @@ internal class OllamaChatClient : OllamaClientBase
     { }
 
     internal async Task<ChatResponse> PostChatAsync(
-        ChatRequest request, 
+        ChatRequest request,
         CancellationToken cancellationToken)
     {
         request.Stream = false;
         var json = JsonSerializer.Serialize(request, _jsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        using var response = await _client.PostAsync(OllamaConstants.PostChatCompletionPath, content, cancellationToken);
+        using var response = await _client.PostAsync(OllamaConstants.PostChatCompletionPath, content, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
-        var message = await response.Content.ReadFromJsonAsync<ChatResponse>(_jsonOptions, cancellationToken)
+        var message = await response.Content.ReadFromJsonAsync<ChatResponse>(_jsonOptions, cancellationToken).ConfigureAwait(false)
             ?? throw new HttpRequestException("Failed to deserialize response");
         return message;
     }
@@ -39,14 +39,14 @@ internal class OllamaChatClient : OllamaClientBase
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         using var _request = new HttpRequestMessage(HttpMethod.Post, OllamaConstants.PostChatCompletionPath);
         _request.Content = content;
-        using var response = await _client.SendAsync(_request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        using var response = await _client.SendAsync(_request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
-        using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         using var reader = new StreamReader(stream);
 
         string? line;
-        while ((line = await reader.ReadLineAsync(cancellationToken)) is not null)
+        while ((line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false)) is not null)
         {
             if (string.IsNullOrWhiteSpace(line) || !line.StartsWith('{') || !line.EndsWith('}'))
                 continue;
