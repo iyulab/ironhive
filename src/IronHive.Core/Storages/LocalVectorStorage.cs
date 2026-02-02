@@ -19,6 +19,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
     private readonly string _moduleVersion;
 
     private volatile bool _ensuredCollMetaTable = false;
+    private readonly SemaphoreSlim _initLock = new(1, 1);
 
     public LocalVectorStorage(LocalVectorConfig config)
     {
@@ -38,6 +39,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
     /// <inheritdoc />
     public void Dispose()
     {
+        _initLock.Dispose();
         GC.SuppressFinalize(this);
     }
 
@@ -565,23 +567,33 @@ public sealed partial class LocalVectorStorage : IVectorStorage
         return collectionName.ToLowerInvariant();
     }
 
-    /// <summary> CollectionMetaTable 테이블이 없으면 생성합니다. </summary>
+    /// <summary> CollectionMetaTable 테이블이 없으면 생성합니다. (Thread-safe with double-checked locking) </summary>
     private async Task EnsureCollectionMetaTableAsync()
     {
         if (_ensuredCollMetaTable) return;
 
-        using var conn = await CreateConnectionAsync();
-        var cmd = conn.CreateCommand();
-        cmd.CommandText = $@"
-            CREATE TABLE IF NOT EXISTS {CollectionMetaTable}(
-                name TEXT PRIMARY KEY,
-                dimensions INTEGER NOT NULL,
-                embedding_provider TEXT NOT NULL,
-                embedding_model TEXT NOT NULL
-            )";
-        await cmd.ExecuteNonQueryAsync();
+        await _initLock.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (_ensuredCollMetaTable) return; // Double-check after acquiring lock
 
-        _ensuredCollMetaTable = true;
+            using var conn = await CreateConnectionAsync().ConfigureAwait(false);
+            var cmd = conn.CreateCommand();
+            cmd.CommandText = $@"
+                CREATE TABLE IF NOT EXISTS {CollectionMetaTable}(
+                    name TEXT PRIMARY KEY,
+                    dimensions INTEGER NOT NULL,
+                    embedding_provider TEXT NOT NULL,
+                    embedding_model TEXT NOT NULL
+                )";
+            await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+
+            _ensuredCollMetaTable = true;
+        }
+        finally
+        {
+            _initLock.Release();
+        }
     }
 
     #endregion
