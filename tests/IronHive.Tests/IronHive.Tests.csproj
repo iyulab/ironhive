@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="FluentAssertions" Version="8.0.1" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\IronHive.Abstractions\IronHive.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\IronHive.Core\IronHive.Core.csproj" />
+    <ProjectReference Include="..\..\src\IronHive.Providers.OpenAI\IronHive.Providers.OpenAI.csproj" />
+    <ProjectReference Include="..\..\src\IronHive.Providers.Anthropic\IronHive.Providers.Anthropic.csproj" />
+    <ProjectReference Include="..\..\src\IronHive.Providers.Ollama\IronHive.Providers.Ollama.csproj" />
+    <ProjectReference Include="..\..\src\IronHive.Providers.GoogleAI\IronHive.Providers.GoogleAI.csproj" />
+    <ProjectReference Include="..\..\src\IronHive.Storages.Qdrant\IronHive.Storages.Qdrant.csproj" />
+    <ProjectReference Include="..\..\src\IronHive.Storages.RabbitMQ\IronHive.Storages.RabbitMQ.csproj" />
+    <ProjectReference Include="..\..\src\IronHive.Storages.Amazon\IronHive.Storages.Amazon.csproj" />
+    <ProjectReference Include="..\..\src\IronHive.Storages.Azure\IronHive.Storages.Azure.csproj" />
+    <ProjectReference Include="..\..\src\IronHive.Plugins.MCP\IronHive.Plugins.MCP.csproj" />
+    <ProjectReference Include="..\..\src\IronHive.Plugins.OpenAPI\IronHive.Plugins.OpenAPI.csproj" />
+  </ItemGroup>
+
+</Project>
