@@ -157,8 +157,8 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                 usage = new MessageTokenUsage
                 {
                     InputTokens = res.UsageMetadata.PromptTokenCount ?? 0,
-                    OutputTokens = res.UsageMetadata.CandidatesTokenCount ?? 0
-                        + res.UsageMetadata.ThoughtsTokenCount ?? 0
+                    OutputTokens = (res.UsageMetadata.CandidatesTokenCount ?? 0)
+                        + (res.UsageMetadata.ThoughtsTokenCount ?? 0)
                 };
             }
 
