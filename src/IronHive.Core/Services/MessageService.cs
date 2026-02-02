@@ -58,7 +58,7 @@ public class MessageService : IMessageService
             if (req.Messages.LastOrDefault() is AssistantMessage last)
             {
                 message = last;
-                await foreach (var _ in ProcessToolContentAsync(message, request.Tools, cancellationToken))
+                await foreach (var _ in ProcessToolContentAsync(message, request.Tools, cancellationToken).ConfigureAwait(false))
                 { }
             }
             else
@@ -66,7 +66,7 @@ public class MessageService : IMessageService
                 message = new AssistantMessage { Id = Guid.NewGuid().ToString() };
             }
 
-            var res = await generator.GenerateMessageAsync(req, cancellationToken);
+            var res = await generator.GenerateMessageAsync(req, cancellationToken).ConfigureAwait(false);
 
             // 컨텐츠 추가
             foreach (var content in res.Message?.Content ?? [])
@@ -138,7 +138,7 @@ public class MessageService : IMessageService
             if (req.Messages.LastOrDefault() is AssistantMessage last)
             {
                 message = last;
-                await foreach (var res in ProcessToolContentAsync(message, request.Tools, cancellationToken))
+                await foreach (var res in ProcessToolContentAsync(message, request.Tools, cancellationToken).ConfigureAwait(false))
                 {
                     yield return res;
                 }
@@ -151,7 +151,7 @@ public class MessageService : IMessageService
 
             // 현재 루프에서 생성된 컨텐츠를 저장할 메시지 컨텐츠 스택 객체
             var stack = new List<MessageContent>();
-            await foreach (var res in generator.GenerateStreamingMessageAsync(req, cancellationToken))
+            await foreach (var res in generator.GenerateStreamingMessageAsync(req, cancellationToken).ConfigureAwait(false))
             {
                 if (res is StreamingMessageBeginResponse mbr)
                 {
@@ -254,19 +254,19 @@ public class MessageService : IMessageService
             
             var task = Task.Run(async () =>
             {
-                await semaphore.WaitAsync(cancellationToken);
-                
+                await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+
                 try
                 {
                     await channel.Writer.WriteAsync(new StreamingContentInProgressResponse
                     {
                         Index = idx,
-                    }, cancellationToken);
+                    }, cancellationToken).ConfigureAwait(false);
 
                     var options = toolItems.FirstOrDefault(t => string.Equals(t.Name, tmc.Name))?.Options;
                     var input = new ToolInput(tmc.Input, options, _services);
                     tmc.Output = _tools.TryGet(tmc.Name, out var tool)
-                        ? await tool.InvokeAsync(input, cancellationToken)
+                        ? await tool.InvokeAsync(input, cancellationToken).ConfigureAwait(false)
                         : ToolOutput.Failure($"Could not find tool '{tmc.Name}', invocation failed.");
 
                     await channel.Writer.WriteAsync(new StreamingContentUpdatedResponse
@@ -276,7 +276,7 @@ public class MessageService : IMessageService
                         {
                             Output = tmc.Output
                         }
-                    }, cancellationToken);
+                    }, cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -296,7 +296,7 @@ public class MessageService : IMessageService
         {
             try
             {
-                await Task.WhenAll(tasks);
+                await Task.WhenAll(tasks).ConfigureAwait(false);
             }
             finally
             {
@@ -305,7 +305,7 @@ public class MessageService : IMessageService
         }, CancellationToken.None);
 
         // 3) 채널에서 남은 출력 읽어서 yield, Complete()가 호출될 때까지 계속 읽기
-        await foreach (var res in channel.Reader.ReadAllAsync(cancellationToken))
+        await foreach (var res in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
         {
             yield return res;
         }

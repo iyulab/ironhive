@@ -23,7 +23,7 @@ public class EmbeddingService : IEmbeddingService
         if (!_providers.TryGet<IEmbeddingGenerator>(provider, out var service))
             throw new KeyNotFoundException($"Service key '{provider}' not found.");
 
-        var result = await service.EmbedAsync(modelId, input, cancellationToken);
+        var result = await service.EmbedAsync(modelId, input, cancellationToken).ConfigureAwait(false);
         return result;
     }
 
@@ -37,21 +37,21 @@ public class EmbeddingService : IEmbeddingService
         if (!_providers.TryGet<IEmbeddingGenerator>(provider, out var service))
             throw new KeyNotFoundException($"Service key '{provider}' not found.");
 
-        var result = await service.EmbedBatchAsync(modelId, inputs, cancellationToken);
+        var result = await service.EmbedBatchAsync(modelId, inputs, cancellationToken).ConfigureAwait(false);
         return result;
     }
 
     /// <inheritdoc />
     public async Task<int> CountTokensAsync(
-        string provider, 
-        string modelId, 
-        string input, 
+        string provider,
+        string modelId,
+        string input,
         CancellationToken cancellationToken = default)
     {
         if (!_providers.TryGet<IEmbeddingGenerator>(provider, out var service))
             throw new KeyNotFoundException($"Service key '{provider}' not found.");
 
-        var result = await service.CountTokensAsync(modelId, input, cancellationToken);
+        var result = await service.CountTokensAsync(modelId, input, cancellationToken).ConfigureAwait(false);
         return result;
     }
 
