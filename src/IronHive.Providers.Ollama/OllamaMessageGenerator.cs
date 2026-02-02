@@ -61,7 +61,7 @@ public class OllamaMessageGenerator : IMessageGenerator
             {
                 message.Content.Add(new ToolMessageContent
                 {
-                    IsApproved = !request.Tools!.TryGet(t.Function?.Name!, out var tool) || !tool.RequiresApproval,
+                    IsApproved = request.Tools?.TryGet(t.Function?.Name!, out var tool) != true || !tool.RequiresApproval,
                     Id = $"tool_{Guid.NewGuid().ToShort()}",
                     Name = t.Function?.Name ?? string.Empty,
                     Input = JsonSerializer.Serialize(t.Function?.Arguments)

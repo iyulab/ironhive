@@ -75,7 +75,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
                     Id = fti.CallId,
                     Name = fti.Name,
                     Input = fti.Arguments,
-                    IsApproved = !request.Tools!.TryGet(fti.Name, out var t) || !t.RequiresApproval
+                    IsApproved = request.Tools?.TryGet(fti.Name, out var t) != true || !t.RequiresApproval
                 });
             }
             else
@@ -166,7 +166,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
                             Id = tci.CallId,
                             Name = tci.Name,
                             Input = tci.Arguments,
-                            IsApproved = !request.Tools!.TryGet(tci.Name, out var t) || !t.RequiresApproval
+                            IsApproved = request.Tools?.TryGet(tci.Name, out var t) != true || !t.RequiresApproval
                         }
                     };
                 }

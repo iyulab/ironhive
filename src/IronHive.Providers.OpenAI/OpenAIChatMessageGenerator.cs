@@ -66,13 +66,13 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
                 };
                 if (tool is ChatFunctionToolCall func)
                 {
-                    tc.IsApproved = !request.Tools!.TryGet(func.Function?.Name!, out var t) || !t.RequiresApproval;
+                    tc.IsApproved = request.Tools?.TryGet(func.Function?.Name!, out var t) != true || !t.RequiresApproval;
                     tc.Name = func.Function?.Name ?? string.Empty;
                     tc.Input = func.Function?.Arguments ?? string.Empty;
                 }
                 else if (tool is ChatCustomToolCall custom)
                 {
-                    tc.IsApproved = !request.Tools!.TryGet(custom.Custom?.Name!, out var t) || !t.RequiresApproval;
+                    tc.IsApproved = request.Tools?.TryGet(custom.Custom?.Name!, out var t) != true || !t.RequiresApproval;
                     tc.Name = custom.Custom?.Name ?? string.Empty;
                     tc.Input = custom.Custom?.Input ?? string.Empty;
                 }
@@ -209,7 +209,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
                                 };
                                 current = (index + 1, new ToolMessageContent
                                 {
-                                    IsApproved = !request.Tools!.TryGet(func.Function?.Name!, out var t) || !t.RequiresApproval,
+                                    IsApproved = request.Tools?.TryGet(func.Function?.Name!, out var t) != true || !t.RequiresApproval,
                                     Id = func.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
                                     Name = func.Function?.Name ?? string.Empty,
                                     Input = func.Function?.Arguments,
@@ -232,7 +232,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
                             };
                             current = (index + 1, new ToolMessageContent
                             {
-                                IsApproved = !request.Tools!.TryGet(func.Function?.Name!, out var t) || !t.RequiresApproval,
+                                IsApproved = request.Tools?.TryGet(func.Function?.Name!, out var t) != true || !t.RequiresApproval,
                                 Id = func.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
                                 Name = func.Function?.Name ?? string.Empty,
                                 Input = func.Function?.Arguments,
@@ -250,7 +250,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
                     {
                         current = (0, new ToolMessageContent
                         {
-                            IsApproved = !request.Tools!.TryGet(func.Function?.Name!, out var t) || !t.RequiresApproval,
+                            IsApproved = request.Tools?.TryGet(func.Function?.Name!, out var t) != true || !t.RequiresApproval,
                             Id = func.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
                             Name = func.Function?.Name ?? string.Empty,
                             Input = func.Function?.Arguments,
