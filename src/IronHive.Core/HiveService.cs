@@ -14,6 +14,8 @@ namespace IronHive.Core;
 /// <inheritdoc />
 public class HiveService : IHiveService
 {
+    private IAgentService? _agentService;
+
     public HiveService(IServiceProvider services)
     {
         Services = services;
@@ -39,16 +41,25 @@ public class HiveService : IHiveService
     /// <inheritdoc />
     public IMemoryService Memory { get; }
 
+    /// <summary>
+    /// 지연 로딩된 AgentService 인스턴스를 반환합니다.
+    /// </summary>
+    private IAgentService AgentService =>
+        _agentService ??= Services.GetRequiredService<IAgentService>();
+
     /// <inheritdoc />
     public IAgent CreateAgentFrom(AgentCard card)
     {
-        throw new NotImplementedException();
+        ArgumentNullException.ThrowIfNull(card);
+        if (string.IsNullOrWhiteSpace(card.Workflow))
+            throw new ArgumentException("AgentCard.Workflow is required.", nameof(card));
+        return AgentService.CreateAgentFromYaml(card.Workflow);
     }
 
     /// <inheritdoc />
     public IAgent CreateAgentFromYaml(string yaml)
     {
-        throw new NotImplementedException();
+        return AgentService.CreateAgentFromYaml(yaml);
     }
 }
 
