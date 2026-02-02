@@ -36,11 +36,11 @@ public class OllamaMessageGenerator : IMessageGenerator
         CancellationToken cancellationToken = default)
     {
         var req = request.ToOllama();
-        var res = await _client.PostChatAsync(req, cancellationToken);
+        var res = await _client.PostChatAsync(req, cancellationToken).ConfigureAwait(false);
 
         var message = new AssistantMessage
-        { 
-            Id = Guid.NewGuid().ToShort() 
+        {
+            Id = Guid.NewGuid().ToShort()
         };
 
         // 텍스트 생성
@@ -69,6 +69,17 @@ public class OllamaMessageGenerator : IMessageGenerator
             }
         }
 
+        // 토큰 사용량 추출
+        MessageTokenUsage? tokenUsage = null;
+        if (res.PromptEvalCount.HasValue || res.EvalCount.HasValue)
+        {
+            tokenUsage = new MessageTokenUsage
+            {
+                InputTokens = res.PromptEvalCount ?? 0,
+                OutputTokens = res.EvalCount ?? 0
+            };
+        }
+
         return new MessageResponse
         {
             Id = Guid.NewGuid().ToShort(),
@@ -78,7 +89,7 @@ public class OllamaMessageGenerator : IMessageGenerator
                 _ => null
             },
             Message = message,
-            TokenUsage = null,
+            TokenUsage = tokenUsage,
             Timestamp = res.CreatedAt ?? DateTime.UtcNow,
         };
     }
@@ -90,7 +101,7 @@ public class OllamaMessageGenerator : IMessageGenerator
     {
         var req = request.ToOllama();
 
-        await foreach (var res in _client.PostSteamingChatAsync(req, cancellationToken))
+        await foreach (var res in _client.PostSteamingChatAsync(req, cancellationToken).ConfigureAwait(false))
         {
             // 텍스트 생성
             var text = res.Message?.Content;
@@ -109,6 +120,17 @@ public class OllamaMessageGenerator : IMessageGenerator
             // 종료 메시지
             if (res.DoneReason != null)
             {
+                // 토큰 사용량 추출
+                MessageTokenUsage? tokenUsage = null;
+                if (res.PromptEvalCount.HasValue || res.EvalCount.HasValue)
+                {
+                    tokenUsage = new MessageTokenUsage
+                    {
+                        InputTokens = res.PromptEvalCount ?? 0,
+                        OutputTokens = res.EvalCount ?? 0
+                    };
+                }
+
                 yield return new StreamingMessageDoneResponse
                 {
                     Id = Guid.NewGuid().ToShort(),
@@ -118,6 +140,7 @@ public class OllamaMessageGenerator : IMessageGenerator
                         DoneReason.Stop => MessageDoneReason.EndTurn,
                         _ => null
                     },
+                    TokenUsage = tokenUsage,
                     Timestamp = DateTime.UtcNow,
                 };
             }
