@@ -9,6 +9,21 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/iyulab/ironhive/actions/workflows/ci.yml">
+    <img src="https://github.com/iyulab/ironhive/actions/workflows/ci.yml/badge.svg" alt="CI">
+  </a>
+  <a href="https://www.nuget.org/packages/IronHive.Core">
+    <img src="https://img.shields.io/nuget/v/IronHive.Core?label=NuGet" alt="NuGet">
+  </a>
+  <a href="https://www.nuget.org/packages/IronHive.Core">
+    <img src="https://img.shields.io/nuget/dt/IronHive.Core?label=Downloads" alt="NuGet Downloads">
+  </a>
+  <a href="https://github.com/iyulab/ironhive/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/iyulab/ironhive" alt="License">
+  </a>
+</p>
+
+<p align="center">
   <a href="#features">Features</a> •
   <a href="#installation">Installation</a> •
   <a href="#quick-start">Quick Start</a> •
