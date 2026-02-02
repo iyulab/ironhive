@@ -37,7 +37,7 @@ public class GoogleAIModelCatalog : IModelCatalog
             {
                 PageSize = 1000,
                 PageToken = next
-            }, CancellationToken.None);
+            }, cancellationToken);
             foreach (var model in response.Models)
             {
                 list.Add(ConvertToModelSpec(model));
