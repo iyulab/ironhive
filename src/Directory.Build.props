@@ -7,10 +7,9 @@
     <IsPackable>true</IsPackable>
   </PropertyGroup>
 
-  <!-- 패키지 공통 메타데이터 -->
+  <!-- 패키지 공통 메타데이터 (Version은 루트 Directory.Build.props에서 상속) -->
   <PropertyGroup>
     <Authors>iyulab</Authors>
-    <PackageVersion>1.0.0</PackageVersion>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/iyulab-rnd/ironhive</PackageProjectUrl>
     <PackageTags>iyulab;AI;LLM;RAG;Agent</PackageTags>
