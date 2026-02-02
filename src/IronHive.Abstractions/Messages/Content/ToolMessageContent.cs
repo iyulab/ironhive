@@ -1,4 +1,5 @@
-﻿using IronHive.Abstractions.Tools;
+using IronHive.Abstractions.Messages;
+using IronHive.Abstractions.Tools;
 
 namespace IronHive.Abstractions.Messages.Content;
 
@@ -11,14 +12,14 @@ public class ToolMessageContent : MessageContent
     /// 도구 실행이 완료되었는지를 나타냅니다.
     /// </summary>
     public bool IsCompleted => Output is not null;
-    
+
     /// <summary>
     /// 현재 도구가 실행이 승인되었는지를 나타냅니다.
     /// </summary>
     public required bool IsApproved { get; set; }
 
     /// <summary>
-    /// 현재 툴 블록의 고유 식별자입니다. 
+    /// 현재 툴 블록의 고유 식별자입니다.
     /// TollCall과 ToolResult 메시지에서 동시에 참조되는데 사용됩니다.
     /// </summary>
     public required string Id { get; set; }
@@ -37,4 +38,26 @@ public class ToolMessageContent : MessageContent
     /// 현재 도구의 결과 데이터입니다.
     /// </summary>
     public ToolOutput? Output { get; set; }
+
+    /// <inheritdoc />
+    public override void Merge(MessageDeltaContent delta)
+    {
+        if (delta is ToolDeltaContent toolDelta)
+            Input += toolDelta.Input;
+        else
+            base.Merge(delta);
+    }
+
+    /// <inheritdoc />
+    public override void Update(MessageUpdatedContent updated)
+    {
+        if (updated is ToolUpdatedContent toolUpdated)
+        {
+            // Output은 내부에서 직접 설정됨
+        }
+        else
+        {
+            base.Update(updated);
+        }
+    }
 }

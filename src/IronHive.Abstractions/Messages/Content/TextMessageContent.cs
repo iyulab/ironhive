@@ -1,5 +1,3 @@
-﻿using IronHive.Abstractions.Messages;
-
 namespace IronHive.Abstractions.Messages.Content;
 
 /// <summary>
@@ -11,4 +9,13 @@ public class TextMessageContent : MessageContent
     /// 텍스트 내용을 나타냅니다
     /// </summary>
     public string Value { get; set; } = string.Empty;
+
+    /// <inheritdoc />
+    public override void Merge(MessageDeltaContent delta)
+    {
+        if (delta is TextDeltaContent textDelta)
+            Value += textDelta.Value;
+        else
+            base.Merge(delta);
+    }
 }
