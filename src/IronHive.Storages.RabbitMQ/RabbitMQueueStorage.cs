@@ -43,39 +43,49 @@ public class RabbitMQueueStorage : IQueueStorage
 
     /// <inheritdoc />
     public async Task<IQueueConsumer> CreateConsumerAsync<T>(
-        Func<IQueueMessage<T>, Task> onReceived, 
+        Func<IQueueMessage<T>, Task> onReceived,
         CancellationToken cancellationToken = default)
     {
         // 소비 전용 채널 생성
         var conn = await GetOrCreateConnectionAsync(cancellationToken);
         var channel = await conn.CreateChannelAsync(new CreateChannelOptions(false, false, null, 1), cancellationToken);
-        await DeclareQueueAsync(channel, cancellationToken);
-        await channel.BasicQosAsync(0, 1, false, cancellationToken);
 
-        var consumer = new AsyncEventingBasicConsumer(channel);
-        consumer.ReceivedAsync += async (ch, ea) =>
+        try
         {
-            try
+            await DeclareQueueAsync(channel, cancellationToken);
+            await channel.BasicQosAsync(0, 1, false, cancellationToken);
+
+            var consumer = new AsyncEventingBasicConsumer(channel);
+            consumer.ReceivedAsync += async (ch, ea) =>
             {
-                var body = JsonSerializer.Deserialize<T>(ea.Body.ToArray(), _config.JsonOptions)
-                    ?? throw new JsonException("Failed to deserialize message.");
-                var msg = new RabbitMQMessage<T>(channel)
+                try
                 {
-                    Body = body,
-                    DeliveryTag = ea.DeliveryTag,
-                };
-                await onReceived(msg);
-            }
-            catch (Exception ex)
+                    var body = JsonSerializer.Deserialize<T>(ea.Body.ToArray(), _config.JsonOptions)
+                        ?? throw new JsonException("Failed to deserialize message.");
+                    var msg = new RabbitMQMessage<T>(channel)
+                    {
+                        Body = body,
+                        DeliveryTag = ea.DeliveryTag,
+                    };
+                    await onReceived(msg);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[ERROR] Consumer error: {ex.Message}");
+                    await channel.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: false);
+                }
+            };
+            return new RabbitMQConsumer(consumer)
             {
-                Console.WriteLine($"[ERROR] Consumer error: {ex.Message}");
-                await channel.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: false);
-            }
-        };
-        return new RabbitMQConsumer(consumer)
+                QueueName = QueueName,
+            };
+        }
+        catch
         {
-            QueueName = QueueName,
-        };
+            // Dispose channel if setup fails to prevent resource leak
+            channel.Dispose();
+            throw;
+        }
     }
 
     /// <inheritdoc />
