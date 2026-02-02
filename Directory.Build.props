@@ -4,6 +4,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
+    <!-- 기본적으로 NuGet 패키지 생성 비활성화 -->
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <!-- 라이브러리 프로젝트 공통 설정 -->
@@ -14,7 +16,6 @@
 
   <!-- 테스트 프로젝트 설정 -->
   <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
-    <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
 

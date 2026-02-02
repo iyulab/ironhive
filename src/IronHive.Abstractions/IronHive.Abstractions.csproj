@@ -1,12 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Authors>Iyulab</Authors>
-    <Description>ironhive interfaces</Description>
-    <PackageVersion>1.0.0</PackageVersion>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/iyulab-rnd/ironhive</PackageProjectUrl>
-    <PackageTags>Iyulab;AI;LLM;RAG;Agent</PackageTags>
+    <Description>IronHive abstractions and interfaces</Description>
   </PropertyGroup>
 
   <ItemGroup>
