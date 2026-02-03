@@ -190,7 +190,7 @@ internal static class MessageGenerationRequestExtensions
         );
 
         // 추론을 사용할 경우 예산 토큰을 설정합니다.
-        if (request.ThinkingEffort != MessageThinkingEffort.None)
+        if (request.ThinkingEffort is not null and not MessageThinkingEffort.None)
         {
             // 절대값 기반 + 비례값 기반 혼합 전략
             int budgetTokens = (int)(request.ThinkingEffort switch

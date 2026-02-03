@@ -30,6 +30,24 @@ public class ChatChoiceMessage
     /// </summary>
     [JsonPropertyName("tool_calls")]
     public ICollection<ChatToolCall>? ToolCalls { get; set; }
+
+    /// <summary>
+    /// Chain-of-Thought reasoning content (DeepSeek, xAI grok-3-mini, LM Studio)
+    /// </summary>
+    [JsonPropertyName("reasoning_content")]
+    public string? ReasoningContent { get; set; }
+
+    /// <summary>
+    /// Reasoning content (vLLM, LM Studio gpt-oss)
+    /// </summary>
+    [JsonPropertyName("reasoning")]
+    public string? Reasoning { get; set; }
+
+    /// <summary>
+    /// Thinking content (Ollama)
+    /// </summary>
+    [JsonPropertyName("thinking")]
+    public string? Thinking { get; set; }
 }
 
 public class ChatChoiceMessageDelta
@@ -48,4 +66,22 @@ public class ChatChoiceMessageDelta
     /// </summary>
     [JsonPropertyName("tool_calls")]
     public ICollection<ChatToolCallDelta>? ToolCalls { get; set; }
+
+    /// <summary>
+    /// Chain-of-Thought reasoning content (DeepSeek, xAI grok-3-mini, LM Studio)
+    /// </summary>
+    [JsonPropertyName("reasoning_content")]
+    public string? ReasoningContent { get; set; }
+
+    /// <summary>
+    /// Reasoning content (vLLM, LM Studio gpt-oss)
+    /// </summary>
+    [JsonPropertyName("reasoning")]
+    public string? Reasoning { get; set; }
+
+    /// <summary>
+    /// Thinking content (Ollama)
+    /// </summary>
+    [JsonPropertyName("thinking")]
+    public string? Thinking { get; set; }
 }

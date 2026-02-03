@@ -28,3 +28,5 @@ dist/
 claudedocs/
 CLAUDE.md
 dev-docs/
+.env
+*.local

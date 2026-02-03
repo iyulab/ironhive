@@ -42,8 +42,37 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
         var choice = res.Choices?.FirstOrDefault();
         var content = new List<MessageContent>();
 
+        // Reasoning/Thinking 파싱 (DeepSeek, xAI, Ollama, vLLM, LM Studio 등)
+        var reasoning = choice?.Message?.ReasoningContent  // DeepSeek, xAI, LM Studio
+                     ?? choice?.Message?.Reasoning         // vLLM, LM Studio gpt-oss
+                     ?? choice?.Message?.Thinking;         // Ollama
+        if (!string.IsNullOrWhiteSpace(reasoning))
+        {
+            content.Add(new ThinkingMessageContent
+            {
+                Format = ThinkingFormat.Detailed,
+                Value = reasoning
+            });
+        }
+
         // 텍스트 생성
         var text = choice?.Message?.Content;
+
+        // <think>...</think> 태그 파싱 (fallback for models that embed thinking in content)
+        if (!string.IsNullOrWhiteSpace(text) && string.IsNullOrWhiteSpace(reasoning))
+        {
+            var (thinkingText, cleanedText) = ExtractThinkingFromContent(text);
+            if (!string.IsNullOrWhiteSpace(thinkingText))
+            {
+                content.Add(new ThinkingMessageContent
+                {
+                    Format = ThinkingFormat.Detailed,
+                    Value = thinkingText
+                });
+                text = cleanedText;
+            }
+        }
+
         if (!string.IsNullOrWhiteSpace(text))
         {
             content.Add(new TextMessageContent
@@ -265,6 +294,58 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
                 }
             }
 
+            // Reasoning/Thinking 스트리밍 (DeepSeek, xAI, Ollama, vLLM, LM Studio 등)
+            var reasoning = delta.ReasoningContent ?? delta.Reasoning ?? delta.Thinking;
+            if (reasoning != null)
+            {
+                // 이어서 생성되는 thinking 메시지의 경우
+                if (current.HasValue)
+                {
+                    var (index, content) = current.Value;
+                    // 현재 컨텐츠가 ThinkingMessageContent인 경우
+                    if (content is ThinkingMessageContent)
+                    {
+                        yield return new StreamingContentDeltaResponse
+                        {
+                            Index = index,
+                            Delta = new ThinkingDeltaContent
+                            {
+                                Data = reasoning
+                            }
+                        };
+                    }
+                    // 현재 컨텐츠가 ThinkingMessageContent가 아닌 경우
+                    else
+                    {
+                        yield return new StreamingContentCompletedResponse { Index = index };
+                        current = (index + 1, new ThinkingMessageContent
+                        {
+                            Format = ThinkingFormat.Detailed,
+                            Value = reasoning
+                        });
+                        yield return new StreamingContentAddedResponse
+                        {
+                            Index = current.Value.Item1,
+                            Content = current.Value.Item2
+                        };
+                    }
+                }
+                // 처음 생성되는 thinking 메시지의 경우
+                else
+                {
+                    current = (0, new ThinkingMessageContent
+                    {
+                        Format = ThinkingFormat.Detailed,
+                        Value = reasoning
+                    });
+                    yield return new StreamingContentAddedResponse
+                    {
+                        Index = current.Value.Item1,
+                        Content = current.Value.Item2
+                    };
+                }
+            }
+
             // 텍스트 생성
             var text = delta.Content;
             if (text != null)
@@ -285,7 +366,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
                             }
                         };
                     }
-                    // 현재 컨텐츠가 TextMessageContent가 아닌 경우
+                    // 현재 컨텐츠가 TextMessageContent가 아닌 경우 (thinking → text 전환 등)
                     // 이전 컨텐츠 종료 및 새 컨텐츠 시작
                     else
                     {
@@ -333,5 +414,27 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
             Model = model,
             Timestamp = DateTime.UtcNow,
         };
+    }
+
+    /// <summary>
+    /// content에서 &lt;think&gt;...&lt;/think&gt; 태그를 추출합니다.
+    /// DeepSeek, Qwen 등 일부 모델은 thinking을 content 내에 포함합니다.
+    /// </summary>
+    private static (string? thinking, string cleanedContent) ExtractThinkingFromContent(string content)
+    {
+        // <think>...</think> 패턴 매칭
+        var thinkMatch = System.Text.RegularExpressions.Regex.Match(
+            content,
+            @"<think>(.*?)</think>",
+            System.Text.RegularExpressions.RegexOptions.Singleline);
+
+        if (thinkMatch.Success)
+        {
+            var thinking = thinkMatch.Groups[1].Value.Trim();
+            var cleaned = content.Replace(thinkMatch.Value, "").Trim();
+            return (thinking, cleaned);
+        }
+
+        return (null, content);
     }
 }

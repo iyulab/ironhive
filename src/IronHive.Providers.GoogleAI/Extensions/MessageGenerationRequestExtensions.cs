@@ -154,6 +154,24 @@ internal static class MessageGenerationRequestExtensions
             }
         }
 
+        // Tools 변환 (비어있으면 null)
+        ICollection<Tool>? tools = null;
+        if (request.Tools?.Any() == true)
+        {
+            tools =
+            [
+                new Tool
+                {
+                    Functions = request.Tools.Select(t => new FunctionTool
+                    {
+                        Name = t.UniqueName,
+                        Description = t.Description ?? string.Empty,
+                        ParametersJsonSchema = t.Parameters ?? new JsonObject()
+                    }).ToArray()
+                }
+            ];
+        }
+
         return new GenerateContentRequest
         {
             Model = request.Model,
@@ -162,18 +180,7 @@ internal static class MessageGenerationRequestExtensions
             {
                 Parts = [ new ContentPart { Text = request.SystemPrompt } ]
             },
-            Tools = 
-            [
-                new Tool
-                {
-                    Functions = request.Tools?.Select(t => new FunctionTool
-                    {
-                        Name = t.UniqueName,
-                        Description = t.Description ?? string.Empty,
-                        ParametersJsonSchema = t.Parameters ?? new JsonObject()
-                    }).ToArray()
-                }
-            ],
+            Tools = tools,
             GenerationConfig = new GenerationConfig
             {
                 CandidateCount = 1,
@@ -182,7 +189,7 @@ internal static class MessageGenerationRequestExtensions
                 TopP = request.TopP,
                 TopK = request.TopK,
                 Temperature = request.Temperature,
-                ThinkingConfig = request.ThinkingEffort != MessageThinkingEffort.None ? new ThinkingConfig
+                ThinkingConfig = request.ThinkingEffort is not null and not MessageThinkingEffort.None ? new ThinkingConfig
                 {
                     IncludeThoughts = true,
                     ThinkingBudget = CalculateThinkingTokens(request)
