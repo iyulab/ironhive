@@ -36,7 +36,24 @@
 
 ## Overview
 
-**IronHive**는 .NET 기반의 모듈형 AI 애플리케이션 프레임워크입니다. 다양한 LLM 제공자를 통합하고, Vector 기반 RAG 시스템을 구축하며, 도구 호출이 가능한 에이전트 아키텍처를 지원합니다.
+**IronHive**는 기업용 AI 애플리케이션을 위한 파이프라인 프레임워크입니다.
+
+범용 프레임워크가 필요하다면 [Semantic Kernel](https://github.com/microsoft/semantic-kernel) 또는 [Agent Framework](https://github.com/microsoft/agent-framework)를 권장합니다.
+
+### Why IronHive?
+
+- **Batteries Included**: 기업 환경에서 필요한 기본 세트 내장으로 보일러플레이트 감소
+- **파이프라인 중심**: 각 단계를 교체하거나 새로운 단계를 손쉽게 추가
+- **M.E.AI 호환**: `Microsoft.Extensions.AI` 기반으로 표준 준수
+
+### 내장 기능
+
+| 영역 | 내장 기능 |
+|------|----------|
+| **Resilience** | 재시도, 서킷브레이커, 타임아웃 (Polly) |
+| **Observability** | OpenTelemetry 통합, 토큰 사용량 추적 |
+| **RAG Pipeline** | 텍스트 추출, 청킹, 임베딩, 벡터 저장 |
+| **Multi-Provider** | OpenAI, Anthropic, Google, Ollama |
 
 ## Features
 

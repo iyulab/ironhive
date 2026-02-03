@@ -10,6 +10,7 @@
     <PackageReference Include="MessagePack" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" />
     <PackageReference Include="Microsoft.Data.Sqlite" />
+    <PackageReference Include="Microsoft.Extensions.Resilience" />
     <PackageReference Include="PdfPig" />
     <PackageReference Include="Scriban" />
     <PackageReference Include="Tomlyn" />

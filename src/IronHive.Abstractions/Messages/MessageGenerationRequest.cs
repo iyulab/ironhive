@@ -38,6 +38,17 @@ public class MessageGenerationRequest : MessageGenerationParameters
     public IToolCollection? Tools { get; set; }
 
     /// <summary>
+    /// 요청에 포함할 수 있는 최대 도구 수입니다.
+    /// 기본값: 20. 0 이하로 설정하면 무제한입니다.
+    /// </summary>
+    public int MaxTools { get; set; } = 20;
+
+    /// <summary>
+    /// MaxTools 제한을 초과했을 때의 동작을 정의합니다.
+    /// </summary>
+    public ToolLimitBehavior ToolLimitBehavior { get; set; } = ToolLimitBehavior.Warn;
+
+    /// <summary>
     /// 모델의 사고 노력 수준을 정의합니다.
     /// 설정된 경우 모델의 추론 깊이를 조절할 수 있습니다.
     /// </summary>
