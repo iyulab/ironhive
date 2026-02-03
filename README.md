@@ -45,7 +45,7 @@
 - **Batteries Included**: 기업 환경에서 필요한 기본 세트 내장으로 보일러플레이트 감소
 - **파이프라인 중심**: 각 단계를 교체하거나 새로운 단계를 손쉽게 추가
 - **M.E.AI 호환**: `Microsoft.Extensions.AI` 표준 준수 — `ChatClientAdapter`와 `EmbeddingGeneratorAdapter`를 통해 기존 M.E.AI 생태계와 양방향 연동
-- **멀티에이전트 오케스트레이션**: Sequential, Parallel, Hub-Spoke 패턴으로 복잡한 에이전트 워크플로우 구성
+- **멀티에이전트 오케스트레이션**: Sequential, Parallel, Hub-Spoke, Graph(DAG) 패턴으로 복잡한 에이전트 워크플로우 구성
 
 ### Design Philosophy
 
@@ -62,7 +62,10 @@
 | **Observability** | OpenTelemetry 통합, 토큰 사용량 추적 |
 | **RAG Pipeline** | 텍스트 추출, 청킹, 임베딩, 벡터 저장 |
 | **Multi-Provider** | OpenAI, Anthropic, Google, Ollama |
-| **Orchestration** | Sequential, Parallel, Hub-Spoke 멀티에이전트 |
+| **Orchestration** | Sequential, Parallel, Hub-Spoke, Graph(DAG) 멀티에이전트 |
+| **Checkpointing** | 오케스트레이션 상태 저장/재개 (ICheckpointStore) |
+| **Human-in-the-Loop** | 에이전트 실행 전 승인 메커니즘 |
+| **Typed Executor** | 타입 안전 파이프라인 (ITypedExecutor, TypedPipeline) |
 
 ## Features
 
@@ -141,6 +144,42 @@ await foreach (var chunk in agent.InvokeStreamingAsync(messages))
 }
 ```
 
+### Multi-Agent Orchestration
+
+```csharp
+// Sequential: 에이전트를 순차 실행, 이전 출력이 다음 입력으로 전달
+var sequential = new SequentialOrchestrator(new SequentialOrchestratorOptions
+{
+    PassOutputAsInput = true,
+    // 체크포인팅: 중간 상태 저장/재개
+    CheckpointStore = new InMemoryCheckpointStore(),
+    // Human-in-the-Loop: 특정 에이전트 실행 전 승인 필요
+    ApprovalHandler = async (agentName, prev) => { /* true=진행, false=중단 */ return true; },
+    RequireApprovalForAgents = new HashSet<string> { "critical-agent" }
+});
+sequential.AddAgents([agent1, agent2, agent3]);
+var result = await sequential.ExecuteAsync(messages);
+
+// Graph(DAG): 조건부 분기, Fan-In/Fan-Out 지원
+var graph = new GraphOrchestratorBuilder()
+    .AddNode("input", inputAgent)
+    .AddNode("analyze", analyzeAgent)
+    .AddNode("summarize", summarizeAgent)
+    .AddEdge("input", "analyze")
+    .AddEdge("analyze", "summarize", step => step.IsSuccess)
+    .SetStartNode("input")
+    .SetOutputNode("summarize")
+    .Build();
+var graphResult = await graph.ExecuteAsync(messages);
+
+// Typed Pipeline: 타입 안전 체이닝
+var pipeline = TypedPipeline
+    .Start(new AgentExecutor<string, Analysis>(agent1, inputConvert, outputConvert))
+    .Then(new AgentExecutor<Analysis, Summary>(agent2, inputConvert2, outputConvert2))
+    .Build();
+var output = await pipeline.ExecuteAsync("input text");
+```
+
 ### Using Tools
 
 ```csharp
@@ -208,6 +247,9 @@ IronHive/
 | `IStorageRegistry` | Manages storage backends |
 | `IToolCollection` | Manages available tools |
 | `IAgent` | Agent interface for message generation |
+| `IAgentOrchestrator` | Multi-agent orchestration (Sequential, Parallel, Hub-Spoke, Graph) |
+| `ICheckpointStore` | Orchestration state save/resume |
+| `ITypedExecutor<TIn,TOut>` | Type-safe executor interface |
 | `MemoryWorker` | Async queue-based job processor |
 
 ## Providers

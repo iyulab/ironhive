@@ -124,5 +124,20 @@ public enum OrchestrationEventType
     /// <summary>
     /// 오케스트레이션 실패
     /// </summary>
-    Failed
+    Failed,
+
+    /// <summary>
+    /// 에이전트 실행 전 승인 대기 중
+    /// </summary>
+    ApprovalRequired,
+
+    /// <summary>
+    /// 승인됨
+    /// </summary>
+    ApprovalGranted,
+
+    /// <summary>
+    /// 승인 거부됨
+    /// </summary>
+    ApprovalDenied
 }

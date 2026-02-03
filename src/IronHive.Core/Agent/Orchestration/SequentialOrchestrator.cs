@@ -37,14 +37,40 @@ public class SequentialOrchestrator : OrchestratorBase
         var steps = new List<AgentStepResult>();
         var currentMessages = messages.ToList();
         var accumulatedMessages = new List<Message>(currentMessages);
+        var startIndex = 0;
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(Options.Timeout);
 
         try
         {
-            foreach (var agent in Agents)
+            // 체크포인트에서 재개
+            var checkpoint = await LoadCheckpointAsync(cts.Token).ConfigureAwait(false);
+            if (checkpoint != null)
             {
+                steps.AddRange(checkpoint.CompletedSteps);
+                startIndex = checkpoint.CompletedStepCount;
+                currentMessages = checkpoint.CurrentMessages.ToList();
+                accumulatedMessages = new List<Message>(currentMessages);
+            }
+
+            var agentList = Agents.ToList();
+            for (var i = startIndex; i < agentList.Count; i++)
+            {
+                var agent = agentList[i];
+
+                // 승인 체크
+                var previousStep = steps.LastOrDefault();
+                if (!await CheckApprovalAsync(agent, previousStep, cts.Token).ConfigureAwait(false))
+                {
+                    await SaveCheckpointAsync(steps, currentMessages, cts.Token).ConfigureAwait(false);
+                    stopwatch.Stop();
+                    return OrchestrationResult.Failure(
+                        $"Approval denied for agent '{agent.Name}'",
+                        steps,
+                        stopwatch.Elapsed);
+                }
+
                 var input = Options.AccumulateHistory ? accumulatedMessages : currentMessages;
                 var stepResult = await ExecuteAgentAsync(agent, input, cts.Token).ConfigureAwait(false);
                 steps.Add(stepResult);
@@ -53,6 +79,7 @@ public class SequentialOrchestrator : OrchestratorBase
                 {
                     if (Options.StopOnAgentFailure)
                     {
+                        await SaveCheckpointAsync(steps, currentMessages, cts.Token).ConfigureAwait(false);
                         stopwatch.Stop();
                         return OrchestrationResult.Failure(
                             stepResult.Error ?? $"Agent '{agent.Name}' failed",
@@ -75,6 +102,9 @@ public class SequentialOrchestrator : OrchestratorBase
                         currentMessages = [outputMessage];
                     }
                 }
+
+                // 각 단계 완료 후 체크포인트 저장
+                await SaveCheckpointAsync(steps, currentMessages, cts.Token).ConfigureAwait(false);
             }
 
             stopwatch.Stop();
@@ -90,6 +120,9 @@ public class SequentialOrchestrator : OrchestratorBase
                     steps,
                     stopwatch.Elapsed);
             }
+
+            // 완료 시 체크포인트 삭제
+            await DeleteCheckpointAsync(cancellationToken).ConfigureAwait(false);
 
             return OrchestrationResult.Success(
                 finalOutput,
@@ -147,18 +180,49 @@ public class SequentialOrchestrator : OrchestratorBase
             var steps = new List<AgentStepResult>();
             var currentMessages = messages.ToList();
             var accumulatedMessages = new List<Message>(currentMessages);
+            var startIndex = 0;
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(Options.Timeout);
+
+            // 체크포인트에서 재개
+            var checkpoint = await LoadCheckpointAsync(cts.Token).ConfigureAwait(false);
+            if (checkpoint != null)
+            {
+                steps.AddRange(checkpoint.CompletedSteps);
+                startIndex = checkpoint.CompletedStepCount;
+                currentMessages = checkpoint.CurrentMessages.ToList();
+                accumulatedMessages = new List<Message>(currentMessages);
+            }
 
             await writer.WriteAsync(
                 new OrchestrationStreamEvent { EventType = OrchestrationEventType.Started },
                 cancellationToken).ConfigureAwait(false);
 
             var timedOut = false;
+            var approvalDenied = false;
 
-            foreach (var agent in Agents)
+            var agentList = Agents.ToList();
+            for (var i = startIndex; i < agentList.Count; i++)
             {
+                var agent = agentList[i];
+
+                // 승인 체크
+                var previousStep = steps.LastOrDefault();
+                if (!await CheckApprovalAsync(agent, previousStep, cts.Token).ConfigureAwait(false))
+                {
+                    await SaveCheckpointAsync(steps, currentMessages, cts.Token).ConfigureAwait(false);
+                    approvalDenied = true;
+
+                    await writer.WriteAsync(new OrchestrationStreamEvent
+                    {
+                        EventType = OrchestrationEventType.ApprovalDenied,
+                        AgentName = agent.Name,
+                        Error = $"Approval denied for agent '{agent.Name}'"
+                    }, cancellationToken).ConfigureAwait(false);
+                    break;
+                }
+
                 await writer.WriteAsync(new OrchestrationStreamEvent
                 {
                     EventType = OrchestrationEventType.AgentStarted,
@@ -247,6 +311,9 @@ public class SequentialOrchestrator : OrchestratorBase
                             currentMessages = [responseMessage];
                         }
                     }
+
+                    // 각 단계 완료 후 체크포인트 저장
+                    await SaveCheckpointAsync(steps, currentMessages, cts.Token).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && !cts.Token.IsCancellationRequested)
                 {
@@ -340,6 +407,15 @@ public class SequentialOrchestrator : OrchestratorBase
                         stopwatch.Elapsed)
                 }, cancellationToken).ConfigureAwait(false);
             }
+            else if (approvalDenied)
+            {
+                await writer.WriteAsync(new OrchestrationStreamEvent
+                {
+                    EventType = OrchestrationEventType.Failed,
+                    Error = "Approval denied",
+                    Result = OrchestrationResult.Failure("Approval denied", steps, stopwatch.Elapsed)
+                }, cancellationToken).ConfigureAwait(false);
+            }
             else
             {
                 var lastSuccess = steps.LastOrDefault(s => s.IsSuccess);
@@ -356,6 +432,9 @@ public class SequentialOrchestrator : OrchestratorBase
                 }
                 else
                 {
+                    // 완료 시 체크포인트 삭제
+                    await DeleteCheckpointAsync(cancellationToken).ConfigureAwait(false);
+
                     await writer.WriteAsync(new OrchestrationStreamEvent
                     {
                         EventType = OrchestrationEventType.Completed,

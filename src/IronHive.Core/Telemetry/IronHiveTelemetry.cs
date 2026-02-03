@@ -59,6 +59,12 @@ public static class IronHiveTelemetry
         // Tool 속성
         public const string GenAiToolName = "gen_ai.tool.name";
         public const string GenAiToolCallId = "gen_ai.tool.call_id";
+
+        // Orchestration 속성
+        public const string OrchestrationName = "ironhive.orchestration.name";
+        public const string OrchestrationId = "ironhive.orchestration.id";
+        public const string OrchestrationStepIndex = "ironhive.orchestration.step_index";
+        public const string OrchestrationPattern = "ironhive.orchestration.pattern";
     }
 
     // 작업 이름 상수
@@ -68,6 +74,7 @@ public static class IronHiveTelemetry
         public const string Embedding = "embedding";
         public const string ToolCall = "tool_call";
         public const string AgentInvoke = "invoke_agent";
+        public const string Orchestration = "orchestration";
     }
 
     // 메트릭 정의
@@ -224,6 +231,27 @@ public static class IronHiveTelemetry
             activity.SetTag(Attributes.GenAiAgentName, agentName);
             if (description != null)
                 activity.SetTag(Attributes.GenAiAgentDescription, description);
+        }
+
+        return activity;
+    }
+
+    /// <summary>
+    /// 오케스트레이션을 위한 Activity를 시작합니다.
+    /// </summary>
+    public static Activity? StartOrchestrationActivity(string name, string pattern, string? orchestrationId = null)
+    {
+        var activity = ActivitySource.StartActivity(
+            $"{Operations.Orchestration} {name}",
+            ActivityKind.Internal);
+
+        if (activity != null)
+        {
+            activity.SetTag(Attributes.GenAiOperationName, Operations.Orchestration);
+            activity.SetTag(Attributes.OrchestrationName, name);
+            activity.SetTag(Attributes.OrchestrationPattern, pattern);
+            if (orchestrationId != null)
+                activity.SetTag(Attributes.OrchestrationId, orchestrationId);
         }
 
         return activity;

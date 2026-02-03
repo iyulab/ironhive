@@ -56,6 +56,80 @@ public abstract class OrchestratorBase : IAgentOrchestrator
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// 오케스트레이션 ID를 가져옵니다. 옵션에 지정되지 않았으면 자동 생성합니다.
+    /// </summary>
+    protected string GetOrchestrationId()
+    {
+        return Options.OrchestrationId ??= Guid.NewGuid().ToString("N");
+    }
+
+    /// <summary>
+    /// 체크포인트를 저장합니다.
+    /// </summary>
+    protected async Task SaveCheckpointAsync(
+        List<AgentStepResult> completedSteps,
+        IReadOnlyList<Message> currentMessages,
+        CancellationToken ct)
+    {
+        if (Options.CheckpointStore == null) return;
+
+        var orchestrationId = GetOrchestrationId();
+        var checkpoint = new OrchestrationCheckpoint
+        {
+            OrchestrationId = orchestrationId,
+            OrchestratorName = Name,
+            CompletedStepCount = completedSteps.Count,
+            CompletedSteps = completedSteps.ToList(),
+            CurrentMessages = currentMessages.ToList()
+        };
+
+        await Options.CheckpointStore.SaveAsync(orchestrationId, checkpoint, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 체크포인트를 로드합니다.
+    /// </summary>
+    protected async Task<OrchestrationCheckpoint?> LoadCheckpointAsync(CancellationToken ct)
+    {
+        if (Options.CheckpointStore == null) return null;
+
+        var orchestrationId = GetOrchestrationId();
+        return await Options.CheckpointStore.LoadAsync(orchestrationId, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 체크포인트를 삭제합니다.
+    /// </summary>
+    protected async Task DeleteCheckpointAsync(CancellationToken ct)
+    {
+        if (Options.CheckpointStore == null) return;
+
+        var orchestrationId = GetOrchestrationId();
+        await Options.CheckpointStore.DeleteAsync(orchestrationId, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 에이전트 실행 전 승인을 확인합니다.
+    /// ApprovalHandler가 없으면 항상 true를 반환합니다.
+    /// </summary>
+    protected async Task<bool> CheckApprovalAsync(
+        IAgent agent,
+        AgentStepResult? previousStep,
+        CancellationToken ct)
+    {
+        if (Options.ApprovalHandler == null) return true;
+
+        // RequireApprovalForAgents가 지정된 경우 해당 에이전트만 체크
+        if (Options.RequireApprovalForAgents != null &&
+            !Options.RequireApprovalForAgents.Contains(agent.Name))
+        {
+            return true;
+        }
+
+        return await Options.ApprovalHandler(agent.Name, previousStep).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// 에이전트 실행 및 결과 캡처 (OpenTelemetry 추적 포함)
     /// </summary>
     protected async Task<AgentStepResult> ExecuteAgentAsync(

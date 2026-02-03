@@ -24,6 +24,28 @@ public class OrchestratorOptions
     /// 에이전트 실패 시 전체 오케스트레이션 중단 여부. 기본값: true
     /// </summary>
     public bool StopOnAgentFailure { get; set; } = true;
+
+    /// <summary>
+    /// 체크포인트 저장소. null이면 체크포인팅 비활성화.
+    /// </summary>
+    public ICheckpointStore? CheckpointStore { get; set; }
+
+    /// <summary>
+    /// 오케스트레이션 ID. 체크포인트 식별에 사용. null이면 자동 생성.
+    /// </summary>
+    public string? OrchestrationId { get; set; }
+
+    /// <summary>
+    /// 에이전트 실행 전 승인 핸들러.
+    /// (agentName, previousStep) → true(진행) / false(중단).
+    /// null이면 승인 없이 진행.
+    /// </summary>
+    public Func<string, AgentStepResult?, Task<bool>>? ApprovalHandler { get; set; }
+
+    /// <summary>
+    /// 승인이 필요한 에이전트 이름 집합. null이면 모든 에이전트에 ApprovalHandler 적용.
+    /// </summary>
+    public HashSet<string>? RequireApprovalForAgents { get; set; }
 }
 
 /// <summary>
