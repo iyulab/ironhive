@@ -221,7 +221,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
         //await DropIfExists("TABLE", $"sqlite_sequence");
         await DropIfExists("INDEX", $"idx_{metaTable}_source"); // 인덱스 드랍은 자동으로 처리되나 안전차원에서
         await DropIfExists("INDEX", $"idx_{metaTable}_last");
-        await DropIfExists("VIRTUAL TABLE", vecTable);
+        await DropIfExists("TABLE", vecTable);
 
         // 컬렉션 메타 삭제
         {
