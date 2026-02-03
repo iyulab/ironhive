@@ -3,6 +3,7 @@ using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Roles;
+using IronHive.Core.Telemetry;
 
 namespace IronHive.Core.Agent.Orchestration;
 
@@ -55,7 +56,7 @@ public abstract class OrchestratorBase : IAgentOrchestrator
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 에이전트 실행 및 결과 캡처
+    /// 에이전트 실행 및 결과 캡처 (OpenTelemetry 추적 포함)
     /// </summary>
     protected async Task<AgentStepResult> ExecuteAgentAsync(
         IAgent agent,
@@ -65,6 +66,8 @@ public abstract class OrchestratorBase : IAgentOrchestrator
         var stopwatch = Stopwatch.StartNew();
         var inputMessages = messages.ToList();
 
+        using var activity = IronHiveTelemetry.StartAgentActivity(agent.Name, agent.Description);
+
         try
         {
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -72,6 +75,20 @@ public abstract class OrchestratorBase : IAgentOrchestrator
 
             var response = await agent.InvokeAsync(inputMessages, cts.Token).ConfigureAwait(false);
             stopwatch.Stop();
+
+            activity.SetResponseInfo(
+                responseId: response.Id,
+                model: agent.Model,
+                finishReason: response.DoneReason?.ToString(),
+                inputTokens: response.TokenUsage?.InputTokens,
+                outputTokens: response.TokenUsage?.OutputTokens);
+
+            IronHiveTelemetry.RecordOperationDuration(
+                system: agent.Provider,
+                model: agent.Model,
+                operationName: IronHiveTelemetry.Operations.AgentInvoke,
+                durationSeconds: stopwatch.Elapsed.TotalSeconds,
+                success: true);
 
             return new AgentStepResult
             {
@@ -85,18 +102,38 @@ public abstract class OrchestratorBase : IAgentOrchestrator
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
             stopwatch.Stop();
+
+            IronHiveTelemetry.RecordOperationDuration(
+                system: agent.Provider,
+                model: agent.Model,
+                operationName: IronHiveTelemetry.Operations.AgentInvoke,
+                durationSeconds: stopwatch.Elapsed.TotalSeconds,
+                success: false);
+
+            var errorMessage = $"Agent '{agent.Name}' timed out after {Options.AgentTimeout.TotalSeconds}s";
+            activity?.SetStatus(ActivityStatusCode.Error, errorMessage);
+
             return new AgentStepResult
             {
                 AgentName = agent.Name,
                 Input = inputMessages,
                 Duration = stopwatch.Elapsed,
                 IsSuccess = false,
-                Error = $"Agent '{agent.Name}' timed out after {Options.AgentTimeout.TotalSeconds}s"
+                Error = errorMessage
             };
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
+
+            activity.SetError(ex);
+            IronHiveTelemetry.RecordOperationDuration(
+                system: agent.Provider,
+                model: agent.Model,
+                operationName: IronHiveTelemetry.Operations.AgentInvoke,
+                durationSeconds: stopwatch.Elapsed.TotalSeconds,
+                success: false);
+
             return new AgentStepResult
             {
                 AgentName = agent.Name,
@@ -106,6 +143,32 @@ public abstract class OrchestratorBase : IAgentOrchestrator
                 Error = $"Agent '{agent.Name}' failed: {ex.Message}"
             };
         }
+    }
+
+    /// <summary>
+    /// 에이전트를 스트리밍 방식으로 실행하고 결과를 캡처합니다. (OpenTelemetry 추적 포함)
+    /// </summary>
+    protected async IAsyncEnumerable<StreamingMessageResponse> ExecuteAgentStreamingAsync(
+        IAgent agent,
+        IEnumerable<Message> messages,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        using var activity = IronHiveTelemetry.StartAgentActivity(agent.Name, agent.Description);
+
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cts.CancelAfter(Options.AgentTimeout);
+
+        await foreach (var chunk in agent.InvokeStreamingAsync(messages, cts.Token).ConfigureAwait(false))
+        {
+            yield return chunk;
+        }
+
+        IronHiveTelemetry.RecordOperationDuration(
+            system: agent.Provider,
+            model: agent.Model,
+            operationName: IronHiveTelemetry.Operations.AgentInvoke,
+            durationSeconds: 0, // 스트리밍은 정확한 시간 측정이 어려움
+            success: true);
     }
 
     /// <summary>

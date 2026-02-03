@@ -44,7 +44,15 @@
 
 - **Batteries Included**: 기업 환경에서 필요한 기본 세트 내장으로 보일러플레이트 감소
 - **파이프라인 중심**: 각 단계를 교체하거나 새로운 단계를 손쉽게 추가
-- **M.E.AI 호환**: `Microsoft.Extensions.AI` 기반으로 표준 준수
+- **M.E.AI 호환**: `Microsoft.Extensions.AI` 표준 준수 — `ChatClientAdapter`와 `EmbeddingGeneratorAdapter`를 통해 기존 M.E.AI 생태계와 양방향 연동
+- **멀티에이전트 오케스트레이션**: Sequential, Parallel, Hub-Spoke 패턴으로 복잡한 에이전트 워크플로우 구성
+
+### Design Philosophy
+
+- **파이프라인 단계별 제어**: 각 단계(텍스트 추출, 청킹, 임베딩, 저장)를 독립적으로 교체하거나 커스터마이즈할 수 있습니다
+- **Provider별 세밀한 조정**: 각 LLM Provider 구현을 직접 제어하여 Provider별 고유 기능을 활용할 수 있습니다
+- **프레임워크 비종속**: 다른 .NET AI 프레임워크와 함께 조합하여 사용할 수 있으며, M.E.AI 어댑터를 통해 기존 생태계와 호환됩니다
+- **데코레이터 기반 확장**: `DelegatingMessageGenerator` 패턴으로 Resilience, Telemetry 등 횡단 관심사를 미들웨어처럼 적용합니다
 
 ### 내장 기능
 
@@ -54,6 +62,7 @@
 | **Observability** | OpenTelemetry 통합, 토큰 사용량 추적 |
 | **RAG Pipeline** | 텍스트 추출, 청킹, 임베딩, 벡터 저장 |
 | **Multi-Provider** | OpenAI, Anthropic, Google, Ollama |
+| **Orchestration** | Sequential, Parallel, Hub-Spoke 멀티에이전트 |
 
 ## Features
 

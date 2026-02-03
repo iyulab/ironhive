@@ -2,7 +2,7 @@ using Microsoft.Extensions.AI;
 using IronHive.Abstractions.Messages;
 using IronHiveEmbedding = IronHive.Abstractions.Embedding;
 
-namespace IronHive.Abstractions.Compatibility;
+namespace IronHive.Core.Compatibility;
 
 /// <summary>
 /// Microsoft.Extensions.AI 호환성을 위한 확장 메서드를 제공합니다.

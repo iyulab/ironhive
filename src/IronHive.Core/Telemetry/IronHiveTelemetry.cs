@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 
-namespace IronHive.Abstractions.Telemetry;
+namespace IronHive.Core.Telemetry;
 
 /// <summary>
 /// IronHive 프레임워크의 OpenTelemetry 계측을 제공합니다.
