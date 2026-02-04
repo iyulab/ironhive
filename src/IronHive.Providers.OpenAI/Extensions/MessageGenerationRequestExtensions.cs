@@ -171,7 +171,7 @@ public static class MessageGenerationRequestExtensions
                     MessageThinkingEffort.Low => ResponsesReasoningEffort.Low,
                     MessageThinkingEffort.Medium => ResponsesReasoningEffort.Medium,
                     MessageThinkingEffort.High => ResponsesReasoningEffort.High,
-                    _ => ResponsesReasoningEffort.Minimal
+                    _ => ResponsesReasoningEffort.Low
                 },
                 Summary = ResponsesReasoningSummary.Detailed,
             }: null,

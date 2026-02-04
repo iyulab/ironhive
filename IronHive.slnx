@@ -1,0 +1,51 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/00. docs/">
+    <File Path="docs/AGENT.md" />
+    <File Path="docs/DESIGN.md" />
+    <File Path="docs/ENDREASON.md" />
+    <File Path="docs/STRUCTURE.md" />
+    <File Path="docs/TODO.md" />
+    <File Path="docs/VECTORDB.md" />
+  </Folder>
+  <Folder Name="/10. src/">
+    <Project Path="src/IronHive.Abstractions/IronHive.Abstractions.csproj" />
+    <Project Path="src/IronHive.Core/IronHive.Core.csproj" />
+  </Folder>
+  <Folder Name="/10. src/Plugins/">
+    <Project Path="src/IronHive.Plugins.MCP/IronHive.Plugins.MCP.csproj" />
+    <Project Path="src/IronHive.Plugins.OpenAPI/IronHive.Plugins.OpenAPI.csproj" />
+  </Folder>
+  <Folder Name="/10. src/Providers/">
+    <Project Path="src/IronHive.Providers.Anthropic/IronHive.Providers.Anthropic.csproj" />
+    <Project Path="src/IronHive.Providers.GoogleAI/IronHive.Providers.GoogleAI.csproj" />
+    <Project Path="src/IronHive.Providers.Ollama/IronHive.Providers.Ollama.csproj" />
+    <Project Path="src/IronHive.Providers.OpenAI/IronHive.Providers.OpenAI.csproj" />
+  </Folder>
+  <Folder Name="/10. src/Storages/">
+    <Project Path="src/IronHive.Storages.Amazon/IronHive.Storages.Amazon.csproj" />
+    <Project Path="src/IronHive.Storages.Azure/IronHive.Storages.Azure.csproj" />
+    <Project Path="src/IronHive.Storages.Qdrant/IronHive.Storages.Qdrant.csproj" />
+    <Project Path="src/IronHive.Storages.RabbitMQ/IronHive.Storages.RabbitMQ.csproj" />
+  </Folder>
+  <Folder Name="/20. experiments/">
+    <Project Path="experiments/ConsoleTest/ConsoleTest.csproj" />
+  </Folder>
+  <Folder Name="/30. services/">
+    <Project Path="services/WebServer/WebServer.csproj" />
+  </Folder>
+  <Folder Name="/40. local-tests/" />
+  <Folder Name="/40. local-tests/chat-api-tests/">
+    <Project Path="local-tests/chat-api-tests/ChatApiTests.csproj" />
+  </Folder>
+  <Folder Name="/40. local-tests/multi-agent-test/">
+    <Project Path="local-tests/multi-agent-test/MultiAgentTest.csproj" />
+  </Folder>
+<Folder Name="/tests/">
+    <Project Path="tests/IronHive.Tests/IronHive.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -20,7 +20,7 @@ $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RootDir = Resolve-Path "$ScriptDir/../.."
 $EnvFile = Join-Path $RootDir ".env"
-$ProjectFile = Join-Path $ScriptDir "LocalTests.csproj"
+$ProjectFile = Join-Path $ScriptDir "ChatApiTests.csproj"
 
 # Available providers
 $Providers = @(

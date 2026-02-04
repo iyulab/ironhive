@@ -37,7 +37,7 @@ internal class GoogleAIGenerateContentClient : GoogleAIClientBase
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         request.Model = request.Model.EnsurePrefix("models/");
-        var path = string.Format(GoogleAIConstants.PostStreamGenerateContentPath, request.Model).RemovePrefix('/');
+        var path = string.Format(GoogleAIConstants.PostStreamGenerateContentPath, request.Model).RemovePrefix('/') + "?alt=sse";
         var json = JsonSerializer.Serialize(request, _jsonOptions);
         using var _request = new HttpRequestMessage(HttpMethod.Post, path)
         {
