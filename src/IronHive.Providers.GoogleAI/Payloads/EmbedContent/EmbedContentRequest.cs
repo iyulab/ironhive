@@ -5,7 +5,7 @@ namespace IronHive.Providers.GoogleAI.Payloads.EmbedContent;
 internal class EmbedContentRequest
 {
     [JsonIgnore]
-    public string Model { get; set; } = string.Empty;
+    public required string Model { get; set; }
 
     /// <summary>
     /// Part.Text만 임베딩이 지원됩니다.

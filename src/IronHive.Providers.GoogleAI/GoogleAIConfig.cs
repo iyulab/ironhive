@@ -1,13 +1,12 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using IronHive.Abstractions.Http;
 
 namespace IronHive.Providers.GoogleAI;
 
 /// <summary>
 /// Google AI 플랫폼 API에 연결하는 데 필요한 구성 설정을 나타냅니다.
 /// </summary>
-public class GoogleAIConfig : IProviderConfig
+public class GoogleAIConfig
 {
     /// <summary>
     /// Google AI API의 기본 URL을 가져오거나 설정합니다.
@@ -32,17 +31,6 @@ public class GoogleAIConfig : IProviderConfig
         {
             new JsonStringEnumConverter()
         },
-
         WriteIndented = true // 디버깅을 위해 들여쓰기 설정
     };
-
-    /// <inheritdoc />
-    public string GetDefaultBaseUrl() => GoogleAIConstants.DefaultBaseUrl;
-
-    /// <inheritdoc />
-    public void ConfigureHttpClient(HttpClient client)
-    {
-        if (!string.IsNullOrWhiteSpace(ApiKey))
-            client.DefaultRequestHeaders.Add(GoogleAIConstants.AuthorizationHeaderName, ApiKey);
-    }
 }

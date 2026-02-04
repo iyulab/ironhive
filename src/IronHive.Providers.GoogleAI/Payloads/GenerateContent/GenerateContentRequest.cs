@@ -5,7 +5,7 @@ namespace IronHive.Providers.GoogleAI.Payloads.GenerateContent;
 internal class GenerateContentRequest
 {
     [JsonIgnore]
-    public string Model { get; set; } = string.Empty;
+    public required string Model { get; set; }
 
     /// <summary>
     /// 대화의 턴(메시지) 목록. 단발성 요청은 1개, 멀티턴은 히스토리를 포함합니다.

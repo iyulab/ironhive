@@ -62,7 +62,7 @@ public sealed class FunctionTool : ITool
     /// 결과가 이 크기를 초과하면 에러를 반환합니다.
     /// 기본값은 30,000자입니다. 0으로 설정하면 제한 없음.
     /// </summary>
-    public int MaxResultSize { get; set; } = 30_000;
+    public int MaxOutput { get; set; } = 30_000;
 
     /// <inheritdoc />
     public async Task<ToolOutput> InvokeAsync(
@@ -108,9 +108,9 @@ public sealed class FunctionTool : ITool
             var json = JsonSerializer.Serialize(result, JsonDefaultOptions.Options);
 
             // Check result size limit (0 means unlimited)
-            if (MaxResultSize > 0 && json.Length > MaxResultSize)
+            if (MaxOutput > 0 && json.Length > MaxOutput)
             {
-                return ToolOutput.Failure($"The result is too large ({json.Length:N0} chars, max {MaxResultSize:N0}). Please try again with different parameters.");
+                return ToolOutput.Failure($"The result is too large ({json.Length:N0} chars, max {MaxOutput:N0}). Please try again with different parameters.");
             }
             return ToolOutput.Success(json);
         }

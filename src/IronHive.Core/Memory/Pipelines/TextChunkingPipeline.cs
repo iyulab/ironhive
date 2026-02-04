@@ -10,14 +10,12 @@ namespace IronHive.Core.Memory.Pipelines;
 /// TextChunkerHandler는 주어진 텍스트를 청크로 나누는 메모리 파이프라인 핸들러입니다.
 /// 의미적 경계를 고려하여 청크를 생성합니다.
 /// </summary>
-public class TextChunkingPipeline : IMemoryPipeline<TextChunkingPipeline.Options>
+public partial class TextChunkingPipeline : IMemoryPipeline<TextChunkingPipeline.Options>
 {
     private readonly IEmbeddingService _embedder;
 
     // 문장 분리 패턴 (마침표, 느낌표, 물음표 + 공백/줄바꿈)
-    private static readonly Regex SentencePattern = new(
-        @"(?<=[.!?。！？])\s+",
-        RegexOptions.Compiled);
+    private static readonly Regex SentencePattern = SentenceSplitRegex();
 
     // 구분자 우선순위: 문단 > 문장 > 절 > 단어
     private static readonly string[] ParagraphSeparators = ["\n\n", "\r\n\r\n"];
@@ -35,10 +33,7 @@ public class TextChunkingPipeline : IMemoryPipeline<TextChunkingPipeline.Options
     /// <param name="ChunkSize">청크당 최대 토큰 수 (기본값: 512)</param>
     /// <param name="ChunkOverlap">청크 간 오버랩 토큰 수 (기본값: 50)</param>
     /// <param name="MinChunkSize">최소 청크 크기 - 이보다 작으면 이전 청크에 병합 (기본값: 50)</param>
-    public record Options(
-        int ChunkSize = 512,
-        int ChunkOverlap = 50,
-        int MinChunkSize = 50);
+    public record Options(int ChunkSize = 512, int ChunkOverlap = 50, int MinChunkSize = 50);
 
     /// <summary>
     /// 텍스트를 청크로 나누는 핸들러입니다.
@@ -418,4 +413,7 @@ public class TextChunkingPipeline : IMemoryPipeline<TextChunkingPipeline.Options
                    .Where(c => !string.IsNullOrWhiteSpace(c))
                    .ToArray();
     }
+
+    [GeneratedRegex(@"(?<=[.!?。！？])\s+", RegexOptions.Compiled)]
+    private static partial Regex SentenceSplitRegex();
 }

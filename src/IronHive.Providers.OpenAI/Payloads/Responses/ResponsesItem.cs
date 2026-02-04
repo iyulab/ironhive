@@ -74,7 +74,7 @@ internal class ResponsesReasoningItem : ResponsesItem
     /// type "summary" only
     /// </summary>
     [JsonPropertyName("summary")]
-    public required ICollection<ResponsesReasoningContent> Summary { get; set; }
+    public ICollection<ResponsesReasoningContent>? Summary { get; set; }
 
     /// <summary>
     /// type "text" only

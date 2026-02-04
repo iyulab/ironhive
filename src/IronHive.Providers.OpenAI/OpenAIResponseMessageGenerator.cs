@@ -61,14 +61,13 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
             }
             else if (item is ResponsesReasoningItem ri)
             {
-                var summaryText = ri.Summary?.Count > 0
-                    ? string.Join("\n---\n", ri.Summary.Select(s => s.Text.Trim()))
-                    : null;
                 content.Add(new ThinkingMessageContent
                 {
                     Format = ThinkingFormat.Summary,
                     Signature = ri.EncryptedContent,
-                    Value = summaryText
+                    Value = ri.Summary?.Count > 0
+                        ? string.Join("\n---\n", ri.Summary.Select(s => s.Text.Trim()))
+                        : string.Empty
                 });
             }
             else if (item is ResponsesFunctionToolCallItem fti)
@@ -146,9 +145,6 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
                 // 추론 생성
                 if (oar.Item is ResponsesReasoningItem ri)
                 {
-                    var summaryText = ri.Summary?.Count > 0
-                        ? string.Join("\n---\n", ri.Summary.Select(s => s.Text.Trim()))
-                        : null;
                     yield return new StreamingContentAddedResponse
                     {
                         Index = oar.OutputIndex,
@@ -156,7 +152,9 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
                         {
                             Format = ThinkingFormat.Summary,
                             Signature = ri.EncryptedContent,
-                            Value = summaryText
+                            Value = ri.Summary?.Count > 0
+                                ? string.Join("\n---\n", ri.Summary.Select(s => s.Text.Trim()))
+                                : string.Empty
                         }
                     };
                 }

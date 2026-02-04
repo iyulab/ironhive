@@ -1,13 +1,12 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using IronHive.Abstractions.Http;
 
 namespace IronHive.Providers.Anthropic;
 
 /// <summary>
 /// Anthropic API에 대한 설정을 나타냅니다.
 /// </summary>
-public class AnthropicConfig : IProviderConfig
+public class AnthropicConfig
 {
     /// <summary>
     /// Anthropic API의 기본 URL입니다.
@@ -39,19 +38,4 @@ public class AnthropicConfig : IProviderConfig
             new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower)
         }
     };
-
-    /// <inheritdoc />
-    public string GetDefaultBaseUrl() => AnthropicConstants.DefaultBaseUrl;
-
-    /// <inheritdoc />
-    public void ConfigureHttpClient(HttpClient client)
-    {
-        var version = string.IsNullOrWhiteSpace(Version)
-            ? AnthropicConstants.VersionHeaderValue
-            : Version;
-        client.DefaultRequestHeaders.Add(AnthropicConstants.VersionHeaderName, version);
-
-        if (!string.IsNullOrWhiteSpace(ApiKey))
-            client.DefaultRequestHeaders.Add(AnthropicConstants.AuthorizationHeaderName, ApiKey);
-    }
 }

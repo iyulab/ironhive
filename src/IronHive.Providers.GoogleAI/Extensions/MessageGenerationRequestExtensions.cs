@@ -154,33 +154,23 @@ internal static class MessageGenerationRequestExtensions
             }
         }
 
-        // Tools 변환 (비어있으면 null)
-        ICollection<Tool>? tools = null;
-        if (request.Tools?.Any() == true)
-        {
-            tools =
-            [
-                new Tool
-                {
-                    Functions = request.Tools.Select(t => new FunctionTool
-                    {
-                        Name = t.UniqueName,
-                        Description = t.Description ?? string.Empty,
-                        ParametersJsonSchema = t.Parameters ?? new JsonObject()
-                    }).ToArray()
-                }
-            ];
-        }
-
         return new GenerateContentRequest
         {
             Model = request.Model,
             Contents = contents,
-            SystemInstruction = string.IsNullOrWhiteSpace(request.SystemPrompt) ? null : new GoogleAIContent
+            SystemInstruction = string.IsNullOrWhiteSpace(request.System) ? null : new GoogleAIContent
             {
-                Parts = [ new ContentPart { Text = request.SystemPrompt } ]
+                Parts = [ new ContentPart { Text = request.System } ]
             },
-            Tools = tools,
+            Tools = request.Tools?.Any() == true ? [new Tool
+            {
+                Functions = request.Tools.Select(t => new FunctionTool
+                {
+                    Name = t.UniqueName,
+                    Description = t.Description ?? string.Empty,
+                    ParametersJsonSchema = t.Parameters ?? new JsonObject()
+                }).ToArray()
+            }] : null,
             GenerationConfig = new GenerationConfig
             {
                 CandidateCount = 1,

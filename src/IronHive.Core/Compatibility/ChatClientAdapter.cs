@@ -98,7 +98,7 @@ public class ChatClientAdapter : IChatClient
         {
             if (msg.Role == ChatRole.System)
             {
-                request.SystemPrompt = msg.Text;
+                request.System = msg.Text;
             }
             else
             {

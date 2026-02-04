@@ -20,20 +20,6 @@ public static class MessageGenerationRequestExtensions
     {
         var items = new List<ResponsesItem>();
 
-        // xAI grok-4 모델은 instructions를 지원하지 않음
-        // 대신 system 메시지를 input의 첫 번째로 추가해야 함
-        var modelLower = request.Model.ToLowerInvariant();
-        var isXai = modelLower.StartsWith("grok-");
-
-        if (isXai && !string.IsNullOrWhiteSpace(request.SystemPrompt))
-        {
-            items.Add(new ResponsesMessageItem
-            {
-                Role = ResponsesMessageRole.System,
-                Content = [new ResponsesInputTextContent { Text = request.SystemPrompt }]
-            });
-        }
-
         foreach (var msg in request.Messages)
         {
             if (msg is UserMessage user)
@@ -144,17 +130,10 @@ public static class MessageGenerationRequestExtensions
         }
 
         var enabledReasoning = request.ThinkingEffort != MessageThinkingEffort.None;
-
-        // xAI grok-4 모델은 reasoning_effort를 지원하지 않음 (grok-3-mini만 지원)
-        // 하지만 include: ["reasoning.encrypted_content"]는 필요
-        var isGrok4 = modelLower.StartsWith("grok-4");
-        var supportsReasoningEffort = !isGrok4;
-
         return new ResponsesRequest
         {
             Model = request.Model,
-            // xAI는 instructions를 지원하지 않음 (위에서 system 메시지로 추가됨)
-            Instructions = isXai ? null : request.SystemPrompt,
+            Instructions = request.System,
             Input = items,
             MaxOutputTokens = request.MaxTokens,
             Tools = request.Tools?.Select(t => new ResponsesFunctionTool
@@ -164,7 +143,7 @@ public static class MessageGenerationRequestExtensions
                 Parameters = t.Parameters ?? new JsonObject()
             }),
             Include = enabledReasoning ? [ "reasoning.encrypted_content" ] : null,
-            Reasoning = enabledReasoning && supportsReasoningEffort ? new ResponsesReasoning
+            Reasoning = enabledReasoning ? new ResponsesReasoning
             {
                 Effort = request.ThinkingEffort switch
                 {
@@ -176,8 +155,8 @@ public static class MessageGenerationRequestExtensions
                 Summary = ResponsesReasoningSummary.Detailed,
             }: null,
             // 추론 모델의 경우 토큰샘플링 방식을 임의로 설정할 수 없습니다.
-            Temperature = enabledReasoning && supportsReasoningEffort ? null : request.Temperature,
-            TopP = enabledReasoning && supportsReasoningEffort ? null : request.TopP,
+            Temperature = enabledReasoning ? null : request.Temperature,
+            TopP = enabledReasoning ? null : request.TopP,
         };
     }
 
@@ -186,18 +165,15 @@ public static class MessageGenerationRequestExtensions
     /// </summary>
     public static ChatCompletionRequest ToOpenAILegacy(this MessageGenerationRequest request)
     {
-        // reasoning_effort는 o-series와 gpt-5 이상 모델만 지원
-        var model = request.Model.ToLowerInvariant();
-        var supportsReasoning = model.StartsWith("o1") || model.StartsWith("o3") || model.StartsWith("o4")
-                             || model.StartsWith("gpt-5") || model.Contains("-o1") || model.Contains("-o3");
-        var enabledReasoning = supportsReasoning && request.ThinkingEffort is not null and not MessageThinkingEffort.None;
+        var enabledReasoning = request.ThinkingEffort != MessageThinkingEffort.None;
+
         var messages = new List<OpenAIMessage>();
-        if (!string.IsNullOrWhiteSpace(request.SystemPrompt))
+        if (!string.IsNullOrWhiteSpace(request.System))
         {
             if (enabledReasoning)
-                messages.Add(new DeveloperChatMessage { Content = request.SystemPrompt });
+                messages.Add(new DeveloperChatMessage { Content = request.System });
             else
-                messages.Add(new SystemChatMessage { Content = request.SystemPrompt });
+                messages.Add(new SystemChatMessage { Content = request.System });
         }
 
         foreach (var message in request.Messages)

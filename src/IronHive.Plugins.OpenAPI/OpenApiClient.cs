@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.OpenApi;
+﻿using Microsoft.OpenApi;
 
 namespace IronHive.Plugins.OpenAPI;
 
@@ -9,7 +8,6 @@ namespace IronHive.Plugins.OpenAPI;
 public sealed class OpenApiClient : IDisposable
 {
     private readonly HttpClient _http;
-    private readonly bool _disposeHttpClient;
     private readonly OpenApiDocument _doc;
     private readonly OpenApiClientOptions? _options;
 
@@ -19,7 +17,7 @@ public sealed class OpenApiClient : IDisposable
     {
         _doc = doc;
         _options = options;
-        (_http, _disposeHttpClient) = CreateHttpClient(_options);
+        _http = CreateHttpClient(_options);
     }
 
     /// <summary>
@@ -39,9 +37,6 @@ public sealed class OpenApiClient : IDisposable
     /// <inheritdoc />
     public void Dispose()
     {
-        // Only dispose HttpClient if we created it ourselves (not from IHttpClientFactory)
-        if (_disposeHttpClient)
-            _http.Dispose();
         GC.SuppressFinalize(this);
     }
 
@@ -142,28 +137,9 @@ public sealed class OpenApiClient : IDisposable
     }
 
     /// <summary> HttpClient를 설정에 따라 생성합니다. </summary>
-    /// <returns>Tuple of (HttpClient, shouldDispose). shouldDispose is false if client comes from IHttpClientFactory.</returns>
-    private static (HttpClient client, bool shouldDispose) CreateHttpClient(OpenApiClientOptions? options, IServiceProvider? services = null)
+    private static HttpClient CreateHttpClient(OpenApiClientOptions? options)
     {
-        HttpClient? client = null;
-        var shouldDispose = true;
-
-        if (services is not null)
-        {
-            var factory = services.GetService<IHttpClientFactory>();
-            if (factory is not null)
-            {
-                client = factory.CreateClient($"IronHive_OpenApiTool");
-                shouldDispose = false; // Factory-managed clients should NOT be disposed by consumers
-            }
-            else
-            {
-                client = services.GetService<HttpClient>();
-                shouldDispose = false; // DI-injected clients should NOT be disposed
-            }
-        }
-        client ??= new HttpClient();
-
+        var client = new HttpClient();
         if (options is not null)
         {
             foreach (var (k, v) in options.DefaultHeaders)
@@ -171,8 +147,7 @@ public sealed class OpenApiClient : IDisposable
 
             client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
         }
-
-        return (client, shouldDispose);
+        return client;
     }
 
     /// <summary> 주어진 조건에 따라 OperationId를 임의로 생성합니다. </summary>

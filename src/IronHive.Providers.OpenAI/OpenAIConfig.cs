@@ -1,14 +1,13 @@
 using System.Text.Json.Serialization;
 using System.Text.Json;
 using System.Text.Encodings.Web;
-using IronHive.Abstractions.Http;
 
 namespace IronHive.Providers.OpenAI;
 
 /// <summary>
 /// OpenAI에 대한 설정 클래스입니다.
 /// </summary>
-public class OpenAIConfig : IProviderConfig
+public class OpenAIConfig
 {
     /// <summary>
     /// OpenAI API의 기본 URL을 가져오거나 설정합니다.
@@ -49,24 +48,4 @@ public class OpenAIConfig : IProviderConfig
             new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower)
         },
     };
-
-    /// <inheritdoc />
-    public string GetDefaultBaseUrl() => OpenAIConstants.DefaultBaseUrl;
-
-    /// <inheritdoc />
-    public void ConfigureHttpClient(HttpClient client)
-    {
-        if (!string.IsNullOrWhiteSpace(ApiKey))
-            client.DefaultRequestHeaders.Add(
-                OpenAIConstants.AuthorizationHeaderName,
-                string.Format(OpenAIConstants.AuthorizationHeaderValue, ApiKey));
-
-        if (!string.IsNullOrWhiteSpace(Organization))
-            client.DefaultRequestHeaders.Add(
-                OpenAIConstants.OrganizationHeaderName, Organization);
-
-        if (!string.IsNullOrWhiteSpace(Project))
-            client.DefaultRequestHeaders.Add(
-                OpenAIConstants.ProjectHeaderName, Project);
-    }
 }

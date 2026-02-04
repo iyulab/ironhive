@@ -98,42 +98,26 @@ public class AzureStorageConfig
         {
             case AzureStorageAuthTypes.ConnectionString:
                 if (string.IsNullOrWhiteSpace(ConnectionString))
-                    throw new ArgumentException(
-                        "ConnectionString is required when AuthType is ConnectionString.",
-                        nameof(ConnectionString));
+                    throw new ArgumentException("ConnectionString is required when AuthType is ConnectionString.");
                 break;
 
             case AzureStorageAuthTypes.AccountKey:
                 if (string.IsNullOrWhiteSpace(AccountName))
-                    throw new ArgumentException(
-                        "AccountName is required when AuthType is AccountKey.",
-                        nameof(AccountName));
+                    throw new ArgumentException("AccountName is required when AuthType is AccountKey.");
                 if (string.IsNullOrWhiteSpace(AccountKey))
-                    throw new ArgumentException(
-                        "AccountKey is required when AuthType is AccountKey.",
-                        nameof(AccountKey));
+                    throw new ArgumentException("AccountKey is required when AuthType is AccountKey.");
                 break;
 
             case AzureStorageAuthTypes.SASToken:
                 if (string.IsNullOrWhiteSpace(AccountName))
-                    throw new ArgumentException(
-                        "AccountName is required when AuthType is SASToken.",
-                        nameof(AccountName));
+                    throw new ArgumentException("AccountName is required when AuthType is SASToken");
                 if (string.IsNullOrWhiteSpace(SASToken))
-                    throw new ArgumentException(
-                        "SASToken is required when AuthType is SASToken.",
-                        nameof(SASToken));
+                    throw new ArgumentException("SASToken is required when AuthType is SASToken");
                 break;
 
             case AzureStorageAuthTypes.AzureIdentity:
                 if (string.IsNullOrWhiteSpace(AccountName))
-                    throw new ArgumentException(
-                        "AccountName is required when AuthType is AzureIdentity.",
-                        nameof(AccountName));
-                if (TokenCredential is null)
-                    throw new ArgumentException(
-                        "TokenCredential is required when AuthType is AzureIdentity.",
-                        nameof(TokenCredential));
+                    throw new ArgumentException("AccountName is required when AuthType is AzureIdentity.");
                 break;
 
             default:

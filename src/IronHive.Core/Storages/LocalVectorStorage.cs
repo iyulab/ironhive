@@ -19,7 +19,6 @@ public sealed partial class LocalVectorStorage : IVectorStorage
     private readonly string _moduleVersion;
 
     private volatile bool _ensuredCollMetaTable = false;
-    private readonly SemaphoreSlim _initLock = new(1, 1);
 
     public LocalVectorStorage(LocalVectorConfig config)
     {
@@ -39,7 +38,6 @@ public sealed partial class LocalVectorStorage : IVectorStorage
     /// <inheritdoc />
     public void Dispose()
     {
-        _initLock.Dispose();
         GC.SuppressFinalize(this);
     }
 
@@ -221,6 +219,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
         //await DropIfExists("TABLE", $"sqlite_sequence");
         await DropIfExists("INDEX", $"idx_{metaTable}_source"); // 인덱스 드랍은 자동으로 처리되나 안전차원에서
         await DropIfExists("INDEX", $"idx_{metaTable}_last");
+        // vec0 테이블 삭제 (일반 테이블과 동일하게 처리)
         await DropIfExists("TABLE", vecTable);
 
         // 컬렉션 메타 삭제
@@ -592,33 +591,23 @@ public sealed partial class LocalVectorStorage : IVectorStorage
         return collectionName.ToLowerInvariant();
     }
 
-    /// <summary> CollectionMetaTable 테이블이 없으면 생성합니다. (Thread-safe with double-checked locking) </summary>
+    /// <summary> CollectionMetaTable 테이블이 없으면 생성합니다.</summary>
     private async Task EnsureCollectionMetaTableAsync()
     {
-        if (_ensuredCollMetaTable) return;
+        if (_ensuredCollMetaTable) return; // Double-check
 
-        await _initLock.WaitAsync().ConfigureAwait(false);
-        try
-        {
-            if (_ensuredCollMetaTable) return; // Double-check after acquiring lock
+        using var conn = await CreateConnectionAsync().ConfigureAwait(false);
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = $@"
+            CREATE TABLE IF NOT EXISTS {CollectionMetaTable}(
+                name TEXT PRIMARY KEY,
+                dimensions INTEGER NOT NULL,
+                embedding_provider TEXT NOT NULL,
+                embedding_model TEXT NOT NULL
+            )";
+        await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
 
-            using var conn = await CreateConnectionAsync().ConfigureAwait(false);
-            using var cmd = conn.CreateCommand();
-            cmd.CommandText = $@"
-                CREATE TABLE IF NOT EXISTS {CollectionMetaTable}(
-                    name TEXT PRIMARY KEY,
-                    dimensions INTEGER NOT NULL,
-                    embedding_provider TEXT NOT NULL,
-                    embedding_model TEXT NOT NULL
-                )";
-            await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
-
-            _ensuredCollMetaTable = true;
-        }
-        finally
-        {
-            _initLock.Release();
-        }
+        _ensuredCollMetaTable = true;
     }
 
     #endregion

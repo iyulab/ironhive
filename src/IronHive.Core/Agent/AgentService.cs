@@ -122,7 +122,7 @@ public class AgentService : IAgentService
             Description = config.Description ?? string.Empty,
             Provider = config.Provider,
             Model = config.Model,
-            SystemPrompt = config.Instructions,
+            Instruction = config.Instructions,
             Tools = config.ToToolItems(),
             Parameters = config.ToParameters()
         };
@@ -174,9 +174,7 @@ public class AgentService : IAgentService
         if (!table.TryGetValue("toolOptions", out var value) || value is not TomlTable optionsTable)
             return null;
 
-        return optionsTable.ToDictionary(
-            kvp => kvp.Key,
-            kvp => kvp.Value as object);
+        return optionsTable.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) as Dictionary<string, object?>;
     }
 
     private static AgentParametersConfig? GetTomlParameters(TomlTable table)

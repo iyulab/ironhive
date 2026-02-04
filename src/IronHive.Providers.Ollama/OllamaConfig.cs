@@ -1,13 +1,12 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using IronHive.Abstractions.Http;
 
 namespace IronHive.Providers.Ollama;
 
 /// <summary>
 /// Ollama API에 연결하는 데 필요한 구성 설정을 나타냅니다.
 /// </summary>
-public class OllamaConfig : IProviderConfig
+public class OllamaConfig
 {
     /// <summary>  
     /// Ollama API의 기본 URL을 가져오거나 설정합니다.
@@ -33,19 +32,4 @@ public class OllamaConfig : IProviderConfig
             new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower)
         }
     };
-
-    /// <inheritdoc />
-    public string GetDefaultBaseUrl() => OllamaConstants.DefaultBaseUrl;
-
-    /// <inheritdoc />
-    public void ConfigureHttpClient(HttpClient client)
-    {
-        if (DefaultRequestHeaders != null)
-        {
-            foreach (var header in DefaultRequestHeaders)
-            {
-                client.DefaultRequestHeaders.Add(header.Key, header.Value);
-            }
-        }
-    }
 }

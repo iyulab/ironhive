@@ -42,7 +42,7 @@ public class MessageService : IMessageService
         {
             Model = request.Model,
             Messages = request.Messages,
-            SystemPrompt = request.SystemPrompt,
+            System = request.System,
             Tools = _tools.FilterBy(request.Tools.Select(t => t.Name)),
             ThinkingEffort = request.ThinkingEffort,
             TopK = request.TopK,
@@ -122,7 +122,7 @@ public class MessageService : IMessageService
         {
             Model = request.Model,
             Messages = request.Messages,
-            SystemPrompt = request.SystemPrompt,
+            System = request.System,
             Tools = _tools.FilterBy(request.Tools.Select(t => t.Name)),
             ThinkingEffort = request.ThinkingEffort,
             TopK = request.TopK,

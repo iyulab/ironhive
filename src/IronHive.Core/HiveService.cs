@@ -1,13 +1,10 @@
 ﻿using IronHive.Abstractions;
 using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Memory;
-using IronHive.Abstractions.Queue;
 using IronHive.Abstractions.Registries;
 using IronHive.Abstractions.Tools;
-using IronHive.Abstractions.Workflow;
 using IronHive.Core.Memory;
 using Microsoft.Extensions.DependencyInjection;
-using System.Runtime.CompilerServices;
 
 namespace IronHive.Core;
 
@@ -44,7 +41,7 @@ public class HiveService : IHiveService
     /// <summary>
     /// 지연 로딩된 AgentService 인스턴스를 반환합니다.
     /// </summary>
-    private IAgentService AgentService =>
+    private IAgentService Agents =>
         _agentService ??= Services.GetRequiredService<IAgentService>();
 
     /// <inheritdoc />
@@ -53,13 +50,13 @@ public class HiveService : IHiveService
         ArgumentNullException.ThrowIfNull(card);
         if (string.IsNullOrWhiteSpace(card.Workflow))
             throw new ArgumentException("AgentCard.Workflow is required.", nameof(card));
-        return AgentService.CreateAgentFromYaml(card.Workflow);
+        return Agents.CreateAgentFromYaml(card.Workflow);
     }
 
     /// <inheritdoc />
     public IAgent CreateAgentFromYaml(string yaml)
     {
-        return AgentService.CreateAgentFromYaml(yaml);
+        return Agents.CreateAgentFromYaml(yaml);
     }
 }
 
