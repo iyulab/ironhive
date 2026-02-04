@@ -36,9 +36,9 @@ internal abstract class OllamaClientBase : IDisposable
                 : new Uri(config.BaseUrl.EnsureSuffix('/')),
         };
 
-        if (config.DefaultRequestHeaders != null)
+        if (config.DefaultHeaders != null)
         {
-            foreach (var header in config.DefaultRequestHeaders)
+            foreach (var header in config.DefaultHeaders)
             {
                 client.DefaultRequestHeaders.Add(header.Key, header.Value);
             }

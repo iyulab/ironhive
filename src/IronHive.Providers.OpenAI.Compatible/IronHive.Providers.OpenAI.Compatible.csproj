@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>IronHive OpenAI compatible providers (xAI, Groq, DeepSeek, Together AI, Fireworks, Perplexity, OpenRouter, etc.)</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\IronHive.Providers.OpenAI\IronHive.Providers.OpenAI.csproj" />
+  </ItemGroup>
+
+</Project>

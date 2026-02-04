@@ -8,25 +8,11 @@ using AssistantMessage = IronHive.Abstractions.Messages.Roles.AssistantMessage;
 using OpenAIMessage = IronHive.Providers.OpenAI.Payloads.ChatCompletion.ChatMessage;
 using TextMessageContent = IronHive.Abstractions.Messages.Content.TextMessageContent;
 using ImageMessageContent = IronHive.Abstractions.Messages.Content.ImageMessageContent;
-using IronHive.Providers.OpenAI;
 
 namespace IronHive.Abstractions.Message;
 
 public static class MessageGenerationRequestExtensions
 {
-    private static string ToDataUri(ImageMessageContent image)
-    {
-        var mime = image.Format switch
-        {
-            ImageFormat.Png => "image/png",
-            ImageFormat.Jpeg => "image/jpeg",
-            ImageFormat.Gif => "image/gif",
-            ImageFormat.Webp => "image/webp",
-            _ => throw new NotSupportedException($"Unsupported image format: {image.Format}")
-        };
-        return $"data:{mime};base64,{image.Base64}";
-    }
-
     /// <summary>
     /// 메시지 생성 요청을 OpenAI의 ResponsesRequest로 변환합니다.
     /// </summary>
@@ -68,7 +54,7 @@ public static class MessageGenerationRequestExtensions
                         um.Content.Add(new ResponsesInputImageContent
                         {
                             Detail = "auto",
-                            ImageUrl = ToDataUri(image),
+                            ImageUrl = EnsureBase64Url(image),
                         });
                     }
                     else
@@ -221,7 +207,7 @@ public static class MessageGenerationRequestExtensions
                         {
                             ImageUrl = new ImageChatMessageContent.ImageSource
                             {
-                                Url = ToDataUri(image)
+                                Url = EnsureBase64Url(image)
                             }
                         });
                     }
@@ -312,5 +298,22 @@ public static class MessageGenerationRequestExtensions
             Temperature = !enabledReasoning ? request.Temperature : null,
             TopP = !enabledReasoning ? request.TopP : null,
         };
+    }
+
+    /// <summary>Ensures that the image content is in a valid Base64 URL format.</summary>
+    private static string EnsureBase64Url(ImageMessageContent image)
+    {
+        if (image.Base64.StartsWith("data:"))
+            return image.Base64;
+
+        var mime = image.Format switch
+        {
+            ImageFormat.Png => "image/png",
+            ImageFormat.Jpeg => "image/jpeg",
+            ImageFormat.Gif => "image/gif",
+            ImageFormat.Webp => "image/webp",
+            _ => throw new NotSupportedException($"Unsupported image format: {image.Format}")
+        };
+        return $"data:{mime};base64,{image.Base64}";
     }
 }

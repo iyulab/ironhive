@@ -5,6 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="IronHive.Providers.OpenAI.Compatible" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Tiktoken" />
   </ItemGroup>
 

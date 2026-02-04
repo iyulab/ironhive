@@ -1,0 +1,325 @@
+using System.Runtime.CompilerServices;
+using IronHive.Abstractions.Message;
+using IronHive.Abstractions.Messages;
+using IronHive.Abstractions.Messages.Content;
+using IronHive.Abstractions.Messages.Roles;
+using IronHive.Providers.OpenAI;
+using IronHive.Providers.OpenAI.Compatible.Clients;
+using IronHive.Providers.OpenAI.Payloads.ChatCompletion;
+
+namespace IronHive.Providers.OpenAI.Compatible;
+
+/// <summary>
+/// OpenAI 호환 서비스를 위한 메시지 생성기입니다.
+/// Adapter를 통해 제공자별 요청/응답 변환을 수행합니다.
+/// </summary>
+public class CompatibleChatMessageGenerator : IMessageGenerator
+{
+    private readonly CompatibleChatCompletionClient _client;
+
+    public CompatibleChatMessageGenerator(CompatibleConfig config)
+    {
+        _client = new CompatibleChatCompletionClient(config);
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        _client.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
+    /// <inheritdoc />
+    public async Task<MessageResponse> GenerateMessageAsync(
+        MessageGenerationRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var req = request.ToOpenAILegacy();
+        var res = await _client.PostChatCompletionAsync(req, cancellationToken);
+        var choice = res.Choices?.FirstOrDefault();
+        var content = new List<MessageContent>();
+
+        // 텍스트 생성
+        var text = choice?.Message?.Content;
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            content.Add(new TextMessageContent
+            {
+                Value = text
+            });
+        }
+
+        // 툴 호출
+        var tools = choice?.Message?.ToolCalls;
+        if (tools != null && tools.Count > 0)
+        {
+            foreach (var tool in tools)
+            {
+                var tc = new ToolMessageContent
+                {
+                    IsApproved = true,
+                    Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
+                    Name = string.Empty,
+                };
+                if (tool is ChatFunctionToolCall func)
+                {
+                    tc.IsApproved = request.Tools?.TryGet(func.Function?.Name!, out var t) != true || t?.RequiresApproval == false;
+                    tc.Name = func.Function?.Name ?? string.Empty;
+                    tc.Input = func.Function?.Arguments ?? string.Empty;
+                }
+                else if (tool is ChatCustomToolCall custom)
+                {
+                    tc.IsApproved = request.Tools?.TryGet(custom.Custom?.Name!, out var t) != true || t?.RequiresApproval == false;
+                    tc.Name = custom.Custom?.Name ?? string.Empty;
+                    tc.Input = custom.Custom?.Input ?? string.Empty;
+                }
+                else
+                {
+                    throw new NotImplementedException("Unsupported tool call type.");
+                }
+                content.Add(tc);
+            }
+        }
+
+        return new MessageResponse
+        {
+            Id = res.Id ?? Guid.NewGuid().ToString(),
+            DoneReason = choice?.FinishReason switch
+            {
+                ChatFinishReason.ToolCalls => MessageDoneReason.ToolCall,
+                ChatFinishReason.Stop => MessageDoneReason.EndTurn,
+                ChatFinishReason.Length => MessageDoneReason.MaxTokens,
+                ChatFinishReason.ContentFilter => MessageDoneReason.ContentFilter,
+                _ => null
+            },
+            Message = new AssistantMessage
+            {
+                Id = res.Id ?? Guid.NewGuid().ToString(),
+                Name = null,
+                Model = res.Model,
+                Content = content,
+            },
+            TokenUsage = new MessageTokenUsage
+            {
+                InputTokens = res.Usage?.PromptTokens ?? 0,
+                OutputTokens = res.Usage?.CompletionTokens ?? 0
+            },
+            Timestamp = DateTimeOffset.FromUnixTimeSeconds(res.Created).UtcDateTime
+        };
+    }
+
+    /// <inheritdoc />
+    public async IAsyncEnumerable<StreamingMessageResponse> GenerateStreamingMessageAsync(
+        MessageGenerationRequest request,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var req = request.ToOpenAILegacy();
+
+        // 인덱스 추적 관리용
+        (int, MessageContent)? current = null;
+        int? currentToolIndex = null;
+
+        string id = string.Empty;
+        string model = string.Empty;
+        MessageDoneReason? reason = null;
+        MessageTokenUsage? usage = null;
+
+        await foreach (var res in _client.PostStreamingChatCompletionAsync(req, cancellationToken))
+        {
+            // 메시지 시작
+            if (current == null)
+            {
+                id = res.Id ?? Guid.NewGuid().ToString();
+                model = res.Model ?? req.Model;
+                yield return new StreamingMessageBeginResponse
+                {
+                    Id = id
+                };
+            }
+
+            // 토큰 사용량 (FinishReason 다음 호출)
+            if (res.Usage != null)
+            {
+                usage = new MessageTokenUsage
+                {
+                    InputTokens = res.Usage.PromptTokens,
+                    OutputTokens = res.Usage.CompletionTokens
+                };
+            }
+
+            // 메시지 확인 및 건너뛰기
+            var choice = res.Choices?.FirstOrDefault();
+            if (choice == null)
+                continue;
+
+            // 종료 메시지
+            if (choice.FinishReason != null)
+            {
+                reason = choice.FinishReason switch
+                {
+                    ChatFinishReason.ToolCalls => MessageDoneReason.ToolCall,
+                    ChatFinishReason.Stop => MessageDoneReason.EndTurn,
+                    ChatFinishReason.Length => MessageDoneReason.MaxTokens,
+                    ChatFinishReason.ContentFilter => MessageDoneReason.ContentFilter,
+                    _ => null
+                };
+            }
+
+            // 메시지 확인 및 건너뛰기
+            var delta = choice.Delta;
+            if (delta == null)
+                continue;
+
+            // 툴 사용
+            var tools = delta.ToolCalls;
+            if (tools != null)
+            {
+                for (var i = 0; i < tools.Count; i++)
+                {
+                    var func = tools.ElementAt(i);
+                    var funcIndex = func.Index ?? i;
+
+                    // 이어서 생성되는 툴 메시지의 경우
+                    if (current.HasValue)
+                    {
+                        var (index, content) = current.Value;
+                        if (content is ToolMessageContent toolContent)
+                        {
+                            // 현재 컨텐츠가 ToolMessageContent이고, 인덱스가 동일한 경우 업데이트
+                            if (funcIndex == currentToolIndex)
+                            {
+                                yield return new StreamingContentDeltaResponse
+                                {
+                                    Index = index,
+                                    Delta = new ToolDeltaContent
+                                    {
+                                        Input = func.Function?.Arguments ?? string.Empty
+                                    }
+                                };
+                            }
+                            // 현재 컨텐츠가 ToolMessageContent이지만, 인덱스가 다른 경우
+                            else
+                            {
+                                yield return new StreamingContentCompletedResponse
+                                {
+                                    Index = index,
+                                };
+                                current = (index + 1, new ToolMessageContent
+                                {
+                                    IsApproved = request.Tools?.TryGet(func.Function?.Name!, out var t) != true || t?.RequiresApproval == false,
+                                    Id = func.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
+                                    Name = func.Function?.Name ?? string.Empty,
+                                    Input = func.Function?.Arguments,
+                                });
+                                currentToolIndex = funcIndex;
+                                yield return new StreamingContentAddedResponse
+                                {
+                                    Index = current.Value.Item1,
+                                    Content = current.Value.Item2
+                                };
+                            }
+                        }
+                        else
+                        {
+                            yield return new StreamingContentCompletedResponse
+                            {
+                                Index = index,
+                            };
+                            current = (index + 1, new ToolMessageContent
+                            {
+                                IsApproved = request.Tools?.TryGet(func.Function?.Name!, out var t) != true || t?.RequiresApproval == false,
+                                Id = func.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
+                                Name = func.Function?.Name ?? string.Empty,
+                                Input = func.Function?.Arguments,
+                            });
+                            currentToolIndex = funcIndex;
+                            yield return new StreamingContentAddedResponse
+                            {
+                                Index = current.Value.Item1,
+                                Content = current.Value.Item2
+                            };
+                        }
+                    }
+                    else
+                    {
+                        current = (0, new ToolMessageContent
+                        {
+                            IsApproved = request.Tools?.TryGet(func.Function?.Name!, out var t) != true || t?.RequiresApproval == false,
+                            Id = func.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
+                            Name = func.Function?.Name ?? string.Empty,
+                            Input = func.Function?.Arguments,
+                        });
+                        currentToolIndex = funcIndex;
+                        yield return new StreamingContentAddedResponse
+                        {
+                            Index = current.Value.Item1,
+                            Content = current.Value.Item2
+                        };
+                    }
+                }
+            }
+
+            // 텍스트 생성
+            var text = delta.Content;
+            if (text != null)
+            {
+                if (current.HasValue)
+                {
+                    var (index, content) = current.Value;
+                    if (content is TextMessageContent textContent)
+                    {
+                        yield return new StreamingContentDeltaResponse
+                        {
+                            Index = index,
+                            Delta = new TextDeltaContent
+                            {
+                                Value = text
+                            }
+                        };
+                    }
+                    else
+                    {
+                        yield return new StreamingContentCompletedResponse
+                        {
+                            Index = index,
+                        };
+                        current = (index + 1, new TextMessageContent { Value = text });
+                        yield return new StreamingContentAddedResponse
+                        {
+                            Index = current.Value.Item1,
+                            Content = current.Value.Item2
+                        };
+                    }
+                }
+                else
+                {
+                    current = (0, new TextMessageContent { Value = text });
+                    yield return new StreamingContentAddedResponse
+                    {
+                        Index = current.Value.Item1,
+                        Content = current.Value.Item2
+                    };
+                }
+            }
+        }
+
+        // 남아 있는 컨텐츠 처리
+        if (current.HasValue)
+        {
+            yield return new StreamingContentCompletedResponse
+            {
+                Index = current.Value.Item1,
+            };
+        }
+
+        // 종료
+        yield return new StreamingMessageDoneResponse
+        {
+            DoneReason = reason,
+            TokenUsage = usage,
+            Id = id,
+            Model = model,
+            Timestamp = DateTime.UtcNow,
+        };
+    }
+}

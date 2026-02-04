@@ -47,6 +47,13 @@ public abstract class OpenAIClientBase : IDisposable
             client.DefaultRequestHeaders.Add(
                 OpenAIConstants.ProjectHeaderName, config.Project);
 
+        if (config.DefaultHeaders != null)
+        {
+            foreach (var header in config.DefaultHeaders)
+            {
+                client.DefaultRequestHeaders.Add(header.Key, header.Value);
+            }
+        }
         return client;
     }
 }

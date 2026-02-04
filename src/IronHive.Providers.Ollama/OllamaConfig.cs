@@ -17,7 +17,7 @@ public class OllamaConfig
     /// <summary>  
     /// Api에 대한 요청에 사용할 기본 요청 헤더를 가져오거나 설정합니다.
     /// </summary>  
-    public IDictionary<string, string> DefaultRequestHeaders { get; set; } = new Dictionary<string, string>();
+    public IDictionary<string, string> DefaultHeaders { get; set; } = new Dictionary<string, string>();
 
     /// <summary>
     /// 요청/응답의 Json 직렬화 옵션을 가져오거나 설정합니다.
