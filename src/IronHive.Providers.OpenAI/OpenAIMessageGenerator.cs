@@ -37,7 +37,8 @@ public class OpenAIMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var generator = SelectGenerator(request.Model);
+        var caps = ModelCapabilityResolver.Resolve(request.Model, _config.Compatibility);
+        IMessageGenerator generator = caps.UseResponsesApi ? _responseGenerator : _chatGenerator;
         return generator.GenerateMessageAsync(request, cancellationToken);
     }
 
@@ -46,31 +47,8 @@ public class OpenAIMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var generator = SelectGenerator(request.Model);
+        var caps = ModelCapabilityResolver.Resolve(request.Model, _config.Compatibility);
+        IMessageGenerator generator = caps.UseResponsesApi ? _responseGenerator : _chatGenerator;
         return generator.GenerateStreamingMessageAsync(request, cancellationToken);
-    }
-
-    /// <summary>
-    /// 모델명에 따라 적절한 Generator를 선택합니다.
-    /// Responses API를 사용하는 모델:
-    /// - OpenAI: o-series (o1, o3, o4) 및 gpt-5 이상
-    ///
-    /// 참고: xAI grok-4는 reasoning을 API에서 노출하지 않음 (내부 reasoning만 수행)
-    /// grok-3-mini만 Chat Completions에서 reasoning_content를 반환
-    /// </summary>
-    private IMessageGenerator SelectGenerator(string model)
-    {
-        var modelLower = model.ToLowerInvariant();
-
-        // OpenAI o-series (o1, o3, o4 등) 및 gpt-5 이상
-        if (modelLower.StartsWith("o1") ||
-            modelLower.StartsWith("o3") ||
-            modelLower.StartsWith("o4") ||
-            modelLower.StartsWith("gpt-5"))
-        {
-            return _responseGenerator;
-        }
-
-        return _chatGenerator;
     }
 }

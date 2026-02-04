@@ -166,7 +166,7 @@ internal static class MessageGenerationRequestExtensions
                     {
                         Name = t.UniqueName,
                         Description = t.Description ?? string.Empty,
-                        ParametersJsonSchema = t.Parameters ?? new JsonObject()
+                        ParametersJsonSchema = t.Parameters ?? new JsonObject { ["type"] = "object" }
                     }).ToArray()
                 }
             ];

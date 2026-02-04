@@ -11,9 +11,9 @@
   <PropertyGroup>
     <Authors>iyulab</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/iyulab-rnd/ironhive</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/iyulab/ironhive</PackageProjectUrl>
     <PackageTags>iyulab;AI;LLM;RAG;Agent</PackageTags>
-    <RepositoryUrl>https://github.com/iyulab-rnd/ironhive</RepositoryUrl>
+    <RepositoryUrl>https://github.com/iyulab/ironhive</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 

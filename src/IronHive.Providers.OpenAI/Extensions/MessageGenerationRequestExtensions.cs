@@ -8,24 +8,34 @@ using AssistantMessage = IronHive.Abstractions.Messages.Roles.AssistantMessage;
 using OpenAIMessage = IronHive.Providers.OpenAI.Payloads.ChatCompletion.ChatMessage;
 using TextMessageContent = IronHive.Abstractions.Messages.Content.TextMessageContent;
 using ImageMessageContent = IronHive.Abstractions.Messages.Content.ImageMessageContent;
+using IronHive.Providers.OpenAI;
 
 namespace IronHive.Abstractions.Message;
 
 public static class MessageGenerationRequestExtensions
 {
+    private static string ToDataUri(ImageMessageContent image)
+    {
+        var mime = image.Format switch
+        {
+            ImageFormat.Png => "image/png",
+            ImageFormat.Jpeg => "image/jpeg",
+            ImageFormat.Gif => "image/gif",
+            ImageFormat.Webp => "image/webp",
+            _ => throw new NotSupportedException($"Unsupported image format: {image.Format}")
+        };
+        return $"data:{mime};base64,{image.Base64}";
+    }
+
     /// <summary>
     /// 메시지 생성 요청을 OpenAI의 ResponsesRequest로 변환합니다.
     /// </summary>
-    internal static ResponsesRequest ToOpenAI(this MessageGenerationRequest request)
+    internal static ResponsesRequest ToOpenAI(this MessageGenerationRequest request, ModelCapabilities caps)
     {
         var items = new List<ResponsesItem>();
 
-        // xAI grok-4 모델은 instructions를 지원하지 않음
-        // 대신 system 메시지를 input의 첫 번째로 추가해야 함
-        var modelLower = request.Model.ToLowerInvariant();
-        var isXai = modelLower.StartsWith("grok-");
-
-        if (isXai && !string.IsNullOrWhiteSpace(request.SystemPrompt))
+        // system prompt를 input 메시지로 삽입해야 하는 벤더 (예: xAI)
+        if (caps.SystemPromptAsMessage && !string.IsNullOrWhiteSpace(request.SystemPrompt))
         {
             items.Add(new ResponsesMessageItem
             {
@@ -68,7 +78,7 @@ public static class MessageGenerationRequestExtensions
                         um.Content.Add(new ResponsesInputImageContent
                         {
                             Detail = "auto",
-                            ImageUrl = image.Base64,
+                            ImageUrl = ToDataUri(image),
                         });
                     }
                     else
@@ -145,26 +155,21 @@ public static class MessageGenerationRequestExtensions
 
         var enabledReasoning = request.ThinkingEffort != MessageThinkingEffort.None;
 
-        // xAI grok-4 모델은 reasoning_effort를 지원하지 않음 (grok-3-mini만 지원)
-        // 하지만 include: ["reasoning.encrypted_content"]는 필요
-        var isGrok4 = modelLower.StartsWith("grok-4");
-        var supportsReasoningEffort = !isGrok4;
-
         return new ResponsesRequest
         {
             Model = request.Model,
-            // xAI는 instructions를 지원하지 않음 (위에서 system 메시지로 추가됨)
-            Instructions = isXai ? null : request.SystemPrompt,
+            Instructions = caps.SupportsInstructions ? request.SystemPrompt : null,
             Input = items,
             MaxOutputTokens = request.MaxTokens,
+            Stop = caps.SupportsStop ? request.StopSequences : null,
             Tools = request.Tools?.Select(t => new ResponsesFunctionTool
             {
                 Name = t.UniqueName,
                 Description = t.Description,
-                Parameters = t.Parameters ?? new JsonObject()
+                Parameters = t.Parameters ?? new JsonObject { ["type"] = "object", ["properties"] = new JsonObject() }
             }),
             Include = enabledReasoning ? [ "reasoning.encrypted_content" ] : null,
-            Reasoning = enabledReasoning && supportsReasoningEffort ? new ResponsesReasoning
+            Reasoning = enabledReasoning && caps.SupportsReasoningEffort ? new ResponsesReasoning
             {
                 Effort = request.ThinkingEffort switch
                 {
@@ -175,26 +180,22 @@ public static class MessageGenerationRequestExtensions
                 },
                 Summary = ResponsesReasoningSummary.Detailed,
             }: null,
-            // 추론 모델의 경우 토큰샘플링 방식을 임의로 설정할 수 없습니다.
-            Temperature = enabledReasoning && supportsReasoningEffort ? null : request.Temperature,
-            TopP = enabledReasoning && supportsReasoningEffort ? null : request.TopP,
+            Temperature = caps.SupportsTemperature && !enabledReasoning ? request.Temperature : null,
+            TopP = caps.SupportsTopP && !enabledReasoning ? request.TopP : null,
         };
     }
 
     /// <summary>
     /// 메시지 생성 요청을 OpenAI의 ChatCompletionRequest로 변환합니다.
     /// </summary>
-    public static ChatCompletionRequest ToOpenAILegacy(this MessageGenerationRequest request)
+    internal static ChatCompletionRequest ToOpenAILegacy(this MessageGenerationRequest request, ModelCapabilities caps)
     {
-        // reasoning_effort는 o-series와 gpt-5 이상 모델만 지원
-        var model = request.Model.ToLowerInvariant();
-        var supportsReasoning = model.StartsWith("o1") || model.StartsWith("o3") || model.StartsWith("o4")
-                             || model.StartsWith("gpt-5") || model.Contains("-o1") || model.Contains("-o3");
-        var enabledReasoning = supportsReasoning && request.ThinkingEffort is not null and not MessageThinkingEffort.None;
+        var enabledReasoning = caps.SupportsReasoning
+            && request.ThinkingEffort is not null and not MessageThinkingEffort.None;
         var messages = new List<OpenAIMessage>();
         if (!string.IsNullOrWhiteSpace(request.SystemPrompt))
         {
-            if (enabledReasoning)
+            if (caps.UseDeveloperMessage)
                 messages.Add(new DeveloperChatMessage { Content = request.SystemPrompt });
             else
                 messages.Add(new SystemChatMessage { Content = request.SystemPrompt });
@@ -231,7 +232,7 @@ public static class MessageGenerationRequestExtensions
                         {
                             ImageUrl = new ImageChatMessageContent.ImageSource
                             {
-                                Url = image.Base64
+                                Url = ToDataUri(image)
                             }
                         });
                     }
@@ -303,26 +304,25 @@ public static class MessageGenerationRequestExtensions
             Model = request.Model,
             Messages = messages,
             MaxCompletionTokens = request.MaxTokens,
-            Stop = request.StopSequences,
+            Stop = caps.SupportsStop ? request.StopSequences : null,
             Tools = request.Tools?.Select(t => new ChatFunctionTool
             {
                 Function = new ChatFunctionTool.FunctionSchema
                 {
                     Name = t.UniqueName,
                     Description = t.Description,
-                    Parameters = t.Parameters
+                    Parameters = t.Parameters ?? new JsonObject { ["type"] = "object", ["properties"] = new JsonObject() }
                 }
             }),
-            ReasoningEffort = enabledReasoning ? request.ThinkingEffort switch
+            ReasoningEffort = enabledReasoning && caps.SupportsReasoningEffort ? request.ThinkingEffort switch
             {
                 MessageThinkingEffort.Low => ChatReasoningEffort.Low,
                 MessageThinkingEffort.Medium => ChatReasoningEffort.Medium,
                 MessageThinkingEffort.High => ChatReasoningEffort.High,
                 _ => null
             } : null,
-            // 추론 모델의 경우 토큰샘플링 방식을 임의로 설정할 수 없습니다.
-            Temperature = enabledReasoning ? null : request.Temperature,
-            TopP = enabledReasoning ? null : request.TopP,
+            Temperature = caps.SupportsTemperature && !enabledReasoning ? request.Temperature : null,
+            TopP = caps.SupportsTopP && !enabledReasoning ? request.TopP : null,
         };
     }
 }

@@ -15,6 +15,7 @@ namespace IronHive.Providers.OpenAI;
 public class OpenAIChatMessageGenerator : IMessageGenerator
 {
     private readonly OpenAIChatCompletionClient _client;
+    private readonly OpenAICompatibility _compatibility;
 
     public OpenAIChatMessageGenerator(string apiKey)
         : this(new OpenAIConfig { ApiKey = apiKey})
@@ -23,6 +24,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
     public OpenAIChatMessageGenerator(OpenAIConfig config)
     {
         _client = new OpenAIChatCompletionClient(config);
+        _compatibility = config.Compatibility;
     }
 
     /// <inheritdoc />
@@ -37,7 +39,8 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var req = request.ToOpenAILegacy();
+        var caps = ModelCapabilityResolver.Resolve(request.Model, _compatibility);
+        var req = request.ToOpenAILegacy(caps);
         var res = await _client.PostChatCompletionAsync(req, cancellationToken);
         var choice = res.Choices?.FirstOrDefault();
         var content = new List<MessageContent>();
@@ -145,7 +148,8 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var req = request.ToOpenAILegacy();
+        var caps = ModelCapabilityResolver.Resolve(request.Model, _compatibility);
+        var req = request.ToOpenAILegacy(caps);
 
         // 인덱스 추적 관리용
         (int, MessageContent)? current = null;
