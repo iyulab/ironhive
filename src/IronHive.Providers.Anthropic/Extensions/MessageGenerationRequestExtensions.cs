@@ -166,7 +166,7 @@ internal static class MessageGenerationRequestExtensions
             {
                 Name = t.UniqueName,
                 Description = t.Description,
-                InputSchema = t.Parameters ?? new JsonObject()
+                InputSchema = t.Parameters ?? new JsonObject { ["type"] = "object" }
             }),
             Thinking = budgetTokens,
             // 추론 모델의 경우 토큰샘플링 방식을 임의로 설정할 수 없습니다.
