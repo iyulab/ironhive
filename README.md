@@ -1,1 +1,281 @@
-# Hive Packages
+# IronHive
+
+<p align="center">
+  <img src="assets/ironhive.png" alt="IronHive Logo" width="200"/>
+</p>
+
+<p align="center">
+  <strong>Modular AI Application Framework for .NET</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/iyulab/ironhive/actions/workflows/ci.yml">
+    <img src="https://github.com/iyulab/ironhive/actions/workflows/ci.yml/badge.svg" alt="CI">
+  </a>
+  <a href="https://www.nuget.org/packages/IronHive.Core">
+    <img src="https://img.shields.io/nuget/v/IronHive.Core?label=NuGet" alt="NuGet">
+  </a>
+  <a href="https://www.nuget.org/packages/IronHive.Core">
+    <img src="https://img.shields.io/nuget/dt/IronHive.Core?label=Downloads" alt="NuGet Downloads">
+  </a>
+  <a href="https://github.com/iyulab/ironhive/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/iyulab/ironhive" alt="License">
+  </a>
+</p>
+
+<p align="center">
+  <a href="#features">Features</a> •
+  <a href="#installation">Installation</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#architecture">Architecture</a> •
+  <a href="#providers">Providers</a> •
+  <a href="#documentation">Documentation</a>
+</p>
+
+---
+
+## Overview
+
+**IronHive**는 기업용 AI 애플리케이션을 위한 파이프라인 프레임워크입니다.
+
+범용 프레임워크가 필요하다면 [Semantic Kernel](https://github.com/microsoft/semantic-kernel) 또는 [Agent Framework](https://github.com/microsoft/agent-framework)를 권장합니다.
+
+### Why IronHive?
+
+- **Batteries Included**: 기업 환경에서 필요한 기본 세트 내장으로 보일러플레이트 감소
+- **파이프라인 중심**: 각 단계를 교체하거나 새로운 단계를 손쉽게 추가
+- **M.E.AI 호환**: `Microsoft.Extensions.AI` 표준 준수 — `ChatClientAdapter`와 `EmbeddingGeneratorAdapter`를 통해 기존 M.E.AI 생태계와 양방향 연동
+- **멀티에이전트 오케스트레이션**: Sequential, Parallel, Hub-Spoke, Graph(DAG) 패턴으로 복잡한 에이전트 워크플로우 구성
+
+### Design Philosophy
+
+- **파이프라인 단계별 제어**: 각 단계(텍스트 추출, 청킹, 임베딩, 저장)를 독립적으로 교체하거나 커스터마이즈할 수 있습니다
+- **Provider별 세밀한 조정**: 각 LLM Provider 구현을 직접 제어하여 Provider별 고유 기능을 활용할 수 있습니다
+- **프레임워크 비종속**: 다른 .NET AI 프레임워크와 함께 조합하여 사용할 수 있으며, M.E.AI 어댑터를 통해 기존 생태계와 호환됩니다
+- **데코레이터 기반 확장**: `DelegatingMessageGenerator` 패턴으로 Resilience, Telemetry 등 횡단 관심사를 미들웨어처럼 적용합니다
+
+### 내장 기능
+
+| 영역 | 내장 기능 |
+|------|----------|
+| **Resilience** | 재시도, 서킷브레이커, 타임아웃 (Polly) |
+| **Observability** | OpenTelemetry 통합, 토큰 사용량 추적 |
+| **RAG Pipeline** | 텍스트 추출, 청킹, 임베딩, 벡터 저장 |
+| **Multi-Provider** | OpenAI, Anthropic, Google, Ollama |
+| **Orchestration** | Sequential, Parallel, Hub-Spoke, Graph(DAG) 멀티에이전트 |
+| **Checkpointing** | 오케스트레이션 상태 저장/재개 (ICheckpointStore) |
+| **Human-in-the-Loop** | 에이전트 실행 전 승인 메커니즘 |
+| **Typed Executor** | 타입 안전 파이프라인 (ITypedExecutor, TypedPipeline) |
+
+## Features
+
+- **Multi-Provider LLM Integration** - OpenAI, Anthropic, Ollama, Google AI 지원
+- **Vector-based RAG** - 벡터 검색 기반 지식 저장 및 검색
+- **Agent Architecture** - 도구 호출 및 에이전틱 루프 지원
+- **File Processing** - PDF, Word, PowerPoint, 이미지 등 다양한 파일 형식 처리
+- **Memory ETL Pipeline** - 비동기 작업 처리를 위한 메모리 워커
+- **Plugin System** - MCP(Model Context Protocol) 및 OpenAPI 통합
+
+## Installation
+
+### NuGet Packages
+
+```bash
+# Core packages
+dotnet add package IronHive.Abstractions
+dotnet add package IronHive.Core
+
+# Providers
+dotnet add package IronHive.Providers.OpenAI
+dotnet add package IronHive.Providers.Anthropic
+dotnet add package IronHive.Providers.Ollama
+dotnet add package IronHive.Providers.GoogleAI
+
+# Storage backends
+dotnet add package IronHive.Storages.Qdrant
+dotnet add package IronHive.Storages.AmazonS3
+dotnet add package IronHive.Storages.AzureBlob
+
+# Plugins
+dotnet add package IronHive.Plugins.MCP
+dotnet add package IronHive.Plugins.OpenAPI
+```
+
+## Quick Start
+
+### Basic Setup
+
+```csharp
+using IronHive.Core;
+using IronHive.Providers.OpenAI;
+
+// Build HiveService with fluent API
+var hive = new HiveServiceBuilder()
+    .AddMessageGenerator("openai", new OpenAIMessageGenerator(new OpenAIConfig
+    {
+        ApiKey = "your-api-key"
+    }))
+    .Build();
+
+// Create an agent
+var agent = hive.CreateAgent(config =>
+{
+    config.Provider = "openai";
+    config.Model = "gpt-4o";
+    config.SystemPrompt = "You are a helpful assistant.";
+});
+
+// Generate a response
+var messages = new List<Message>
+{
+    new() { Role = "user", Content = "Hello!" }
+};
+
+var response = await agent.InvokeAsync(messages);
+Console.WriteLine(response.Content);
+```
+
+### Streaming Response
+
+```csharp
+await foreach (var chunk in agent.InvokeStreamingAsync(messages))
+{
+    Console.Write(chunk.Content);
+}
+```
+
+### Multi-Agent Orchestration
+
+```csharp
+// Sequential: 에이전트를 순차 실행, 이전 출력이 다음 입력으로 전달
+var sequential = new SequentialOrchestrator(new SequentialOrchestratorOptions
+{
+    PassOutputAsInput = true,
+    // 체크포인팅: 중간 상태 저장/재개
+    CheckpointStore = new InMemoryCheckpointStore(),
+    // Human-in-the-Loop: 특정 에이전트 실행 전 승인 필요
+    ApprovalHandler = async (agentName, prev) => { /* true=진행, false=중단 */ return true; },
+    RequireApprovalForAgents = new HashSet<string> { "critical-agent" }
+});
+sequential.AddAgents([agent1, agent2, agent3]);
+var result = await sequential.ExecuteAsync(messages);
+
+// Graph(DAG): 조건부 분기, Fan-In/Fan-Out 지원
+var graph = new GraphOrchestratorBuilder()
+    .AddNode("input", inputAgent)
+    .AddNode("analyze", analyzeAgent)
+    .AddNode("summarize", summarizeAgent)
+    .AddEdge("input", "analyze")
+    .AddEdge("analyze", "summarize", step => step.IsSuccess)
+    .SetStartNode("input")
+    .SetOutputNode("summarize")
+    .Build();
+var graphResult = await graph.ExecuteAsync(messages);
+
+// Typed Pipeline: 타입 안전 체이닝
+var pipeline = TypedPipeline
+    .Start(new AgentExecutor<string, Analysis>(agent1, inputConvert, outputConvert))
+    .Then(new AgentExecutor<Analysis, Summary>(agent2, inputConvert2, outputConvert2))
+    .Build();
+var output = await pipeline.ExecuteAsync("input text");
+```
+
+### Using Tools
+
+```csharp
+// Define a tool using attributes
+public class WeatherTool
+{
+    [FunctionTool("get_weather", "Get current weather for a location")]
+    public string GetWeather(
+        [ToolParameter("city", "City name")] string city)
+    {
+        return $"The weather in {city} is sunny.";
+    }
+}
+
+// Add tool to the service
+var hive = new HiveServiceBuilder()
+    .AddMessageGenerator("openai", ...)
+    .AddTool(new WeatherTool())
+    .Build();
+```
+
+### RAG with Vector Storage
+
+```csharp
+using IronHive.Storages.Qdrant;
+
+var hive = new HiveServiceBuilder()
+    .AddEmbeddingGenerator("openai", new OpenAIEmbeddingGenerator(...))
+    .AddVectorStorage("qdrant", new QdrantVectorStorage(new QdrantConfig
+    {
+        Host = "localhost",
+        Port = 6334
+    }))
+    .Build();
+
+// Store vectors
+var collection = await hive.GetCollectionAsync("qdrant", "my-knowledge");
+await collection.UpsertVectorsAsync(documents);
+
+// Search
+var results = await collection.SearchVectorsAsync(query, limit: 5);
+```
+
+## Architecture
+
+```
+IronHive/
+├── IronHive.Abstractions     # Core interfaces and contracts
+├── IronHive.Core             # Main implementation
+│   ├── Services/             # HiveService, MessageService, etc.
+│   ├── Storages/             # Local storage implementations
+│   ├── Tools/                # Function tool system
+│   └── Pipelines/            # ETL pipeline steps
+├── IronHive.Providers.*      # LLM provider implementations
+├── IronHive.Storages.*       # Storage backend implementations
+└── IronHive.Plugins.*        # Extension plugins
+```
+
+### Key Components
+
+| Component | Description |
+|-----------|-------------|
+| `IHiveService` | Main service aggregator |
+| `IProviderRegistry` | Manages AI providers |
+| `IStorageRegistry` | Manages storage backends |
+| `IToolCollection` | Manages available tools |
+| `IAgent` | Agent interface for message generation |
+| `IAgentOrchestrator` | Multi-agent orchestration (Sequential, Parallel, Hub-Spoke, Graph) |
+| `ICheckpointStore` | Orchestration state save/resume |
+| `ITypedExecutor<TIn,TOut>` | Type-safe executor interface |
+| `MemoryWorker` | Async queue-based job processor |
+
+## Providers
+
+### LLM Providers
+
+| Provider | Package | Features |
+|----------|---------|----------|
+| OpenAI | `IronHive.Providers.OpenAI` | Chat, Embeddings, Token counting |
+| Anthropic | `IronHive.Providers.Anthropic` | Claude models |
+| Ollama | `IronHive.Providers.Ollama` | Local LLM support |
+| Google AI | `IronHive.Providers.GoogleAI` | Gemini models |
+
+### Storage Backends
+
+| Type | Implementations |
+|------|-----------------|
+| Vector | Qdrant, Local (SQLite) |
+| File | Local, Amazon S3, Azure Blob |
+| Queue | Local, RabbitMQ, Azure Service Bus |
+
+## Requirements
+
+- .NET 10.0 or later
+- C# 12.0
+
+## License
+
+MIT License - see [LICENSE](./LICENSE) for details.

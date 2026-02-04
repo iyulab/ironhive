@@ -89,7 +89,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                     Id = part.FunctionCall.Id ?? Guid.NewGuid().ToShort(),
                     Name = part.FunctionCall.Name,
                     Input = JsonSerializer.Serialize(part.FunctionCall.Args),
-                    IsApproved = !request.Tools!.TryGet(part.FunctionCall.Name, out var t) || !t.RequiresApproval
+                    IsApproved = request.Tools?.TryGet(part.FunctionCall.Name, out var t) != true || !t.RequiresApproval
                 });
             }
             
@@ -157,8 +157,8 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                 usage = new MessageTokenUsage
                 {
                     InputTokens = res.UsageMetadata.PromptTokenCount ?? 0,
-                    OutputTokens = res.UsageMetadata.CandidatesTokenCount ?? 0
-                        + res.UsageMetadata.ThoughtsTokenCount ?? 0
+                    OutputTokens = (res.UsageMetadata.CandidatesTokenCount ?? 0)
+                        + (res.UsageMetadata.ThoughtsTokenCount ?? 0)
                 };
             }
 
@@ -216,7 +216,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                             Id = part.FunctionCall.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
                             Name = part.FunctionCall.Name ?? string.Empty,
                             Input = JsonSerializer.Serialize(part.FunctionCall.Args),
-                            IsApproved = !request.Tools!.TryGet(part.FunctionCall.Name!, out var t) || !t.RequiresApproval,
+                            IsApproved = request.Tools?.TryGet(part.FunctionCall.Name!, out var t) != true || !t.RequiresApproval,
                         });
                         yield return new StreamingContentAddedResponse
                         {
@@ -326,7 +326,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                             Id = part.FunctionCall.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
                             Name = part.FunctionCall.Name ?? string.Empty,
                             Input = JsonSerializer.Serialize(part.FunctionCall.Args),
-                            IsApproved = !request.Tools!.TryGet(part.FunctionCall.Name!, out var t) || !t.RequiresApproval,
+                            IsApproved = request.Tools?.TryGet(part.FunctionCall.Name!, out var t) != true || !t.RequiresApproval,
                         });
                         yield return new StreamingContentAddedResponse
                         {

@@ -154,26 +154,33 @@ internal static class MessageGenerationRequestExtensions
             }
         }
 
-        return new GenerateContentRequest
+        // Tools 변환 (비어있으면 null)
+        ICollection<Tool>? tools = null;
+        if (request.Tools?.Any() == true)
         {
-            Model = request.Model,
-            Contents = contents,
-            SystemInstruction = string.IsNullOrWhiteSpace(request.System) ? null : new GoogleAIContent
-            {
-                Parts = [ new ContentPart { Text = request.System } ]
-            },
-            Tools = 
+            tools =
             [
                 new Tool
                 {
-                    Functions = request.Tools?.Select(t => new FunctionTool
+                    Functions = request.Tools.Select(t => new FunctionTool
                     {
                         Name = t.UniqueName,
                         Description = t.Description ?? string.Empty,
                         ParametersJsonSchema = t.Parameters ?? new JsonObject()
                     }).ToArray()
                 }
-            ],
+            ];
+        }
+
+        return new GenerateContentRequest
+        {
+            Model = request.Model,
+            Contents = contents,
+            SystemInstruction = string.IsNullOrWhiteSpace(request.SystemPrompt) ? null : new GoogleAIContent
+            {
+                Parts = [ new ContentPart { Text = request.SystemPrompt } ]
+            },
+            Tools = tools,
             GenerationConfig = new GenerationConfig
             {
                 CandidateCount = 1,
@@ -182,7 +189,7 @@ internal static class MessageGenerationRequestExtensions
                 TopP = request.TopP,
                 TopK = request.TopK,
                 Temperature = request.Temperature,
-                ThinkingConfig = request.ThinkingEffort != MessageThinkingEffort.None ? new ThinkingConfig
+                ThinkingConfig = request.ThinkingEffort is not null and not MessageThinkingEffort.None ? new ThinkingConfig
                 {
                     IncludeThoughts = true,
                     ThinkingBudget = CalculateThinkingTokens(request)

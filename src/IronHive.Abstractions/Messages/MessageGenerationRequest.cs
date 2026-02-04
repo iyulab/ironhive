@@ -1,4 +1,4 @@
-﻿using IronHive.Abstractions.Tools;
+using IronHive.Abstractions.Tools;
 
 namespace IronHive.Abstractions.Messages;
 
@@ -13,9 +13,19 @@ public class MessageGenerationRequest : MessageGenerationParameters
     public required string Model { get; set; }
 
     /// <summary>
-    /// 대화의 컨텍스트와 동작을 정의하는 시스템 메시지입니다.
+    /// 대화의 컨텍스트와 동작을 정의하는 시스템 프롬프트입니다.
     /// </summary>
-    public string? System { get; set; }
+    public string? SystemPrompt { get; set; }
+
+    /// <summary>
+    /// 대화의 컨텍스트와 동작을 정의하는 시스템 프롬프트입니다.
+    /// </summary>
+    [Obsolete("Use SystemPrompt instead. Will be removed in v1.0.")]
+    public string? System
+    {
+        get => SystemPrompt;
+        set => SystemPrompt = value;
+    }
 
     /// <summary>
     /// 모델에 전달될 대화 메시지 컬렉션입니다.
@@ -26,6 +36,17 @@ public class MessageGenerationRequest : MessageGenerationParameters
     /// 모델에서 사용 가능한 도구(툴) 목록입니다.
     /// </summary>
     public IToolCollection? Tools { get; set; }
+
+    /// <summary>
+    /// 요청에 포함할 수 있는 최대 도구 수입니다.
+    /// 기본값: 20. 0 이하로 설정하면 무제한입니다.
+    /// </summary>
+    public int MaxTools { get; set; } = 20;
+
+    /// <summary>
+    /// MaxTools 제한을 초과했을 때의 동작을 정의합니다.
+    /// </summary>
+    public ToolLimitBehavior ToolLimitBehavior { get; set; } = ToolLimitBehavior.Warn;
 
     /// <summary>
     /// 모델의 사고 노력 수준을 정의합니다.

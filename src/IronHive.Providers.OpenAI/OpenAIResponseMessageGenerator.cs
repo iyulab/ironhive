@@ -61,11 +61,14 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
             }
             else if (item is ResponsesReasoningItem ri)
             {
+                var summaryText = ri.Summary?.Count > 0
+                    ? string.Join("\n---\n", ri.Summary.Select(s => s.Text.Trim()))
+                    : null;
                 content.Add(new ThinkingMessageContent
                 {
                     Format = ThinkingFormat.Summary,
                     Signature = ri.EncryptedContent,
-                    Value = string.Join("\n---\n", ri.Summary.Select(s => s.Text.Trim()))
+                    Value = summaryText
                 });
             }
             else if (item is ResponsesFunctionToolCallItem fti)
@@ -75,7 +78,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
                     Id = fti.CallId,
                     Name = fti.Name,
                     Input = fti.Arguments,
-                    IsApproved = !request.Tools!.TryGet(fti.Name, out var t) || !t.RequiresApproval
+                    IsApproved = request.Tools?.TryGet(fti.Name, out var t) != true || !t.RequiresApproval
                 });
             }
             else
@@ -143,6 +146,9 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
                 // 추론 생성
                 if (oar.Item is ResponsesReasoningItem ri)
                 {
+                    var summaryText = ri.Summary?.Count > 0
+                        ? string.Join("\n---\n", ri.Summary.Select(s => s.Text.Trim()))
+                        : null;
                     yield return new StreamingContentAddedResponse
                     {
                         Index = oar.OutputIndex,
@@ -150,7 +156,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
                         {
                             Format = ThinkingFormat.Summary,
                             Signature = ri.EncryptedContent,
-                            Value = string.Join("\n---\n", ri.Summary.Select(s => s.Text.Trim()))
+                            Value = summaryText
                         }
                     };
                 }
@@ -166,7 +172,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
                             Id = tci.CallId,
                             Name = tci.Name,
                             Input = tci.Arguments,
-                            IsApproved = !request.Tools!.TryGet(tci.Name, out var t) || !t.RequiresApproval
+                            IsApproved = request.Tools?.TryGet(tci.Name, out var t) != true || !t.RequiresApproval
                         }
                     };
                 }

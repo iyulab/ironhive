@@ -3,9 +3,9 @@
 namespace IronHive.Providers.OpenAI.Payloads.Responses;
 
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
-[JsonDerivedType(typeof(ResponsesWebSearchAction), "search")]
-[JsonDerivedType(typeof(ResponsesWebSearchAction), "open_page")]
-[JsonDerivedType(typeof(ResponsesWebSearchAction), "find")]
+[JsonDerivedType(typeof(ResponsesWebSearchSearchAction), "search")]
+[JsonDerivedType(typeof(ResponsesWebSearchOpenPageAction), "open_page")]
+[JsonDerivedType(typeof(ResponsesWebSearchFindAction), "find")]
 internal abstract class ResponsesWebSearchAction
 { }
 

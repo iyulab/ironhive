@@ -1,4 +1,5 @@
 ﻿using IronHive.Abstractions.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
 namespace IronHive.Providers.OpenAI.Payloads.Responses;
@@ -129,10 +130,10 @@ internal class ResponsesResponse
     public ResponsesText? Text { get; set; }
 
     /// <summary>
-    /// "none", "auto", "required", ...
+    /// "none", "auto", "required" 또는 객체
     /// </summary>
     [JsonPropertyName("tool_choice")]
-    public ResponsesToolChoice? ToolChoice { get; set; }
+    public JsonNode? ToolChoice { get; set; }
 
     [JsonPropertyName("tools")]
     public IEnumerable<ResponsesTool>? Tools { get; set; }

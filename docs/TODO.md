@@ -3,8 +3,20 @@
 ### Agent
 - 기능 설계
 
-### session
-- 대화 기록 및 세션 관리
+## Orchestration
+- [x] Sequential, Parallel, Hub-Spoke 오케스트레이터
+- [x] Graph(DAG) 오케스트레이터 (조건부 엣지, Fan-In/Fan-Out)
+- [x] 체크포인팅 (ICheckpointStore, InMemoryCheckpointStore)
+- [x] Human-in-the-Loop (ApprovalHandler, RequireApprovalForAgents)
+- [x] 타입 안전 Executor (ITypedExecutor, AgentExecutor, TypedPipeline)
+- [x] Observability 상수 정리 (StartOrchestrationActivity)
+- [ ] 파일 기반 CheckpointStore 구현 (JSON 직렬화)
+- [ ] ParallelOrchestrator/HubSpokeOrchestrator에 체크포인트/승인 통합
+- [ ] GraphOrchestrator Fan-Out 병렬 실행 최적화
+
+## Providers
+- GoogleAI 확장 추가
+- XAI 확장추가
 
 ### Providers
 - ImageGenerator 기능 추가

@@ -5,38 +5,46 @@
 /// </summary>
 public class VectorRecordFilter
 {
+    private readonly HashSet<string> _vectorIds = [];
+    private readonly HashSet<string> _sourceIds = [];
+
     public VectorRecordFilter()
     { }
 
     public VectorRecordFilter(
-        IEnumerable<string>? sourceIds = null, 
+        IEnumerable<string>? sourceIds = null,
         IEnumerable<string>? vectorIds = null)
     {
         if (sourceIds != null)
-            SourceIds = [.. sourceIds];
+            _sourceIds = [.. sourceIds];
         if (vectorIds != null)
-            VectorIds = [.. vectorIds];
+            _vectorIds = [.. vectorIds];
     }
 
-    public ICollection<string> VectorIds { get; private set; } = [];
-    
-    public ICollection<string> SourceIds { get; private set; } = [];
+    /// <summary>
+    /// 필터링할 벡터 레코드 ID 집합입니다.
+    /// </summary>
+    public IReadOnlyCollection<string> VectorIds => _vectorIds;
+
+    /// <summary>
+    /// 필터링할 메모리 소스 ID 집합입니다.
+    /// </summary>
+    public IReadOnlyCollection<string> SourceIds => _sourceIds;
 
     /// <summary>
     /// 필터에 내용이 있는지 확인합니다.
     /// </summary>
     public bool Any()
     {
-        return SourceIds.Count != 0 || VectorIds.Count != 0;
+        return _sourceIds.Count != 0 || _vectorIds.Count != 0;
     }
 
     /// <summary>
-    /// 필터에 메모리 소스 ID를 추가합니다.
+    /// 필터에 메모리 소스 ID를 추가합니다. (O(1) 성능)
     /// </summary>
     public void AddSourceId(string sourceId)
     {
-        if (!SourceIds.Contains(sourceId))
-            SourceIds.Add(sourceId);
+        _sourceIds.Add(sourceId); // HashSet handles duplicates automatically
     }
 
     /// <summary>
@@ -44,17 +52,15 @@ public class VectorRecordFilter
     /// </summary>
     public void AddSourceIds(IEnumerable<string> sourceIds)
     {
-        foreach (var sourceId in sourceIds)
-            AddSourceId(sourceId);
+        _sourceIds.UnionWith(sourceIds);
     }
 
     /// <summary>
-    /// 필터에 벡터 레코드 ID를 추가합니다.
+    /// 필터에 벡터 레코드 ID를 추가합니다. (O(1) 성능)
     /// </summary>
     public void AddVectorId(string vectorId)
     {
-        if (!VectorIds.Contains(vectorId))
-            VectorIds.Add(vectorId);
+        _vectorIds.Add(vectorId); // HashSet handles duplicates automatically
     }
 
     /// <summary>
@@ -62,7 +68,6 @@ public class VectorRecordFilter
     /// </summary>
     public void AddVectorIds(IEnumerable<string> vectorIds)
     {
-        foreach (var vectorId in vectorIds)
-            AddVectorId(vectorId);
+        _vectorIds.UnionWith(vectorIds);
     }
 }

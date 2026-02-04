@@ -19,6 +19,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
     private readonly string _moduleVersion;
 
     private volatile bool _ensuredCollMetaTable = false;
+    private readonly SemaphoreSlim _initLock = new(1, 1);
 
     public LocalVectorStorage(LocalVectorConfig config)
     {
@@ -38,6 +39,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
     /// <inheritdoc />
     public void Dispose()
     {
+        _initLock.Dispose();
         GC.SuppressFinalize(this);
     }
 
@@ -53,7 +55,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
         ORDER BY name";
 
         using var conn = await CreateConnectionAsync();
-        var cmd = conn.CreateCommand();
+        using var cmd = conn.CreateCommand();
         cmd.CommandText = sql;
         using var rdr = await cmd.ExecuteReaderAsync(cancellationToken);
 
@@ -82,7 +84,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
         var sql = $@"SELECT COUNT(1) FROM {CollectionMetaTable} WHERE name=$n";
 
         using var conn = await CreateConnectionAsync();
-        var cmd = conn.CreateCommand();
+        using var cmd = conn.CreateCommand();
         cmd.CommandText = sql;
         cmd.Parameters.AddWithValue("$n", collectionName);
         var result = await cmd.ExecuteScalarAsync(cancellationToken);
@@ -103,7 +105,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
         WHERE name=$n";
 
         using var conn = await CreateConnectionAsync();
-        var cmd = conn.CreateCommand();
+        using var cmd = conn.CreateCommand();
         cmd.CommandText = sql;
         cmd.Parameters.AddWithValue("$n", collectionName);
         using var rdr = await cmd.ExecuteReaderAsync(cancellationToken);
@@ -137,7 +139,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
             INSERT INTO {CollectionMetaTable}(name, dimensions, embedding_provider, embedding_model)
             VALUES ($n, $d, $p, $m)";
 
-            var insert = conn.CreateCommand();
+            using var insert = conn.CreateCommand();
             insert.CommandText = sql;
             insert.Parameters.AddWithValue("$n", collection.Name);
             insert.Parameters.AddWithValue("$d", collection.Dimensions);
@@ -158,17 +160,23 @@ public sealed partial class LocalVectorStorage : IVectorStorage
                 last_upserted_at TEXT NOT NULL
             )";
 
-            var cmd = conn.CreateCommand();
-            cmd.CommandText = sql;
-            await cmd.ExecuteNonQueryAsync(cancellationToken);
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = sql;
+                await cmd.ExecuteNonQueryAsync(cancellationToken);
+            }
 
             // 인덱스
-            cmd = conn.CreateCommand();
-            cmd.CommandText = $@"CREATE INDEX IF NOT EXISTS idx_{metaTable}_source ON {metaTable}(source_id)";
-            await cmd.ExecuteNonQueryAsync(cancellationToken);
-            cmd = conn.CreateCommand();
-            cmd.CommandText = $@"CREATE INDEX IF NOT EXISTS idx_{metaTable}_last ON {metaTable}(last_upserted_at DESC)";
-            await cmd.ExecuteNonQueryAsync(cancellationToken);
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = $@"CREATE INDEX IF NOT EXISTS idx_{metaTable}_source ON {metaTable}(source_id)";
+                await cmd.ExecuteNonQueryAsync(cancellationToken);
+            }
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = $@"CREATE INDEX IF NOT EXISTS idx_{metaTable}_last ON {metaTable}(last_upserted_at DESC)";
+                await cmd.ExecuteNonQueryAsync(cancellationToken);
+            }
         }
 
         // 컬렉션별 vec0 테이블 (차원 지정)
@@ -179,7 +187,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
                 embedding float[{collection.Dimensions}] distance_metric=cosine
             )";
 
-            var cmd = conn.CreateCommand();
+            using var cmd = conn.CreateCommand();
             cmd.CommandText = sql;
             await cmd.ExecuteNonQueryAsync(cancellationToken);
         }
@@ -203,7 +211,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
 
         async Task DropIfExists(string type, string name)
         {
-            var cmd = conn.CreateCommand();
+            using var cmd = conn.CreateCommand();
             cmd.CommandText = $"DROP {type} IF EXISTS {name}";
             await cmd.ExecuteNonQueryAsync(cancellationToken);
         }
@@ -213,11 +221,11 @@ public sealed partial class LocalVectorStorage : IVectorStorage
         //await DropIfExists("TABLE", $"sqlite_sequence");
         await DropIfExists("INDEX", $"idx_{metaTable}_source"); // 인덱스 드랍은 자동으로 처리되나 안전차원에서
         await DropIfExists("INDEX", $"idx_{metaTable}_last");
-        await DropIfExists("VIRTUAL TABLE", vecTable);
+        await DropIfExists("TABLE", vecTable);
 
         // 컬렉션 메타 삭제
         {
-            var cmd = conn.CreateCommand();
+            using var cmd = conn.CreateCommand();
             cmd.CommandText = $"DELETE FROM {CollectionMetaTable} WHERE name=$n";
             cmd.Parameters.AddWithValue("$n", collectionName);
             await cmd.ExecuteNonQueryAsync(cancellationToken);
@@ -257,7 +265,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
         ORDER BY datetime(last_upserted_at) DESC
         LIMIT $lim";
 
-        var cmd = conn.CreateCommand();
+        using var cmd = conn.CreateCommand();
         cmd.CommandText = sql;
         cmd.Parameters.AddRange(args);
         cmd.Parameters.AddWithValue("$lim", limit);
@@ -301,56 +309,69 @@ public sealed partial class LocalVectorStorage : IVectorStorage
             long intId;
             {
                 // 먼저 존재여부 확인
-                var sel = conn.CreateCommand();
-                sel.CommandText = $@"SELECT int_id FROM {metaTable} WHERE vector_id=$vid";
-                sel.Parameters.AddWithValue("$vid", v.VectorId);
-                var existing = await sel.ExecuteScalarAsync(cancellationToken);
+                long? existing;
+                using (var sel = conn.CreateCommand())
+                {
+                    sel.CommandText = $@"SELECT int_id FROM {metaTable} WHERE vector_id=$vid";
+                    sel.Parameters.AddWithValue("$vid", v.VectorId);
+                    existing = await sel.ExecuteScalarAsync(cancellationToken) as long?;
+                }
 
                 if (existing is long l)
                 {
                     intId = l;
 
-                    var upd = conn.CreateCommand();
-                    upd.CommandText = $@"
-                        UPDATE {metaTable}
-                        SET source_id=$sid, payload=$p, last_upserted_at=$ts
-                        WHERE int_id=$iid";
-                    upd.Parameters.AddWithValue("$sid", v.SourceId);
-                    upd.Parameters.AddWithValue("$p", JsonSerializer.SerializeToUtf8Bytes(v.Payload));
-                    upd.Parameters.AddWithValue("$ts", DateTime.UtcNow.ToString("o"));
-                    upd.Parameters.AddWithValue("$iid", intId);
-                    await upd.ExecuteNonQueryAsync(cancellationToken);
+                    using (var upd = conn.CreateCommand())
+                    {
+                        upd.CommandText = $@"
+                            UPDATE {metaTable}
+                            SET source_id=$sid, payload=$p, last_upserted_at=$ts
+                            WHERE int_id=$iid";
+                        upd.Parameters.AddWithValue("$sid", v.SourceId);
+                        upd.Parameters.AddWithValue("$p", JsonSerializer.SerializeToUtf8Bytes(v.Payload));
+                        upd.Parameters.AddWithValue("$ts", DateTime.UtcNow.ToString("o"));
+                        upd.Parameters.AddWithValue("$iid", intId);
+                        await upd.ExecuteNonQueryAsync(cancellationToken);
+                    }
 
                     // vec0 업데이트
-                    var uvec = conn.CreateCommand();
-                    uvec.CommandText = $@"UPDATE {vecTable} SET embedding = $emb WHERE rowid = $iid";
-                    uvec.Parameters.AddWithValue("$emb", JsonSerializer.Serialize(v.Vectors));
-                    uvec.Parameters.AddWithValue("$iid", intId);
-                    await uvec.ExecuteNonQueryAsync(cancellationToken);
+                    using (var uvec = conn.CreateCommand())
+                    {
+                        uvec.CommandText = $@"UPDATE {vecTable} SET embedding = $emb WHERE rowid = $iid";
+                        uvec.Parameters.AddWithValue("$emb", JsonSerializer.Serialize(v.Vectors));
+                        uvec.Parameters.AddWithValue("$iid", intId);
+                        await uvec.ExecuteNonQueryAsync(cancellationToken);
+                    }
                 }
                 else
                 {
-                    var ins = conn.CreateCommand();
-                    ins.CommandText = $@"
-                        INSERT INTO {metaTable}(vector_id, source_id, payload, last_upserted_at)
-                        VALUES($vid, $sid, $p, $ts)";
-                    ins.Parameters.AddWithValue("$vid", v.VectorId);
-                    ins.Parameters.AddWithValue("$sid", v.SourceId);
-                    ins.Parameters.AddWithValue("$p", JsonSerializer.SerializeToUtf8Bytes(v.Payload));
-                    ins.Parameters.AddWithValue("$ts", DateTime.UtcNow.ToString("o"));
-                    await ins.ExecuteNonQueryAsync(cancellationToken);
+                    using (var ins = conn.CreateCommand())
+                    {
+                        ins.CommandText = $@"
+                            INSERT INTO {metaTable}(vector_id, source_id, payload, last_upserted_at)
+                            VALUES($vid, $sid, $p, $ts)";
+                        ins.Parameters.AddWithValue("$vid", v.VectorId);
+                        ins.Parameters.AddWithValue("$sid", v.SourceId);
+                        ins.Parameters.AddWithValue("$p", JsonSerializer.SerializeToUtf8Bytes(v.Payload));
+                        ins.Parameters.AddWithValue("$ts", DateTime.UtcNow.ToString("o"));
+                        await ins.ExecuteNonQueryAsync(cancellationToken);
+                    }
 
                     // 새 int_id
-                    var last = conn.CreateCommand();
-                    last.CommandText = "SELECT last_insert_rowid()";
-                    intId = (long)(await last.ExecuteScalarAsync(cancellationToken) ?? 0L);
+                    using (var last = conn.CreateCommand())
+                    {
+                        last.CommandText = "SELECT last_insert_rowid()";
+                        intId = (long)(await last.ExecuteScalarAsync(cancellationToken) ?? 0L);
+                    }
 
                     // vec0 삽입 (rowid를 int_id로 지정)
-                    var ivec = conn.CreateCommand();
-                    ivec.CommandText = $@"INSERT INTO {vecTable}(rowid, embedding) VALUES ($iid, $emb)";
-                    ivec.Parameters.AddWithValue("$iid", intId);
-                    ivec.Parameters.AddWithValue("$emb", JsonSerializer.Serialize(v.Vectors));
-                    await ivec.ExecuteNonQueryAsync(cancellationToken);
+                    using (var ivec = conn.CreateCommand())
+                    {
+                        ivec.CommandText = $@"INSERT INTO {vecTable}(rowid, embedding) VALUES ($iid, $emb)";
+                        ivec.Parameters.AddWithValue("$iid", intId);
+                        ivec.Parameters.AddWithValue("$emb", JsonSerializer.Serialize(v.Vectors));
+                        await ivec.ExecuteNonQueryAsync(cancellationToken);
+                    }
                 }
             }
         }
@@ -387,30 +408,36 @@ public sealed partial class LocalVectorStorage : IVectorStorage
 
         using var tx = await conn.BeginTransactionAsync(cancellationToken);
 
-        var idsCmd = conn.CreateCommand();
-        idsCmd.CommandText = $@"SELECT int_id FROM {metaTable} WHERE {string.Join(" AND ", where)}";
-        idsCmd.Parameters.AddRange(args);
-
         var intIds = new List<long>();
-        using (var rdr = await idsCmd.ExecuteReaderAsync(cancellationToken))
+        using (var idsCmd = conn.CreateCommand())
         {
-            while (await rdr.ReadAsync(cancellationToken))
-                intIds.Add(rdr.GetInt64(0));
+            idsCmd.CommandText = $@"SELECT int_id FROM {metaTable} WHERE {string.Join(" AND ", where)}";
+            idsCmd.Parameters.AddRange(args);
+
+            using (var rdr = await idsCmd.ExecuteReaderAsync(cancellationToken))
+            {
+                while (await rdr.ReadAsync(cancellationToken))
+                    intIds.Add(rdr.GetInt64(0));
+            }
         }
 
         if (intIds.Count == 0) { await tx.CommitAsync(cancellationToken); return; }
 
-        var delVec = conn.CreateCommand();
-        delVec.CommandText = $@"DELETE FROM {vecTable} WHERE rowid IN ({JoinArrayParams("$iid", intIds.Count)})";
-        foreach (var (val, i) in intIds.Select((v, i) => (v, i)))
-            delVec.Parameters.AddWithValue($"$iid{i}", val);
-        await delVec.ExecuteNonQueryAsync(cancellationToken);
+        using (var delVec = conn.CreateCommand())
+        {
+            delVec.CommandText = $@"DELETE FROM {vecTable} WHERE rowid IN ({JoinArrayParams("$iid", intIds.Count)})";
+            foreach (var (val, i) in intIds.Select((v, i) => (v, i)))
+                delVec.Parameters.AddWithValue($"$iid{i}", val);
+            await delVec.ExecuteNonQueryAsync(cancellationToken);
+        }
 
-        var delMeta = conn.CreateCommand();
-        delMeta.CommandText = $@"DELETE FROM {metaTable} WHERE int_id IN ({JoinArrayParams("$iid", intIds.Count)})";
-        foreach (var (val, i) in intIds.Select((v, i) => (v, i)))
-            delMeta.Parameters.AddWithValue($"$iid{i}", val);
-        await delMeta.ExecuteNonQueryAsync(cancellationToken);
+        using (var delMeta = conn.CreateCommand())
+        {
+            delMeta.CommandText = $@"DELETE FROM {metaTable} WHERE int_id IN ({JoinArrayParams("$iid", intIds.Count)})";
+            foreach (var (val, i) in intIds.Select((v, i) => (v, i)))
+                delMeta.Parameters.AddWithValue($"$iid{i}", val);
+            await delMeta.ExecuteNonQueryAsync(cancellationToken);
+        }
 
         await tx.CommitAsync(cancellationToken);
     }
@@ -443,9 +470,9 @@ public sealed partial class LocalVectorStorage : IVectorStorage
             args.AddRange(filter.SourceIds.Select((v, i) => new SqliteParameter($"$sid{i}", v)));
         }
 
-        var cmd = conn.CreateCommand();
+        using var cmd = conn.CreateCommand();
         cmd.CommandText = $@"
-            SELECT 
+            SELECT
                 m.vector_id,
                 m.source_id,
                 m.payload,
@@ -565,23 +592,33 @@ public sealed partial class LocalVectorStorage : IVectorStorage
         return collectionName.ToLowerInvariant();
     }
 
-    /// <summary> CollectionMetaTable 테이블이 없으면 생성합니다. </summary>
+    /// <summary> CollectionMetaTable 테이블이 없으면 생성합니다. (Thread-safe with double-checked locking) </summary>
     private async Task EnsureCollectionMetaTableAsync()
     {
         if (_ensuredCollMetaTable) return;
 
-        using var conn = await CreateConnectionAsync();
-        var cmd = conn.CreateCommand();
-        cmd.CommandText = $@"
-            CREATE TABLE IF NOT EXISTS {CollectionMetaTable}(
-                name TEXT PRIMARY KEY,
-                dimensions INTEGER NOT NULL,
-                embedding_provider TEXT NOT NULL,
-                embedding_model TEXT NOT NULL
-            )";
-        await cmd.ExecuteNonQueryAsync();
+        await _initLock.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (_ensuredCollMetaTable) return; // Double-check after acquiring lock
 
-        _ensuredCollMetaTable = true;
+            using var conn = await CreateConnectionAsync().ConfigureAwait(false);
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = $@"
+                CREATE TABLE IF NOT EXISTS {CollectionMetaTable}(
+                    name TEXT PRIMARY KEY,
+                    dimensions INTEGER NOT NULL,
+                    embedding_provider TEXT NOT NULL,
+                    embedding_model TEXT NOT NULL
+                )";
+            await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+
+            _ensuredCollMetaTable = true;
+        }
+        finally
+        {
+            _initLock.Release();
+        }
     }
 
     #endregion

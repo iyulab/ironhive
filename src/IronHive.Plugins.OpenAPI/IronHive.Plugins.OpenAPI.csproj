@@ -1,17 +1,15 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+    <Description>IronHive OpenAPI plugin</Description>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="JsonSchema.Net" Version="8.0.5" />
-    <PackageReference Include="JsonSchema.Net.Generation" Version="6.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.2" />
-    <PackageReference Include="Microsoft.OpenApi" Version="3.3.1" />
-    <PackageReference Include="Microsoft.OpenApi.YamlReader" Version="3.3.1" />
+    <PackageReference Include="JsonSchema.Net" />
+    <PackageReference Include="JsonSchema.Net.Generation" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Microsoft.OpenApi" />
+    <PackageReference Include="Microsoft.OpenApi.YamlReader" />
   </ItemGroup>
 
   <ItemGroup>

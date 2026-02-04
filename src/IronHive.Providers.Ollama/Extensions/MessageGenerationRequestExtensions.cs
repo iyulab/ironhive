@@ -17,12 +17,12 @@ internal static class MessageGenerationRequestExtensions
     {
         var _messages = new List<OllamaMessage>();
 
-        if (!string.IsNullOrWhiteSpace(request.System))
+        if (!string.IsNullOrWhiteSpace(request.SystemPrompt))
         {
             _messages.Add(new OllamaMessage
             {
                 Role = MessageRole.System,
-                Content = request.System
+                Content = request.SystemPrompt
             });
         }
 

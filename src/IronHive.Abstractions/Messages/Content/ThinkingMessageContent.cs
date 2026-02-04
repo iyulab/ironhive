@@ -1,5 +1,3 @@
-﻿using IronHive.Abstractions.Messages;
-
 namespace IronHive.Abstractions.Messages.Content;
 
 /// <summary>
@@ -21,6 +19,24 @@ public class ThinkingMessageContent : MessageContent
     /// 추론 콘텐츠 블록의 내용입니다.
     /// </summary>
     public string Value { get; set; } = string.Empty;
+
+    /// <inheritdoc />
+    public override void Merge(MessageDeltaContent delta)
+    {
+        if (delta is ThinkingDeltaContent thinkingDelta)
+            Value += thinkingDelta.Data;
+        else
+            base.Merge(delta);
+    }
+
+    /// <inheritdoc />
+    public override void Update(MessageUpdatedContent updated)
+    {
+        if (updated is ThinkingUpdatedContent thinkingUpdated)
+            Signature = thinkingUpdated.Signature;
+        else
+            base.Update(updated);
+    }
 }
 
 /// <summary>

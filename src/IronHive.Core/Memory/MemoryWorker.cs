@@ -58,9 +58,9 @@ public class MemoryWorker : IMemoryWorker
 
         _consumer = await _queue.CreateConsumerAsync<MemoryContext>(
             onReceived: OnReceivedMessageAsync,
-            cancellationToken: default);
+            cancellationToken: default).ConfigureAwait(false);
 
-        await _consumer.StartAsync();
+        await _consumer.StartAsync().ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -69,7 +69,7 @@ public class MemoryWorker : IMemoryWorker
         // 큐 소비자를 중지하고 해제합니다.
         if (_consumer is not null)
         {
-            await _consumer.StopAsync();
+            await _consumer.StopAsync().ConfigureAwait(false);
             _consumer.Dispose();
             _consumer = null;
         }
@@ -84,7 +84,7 @@ public class MemoryWorker : IMemoryWorker
         if (!force && !_tasks.IsEmpty)
         {
             Task[] running = _tasks.Keys.ToArray();
-            try { await Task.WhenAll(running); } catch { /* 개별 실패 무시 */ }
+            try { await Task.WhenAll(running).ConfigureAwait(false); } catch { /* 개별 실패 무시 */ }
         }
 
         // 게이트웨이 해제
@@ -104,27 +104,27 @@ public class MemoryWorker : IMemoryWorker
     {
         if (_gate is null)
         {
-            await msg.DeadAsync("Worker is Stunning Down");
+            await msg.DeadAsync("Worker is Stunning Down").ConfigureAwait(false);
             return;
         }
 
         //await _gate.WaitAsync(_cts.Token);
-        await _gate.WaitAsync();
+        await _gate.WaitAsync().ConfigureAwait(false);
 
         var task = Task.Run(async () =>
         {
             try
             {
-                await _pipeline.RunAsync(msg.Body, _cts.Token);
-                await msg.CompleteAsync();
+                await _pipeline.RunAsync(msg.Body, _cts.Token).ConfigureAwait(false);
+                await msg.CompleteAsync().ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (_cts.IsCancellationRequested)
             {
-                await msg.RequeueAsync(); // 워커가 중지 중이므로 재큐
+                await msg.RequeueAsync().ConfigureAwait(false); // 워커가 중지 중이므로 재큐
             }
             catch (Exception ex)
             {
-                await msg.DeadAsync(ex.ToString()); // 스택 포함
+                await msg.DeadAsync(ex.ToString()).ConfigureAwait(false); // 스택 포함
             }
             finally
             {

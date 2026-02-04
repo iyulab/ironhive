@@ -29,8 +29,14 @@ public interface IAgent
     string Description { get; set; }
 
     /// <summary>
-    /// 에이전트 동작을 안내하는 지침(시스템 프롬프트 등)입니다.
+    /// 에이전트 동작을 안내하는 시스템 프롬프트입니다.
     /// </summary>
+    string? SystemPrompt { get; set; }
+
+    /// <summary>
+    /// 에이전트 동작을 안내하는 시스템 프롬프트입니다.
+    /// </summary>
+    [Obsolete("Use SystemPrompt instead. Will be removed in v1.0.")]
     string? Instruction { get; set; }
 
     /// <summary>

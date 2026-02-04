@@ -16,47 +16,21 @@ public abstract class MessageContent
 {
     /// <summary>
     /// delta 객체의 타입에 맞춰서 현재 객체에 반영됩니다.
+    /// 파생 클래스에서 재정의하여 해당 델타 타입을 처리할 수 있습니다.
     /// </summary>
-    public void Merge(MessageDeltaContent delta)
+    public virtual void Merge(MessageDeltaContent delta)
     {
-        switch ((this, delta))
-        {
-            case (TextMessageContent textContent, TextDeltaContent textDelta):
-                textContent.Value += textDelta.Value;
-                break;
-
-            case (ToolMessageContent toolContent, ToolDeltaContent toolDelta):
-                toolContent.Input += toolDelta.Input;
-                break;
-
-            case (ThinkingMessageContent thinkingContent, ThinkingDeltaContent thinkingDelta):
-                thinkingContent.Value += thinkingDelta.Data;
-                break;
-
-            default:
-                throw new InvalidOperationException(
-                    $"Unsupported delta type: content={GetType().Name}, delta={delta.GetType().Name}");
-        }
+        throw new InvalidOperationException(
+            $"Unsupported delta type: content={GetType().Name}, delta={delta.GetType().Name}");
     }
 
     /// <summary>
     /// 업데이트 객체의 타입에 맞춰서 현재 객체에 반영됩니다.
+    /// 파생 클래스에서 재정의하여 해당 업데이트 타입을 처리할 수 있습니다.
     /// </summary>
-    public void Update(MessageUpdatedContent updated)
+    public virtual void Update(MessageUpdatedContent updated)
     {
-        switch ((this, updated))
-        {
-            case (ThinkingMessageContent thinkingContent, ThinkingUpdatedContent thinkingUpdated):
-                thinkingContent.Signature = thinkingUpdated.Signature;
-                break;
-
-            case (ToolMessageContent toolContent, ToolUpdatedContent toolUpdated):
-                // 내부에서 조절
-                break;
-
-            default:
-                throw new InvalidOperationException(
-                    $"Unsupported update type: content={GetType().Name}, update={updated.GetType().Name}");
-        }
+        throw new InvalidOperationException(
+            $"Unsupported update type: content={GetType().Name}, update={updated.GetType().Name}");
     }
 }

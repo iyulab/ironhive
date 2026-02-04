@@ -12,8 +12,10 @@ using IronHive.Core.Services;
 using IronHive.Core.Files;
 using IronHive.Core.Tools;
 using IronHive.Core.Registries;
+using IronHive.Core.Agent;
 using IronHive.Abstractions.Registries;
 using IronHive.Abstractions.Workflow;
+using IronHive.Abstractions.Agent;
 using IronHive.Core.Memory;
 using IronHive.Abstractions.Memory;
 
@@ -44,6 +46,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         Services.TryAddSingleton<IEmbeddingService, EmbeddingService>();
         Services.TryAddSingleton<IFileStorageService, FileStorageService>();
         Services.TryAddSingleton<IMemoryService, MemoryService>();
+        Services.TryAddSingleton<IAgentService, AgentService>();
     }
 
     /// <inheritdoc />

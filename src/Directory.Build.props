@@ -1,0 +1,20 @@
+<Project>
+  <!-- 부모 Directory.Build.props 상속 -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!-- src/ 하위 프로젝트는 NuGet 패키지로 배포 -->
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <!-- 패키지 공통 메타데이터 (Version은 루트 Directory.Build.props에서 상속) -->
+  <PropertyGroup>
+    <Authors>iyulab</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/iyulab-rnd/ironhive</PackageProjectUrl>
+    <PackageTags>iyulab;AI;LLM;RAG;Agent</PackageTags>
+    <RepositoryUrl>https://github.com/iyulab-rnd/ironhive</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+</Project>

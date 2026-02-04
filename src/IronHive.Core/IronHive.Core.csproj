@@ -1,28 +1,22 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-	<!-- Package Settings -->
-	<Authors>Iyulab</Authors>
-	<Description>ironhive core</Description>
-	<PackageVersion>1.0.0</PackageVersion>
-	<PackageLicenseExpression>MIT</PackageLicenseExpression>
-	<PackageProjectUrl>https://github.com/iyulab-rnd/ironhive</PackageProjectUrl>
-	<PackageTags>Iyulab;AI;LLM;RAG;Agent</PackageTags>
-	
-	<!-- Project Settings -->
-    <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+    <Description>IronHive core implementations</Description>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="DocumentFormat.OpenXml" Version="3.4.1" />
-    <PackageReference Include="HtmlAgilityPack" Version="1.12.4" />
-    <PackageReference Include="MessagePack" Version="3.1.4" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.3.9" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.2" />
-    <PackageReference Include="PdfPig" Version="0.1.13" />
-    <PackageReference Include="Scriban" Version="6.5.2" />
+    <PackageReference Include="DocumentFormat.OpenXml" />
+    <PackageReference Include="HtmlAgilityPack" />
+    <PackageReference Include="MessagePack" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" />
+    <PackageReference Include="Microsoft.Data.Sqlite" />
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Resilience" />
+    <PackageReference Include="OpenTelemetry.Api" />
+    <PackageReference Include="PdfPig" />
+    <PackageReference Include="Scriban" />
+    <PackageReference Include="Tomlyn" />
+    <PackageReference Include="YamlDotNet" />
   </ItemGroup>
 
   <ItemGroup>

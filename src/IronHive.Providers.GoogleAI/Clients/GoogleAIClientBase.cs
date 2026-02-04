@@ -1,43 +1,14 @@
-﻿using System.Text.Json;
+using IronHive.Abstractions.Http;
 
 namespace IronHive.Providers.GoogleAI.Clients;
 
-internal abstract class GoogleAIClientBase : IDisposable
+internal abstract class GoogleAIClientBase : ProviderClientBase
 {
-    protected readonly HttpClient _client;
-    protected readonly JsonSerializerOptions _jsonOptions;
-
-    protected GoogleAIClientBase(GoogleAIConfig config)
+    protected GoogleAIClientBase(GoogleAIConfig config) : base(config)
     {
-        _client = CreateHttpClient(config);
-        _jsonOptions = config.JsonOptions;
     }
 
-    protected GoogleAIClientBase(string apiKey)
+    protected GoogleAIClientBase(string apiKey) : base(new GoogleAIConfig { ApiKey = apiKey })
     {
-        var config = new GoogleAIConfig { ApiKey = apiKey };
-        _client = CreateHttpClient(config);
-        _jsonOptions = config.JsonOptions;
-    }
-
-    public void Dispose()
-    {
-        _client.Dispose();
-        GC.SuppressFinalize(this);
-    }
-
-    private static HttpClient CreateHttpClient(GoogleAIConfig config)
-    {
-        var client = new HttpClient
-        {
-            BaseAddress = string.IsNullOrWhiteSpace(config.BaseUrl)
-                ? new Uri(GoogleAIConstants.DefaultBaseUrl.EnsureSuffix('/'))
-                : new Uri(config.BaseUrl.EnsureSuffix('/')),
-        };
-
-        if (!string.IsNullOrWhiteSpace(config.ApiKey))
-            client.DefaultRequestHeaders.Add(GoogleAIConstants.AuthorizationHeaderName, config.ApiKey);
-
-        return client;
     }
 }
