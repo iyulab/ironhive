@@ -76,7 +76,7 @@ public class ServiceController : ControllerBase
         [FromBody] MessageRequest request,
         CancellationToken cancellationToken = default)
     {
-        request.Instruction = $"Current UTC Time: {DateTime.UtcNow}\n" + request.Instruction;
+        request.SystemPrompt = $"Current UTC Time: {DateTime.UtcNow}\n" + request.SystemPrompt;
         request.Tools = _tools.Select(t => new ToolItem { Name = t.UniqueName });
 
         try

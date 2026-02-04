@@ -48,6 +48,12 @@ public class HiveService : IHiveService
         _agentService ??= Services.GetRequiredService<IAgentService>();
 
     /// <inheritdoc />
+    public IAgent CreateAgent(Action<AgentConfig> configure)
+    {
+        return AgentService.CreateAgent(configure);
+    }
+
+    /// <inheritdoc />
     public IAgent CreateAgentFrom(AgentCard card)
     {
         ArgumentNullException.ThrowIfNull(card);

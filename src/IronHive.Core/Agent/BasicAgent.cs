@@ -27,14 +27,6 @@ public class BasicAgent : IAgent
     public string? SystemPrompt { get; set; }
 
     /// <inheritdoc />
-    [Obsolete("Use SystemPrompt instead. Will be removed in v1.0.")]
-    public string? Instruction
-    {
-        get => SystemPrompt;
-        set => SystemPrompt = value;
-    }
-
-    /// <inheritdoc />
     public IEnumerable<ToolItem>? Tools { get; set; }
 
     /// <inheritdoc />

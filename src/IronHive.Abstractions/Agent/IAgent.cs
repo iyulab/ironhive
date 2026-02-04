@@ -34,12 +34,6 @@ public interface IAgent
     string? SystemPrompt { get; set; }
 
     /// <summary>
-    /// 에이전트 동작을 안내하는 시스템 프롬프트입니다.
-    /// </summary>
-    [Obsolete("Use SystemPrompt instead. Will be removed in v1.0.")]
-    string? Instruction { get; set; }
-
-    /// <summary>
     /// 에이전트가 사용할 수 있는 도구의 서비스 키 목록입니다.
     /// </summary>
     IEnumerable<ToolItem>? Tools { get; set; }

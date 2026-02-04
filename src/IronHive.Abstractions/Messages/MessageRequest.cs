@@ -24,16 +24,6 @@ public class MessageRequest : MessageGenerationParameters
     public string? SystemPrompt { get; set; }
 
     /// <summary>
-    /// 대화의 컨텍스트와 동작을 정의하는 시스템 프롬프트입니다.
-    /// </summary>
-    [Obsolete("Use SystemPrompt instead. Will be removed in v1.0.")]
-    public string? Instruction
-    {
-        get => SystemPrompt;
-        set => SystemPrompt = value;
-    }
-
-    /// <summary>
     /// 모델에 전달될 대화 메시지 컬렉션입니다.
     /// </summary>
     public ICollection<Message> Messages { get; set; } = [];

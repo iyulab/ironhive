@@ -6,6 +6,11 @@
 public interface IAgentService
 {
     /// <summary>
+    /// 프로그래밍 방식으로 에이전트를 생성합니다.
+    /// </summary>
+    IAgent CreateAgent(Action<AgentConfig> configure);
+
+    /// <summary>
     /// 에이전트 서비스를 Yaml 문자열로부터 생성합니다.
     /// 
     /// <code>
