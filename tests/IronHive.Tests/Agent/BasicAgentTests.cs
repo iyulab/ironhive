@@ -56,10 +56,10 @@ public class BasicAgentTests
     {
         // Arrange
         var agent = CreateAgent();
-        agent.SystemPrompt = "You are a helpful assistant.";
+        agent.Instructions = "You are a helpful assistant.";
 
         // Assert
-        agent.SystemPrompt.Should().Be("You are a helpful assistant.");
+        agent.Instructions.Should().Be("You are a helpful assistant.");
     }
 
     [Fact]
@@ -171,7 +171,7 @@ public class BasicAgentTests
     {
         // Arrange
         var agent = CreateAgent();
-        agent.SystemPrompt = "You are a coding assistant.";
+        agent.Instructions = "You are a coding assistant.";
 
         var messages = new List<Message>
         {
@@ -194,7 +194,7 @@ public class BasicAgentTests
 
         // Assert
         capturedRequest.Should().NotBeNull();
-        capturedRequest!.SystemPrompt.Should().Be("You are a coding assistant.");
+        capturedRequest!.System.Should().Be("You are a coding assistant.");
     }
 
     [Fact]

@@ -1,6 +1,6 @@
 ﻿namespace IronHive.Abstractions.Memory;
 
-// <summary>
+/// <summary>
 /// 검색 모드를 정의하는 열거형입니다.
 /// </summary>
 public enum SearchMode

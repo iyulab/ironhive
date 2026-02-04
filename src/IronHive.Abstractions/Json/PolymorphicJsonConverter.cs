@@ -21,8 +21,6 @@ public class PolymorphicJsonConverter<T> : JsonConverter<T> where T : class
 
     /// <summary>
     /// 사용자 지정 판별자 이름을 사용하는 생성자입니다.
-    /// 판별자 이름은 <see cref="PolymorphicPropertyNameAttribute"/>로 지정된 속성 이름이거나 기본값인 "type"입니다.
-    /// 판별자 값은 <see cref="PolymorphicPropertyValueAttribute"/>로 지정된 속성 값입니다.
     /// </summary>
     public PolymorphicJsonConverter()
     {

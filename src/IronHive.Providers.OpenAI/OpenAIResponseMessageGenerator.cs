@@ -14,7 +14,6 @@ namespace IronHive.Providers.OpenAI;
 public class OpenAIResponseMessageGenerator : IMessageGenerator
 {
     private readonly OpenAIResponsesClient _client;
-    private readonly OpenAICompatibility _compatibility;
 
     public OpenAIResponseMessageGenerator(string apiKey)
         : this(new OpenAIConfig { ApiKey = apiKey })
@@ -23,7 +22,6 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
     public OpenAIResponseMessageGenerator(OpenAIConfig config)
     {
         _client = new OpenAIResponsesClient(config);
-        _compatibility = config.Compatibility;
     }
 
     /// <inheritdoc />
@@ -38,8 +36,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var caps = ModelCapabilityResolver.Resolve(request.Model, _compatibility);
-        var req = request.ToOpenAI(caps);
+        var req = request.ToOpenAI();
         var res = await _client.PostResponsesAsync(req, cancellationToken);
 
         var content = new List<MessageContent>();
@@ -80,7 +77,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
                     Id = fti.CallId,
                     Name = fti.Name,
                     Input = fti.Arguments,
-                    IsApproved = request.Tools?.TryGet(fti.Name, out var t) != true || !t.RequiresApproval
+                    IsApproved = request.Tools?.TryGet(fti.Name, out var t) != true || t?.RequiresApproval == false
                 });
             }
             else
@@ -127,8 +124,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var caps = ModelCapabilityResolver.Resolve(request.Model, _compatibility);
-        var req = request.ToOpenAI(caps);
+        var req = request.ToOpenAI();
 
         int pIndex = 0; // 컨텐츠 파트 인덱스(배열 컨텐츠 추적)
         var reason = MessageDoneReason.EndTurn;
@@ -174,7 +170,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
                             Id = tci.CallId,
                             Name = tci.Name,
                             Input = tci.Arguments,
-                            IsApproved = request.Tools?.TryGet(tci.Name, out var t) != true || !t.RequiresApproval
+                            IsApproved = request.Tools?.TryGet(tci.Name, out var t) != true || t?.RequiresApproval == false
                         }
                     };
                 }

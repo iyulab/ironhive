@@ -166,7 +166,7 @@ public class MessageServiceTests
         {
             Provider = "openai",
             Model = "gpt-4o",
-            SystemPrompt = "You are a helpful assistant.",
+            System = "You are a helpful assistant.",
             Messages = [new UserMessage { Content = [new TextMessageContent { Value = "Test" }] }]
         };
 
@@ -175,7 +175,7 @@ public class MessageServiceTests
 
         // Assert
         capturedRequest.Should().NotBeNull();
-        capturedRequest!.SystemPrompt.Should().Be("You are a helpful assistant.");
+        capturedRequest!.System.Should().Be("You are a helpful assistant.");
     }
 
     [Fact]

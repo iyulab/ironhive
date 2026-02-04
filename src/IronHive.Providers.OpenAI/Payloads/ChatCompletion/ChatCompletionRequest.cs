@@ -80,7 +80,7 @@ public class ChatCompletionRequest
     public string? PromptCacheKey { get; set; }
 
     /// <summary>
-    /// (Not Use) < "24h"
+    /// below '24h'
     /// </summary>
     [JsonPropertyName("prompt_cache_retention")]
     public string? PromptCacheRetention { get; set; }

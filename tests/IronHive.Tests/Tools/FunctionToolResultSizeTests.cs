@@ -23,7 +23,7 @@ public class FunctionToolResultSizeTests
         };
 
         // Assert
-        tool.MaxResultSize.Should().Be(30_000);
+        tool.MaxOutput.Should().Be(30_000);
     }
 
     [Fact]
@@ -36,11 +36,11 @@ public class FunctionToolResultSizeTests
             Description = "Test tool",
             Parameters = null,
             RequiresApproval = false,
-            MaxResultSize = 100_000
+            MaxOutput = 100_000
         };
 
         // Assert
-        tool.MaxResultSize.Should().Be(100_000);
+        tool.MaxOutput.Should().Be(100_000);
     }
 
     [Fact]
@@ -53,7 +53,7 @@ public class FunctionToolResultSizeTests
             Description = "Test tool",
             Parameters = null,
             RequiresApproval = false,
-            MaxResultSize = 100
+            MaxOutput = 100
         };
 
         // Act
@@ -75,7 +75,7 @@ public class FunctionToolResultSizeTests
             Description = "Test tool",
             Parameters = null,
             RequiresApproval = false,
-            MaxResultSize = 50 // Very small limit
+            MaxOutput = 50 // Very small limit
         };
 
         // Act
@@ -97,7 +97,7 @@ public class FunctionToolResultSizeTests
             Description = "Test tool",
             Parameters = null,
             RequiresApproval = false,
-            MaxResultSize = 0 // Unlimited
+            MaxOutput = 0 // Unlimited
         };
 
         // Act
@@ -118,11 +118,11 @@ public class FunctionToolResultSizeTests
             Parameters = null,
             RequiresApproval = false,
             Timeout = 120,
-            MaxResultSize = 50_000
+            MaxOutput = 50_000
         };
 
         // Assert
         tool.Timeout.Should().Be(120);
-        tool.MaxResultSize.Should().Be(50_000);
+        tool.MaxOutput.Should().Be(50_000);
     }
 }

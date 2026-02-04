@@ -16,7 +16,6 @@ public class FunctionToolAttribute : Attribute
     /// 이름, 설명을 지정하는 생성자입니다.
     /// </summary>
     /// <param name="name">도구의 이름</param>
-    /// <param name="description">도구의 설명</param>
     public FunctionToolAttribute(string? name = null)
     {
         Name = name;

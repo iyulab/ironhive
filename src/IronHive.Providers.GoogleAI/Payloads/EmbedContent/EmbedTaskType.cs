@@ -38,7 +38,7 @@ internal enum EmbedTaskType
     CLUSTERING,
 
     /// <summary>
-    /// 텍스트가 질의응답(Q&A) 작업에 사용될 것임을 명시합니다.
+    /// 텍스트가 질의응답(Q_A) 작업에 사용될 것임을 명시합니다.
     /// 예시) 특정 법률 조항 문서를 주고 "벌금은 최대 얼마인가?"라는 질문에 대한 답을 찾을 때.
     /// </summary>
     QUESTION_ANSWERING,

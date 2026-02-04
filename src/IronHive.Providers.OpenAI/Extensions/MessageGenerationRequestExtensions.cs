@@ -30,7 +30,7 @@ public static class MessageGenerationRequestExtensions
     /// <summary>
     /// 메시지 생성 요청을 OpenAI의 ResponsesRequest로 변환합니다.
     /// </summary>
-    internal static ResponsesRequest ToOpenAI(this MessageGenerationRequest request, ModelCapabilities caps)
+    internal static ResponsesRequest ToOpenAI(this MessageGenerationRequest request)
     {
         var items = new List<ResponsesItem>();
 
@@ -150,7 +150,6 @@ public static class MessageGenerationRequestExtensions
             Instructions = request.System,
             Input = items,
             MaxOutputTokens = request.MaxTokens,
-            Stop = caps.SupportsStop ? request.StopSequences : null,
             Tools = request.Tools?.Select(t => new ResponsesFunctionTool
             {
                 Name = t.UniqueName,
@@ -178,7 +177,7 @@ public static class MessageGenerationRequestExtensions
     /// <summary>
     /// 메시지 생성 요청을 OpenAI의 ChatCompletionRequest로 변환합니다.
     /// </summary>
-    internal static ChatCompletionRequest ToOpenAILegacy(this MessageGenerationRequest request, ModelCapabilities caps)
+    internal static ChatCompletionRequest ToOpenAILegacy(this MessageGenerationRequest request)
     {
         var enabledReasoning = request.ThinkingEffort != MessageThinkingEffort.None;
 
@@ -294,7 +293,6 @@ public static class MessageGenerationRequestExtensions
             Model = request.Model,
             Messages = messages,
             MaxCompletionTokens = request.MaxTokens,
-            Stop = caps.SupportsStop ? request.StopSequences : null,
             Tools = request.Tools?.Select(t => new ChatFunctionTool
             {
                 Function = new ChatFunctionTool.FunctionSchema
@@ -304,15 +302,15 @@ public static class MessageGenerationRequestExtensions
                     Parameters = t.Parameters ?? new JsonObject { ["type"] = "object", ["properties"] = new JsonObject() }
                 }
             }),
-            ReasoningEffort = enabledReasoning && caps.SupportsReasoningEffort ? request.ThinkingEffort switch
+            ReasoningEffort = enabledReasoning ? request.ThinkingEffort switch
             {
                 MessageThinkingEffort.Low => ChatReasoningEffort.Low,
                 MessageThinkingEffort.Medium => ChatReasoningEffort.Medium,
                 MessageThinkingEffort.High => ChatReasoningEffort.High,
                 _ => null
             } : null,
-            Temperature = caps.SupportsTemperature && !enabledReasoning ? request.Temperature : null,
-            TopP = caps.SupportsTopP && !enabledReasoning ? request.TopP : null,
+            Temperature = !enabledReasoning ? request.Temperature : null,
+            TopP = !enabledReasoning ? request.TopP : null,
         };
     }
 }

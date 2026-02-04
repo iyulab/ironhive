@@ -14,10 +14,6 @@
 - [ ] ParallelOrchestrator/HubSpokeOrchestrator에 체크포인트/승인 통합
 - [ ] GraphOrchestrator Fan-Out 병렬 실행 최적화
 
-## Providers
-- GoogleAI 확장 추가
-- XAI 확장추가
-
 ### Providers
 - ImageGenerator 기능 추가
 - VideoGenerator 기능 추가

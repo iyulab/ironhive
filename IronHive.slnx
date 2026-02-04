@@ -32,20 +32,16 @@
     <Project Path="src/IronHive.Storages.Qdrant/IronHive.Storages.Qdrant.csproj" />
     <Project Path="src/IronHive.Storages.RabbitMQ/IronHive.Storages.RabbitMQ.csproj" />
   </Folder>
-  <Folder Name="/20. experiments/">
-    <Project Path="experiments/ConsoleTest/ConsoleTest.csproj" />
+  <Folder Name="/20. samples/">
+    <Project Path="samples/ConsoleApp/ConsoleApp.csproj" />
+    <Project Path="samples/WebServer/WebServer.csproj" />
   </Folder>
-  <Folder Name="/30. services/">
-    <Project Path="services/WebServer/WebServer.csproj" />
-  </Folder>
-  <Folder Name="/40. local-tests/" />
-  <Folder Name="/40. local-tests/chat-api-tests/">
-    <Project Path="local-tests/chat-api-tests/ChatApiTests.csproj" />
-  </Folder>
-  <Folder Name="/40. local-tests/multi-agent-test/">
-    <Project Path="local-tests/multi-agent-test/MultiAgentTest.csproj" />
-  </Folder>
-<Folder Name="/tests/">
+  <Folder Name="/30. tests/">
+    <Project Path="tests/chat-api-tests/ChatApiTests.csproj" />
     <Project Path="tests/IronHive.Tests/IronHive.Tests.csproj" />
+    <Project Path="tests/multi-agent-test/MultiAgentTest.csproj" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
   </Folder>
 </Solution>

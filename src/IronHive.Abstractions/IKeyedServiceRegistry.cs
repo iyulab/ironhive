@@ -46,7 +46,7 @@ public interface IKeyedServiceRegistry<TKey, TBase>
     /// <summary>
     /// 항목을 추가합니다. 동일 키가 이미 존재하면 실패합니다.
     /// </summary>
-    /// <typeparam name="TBase">
+    /// <typeparam name="TDerived">
     /// 실제 저장할 항목의 구체 타입. <typeparamref name="TDerived"/>를 상속해야 합니다.
     /// </typeparam>
     /// <param name="key">추가할 항목의 키.</param>
@@ -58,7 +58,7 @@ public interface IKeyedServiceRegistry<TKey, TBase>
     /// <summary>
     /// 항목을 설정합니다. 동일 키가 있으면 바꿔치기(upsert)합니다.
     /// </summary>
-    /// <typeparam name="TBase">
+    /// <typeparam name="TDerived">
     /// 실제 저장할 항목의 구체 타입. <typeparamref name="TDerived"/>를 상속해야 합니다.
     /// </typeparam>
     /// <param name="key">설정할 항목의 키.</param>

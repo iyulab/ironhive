@@ -5,7 +5,6 @@ namespace IronHive.Abstractions.Workflow;
 /// <summary>
 /// 워크플로우의 스텝 체인을 구성하는 빌더입니다.
 /// - <see cref="Then{TStep}(string)"/> 및 오버로드로 태스크 스텝을 추가합니다.
-/// - <see cref="When{TStep}(string, IReadOnlyDictionary{string, WorkflowStepBuilder{TContext}})"/> 로 분기 조건을 구성합니다.
 /// - <see cref="Build"/> 로 <see cref="IWorkflow{TContext}"/> 인스턴스를 생성합니다.
 /// </summary>
 public class WorkflowStepBuilder<TContext>

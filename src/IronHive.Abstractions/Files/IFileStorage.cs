@@ -28,7 +28,7 @@ public interface IFileStorage : IStorageItem
     /// 지정한 경로에 파일이 존재하는지 비동기적으로 확인합니다.
     /// </summary>
     /// <param name="filePath">확인할 파일의 경로입니다.</param>
-    /// <returns>존재 여부를 나타내는 <see cref="Task{bool}"/>를 반환합니다.</returns>
+    /// <returns>존재 여부를 반환합니다.</returns>
     Task<bool> ExistsFileAsync(
         string filePath,
         CancellationToken cancellationToken = default);
@@ -60,7 +60,7 @@ public interface IFileStorage : IStorageItem
     /// 지정한 경로의 파일을 비동기적으로 삭제합니다.
     /// 디렉토리 경로의 경우, 하위 디렉토리 및 파일도 모두 삭제됩니다.
     /// </summary>
-    /// <param name="path">삭제할 파일 또는 디렉토리의 경로입니다.</param>
+    /// <param name="filePath">삭제할 파일 또는 디렉토리의 경로입니다.</param>
     Task DeleteFileAsync(
         string filePath,
         CancellationToken cancellationToken = default);

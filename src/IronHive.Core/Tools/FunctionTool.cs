@@ -280,7 +280,7 @@ public sealed class FunctionTool : ITool
     }
 
     /// <summary>
-    /// IAsyncEnumerable<T>를 적절히 처리합니다.
+    /// IAsyncEnumerable를 적절히 처리합니다.
     /// </summary>
     private static async Task<List<object?>> HandleAsyncEnumerableAsync(object src, CancellationToken ct)
     {

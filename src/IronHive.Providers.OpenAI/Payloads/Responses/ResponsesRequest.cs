@@ -112,13 +112,6 @@ internal class ResponsesRequest
     [JsonPropertyName("store")]
     public bool Store { get; set; } = false;
 
-    /// <summary>
-    /// Up to 4 sequences where the API will stop generating further tokens.
-    /// Not supported with reasoning models (o3, o4-mini).
-    /// </summary>
-    [JsonPropertyName("stop")]
-    public IEnumerable<string>? Stop { get; set; }
-
     [JsonPropertyName("stream")]
     public bool? Stream { get; set; }
 

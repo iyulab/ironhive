@@ -274,10 +274,10 @@ async Task<List<(string, TestResult)>> RunScenarios(
         results.Add(("error-model", TestResult.Error(ex.Message)));
     }
 
-    // Scenario 15: No system prompt (basic generation without SystemPrompt)
+    // Scenario 15: No system prompt (basic generation without System)
     try
     {
-        results.Add(("no-system", await TestNoSystemPrompt(generator, model)));
+        results.Add(("no-system", await TestNoSystem(generator, model)));
     }
     catch (Exception ex)
     {
@@ -342,7 +342,7 @@ async Task<TestResult> TestBasic(IMessageGenerator generator, string model)
     var request = new MessageGenerationRequest
     {
         Model = model,
-        SystemPrompt = "You are a helpful assistant. Respond briefly.",
+        System = "You are a helpful assistant. Respond briefly.",
         Messages =
         [
             new UserMessage
@@ -385,7 +385,7 @@ async Task<TestResult> TestStreaming(IMessageGenerator generator, string model)
     var request = new MessageGenerationRequest
     {
         Model = model,
-        SystemPrompt = "You are a helpful assistant. Respond briefly.",
+        System = "You are a helpful assistant. Respond briefly.",
         Messages =
         [
             new UserMessage
@@ -477,7 +477,7 @@ async Task<TestResult> TestToolCalling(IMessageGenerator generator, string model
     var request = new MessageGenerationRequest
     {
         Model = model,
-        SystemPrompt = "You are a helpful assistant. Use the provided tools when appropriate.",
+        System = "You are a helpful assistant. Use the provided tools when appropriate.",
         Messages =
         [
             new UserMessage
@@ -532,7 +532,7 @@ async Task<TestResult> TestToolRoundTrip(IMessageGenerator generator, string mod
     var request = new MessageGenerationRequest
     {
         Model = model,
-        SystemPrompt = "You are a helpful assistant. Always use the provided tools when asked. After getting a tool result, respond with only the result value.",
+        System = "You are a helpful assistant. Always use the provided tools when asked. After getting a tool result, respond with only the result value.",
         Messages = messages,
         Tools = tools
     };
@@ -561,7 +561,7 @@ async Task<TestResult> TestToolRoundTrip(IMessageGenerator generator, string mod
     var request2 = new MessageGenerationRequest
     {
         Model = model,
-        SystemPrompt = request.SystemPrompt,
+        System = request.System,
         Messages = messages,
         Tools = tools
     };
@@ -604,7 +604,7 @@ async Task<TestResult> TestMultiTurn(IMessageGenerator generator, string model)
     var request1 = new MessageGenerationRequest
     {
         Model = model,
-        SystemPrompt = "You are a helpful assistant with perfect memory. Keep responses brief.",
+        System = "You are a helpful assistant with perfect memory. Keep responses brief.",
         Messages = messages,
     };
 
@@ -626,7 +626,7 @@ async Task<TestResult> TestMultiTurn(IMessageGenerator generator, string model)
     var request2 = new MessageGenerationRequest
     {
         Model = model,
-        SystemPrompt = request1.SystemPrompt,
+        System = request1.System,
         Messages = messages,
     };
 
@@ -676,7 +676,7 @@ async Task<TestResult> TestToolWithParams(IMessageGenerator generator, string mo
     var request = new MessageGenerationRequest
     {
         Model = model,
-        SystemPrompt = "You are a helpful assistant. Use tools when asked to calculate.",
+        System = "You are a helpful assistant. Use tools when asked to calculate.",
         Messages =
         [
             new UserMessage
@@ -725,7 +725,7 @@ async Task<TestResult> TestStreamingToolCall(IMessageGenerator generator, string
     var request = new MessageGenerationRequest
     {
         Model = model,
-        SystemPrompt = "You are a helpful assistant. Use the provided tools when asked.",
+        System = "You are a helpful assistant. Use the provided tools when asked.",
         Messages =
         [
             new UserMessage
@@ -845,7 +845,7 @@ async Task<TestResult> TestMultipleTools(IMessageGenerator generator, string mod
     var request = new MessageGenerationRequest
     {
         Model = model,
-        SystemPrompt = "You are a helpful assistant. Use the appropriate tool to answer.",
+        System = "You are a helpful assistant. Use the appropriate tool to answer.",
         Messages =
         [
             new UserMessage
@@ -879,7 +879,7 @@ async Task<TestResult> TestThinkingEffortNone(IMessageGenerator generator, strin
     var request = new MessageGenerationRequest
     {
         Model = model,
-        SystemPrompt = "You are a helpful assistant. Respond briefly.",
+        System = "You are a helpful assistant. Respond briefly.",
         Messages =
         [
             new UserMessage
@@ -913,7 +913,7 @@ async Task<TestResult> TestMaxTokens(IMessageGenerator generator, string model)
     var request = new MessageGenerationRequest
     {
         Model = model,
-        SystemPrompt = "You are a helpful assistant.",
+        System = "You are a helpful assistant.",
         Messages =
         [
             new UserMessage
@@ -947,7 +947,7 @@ async Task<TestResult> TestThinkingEffortHigh(IMessageGenerator generator, strin
     var request = new MessageGenerationRequest
     {
         Model = model,
-        SystemPrompt = "You are a helpful assistant. Think step by step.",
+        System = "You are a helpful assistant. Think step by step.",
         Messages =
         [
             new UserMessage
@@ -983,7 +983,7 @@ async Task<TestResult> TestStopSequences(IMessageGenerator generator, string mod
     var request = new MessageGenerationRequest
     {
         Model = model,
-        SystemPrompt = "You are a helpful assistant. Always respond exactly as instructed.",
+        System = "You are a helpful assistant. Always respond exactly as instructed.",
         Messages =
         [
             new UserMessage
@@ -1039,7 +1039,7 @@ async Task<TestResult> TestStreamingRoundTrip(IMessageGenerator generator, strin
     var request1 = new MessageGenerationRequest
     {
         Model = model,
-        SystemPrompt = "You are a helpful assistant. Always use the provided tools when asked. After getting a tool result, respond with only the result value.",
+        System = "You are a helpful assistant. Always use the provided tools when asked. After getting a tool result, respond with only the result value.",
         Messages = messages,
         Tools = tools
     };
@@ -1101,7 +1101,7 @@ async Task<TestResult> TestStreamingRoundTrip(IMessageGenerator generator, strin
     var request2 = new MessageGenerationRequest
     {
         Model = model,
-        SystemPrompt = request1.SystemPrompt,
+        System = request1.System,
         Messages = messages,
         Tools = tools
     };
@@ -1150,7 +1150,7 @@ async Task<TestResult> TestErrorModel(IMessageGenerator generator)
     var request = new MessageGenerationRequest
     {
         Model = "nonexistent-model-12345",
-        SystemPrompt = "You are a helpful assistant.",
+        System = "You are a helpful assistant.",
         Messages =
         [
             new UserMessage
@@ -1183,12 +1183,12 @@ async Task<TestResult> TestErrorModel(IMessageGenerator generator)
     }
 }
 
-async Task<TestResult> TestNoSystemPrompt(IMessageGenerator generator, string model)
+async Task<TestResult> TestNoSystem(IMessageGenerator generator, string model)
 {
     var request = new MessageGenerationRequest
     {
         Model = model,
-        // SystemPrompt intentionally omitted
+        // System intentionally omitted
         Messages =
         [
             new UserMessage
@@ -1209,7 +1209,7 @@ async Task<TestResult> TestNoSystemPrompt(IMessageGenerator generator, string mo
         : "no-usage";
 
     if (string.IsNullOrWhiteSpace(textContent?.Value))
-        return TestResult.Error($"Empty response without SystemPrompt (reason={response.DoneReason})");
+        return TestResult.Error($"Empty response without System (reason={response.DoneReason})");
 
     return TestResult.Pass(
         $"reason={response.DoneReason}, {tokenInfo}",
@@ -1222,7 +1222,7 @@ async Task<TestResult> TestTemperature(IMessageGenerator generator, string model
     var request = new MessageGenerationRequest
     {
         Model = model,
-        SystemPrompt = "You are a helpful assistant. Be precise.",
+        System = "You are a helpful assistant. Be precise.",
         Messages =
         [
             new UserMessage
@@ -1267,7 +1267,7 @@ async Task<TestResult> TestImageInput(IMessageGenerator generator, string model)
     var request = new MessageGenerationRequest
     {
         Model = model,
-        SystemPrompt = "You are a helpful assistant. Describe images concisely.",
+        System = "You are a helpful assistant. Describe images concisely.",
         Messages =
         [
             new UserMessage
@@ -1316,7 +1316,7 @@ async Task<TestResult> TestImageStream(IMessageGenerator generator, string model
     var request = new MessageGenerationRequest
     {
         Model = model,
-        SystemPrompt = "You are a helpful assistant. Describe images concisely.",
+        System = "You are a helpful assistant. Describe images concisely.",
         Messages =
         [
             new UserMessage
@@ -1443,7 +1443,7 @@ async Task<TestResult> TestParallelToolCalls(IMessageGenerator generator, string
     var request = new MessageGenerationRequest
     {
         Model = model,
-        SystemPrompt = "You are a helpful assistant. When the user asks for multiple things, call ALL relevant tools in a single response. Do NOT respond with text before calling all tools.",
+        System = "You are a helpful assistant. When the user asks for multiple things, call ALL relevant tools in a single response. Do NOT respond with text before calling all tools.",
         Messages =
         [
             new UserMessage
@@ -1483,7 +1483,7 @@ async Task<TestResult> TestTopP(IMessageGenerator generator, string model)
     var request = new MessageGenerationRequest
     {
         Model = model,
-        SystemPrompt = "You are a helpful assistant. Be precise and brief.",
+        System = "You are a helpful assistant. Be precise and brief.",
         Messages =
         [
             new UserMessage
@@ -1572,7 +1572,7 @@ async Task<List<(string, TestResult)>> TestOpenAI()
     };
 
     var catalog = new OpenAIModelCatalog(config);
-    var generator = new OpenAIMessageGenerator(config);
+    var generator = new OpenAIResponseMessageGenerator(config);
     var model = GetEnv("OPENAI_MODEL") ?? "gpt-4o-mini";
 
     return await RunScenarios(catalog, generator, model);
@@ -1598,7 +1598,7 @@ async Task<List<(string, TestResult)>> TestAzureOpenAI()
         ApiKey = apiKey
     };
 
-    var generator = new OpenAIMessageGenerator(config);
+    var generator = new OpenAIChatMessageGenerator(config);
 
     return await RunScenarios(null, generator, deployment);
 }
@@ -1649,11 +1649,10 @@ async Task<List<(string, TestResult)>> TestXAI()
     {
         BaseUrl = "https://api.x.ai/v1/",
         ApiKey = apiKey,
-        Compatibility = OpenAICompatibility.XAI
     };
 
     var catalog = new OpenAIModelCatalog(config);
-    var generator = new OpenAIMessageGenerator(config);
+    var generator = new OpenAIChatMessageGenerator(config);
     var envModel = GetEnv("XAI_MODEL");
 
     string model;
@@ -1720,7 +1719,7 @@ async Task<List<(string, TestResult)>> TestLMStudio()
 
     var config = new OpenAIConfig { BaseUrl = baseUrl, ApiKey = apiKey };
     var catalog = new OpenAIModelCatalog(config);
-    var generator = new OpenAIMessageGenerator(config);
+    var generator = new OpenAIChatMessageGenerator(config);
 
     try
     {
@@ -1748,7 +1747,7 @@ async Task<List<(string, TestResult)>> TestGPUStack()
 
     var config = new OpenAIConfig { BaseUrl = baseUrl, ApiKey = apiKey };
     var catalog = new OpenAIModelCatalog(config);
-    var generator = new OpenAIMessageGenerator(config);
+    var generator = new OpenAIChatMessageGenerator(config);
 
     try
     {

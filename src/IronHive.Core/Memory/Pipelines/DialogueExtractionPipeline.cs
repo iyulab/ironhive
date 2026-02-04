@@ -8,7 +8,7 @@ using System.Text.RegularExpressions;
 namespace IronHive.Core.Memory.Pipelines;
 
 /// <summary>
-/// 주어진 텍스트에서 Q&A 쌍을 추출하는 핸들러입니다.
+/// 주어진 텍스트에서 Q_A 쌍을 추출하는 핸들러입니다.
 /// </summary>
 public partial class DialogueExtractionPipeline : IMemoryPipeline<DialogueExtractionPipeline.Options>
 {

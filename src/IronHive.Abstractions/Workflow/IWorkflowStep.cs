@@ -2,10 +2,6 @@
 
 /// <summary>
 /// 워크플로우의 공통 추상화 마커 인터페이스 입니다.
-//  - IWorkflowStep: 모든 스텝의 마커 인터페이스
-//  - IWorkflowTask<TContext, TOptions>: 작업(태스크) 단계
-//  - IWorkflowTask<TContext>: 옵션이 없는 작업(태스크) 단계
-//  - IWorkflowCondition<TContext>: 분기/조건 판단 단계
 /// </summary>
 public interface IWorkflowStep
 { }

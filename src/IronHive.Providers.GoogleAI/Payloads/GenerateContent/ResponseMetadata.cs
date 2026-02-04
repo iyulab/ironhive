@@ -55,7 +55,7 @@ internal sealed class GroundingMetadata
     [JsonPropertyName("googleMapsWidgetContextToken")]
     public string? GoogleMapsToken { get; set; }
 
-    /// <summary>그라운딩 청크(유니온 타입, 셋중 하나)/summary>
+    /// <summary>그라운딩 청크(유니온 타입, 셋중 하나).</summary>
     internal sealed class Chunk
     {
         /// <summary>웹 청크.</summary>

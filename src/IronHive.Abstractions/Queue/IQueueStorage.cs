@@ -4,7 +4,7 @@ namespace IronHive.Abstractions.Queue;
 
 /// <summary>
 /// 큐를 저장/조회/소비하는 스토리지 서비스입니다.
-/// <para>
+/// </summary>
 public interface IQueueStorage : IStorageItem
 {
     /// <summary>
