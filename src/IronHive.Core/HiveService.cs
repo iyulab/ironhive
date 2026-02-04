@@ -11,8 +11,6 @@ namespace IronHive.Core;
 /// <inheritdoc />
 public class HiveService : IHiveService
 {
-    private IAgentService? _agentService;
-
     public HiveService(IServiceProvider services)
     {
         Services = services;
@@ -21,6 +19,7 @@ public class HiveService : IHiveService
         Storages = services.GetRequiredService<IStorageRegistry>();
         Tools = services.GetRequiredService<IToolCollection>();
         Memory = services.GetRequiredService<IMemoryService>();
+        Agents = services.GetRequiredService<IAgentService>();
     }
 
     /// <inheritdoc />
@@ -38,16 +37,13 @@ public class HiveService : IHiveService
     /// <inheritdoc />
     public IMemoryService Memory { get; }
 
-    /// <summary>
-    /// 지연 로딩된 AgentService 인스턴스를 반환합니다.
-    /// </summary>
-    private IAgentService Agents =>
-        _agentService ??= Services.GetRequiredService<IAgentService>();
+    /// <inheritdoc />
+    private IAgentService Agents { get; }
 
     /// <inheritdoc />
     public IAgent CreateAgent(Action<AgentConfig> configure)
     {
-        return AgentService.CreateAgent(configure);
+        return Agents.CreateAgent(configure);
     }
 
     /// <inheritdoc />

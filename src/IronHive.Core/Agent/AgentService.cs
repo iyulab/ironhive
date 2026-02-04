@@ -130,7 +130,7 @@ public class AgentService : IAgentService
             Description = config.Description ?? string.Empty,
             Provider = config.Provider,
             Model = config.Model,
-            Instruction = config.Instructions,
+            Instructions = config.Instructions,
             Tools = config.ToToolItems(),
             Parameters = config.ToParameters()
         };

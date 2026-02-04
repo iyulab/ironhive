@@ -45,7 +45,7 @@ public partial class DialogueExtractionPipeline : IMemoryPipeline<DialogueExtrac
             {
                 Provider = options.Provider,
                 Model = options.Model,
-                SystemPrompt = GetInstructions(),
+                System = GetInstructions(),
                 Messages = [new UserMessage
                 {
                     Id = Guid.NewGuid().ToShort(),
