@@ -1054,9 +1054,6 @@ class MockAgent : IAgent
     public string Description { get; set; }
     public string? SystemPrompt { get; set; }
 
-    [Obsolete]
-    public string? Instruction { get; set; }
-
     public IEnumerable<ToolItem>? Tools { get; set; }
     public MessageGenerationParameters? Parameters { get; set; }
 

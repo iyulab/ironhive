@@ -62,20 +62,6 @@ public class BasicAgentTests
         agent.SystemPrompt.Should().Be("You are a helpful assistant.");
     }
 
-#pragma warning disable CS0618 // Type or member is obsolete
-    [Fact]
-    public void Agent_Instruction_ShouldMapToSystemPrompt()
-    {
-        // Arrange
-        var agent = CreateAgent();
-        agent.Instruction = "Be concise.";
-
-        // Assert
-        agent.SystemPrompt.Should().Be("Be concise.");
-        agent.Instruction.Should().Be("Be concise.");
-    }
-#pragma warning restore CS0618
-
     [Fact]
     public void Agent_ShouldHave_OptionalTools()
     {

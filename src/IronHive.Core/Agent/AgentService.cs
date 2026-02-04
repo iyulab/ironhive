@@ -30,6 +30,14 @@ public class AgentService : IAgentService
     }
 
     /// <inheritdoc />
+    public IAgent CreateAgent(Action<AgentConfig> configure)
+    {
+        var config = new AgentConfig();
+        configure(config);
+        return CreateAgentFromConfig(config);
+    }
+
+    /// <inheritdoc />
     public IAgent CreateAgentFromJson(string json)
     {
         if (string.IsNullOrWhiteSpace(json))

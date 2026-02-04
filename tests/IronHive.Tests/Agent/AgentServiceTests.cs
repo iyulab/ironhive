@@ -49,7 +49,7 @@ agent:
         agent.Description.Should().Be("A test agent");
         agent.Provider.Should().Be("openai");
         agent.Model.Should().Be("gpt-4o-mini");
-        agent.Instruction.Should().Be("You are a helpful assistant.");
+        agent.SystemPrompt.Should().Be("You are a helpful assistant.");
         agent.Tools.Should().HaveCount(2);
         agent.Parameters.Should().NotBeNull();
         agent.Parameters!.MaxTokens.Should().Be(512);
@@ -206,7 +206,7 @@ temperature = 0.3
         agent.Name.Should().Be("TomlBot");
         agent.Provider.Should().Be("openai");
         agent.Model.Should().Be("gpt-4o-mini");
-        agent.Instruction.Should().Be("Be concise.");
+        agent.SystemPrompt.Should().Be("Be concise.");
         agent.Tools.Should().HaveCount(1);
         agent.Parameters!.MaxTokens.Should().Be(256);
         agent.Parameters!.Temperature.Should().Be(0.3f);

@@ -45,6 +45,11 @@ public interface IHiveService
     IMemoryService Memory { get; }
 
     /// <summary>
+    /// 프로그래밍 방식으로 에이전트를 생성합니다.
+    /// </summary>
+    IAgent CreateAgent(Action<AgentConfig> configure);
+
+    /// <summary>
     /// 에이전트 서비스를 주어진 정의에 따라 생성합니다.
     /// </summary>
     IAgent CreateAgentFrom(AgentCard card);
