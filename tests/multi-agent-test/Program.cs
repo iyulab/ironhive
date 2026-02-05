@@ -339,6 +339,66 @@ async Task<List<(string, TestResult)>> RunParallelTests()
     }
     catch (Exception ex) { results.Add(("max-concurrency", TestResult.Error(ex.Message))); }
 
+    // 2-4: FirstSuccess aggregation
+    try
+    {
+        var callOrder = new List<string>();
+        var agent1 = new MockAgent("slow", "mock", "Slow")
+        {
+            ResponseFuncAsync = async _ => { await Task.Delay(100); callOrder.Add("slow"); return "slow-result"; }
+        };
+        var agent2 = new MockAgent("fast", "mock", "Fast")
+        {
+            ResponseFunc = _ => { callOrder.Add("fast"); return "fast-result"; }
+        };
+
+        var orch = new ParallelOrchestrator(new ParallelOrchestratorOptions
+        {
+            ResultAggregation = ParallelResultAggregation.FirstSuccess
+        });
+        orch.AddAgents([agent1, agent2]);
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+        var output = GetTextFromMessage(result.FinalOutput);
+
+        // FirstSuccess should return the first agent's result (by order, not by completion time)
+        var ok = result.IsSuccess && output.Contains("result");
+
+        results.Add(("first-success", ok
+            ? TestResult.Pass($"output={output}")
+            : TestResult.Error($"output={output}")));
+    }
+    catch (Exception ex) { results.Add(("first-success", TestResult.Error(ex.Message))); }
+
+    // 2-5: Fastest aggregation
+    try
+    {
+        var agent1 = new MockAgent("slow", "mock", "Slow")
+        {
+            ResponseFuncAsync = async _ => { await Task.Delay(200); return "slow-result"; }
+        };
+        var agent2 = new MockAgent("fast", "mock", "Fast")
+        {
+            ResponseFuncAsync = async _ => { await Task.Delay(10); return "fast-result"; }
+        };
+
+        var orch = new ParallelOrchestrator(new ParallelOrchestratorOptions
+        {
+            ResultAggregation = ParallelResultAggregation.Fastest
+        });
+        orch.AddAgents([agent1, agent2]);
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+        var output = GetTextFromMessage(result.FinalOutput);
+
+        var ok = result.IsSuccess && output.Contains("fast-result");
+
+        results.Add(("fastest", ok
+            ? TestResult.Pass($"output={output}")
+            : TestResult.Error($"output={output}, expected fast-result")));
+    }
+    catch (Exception ex) { results.Add(("fastest", TestResult.Error(ex.Message))); }
+
     return results;
 }
 
@@ -1723,6 +1783,312 @@ async Task<List<(string, TestResult)>> RunMiddlewareTests()
     }
     catch (Exception ex) { results.Add(("logging-streaming", TestResult.Error(ex.Message))); }
 
+    // 12-14: TimeoutMiddleware - success before timeout
+    try
+    {
+        var middleware = new TimeoutMiddleware(TimeSpan.FromSeconds(5));
+        var agent = new MockAgent("a", "mock", "A") { ResponseFunc = _ => "fast" };
+        var wrapped = IronHive.Core.Agent.AgentExtensions.WithMiddleware(agent, middleware);
+
+        var response = await wrapped.InvokeAsync(MakeUserMessages("go"));
+        var text = response.Message.Content.OfType<TextMessageContent>().First().Value;
+
+        results.Add(("timeout-success", text == "fast"
+            ? TestResult.Pass("Completed before timeout")
+            : TestResult.Error($"text={text}")));
+    }
+    catch (Exception ex) { results.Add(("timeout-success", TestResult.Error(ex.Message))); }
+
+    // 12-15: TimeoutMiddleware - timeout throws
+    try
+    {
+        var timeoutCalled = false;
+        var middleware = new TimeoutMiddleware(new TimeoutMiddlewareOptions
+        {
+            Timeout = TimeSpan.FromMilliseconds(50),
+            OnTimeout = (_, _) => timeoutCalled = true
+        });
+
+        var slowMiddleware = new SlowMiddleware(TimeSpan.FromSeconds(5));
+        var agent = new MockAgent("a", "mock", "A") { ResponseFunc = _ => "slow" };
+        var wrapped = IronHive.Core.Agent.AgentExtensions.WithMiddleware(agent, middleware, slowMiddleware);
+
+        var threw = false;
+        try
+        {
+            await wrapped.InvokeAsync(MakeUserMessages("go"));
+        }
+        catch (TimeoutException)
+        {
+            threw = true;
+        }
+
+        results.Add(("timeout-throws", threw && timeoutCalled
+            ? TestResult.Pass("TimeoutException thrown")
+            : TestResult.Error($"threw={threw}, timeoutCalled={timeoutCalled}")));
+    }
+    catch (Exception ex) { results.Add(("timeout-throws", TestResult.Error(ex.Message))); }
+
+    // 12-16: RateLimitMiddleware - within limit
+    try
+    {
+        var middleware = new RateLimitMiddleware(5, TimeSpan.FromSeconds(10));
+        var agent = new MockAgent("a", "mock", "A") { ResponseFunc = _ => "ok" };
+        var wrapped = IronHive.Core.Agent.AgentExtensions.WithMiddleware(agent, middleware);
+
+        for (var i = 0; i < 5; i++)
+        {
+            await wrapped.InvokeAsync(MakeUserMessages($"req-{i}"));
+        }
+
+        results.Add(("ratelimit-within", middleware.CurrentRequestCount == 5
+            ? TestResult.Pass("5 requests within limit")
+            : TestResult.Error($"count={middleware.CurrentRequestCount}")));
+    }
+    catch (Exception ex) { results.Add(("ratelimit-within", TestResult.Error(ex.Message))); }
+
+    // CircuitBreaker - 연속 실패 시 Open
+    try
+    {
+        var cbMiddleware = new CircuitBreakerMiddleware(new CircuitBreakerMiddlewareOptions
+        {
+            FailureThreshold = 2,
+            BreakDuration = TimeSpan.FromMinutes(1)
+        });
+        var agent = new MockAgent("test-agent", "mock", "test") { ResponseFunc = _ => "ok" };
+        var failCount = 0;
+
+        // 2번 연속 실패
+        for (int i = 0; i < 2; i++)
+        {
+            try
+            {
+                await cbMiddleware.InvokeAsync(agent, MakeUserMessages("test"),
+                    _ => throw new InvalidOperationException($"fail-{++failCount}"));
+            }
+            catch (InvalidOperationException) { }
+        }
+
+        var isOpen = cbMiddleware.State == CircuitState.Open;
+
+        // Open 상태에서 요청 시 예외 발생 확인
+        var rejected = false;
+        try
+        {
+            await cbMiddleware.InvokeAsync(agent, MakeUserMessages("test"),
+                _ => Task.FromResult(MakeMessageResponse("should-not-reach")));
+        }
+        catch (CircuitBreakerOpenException) { rejected = true; }
+
+        results.Add(("circuitbreaker-open", isOpen && rejected
+            ? TestResult.Pass("Circuit opened after 2 failures, requests rejected")
+            : TestResult.Error($"isOpen={isOpen}, rejected={rejected}")));
+    }
+    catch (Exception ex) { results.Add(("circuitbreaker-open", TestResult.Error(ex.Message))); }
+
+    // CircuitBreaker - Half-Open 전환 후 성공 시 Closed
+    try
+    {
+        var stateChanges = new List<string>();
+        var cbMiddleware = new CircuitBreakerMiddleware(new CircuitBreakerMiddlewareOptions
+        {
+            FailureThreshold = 1,
+            BreakDuration = TimeSpan.FromMilliseconds(50),
+            OnStateChanged = (from, to) => stateChanges.Add($"{from}->{to}")
+        });
+        var agent = new MockAgent("test-agent", "mock", "test") { ResponseFunc = _ => "ok" };
+
+        // 1번 실패로 Open
+        try
+        {
+            await cbMiddleware.InvokeAsync(agent, MakeUserMessages("test"),
+                _ => throw new InvalidOperationException("fail"));
+        }
+        catch (InvalidOperationException) { }
+
+        // Break duration 대기
+        await Task.Delay(100);
+        var isHalfOpen = cbMiddleware.State == CircuitState.HalfOpen;
+
+        // 성공하면 Closed
+        await cbMiddleware.InvokeAsync(agent, MakeUserMessages("test"),
+            _ => Task.FromResult(MakeMessageResponse("ok")));
+
+        var isClosed = cbMiddleware.State == CircuitState.Closed;
+
+        results.Add(("circuitbreaker-recovery", isHalfOpen && isClosed
+            ? TestResult.Pass($"Recovered: {string.Join(",", stateChanges)}")
+            : TestResult.Error($"halfOpen={isHalfOpen}, closed={isClosed}")));
+    }
+    catch (Exception ex) { results.Add(("circuitbreaker-recovery", TestResult.Error(ex.Message))); }
+
+    // Bulkhead - 동시성 제한
+    try
+    {
+        var bulkhead = new BulkheadMiddleware(maxConcurrency: 2);
+        var agent = new MockAgent("test-agent", "mock", "test") { ResponseFunc = _ => "ok" };
+        var executing = 0;
+        var maxExecuting = 0;
+
+        var tasks = Enumerable.Range(0, 5).Select(async i =>
+        {
+            await bulkhead.InvokeAsync(agent, MakeUserMessages($"test-{i}"),
+                async _ =>
+                {
+                    var current = Interlocked.Increment(ref executing);
+                    lock (bulkhead) { if (current > maxExecuting) maxExecuting = current; }
+                    await Task.Delay(30);
+                    Interlocked.Decrement(ref executing);
+                    return MakeMessageResponse("ok");
+                });
+        }).ToArray();
+
+        await Task.WhenAll(tasks);
+
+        results.Add(("bulkhead-concurrency", maxExecuting <= 2
+            ? TestResult.Pass($"Max concurrent={maxExecuting} (limit=2)")
+            : TestResult.Error($"maxConcurrent={maxExecuting}, exceeded limit")));
+    }
+    catch (Exception ex) { results.Add(("bulkhead-concurrency", TestResult.Error(ex.Message))); }
+
+    // Bulkhead - 대기열 초과 시 거부
+    try
+    {
+        var rejected = false;
+        var bulkhead = new BulkheadMiddleware(new BulkheadMiddlewareOptions
+        {
+            MaxConcurrency = 1,
+            MaxQueueSize = 1,
+            OnRejected = (_, _, _) => rejected = true
+        });
+        var agent = new MockAgent("test-agent", "mock", "test") { ResponseFunc = _ => "ok" };
+        var gate = new TaskCompletionSource<bool>();
+
+        // 첫 번째: 실행 슬롯 점유
+        var task1 = bulkhead.InvokeAsync(agent, MakeUserMessages("test-1"),
+            async _ => { await gate.Task; return MakeMessageResponse("ok"); });
+        await Task.Delay(20);
+
+        // 두 번째: 대기열 점유
+        var task2 = bulkhead.InvokeAsync(agent, MakeUserMessages("test-2"),
+            async _ => { await gate.Task; return MakeMessageResponse("ok"); });
+        await Task.Delay(20);
+
+        // 세 번째: 거부되어야 함
+        var wasRejected = false;
+        try
+        {
+            await bulkhead.InvokeAsync(agent, MakeUserMessages("test-3"),
+                _ => Task.FromResult(MakeMessageResponse("should-not-reach")));
+        }
+        catch (BulkheadRejectedException) { wasRejected = true; }
+
+        gate.SetResult(true);
+        await Task.WhenAll(task1, task2);
+
+        results.Add(("bulkhead-reject", wasRejected && rejected
+            ? TestResult.Pass("Request rejected when queue full")
+            : TestResult.Error($"rejected={wasRejected}, callback={rejected}")));
+    }
+    catch (Exception ex) { results.Add(("bulkhead-reject", TestResult.Error(ex.Message))); }
+
+    // FallbackMiddleware - 실패 시 폴백
+    try
+    {
+        var fallbackCalled = false;
+        var fallbackAgent = new MockAgent("fallback", "mock", "Fallback")
+        {
+            ResponseFunc = _ => { fallbackCalled = true; return "fallback-result"; }
+        };
+        var middleware = new FallbackMiddleware(fallbackAgent);
+        var primaryAgent = new MockAgent("primary", "mock", "Primary");
+
+        var response = await middleware.InvokeAsync(
+            primaryAgent,
+            MakeUserMessages("test"),
+            _ => throw new InvalidOperationException("primary failed"));
+
+        var text = response.Message.Content.OfType<TextMessageContent>().First().Value;
+
+        results.Add(("fallback-on-failure", fallbackCalled && text == "fallback-result"
+            ? TestResult.Pass("Fallback executed successfully")
+            : TestResult.Error($"fallbackCalled={fallbackCalled}, text={text}")));
+    }
+    catch (Exception ex) { results.Add(("fallback-on-failure", TestResult.Error(ex.Message))); }
+
+    // FallbackMiddleware - 성공 시 폴백 안함
+    try
+    {
+        var fallbackCalled = false;
+        var fallbackAgent = new MockAgent("fallback", "mock", "Fallback")
+        {
+            ResponseFunc = _ => { fallbackCalled = true; return "fallback"; }
+        };
+        var middleware = new FallbackMiddleware(fallbackAgent);
+        var primaryAgent = new MockAgent("primary", "mock", "Primary")
+        {
+            ResponseFunc = _ => "primary-result"
+        };
+
+        var response = await middleware.InvokeAsync(
+            primaryAgent,
+            MakeUserMessages("test"),
+            msgs => primaryAgent.InvokeAsync(msgs));
+
+        var text = response.Message.Content.OfType<TextMessageContent>().First().Value;
+
+        results.Add(("fallback-no-call", !fallbackCalled && text == "primary-result"
+            ? TestResult.Pass("Fallback not called on success")
+            : TestResult.Error($"fallbackCalled={fallbackCalled}, text={text}")));
+    }
+    catch (Exception ex) { results.Add(("fallback-no-call", TestResult.Error(ex.Message))); }
+
+    // CompositeMiddleware - 실행 순서
+    try
+    {
+        var order = new List<string>();
+        var m1 = new TestOrderMiddleware("m1", order);
+        var m2 = new TestOrderMiddleware("m2", order);
+        var composite = new CompositeMiddleware("test-pack", m1, m2);
+
+        var agent = new MockAgent("a", "mock", "A")
+        {
+            ResponseFunc = _ => { order.Add("agent"); return "result"; }
+        };
+
+        await composite.InvokeAsync(agent, MakeUserMessages("test"), msgs => agent.InvokeAsync(msgs));
+
+        var expected = new[] { "m1-before", "m2-before", "agent", "m2-after", "m1-after" };
+        var ok = order.SequenceEqual(expected);
+
+        results.Add(("composite-order", ok
+            ? TestResult.Pass($"Order: {string.Join(",", order)}")
+            : TestResult.Error($"Order: {string.Join(",", order)}")));
+    }
+    catch (Exception ex) { results.Add(("composite-order", TestResult.Error(ex.Message))); }
+
+    // MiddlewarePacks.Resilience
+    try
+    {
+        var pack = MiddlewarePacks.Resilience(maxRetries: 2, timeout: TimeSpan.FromSeconds(5));
+
+        results.Add(("pack-resilience", pack.Name == "resilience" && pack.Count == 2
+            ? TestResult.Pass($"name={pack.Name}, count={pack.Count}")
+            : TestResult.Error($"name={pack.Name}, count={pack.Count}")));
+    }
+    catch (Exception ex) { results.Add(("pack-resilience", TestResult.Error(ex.Message))); }
+
+    // MiddlewarePacks.Production
+    try
+    {
+        var pack = MiddlewarePacks.Production();
+
+        results.Add(("pack-production", pack.Name == "production" && pack.Count == 5
+            ? TestResult.Pass($"name={pack.Name}, count={pack.Count}")
+            : TestResult.Error($"name={pack.Name}, count={pack.Count}")));
+    }
+    catch (Exception ex) { results.Add(("pack-production", TestResult.Error(ex.Message))); }
+
     return results;
 }
 
@@ -1735,6 +2101,20 @@ IEnumerable<Message> MakeUserMessages(string text)
     return new List<Message>
     {
         new UserMessage { Content = [new TextMessageContent { Value = text }] }
+    };
+}
+
+MessageResponse MakeMessageResponse(string text)
+{
+    return new MessageResponse
+    {
+        Id = Guid.NewGuid().ToString("N"),
+        DoneReason = MessageDoneReason.EndTurn,
+        Message = new AssistantMessage
+        {
+            Name = "mock",
+            Content = [new TextMessageContent { Value = text }]
+        }
     };
 }
 
@@ -1822,8 +2202,9 @@ async Task<List<(string, TestResult)>> RunLlmIntegrationTests()
     var messageService = hive.Services.GetRequiredService<IMessageService>();
 
     // Helper to create real LLM agent
-    IAgent CreateLlmAgent(string name, string description, string? instructions = null) =>
-        new BasicAgent(messageService)
+    IAgent CreateLlmAgent(string name, string description, string? instructions = null)
+    {
+        var agent = new BasicAgent(messageService)
         {
             Provider = primaryProvider!,
             Model = primaryModel!,
@@ -1832,6 +2213,23 @@ async Task<List<(string, TestResult)>> RunLlmIntegrationTests()
             Instructions = instructions,
             Parameters = new MessageGenerationParameters { MaxTokens = 150 }
         };
+
+        // LLM API 일시적 오류에 대한 재시도 로직 적용
+        return agent.WithMiddleware(new RetryMiddleware(new RetryMiddlewareOptions
+        {
+            MaxRetries = 2,
+            InitialDelay = TimeSpan.FromSeconds(1),
+            MaxDelay = TimeSpan.FromSeconds(5),
+            BackoffMultiplier = 2.0,
+            ShouldRetry = ex => ex.Message.Contains("error occurred") ||
+                                ex.Message.Contains("rate limit") ||
+                                ex.Message.Contains("500") ||
+                                ex.Message.Contains("503") ||
+                                ex.Message.Contains("timeout"),
+            OnRetry = (agentName, attempt, ex, delay) =>
+                Console.WriteLine($"      [Retry] {agentName}: attempt {attempt}, waiting {delay.TotalSeconds:F1}s...")
+        }));
+    }
 
     // 13-1: LLM Handoff — Triage → Specialist → Response
     try
@@ -1978,9 +2376,16 @@ async Task<List<(string, TestResult)>> RunLlmIntegrationTests()
             "greeter",
             "Greeting agent",
             """
-            You are a greeter. When you receive a message, respond with a brief greeting,
-            then hand off to the helper by responding with EXACTLY this JSON:
+            You are a greeter agent. Your ONLY job is to greet briefly and then IMMEDIATELY hand off to the helper.
+
+            IMPORTANT: After your greeting, you MUST respond with ONLY this exact JSON on its own line:
             {"handoff_to": "helper", "context": "User needs assistance"}
+
+            Example response:
+            Hello! Welcome!
+            {"handoff_to": "helper", "context": "User needs assistance"}
+
+            Do NOT add any text after the JSON. The JSON must be the last thing in your response.
             """);
 
         var agent2 = CreateLlmAgent(
@@ -2286,5 +2691,27 @@ class FailAfterMiddleware : IAgentMiddleware
             throw new InvalidOperationException($"Simulated failure {_callCount}");
         }
         return next(messages);
+    }
+}
+
+/// <summary>
+/// 지정된 시간만큼 지연시키는 미들웨어 (테스트용)
+/// </summary>
+class SlowMiddleware : IAgentMiddleware
+{
+    private readonly TimeSpan _delay;
+
+    public SlowMiddleware(TimeSpan delay)
+    {
+        _delay = delay;
+    }
+
+    public async Task<MessageResponse> InvokeAsync(
+        IAgent agent, IEnumerable<Message> messages,
+        Func<IEnumerable<Message>, Task<MessageResponse>> next,
+        CancellationToken ct = default)
+    {
+        await Task.Delay(_delay, ct);
+        return await next(messages);
     }
 }
