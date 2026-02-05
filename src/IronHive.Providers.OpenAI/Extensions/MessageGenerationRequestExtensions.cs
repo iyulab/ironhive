@@ -9,14 +9,14 @@ using OpenAIMessage = IronHive.Providers.OpenAI.Payloads.ChatCompletion.ChatMess
 using TextMessageContent = IronHive.Abstractions.Messages.Content.TextMessageContent;
 using ImageMessageContent = IronHive.Abstractions.Messages.Content.ImageMessageContent;
 
-namespace IronHive.Abstractions.Message;
+namespace IronHive.Abstractions.Messages;
 
 public static class MessageGenerationRequestExtensions
 {
     /// <summary>
     /// 메시지 생성 요청을 OpenAI의 ResponsesRequest로 변환합니다.
     /// </summary>
-    internal static ResponsesRequest ToOpenAI(this MessageGenerationRequest request)
+    public static ResponsesRequest ToOpenAI(this MessageGenerationRequest request)
     {
         var items = new List<ResponsesItem>();
 
@@ -163,7 +163,7 @@ public static class MessageGenerationRequestExtensions
     /// <summary>
     /// 메시지 생성 요청을 OpenAI의 ChatCompletionRequest로 변환합니다.
     /// </summary>
-    internal static ChatCompletionRequest ToOpenAILegacy(this MessageGenerationRequest request)
+    public static ChatCompletionRequest ToOpenAILegacy(this MessageGenerationRequest request)
     {
         var enabledReasoning = request.ThinkingEffort != MessageThinkingEffort.None;
 

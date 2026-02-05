@@ -8,10 +8,10 @@ namespace IronHive.Providers.OpenAI.Payloads.Responses;
 [JsonDerivedType(typeof(ResponsesCodeInterpreterTool), "code_interpreter")]
 [JsonDerivedType(typeof(ResponsesImageGenerationTool), "image_generation")]
 [JsonDerivedType(typeof(ResponsesCustomTool), "custom")]
-internal class ResponsesTool
+public class ResponsesTool
 { }
 
-internal class ResponsesFunctionTool : ResponsesTool
+public class ResponsesFunctionTool : ResponsesTool
 {
     [JsonPropertyName("name")]
     public required string Name { get; set; }
@@ -29,7 +29,7 @@ internal class ResponsesFunctionTool : ResponsesTool
     public string? Description { get; set; }
 }
 
-internal class ResponsesWebSearchTool : ResponsesTool
+public class ResponsesWebSearchTool : ResponsesTool
 {
     [JsonPropertyName("filters")]
     public SearchFilters? Filters { get; set; }
@@ -41,13 +41,13 @@ internal class ResponsesWebSearchTool : ResponsesTool
     [JsonPropertyName("user_location")]
     public SearchLocation? Location { get; set; }
 
-    internal sealed class SearchFilters
+    public sealed class SearchFilters
     {
         [JsonPropertyName("allowed_domains")]
         public ICollection<string>? AllowedDomains { get; set; }
     }
 
-    internal sealed class SearchLocation
+    public sealed class SearchLocation
     {
         [JsonPropertyName("city")]
         public string? City { get; set; }
@@ -68,12 +68,12 @@ internal class ResponsesWebSearchTool : ResponsesTool
     }
 }
 
-internal class ResponsesCodeInterpreterTool : ResponsesTool
+public class ResponsesCodeInterpreterTool : ResponsesTool
 {
     [JsonPropertyName("container")]
     public required ContainerEnvironment Container { get; set; }
     
-    internal sealed class ContainerEnvironment
+    public sealed class ContainerEnvironment
     {
         [JsonPropertyName("type")]
         public string Type { get; } = "auto";
@@ -86,7 +86,7 @@ internal class ResponsesCodeInterpreterTool : ResponsesTool
     }
 }
 
-internal class ResponsesImageGenerationTool : ResponsesTool
+public class ResponsesImageGenerationTool : ResponsesTool
 {
     /// <summary>"transparent", "opaque", "auto" </summary>
     [JsonPropertyName("background")]
@@ -124,7 +124,7 @@ internal class ResponsesImageGenerationTool : ResponsesTool
     [JsonPropertyName("size")]
     public string? Size { get; set; }
 
-    internal sealed class ImageMask
+    public sealed class ImageMask
     {
         [JsonPropertyName("file_id")]
         public string? FileId { get; set; }
@@ -134,7 +134,7 @@ internal class ResponsesImageGenerationTool : ResponsesTool
     }
 }
 
-internal class ResponsesCustomTool : ResponsesTool
+public class ResponsesCustomTool : ResponsesTool
 {
     [JsonPropertyName("name")]
     public required string Name { get; set; }

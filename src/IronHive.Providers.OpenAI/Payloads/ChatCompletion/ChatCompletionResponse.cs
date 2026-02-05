@@ -2,7 +2,7 @@
 
 namespace IronHive.Providers.OpenAI.Payloads.ChatCompletion;
 
-public class ChatCompletionResponse
+public class ChatCompletionResponse: JsonPayloadResponse
 {
     [JsonPropertyName("choices")]
     public IEnumerable<ChatChoice>? Choices { get; set; }

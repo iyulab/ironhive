@@ -44,7 +44,7 @@ namespace IronHive.Providers.OpenAI.Payloads.Responses;
 [JsonDerivedType(typeof(StreamingReasoningTextDeltaResponse), "response.reasoning_text.delta")]
 [JsonDerivedType(typeof(StreamingReasoningTextDoneResponse), "response.reasoning_text.done")]
 [JsonDerivedType(typeof(StreamingErrorResponse), "error")]
-internal abstract class StreamingResponsesResponse
+public abstract class StreamingResponsesResponse: JsonPayloadResponse
 {
     [JsonPropertyName("sequence_number")]
     public int SequenceNumber { get; set; }
@@ -53,28 +53,28 @@ internal abstract class StreamingResponsesResponse
 #region Status Related
 
 ///<summary> 스트리밍 상태 관련 응답의 Base </summary>
-internal abstract class StreamingStatusResponse : StreamingResponsesResponse
+public abstract class StreamingStatusResponse : StreamingResponsesResponse
 {
     [JsonPropertyName("response")]
     public required ResponsesResponse Response { get; set; }
 }
 
-internal class StreamingCreatedResponse : StreamingStatusResponse
+public class StreamingCreatedResponse : StreamingStatusResponse
 { }
 
-internal class StreamingInProgressResponse : StreamingStatusResponse
+public class StreamingInProgressResponse : StreamingStatusResponse
 { }
 
-internal class StreamingCompletedResponse : StreamingStatusResponse
+public class StreamingCompletedResponse : StreamingStatusResponse
 { }
 
-internal class StreamingFailedResponse : StreamingStatusResponse
+public class StreamingFailedResponse : StreamingStatusResponse
 { }
 
-internal class StreamingIncompleteResponse : StreamingStatusResponse
+public class StreamingIncompleteResponse : StreamingStatusResponse
 { }
 
-internal class StreamingQueuedResponse : StreamingResponsesResponse
+public class StreamingQueuedResponse : StreamingResponsesResponse
 { }
 
 #endregion
@@ -82,19 +82,19 @@ internal class StreamingQueuedResponse : StreamingResponsesResponse
 # region Output Item Related
 
 //// <summary> 스트리밍 Output Item 관련 응답의 Base </summary>
-internal abstract class StreamingOutputResponse : StreamingResponsesResponse
+public abstract class StreamingOutputResponse : StreamingResponsesResponse
 {
     [JsonPropertyName("output_index")]
     public int OutputIndex { get; set; }
 }
 
-internal class StreamingOutputAddedResponse : StreamingOutputResponse
+public class StreamingOutputAddedResponse : StreamingOutputResponse
 {
     [JsonPropertyName("item")]
     public required ResponsesItem Item { get; set; }
 }
 
-internal class StreamingOutputDoneResponse : StreamingOutputResponse
+public class StreamingOutputDoneResponse : StreamingOutputResponse
 {
     [JsonPropertyName("item")]
     public required ResponsesItem Item { get; set; }
@@ -105,7 +105,7 @@ internal class StreamingOutputDoneResponse : StreamingOutputResponse
 #region Output Item Content Related
 
 /// <summary> 스트리밍 Output Item Content 관련 응답의 Base </summary>
-internal abstract class StreamingContentResponse : StreamingOutputResponse
+public abstract class StreamingContentResponse : StreamingOutputResponse
 {
     [JsonPropertyName("content_index")]
     public int? ContentIndex { get; set; }
@@ -114,19 +114,19 @@ internal abstract class StreamingContentResponse : StreamingOutputResponse
     public required string ItemId { get; set; }
 }
 
-internal class StreamingContentAddedResponse : StreamingContentResponse
+public class StreamingContentAddedResponse : StreamingContentResponse
 {
     [JsonPropertyName("part")]
     public required ResponsesItemPart Part { get; set; }
 }
 
-internal class StreamingContentDoneResponse : StreamingContentResponse
+public class StreamingContentDoneResponse : StreamingContentResponse
 {
     [JsonPropertyName("part")]
     public required ResponsesItemPart Part { get; set; }
 }
 
-internal class StreamingTextDeltaResponse : StreamingContentResponse
+public class StreamingTextDeltaResponse : StreamingContentResponse
 {
     [JsonPropertyName("delta")]
     public required string Delta { get; set; }
@@ -135,7 +135,7 @@ internal class StreamingTextDeltaResponse : StreamingContentResponse
     public IEnumerable<ResponsesLogProb>? Logprobs { get; set; }
 }
 
-internal class StreamingTextDoneResponse : StreamingContentResponse
+public class StreamingTextDoneResponse : StreamingContentResponse
 {
     [JsonPropertyName("logprobs")]
     public IEnumerable<ResponsesLogProb>? Logprobs { get; set; }
@@ -144,7 +144,7 @@ internal class StreamingTextDoneResponse : StreamingContentResponse
     public required string Text { get; set; }
 }
 
-internal class StreamingAnnotationAddedResponse : StreamingContentResponse
+public class StreamingAnnotationAddedResponse : StreamingContentResponse
 {
     [JsonPropertyName("annotation")]
     public required ResponsesAnnotation Annotation { get; set; }
@@ -153,12 +153,12 @@ internal class StreamingAnnotationAddedResponse : StreamingContentResponse
     public required int AnnotationIndex { get; set; }
 }
 
-internal class StreamingRefusalDeltaResponse : StreamingContentResponse
+public class StreamingRefusalDeltaResponse : StreamingContentResponse
 {
     [JsonPropertyName("delta")]
     public required string Delta { get; set; }
 }
-internal class StreamingRefusalDoneResponse : StreamingContentResponse
+public class StreamingRefusalDoneResponse : StreamingContentResponse
 {
     [JsonPropertyName("refusal")]
     public required string Refusal { get; set; }
@@ -169,19 +169,19 @@ internal class StreamingRefusalDoneResponse : StreamingContentResponse
 #region Output Item Tool Related
 
 /// <summary> 스트리밍 Tool 관련 응답의 Base </summary>
-internal abstract class StreamingToolResponse : StreamingOutputResponse
+public abstract class StreamingToolResponse : StreamingOutputResponse
 {
     [JsonPropertyName("item_id")]
     public required string ItemId { get; set; }
 }
 
-internal class StreamingFunctionToolDeltaResponse : StreamingToolResponse
+public class StreamingFunctionToolDeltaResponse : StreamingToolResponse
 {
     [JsonPropertyName("delta")]
     public required string Delta { get; set; }
 }
 
-internal class StreamingFunctionToolDoneResponse : StreamingToolResponse
+public class StreamingFunctionToolDoneResponse : StreamingToolResponse
 {
     [JsonPropertyName("arguments")]
     public required string Arguments { get; set; }
@@ -190,25 +190,25 @@ internal class StreamingFunctionToolDoneResponse : StreamingToolResponse
     public string? Name { get; set; }
 }
 
-internal class StreamingWebsearchInProgressResponse : StreamingToolResponse
+public class StreamingWebsearchInProgressResponse : StreamingToolResponse
 { }
 
-internal class StreamingWebsearchSearchingResponse : StreamingToolResponse
+public class StreamingWebsearchSearchingResponse : StreamingToolResponse
 { }
 
-internal class StreamingWebsearchCompletedResponse : StreamingToolResponse
+public class StreamingWebsearchCompletedResponse : StreamingToolResponse
 { }
 
-internal class StreamingImageGenerationCompletedResponse : StreamingToolResponse
+public class StreamingImageGenerationCompletedResponse : StreamingToolResponse
 { }
 
-internal class StreamingImageGenerationGeneratingResponse : StreamingToolResponse
+public class StreamingImageGenerationGeneratingResponse : StreamingToolResponse
 { }
 
-internal class StreamingImageGenerationInProgressResponse : StreamingToolResponse
+public class StreamingImageGenerationInProgressResponse : StreamingToolResponse
 { }
 
-internal class StreamingImageGenerationPartialResponse : StreamingToolResponse
+public class StreamingImageGenerationPartialResponse : StreamingToolResponse
 {
     [JsonPropertyName("partial_image_b64")]
     public required string PartialBase64 { get; set; }
@@ -217,34 +217,34 @@ internal class StreamingImageGenerationPartialResponse : StreamingToolResponse
     public int ImageIndex { get; set; }
 }
 
-internal class StreamingCodeInterpeterInProgressResponse : StreamingToolResponse
+public class StreamingCodeInterpeterInProgressResponse : StreamingToolResponse
 { }
 
-internal class StreamingCodeInterpeterInterpretingResponse : StreamingToolResponse
+public class StreamingCodeInterpeterInterpretingResponse : StreamingToolResponse
 { }
 
-internal class StreamingCodeInterpeterCompletedResponse : StreamingToolResponse
+public class StreamingCodeInterpeterCompletedResponse : StreamingToolResponse
 { }
 
-internal class StreamingCodeInterpeterDeltaResponse : StreamingToolResponse
+public class StreamingCodeInterpeterDeltaResponse : StreamingToolResponse
 {
     [JsonPropertyName("delta")]
     public required string Delta { get; set; }
 }
 
-internal class StreamingCodeInterpeterDoneResponse : StreamingToolResponse
+public class StreamingCodeInterpeterDoneResponse : StreamingToolResponse
 {
     [JsonPropertyName("code")]
     public required string Code { get; set; }
 }
 
-internal class StreamingCustomToolDeltaResponse : StreamingToolResponse
+public class StreamingCustomToolDeltaResponse : StreamingToolResponse
 {
     [JsonPropertyName("delta")]
     public required string Delta { get; set; }
 }
 
-internal class StreamingCustomToolDoneResponse : StreamingToolResponse
+public class StreamingCustomToolDoneResponse : StreamingToolResponse
 {
     [JsonPropertyName("input")]
     public required string Input { get; set; }
@@ -255,7 +255,7 @@ internal class StreamingCustomToolDoneResponse : StreamingToolResponse
 #region Output Item Reasoning Related
 
 /// <summary> 스트리밍 Reasoning 관련 응답의 Base </summary>
-internal abstract class StreamingReasoningResponse : StreamingOutputResponse
+public abstract class StreamingReasoningResponse : StreamingOutputResponse
 {
     [JsonPropertyName("summary_index")]
     public required int SummaryIndex { get; set; }
@@ -264,37 +264,37 @@ internal abstract class StreamingReasoningResponse : StreamingOutputResponse
     public required string ItemId { get; set; }
 }
 
-internal class StreamingReasoningAddedResponse : StreamingReasoningResponse
+public class StreamingReasoningAddedResponse : StreamingReasoningResponse
 {
     [JsonPropertyName("part")]
     public required ResponsesSummaryReasoningItemPart Part { get; set; }
 }
 
-internal class StreamingReasoningDoneResponse : StreamingReasoningResponse
+public class StreamingReasoningDoneResponse : StreamingReasoningResponse
 {
     [JsonPropertyName("part")]
     public required ResponsesSummaryReasoningItemPart Part { get; set; }
 }
 
-internal class StreamingReasoningSummaryDeltaResponse : StreamingReasoningResponse
+public class StreamingReasoningSummaryDeltaResponse : StreamingReasoningResponse
 {
     [JsonPropertyName("delta")]
     public required string Delta { get; set; }
 }
 
-internal class StreamingReasoningSummaryDoneResponse : StreamingReasoningResponse
+public class StreamingReasoningSummaryDoneResponse : StreamingReasoningResponse
 {
     [JsonPropertyName("text")]
     public required string Text { get; set; }
 }
 
-internal class StreamingReasoningTextDeltaResponse : StreamingReasoningResponse
+public class StreamingReasoningTextDeltaResponse : StreamingReasoningResponse
 {
     [JsonPropertyName("delta")]
     public required string Delta { get; set; }
 }
 
-internal class StreamingReasoningTextDoneResponse : StreamingReasoningResponse
+public class StreamingReasoningTextDoneResponse : StreamingReasoningResponse
 {
     [JsonPropertyName("text")]
     public required string Text { get; set; }
@@ -302,7 +302,7 @@ internal class StreamingReasoningTextDoneResponse : StreamingReasoningResponse
 
 #endregion
 
-internal class StreamingErrorResponse : StreamingResponsesResponse
+public class StreamingErrorResponse : StreamingResponsesResponse
 {
     [JsonPropertyName("code")]
     public required string Code { get; set; }

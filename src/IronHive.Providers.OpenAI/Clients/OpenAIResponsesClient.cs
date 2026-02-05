@@ -3,16 +3,17 @@ using System.Text.Json;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using IronHive.Providers.OpenAI.Payloads.Responses;
+using System.Text.Json.Nodes;
 
 namespace IronHive.Providers.OpenAI.Clients;
 
-internal class OpenAIResponsesClient : OpenAIClientBase
+public class OpenAIResponsesClient : OpenAIClientBase
 {
-    internal OpenAIResponsesClient(string apiKey) : base(apiKey) { }
+    public OpenAIResponsesClient(string apiKey) : base(apiKey) { }
 
-    internal OpenAIResponsesClient(OpenAIConfig config) : base(config) { }
+    public OpenAIResponsesClient(OpenAIConfig config) : base(config) { }
 
-    internal async Task<ResponsesResponse> PostResponsesAsync(
+    public async Task<ResponsesResponse> PostResponsesAsync(
         ResponsesRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -24,12 +25,14 @@ internal class OpenAIResponsesClient : OpenAIClientBase
             throw new HttpRequestException(error);
         response.EnsureSuccessStatusCode();
 
-        var message = await response.Content.ReadFromJsonAsync<ResponsesResponse>(_jsonOptions, cancellationToken)
+        var raw = await response.Content.ReadFromJsonAsync<JsonObject>(_jsonOptions, cancellationToken);
+        var message = JsonSerializer.Deserialize<ResponsesResponse>(raw, _jsonOptions)
             ?? throw new InvalidOperationException("Failed to deserialize response.");
+        message.Raw = raw;
         return message;
     }
 
-    internal async IAsyncEnumerable<StreamingResponsesResponse> PostStreamingResponsesAsync(
+    public async IAsyncEnumerable<StreamingResponsesResponse> PostStreamingResponsesAsync(
         ResponsesRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
@@ -61,16 +64,18 @@ internal class OpenAIResponsesClient : OpenAIClientBase
                 if (!data.StartsWith('{') || !data.EndsWith('}'))
                     continue;
 
-                var message = JsonSerializer.Deserialize<StreamingResponsesResponse>(data, _jsonOptions);
+                var raw = JsonSerializer.Deserialize<JsonObject>(data, _jsonOptions);
+                var message = JsonSerializer.Deserialize<StreamingResponsesResponse>(raw, _jsonOptions);
                 if (message != null)
                 {
+                    message.Raw = raw;
                     yield return message;
                 }
             }
         }
     }
 
-    internal async Task<ResponsesTokenCountResponse> PostResponsesTokenCountAsync(
+    public async Task<ResponsesTokenCountResponse> PostResponsesTokenCountAsync(
         ResponsesTokenCountRequest request,
         CancellationToken cancellationToken = default)
     {

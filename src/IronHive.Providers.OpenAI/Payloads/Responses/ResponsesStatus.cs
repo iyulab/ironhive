@@ -1,6 +1,6 @@
 ﻿namespace IronHive.Providers.OpenAI.Payloads.Responses;
 
-internal enum ResponsesStatus
+public enum ResponsesStatus
 {
     Completed,
     Failed,

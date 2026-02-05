@@ -2,7 +2,7 @@
 
 namespace IronHive.Providers.OpenAI.Payloads.Responses;
 
-internal class ResponsesTokenCountRequest
+public class ResponsesTokenCountRequest
 {
     [JsonPropertyName("conversation")]
     public ResponsesConversation? Conversation { get; set; }

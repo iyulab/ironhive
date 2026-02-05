@@ -2,7 +2,7 @@
 
 namespace IronHive.Providers.OpenAI.Payloads.Responses;
 
-internal class ResponsesText
+public class ResponsesText
 {
     [JsonPropertyName("format")]
     public ResponsesFormat? Format {  get; set; }

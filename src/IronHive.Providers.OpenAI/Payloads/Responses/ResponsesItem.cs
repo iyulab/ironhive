@@ -14,13 +14,13 @@ namespace IronHive.Providers.OpenAI.Payloads.Responses;
 [JsonDerivedType(typeof(ResponsesCustomToolCallItem), "custom_call")]
 [JsonDerivedType(typeof(ResponsesCustomToolOutputItem), "custom_call_output")]
 [JsonDerivedType(typeof(ResponsesReferenceItem), "item_reference")]
-internal abstract class ResponsesItem
+public abstract class ResponsesItem
 {
     [JsonPropertyName("id")]
     public string? Id { get; set; }
 }
 
-internal class ResponsesMessageItem : ResponsesItem
+public class ResponsesMessageItem : ResponsesItem
 {
     [JsonPropertyName("content")]
     public required ICollection<ResponsesMessageContent> Content { get; set; }
@@ -32,7 +32,7 @@ internal class ResponsesMessageItem : ResponsesItem
     public ResponsesItemStatus? Status { get; set; }
 }
 
-internal class ResponsesWebSearchToolItem : ResponsesItem
+public class ResponsesWebSearchToolItem : ResponsesItem
 {
     [JsonPropertyName("action")]
     public required ResponsesWebSearchAction Action { get; set; }
@@ -41,7 +41,7 @@ internal class ResponsesWebSearchToolItem : ResponsesItem
     public required string Status { get; set; }
 }
 
-internal class ResponsesFunctionToolCallItem : ResponsesItem
+public class ResponsesFunctionToolCallItem : ResponsesItem
 {
     [JsonPropertyName("arguments")]
     public required string Arguments { get; set; }
@@ -56,7 +56,7 @@ internal class ResponsesFunctionToolCallItem : ResponsesItem
     public ResponsesItemStatus? Status { get; set; }
 }
 
-internal class ResponsesFunctionToolOutputItem : ResponsesItem
+public class ResponsesFunctionToolOutputItem : ResponsesItem
 {
     [JsonPropertyName("call_id")]
     public required string CallId { get; set; }
@@ -68,7 +68,7 @@ internal class ResponsesFunctionToolOutputItem : ResponsesItem
     public ResponsesItemStatus? Status { get; set; }
 }
 
-internal class ResponsesReasoningItem : ResponsesItem
+public class ResponsesReasoningItem : ResponsesItem
 {
     /// <summary>
     /// type "summary" only
@@ -96,13 +96,13 @@ internal class ResponsesReasoningItem : ResponsesItem
 /// <summary>
 /// "v1/responses/compact" API 사용시 반환된 항목(컨텍스트 압축)
 /// </summary>
-internal class ResponsesCompactionItem : ResponsesItem
+public class ResponsesCompactionItem : ResponsesItem
 {
     [JsonPropertyName("encrypted_content")]
     public required string EncryptedContent { get; set; }
 }
 
-internal class ResponsesImageGenerationItem : ResponsesItem
+public class ResponsesImageGenerationItem : ResponsesItem
 {
     /// <summary>
     /// generated image data encoded in base64
@@ -114,7 +114,7 @@ internal class ResponsesImageGenerationItem : ResponsesItem
     public required string Status { get; set; }
 }
 
-internal class ResponsesCodeInterpreterItem : ResponsesItem
+public class ResponsesCodeInterpreterItem : ResponsesItem
 {
     [JsonPropertyName("code")]
     public required string Code { get; set; }
@@ -132,7 +132,7 @@ internal class ResponsesCodeInterpreterItem : ResponsesItem
     public required string Status { get; set; }
 }
 
-internal class ResponsesCustomToolCallItem : ResponsesItem
+public class ResponsesCustomToolCallItem : ResponsesItem
 {
     [JsonPropertyName("call_id")]
     public required string CallId { get; set; }
@@ -144,7 +144,7 @@ internal class ResponsesCustomToolCallItem : ResponsesItem
     public required string Name { get; set; }
 }
 
-internal class ResponsesCustomToolOutputItem : ResponsesItem
+public class ResponsesCustomToolOutputItem : ResponsesItem
 {
     [JsonPropertyName("call_id")]
     public required string CallId { get; set; }
@@ -153,5 +153,5 @@ internal class ResponsesCustomToolOutputItem : ResponsesItem
     public required string Output { get; set; }
 }
 
-internal class ResponsesReferenceItem : ResponsesItem
+public class ResponsesReferenceItem : ResponsesItem
 { }

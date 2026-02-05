@@ -1,0 +1,87 @@
+using IronHive.Providers.OpenAI;
+
+namespace IronHive.Providers.OpenAI.Compatible.OpenRouter;
+
+/// <summary>
+/// OpenRouter 서비스 설정입니다.
+/// </summary>
+/// <remarks>
+/// OpenRouter 특수 기능:
+/// - HTTP-Referer, X-Title 헤더로 앱 귀속
+/// - transforms 파라미터로 프롬프트 변환
+/// - 모델별 미지원 파라미터 자동 필터링
+/// - native_finish_reason 응답 필드
+/// </remarks>
+public class OpenRouterConfig : CompatibleConfig
+{
+    private const string DefaultBaseUrlValue = "https://openrouter.ai/api/v1";
+
+    /// <summary>
+    /// 사이트 URL (HTTP-Referer 헤더로 전송)
+    /// 리더보드 및 분석에서 앱을 식별하는 데 사용됩니다.
+    /// </summary>
+    public string? SiteUrl { get; set; }
+
+    /// <summary>
+    /// 앱 이름 (X-Title 헤더로 전송)
+    /// 리더보드에 표시되는 이름입니다.
+    /// </summary>
+    public string? AppName { get; set; }
+
+    /// <summary>
+    /// 프롬프트 변환 목록입니다.
+    /// </summary>
+    public IList<string>? Transforms { get; set; }
+
+    /// <summary>
+    /// 라우팅 전략입니다. (예: "fallback")
+    /// </summary>
+    public string? Route { get; set; }
+
+    /// <summary>
+    /// Provider 선호도 설정입니다.
+    /// </summary>
+    public OpenRouterProviderPreferences? ProviderPreferences { get; set; }
+
+    /// <inheritdoc/>
+    public override OpenAIConfig ToOpenAI()
+    {
+        var headers = new Dictionary<string, string>();
+
+        // HTTP-Referer: 앱 URL (리더보드 및 분석용)
+        if (!string.IsNullOrEmpty(SiteUrl))
+            headers["HTTP-Referer"] = SiteUrl;
+
+        // X-Title: 앱 이름 (리더보드 표시용)
+        if (!string.IsNullOrEmpty(AppName))
+            headers["X-Title"] = AppName;
+
+        return new OpenAIConfig
+        {
+            BaseUrl = DefaultBaseUrlValue,
+            ApiKey = ApiKey ?? string.Empty,
+            DefaultHeaders = headers
+        };
+    }
+}
+
+/// <summary>
+/// OpenRouter Provider 선호도 설정입니다.
+/// </summary>
+public class OpenRouterProviderPreferences
+{
+    /// <summary>
+    /// 실패 시 다른 Provider로 폴백을 허용할지 여부입니다.
+    /// </summary>
+    public bool? AllowFallbacks { get; set; }
+
+    /// <summary>
+    /// 요청된 파라미터를 지원하는 Provider만 사용할지 여부입니다.
+    /// </summary>
+    public bool? RequireParameters { get; set; }
+
+    /// <summary>
+    /// Provider 우선순위 목록입니다.
+    /// </summary>
+    public IList<string>? Order { get; set; }
+}

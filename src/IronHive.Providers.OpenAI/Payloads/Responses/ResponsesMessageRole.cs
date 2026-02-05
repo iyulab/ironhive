@@ -1,6 +1,6 @@
 ﻿namespace IronHive.Providers.OpenAI.Payloads.Responses;
 
-internal enum ResponsesMessageRole
+public enum ResponsesMessageRole
 {
     Developer,
     System,

@@ -1,10 +1,10 @@
-﻿using System.Runtime.CompilerServices;
-using IronHive.Abstractions.Message;
-using IronHive.Abstractions.Messages;
+﻿using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Messages.Roles;
 using IronHive.Providers.OpenAI.Clients;
+using IronHive.Providers.OpenAI.Payloads.ChatCompletion;
 using IronHive.Providers.OpenAI.Payloads.Responses;
+using System.Runtime.CompilerServices;
 using OpenAIStreamingContentAddedResponse = IronHive.Providers.OpenAI.Payloads.Responses.StreamingContentAddedResponse;
 using StreamingContentAddedResponse = IronHive.Abstractions.Messages.StreamingContentAddedResponse;
 
@@ -306,5 +306,35 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
                 //Debug.WriteLine(JsonSerializer.Serialize(res));
             }
         }
+    }
+
+    /// <summary>
+    /// 요청을 후처리합니다. 하위 클래스에서 재정의하여 Provider별 요청문 처리를 수행할 수 있습니다.
+    /// </summary>
+    protected virtual T PostProcessRequest<T>(ResponsesRequest request)
+        where T : ResponsesRequest
+    {
+        // 기본 구현은 아무것도 하지 않음
+        return (T)request;
+    }
+
+    /// <summary>
+    /// 일반 응답을 후처리합니다. 하위 클래스에서 재정의하여 Provider별 응답 후처리를 수행할 수 있습니다.
+    /// </summary>
+    protected virtual T PostProcessResponse<T>(ResponsesResponse response)
+        where T : ResponsesResponse
+    {
+        // 기본 구현은 아무것도 하지 않음
+        return (T)response;
+    }
+
+    /// <summary>
+    /// 스트리밍 응답을 처리합니다. 하위 클래스에서 재정의하여 Provider별 응답 후처리를 수행할 수 있습니다.
+    /// </summary>
+    protected virtual T PostProcessStreamingResponse<T>(StreamingResponsesResponse response)
+        where T : StreamingResponsesResponse
+    {
+        // 기본 구현은 아무것도 하지 않음
+        return (T)response;
     }
 }

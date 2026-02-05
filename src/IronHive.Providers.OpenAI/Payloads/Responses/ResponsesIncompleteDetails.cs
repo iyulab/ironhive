@@ -2,7 +2,7 @@
 
 namespace IronHive.Providers.OpenAI.Payloads.Responses;
 
-internal class ResponsesIncompleteDetails
+public class ResponsesIncompleteDetails
 {
     [JsonPropertyName("reason")]
     public required string Reason { get; set; }

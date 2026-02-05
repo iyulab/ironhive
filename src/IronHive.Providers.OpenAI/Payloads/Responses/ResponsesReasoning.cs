@@ -2,7 +2,7 @@
 
 namespace IronHive.Providers.OpenAI.Payloads.Responses;
 
-internal class ResponsesReasoning
+public class ResponsesReasoning
 {
     /// <summary>
     /// "minimal", "low", "medium", "high"

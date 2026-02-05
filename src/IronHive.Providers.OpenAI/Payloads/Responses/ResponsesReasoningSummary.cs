@@ -1,6 +1,6 @@
 ﻿namespace IronHive.Providers.OpenAI.Payloads.Responses;
 
-internal enum ResponsesReasoningSummary
+public enum ResponsesReasoningSummary
 {
     /// <summary>
     /// 자동 설정 (기본값)

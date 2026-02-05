@@ -1,5 +1,4 @@
 ﻿using System.Runtime.CompilerServices;
-using IronHive.Abstractions.Message;
 using MessageGenerationRequest = IronHive.Abstractions.Messages.MessageGenerationRequest;
 using TextMessageContent = IronHive.Abstractions.Messages.Content.TextMessageContent;
 using AssistantMessage = IronHive.Abstractions.Messages.Roles.AssistantMessage;
@@ -334,5 +333,35 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
             Model = model,
             Timestamp = DateTime.UtcNow,
         };
+    }
+
+    /// <summary>
+    /// 요청을 후처리합니다. 하위 클래스에서 재정의하여 Provider별 요청문 처리를 수행할 수 있습니다.
+    /// </summary>
+    protected virtual T PostProcessRequest<T>(ChatCompletionRequest request)
+        where T : ChatCompletionRequest
+    {
+        // 기본 구현은 아무것도 하지 않음
+        return (T)request;
+    }
+
+    /// <summary>
+    /// 일반 응답을 후처리합니다. 하위 클래스에서 재정의하여 Provider별 응답 후처리를 수행할 수 있습니다.
+    /// </summary>
+    protected virtual T PostProcessResponse<T>(ChatCompletionResponse response)
+        where T : ChatCompletionResponse
+    {
+        // 기본 구현은 아무것도 하지 않음
+        return (T)response;
+    }
+
+    /// <summary>
+    /// 스트리밍 응답을 처리합니다. 하위 클래스에서 재정의하여 Provider별 응답 후처리를 수행할 수 있습니다.
+    /// </summary>
+    protected virtual T PostProcessStreamingResponse<T>(StreamingChatCompletionResponse response)
+        where T : StreamingChatCompletionResponse
+    {
+        // 기본 구현은 아무것도 하지 않음
+        return (T)response;
     }
 }

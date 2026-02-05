@@ -1,5 +1,6 @@
 ﻿using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text;
 using System.Runtime.CompilerServices;
 using IronHive.Providers.OpenAI.Payloads.ChatCompletion;
@@ -24,8 +25,10 @@ public class OpenAIChatCompletionClient : OpenAIClientBase
             throw new HttpRequestException(error);
         response.EnsureSuccessStatusCode();
 
-        var message = await response.Content.ReadFromJsonAsync<ChatCompletionResponse>(_jsonOptions, cancellationToken)
+        var raw = await response.Content.ReadFromJsonAsync<JsonObject>(_jsonOptions, cancellationToken);
+        var message = JsonSerializer.Deserialize<ChatCompletionResponse>(raw, _jsonOptions)
             ?? throw new InvalidOperationException("Failed to deserialize response.");
+        message.Raw = raw;
         return message;
     }
 
@@ -61,18 +64,13 @@ public class OpenAIChatCompletionClient : OpenAIClientBase
                 if (!data.StartsWith('{') || !data.EndsWith('}'))
                     continue;
 
-                var message = JsonSerializer.Deserialize<StreamingChatCompletionResponse>(data, _jsonOptions);
+                var raw = JsonSerializer.Deserialize<JsonObject>(data, _jsonOptions);
+                var message = JsonSerializer.Deserialize<StreamingChatCompletionResponse>(raw, _jsonOptions);
                 if (message != null)
                 {
+                    message.Raw = raw;
                     yield return message;
                 }
-            }
-
-            // 특정 플랫폼(gpu_stack)의 경우
-            if (line.StartsWith("error:"))
-            {
-                var data = line.Substring("error:".Length).Trim();
-                throw new InvalidOperationException(data);
             }
         }
     }

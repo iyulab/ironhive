@@ -9,16 +9,16 @@ namespace IronHive.Providers.OpenAI.Payloads.Responses;
 [JsonDerivedType(typeof(ResponsesInputAudioContent), "input_audio")]
 [JsonDerivedType(typeof(ResponsesOutputTextContent), "output_text")]
 [JsonDerivedType(typeof(ResponsesRefusalContent), "refusal")]
-internal abstract class ResponsesMessageContent
+public abstract class ResponsesMessageContent
 { }
 
-internal class ResponsesInputTextContent : ResponsesMessageContent
+public class ResponsesInputTextContent : ResponsesMessageContent
 {
     [JsonPropertyName("text")]
     public required string Text { get; set; }
 }
 
-internal class ResponsesInputImageContent : ResponsesMessageContent
+public class ResponsesInputImageContent : ResponsesMessageContent
 {
     /// <summary>
     /// "high", "low", "auto"
@@ -36,7 +36,7 @@ internal class ResponsesInputImageContent : ResponsesMessageContent
     public string? ImageUrl { get; set; }
 }
 
-internal class ResponsesInputFileContent : ResponsesMessageContent
+public class ResponsesInputFileContent : ResponsesMessageContent
 {
     [JsonPropertyName("file_data")]
     public string? FileData { get; set; }
@@ -51,12 +51,12 @@ internal class ResponsesInputFileContent : ResponsesMessageContent
     public string? Filename { get; set; }
 }
 
-internal class ResponsesInputAudioContent : ResponsesMessageContent
+public class ResponsesInputAudioContent : ResponsesMessageContent
 {
     [JsonPropertyName("input_audio")]
     public required InputAudio Audio { get; set; }
 
-    internal class InputAudio
+    public class InputAudio
     {
         /// <summary>
         /// base64-encoded audio data
@@ -72,7 +72,7 @@ internal class ResponsesInputAudioContent : ResponsesMessageContent
     }
 }
 
-internal class ResponsesOutputTextContent : ResponsesMessageContent
+public class ResponsesOutputTextContent : ResponsesMessageContent
 {
     [JsonPropertyName("annotations")]
     public ICollection<ResponsesAnnotation>? Annotations { get; set; }
@@ -84,7 +84,7 @@ internal class ResponsesOutputTextContent : ResponsesMessageContent
     public required string Text { get; set; }
 }
 
-internal class ResponsesRefusalContent : ResponsesMessageContent
+public class ResponsesRefusalContent : ResponsesMessageContent
 {
     [JsonPropertyName("refusal")]
     public required string Refusal { get; set; }

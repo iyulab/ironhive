@@ -52,7 +52,7 @@ public class MiddlewareAgent : IAgent
     /// <inheritdoc />
     public IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingAsync(
         IEnumerable<Message> messages,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default)
     {
         // IStreamingAgentMiddleware를 구현한 미들웨어만 필터링
         var streamingMiddlewares = _middlewares

@@ -2,7 +2,7 @@
 
 namespace IronHive.Providers.OpenAI.Payloads.Responses;
 
-internal class ResponsesTokenUsage
+public class ResponsesTokenUsage
 {
     [JsonPropertyName("input_tokens")]
     public required int InputTokens { get; set; }

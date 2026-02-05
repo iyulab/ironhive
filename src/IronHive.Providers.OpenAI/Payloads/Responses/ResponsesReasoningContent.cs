@@ -2,7 +2,7 @@
 
 namespace IronHive.Providers.OpenAI.Payloads.Responses;
 
-internal class ResponsesReasoningContent
+public class ResponsesReasoningContent
 {
     /// <summary>
     /// "reasoning_text", "summary_text"

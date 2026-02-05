@@ -9,10 +9,10 @@ namespace IronHive.Providers.OpenAI.Payloads.Responses;
 [JsonDerivedType(typeof(ResponsesImageGenerationToolChoice), "image_generation")]
 [JsonDerivedType(typeof(ResponsesFunctionToolChoice), "function")]
 [JsonDerivedType(typeof(ResponsesCustomToolChoice), "custom")]
-internal abstract class ResponsesToolChoice
+public abstract class ResponsesToolChoice
 { }
 
-internal class ResponsesAllowedToolsChoice : ResponsesToolChoice
+public class ResponsesAllowedToolsChoice : ResponsesToolChoice
 {
     /// <summary>
     /// "auto" or "required"
@@ -24,22 +24,22 @@ internal class ResponsesAllowedToolsChoice : ResponsesToolChoice
     public required ICollection<ResponsesTool> Tools { get; set; }
 }
 
-internal class ResponsesWebSearchToolChoice : ResponsesToolChoice
+public class ResponsesWebSearchToolChoice : ResponsesToolChoice
 { }
 
-internal class ResponsesCodeInterpreterToolChoice : ResponsesToolChoice
+public class ResponsesCodeInterpreterToolChoice : ResponsesToolChoice
 { }
 
-internal class ResponsesImageGenerationToolChoice : ResponsesToolChoice
+public class ResponsesImageGenerationToolChoice : ResponsesToolChoice
 { }
 
-internal class ResponsesFunctionToolChoice : ResponsesToolChoice
+public class ResponsesFunctionToolChoice : ResponsesToolChoice
 {
     [JsonPropertyName("name")]
     public required string Name { get; set; }
 }
 
-internal class ResponsesCustomToolChoice : ResponsesToolChoice
+public class ResponsesCustomToolChoice : ResponsesToolChoice
 {
     [JsonPropertyName("name")]
     public required string Name { get; set; }

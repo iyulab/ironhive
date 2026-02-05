@@ -7,10 +7,10 @@ namespace IronHive.Providers.OpenAI.Payloads.Responses;
 [JsonDerivedType(typeof(ResponsesRefusalItemPart), "refusal")]
 [JsonDerivedType(typeof(ResponsesReasoningItemPart), "reasoning_text")]
 [JsonDerivedType(typeof(ResponsesSummaryReasoningItemPart), "summary_text")]
-internal abstract class ResponsesItemPart
+public abstract class ResponsesItemPart
 { }
 
-internal class ResponsesTextItemPart : ResponsesItemPart
+public class ResponsesTextItemPart : ResponsesItemPart
 {
     [JsonPropertyName("annotations")]
     public ICollection<ResponsesAnnotation>? Annotations { get; set; }
@@ -22,19 +22,19 @@ internal class ResponsesTextItemPart : ResponsesItemPart
     public IEnumerable<ResponsesLogProb>? Logprobs { get; set; }
 }
 
-internal class ResponsesRefusalItemPart : ResponsesItemPart
+public class ResponsesRefusalItemPart : ResponsesItemPart
 {
     [JsonPropertyName("refusal")]
     public required string Refusal { get; set; }
 }
 
-internal class ResponsesReasoningItemPart : ResponsesItemPart
+public class ResponsesReasoningItemPart : ResponsesItemPart
 {
     [JsonPropertyName("text")]
     public required string Text { get; set; }
 }
 
-internal class ResponsesSummaryReasoningItemPart : ResponsesItemPart
+public class ResponsesSummaryReasoningItemPart : ResponsesItemPart
 {
     [JsonPropertyName("text")]
     public required string Text { get; set; }

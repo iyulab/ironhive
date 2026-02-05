@@ -1,6 +1,6 @@
 ﻿namespace IronHive.Providers.OpenAI.Payloads.Responses;
 
-internal enum ResponsesReasoningEffort
+public enum ResponsesReasoningEffort
 {
     None,
     Minimal,
