@@ -415,6 +415,89 @@ public class MiddlewareTests
 
     #endregion
 
+    #region TimeoutMiddleware Tests
+
+    [Fact]
+    public async Task TimeoutMiddleware_ShouldSucceedBeforeTimeout()
+    {
+        var middleware = new TimeoutMiddleware(TimeSpan.FromSeconds(5));
+        var agent = new MockAgent("test") { ResponseFunc = _ => "fast response" };
+        var wrapped = agent.WithMiddleware(middleware);
+
+        var response = await wrapped.InvokeAsync(MakeUserMessages("go"));
+
+        GetText(response.Message).Should().Be("fast response");
+    }
+
+    [Fact]
+    public async Task TimeoutMiddleware_ShouldThrowOnTimeout()
+    {
+        var timeoutCalled = false;
+        var middleware = new TimeoutMiddleware(new TimeoutMiddlewareOptions
+        {
+            Timeout = TimeSpan.FromMilliseconds(50),
+            OnTimeout = (_, _) => timeoutCalled = true
+        });
+
+        var slowMiddleware = new SlowMiddleware(TimeSpan.FromSeconds(5));
+        var agent = new MockAgent("test");
+        var wrapped = agent.WithMiddleware(middleware, slowMiddleware);
+
+        var act = () => wrapped.InvokeAsync(MakeUserMessages("go"));
+
+        await act.Should().ThrowAsync<TimeoutException>()
+            .WithMessage("*timed out*");
+        timeoutCalled.Should().BeTrue();
+    }
+
+    #endregion
+
+    #region RateLimitMiddleware Tests
+
+    [Fact]
+    public async Task RateLimitMiddleware_ShouldAllowRequestsWithinLimit()
+    {
+        var middleware = new RateLimitMiddleware(5, TimeSpan.FromSeconds(10));
+        var agent = new MockAgent("test");
+        var wrapped = agent.WithMiddleware(middleware);
+
+        // 5 requests should all succeed immediately
+        for (var i = 0; i < 5; i++)
+        {
+            await wrapped.InvokeAsync(MakeUserMessages($"request-{i}"));
+        }
+
+        middleware.CurrentRequestCount.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task RateLimitMiddleware_ShouldReportRateLimited()
+    {
+        var rateLimitedCount = 0;
+        var middleware = new RateLimitMiddleware(new RateLimitMiddlewareOptions
+        {
+            MaxRequests = 2,
+            Window = TimeSpan.FromMilliseconds(500),
+            OnRateLimited = (_, _) => rateLimitedCount++
+        });
+
+        var agent = new MockAgent("test");
+        var wrapped = agent.WithMiddleware(middleware);
+
+        // First 2 requests - immediate
+        await wrapped.InvokeAsync(MakeUserMessages("req-1"));
+        await wrapped.InvokeAsync(MakeUserMessages("req-2"));
+
+        // 3rd request should trigger rate limit (but eventually succeed)
+        var task = wrapped.InvokeAsync(MakeUserMessages("req-3"));
+
+        // Wait briefly then check callback was triggered
+        await Task.Delay(100);
+        rateLimitedCount.Should().BeGreaterThan(0);
+    }
+
+    #endregion
+
     #region Test Middlewares
 
     private class TestMiddleware : IAgentMiddleware
@@ -520,6 +603,22 @@ public class MiddlewareTests
         }
     }
 
+    private class SlowMiddleware : IAgentMiddleware
+    {
+        private readonly TimeSpan _delay;
+
+        public SlowMiddleware(TimeSpan delay) { _delay = delay; }
+
+        public async Task<MessageResponse> InvokeAsync(
+            IAgent agent, IEnumerable<Message> messages,
+            Func<IEnumerable<Message>, Task<MessageResponse>> next,
+            CancellationToken ct = default)
+        {
+            await Task.Delay(_delay, ct);
+            return await next(messages);
+        }
+    }
+
     #endregion
 
     #region Helpers
@@ -570,6 +669,510 @@ public class MiddlewareTests
             await Task.Yield();
             yield return new StreamingMessageBeginResponse { Id = Guid.NewGuid().ToString("N") };
         }
+    }
+
+    #endregion
+
+    #region CircuitBreakerMiddleware Tests
+
+    [Fact]
+    public async Task CircuitBreakerMiddleware_ShouldAllowRequestsWhenClosed()
+    {
+        // Arrange
+        var middleware = new CircuitBreakerMiddleware(failureThreshold: 3, breakDuration: TimeSpan.FromSeconds(10));
+        var agent = new MockAgent("test-agent");
+
+        // Act & Assert - 초기 상태는 Closed
+        Assert.Equal(CircuitState.Closed, middleware.State);
+
+        var response = await middleware.InvokeAsync(
+            agent,
+            MakeUserMessages("test"),
+            _ => Task.FromResult(new MessageResponse
+            {
+                Id = "1",
+                DoneReason = MessageDoneReason.EndTurn,
+                Message = new AssistantMessage { Content = [new TextMessageContent { Value = "ok" }] }
+            }));
+
+        Assert.Equal("ok", GetText(response.Message!));
+        Assert.Equal(CircuitState.Closed, middleware.State);
+    }
+
+    [Fact]
+    public async Task CircuitBreakerMiddleware_ShouldOpenAfterFailureThreshold()
+    {
+        // Arrange
+        var stateChanges = new List<(CircuitState from, CircuitState to)>();
+        var middleware = new CircuitBreakerMiddleware(new CircuitBreakerMiddlewareOptions
+        {
+            FailureThreshold = 2,
+            BreakDuration = TimeSpan.FromMinutes(1),
+            OnStateChanged = (from, to) => stateChanges.Add((from, to))
+        });
+        var agent = new MockAgent("test-agent");
+        var failCount = 0;
+
+        // Act - 2번 연속 실패
+        for (int i = 0; i < 2; i++)
+        {
+            try
+            {
+                await middleware.InvokeAsync(
+                    agent,
+                    MakeUserMessages("test"),
+                    _ => throw new InvalidOperationException($"fail-{++failCount}"));
+            }
+            catch (InvalidOperationException) { }
+        }
+
+        // Assert
+        Assert.Equal(CircuitState.Open, middleware.State);
+        Assert.Single(stateChanges);
+        Assert.Equal((CircuitState.Closed, CircuitState.Open), stateChanges[0]);
+
+        // Open 상태에서 요청 시 CircuitBreakerOpenException 발생
+        await Assert.ThrowsAsync<CircuitBreakerOpenException>(async () =>
+            await middleware.InvokeAsync(
+                agent,
+                MakeUserMessages("test"),
+                _ => Task.FromResult<MessageResponse>(null!)));
+    }
+
+    [Fact]
+    public async Task CircuitBreakerMiddleware_ShouldTransitionToHalfOpenAfterBreakDuration()
+    {
+        // Arrange
+        var stateChanges = new List<(CircuitState from, CircuitState to)>();
+        var middleware = new CircuitBreakerMiddleware(new CircuitBreakerMiddlewareOptions
+        {
+            FailureThreshold = 1,
+            BreakDuration = TimeSpan.FromMilliseconds(50),
+            OnStateChanged = (from, to) => stateChanges.Add((from, to))
+        });
+        var agent = new MockAgent("test-agent");
+
+        // Act - 1번 실패로 Open
+        try
+        {
+            await middleware.InvokeAsync(
+                agent,
+                MakeUserMessages("test"),
+                _ => throw new InvalidOperationException("fail"));
+        }
+        catch (InvalidOperationException) { }
+
+        Assert.Equal(CircuitState.Open, middleware.State);
+
+        // BreakDuration 대기 후 Half-Open
+        await Task.Delay(100);
+        Assert.Equal(CircuitState.HalfOpen, middleware.State);
+
+        // Half-Open에서 성공하면 Closed
+        await middleware.InvokeAsync(
+            agent,
+            MakeUserMessages("test"),
+            _ => Task.FromResult(new MessageResponse
+            {
+                Id = "1",
+                DoneReason = MessageDoneReason.EndTurn,
+                Message = new AssistantMessage { Content = [new TextMessageContent { Value = "ok" }] }
+            }));
+
+        Assert.Equal(CircuitState.Closed, middleware.State);
+    }
+
+    [Fact]
+    public void CircuitBreakerMiddleware_ShouldResetManually()
+    {
+        // Arrange
+        var middleware = new CircuitBreakerMiddleware(failureThreshold: 1, breakDuration: TimeSpan.FromMinutes(1));
+        var agent = new MockAgent("test-agent");
+
+        // Act - 실패로 Open
+        try
+        {
+            middleware.InvokeAsync(
+                agent,
+                MakeUserMessages("test"),
+                _ => throw new InvalidOperationException("fail")).Wait();
+        }
+        catch { }
+
+        Assert.Equal(CircuitState.Open, middleware.State);
+
+        // 수동 리셋
+        middleware.Reset();
+
+        // Assert
+        Assert.Equal(CircuitState.Closed, middleware.State);
+    }
+
+    #endregion
+
+    #region BulkheadMiddleware Tests
+
+    [Fact]
+    public async Task BulkheadMiddleware_ShouldLimitConcurrency()
+    {
+        // Arrange
+        var middleware = new BulkheadMiddleware(maxConcurrency: 2);
+        var agent = new MockAgent("test-agent");
+        var executing = 0;
+        var maxExecuting = 0;
+
+        // Act - 5개 동시 요청
+        var tasks = Enumerable.Range(0, 5).Select(async i =>
+        {
+            await middleware.InvokeAsync(
+                agent,
+                MakeUserMessages($"test-{i}"),
+                async _ =>
+                {
+                    var current = Interlocked.Increment(ref executing);
+                    lock (middleware)
+                    {
+                        if (current > maxExecuting) maxExecuting = current;
+                    }
+                    await Task.Delay(50);
+                    Interlocked.Decrement(ref executing);
+                    return new MessageResponse
+                    {
+                        Id = i.ToString(),
+                        DoneReason = MessageDoneReason.EndTurn,
+                        Message = new AssistantMessage { Content = [new TextMessageContent { Value = "ok" }] }
+                    };
+                });
+        }).ToArray();
+
+        await Task.WhenAll(tasks);
+
+        // Assert - 최대 동시 실행 수가 2를 초과하지 않아야 함
+        Assert.True(maxExecuting <= 2, $"Max concurrent execution was {maxExecuting}, expected <= 2");
+    }
+
+    [Fact]
+    public async Task BulkheadMiddleware_ShouldRejectWhenQueueFull()
+    {
+        // Arrange
+        var rejected = false;
+        var middleware = new BulkheadMiddleware(new BulkheadMiddlewareOptions
+        {
+            MaxConcurrency = 1,
+            MaxQueueSize = 1,
+            OnRejected = (_, _, _) => rejected = true
+        });
+        var agent = new MockAgent("test-agent");
+        var gate = new TaskCompletionSource<bool>();
+
+        // Act - 첫 번째 요청이 실행 중 (블로킹)
+        var task1 = middleware.InvokeAsync(
+            agent,
+            MakeUserMessages("test-1"),
+            async _ =>
+            {
+                await gate.Task;
+                return new MessageResponse
+                {
+                    Id = "1",
+                    DoneReason = MessageDoneReason.EndTurn,
+                    Message = new AssistantMessage { Content = [new TextMessageContent { Value = "ok" }] }
+                };
+            });
+
+        await Task.Delay(20); // task1이 실행 슬롯 점유
+
+        // 두 번째 요청 (대기열로)
+        var task2 = middleware.InvokeAsync(
+            agent,
+            MakeUserMessages("test-2"),
+            async _ =>
+            {
+                await gate.Task;
+                return new MessageResponse
+                {
+                    Id = "2",
+                    DoneReason = MessageDoneReason.EndTurn,
+                    Message = new AssistantMessage { Content = [new TextMessageContent { Value = "ok" }] }
+                };
+            });
+
+        await Task.Delay(20); // task2가 대기열 점유
+
+        // 세 번째 요청 - 거부되어야 함
+        await Assert.ThrowsAsync<BulkheadRejectedException>(async () =>
+            await middleware.InvokeAsync(
+                agent,
+                MakeUserMessages("test-3"),
+                _ => Task.FromResult<MessageResponse>(null!)));
+
+        Assert.True(rejected);
+
+        // Cleanup
+        gate.SetResult(true);
+        await Task.WhenAll(task1, task2);
+    }
+
+    [Fact]
+    public async Task BulkheadMiddleware_ShouldTrackStatistics()
+    {
+        // Arrange
+        var middleware = new BulkheadMiddleware(maxConcurrency: 2);
+        var agent = new MockAgent("test-agent");
+        var gate = new TaskCompletionSource<bool>();
+
+        // Act - 슬롯 점유
+        var task1 = middleware.InvokeAsync(
+            agent,
+            MakeUserMessages("test-1"),
+            async _ =>
+            {
+                await gate.Task;
+                return new MessageResponse
+                {
+                    Id = "1",
+                    DoneReason = MessageDoneReason.EndTurn,
+                    Message = new AssistantMessage { Content = [new TextMessageContent { Value = "ok" }] }
+                };
+            });
+
+        await Task.Delay(20);
+
+        // Assert
+        Assert.Equal(1, middleware.CurrentExecuting);
+        Assert.Equal(1, middleware.AvailableSlots);
+
+        // Cleanup
+        gate.SetResult(true);
+        await task1;
+
+        Assert.Equal(0, middleware.CurrentExecuting);
+        Assert.Equal(2, middleware.AvailableSlots);
+    }
+
+    #endregion
+
+    #region FallbackMiddleware Tests
+
+    [Fact]
+    public async Task FallbackMiddleware_ShouldUseFallbackOnFailure()
+    {
+        // Arrange
+        var fallbackCalled = false;
+        var fallbackAgent = new MockAgent("fallback") { ResponseFunc = _ => { fallbackCalled = true; return "fallback-result"; } };
+        var middleware = new FallbackMiddleware(fallbackAgent);
+        var agent = new MockAgent("primary");
+
+        // Act
+        var response = await middleware.InvokeAsync(
+            agent,
+            MakeUserMessages("test"),
+            _ => throw new InvalidOperationException("primary failed"));
+
+        // Assert
+        Assert.True(fallbackCalled);
+        Assert.Equal("fallback-result", GetText(response.Message!));
+    }
+
+    [Fact]
+    public async Task FallbackMiddleware_ShouldNotFallbackOnSuccess()
+    {
+        // Arrange
+        var fallbackCalled = false;
+        var fallbackAgent = new MockAgent("fallback") { ResponseFunc = _ => { fallbackCalled = true; return "fallback"; } };
+        var middleware = new FallbackMiddleware(fallbackAgent);
+        var agent = new MockAgent("primary") { ResponseFunc = _ => "primary-result" };
+
+        // Act
+        var response = await middleware.InvokeAsync(
+            agent,
+            MakeUserMessages("test"),
+            _ => agent.InvokeAsync(MakeUserMessages("test")));
+
+        // Assert
+        Assert.False(fallbackCalled);
+        Assert.Equal("primary-result", GetText(response.Message!));
+    }
+
+    [Fact]
+    public async Task FallbackMiddleware_ShouldRespectShouldFallbackPredicate()
+    {
+        // Arrange
+        var fallbackAgent = new MockAgent("fallback") { ResponseFunc = _ => "fallback" };
+        var middleware = new FallbackMiddleware(new FallbackMiddlewareOptions
+        {
+            FallbackAgent = fallbackAgent,
+            ShouldFallback = ex => ex is TimeoutException // Only fallback on timeout
+        });
+        var agent = new MockAgent("primary");
+
+        // Act & Assert - InvalidOperationException should NOT trigger fallback
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await middleware.InvokeAsync(
+                agent,
+                MakeUserMessages("test"),
+                _ => throw new InvalidOperationException("not a timeout")));
+
+        // TimeoutException SHOULD trigger fallback
+        var response = await middleware.InvokeAsync(
+            agent,
+            MakeUserMessages("test"),
+            _ => throw new TimeoutException("timed out"));
+
+        Assert.Equal("fallback", GetText(response.Message!));
+    }
+
+    [Fact]
+    public async Task FallbackMiddleware_ShouldThrowFallbackFailedExceptionWhenBothFail()
+    {
+        // Arrange
+        var fallbackAgent = new MockAgent("fallback")
+        {
+            ResponseFunc = _ => throw new InvalidOperationException("fallback also failed")
+        };
+        var middleware = new FallbackMiddleware(fallbackAgent);
+        var agent = new MockAgent("primary");
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<FallbackFailedException>(async () =>
+            await middleware.InvokeAsync(
+                agent,
+                MakeUserMessages("test"),
+                _ => throw new InvalidOperationException("primary failed")));
+
+        Assert.Contains("primary", ex.Message);
+        Assert.Contains("fallback", ex.Message);
+    }
+
+    [Fact]
+    public async Task FallbackMiddleware_ShouldUseFallbackFactoryForDynamicFallback()
+    {
+        // Arrange
+        var factoryCalled = false;
+        var middleware = new FallbackMiddleware(new FallbackMiddlewareOptions
+        {
+            FallbackFactory = primary =>
+            {
+                factoryCalled = true;
+                return new MockAgent($"fallback-for-{primary.Name}")
+                {
+                    ResponseFunc = _ => $"fallback-for-{primary.Name}"
+                };
+            }
+        });
+        var agent = new MockAgent("primary-agent");
+
+        // Act
+        var response = await middleware.InvokeAsync(
+            agent,
+            MakeUserMessages("test"),
+            _ => throw new InvalidOperationException("fail"));
+
+        // Assert
+        Assert.True(factoryCalled);
+        Assert.Equal("fallback-for-primary-agent", GetText(response.Message!));
+    }
+
+    #endregion
+
+    #region CompositeMiddleware Tests
+
+    [Fact]
+    public async Task CompositeMiddleware_ShouldExecuteMiddlewaresInOrder()
+    {
+        // Arrange
+        var order = new List<string>();
+        var m1 = new TestMiddleware("m1", order);
+        var m2 = new TestMiddleware("m2", order);
+        var composite = new CompositeMiddleware("test-composite", m1, m2);
+
+        var agent = new MockAgent("agent") { ResponseFunc = _ => { order.Add("agent"); return "result"; } };
+
+        // Act
+        await composite.InvokeAsync(
+            agent,
+            MakeUserMessages("test"),
+            msgs => agent.InvokeAsync(msgs));
+
+        // Assert
+        order.Should().Equal("m1-before", "m2-before", "agent", "m2-after", "m1-after");
+    }
+
+    [Fact]
+    public void CompositeMiddleware_ShouldHaveCorrectProperties()
+    {
+        // Arrange
+        var m1 = new TestMiddleware("m1", new List<string>());
+        var m2 = new TestMiddleware("m2", new List<string>());
+        var composite = new CompositeMiddleware("my-pack", m1, m2);
+
+        // Assert
+        Assert.Equal("my-pack", composite.Name);
+        Assert.Equal(2, composite.Count);
+        Assert.Equal(2, composite.Middlewares.Count);
+    }
+
+    [Fact]
+    public void CompositeMiddleware_With_ShouldReturnNewInstance()
+    {
+        // Arrange
+        var m1 = new TestMiddleware("m1", new List<string>());
+        var original = new CompositeMiddleware("pack", m1);
+
+        // Act
+        var m2 = new TestMiddleware("m2", new List<string>());
+        var extended = original.With(m2);
+
+        // Assert
+        Assert.Equal(1, original.Count);
+        Assert.Equal(2, extended.Count);
+        Assert.NotSame(original, extended);
+    }
+
+    [Fact]
+    public void CompositeMiddleware_Prepend_ShouldAddAtBeginning()
+    {
+        // Arrange
+        var m1 = new TestMiddleware("m1", new List<string>());
+        var original = new CompositeMiddleware("pack", m1);
+
+        // Act
+        var m2 = new TestMiddleware("m2", new List<string>());
+        var prepended = original.Prepend(m2);
+
+        // Assert
+        Assert.Equal(2, prepended.Count);
+        Assert.Same(m2, prepended.Middlewares[0]);
+        Assert.Same(m1, prepended.Middlewares[1]);
+    }
+
+    [Fact]
+    public void MiddlewarePacks_Resilience_ShouldContainCorrectMiddlewares()
+    {
+        // Act
+        var pack = MiddlewarePacks.Resilience(maxRetries: 2, timeout: TimeSpan.FromSeconds(10));
+
+        // Assert
+        Assert.Equal("resilience", pack.Name);
+        Assert.Equal(2, pack.Count);
+        Assert.IsType<RetryMiddleware>(pack.Middlewares[0]);
+        Assert.IsType<TimeoutMiddleware>(pack.Middlewares[1]);
+    }
+
+    [Fact]
+    public void MiddlewarePacks_Production_ShouldContainAllMiddlewares()
+    {
+        // Act
+        var pack = MiddlewarePacks.Production();
+
+        // Assert
+        Assert.Equal("production", pack.Name);
+        Assert.Equal(5, pack.Count);
+        Assert.IsType<LoggingMiddleware>(pack.Middlewares[0]);
+        Assert.IsType<RateLimitMiddleware>(pack.Middlewares[1]);
+        Assert.IsType<CircuitBreakerMiddleware>(pack.Middlewares[2]);
+        Assert.IsType<RetryMiddleware>(pack.Middlewares[3]);
+        Assert.IsType<TimeoutMiddleware>(pack.Middlewares[4]);
     }
 
     #endregion

@@ -123,8 +123,16 @@ await worker.StartAsync();
 
 ## 상세 문서
 
+### 아키텍처
 - [ARCHITECTURE.md](ARCHITECTURE.md) - 아키텍처 설계 및 모듈 구조
 - [CORE-COMPONENTS.md](CORE-COMPONENTS.md) - 핵심 클래스 및 서비스
+
+### 에이전트 시스템
+- [AGENTS.md](AGENTS.md) - 에이전트 시스템 개요
+- [ORCHESTRATION.md](ORCHESTRATION.md) - 멀티에이전트 오케스트레이션 패턴
+- [MIDDLEWARE.md](MIDDLEWARE.md) - 미들웨어 시스템 (재시도, 타임아웃, 회로 차단기 등)
+
+### 확장 기능
 - [PROVIDERS.md](PROVIDERS.md) - AI 프로바이더 상세
 - [STORAGES.md](STORAGES.md) - 스토리지 백엔드 상세
 - [PLUGINS.md](PLUGINS.md) - 플러그인 시스템
