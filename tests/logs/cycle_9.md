@@ -42,7 +42,7 @@ private static string ToDataUri(ImageMessageContent image)
 ## 추가된 시나리오
 
 ### 17. image-input (Image + Text Basic)
-- 테스트 이미지 (`local-tests/multimodal-test-image-1.png`) 로드 → base64 인코딩
+- 테스트 이미지 (`tests/multimodal-test-image-1.png`) 로드 → base64 인코딩
 - `ImageMessageContent(Format=Png)` + `TextMessageContent("Describe what this image shows")` 혼합 UserMessage
 - 응답 존재 확인 + 관련 키워드 매칭 (map, boundary, water, trip, earth, route, island, lake, trail, day, legend, satellite)
 - 비전 미지원 모델은 이미지를 해석하지 못하더라도 SDK 에러 없이 응답 → PASS
@@ -102,7 +102,7 @@ dotnet build IronHive.slnx
 grep ToDataUri MessageGenerationRequestExtensions.cs → 2건 매칭
 
 # 전체 테스트: 89 PASS / 3 SKIP / 1 FAIL (기존 이슈)
-local-tests/chat-api-tests/run.ps1
+tests/chat-api-tests/run.ps1
 ```
 
 ## 변경된 파일
@@ -110,7 +110,7 @@ local-tests/chat-api-tests/run.ps1
 | 파일 | 작업 |
 |------|------|
 | `src/IronHive.Providers.OpenAI/Extensions/MessageGenerationRequestExtensions.cs` | `ToDataUri()` 헬퍼 추가, Responses/Chat 양 경로에서 호출 |
-| `local-tests/chat-api-tests/Program.cs` | `TestImageInput`, `TestImageStream` 시나리오 추가 |
+| `tests/chat-api-tests/Program.cs` | `TestImageInput`, `TestImageStream` 시나리오 추가 |
 
 ## 누적 시나리오 현황
 

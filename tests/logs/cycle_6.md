@@ -136,7 +136,7 @@ chat-api-tests에 **4개 시나리오** 추가. 요청 파라미터(MaxTokens, T
 
 | 파일 | 변경 |
 |------|------|
-| `local-tests/chat-api-tests/Program.cs` | 4개 시나리오 추가 (TestMaxTokens, TestThinkingEffortHigh, TestStopSequences, TestStreamingRoundTrip) |
+| `tests/chat-api-tests/Program.cs` | 4개 시나리오 추가 (TestMaxTokens, TestThinkingEffortHigh, TestStopSequences, TestStreamingRoundTrip) |
 | `src/IronHive.Abstractions/Tools/ToolInput.cs` | 빈/공백 문자열 입력을 null과 동일하게 처리 |
 
 ## 누적 시나리오 현황

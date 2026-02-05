@@ -147,7 +147,7 @@ public abstract class OrchestratorBase : IAgentOrchestrator
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(Options.AgentTimeout);
 
-            var response = await agent.InvokeAsync(inputMessages, cts.Token).ConfigureAwait(false);
+            var response = await InvokeWithMiddlewaresAsync(agent, inputMessages, cts.Token).ConfigureAwait(false);
             stopwatch.Stop();
 
             activity.SetResponseInfo(
@@ -288,5 +288,33 @@ public abstract class OrchestratorBase : IAgentOrchestrator
             TotalInputTokens = totalInput,
             TotalOutputTokens = totalOutput
         };
+    }
+
+    /// <summary>
+    /// 미들웨어 체인을 거쳐 에이전트를 실행합니다.
+    /// </summary>
+    private async Task<MessageResponse> InvokeWithMiddlewaresAsync(
+        IAgent agent,
+        IEnumerable<Message> messages,
+        CancellationToken cancellationToken)
+    {
+        var middlewares = Options.AgentMiddlewares;
+        if (middlewares == null || middlewares.Count == 0)
+        {
+            return await agent.InvokeAsync(messages, cancellationToken).ConfigureAwait(false);
+        }
+
+        // 미들웨어 체인 구성
+        Func<IEnumerable<Message>, Task<MessageResponse>> pipeline =
+            msgs => agent.InvokeAsync(msgs, cancellationToken);
+
+        for (var i = middlewares.Count - 1; i >= 0; i--)
+        {
+            var middleware = middlewares[i];
+            var next = pipeline;
+            pipeline = msgs => middleware.InvokeAsync(agent, msgs, next, cancellationToken);
+        }
+
+        return await pipeline(messages).ConfigureAwait(false);
     }
 }

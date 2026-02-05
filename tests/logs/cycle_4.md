@@ -46,7 +46,7 @@ Turn 2: [UserMessage, AssistantMessage, UserMessage("What was the code?")] → T
 
 | 파일 | 변경 |
 |------|------|
-| `local-tests/chat-api-tests/Program.cs` | TestMultiTurn 시나리오 추가 |
+| `tests/chat-api-tests/Program.cs` | TestMultiTurn 시나리오 추가 |
 
 ## 누적 시나리오 현황
 

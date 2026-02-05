@@ -56,7 +56,7 @@ Step 5: finalText.Contains(secretValue) → verified/not-found
 
 | 파일 | 변경 |
 |------|------|
-| `local-tests/chat-api-tests/Program.cs` | TestToolRoundTrip 시나리오 추가, using 추가 |
+| `tests/chat-api-tests/Program.cs` | TestToolRoundTrip 시나리오 추가, using 추가 |
 
 ## 다음 사이클
 

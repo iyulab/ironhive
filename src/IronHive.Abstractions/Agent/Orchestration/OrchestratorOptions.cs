@@ -1,3 +1,5 @@
+using IronHive.Abstractions.Messages;
+
 namespace IronHive.Abstractions.Agent.Orchestration;
 
 /// <summary>
@@ -46,6 +48,12 @@ public class OrchestratorOptions
     /// 승인이 필요한 에이전트 이름 집합. null이면 모든 에이전트에 ApprovalHandler 적용.
     /// </summary>
     public HashSet<string>? RequireApprovalForAgents { get; set; }
+
+    /// <summary>
+    /// 에이전트 실행 시 적용할 미들웨어 체인.
+    /// null이거나 비어있으면 미들웨어 없이 에이전트 직접 실행.
+    /// </summary>
+    public IList<IAgentMiddleware>? AgentMiddlewares { get; set; }
 }
 
 /// <summary>
@@ -99,6 +107,50 @@ public class HubSpokeOrchestratorOptions : OrchestratorOptions
     /// 병렬 실행 시 최대 동시 Spoke 수
     /// </summary>
     public int? MaxConcurrentSpokes { get; set; }
+}
+
+/// <summary>
+/// 핸드오프 오케스트레이터 옵션
+/// </summary>
+public class HandoffOrchestratorOptions : OrchestratorOptions
+{
+    /// <summary>
+    /// 초기 에이전트 이름
+    /// </summary>
+    public required string InitialAgentName { get; set; }
+
+    /// <summary>
+    /// 최대 전환(handoff) 횟수. 기본값: 20
+    /// </summary>
+    public int MaxTransitions { get; set; } = 20;
+
+    /// <summary>
+    /// 핸드오프가 감지되지 않았을 때 호출되는 핸들러.
+    /// null 반환 = 종료, Message 반환 = 해당 메시지로 현재 에이전트 계속 실행.
+    /// null이면 핸드오프 없을 시 자동 종료.
+    /// </summary>
+    public Func<string, AgentStepResult, Task<Message?>>? NoHandoffHandler { get; set; }
+}
+
+/// <summary>
+/// GroupChat 오케스트레이터 옵션
+/// </summary>
+public class GroupChatOrchestratorOptions : OrchestratorOptions
+{
+    /// <summary>
+    /// 다음 발언자를 선택하는 전략
+    /// </summary>
+    public required ISpeakerSelector SpeakerSelector { get; set; }
+
+    /// <summary>
+    /// 종료 조건
+    /// </summary>
+    public required ITerminationCondition TerminationCondition { get; set; }
+
+    /// <summary>
+    /// 최대 라운드 수 (안전 한도). 기본값: 50
+    /// </summary>
+    public int MaxRounds { get; set; } = 50;
 }
 
 /// <summary>

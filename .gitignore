@@ -32,3 +32,4 @@ dev-docs/
 *.local
 nul
 .claude/
+.serena/

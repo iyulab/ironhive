@@ -233,8 +233,6 @@ src/
 
 tests/
 └── IronHive.Tests/             # Unit tests (134 tests)
-
-local-tests/
 ├── chat-api-tests/             # Provider integration tests (20 scenarios × 5 providers)
 └── multi-agent-test/           # Orchestration tests (28 scenarios, mock agents)
 ```

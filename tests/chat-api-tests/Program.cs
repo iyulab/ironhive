@@ -1253,7 +1253,7 @@ async Task<TestResult> TestImageInput(IMessageGenerator generator, string model)
     // Locate test image — try multiple paths
     var candidates = new[]
     {
-        Path.Combine("local-tests", "multimodal-test-image-1.png"),
+        Path.Combine("tests", "multimodal-test-image-1.png"),
         Path.Combine("..", "multimodal-test-image-1.png"),
         "multimodal-test-image-1.png"
     };
@@ -1302,7 +1302,7 @@ async Task<TestResult> TestImageStream(IMessageGenerator generator, string model
     // Locate test image
     var candidates = new[]
     {
-        Path.Combine("local-tests", "multimodal-test-image-1.png"),
+        Path.Combine("tests", "multimodal-test-image-1.png"),
         Path.Combine("..", "multimodal-test-image-1.png"),
         "multimodal-test-image-1.png"
     };

@@ -8,13 +8,19 @@
 
 using System.Runtime.CompilerServices;
 using System.Text;
+using IronHive.Abstractions;
 using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Tools;
+using Microsoft.Extensions.DependencyInjection;
+using IronHive.Core;
+using IronHive.Core.Agent;
 using IronHive.Core.Agent.Orchestration;
+using IronHive.Providers.OpenAI;
+using IronHive.Providers.Anthropic;
 
 Console.WriteLine("=============================================================");
 Console.WriteLine("IronHive Multi-Agent Orchestration Tests");
@@ -46,17 +52,42 @@ results.AddRange(await RunCategory("streaming", RunStreamingTests));
 // ---- Error Handling ----
 results.AddRange(await RunCategory("error", RunErrorTests));
 
+// ---- Composability (Phase 1) ----
+results.AddRange(await RunCategory("composability", RunComposabilityTests));
+
+// ---- Handoff (Phase 2) ----
+results.AddRange(await RunCategory("handoff", RunHandoffTests));
+
+// ---- GroupChat (Phase 3) ----
+results.AddRange(await RunCategory("groupchat", RunGroupChatTests));
+
+// ---- Middleware (Phase 4) ----
+results.AddRange(await RunCategory("middleware", RunMiddlewareTests));
+
+// ---- Real LLM Integration (Cycle 3) ----
+// These tests require API keys in .env file
+results.AddRange(await RunCategory("llm-integration", RunLlmIntegrationTests));
+
 // Summary
 Console.WriteLine("\n" + new string('=', 60));
 Console.WriteLine("SUMMARY");
 Console.WriteLine(new string('=', 60));
 
-var passed = results.Count(r => r.Result.Success);
+var passed = results.Count(r => r.Result.Success && !r.Result.Skipped);
+var skipped = results.Count(r => r.Result.Skipped);
 var failed = results.Count(r => !r.Result.Success);
 
 Console.WriteLine($"  Passed:  {passed}");
+Console.WriteLine($"  Skipped: {skipped}");
 Console.WriteLine($"  Failed:  {failed}");
 Console.WriteLine($"  Total:   {results.Count}");
+
+if (skipped > 0)
+{
+    Console.WriteLine("\nSkipped tests:");
+    foreach (var (category, scenario, result) in results.Where(r => r.Result.Skipped))
+        Console.WriteLine($"  - {category}/{scenario}: {result.Message}");
+}
 
 if (failed > 0)
 {
@@ -996,6 +1027,706 @@ async Task<List<(string, TestResult)>> RunErrorTests()
 }
 
 // =============================================================================
+// 9. Composability Tests (Phase 1)
+// =============================================================================
+
+async Task<List<(string, TestResult)>> RunComposabilityTests()
+{
+    var results = new List<(string, TestResult)>();
+
+    // 9-1: Orchestrator as Agent — nested in outer Sequential
+    try
+    {
+        var innerAgent = new MockAgent("inner", "mock", "Inner agent")
+        {
+            ResponseFunc = _ => "inner-output"
+        };
+        var innerOrch = new SequentialOrchestrator();
+        innerOrch.AddAgent(innerAgent);
+
+        var outerAgent = new MockAgent("outer", "mock", "Outer agent")
+        {
+            ResponseFunc = msgs => $"got: {GetLastAssistantText(msgs)}"
+        };
+
+        var outerOrch = new SequentialOrchestrator(new SequentialOrchestratorOptions { PassOutputAsInput = true });
+        outerOrch.AddAgents([innerOrch.AsAgent("nested"), outerAgent]);
+
+        var result = await outerOrch.ExecuteAsync(MakeUserMessages("start"));
+
+        var ok = result.IsSuccess
+            && result.Steps.Count == 2
+            && GetTextFromMessage(result.FinalOutput).Contains("got: inner-output");
+
+        results.Add(("nested-orchestrator", ok
+            ? TestResult.Pass($"output={GetTextFromMessage(result.FinalOutput)}")
+            : TestResult.Error($"output={GetTextFromMessage(result.FinalOutput)}")));
+    }
+    catch (Exception ex) { results.Add(("nested-orchestrator", TestResult.Error(ex.Message))); }
+
+    // 9-2: AsAgent streaming — forward events
+    try
+    {
+        var agent = new MockAgent("stream-agent", "mock", "Streamer")
+        {
+            ResponseFunc = _ => "streamed"
+        };
+        var orch = new SequentialOrchestrator();
+        orch.AddAgent(agent);
+
+        var adapter = orch.AsAgent();
+        var eventCount = 0;
+        await foreach (var evt in adapter.InvokeStreamingAsync(MakeUserMessages("go")))
+        {
+            eventCount++;
+        }
+
+        var ok = eventCount > 0;
+        results.Add(("streaming-forward", ok
+            ? TestResult.Pass($"events={eventCount}")
+            : TestResult.Error("No streaming events received")));
+    }
+    catch (Exception ex) { results.Add(("streaming-forward", TestResult.Error(ex.Message))); }
+
+    // 9-3: AsAgent failure propagation
+    try
+    {
+        var failAgent = new MockAgent("fail", "mock", "Fail")
+        {
+            ResponseFuncAsync = _ => throw new InvalidOperationException("boom")
+        };
+        var orch = new SequentialOrchestrator(new SequentialOrchestratorOptions { StopOnAgentFailure = true });
+        orch.AddAgent(failAgent);
+
+        var adapter = orch.AsAgent();
+        var threw = false;
+        try
+        {
+            await adapter.InvokeAsync(MakeUserMessages("go"));
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("failed"))
+        {
+            threw = true;
+        }
+
+        results.Add(("failure-propagation", threw
+            ? TestResult.Pass("Exception propagated correctly")
+            : TestResult.Error("Expected exception was not thrown")));
+    }
+    catch (Exception ex) { results.Add(("failure-propagation", TestResult.Error(ex.Message))); }
+
+    return results;
+}
+
+// =============================================================================
+// 10. Handoff Tests (Phase 2)
+// =============================================================================
+
+async Task<List<(string, TestResult)>> RunHandoffTests()
+{
+    var results = new List<(string, TestResult)>();
+
+    // 10-1: Triage → Billing → Triage → End
+    try
+    {
+        var callSeq = new List<string>();
+        var triage = new MockAgent("triage", "mock", "Triage")
+        {
+            ResponseFunc = _ =>
+            {
+                callSeq.Add("triage");
+                return callSeq.Count == 1
+                    ? """{"handoff_to": "billing", "context": "billing issue"}"""
+                    : "Resolved!";
+            }
+        };
+        var billing = new MockAgent("billing", "mock", "Billing")
+        {
+            ResponseFunc = _ =>
+            {
+                callSeq.Add("billing");
+                return """{"handoff_to": "triage", "context": "done"}""";
+            }
+        };
+
+        var orch = new HandoffOrchestratorBuilder()
+            .AddAgent(triage, new HandoffTarget { AgentName = "billing", Description = "Billing" })
+            .AddAgent(billing, new HandoffTarget { AgentName = "triage", Description = "Triage" })
+            .SetInitialAgent("triage")
+            .Build();
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("help"));
+
+        var ok = result.IsSuccess && callSeq.Count == 3
+            && string.Join("→", callSeq) == "triage→billing→triage";
+
+        results.Add(("basic-handoff", ok
+            ? TestResult.Pass($"flow={string.Join("→", callSeq)}")
+            : TestResult.Error($"flow={string.Join("→", callSeq)}, success={result.IsSuccess}")));
+    }
+    catch (Exception ex) { results.Add(("basic-handoff", TestResult.Error(ex.Message))); }
+
+    // 10-2: MaxTransitions limit
+    try
+    {
+        var a = new MockAgent("a", "mock", "A") { ResponseFunc = _ => """{"handoff_to": "b"}""" };
+        var b = new MockAgent("b", "mock", "B") { ResponseFunc = _ => """{"handoff_to": "a"}""" };
+
+        var orch = new HandoffOrchestratorBuilder()
+            .AddAgent(a, new HandoffTarget { AgentName = "b" })
+            .AddAgent(b, new HandoffTarget { AgentName = "a" })
+            .SetInitialAgent("a")
+            .SetMaxTransitions(3)
+            .Build();
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+        var ok = result.IsSuccess && result.Steps.Count <= 5;
+
+        results.Add(("max-transitions", ok
+            ? TestResult.Pass($"steps={result.Steps.Count}")
+            : TestResult.Error($"steps={result.Steps.Count}, success={result.IsSuccess}")));
+    }
+    catch (Exception ex) { results.Add(("max-transitions", TestResult.Error(ex.Message))); }
+
+    // 10-3: Builder validation
+    try
+    {
+        var threw = false;
+        try
+        {
+            new HandoffOrchestratorBuilder()
+                .AddAgent(new MockAgent("a", "mock", "A"), new HandoffTarget { AgentName = "nonexistent" })
+                .SetInitialAgent("a")
+                .Build();
+        }
+        catch (InvalidOperationException)
+        {
+            threw = true;
+        }
+
+        results.Add(("builder-validation", threw
+            ? TestResult.Pass("Invalid target detected")
+            : TestResult.Error("Expected validation error")));
+    }
+    catch (Exception ex) { results.Add(("builder-validation", TestResult.Error(ex.Message))); }
+
+    // 10-4: NoHandoffHandler
+    try
+    {
+        var handlerCalled = false;
+        var agent = new MockAgent("a", "mock", "A") { ResponseFunc = _ => "no handoff" };
+
+        var orch = new HandoffOrchestratorBuilder()
+            .AddAgent(agent)
+            .SetInitialAgent("a")
+            .SetNoHandoffHandler((name, step) =>
+            {
+                handlerCalled = true;
+                return Task.FromResult<Message?>(null);
+            })
+            .Build();
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+
+        results.Add(("no-handoff-handler", handlerCalled
+            ? TestResult.Pass("Handler called")
+            : TestResult.Error("Handler not called")));
+    }
+    catch (Exception ex) { results.Add(("no-handoff-handler", TestResult.Error(ex.Message))); }
+
+    // 10-5: Streaming with handoff events
+    try
+    {
+        var triage = new MockAgent("triage", "mock", "Triage")
+        {
+            ResponseFunc = _ => """{"handoff_to": "specialist"}"""
+        };
+        var specialist = new MockAgent("specialist", "mock", "Specialist")
+        {
+            ResponseFunc = _ => "Done"
+        };
+
+        var orch = new HandoffOrchestratorBuilder()
+            .AddAgent(triage, new HandoffTarget { AgentName = "specialist" })
+            .AddAgent(specialist, new HandoffTarget { AgentName = "triage" })
+            .SetInitialAgent("triage")
+            .Build();
+
+        var eventTypes = new List<OrchestrationEventType>();
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("go")))
+        {
+            eventTypes.Add(evt.EventType);
+        }
+
+        var hasHandoff = eventTypes.Contains(OrchestrationEventType.Handoff);
+        var hasCompleted = eventTypes.Contains(OrchestrationEventType.Completed);
+
+        results.Add(("streaming-handoff", hasHandoff && hasCompleted
+            ? TestResult.Pass($"events={string.Join(",", eventTypes)}")
+            : TestResult.Error($"events={string.Join(",", eventTypes)}")));
+    }
+    catch (Exception ex) { results.Add(("streaming-handoff", TestResult.Error(ex.Message))); }
+
+    return results;
+}
+
+// =============================================================================
+// 11. GroupChat Tests (Phase 3)
+// =============================================================================
+
+async Task<List<(string, TestResult)>> RunGroupChatTests()
+{
+    var results = new List<(string, TestResult)>();
+
+    // 11-1: RoundRobin 3 agents, 6 rounds
+    try
+    {
+        var order = new List<string>();
+        var a = new MockAgent("a", "mock", "A") { ResponseFunc = _ => { order.Add("a"); return "a-out"; } };
+        var b = new MockAgent("b", "mock", "B") { ResponseFunc = _ => { order.Add("b"); return "b-out"; } };
+        var c = new MockAgent("c", "mock", "C") { ResponseFunc = _ => { order.Add("c"); return "c-out"; } };
+
+        var orch = new GroupChatOrchestratorBuilder()
+            .AddAgent(a).AddAgent(b).AddAgent(c)
+            .WithRoundRobin()
+            .TerminateAfterRounds(6)
+            .Build();
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("start"));
+
+        var ok = result.IsSuccess && order.Count == 6
+            && string.Join(",", order) == "a,b,c,a,b,c";
+
+        results.Add(("roundrobin", ok
+            ? TestResult.Pass($"order={string.Join(",", order)}")
+            : TestResult.Error($"order={string.Join(",", order)}, count={order.Count}")));
+    }
+    catch (Exception ex) { results.Add(("roundrobin", TestResult.Error(ex.Message))); }
+
+    // 11-2: Keyword termination
+    try
+    {
+        var callCount = 0;
+        var agent = new MockAgent("critic", "mock", "Critic")
+        {
+            ResponseFunc = _ => { callCount++; return callCount >= 3 ? "APPROVED" : "needs work"; }
+        };
+
+        var orch = new GroupChatOrchestratorBuilder()
+            .AddAgent(agent)
+            .WithRoundRobin()
+            .TerminateOnKeyword("APPROVED")
+            .Build();
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("review"));
+
+        var ok = result.IsSuccess && callCount == 3
+            && GetTextFromMessage(result.FinalOutput).Contains("APPROVED");
+
+        results.Add(("keyword-termination", ok
+            ? TestResult.Pass($"rounds={callCount}")
+            : TestResult.Error($"rounds={callCount}, output={GetTextFromMessage(result.FinalOutput)}")));
+    }
+    catch (Exception ex) { results.Add(("keyword-termination", TestResult.Error(ex.Message))); }
+
+    // 11-3: MaxRounds safety limit
+    try
+    {
+        var agent = new MockAgent("talker", "mock", "Talker") { ResponseFunc = _ => "talking" };
+
+        var orch = new GroupChatOrchestratorBuilder()
+            .AddAgent(agent)
+            .WithRoundRobin()
+            .TerminateAfterRounds(100)
+            .SetMaxRounds(5)
+            .Build();
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+
+        var ok = result.IsSuccess && result.Steps.Count == 5;
+
+        results.Add(("max-rounds", ok
+            ? TestResult.Pass($"steps={result.Steps.Count}")
+            : TestResult.Error($"steps={result.Steps.Count}")));
+    }
+    catch (Exception ex) { results.Add(("max-rounds", TestResult.Error(ex.Message))); }
+
+    // 11-4: CompositeTermination (any)
+    try
+    {
+        var callCount = 0;
+        var agent = new MockAgent("worker", "mock", "Worker")
+        {
+            ResponseFunc = _ => { callCount++; return callCount >= 2 ? "DONE" : "working"; }
+        };
+
+        var orch = new GroupChatOrchestratorBuilder()
+            .AddAgent(agent)
+            .WithRoundRobin()
+            .WithTerminationCondition(new CompositeTermination(
+                requireAll: false,
+                new KeywordTermination("DONE"),
+                new MaxRoundsTermination(10)))
+            .Build();
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+
+        var ok = result.IsSuccess && callCount == 2;
+
+        results.Add(("composite-any", ok
+            ? TestResult.Pass($"rounds={callCount}")
+            : TestResult.Error($"rounds={callCount}")));
+    }
+    catch (Exception ex) { results.Add(("composite-any", TestResult.Error(ex.Message))); }
+
+    // 11-5: Streaming with SpeakerSelected events
+    try
+    {
+        var a = new MockAgent("a", "mock", "A") { ResponseFunc = _ => "hello" };
+        var b = new MockAgent("b", "mock", "B") { ResponseFunc = _ => "world" };
+
+        var orch = new GroupChatOrchestratorBuilder()
+            .AddAgent(a).AddAgent(b)
+            .WithRoundRobin()
+            .TerminateAfterRounds(2)
+            .Build();
+
+        var eventTypes = new List<OrchestrationEventType>();
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("go")))
+        {
+            eventTypes.Add(evt.EventType);
+        }
+
+        var speakerSelected = eventTypes.Count(e => e == OrchestrationEventType.SpeakerSelected);
+        var ok = speakerSelected == 2 && eventTypes.Contains(OrchestrationEventType.Completed);
+
+        results.Add(("streaming-speaker", ok
+            ? TestResult.Pass($"SpeakerSelected={speakerSelected}")
+            : TestResult.Error($"events={string.Join(",", eventTypes)}")));
+    }
+    catch (Exception ex) { results.Add(("streaming-speaker", TestResult.Error(ex.Message))); }
+
+    return results;
+}
+
+// =============================================================================
+// 12. Middleware Tests (Phase 4)
+// =============================================================================
+
+async Task<List<(string, TestResult)>> RunMiddlewareTests()
+{
+    var results = new List<(string, TestResult)>();
+
+    // 12-1: Middleware chain execution order
+    try
+    {
+        var order = new List<string>();
+        var middleware1 = new TestOrderMiddleware("m1", order);
+        var middleware2 = new TestOrderMiddleware("m2", order);
+
+        var agent = new MockAgent("a", "mock", "A")
+        {
+            ResponseFunc = _ => { order.Add("agent"); return "result"; }
+        };
+
+        var wrapped = IronHive.Core.Agent.AgentExtensions.WithMiddleware(agent, middleware1, middleware2);
+        await wrapped.InvokeAsync(MakeUserMessages("go"));
+
+        var expected = "m1-before,m2-before,agent,m2-after,m1-after";
+        var actual = string.Join(",", order);
+
+        results.Add(("chain-order", actual == expected
+            ? TestResult.Pass(actual)
+            : TestResult.Error($"expected={expected}, actual={actual}")));
+    }
+    catch (Exception ex) { results.Add(("chain-order", TestResult.Error(ex.Message))); }
+
+    // 12-2: Short-circuit middleware
+    try
+    {
+        var agentCalled = false;
+        var agent = new MockAgent("a", "mock", "A")
+        {
+            ResponseFunc = _ => { agentCalled = true; return "should not reach"; }
+        };
+
+        var middleware = new ShortCircuitMiddleware("intercepted");
+        var wrapped = IronHive.Core.Agent.AgentExtensions.WithMiddleware(agent, middleware);
+        var response = await wrapped.InvokeAsync(MakeUserMessages("go"));
+
+        var text = response.Message.Content.OfType<TextMessageContent>().First().Value;
+        var ok = !agentCalled && text == "intercepted";
+
+        results.Add(("short-circuit", ok
+            ? TestResult.Pass("Agent was not called, middleware returned response")
+            : TestResult.Error($"agentCalled={agentCalled}, text={text}")));
+    }
+    catch (Exception ex) { results.Add(("short-circuit", TestResult.Error(ex.Message))); }
+
+    // 12-3: Orchestrator-level middleware
+    try
+    {
+        var middlewareCalls = 0;
+        var middleware = new CountingMiddleware(() => middlewareCalls++);
+
+        var a1 = new MockAgent("a1", "mock", "A1") { ResponseFunc = _ => "out1" };
+        var a2 = new MockAgent("a2", "mock", "A2") { ResponseFunc = _ => "out2" };
+
+        var orch = new SequentialOrchestrator(new SequentialOrchestratorOptions
+        {
+            AgentMiddlewares = [middleware]
+        });
+        orch.AddAgents([a1, a2]);
+
+        await orch.ExecuteAsync(MakeUserMessages("go"));
+
+        var ok = middlewareCalls == 2; // once per agent
+
+        results.Add(("orchestrator-middleware", ok
+            ? TestResult.Pass($"middleware called {middlewareCalls} times")
+            : TestResult.Error($"middleware called {middlewareCalls} times, expected 2")));
+    }
+    catch (Exception ex) { results.Add(("orchestrator-middleware", TestResult.Error(ex.Message))); }
+
+    // 12-4: Properties delegation
+    try
+    {
+        var inner = new MockAgent("test", "openai", "Test")
+        {
+            Model = "gpt-4",
+            Instructions = "Be helpful"
+        };
+        var wrapped = IronHive.Core.Agent.AgentExtensions.WithMiddleware(
+            inner, new TestOrderMiddleware("m", new List<string>()));
+
+        var ok = wrapped.Name == "test" && wrapped.Provider == "openai"
+            && wrapped.Model == "gpt-4" && wrapped.Instructions == "Be helpful";
+
+        results.Add(("property-delegation", ok
+            ? TestResult.Pass("All properties delegated correctly")
+            : TestResult.Error($"Name={wrapped.Name}, Provider={wrapped.Provider}")));
+    }
+    catch (Exception ex) { results.Add(("property-delegation", TestResult.Error(ex.Message))); }
+
+    // 12-5: RetryMiddleware - successful on first attempt
+    try
+    {
+        var callCount = 0;
+        var agent = new MockAgent("a", "mock", "A")
+        {
+            ResponseFunc = _ => { callCount++; return "success"; }
+        };
+
+        var middleware = new RetryMiddleware(3);
+        var wrapped = IronHive.Core.Agent.AgentExtensions.WithMiddleware(agent, middleware);
+        await wrapped.InvokeAsync(MakeUserMessages("go"));
+
+        results.Add(("retry-first-success", callCount == 1
+            ? TestResult.Pass("Single call on first success")
+            : TestResult.Error($"callCount={callCount}, expected 1")));
+    }
+    catch (Exception ex) { results.Add(("retry-first-success", TestResult.Error(ex.Message))); }
+
+    // 12-6: RetryMiddleware - retry on failure
+    try
+    {
+        var retries = new List<int>();
+        var failCount = 0;
+
+        var middleware = new RetryMiddleware(new RetryMiddlewareOptions
+        {
+            MaxRetries = 3,
+            InitialDelay = TimeSpan.FromMilliseconds(10),
+            OnRetry = (name, attempt, ex, delay) => retries.Add(attempt)
+        });
+
+        // 2번 실패 후 성공
+        var failingMiddleware = new FailAfterMiddleware(
+            failUntil: 3,
+            onFail: () => failCount++);
+
+        var agent = new MockAgent("a", "mock", "A") { ResponseFunc = _ => "success" };
+        var wrapped = IronHive.Core.Agent.AgentExtensions.WithMiddleware(agent, middleware, failingMiddleware);
+        var response = await wrapped.InvokeAsync(MakeUserMessages("go"));
+
+        var text = response.Message.Content.OfType<TextMessageContent>().First().Value;
+        var ok = text == "success" && failCount == 2 && retries.Count == 2;
+
+        results.Add(("retry-on-failure", ok
+            ? TestResult.Pass($"Retried {retries.Count} times, failed {failCount} times")
+            : TestResult.Error($"text={text}, failCount={failCount}, retries={string.Join(",", retries)}")));
+    }
+    catch (Exception ex) { results.Add(("retry-on-failure", TestResult.Error(ex.Message))); }
+
+    // 12-7: RetryMiddleware - max retries exceeded
+    try
+    {
+        var middleware = new RetryMiddleware(new RetryMiddlewareOptions
+        {
+            MaxRetries = 2,
+            InitialDelay = TimeSpan.FromMilliseconds(10)
+        });
+
+        var alwaysFailMiddleware = new FailAfterMiddleware(failUntil: 100); // always fail
+        var agent = new MockAgent("a", "mock", "A") { ResponseFunc = _ => "should not reach" };
+        var wrapped = IronHive.Core.Agent.AgentExtensions.WithMiddleware(agent, middleware, alwaysFailMiddleware);
+
+        var threw = false;
+        try
+        {
+            await wrapped.InvokeAsync(MakeUserMessages("go"));
+        }
+        catch (InvalidOperationException)
+        {
+            threw = true;
+        }
+
+        results.Add(("retry-max-exceeded", threw
+            ? TestResult.Pass("Threw after max retries")
+            : TestResult.Error("Did not throw after max retries")));
+    }
+    catch (Exception ex) { results.Add(("retry-max-exceeded", TestResult.Error(ex.Message))); }
+
+    // 12-8: LoggingMiddleware - logs start and complete
+    try
+    {
+        var logs = new List<string>();
+        var middleware = new LoggingMiddleware(msg => logs.Add(msg));
+        var agent = new MockAgent("TestAgent", "mock", "Test") { ResponseFunc = _ => "response" };
+        var wrapped = IronHive.Core.Agent.AgentExtensions.WithMiddleware(agent, middleware);
+
+        await wrapped.InvokeAsync(MakeUserMessages("hello"));
+
+        var hasStart = logs.Any(l => l.Contains("starting"));
+        var hasComplete = logs.Any(l => l.Contains("completed"));
+        var hasAgentName = logs.Any(l => l.Contains("TestAgent"));
+        var ok = logs.Count == 2 && hasStart && hasComplete && hasAgentName;
+
+        results.Add(("logging-basic", ok
+            ? TestResult.Pass($"Logged {logs.Count} messages")
+            : TestResult.Error($"logs={string.Join("; ", logs)}")));
+    }
+    catch (Exception ex) { results.Add(("logging-basic", TestResult.Error(ex.Message))); }
+
+    // 12-9: LoggingMiddleware - logs errors
+    try
+    {
+        var logs = new List<string>();
+        var middleware = new LoggingMiddleware(msg => logs.Add(msg));
+        var failingMiddleware = new FailAfterMiddleware(failUntil: 100);
+        var agent = new MockAgent("a", "mock", "A") { ResponseFunc = _ => "x" };
+        var wrapped = IronHive.Core.Agent.AgentExtensions.WithMiddleware(agent, middleware, failingMiddleware);
+
+        try { await wrapped.InvokeAsync(MakeUserMessages("go")); } catch { }
+
+        var hasError = logs.Any(l => l.Contains("failed"));
+        results.Add(("logging-error", hasError
+            ? TestResult.Pass("Error logged correctly")
+            : TestResult.Error($"logs={string.Join("; ", logs)}")));
+    }
+    catch (Exception ex) { results.Add(("logging-error", TestResult.Error(ex.Message))); }
+
+    // 12-10: RetryMiddleware + LoggingMiddleware combined
+    try
+    {
+        var logs = new List<string>();
+        var retryMiddleware = new RetryMiddleware(new RetryMiddlewareOptions
+        {
+            MaxRetries = 2,
+            InitialDelay = TimeSpan.FromMilliseconds(10)
+        });
+        var loggingMiddleware = new LoggingMiddleware(msg => logs.Add(msg));
+
+        var failingMiddleware = new FailAfterMiddleware(failUntil: 2);
+        var agent = new MockAgent("a", "mock", "A") { ResponseFunc = _ => "success" };
+
+        // Logging wraps Retry wraps Failing wraps Agent
+        var wrapped = IronHive.Core.Agent.AgentExtensions.WithMiddleware(
+            agent, loggingMiddleware, retryMiddleware, failingMiddleware);
+
+        var response = await wrapped.InvokeAsync(MakeUserMessages("go"));
+        var text = response.Message.Content.OfType<TextMessageContent>().First().Value;
+
+        // Logging should see 1 start and 1 complete (from its perspective, retry is internal)
+        var ok = text == "success" && logs.Count == 2;
+
+        results.Add(("retry-logging-combined", ok
+            ? TestResult.Pass($"Combined middlewares work correctly")
+            : TestResult.Error($"text={text}, logs={logs.Count}")));
+    }
+    catch (Exception ex) { results.Add(("retry-logging-combined", TestResult.Error(ex.Message))); }
+
+    // 12-11: CachingMiddleware - cache hit
+    try
+    {
+        var callCount = 0;
+        var agent = new MockAgent("a", "mock", "A")
+        {
+            ResponseFunc = _ => { callCount++; return "cached"; }
+        };
+
+        var middleware = new CachingMiddleware(TimeSpan.FromMinutes(5));
+        var wrapped = IronHive.Core.Agent.AgentExtensions.WithMiddleware(agent, middleware);
+
+        await wrapped.InvokeAsync(MakeUserMessages("hello"));
+        await wrapped.InvokeAsync(MakeUserMessages("hello")); // cache hit
+
+        var ok = callCount == 1;
+        results.Add(("caching-hit", ok
+            ? TestResult.Pass("Agent called once, cache hit on second call")
+            : TestResult.Error($"callCount={callCount}, expected 1")));
+    }
+    catch (Exception ex) { results.Add(("caching-hit", TestResult.Error(ex.Message))); }
+
+    // 12-12: CachingMiddleware - cache miss on different input
+    try
+    {
+        var callCount = 0;
+        var agent = new MockAgent("a", "mock", "A")
+        {
+            ResponseFunc = _ => { callCount++; return $"resp-{callCount}"; }
+        };
+
+        var middleware = new CachingMiddleware(TimeSpan.FromMinutes(5));
+        var wrapped = IronHive.Core.Agent.AgentExtensions.WithMiddleware(agent, middleware);
+
+        await wrapped.InvokeAsync(MakeUserMessages("hello"));
+        await wrapped.InvokeAsync(MakeUserMessages("world")); // different input
+
+        var ok = callCount == 2;
+        results.Add(("caching-miss", ok
+            ? TestResult.Pass("Cache miss on different input")
+            : TestResult.Error($"callCount={callCount}, expected 2")));
+    }
+    catch (Exception ex) { results.Add(("caching-miss", TestResult.Error(ex.Message))); }
+
+    // 12-13: LoggingMiddleware streaming
+    try
+    {
+        var logs = new List<string>();
+        var middleware = new LoggingMiddleware(msg => logs.Add(msg));
+        var agent = new MockAgent("TestAgent", "mock", "Test") { ResponseFunc = _ => "streamed" };
+        var wrapped = IronHive.Core.Agent.AgentExtensions.WithMiddleware(agent, middleware);
+
+        var events = new List<StreamingMessageResponse>();
+        await foreach (var evt in wrapped.InvokeStreamingAsync(MakeUserMessages("hello")))
+        {
+            events.Add(evt);
+        }
+
+        var hasStreaming = logs.Any(l => l.Contains("streaming"));
+        var hasCompleted = logs.Any(l => l.Contains("completed"));
+
+        results.Add(("logging-streaming", hasStreaming && hasCompleted
+            ? TestResult.Pass($"Streaming logged: {logs.Count} messages")
+            : TestResult.Error($"logs={string.Join("; ", logs)}")));
+    }
+    catch (Exception ex) { results.Add(("logging-streaming", TestResult.Error(ex.Message))); }
+
+    return results;
+}
+
+// =============================================================================
 // Mock Agent
 // =============================================================================
 
@@ -1041,6 +1772,288 @@ string GetTextFromStepResult(AgentStepResult step)
     if (step.Response?.Message == null) return "";
     return step.Response.Message.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "";
 }
+
+// =============================================================================
+// 13. LLM Integration Tests (Cycle 3)
+// =============================================================================
+
+async Task<List<(string, TestResult)>> RunLlmIntegrationTests()
+{
+    var results = new List<(string, TestResult)>();
+
+    // Load .env file
+    LoadEnvFile();
+
+    var openAiKey = GetEnv("OPENAI_API_KEY");
+    var anthropicKey = GetEnv("ANTHROPIC_API_KEY");
+
+    // Check if any API key is available
+    if ((string.IsNullOrWhiteSpace(openAiKey) || openAiKey.StartsWith("sk-xxxx")) &&
+        (string.IsNullOrWhiteSpace(anthropicKey) || anthropicKey.StartsWith("sk-ant-xxxx")))
+    {
+        results.Add(("skip", TestResult.Skip("No API keys configured (OPENAI_API_KEY or ANTHROPIC_API_KEY)")));
+        return results;
+    }
+
+    // Create HiveService with available providers
+    var builder = new HiveServiceBuilder();
+
+    string? primaryProvider = null;
+    string? primaryModel = null;
+
+    if (!string.IsNullOrWhiteSpace(openAiKey) && !openAiKey.StartsWith("sk-xxxx"))
+    {
+        builder.AddOpenAIProviders("openai", new OpenAIConfig { ApiKey = openAiKey }, OpenAIServiceType.Responses);
+        primaryProvider = "openai";
+        primaryModel = GetEnv("OPENAI_MODEL") ?? "gpt-4o-mini";
+    }
+
+    if (!string.IsNullOrWhiteSpace(anthropicKey) && !anthropicKey.StartsWith("sk-ant-xxxx"))
+    {
+        builder.AddAnthropicProviders("anthropic", new AnthropicConfig { ApiKey = anthropicKey });
+        if (primaryProvider == null)
+        {
+            primaryProvider = "anthropic";
+            primaryModel = GetEnv("ANTHROPIC_MODEL") ?? "claude-3-5-haiku-latest";
+        }
+    }
+
+    var hive = builder.Build();
+    var messageService = hive.Services.GetRequiredService<IMessageService>();
+
+    // Helper to create real LLM agent
+    IAgent CreateLlmAgent(string name, string description, string? instructions = null) =>
+        new BasicAgent(messageService)
+        {
+            Provider = primaryProvider!,
+            Model = primaryModel!,
+            Name = name,
+            Description = description,
+            Instructions = instructions,
+            Parameters = new MessageGenerationParameters { MaxTokens = 150 }
+        };
+
+    // 13-1: LLM Handoff — Triage → Specialist → Response
+    try
+    {
+        var triageAgent = CreateLlmAgent(
+            "triage",
+            "Initial triage agent",
+            """
+            You are a triage agent. Analyze the user's request.
+            If it's a technical question, respond with EXACTLY this JSON (no other text):
+            {"handoff_to": "tech-support", "context": "User has a technical question"}
+            If it's a general question, answer directly without JSON.
+            """);
+
+        var techAgent = CreateLlmAgent(
+            "tech-support",
+            "Technical support specialist",
+            "You are a technical support specialist. Provide a brief, helpful answer to technical questions. Keep it under 50 words.");
+
+        var orch = new HandoffOrchestratorBuilder()
+            .AddAgent(triageAgent, new HandoffTarget { AgentName = "tech-support", Description = "Technical support" })
+            .AddAgent(techAgent, new HandoffTarget { AgentName = "triage", Description = "Return to triage" })
+            .SetInitialAgent("triage")
+            .SetMaxTransitions(3)
+            .Build();
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("How do I fix a null reference exception in C#?"));
+
+        var ok = result.IsSuccess && result.Steps.Count >= 2;
+        var finalText = GetTextFromMessage(result.FinalOutput);
+
+        results.Add(("llm-handoff", ok
+            ? TestResult.Pass($"steps={result.Steps.Count}, output={finalText[..Math.Min(80, finalText.Length)]}...")
+            : TestResult.Error($"steps={result.Steps.Count}, success={result.IsSuccess}, error={result.Error}")));
+    }
+    catch (Exception ex) { results.Add(("llm-handoff", TestResult.Error(ex.Message))); }
+
+    // 13-2: LLM GroupChat — Two critics reviewing content
+    try
+    {
+        var writer = CreateLlmAgent(
+            "writer",
+            "Content writer",
+            "You are a content writer. Write a single sentence about artificial intelligence. Keep it brief.");
+
+        var critic1 = CreateLlmAgent(
+            "grammar-critic",
+            "Grammar reviewer",
+            """
+            You are a grammar critic. Review the previous message for grammar issues.
+            If the grammar is perfect, respond with exactly: APPROVED
+            Otherwise, suggest one specific improvement.
+            """);
+
+        var critic2 = CreateLlmAgent(
+            "style-critic",
+            "Style reviewer",
+            """
+            You are a style critic. Review the previous message for clarity and style.
+            If the style is excellent, respond with exactly: APPROVED
+            Otherwise, suggest one specific improvement.
+            """);
+
+        var orch = new GroupChatOrchestratorBuilder()
+            .AddAgent(writer)
+            .AddAgent(critic1)
+            .AddAgent(critic2)
+            .WithRoundRobin()
+            .WithTerminationCondition(new CompositeTermination(
+                requireAll: false,
+                new KeywordTermination("APPROVED"),
+                new MaxRoundsTermination(4)))
+            .SetMaxRounds(6)
+            .Build();
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("Write and review a sentence about AI."));
+
+        var ok = result.IsSuccess && result.Steps.Count >= 2;
+        var finalText = GetTextFromMessage(result.FinalOutput);
+
+        results.Add(("llm-groupchat", ok
+            ? TestResult.Pass($"rounds={result.Steps.Count}, output={finalText[..Math.Min(80, finalText.Length)]}...")
+            : TestResult.Error($"rounds={result.Steps.Count}, success={result.IsSuccess}, error={result.Error}")));
+    }
+    catch (Exception ex) { results.Add(("llm-groupchat", TestResult.Error(ex.Message))); }
+
+    // 13-3: LLM SpeakerSelector — LLM chooses next speaker
+    try
+    {
+        var mathAgent = CreateLlmAgent(
+            "math-expert",
+            "Mathematics expert for calculations",
+            "You are a math expert. Only answer math questions. Keep answers brief.");
+
+        var historyAgent = CreateLlmAgent(
+            "history-expert",
+            "History expert for historical questions",
+            "You are a history expert. Only answer history questions. Keep answers brief.");
+
+        var selectorAgent = CreateLlmAgent(
+            "selector",
+            "Agent that selects the next speaker",
+            null); // LlmSpeakerSelector will provide its own instructions
+
+        var selector = new LlmSpeakerSelector(selectorAgent);
+
+        var orch = new GroupChatOrchestratorBuilder()
+            .AddAgent(mathAgent)
+            .AddAgent(historyAgent)
+            .WithSpeakerSelector(selector)
+            .TerminateAfterRounds(1)
+            .Build();
+
+        // Ask a math question — should select math-expert
+        var result = await orch.ExecuteAsync(MakeUserMessages("What is 15 multiplied by 7?"));
+
+        var selectedAgent = result.Steps.FirstOrDefault()?.AgentName;
+        var ok = result.IsSuccess && selectedAgent == "math-expert";
+
+        results.Add(("llm-speaker-math", ok
+            ? TestResult.Pass($"Selected: {selectedAgent} (correct)")
+            : TestResult.Error($"Selected: {selectedAgent}, expected: math-expert")));
+
+        // Ask a history question — should select history-expert
+        var result2 = await orch.ExecuteAsync(MakeUserMessages("When did World War II end?"));
+
+        var selectedAgent2 = result2.Steps.FirstOrDefault()?.AgentName;
+        var ok2 = result2.IsSuccess && selectedAgent2 == "history-expert";
+
+        results.Add(("llm-speaker-history", ok2
+            ? TestResult.Pass($"Selected: {selectedAgent2} (correct)")
+            : TestResult.Error($"Selected: {selectedAgent2}, expected: history-expert, success={result2.IsSuccess}")));
+    }
+    catch (Exception ex)
+    {
+        results.Add(("llm-speaker-math", TestResult.Error(ex.Message)));
+        results.Add(("llm-speaker-history", TestResult.Error(ex.Message)));
+    }
+
+    // 13-4: Handoff streaming with real LLM
+    try
+    {
+        var agent1 = CreateLlmAgent(
+            "greeter",
+            "Greeting agent",
+            """
+            You are a greeter. When you receive a message, respond with a brief greeting,
+            then hand off to the helper by responding with EXACTLY this JSON:
+            {"handoff_to": "helper", "context": "User needs assistance"}
+            """);
+
+        var agent2 = CreateLlmAgent(
+            "helper",
+            "Helper agent",
+            "You are a helper. Provide a brief, helpful response. End with 'Hope this helps!'");
+
+        var orch = new HandoffOrchestratorBuilder()
+            .AddAgent(agent1, new HandoffTarget { AgentName = "helper", Description = "Helper" })
+            .AddAgent(agent2, new HandoffTarget { AgentName = "greeter", Description = "Greeter" })
+            .SetInitialAgent("greeter")
+            .Build();
+
+        var eventTypes = new List<OrchestrationEventType>();
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("Hello!")))
+        {
+            eventTypes.Add(evt.EventType);
+        }
+
+        var hasHandoff = eventTypes.Contains(OrchestrationEventType.Handoff);
+        var hasCompleted = eventTypes.Contains(OrchestrationEventType.Completed);
+        var agentStartedCount = eventTypes.Count(e => e == OrchestrationEventType.AgentStarted);
+
+        var ok = hasHandoff && hasCompleted && agentStartedCount >= 2;
+
+        results.Add(("llm-streaming-handoff", ok
+            ? TestResult.Pass($"events: Handoff={hasHandoff}, AgentStarted={agentStartedCount}")
+            : TestResult.Error($"Handoff={hasHandoff}, Completed={hasCompleted}, AgentStarted={agentStartedCount}")));
+    }
+    catch (Exception ex) { results.Add(("llm-streaming-handoff", TestResult.Error(ex.Message))); }
+
+    return results;
+}
+
+// =============================================================================
+// Environment Helpers
+// =============================================================================
+
+void LoadEnvFile()
+{
+    // Try multiple locations for .env file
+    var searchPaths = new[]
+    {
+        Path.Combine(Directory.GetCurrentDirectory(), ".env"),
+        Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "..", ".env"),
+        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".env"),
+        @"D:\data\ironhive\.env"
+    };
+
+    foreach (var envPath in searchPaths)
+    {
+        if (File.Exists(envPath))
+        {
+            foreach (var line in File.ReadAllLines(envPath))
+            {
+                var trimmed = line.Trim();
+                if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith('#'))
+                    continue;
+
+                var idx = trimmed.IndexOf('=');
+                if (idx > 0)
+                {
+                    var key = trimmed[..idx].Trim();
+                    var value = trimmed[(idx + 1)..].Trim().Trim('"', '\'');
+                    Environment.SetEnvironmentVariable(key, value);
+                }
+            }
+            break;
+        }
+    }
+}
+
+string? GetEnv(string key) => Environment.GetEnvironmentVariable(key);
 
 // =============================================================================
 // Mock Agent Implementation
@@ -1175,8 +2188,103 @@ class SimpleExecutor<TInput, TOutput> : ITypedExecutor<TInput, TOutput>
 // TestResult Record
 // =============================================================================
 
-record TestResult(bool Success, string Message)
+record TestResult(bool Success, string Message, bool Skipped = false)
 {
     public static TestResult Pass(string message) => new(true, message);
     public static TestResult Error(string error) => new(false, error);
+    public static TestResult Skip(string reason) => new(true, reason, true);
+}
+
+// =============================================================================
+// Middleware Helper Classes
+// =============================================================================
+
+class TestOrderMiddleware : IAgentMiddleware
+{
+    private readonly string _name;
+    private readonly List<string> _order;
+
+    public TestOrderMiddleware(string name, List<string> order)
+    {
+        _name = name;
+        _order = order;
+    }
+
+    public async Task<MessageResponse> InvokeAsync(
+        IAgent agent, IEnumerable<Message> messages,
+        Func<IEnumerable<Message>, Task<MessageResponse>> next,
+        CancellationToken ct = default)
+    {
+        _order.Add($"{_name}-before");
+        var result = await next(messages);
+        _order.Add($"{_name}-after");
+        return result;
+    }
+}
+
+class ShortCircuitMiddleware : IAgentMiddleware
+{
+    private readonly string _response;
+    public ShortCircuitMiddleware(string response) { _response = response; }
+
+    public Task<MessageResponse> InvokeAsync(
+        IAgent agent, IEnumerable<Message> messages,
+        Func<IEnumerable<Message>, Task<MessageResponse>> next,
+        CancellationToken ct = default)
+    {
+        return Task.FromResult(new MessageResponse
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            DoneReason = MessageDoneReason.EndTurn,
+            Message = new AssistantMessage
+            {
+                Content = [new TextMessageContent { Value = _response }]
+            }
+        });
+    }
+}
+
+class CountingMiddleware : IAgentMiddleware
+{
+    private readonly Action _onCall;
+    public CountingMiddleware(Action onCall) { _onCall = onCall; }
+
+    public async Task<MessageResponse> InvokeAsync(
+        IAgent agent, IEnumerable<Message> messages,
+        Func<IEnumerable<Message>, Task<MessageResponse>> next,
+        CancellationToken ct = default)
+    {
+        _onCall();
+        return await next(messages);
+    }
+}
+
+/// <summary>
+/// 지정된 횟수만큼 실패한 후 성공하는 미들웨어
+/// </summary>
+class FailAfterMiddleware : IAgentMiddleware
+{
+    private readonly int _failUntil;
+    private readonly Action? _onFail;
+    private int _callCount;
+
+    public FailAfterMiddleware(int failUntil, Action? onFail = null)
+    {
+        _failUntil = failUntil;
+        _onFail = onFail;
+    }
+
+    public Task<MessageResponse> InvokeAsync(
+        IAgent agent, IEnumerable<Message> messages,
+        Func<IEnumerable<Message>, Task<MessageResponse>> next,
+        CancellationToken ct = default)
+    {
+        _callCount++;
+        if (_callCount < _failUntil)
+        {
+            _onFail?.Invoke();
+            throw new InvalidOperationException($"Simulated failure {_callCount}");
+        }
+        return next(messages);
+    }
 }

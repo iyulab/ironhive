@@ -87,7 +87,7 @@ chat-api-tests에 **tool calling 시나리오** 추가. 모든 Provider에서 Fu
 | `src/IronHive.Providers.OpenAI/Extensions/MessageGenerationRequestExtensions.cs` | Responses API: `{"type":"object","properties":{}}`, ChatCompletion API: 동일 |
 | `src/IronHive.Providers.Anthropic/Extensions/MessageGenerationRequestExtensions.cs` | `{"type":"object"}` |
 | `src/IronHive.Providers.GoogleAI/Extensions/MessageGenerationRequestExtensions.cs` | `{"type":"object"}` |
-| `local-tests/chat-api-tests/Program.cs` | TestToolCalling 시나리오 추가 |
+| `tests/chat-api-tests/Program.cs` | TestToolCalling 시나리오 추가 |
 
 ## 설계 인사이트
 

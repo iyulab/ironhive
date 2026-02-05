@@ -82,7 +82,7 @@ grep StartsWith("o1    → ModelCapabilityResolver.cs만 매칭
 grep Contains("-o1     → ModelCapabilityResolver.cs만 매칭
 
 # 회귀 테스트: 80 PASS / 3 SKIP / 0 FAIL
-local-tests/chat-api-tests/run.ps1
+tests/chat-api-tests/run.ps1
 ```
 
 ## 변경된 파일
@@ -95,7 +95,7 @@ local-tests/chat-api-tests/run.ps1
 | `src/IronHive.Providers.OpenAI/OpenAIMessageGenerator.cs` | `SelectGenerator` 제거, caps 기반 라우팅 |
 | `src/IronHive.Providers.OpenAI/OpenAIChatMessageGenerator.cs` | `_compatibility` 저장, caps resolve + 전달 |
 | `src/IronHive.Providers.OpenAI/OpenAIResponseMessageGenerator.cs` | `_compatibility` 저장, caps resolve + 전달 |
-| `local-tests/chat-api-tests/Program.cs` | xAI 등록에 `Compatibility = XAI` 추가 |
+| `tests/chat-api-tests/Program.cs` | xAI 등록에 `Compatibility = XAI` 추가 |
 
 ## 누적 시나리오 현황
 

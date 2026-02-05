@@ -89,7 +89,7 @@ chat-api-tests에 **4개 고급 시나리오** 일괄 추가. 넓은 범위로 S
 
 | 파일 | 변경 |
 |------|------|
-| `local-tests/chat-api-tests/Program.cs` | 4개 시나리오 추가 (TestToolWithParams, TestStreamingToolCall, TestMultipleTools, TestThinkingEffortNone) |
+| `tests/chat-api-tests/Program.cs` | 4개 시나리오 추가 (TestToolWithParams, TestStreamingToolCall, TestMultipleTools, TestThinkingEffortNone) |
 
 ## 누적 시나리오 현황
 

@@ -75,14 +75,14 @@ dotnet build IronHive.slnx
 dotnet test IronHive.slnx
 
 # 전체 로컬 테스트: 100 PASS / 3 SKIP / 0 FAIL
-local-tests/chat-api-tests/run.ps1
+tests/chat-api-tests/run.ps1
 ```
 
 ## 변경된 파일
 
 | 파일 | 작업 |
 |------|------|
-| `local-tests/chat-api-tests/Program.cs` | `TestParallelToolCalls`, `TestTopP` 시나리오 추가 |
+| `tests/chat-api-tests/Program.cs` | `TestParallelToolCalls`, `TestTopP` 시나리오 추가 |
 
 ## 누적 시나리오 현황
 

@@ -116,7 +116,7 @@ Cycle 6에서 도출된 SDK 이슈 3건 수정 + **3개 시나리오** 추가. P
 
 | 파일 | 변경 |
 |------|------|
-| `local-tests/chat-api-tests/Program.cs` | 3개 시나리오 추가 (TestErrorModel, TestNoSystemPrompt, TestTemperature) |
+| `tests/chat-api-tests/Program.cs` | 3개 시나리오 추가 (TestErrorModel, TestNoSystemPrompt, TestTemperature) |
 | `src/IronHive.Providers.OpenAI/Payloads/Responses/ResponsesRequest.cs` | Stop 프로퍼티 추가 |
 | `src/IronHive.Providers.OpenAI/Extensions/MessageGenerationRequestExtensions.cs` | o-series/xAI 파라미터 가드 4건 |
 

@@ -77,7 +77,7 @@ chat-api-tests에 **streaming 시나리오** 추가. 기존 basic(non-streaming)
 |------|------|
 | `src/IronHive.Providers.OpenAI/Extensions/MessageGenerationRequestExtensions.cs` | ThinkingEffort default → Low |
 | `src/IronHive.Providers.GoogleAI/Clients/GoogleAIGenerateContentClient.cs` | streaming path에 `?alt=sse` 추가 |
-| `local-tests/chat-api-tests/Program.cs` | multi-scenario 구조, streaming 시나리오, 이벤트 진단 |
+| `tests/chat-api-tests/Program.cs` | multi-scenario 구조, streaming 시나리오, 이벤트 진단 |
 
 ## 다음 사이클
 

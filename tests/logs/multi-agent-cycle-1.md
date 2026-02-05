@@ -71,15 +71,15 @@ dotnet build IronHive.slnx
 dotnet test IronHive.slnx
 
 # 오케스트레이션 테스트: 28 PASS / 0 FAIL
-local-tests/multi-agent-test/run.ps1
+tests/multi-agent-test/run.ps1
 ```
 
 ## 변경된 파일
 
 | 파일 | 작업 |
 |------|------|
-| `local-tests/multi-agent-test/Program.cs` | MockAgent, 28개 시나리오, TestResult 프레임워크 전체 구현 |
-| `local-tests/multi-agent-test/run.ps1` | .env 의존성 제거, mock agent 전용 스크립트로 업데이트 |
+| `tests/multi-agent-test/Program.cs` | MockAgent, 28개 시나리오, TestResult 프레임워크 전체 구현 |
+| `tests/multi-agent-test/run.ps1` | .env 의존성 제거, mock agent 전용 스크립트로 업데이트 |
 
 ## 도출된 SDK 이슈
 

@@ -139,5 +139,20 @@ public enum OrchestrationEventType
     /// <summary>
     /// 승인 거부됨
     /// </summary>
-    ApprovalDenied
+    ApprovalDenied,
+
+    /// <summary>
+    /// 에이전트가 다른 에이전트에게 제어권 위임
+    /// </summary>
+    Handoff,
+
+    /// <summary>
+    /// GroupChat에서 발언자 선택됨
+    /// </summary>
+    SpeakerSelected,
+
+    /// <summary>
+    /// 핸드오프 없음 — 인간 입력 필요
+    /// </summary>
+    HumanInputRequired
 }
