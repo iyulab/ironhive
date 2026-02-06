@@ -258,14 +258,14 @@ public sealed class FunctionTool : ITool
             // IAsyncEnumerable<T>
             if (def == typeof(IAsyncEnumerable<>))
             {
-                return await HandleAsyncEnumerableAsync(result, cancellationToken).ConfigureAwait(false);
+                return await HandleAsyncEnumerableAsync(result, 1000, cancellationToken).ConfigureAwait(false);
             }
         }
 
         // IAsyncEnumerable<T> 구현 인터페이스인 경우
         if (returnType.GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IAsyncEnumerable<>)))
         {
-            return await HandleAsyncEnumerableAsync(result, cancellationToken).ConfigureAwait(false);
+            return await HandleAsyncEnumerableAsync(result, 1000, cancellationToken).ConfigureAwait(false);
         }
 
         // 커스텀 awaitable (인스턴스 메서드 GetAwaiter 존재 시)
@@ -280,10 +280,13 @@ public sealed class FunctionTool : ITool
     }
 
     /// <summary>
-    /// IAsyncEnumerable를 적절히 처리합니다.
+    /// IAsyncEnumerable를 적절히 처리합니다. 
     /// </summary>
+    /// <param name="src">처리할 IAsyncEnumerable 소스</param>
+    /// <param name="maxItems">최대 항목 수</param>
+    /// <param name="ct">취소 토큰</param>
     private static async Task<List<object?>> HandleAsyncEnumerableAsync(
-        object src, CancellationToken ct, int maxItems = 1000)
+        object src, int maxItems, CancellationToken ct)
     {
         var result = new List<object?>();
 
@@ -293,13 +296,10 @@ public sealed class FunctionTool : ITool
             type.GetMethod("GetAsyncEnumerator", Type.EmptyTypes)
             ?? throw new InvalidOperationException("IAsyncEnumerable does not have GetAsyncEnumerator.");
 
-        var enumerator = getAsyncEnumerator.GetParameters().Length == 1
+        var enumerator = (getAsyncEnumerator.GetParameters().Length == 1
             ? getAsyncEnumerator.Invoke(src, new object[] { ct })
-            : getAsyncEnumerator.Invoke(src, null);
-        if (enumerator is null)
-            throw new InvalidOperationException(
-                $"GetAsyncEnumerator returned null for type {src.GetType().FullName}.");
-
+            : getAsyncEnumerator.Invoke(src, null)) 
+            ?? throw new InvalidOperationException($"GetAsyncEnumerator returned null for type {src.GetType().FullName}.");
         var moveNextAsync = enumerator.GetType().GetMethod("MoveNextAsync")
             ?? throw new InvalidOperationException("Async enumerator missing MoveNextAsync.");
         var currentProp = enumerator.GetType().GetProperty("Current")
@@ -335,9 +335,15 @@ public sealed class FunctionTool : ITool
         {
             if (disposeAsync is not null)
             {
-                var disposeResult = disposeAsync.Invoke(enumerator, null)
-                    ?? throw new InvalidOperationException("DisposeAsync returned null.");
-                await (ValueTask)disposeResult;
+                try
+                {
+                    var disposeResult = disposeAsync.Invoke(enumerator, null);
+                    await (ValueTask)disposeResult!;
+                }
+                catch
+                {
+                    // finally 블록 내 예외 무시 (CA2219)
+                }
             }
         }
 

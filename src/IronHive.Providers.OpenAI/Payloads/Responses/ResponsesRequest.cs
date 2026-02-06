@@ -1,4 +1,6 @@
-﻿using System.Text.Json.Serialization;
+﻿using IronHive.Abstractions.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace IronHive.Providers.OpenAI.Payloads.Responses;
 
@@ -6,7 +8,7 @@ namespace IronHive.Providers.OpenAI.Payloads.Responses;
 /// POST /v1/responses 요청 바디에 해당하는 클래스
 /// <see href="https://platform.openai.com/docs/api-reference/responses/create"/>"/>
 /// </summary>
-public class ResponsesRequest
+public class ResponsesRequest : JsonExtensionBase
 {
     /// <summary>
     /// 백그라운드로 처리할지 여부 (선택, 기본값: false). store=true가 강제 됩니다.

@@ -13,7 +13,11 @@ namespace IronHive.Providers.OpenAI.Compatible;
 /// </summary>
 internal class CompatibleChatMessageGenerator : OpenAIChatMessageGenerator
 {
-    public CompatibleChatMessageGenerator(CompatibleConfig config) 
+    protected readonly CompatibleConfig _config;
+
+    public CompatibleChatMessageGenerator(CompatibleConfig config)
         : base(config.ToOpenAI())
-    { }
+    {
+        _config = config;
+    }
 }

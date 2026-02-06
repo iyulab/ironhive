@@ -3,7 +3,6 @@ using System.Text.Json;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using IronHive.Providers.OpenAI.Payloads.Responses;
-using System.Text.Json.Nodes;
 
 namespace IronHive.Providers.OpenAI.Clients;
 
@@ -25,10 +24,8 @@ public class OpenAIResponsesClient : OpenAIClientBase
             throw new HttpRequestException(error);
         response.EnsureSuccessStatusCode();
 
-        var raw = await response.Content.ReadFromJsonAsync<JsonObject>(_jsonOptions, cancellationToken);
-        var message = JsonSerializer.Deserialize<ResponsesResponse>(raw, _jsonOptions)
+        var message = await response.Content.ReadFromJsonAsync<ResponsesResponse>(_jsonOptions, cancellationToken)
             ?? throw new InvalidOperationException("Failed to deserialize response.");
-        message.Raw = raw;
         return message;
     }
 
@@ -64,11 +61,9 @@ public class OpenAIResponsesClient : OpenAIClientBase
                 if (!data.StartsWith('{') || !data.EndsWith('}'))
                     continue;
 
-                var raw = JsonSerializer.Deserialize<JsonObject>(data, _jsonOptions);
-                var message = JsonSerializer.Deserialize<StreamingResponsesResponse>(raw, _jsonOptions);
+                var message = JsonSerializer.Deserialize<StreamingResponsesResponse>(data, _jsonOptions);
                 if (message != null)
                 {
-                    message.Raw = raw;
                     yield return message;
                 }
             }

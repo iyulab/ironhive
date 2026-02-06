@@ -33,4 +33,12 @@ public class GoogleAIConfig
         },
         WriteIndented = true // 디버깅을 위해 들여쓰기 설정
     };
+
+    /// <summary>
+    /// API key 유무를 검증합니다.
+    /// </summary>
+    public bool Validate()
+    {
+        return !string.IsNullOrWhiteSpace(ApiKey);
+    }
 }

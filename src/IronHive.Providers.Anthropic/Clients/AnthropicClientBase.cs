@@ -28,10 +28,6 @@ public abstract class AnthropicClientBase : IDisposable
 
     private static HttpClient CreateHttpClient(AnthropicConfig config)
     {
-        if (string.IsNullOrWhiteSpace(config.ApiKey))
-            throw new ArgumentException(
-                "Anthropic API key is required. Set it via AnthropicConfig.ApiKey.", nameof(config));
-
         var client = new HttpClient
         {
             BaseAddress = string.IsNullOrWhiteSpace(config.BaseUrl)
@@ -46,7 +42,9 @@ public abstract class AnthropicClientBase : IDisposable
             },
         };
 
-        client.DefaultRequestHeaders.Add(AnthropicConstants.AuthorizationHeaderName, config.ApiKey);
+        if (!string.IsNullOrWhiteSpace(config.ApiKey))
+            client.DefaultRequestHeaders.Add(
+                AnthropicConstants.AuthorizationHeaderName, config.ApiKey);
 
         return client;
     }

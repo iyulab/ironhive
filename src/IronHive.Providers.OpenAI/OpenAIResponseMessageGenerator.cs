@@ -36,8 +36,9 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var req = request.ToOpenAI();
-        var res = await _client.PostResponsesAsync(req, cancellationToken);
+        var req = PostProcessRequest<ResponsesRequest>(request.ToOpenAI());
+        var res = PostProcessResponse<ResponsesResponse>(
+            await _client.PostResponsesAsync(req, cancellationToken));
 
         var content = new List<MessageContent>();
         foreach (var item in res.Output)
@@ -124,7 +125,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var req = request.ToOpenAI();
+        var req = PostProcessRequest<ResponsesRequest>(request.ToOpenAI());
 
         int pIndex = 0; // 컨텐츠 파트 인덱스(배열 컨텐츠 추적)
         var reason = MessageDoneReason.EndTurn;

@@ -84,4 +84,24 @@ public class OpenRouterProviderPreferences
     /// Provider 우선순위 목록입니다.
     /// </summary>
     public IList<string>? Order { get; set; }
+
+    /// <summary>
+    /// 사용하지 않을 Provider 목록입니다.
+    /// </summary>
+    public IList<string>? Ignore { get; set; }
+
+    /// <summary>
+    /// 선호 양자화 레벨입니다 ("fp32", "fp16", "bf16", "int8", "int4").
+    /// </summary>
+    public IList<string>? Quantizations { get; set; }
+
+    /// <summary>
+    /// 데이터 수집 제어입니다: "allow" 또는 "deny"
+    /// </summary>
+    public string? DataCollection { get; set; }
+
+    /// <summary>
+    /// 정렬 기준입니다: "price", "throughput", "latency"
+    /// </summary>
+    public string? Sort { get; set; }
 }

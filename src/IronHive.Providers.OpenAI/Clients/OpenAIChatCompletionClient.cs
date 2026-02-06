@@ -1,6 +1,5 @@
 ﻿using System.Net.Http.Json;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Text;
 using System.Runtime.CompilerServices;
 using IronHive.Providers.OpenAI.Payloads.ChatCompletion;
@@ -25,10 +24,8 @@ public class OpenAIChatCompletionClient : OpenAIClientBase
             throw new HttpRequestException(error);
         response.EnsureSuccessStatusCode();
 
-        var raw = await response.Content.ReadFromJsonAsync<JsonObject>(_jsonOptions, cancellationToken);
-        var message = JsonSerializer.Deserialize<ChatCompletionResponse>(raw, _jsonOptions)
+        var message = await response.Content.ReadFromJsonAsync<ChatCompletionResponse>(_jsonOptions, cancellationToken)
             ?? throw new InvalidOperationException("Failed to deserialize response.");
-        message.Raw = raw;
         return message;
     }
 
@@ -64,11 +61,9 @@ public class OpenAIChatCompletionClient : OpenAIClientBase
                 if (!data.StartsWith('{') || !data.EndsWith('}'))
                     continue;
 
-                var raw = JsonSerializer.Deserialize<JsonObject>(data, _jsonOptions);
-                var message = JsonSerializer.Deserialize<StreamingChatCompletionResponse>(raw, _jsonOptions);
+                var message = JsonSerializer.Deserialize<StreamingChatCompletionResponse>(data, _jsonOptions);
                 if (message != null)
                 {
-                    message.Raw = raw;
                     yield return message;
                 }
             }

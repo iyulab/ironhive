@@ -36,8 +36,9 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var req = request.ToOpenAILegacy();
-        var res = await _client.PostChatCompletionAsync(req, cancellationToken);
+        var req = PostProcessRequest<ChatCompletionRequest>(request.ToOpenAILegacy());
+        var res = PostProcessResponse<ChatCompletionResponse>(
+            await _client.PostChatCompletionAsync(req, cancellationToken));
         var choice = res.Choices?.FirstOrDefault();
         var content = new List<MessageContent>();
 
@@ -116,7 +117,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var req = request.ToOpenAILegacy();
+        var req = PostProcessRequest<ChatCompletionRequest>(request.ToOpenAILegacy());
 
         // 인덱스 추적 관리용
         (int, MessageContent)? current = null;

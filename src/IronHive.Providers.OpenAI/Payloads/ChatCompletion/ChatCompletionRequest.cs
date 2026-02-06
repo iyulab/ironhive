@@ -1,8 +1,10 @@
-﻿using System.Text.Json.Serialization;
+﻿using IronHive.Abstractions.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace IronHive.Providers.OpenAI.Payloads.ChatCompletion;
 
-public class ChatCompletionRequest
+public class ChatCompletionRequest : JsonExtensionBase
 {
     [JsonPropertyName("messages")]
     public required IEnumerable<ChatMessage> Messages { get; set; }

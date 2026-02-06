@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Serialization;
+﻿using IronHive.Abstractions.Json;
+using System.Text.Json.Serialization;
 
 namespace IronHive.Providers.OpenAI.Payloads.Responses;
 
@@ -44,7 +45,7 @@ namespace IronHive.Providers.OpenAI.Payloads.Responses;
 [JsonDerivedType(typeof(StreamingReasoningTextDeltaResponse), "response.reasoning_text.delta")]
 [JsonDerivedType(typeof(StreamingReasoningTextDoneResponse), "response.reasoning_text.done")]
 [JsonDerivedType(typeof(StreamingErrorResponse), "error")]
-public abstract class StreamingResponsesResponse: JsonPayloadResponse
+public abstract class StreamingResponsesResponse: JsonExtensionBase
 {
     [JsonPropertyName("sequence_number")]
     public int SequenceNumber { get; set; }

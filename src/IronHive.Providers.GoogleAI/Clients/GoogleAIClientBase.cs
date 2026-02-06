@@ -28,10 +28,6 @@ internal abstract class GoogleAIClientBase : IDisposable
 
     private static HttpClient CreateHttpClient(GoogleAIConfig config)
     {
-        if (string.IsNullOrWhiteSpace(config.ApiKey))
-            throw new ArgumentException(
-                "Google AI API key is required. Set it via GoogleAIConfig.ApiKey.", nameof(config));
-
         var client = new HttpClient
         {
             BaseAddress = string.IsNullOrWhiteSpace(config.BaseUrl)
@@ -39,7 +35,9 @@ internal abstract class GoogleAIClientBase : IDisposable
                 : new Uri(config.BaseUrl.EnsureSuffix('/')),
         };
 
-        client.DefaultRequestHeaders.Add(GoogleAIConstants.AuthorizationHeaderName, config.ApiKey);
+        if (!string.IsNullOrWhiteSpace(config.ApiKey))
+            client.DefaultRequestHeaders.Add(
+                GoogleAIConstants.AuthorizationHeaderName, config.ApiKey);
 
         return client;
     }

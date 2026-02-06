@@ -5,7 +5,11 @@
 /// </summary>
 internal class CompatibleResponseMessageGenerator : OpenAIResponseMessageGenerator
 {
-    public CompatibleResponseMessageGenerator(CompatibleConfig config) 
+    protected readonly CompatibleConfig _config;
+
+    public CompatibleResponseMessageGenerator(CompatibleConfig config)
         : base(config.ToOpenAI())
-    { }
+    {
+        _config = config;
+    }
 }

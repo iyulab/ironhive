@@ -1,221 +1,225 @@
 # IronHive.Providers.OpenAI.Compatible
 
 OpenAI API와 호환되는 다양한 서비스 제공자를 지원하는 패키지입니다.
+각 Provider의 상세 특이사항은 해당 폴더의 README.md를 참고하세요.
+
+---
 
 ## 지원 Provider 목록
 
-| Provider | Base URL | 주요 특징 |
-|----------|----------|-----------|
-| xAI (Grok) | `https://api.x.ai/v1` | 실시간 검색, X/Twitter 검색 |
-| Groq | `https://api.groq.com/openai/v1` | 초고속 추론 |
-| DeepSeek | `https://api.deepseek.com/v1` | Thinking 모드, Prefix Completion |
-| Together AI | `https://api.together.xyz/v1` | 오픈소스 모델 호스팅 |
-| Fireworks AI | `https://api.fireworks.ai/inference/v1` | 고성능 모델 서빙 |
-| Perplexity | `https://api.perplexity.ai` | 검색 기반 AI |
-| OpenRouter | `https://openrouter.ai/api/v1` | 다중 모델 라우터 |
-| vLLM | 사용자 정의 (기본: `http://localhost:8000/v1`) | Self-hosted 추론 엔진 |
-| GPUStack | 사용자 정의 | Self-hosted GPU 클러스터 |
+| Provider | Base URL | API 타입 | 상세 문서 |
+|----------|----------|----------|-----------|
+| xAI (Grok) | `https://api.x.ai/v1` | Responses API | [XAI/README.md](XAI/README.md) |
+| Groq | `https://api.groq.com/openai/v1` | Chat Completions API | [Groq/README.md](Groq/README.md) |
+| DeepSeek | `https://api.deepseek.com/v1` | Chat Completions API | [DeepSeek/README.md](DeepSeek/README.md) |
+| Together AI | `https://api.together.xyz/v1` | Chat Completions API | [TogetherAI/README.md](TogetherAI/README.md) |
+| Fireworks AI | `https://api.fireworks.ai/inference/v1` | Chat Completions API | [Fireworks/README.md](Fireworks/README.md) |
+| Perplexity | `https://api.perplexity.ai` | Chat Completions API | [Perplexity/README.md](Perplexity/README.md) |
+| OpenRouter | `https://openrouter.ai/api/v1` | Chat Completions API | [OpenRouter/README.md](OpenRouter/README.md) |
+| vLLM | 사용자 정의 (기본: `http://localhost:8000/v1`) | Chat/Responses API | Self-hosted |
+| GPUStack | 사용자 정의 | Chat Completions API | Self-hosted |
+
+> **API 타입 컬럼**: 현재 IronHive에서 해당 Provider의 기본 MessageGenerator가 사용하는 API 방식입니다.
 
 ---
 
-## 상세 특이사항
+## 아키텍처
 
-### 1. xAI (Grok)
+### 핵심 클래스
 
-**공식 문서**: https://docs.x.ai/docs/overview
+#### `CompatibleConfig` (추상 클래스)
 
-#### 호환성
-- Chat Completions API
-- Responses API
-- Models API
+모든 Provider Config의 기반 클래스입니다. 각 Provider는 이를 상속하여 자체 설정을 정의합니다.
 
-#### 특수 기능
-
-| 파라미터 | 설명 |
-|----------|------|
-| `reasoning_effort` | 추론 모델용 (`low`, `medium`, `high`) |
-| `store` | 생성 결과 저장 여부 (기본: true) |
-| `previous_response_id` | 대화 연속성 유지 |
-| `search_enabled` | 실시간 웹 검색 활성화 |
-| `search_parameters` | 검색 설정 (`max_search_results`, `include_citations`, `search_timeout`) |
-
-#### Server-side Tools
-- `web_search`: 실시간 웹 검색 및 페이지 브라우징
-- `x_search`: X/Twitter 게시물, 사용자, 스레드 검색
-- `code_execution`: Python 코드 실행
-
----
-
-### 2. Groq
-
-**공식 문서**: https://console.groq.com/docs/overview
-
-#### 호환성
-- Chat Completions API
-- Responses API (Beta)
-- Models API
-
-#### 제한사항
-
-| 파라미터 | 제한 |
-|----------|------|
-| `n` | **1만 지원** (다른 값은 400 에러) |
-| `presence_penalty` | 미지원 |
-| `logit_bias` | 미지원 |
-| `logprobs` / `top_logprobs` | 미지원 |
-
-#### 지원 파라미터
-- `parallel_tool_calls`: 지원 (기본: true)
-- `stop`: 최대 4개 시퀀스
-
----
-
-### 3. DeepSeek
-
-**공식 문서**: https://api-docs.deepseek.com/
-
-#### 호환성
-- Chat Completions API
-- Models API
-
-#### 특수 기능
-
-##### Thinking Mode (추론 모드)
-```python
-extra_body={"thinking": {"type": "enabled"}}
-```
-
-응답에 `reasoning_content` 필드가 포함됨 (CoT 내용)
-
-**주의**: 추론 모드에서 무시되는 파라미터:
-- `temperature`
-- `top_p`
-- `presence_penalty`
-- `frequency_penalty`
-
-##### Prefix Completion (Beta)
-```
-Base URL: https://api.deepseek.com/beta
-```
-
-Assistant 메시지에 `"prefix": true` 설정:
-```json
-{"role": "assistant", "content": "```python\n", "prefix": true}
-```
-
----
-
-### 4. OpenRouter
-
-**공식 문서**: https://openrouter.ai/docs/api/reference/overview
-
-#### 호환성
-- Chat Completions API
-- Responses API
-- Embeddings API
-- Models API
-
-#### 특수 헤더
-
-| 헤더 | 설명 |
-|------|------|
-| `HTTP-Referer` | 앱 URL (리더보드 식별용) |
-| `X-Title` | 앱 이름 (리더보드 표시용) |
-
-**참고**: localhost URL은 반드시 X-Title 필요
-
-#### 특수 파라미터
-
-| 파라미터 | 설명 |
-|----------|------|
-| `transforms` | 프롬프트 변환 배열 |
-| `route` | 라우팅 전략 (예: `fallback`) |
-| `provider` | Provider 선호도 설정 |
-
-##### Provider Preferences
-```json
+```csharp
+public abstract class CompatibleConfig
 {
-  "provider": {
-    "allow_fallbacks": true,
-    "require_parameters": false,
-    "order": ["openai", "anthropic"]
-  }
+    public string? ApiKey { get; set; }
+    public abstract OpenAIConfig ToOpenAI();
 }
 ```
 
-#### 응답 특수 필드
-- `native_finish_reason`: 원본 모델의 finish_reason
+- `ApiKey`: 공통 인증 속성
+- `ToOpenAI()`: 각 Provider가 자신의 Base URL, 헤더 등을 `OpenAIConfig`로 변환하는 메서드
+
+#### `CompatibleChatMessageGenerator`
+
+Chat Completions API를 사용하는 Provider의 기본 MessageGenerator입니다.
+`OpenAIChatMessageGenerator`를 상속하며, `CompatibleConfig.ToOpenAI()`를 통해 OpenAI 클라이언트를 생성합니다.
+
+```csharp
+internal class CompatibleChatMessageGenerator : OpenAIChatMessageGenerator
+{
+    protected readonly CompatibleConfig _config;
+
+    public CompatibleChatMessageGenerator(CompatibleConfig config)
+        : base(config.ToOpenAI()) { }
+}
+```
+
+#### `CompatibleResponseMessageGenerator`
+
+Responses API를 사용하는 Provider의 기본 MessageGenerator입니다.
+`OpenAIResponseMessageGenerator`를 상속합니다.
+
+```csharp
+internal class CompatibleResponseMessageGenerator : OpenAIResponseMessageGenerator
+{
+    protected readonly CompatibleConfig _config;
+
+    public CompatibleResponseMessageGenerator(CompatibleConfig config)
+        : base(config.ToOpenAI()) { }
+}
+```
+
+### 클래스 관계도
+
+```
+CompatibleConfig (abstract)
+├── XAIConfig
+├── GroqConfig
+├── DeepSeekConfig
+├── TogetherAIConfig
+├── FireworksConfig
+├── PerplexityConfig
+└── OpenRouterConfig
+
+OpenAIChatMessageGenerator
+└── CompatibleChatMessageGenerator
+    ├── GroqMessageGenerator
+    ├── DeepSeekMessageGenerator
+    ├── TogetherAIMessageGenerator
+    ├── FireworksMessageGenerator
+    ├── PerplexityMessageGenerator
+    └── OpenRouterMessageGenerator
+
+OpenAIResponseMessageGenerator
+└── CompatibleResponseMessageGenerator
+    └── XAIMessageGenerator
+```
 
 ---
 
-### 5. Together AI
+## 새 Provider 추가 가이드
 
-**공식 문서**: https://docs.together.ai/docs/openai-api-compatibility
+새로운 OpenAI 호환 Provider를 추가할 때 다음 단계를 따릅니다.
 
-#### 호환성
-- Chat Completions API
+### 1. 폴더 생성
 
-#### 특이 사항
+프로젝트 루트에 Provider 이름으로 폴더를 생성합니다.
+
+```
+{ProviderName}/
+├── {ProviderName}Config.cs
+├── {ProviderName}MessageGenerator.cs
+└── README.md
+```
+
+### 2. Config 클래스 작성
+
+`CompatibleConfig`를 상속하여 Provider별 설정 클래스를 작성합니다.
+
+```csharp
+public class NewProviderConfig : CompatibleConfig
+{
+    private const string DefaultBaseUrl = "https://api.newprovider.com/v1";
+
+    // Provider 고유 설정 속성들...
+
+    public override OpenAIConfig ToOpenAI()
+    {
+        return new OpenAIConfig
+        {
+            BaseUrl = DefaultBaseUrl,
+            ApiKey = ApiKey ?? string.Empty,
+            // DefaultHeaders = ... (필요 시)
+        };
+    }
+}
+```
+
+**주의사항:**
+- Base URL은 `private const string`으로 정의
+- `ToOpenAI()`에서 Provider 고유의 헤더가 필요하면 `DefaultHeaders`에 추가 (OpenRouter 참고)
+
+### 3. MessageGenerator 클래스 작성
+
+Provider가 사용하는 API 타입에 따라 기반 클래스를 선택합니다:
+
+| API 타입 | 기반 클래스 |
+|----------|------------|
+| Chat Completions API | `CompatibleChatMessageGenerator` |
+| Responses API | `CompatibleResponseMessageGenerator` |
+
+```csharp
+internal class NewProviderMessageGenerator : CompatibleChatMessageGenerator
+{
+    private readonly NewProviderConfig _providerConfig;
+
+    public NewProviderMessageGenerator(NewProviderConfig config) : base(config)
+    {
+        _providerConfig = config;
+    }
+
+    // Provider 고유 처리가 필요한 경우 PostProcessRequest를 override
+    // protected override T PostProcessRequest<T>(ChatCompletionRequest request)
+    // {
+    //     // Provider별 파라미터 주입, 미지원 파라미터 제거 등
+    //     return (T)request;
+    // }
+}
+```
+
+### 4. Extension Method 등록
+
+`Extensions/HiveServiceBuilderExtensions.cs`에 Provider 등록 메서드를 추가합니다.
+
+```csharp
+public static IHiveServiceBuilder AddNewProvider(
+    this IHiveServiceBuilder builder,
+    string providerName,
+    NewProviderConfig config)
+{
+    builder.AddMessageGenerator(providerName, new NewProviderMessageGenerator(config));
+    return builder;
+}
+```
+
+### 5. README.md 작성
+
+각 Provider 폴더에 README.md를 작성합니다. 포함해야 할 내용:
+
+- 공식 문서 링크 및 Base URL
+- 호환성 (지원하는 API 목록)
+- 주요 모델
+- 특수 파라미터 및 기능
+- 제한사항
+- IronHive 구현 상태 (Config 속성, MessageGenerator 정보)
+- TODO (미구현 사항)
+- Last Updated 날짜
 
 ---
 
-### 6. Fireworks AI
+## Self-hosted Provider 사용
 
-**공식 문서**: https://docs.fireworks.ai/
+vLLM, GPUStack 등 Self-hosted 서비스는 별도 Config 없이 `AddCompatibleProvider`를 사용합니다.
 
-#### 호환성
-- Chat Completions API
-- Responses API
-- Embeddings API
+```csharp
+// vLLM
+builder.AddCompatibleProvider("vllm", new VLLMConfig
+{
+    ApiKey = "optional-api-key",
+});
 
-#### 특이 사항
+// GPUStack
+builder.AddCompatibleProvider("gpustack", new GPUStackConfig
+{
+    ApiKey = "optional-api-key",
+});
+```
 
----
-
-### 7. Perplexity
-
-**공식 문서**: https://docs.perplexity.ai/
-
-#### 호환성
-- Chat Completions API
-- Responses API
-
-#### 모델
-- `sonar-deep-research`
-- `sonar-reasoning-pro`
-- `sonar-reasoning`
-- `sonar-pro`
-- `sonar`
-- `r1-1776`
-
-#### 제한사항
-- `logit_bias`, `logprobs`, `top_logprobs`: 미지원
-- `n`: 1만 지원 가능성
-
----
-
-### 8. vLLM (self-hosted)
-
-**공식 문서**: https://docs.vllm.ai/en/stable/serving/openai_compatible_server/
-
-#### 호환성
-- Chat Completions API
-- Responses API
-- Embeddings API
-
----
-
-### 9. GPUStack (self-hosted)
-
-**공식 문서**: https://github.com/gpustack/gpustack
-
-#### 호환성
-- Chat Completions API
-- Embeddings API
-- Models API
-
-#### 특이사항
-- 스트리밍 응답에서 `error:` 프리픽스로 에러 전달
+Self-hosted Provider는 `CompatibleConfig`를 직접 구현하며, `ToOpenAI()`에서 사용자 지정 Base URL을 설정합니다.
+`AddCompatibleProvider`는 내부적으로 `OpenAIConfig`로 변환하여 OpenAI Provider의 전체 기능(Chat, Responses, Embeddings 등)을 그대로 활용합니다.
 
 ---
 
@@ -231,3 +235,7 @@ Assistant 메시지에 `"prefix": true` 설정:
 - [vLLM Documentation](https://docs.vllm.ai/)
 - [AI SDK OpenAI Compatible Providers](https://ai-sdk.dev/providers/openai-compatible-providers)
 - [LiteLLM Providers](https://docs.litellm.ai/docs/providers)
+
+---
+
+*Last Updated: 2026-02-06*

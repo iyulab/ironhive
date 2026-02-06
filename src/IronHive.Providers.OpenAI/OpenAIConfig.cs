@@ -53,4 +53,12 @@ public class OpenAIConfig
             new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower)
         },
     };
+
+    /// <summary>
+    /// API key 유무를 검증합니다.
+    /// </summary>
+    public bool Validate()
+    {
+        return !string.IsNullOrWhiteSpace(ApiKey);
+    }
 }
