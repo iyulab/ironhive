@@ -133,7 +133,11 @@ public class MemoryWorker : IMemoryWorker
         }, _cts.Token);
 
         _tasks.TryAdd(task, 0);
-        _ = task.ContinueWith(t => _tasks.TryRemove(t, out _), TaskScheduler.Default);
+        _ = task.ContinueWith(
+            t => _tasks.TryRemove(t, out _),
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
     }
 
     /// <summary>

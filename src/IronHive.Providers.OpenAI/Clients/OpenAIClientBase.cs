@@ -28,6 +28,10 @@ public abstract class OpenAIClientBase : IDisposable
 
     private static HttpClient CreateHttpClient(OpenAIConfig config)
     {
+        if (string.IsNullOrWhiteSpace(config.ApiKey))
+            throw new ArgumentException(
+                "OpenAI API key is required. Set it via OpenAIConfig.ApiKey.", nameof(config));
+
         var client = new HttpClient
         {
             BaseAddress = string.IsNullOrWhiteSpace(config.BaseUrl)
@@ -35,9 +39,8 @@ public abstract class OpenAIClientBase : IDisposable
                 : new Uri(config.BaseUrl.EnsureSuffix('/'))
         };
 
-        if (!string.IsNullOrWhiteSpace(config.ApiKey))
-            client.DefaultRequestHeaders.Add(
-                OpenAIConstants.AuthorizationHeaderName, string.Format(OpenAIConstants.AuthorizationHeaderValue, config.ApiKey));
+        client.DefaultRequestHeaders.Add(
+            OpenAIConstants.AuthorizationHeaderName, string.Format(OpenAIConstants.AuthorizationHeaderValue, config.ApiKey));
 
         if (!string.IsNullOrWhiteSpace(config.Organization))
             client.DefaultRequestHeaders.Add(

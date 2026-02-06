@@ -282,7 +282,8 @@ public sealed class FunctionTool : ITool
     /// <summary>
     /// IAsyncEnumerable를 적절히 처리합니다.
     /// </summary>
-    private static async Task<List<object?>> HandleAsyncEnumerableAsync(object src, CancellationToken ct)
+    private static async Task<List<object?>> HandleAsyncEnumerableAsync(
+        object src, CancellationToken ct, int maxItems = 1000)
     {
         var result = new List<object?>();
 
@@ -293,8 +294,11 @@ public sealed class FunctionTool : ITool
             ?? throw new InvalidOperationException("IAsyncEnumerable does not have GetAsyncEnumerator.");
 
         var enumerator = getAsyncEnumerator.GetParameters().Length == 1
-            ? getAsyncEnumerator.Invoke(src, new object[] { ct })!
-            : getAsyncEnumerator.Invoke(src, null)!;
+            ? getAsyncEnumerator.Invoke(src, new object[] { ct })
+            : getAsyncEnumerator.Invoke(src, null);
+        if (enumerator is null)
+            throw new InvalidOperationException(
+                $"GetAsyncEnumerator returned null for type {src.GetType().FullName}.");
 
         var moveNextAsync = enumerator.GetType().GetMethod("MoveNextAsync")
             ?? throw new InvalidOperationException("Async enumerator missing MoveNextAsync.");
@@ -304,17 +308,36 @@ public sealed class FunctionTool : ITool
 
         try
         {
-            // MoveNextAsync: ValueTask<bool>
-            while (await (ValueTask<bool>)moveNextAsync.Invoke(enumerator, null)!)
+            var moveNextResult = moveNextAsync.Invoke(enumerator, null)
+                ?? throw new InvalidOperationException("MoveNextAsync returned null.");
+            if (moveNextResult is not ValueTask<bool> hasNext)
+                throw new InvalidOperationException(
+                    $"MoveNextAsync returned {moveNextResult.GetType()}, expected ValueTask<bool>.");
+
+            while (await hasNext)
             {
                 result.Add(currentProp.GetValue(enumerator));
+                if (maxItems > 0 && result.Count >= maxItems)
+                {
+                    result.Add($"[Truncated: exceeded {maxItems} items limit]");
+                    break;
+                }
+
+                moveNextResult = moveNextAsync.Invoke(enumerator, null)
+                    ?? throw new InvalidOperationException("MoveNextAsync returned null.");
+                if (moveNextResult is not ValueTask<bool> next)
+                    throw new InvalidOperationException(
+                        $"MoveNextAsync returned {moveNextResult.GetType()}, expected ValueTask<bool>.");
+                hasNext = next;
             }
         }
         finally
         {
             if (disposeAsync is not null)
             {
-                await (ValueTask)disposeAsync.Invoke(enumerator, null)!;
+                var disposeResult = disposeAsync.Invoke(enumerator, null)
+                    ?? throw new InvalidOperationException("DisposeAsync returned null.");
+                await (ValueTask)disposeResult;
             }
         }
 

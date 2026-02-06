@@ -58,8 +58,8 @@
   <ItemGroup Label="Utilities">
     <PackageVersion Include="dotenv.net" Version="4.0.0" />
     <PackageVersion Include="Scriban" Version="6.5.2" />
-    <PackageVersion Include="Swashbuckle.AspNetCore" Version="10.1.1" />
+    <PackageVersion Include="Swashbuckle.AspNetCore" Version="10.1.2" />
     <PackageVersion Include="Tavily" Version="1.0.0" />
-    <PackageVersion Include="ModelContextProtocol" Version="0.7.0-preview.1" />
+    <PackageVersion Include="ModelContextProtocol" Version="0.8.0-preview.1" />
   </ItemGroup>
 </Project>

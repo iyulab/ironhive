@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Resilience;
 using Polly;
@@ -10,6 +11,7 @@ namespace IronHive.Core.Resilience;
 public class ResilientMessageGenerator : DelegatingMessageGenerator
 {
     private readonly ResiliencePipeline<MessageResponse> _pipeline;
+    private readonly ResilienceOptions _options;
 
     /// <summary>
     /// ResilientMessageGenerator의 새 인스턴스를 생성합니다.
@@ -19,8 +21,8 @@ public class ResilientMessageGenerator : DelegatingMessageGenerator
     public ResilientMessageGenerator(IMessageGenerator inner, ResilienceOptions? options = null)
         : base(inner)
     {
-        var resolvedOptions = options ?? ResiliencePipelineFactory.DefaultOptions;
-        _pipeline = ResiliencePipelineFactory.Create<MessageResponse>(resolvedOptions);
+        _options = options ?? ResiliencePipelineFactory.DefaultOptions;
+        _pipeline = ResiliencePipelineFactory.Create<MessageResponse>(_options);
     }
 
     /// <inheritdoc />
@@ -34,13 +36,45 @@ public class ResilientMessageGenerator : DelegatingMessageGenerator
     }
 
     /// <inheritdoc />
-    public override IAsyncEnumerable<StreamingMessageResponse> GenerateStreamingMessageAsync(
+    public override async IAsyncEnumerable<StreamingMessageResponse> GenerateStreamingMessageAsync(
         MessageGenerationRequest request,
-        CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        // 스트리밍의 경우 전체 스트림에 대한 재시도는 복잡하므로
-        // 초기 연결에 대해서만 resilience를 적용
-        // 실제 구현에서는 스트림 청크 타임아웃 등을 별도로 처리해야 함
-        return InnerGenerator.GenerateStreamingMessageAsync(request, cancellationToken);
+        // 비동기용 파이프라인으로 초기 연결(첫 번째 요소 취득까지)에 resilience 적용
+        var asyncPipeline = ResiliencePipelineFactory.CreateAsync(_options);
+
+        IAsyncEnumerator<StreamingMessageResponse>? enumerator = null;
+        StreamingMessageResponse? firstItem = null;
+
+        await asyncPipeline.ExecuteAsync(async ct =>
+        {
+            enumerator = InnerGenerator
+                .GenerateStreamingMessageAsync(request, ct)
+                .GetAsyncEnumerator(ct);
+            if (await enumerator.MoveNextAsync().ConfigureAwait(false))
+            {
+                firstItem = enumerator.Current;
+            }
+        }, cancellationToken).ConfigureAwait(false);
+
+        if (firstItem is not null)
+        {
+            yield return firstItem;
+        }
+
+        if (enumerator is not null)
+        {
+            try
+            {
+                while (await enumerator.MoveNextAsync().ConfigureAwait(false))
+                {
+                    yield return enumerator.Current;
+                }
+            }
+            finally
+            {
+                await enumerator.DisposeAsync().ConfigureAwait(false);
+            }
+        }
     }
 }
