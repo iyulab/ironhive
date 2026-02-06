@@ -1,4 +1,6 @@
-﻿namespace IronHive.Abstractions.Workflow;
+﻿using IronHive.Abstractions.Workflow;
+
+namespace IronHive.Core.Workflow;
 
 /// <summary>
 /// 워크플로우의 실행을 관리하는 제네릭 엔진 클래스입니다.

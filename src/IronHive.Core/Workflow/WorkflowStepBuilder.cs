@@ -1,6 +1,7 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using IronHive.Abstractions.Workflow;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace IronHive.Abstractions.Workflow;
+namespace IronHive.Core.Workflow;
 
 /// <summary>
 /// 워크플로우의 스텝 체인을 구성하는 빌더입니다.
@@ -62,7 +63,7 @@ public class WorkflowStepBuilder<TContext>
         where TStep : class, IWorkflowCondition<TContext>
     {
         AddStep<TStep>(stepName);
-        
+
         var branches = buildActions.ToDictionary(
             kvp => kvp.Key,
             kvp =>

@@ -1,9 +1,10 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using IronHive.Abstractions.Workflow;
+using Microsoft.Extensions.DependencyInjection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using YamlDotNet.Serialization;
 
-namespace IronHive.Abstractions.Workflow;
+namespace IronHive.Core.Workflow;
 
 /// <summary>
 /// 워크플로우 관련 오브젝트를 생성하는 팩토리.

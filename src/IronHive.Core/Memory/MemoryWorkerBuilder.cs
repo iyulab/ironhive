@@ -2,6 +2,7 @@
 using IronHive.Abstractions.Queue;
 using IronHive.Abstractions.Registries;
 using IronHive.Abstractions.Workflow;
+using IronHive.Core.Workflow;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace IronHive.Core.Memory;

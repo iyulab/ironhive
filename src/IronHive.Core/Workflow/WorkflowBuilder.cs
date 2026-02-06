@@ -1,4 +1,4 @@
-﻿namespace IronHive.Abstractions.Workflow;
+﻿namespace IronHive.Core.Workflow;
 
 /// <summary>
 /// 워크플로우 정의를 유창한(Fluent) 방식으로 구성하는 루트 빌더입니다.
@@ -7,8 +7,8 @@
 public class WorkflowBuilder
 {
     private readonly IServiceProvider? _services;
-    private readonly WorkflowDefinition _definition = new();
-    
+    private readonly Abstractions.Workflow.WorkflowDefinition _definition = new();
+
     public WorkflowBuilder(IServiceProvider? services = null)
     {
         _services = services;
