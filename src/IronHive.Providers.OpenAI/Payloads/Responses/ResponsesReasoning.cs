@@ -8,7 +8,7 @@ public class ResponsesReasoning
     /// "minimal", "low", "medium", "high"
     /// </summary>
     [JsonPropertyName("effort")]
-    public ResponsesReasoningEffort Effort { get; set; }
+    public ResponsesReasoningEffort? Effort { get; set; }
 
     /// <summary>
     /// "auto" 또는 "concise", "detailed"

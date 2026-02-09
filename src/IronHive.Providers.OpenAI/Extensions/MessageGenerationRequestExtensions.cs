@@ -129,7 +129,7 @@ public static class MessageGenerationRequestExtensions
             }
         }
 
-        var enabledReasoning = request.ThinkingEffort != MessageThinkingEffort.None;
+        var enabledReasoning = request.ThinkingEffort != null && request.ThinkingEffort != MessageThinkingEffort.None;
         return new ResponsesRequest
         {
             Model = request.Model,

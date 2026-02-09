@@ -11,6 +11,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\IronHive.Abstractions\IronHive.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Core\IronHive.Core.csproj" />
+    <ProjectReference Include="..\..\src\IronHive.Providers.Anthropic\IronHive.Providers.Anthropic.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Providers.GoogleAI\IronHive.Providers.GoogleAI.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Providers.OpenAI\IronHive.Providers.OpenAI.csproj" />
   </ItemGroup>

@@ -11,12 +11,14 @@ namespace IronHive.Providers.OpenAI.Payloads.Responses;
 public class ResponsesRequest : JsonExtensionBase
 {
     /// <summary>
-    /// 백그라운드로 처리할지 여부 (선택, 기본값: false). store=true가 강제 됩니다.
+    /// 백그라운드로 처리할지 여부 (기본값: false). true일시, store=true로 강제 됩니다.
+    /// <para>
     /// codex 또는 deepresearch 모델등 응답에 시간이 오래 걸리는 모델에 유용합니다.
     /// <see href="https://platform.openai.com/docs/guides/background"/>
+    /// </para>
     /// </summary>
     [JsonPropertyName("background")]
-    public bool Background { get; set; } = false;
+    public bool? Background { get; set; }
 
     /// <summary>
     /// 이전 대화 기록 ID (선택).
