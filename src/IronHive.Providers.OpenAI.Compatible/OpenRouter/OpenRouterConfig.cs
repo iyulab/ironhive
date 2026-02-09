@@ -1,42 +1,21 @@
-using IronHive.Providers.OpenAI;
-
 namespace IronHive.Providers.OpenAI.Compatible.OpenRouter;
 
 /// <summary>
 /// OpenRouter 서비스 설정입니다.
 /// </summary>
-/// <remarks>
-/// OpenRouter 특수 기능:
-/// - HTTP-Referer, X-Title 헤더로 앱 귀속
-/// - transforms 파라미터로 프롬프트 변환
-/// - 모델별 미지원 파라미터 자동 필터링
-/// - native_finish_reason 응답 필드
-/// </remarks>
 public class OpenRouterConfig : CompatibleConfig
 {
     private const string DefaultBaseUrlValue = "https://openrouter.ai/api/v1";
 
     /// <summary>
-    /// 사이트 URL (HTTP-Referer 헤더로 전송)
     /// 리더보드 및 분석에서 앱을 식별하는 데 사용됩니다.
     /// </summary>
     public string? SiteUrl { get; set; }
 
     /// <summary>
-    /// 앱 이름 (X-Title 헤더로 전송)
-    /// 리더보드에 표시되는 이름입니다.
+    /// 리더보드에 표시되는 앱 이름입니다.
     /// </summary>
     public string? AppName { get; set; }
-
-    /// <summary>
-    /// 프롬프트 변환 목록입니다.
-    /// </summary>
-    public IList<string>? Transforms { get; set; }
-
-    /// <summary>
-    /// 라우팅 전략입니다. (예: "fallback")
-    /// </summary>
-    public string? Route { get; set; }
 
     /// <summary>
     /// Provider 선호도 설정입니다.

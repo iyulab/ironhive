@@ -33,7 +33,7 @@ public class OpenAIEmbeddingGenerator : IEmbeddingGenerator
     }
 
     /// <inheritdoc />
-    public async Task<float[]> EmbedAsync(
+    public virtual async Task<float[]> EmbedAsync(
         string modelId, 
         string input, 
         CancellationToken cancellationToken = default)
@@ -49,7 +49,7 @@ public class OpenAIEmbeddingGenerator : IEmbeddingGenerator
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<EmbeddingResult>> EmbedBatchAsync(
+    public virtual async Task<IEnumerable<EmbeddingResult>> EmbedBatchAsync(
         string modelId,
         IEnumerable<string> inputs,
         CancellationToken cancellationToken = default)
@@ -86,7 +86,7 @@ public class OpenAIEmbeddingGenerator : IEmbeddingGenerator
     }
 
     /// <inheritdoc />
-    public async Task<int> CountTokensAsync(
+    public virtual async Task<int> CountTokensAsync(
         string modelId, 
         string input, 
         CancellationToken cancellationToken = default)
@@ -96,7 +96,7 @@ public class OpenAIEmbeddingGenerator : IEmbeddingGenerator
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<EmbeddingTokens>> CountTokensBatchAsync(
+    public virtual async Task<IEnumerable<EmbeddingTokens>> CountTokensBatchAsync(
         string modelId, 
         IEnumerable<string> inputs, 
         CancellationToken cancellationToken)

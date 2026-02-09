@@ -1,3 +1,4 @@
+using IronHive.Abstractions.Messages;
 using IronHive.Providers.OpenAI.Payloads.Responses;
 
 namespace IronHive.Providers.OpenAI.Compatible.XAI;
@@ -5,40 +6,63 @@ namespace IronHive.Providers.OpenAI.Compatible.XAI;
 /// <summary>
 /// xAI (Grok) 서비스를 위한 메시지 생성기입니다.
 /// </summary>
-internal class XAIMessageGenerator : CompatibleResponseMessageGenerator
+public class XAIMessageGenerator : OpenAIResponseMessageGenerator
 {
-    private readonly XAIConfig _xaiConfig;
+    private readonly XAIConfig _config;
 
-    public XAIMessageGenerator(XAIConfig config) : base(config)
+    public XAIMessageGenerator(XAIConfig config) : base(config.ToOpenAI())
     {
-        _xaiConfig = config;
+        _config = config;
     }
 
-    protected override T PostProcessRequest<T>(ResponsesRequest request)
+    protected override ResponsesRequest OnBeforeSend(
+        MessageGenerationRequest source,
+        ResponsesRequest request)
     {
-        // Store 설정
-        if (_xaiConfig.Store.HasValue)
-            request.Store = _xaiConfig.Store.Value;
+        // 미지원 파라미터 제거
+        request.Background = null;
+        request.Metadata = null;
+        request.ServiceTier = null;
+        request.Truncation = null;
 
-        // 이전 응답 ID 연속
-        if (!string.IsNullOrEmpty(_xaiConfig.PreviousResponseId))
-            request.PreviousResponseId = _xaiConfig.PreviousResponseId;
-
-        // 웹 검색 도구 주입
-        if (_xaiConfig.EnableSearch)
+        // instructions 대신 system/developer 역할 메시지 사용
+        if (!string.IsNullOrWhiteSpace(request.Instructions))
         {
-            var tools = request.Tools?.ToList() ?? [];
-            var searchTool = new ResponsesWebSearchTool();
-
-            if (_xaiConfig.SearchParameters != null)
+            var systemMessage = new ResponsesMessageItem
             {
-                searchTool.ContextSize = "medium";
-            }
+                Role = ResponsesMessageRole.Developer,
+                Content =
+                [
+                    new ResponsesInputTextContent
+                    {
+                        Text = request.Instructions
+                    }
+                ]
+            };
 
-            tools.Add(searchTool);
-            request.Tools = tools;
+            var newInput = new List<ResponsesItem> { systemMessage };
+            newInput.AddRange(request.Input);
+            request.Input = newInput;
+            request.Instructions = null;
         }
 
-        return (T)request;
+        // reasoning_effort는 grok-3-mini에서만 지원
+        bool isReasoningModel = request.Model.Contains("grok-3-mini", StringComparison.OrdinalIgnoreCase);
+        if (!isReasoningModel)
+        {
+            request.Reasoning = null;
+            request.Include = null;
+        }
+
+        // include는 reasoning.encrypted_content만 지원
+        if (request.Include is { Count: > 0 })
+        {
+            var filtered = request.Include
+                .Where(i => i == "reasoning.encrypted_content")
+                .ToList();
+            request.Include = filtered.Count > 0 ? filtered : null;
+        }
+
+        return request;
     }
 }

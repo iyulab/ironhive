@@ -1,10 +1,7 @@
 ﻿using System.Runtime.CompilerServices;
-using MessageGenerationRequest = IronHive.Abstractions.Messages.MessageGenerationRequest;
-using TextMessageContent = IronHive.Abstractions.Messages.Content.TextMessageContent;
-using AssistantMessage = IronHive.Abstractions.Messages.Roles.AssistantMessage;
-using MessageContent = IronHive.Abstractions.Messages.MessageContent;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
+using IronHive.Abstractions.Messages.Roles;
 using IronHive.Providers.OpenAI.Clients;
 using IronHive.Providers.OpenAI.Payloads.ChatCompletion;
 
@@ -36,9 +33,8 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var req = PostProcessRequest<ChatCompletionRequest>(request.ToOpenAILegacy());
-        var res = PostProcessResponse<ChatCompletionResponse>(
-            await _client.PostChatCompletionAsync(req, cancellationToken));
+        var req = OnBeforeSend(request, request.ToOpenAILegacy());
+        var res = await _client.PostChatCompletionAsync(req, cancellationToken);
         var choice = res.Choices?.FirstOrDefault();
         var content = new List<MessageContent>();
 
@@ -60,7 +56,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
             foreach (var tool in tools)
             {
                 var tc = new ToolMessageContent
-                { 
+                {
                     IsApproved = true,
                     Id = tool.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
                     Name = string.Empty,
@@ -85,7 +81,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
             }
         }
 
-        return new MessageResponse
+        return OnAfterReceive(res, new MessageResponse
         {
             Id = res.Id ?? Guid.NewGuid().ToString(),
             DoneReason = choice?.FinishReason switch
@@ -109,7 +105,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
                 OutputTokens = res.Usage?.CompletionTokens ?? 0
             },
             Timestamp = DateTimeOffset.FromUnixTimeSeconds(res.Created).UtcDateTime
-        };
+        });
     }
 
     /// <inheritdoc />
@@ -117,7 +113,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var req = PostProcessRequest<ChatCompletionRequest>(request.ToOpenAILegacy());
+        var req = OnBeforeSend(request, request.ToOpenAILegacy());
 
         // 인덱스 추적 관리용
         (int, MessageContent)? current = null;
@@ -127,17 +123,23 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
         string model = string.Empty;
         MessageDoneReason? reason = null;
         MessageTokenUsage? usage = null;
+        StreamingChatCompletionResponse? lastChunk = null;
         await foreach (var res in _client.PostStreamingChatCompletionAsync(req, cancellationToken))
         {
+            lastChunk = res;
+
             // 메시지 시작
             if (current == null)
             {
                 id = res.Id ?? Guid.NewGuid().ToString();
                 model = res.Model ?? req.Model;
-                yield return new StreamingMessageBeginResponse
+                await foreach (var rr in OnStreamingReceive(res, new StreamingMessageBeginResponse
                 {
                     Id = id
-                };
+                }))
+                {
+                    yield return rr;
+                }
             }
 
             // 토큰 사용량(FinishReason 다음 호출)
@@ -191,23 +193,29 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
                             // 현재 컨텐츠가 ToolMessageContent이고, 인덱스가 동일한 경우 업데이트
                             if (funcIndex == currentToolIndex)
                             {
-                                yield return new StreamingContentDeltaResponse
+                                await foreach (var rr in OnStreamingReceive(res, new StreamingContentDeltaResponse
                                 {
                                     Index = index,
                                     Delta = new ToolDeltaContent
-                                    { 
-                                        Input = func.Function?.Arguments ?? string.Empty 
+                                    {
+                                        Input = func.Function?.Arguments ?? string.Empty
                                     }
-                                };
+                                }))
+                                {
+                                    yield return rr;
+                                }
                             }
                             // 현재 컨텐츠가 ToolMessageContent이지만, 인덱스가 다른 경우
                             // 이전 컨텐츠 종료 및 새 컨텐츠 시작
                             else
                             {
-                                yield return new StreamingContentCompletedResponse
+                                await foreach (var rr in OnStreamingReceive(res, new StreamingContentCompletedResponse
                                 {
                                     Index = index,
-                                };
+                                }))
+                                {
+                                    yield return rr;
+                                }
                                 current = (index + 1, new ToolMessageContent
                                 {
                                     IsApproved = request.Tools?.TryGet(func.Function?.Name!, out var t) != true || t?.RequiresApproval == false,
@@ -216,21 +224,27 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
                                     Input = func.Function?.Arguments,
                                 });
                                 currentToolIndex = funcIndex;
-                                yield return new StreamingContentAddedResponse
+                                await foreach (var rr in OnStreamingReceive(res, new StreamingContentAddedResponse
                                 {
                                     Index = current.Value.Item1,
                                     Content = current.Value.Item2
-                                };
+                                }))
+                                {
+                                    yield return rr;
+                                }
                             }
                         }
                         // 현재 컨텐츠가 ToolMessageContent가 아닌 경우
                         // 이전 컨텐츠 종료 및 새 컨텐츠 시작
                         else
                         {
-                            yield return new StreamingContentCompletedResponse
+                            await foreach (var rr in OnStreamingReceive(res, new StreamingContentCompletedResponse
                             {
                                 Index = index,
-                            };
+                            }))
+                            {
+                                yield return rr;
+                            }
                             current = (index + 1, new ToolMessageContent
                             {
                                 IsApproved = request.Tools?.TryGet(func.Function?.Name!, out var t) != true || t?.RequiresApproval == false,
@@ -239,11 +253,14 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
                                 Input = func.Function?.Arguments,
                             });
                             currentToolIndex = funcIndex;
-                            yield return new StreamingContentAddedResponse
+                            await foreach (var rr in OnStreamingReceive(res, new StreamingContentAddedResponse
                             {
                                 Index = current.Value.Item1,
                                 Content = current.Value.Item2
-                            };
+                            }))
+                            {
+                                yield return rr;
+                            }
                         }
                     }
                     // 처음 생성되는 툴 메시지의 경우
@@ -257,11 +274,14 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
                             Input = func.Function?.Arguments,
                         });
                         currentToolIndex = funcIndex;
-                        yield return new StreamingContentAddedResponse
+                        await foreach (var rr in OnStreamingReceive(res, new StreamingContentAddedResponse
                         {
                             Index = current.Value.Item1,
                             Content = current.Value.Item2
-                        };
+                        }))
+                        {
+                            yield return rr;
+                        }
                     }
                 }
             }
@@ -277,40 +297,52 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
                     // 현재 컨텐츠가 TextMessageContent인 경우
                     if (content is TextMessageContent textContent)
                     {
-                        yield return new StreamingContentDeltaResponse
+                        await foreach (var rr in OnStreamingReceive(res, new StreamingContentDeltaResponse
                         {
                             Index = index,
                             Delta = new TextDeltaContent
                             {
                                 Value = text
                             }
-                        };
+                        }))
+                        {
+                            yield return rr;
+                        }
                     }
                     // 현재 컨텐츠가 TextMessageContent가 아닌 경우 (thinking → text 전환 등)
                     // 이전 컨텐츠 종료 및 새 컨텐츠 시작
                     else
                     {
-                        yield return new StreamingContentCompletedResponse
+                        await foreach (var rr in OnStreamingReceive(res, new StreamingContentCompletedResponse
                         {
                             Index = index,
-                        };
+                        }))
+                        {
+                            yield return rr;
+                        }
                         current = (index + 1, new TextMessageContent { Value = text });
-                        yield return new StreamingContentAddedResponse
+                        await foreach (var rr in OnStreamingReceive(res, new StreamingContentAddedResponse
                         {
                             Index = current.Value.Item1,
                             Content = current.Value.Item2
-                        };
+                        }))
+                        {
+                            yield return rr;
+                        }
                     }
                 }
                 // 처음 생성되는 텍스트 메시지의 경우
                 else
                 {
                     current = (0, new TextMessageContent { Value = text });
-                    yield return new StreamingContentAddedResponse
+                    await foreach (var rr in OnStreamingReceive(res, new StreamingContentAddedResponse
                     {
                         Index = current.Value.Item1,
                         Content = current.Value.Item2
-                    };
+                    }))
+                    {
+                        yield return rr;
+                    }
                 }
             }
         }
@@ -318,51 +350,80 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
         // 남아 있는 컨텐츠 처리
         if (current.HasValue)
         {
-            yield return new StreamingContentCompletedResponse
+            await foreach (var rr in OnStreamingReceive(lastChunk, new StreamingContentCompletedResponse
             {
                 Index = current.Value.Item1,
-            };
-            //current = null;
+            }))
+            {
+                yield return rr;
+            }
         }
 
         // 종료
-        yield return new StreamingMessageDoneResponse
+        await foreach (var rr in OnStreamingReceive(lastChunk, new StreamingMessageDoneResponse
         {
             DoneReason = reason,
             TokenUsage = usage,
             Id = id,
             Model = model,
             Timestamp = DateTime.UtcNow,
-        };
+        }))
+        {
+            yield return rr;
+        }
     }
 
     /// <summary>
-    /// 요청을 후처리합니다. 하위 클래스에서 재정의하여 Provider별 요청문 처리를 수행할 수 있습니다.
+    /// OpenAI API 클라이언트에 요청을 보내기 직전에 호출됩니다.
     /// </summary>
-    protected virtual T PostProcessRequest<T>(ChatCompletionRequest request)
-        where T : ChatCompletionRequest
-    {
-        // 기본 구현은 아무것도 하지 않음
-        return (T)request;
-    }
+    /// <param name="source">
+    /// 변환 전의 공용 요청 객체입니다.
+    /// </param>
+    /// <param name="request">
+    /// 공용 요청에서 변환된 OpenAI ChatCompletion 요청 객체입니다.
+    /// </param>
+    /// <returns>수정된 ChatCompletion 요청 객체</returns>
+    protected virtual ChatCompletionRequest OnBeforeSend(
+        MessageGenerationRequest source,
+        ChatCompletionRequest request)
+        => request;
 
     /// <summary>
-    /// 일반 응답을 후처리합니다. 하위 클래스에서 재정의하여 Provider별 응답 후처리를 수행할 수 있습니다.
+    /// OpenAI API 응답을 공용 응답으로 변환한 후, 반환 직전에 호출됩니다.
     /// </summary>
-    protected virtual T PostProcessResponse<T>(ChatCompletionResponse response)
-        where T : ChatCompletionResponse
-    {
-        // 기본 구현은 아무것도 하지 않음
-        return (T)response;
-    }
+    /// <param name="source">
+    /// OpenAI API에서 받은 원본 ChatCompletion 응답 객체입니다.
+    /// </param>
+    /// <param name="response">
+    /// 원본 응답에서 변환된 공용 응답 객체입니다.
+    /// </param>
+    /// <returns>수정된 공용 응답 객체</returns>
+    protected virtual MessageResponse OnAfterReceive(
+        ChatCompletionResponse source,
+        MessageResponse response)
+        => response;
 
     /// <summary>
-    /// 스트리밍 응답을 처리합니다. 하위 클래스에서 재정의하여 Provider별 응답 후처리를 수행할 수 있습니다.
+    /// 스트리밍 중 각 청크가 공용 스트리밍 응답으로 변환된 후, yield 직전에 호출됩니다.
+    /// <list type="bullet">
+    ///   <item><description>그대로 전달: <c>yield return chunk;</c> (기본 동작)</description></item>
+    ///   <item><description>수정 후 전달: chunk를 변경한 뒤 <c>yield return</c></description></item>
+    ///   <item><description>무시(필터링): <c>yield return</c> 하지 않음</description></item>
+    ///   <item><description>분할: 여러 개를 <c>yield return</c></description></item>
+    /// </list>
     /// </summary>
-    protected virtual T PostProcessStreamingResponse<T>(StreamingChatCompletionResponse response)
-        where T : StreamingChatCompletionResponse
+    /// <param name="source">
+    /// OpenAI API에서 받은 원본 스트리밍 청크입니다.
+    /// 스트림 종료 후 잔여 처리 시에는 마지막 청크가 전달되며, null일 수 있습니다.
+    /// </param>
+    /// <param name="chunk">
+    /// 원본 청크에서 변환된 공용 스트리밍 응답입니다.
+    /// </param>
+    /// <returns>최종적으로 소비자에게 전달될 스트리밍 응답들</returns>
+    protected virtual async IAsyncEnumerable<StreamingMessageResponse> OnStreamingReceive(
+        StreamingChatCompletionResponse? source,
+        StreamingMessageResponse chunk)
     {
-        // 기본 구현은 아무것도 하지 않음
-        return (T)response;
+        yield return chunk;
     }
 }

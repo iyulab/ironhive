@@ -1,38 +1,37 @@
 using System.Text.Json;
+using IronHive.Abstractions.Messages;
 using IronHive.Providers.OpenAI.Payloads.ChatCompletion;
+using IronHive.Providers.OpenAI.Payloads.Responses;
 
 namespace IronHive.Providers.OpenAI.Compatible.OpenRouter;
 
 /// <summary>
 /// OpenRouter 서비스를 위한 메시지 생성기입니다.
 /// </summary>
-internal class OpenRouterMessageGenerator : CompatibleChatMessageGenerator
+public class OpenRouterMessageGenerator : OpenAIResponseMessageGenerator
 {
-    private readonly OpenRouterConfig _openRouterConfig;
+    private readonly OpenRouterConfig _config;
 
-    public OpenRouterMessageGenerator(OpenRouterConfig config) : base(config)
+    public OpenRouterMessageGenerator(OpenRouterConfig config) : base(config.ToOpenAI())
     {
-        _openRouterConfig = config;
+        _config = config;
     }
 
-    protected override T PostProcessRequest<T>(ChatCompletionRequest request)
+    protected override ResponsesRequest OnBeforeSend(
+        MessageGenerationRequest source,
+        ResponsesRequest request)
     {
+        // 미지원 필드 초기화
+        request.Background = null;
+        request.Conversation = null;
+        request.TopLogProbs = null;
+        
         request.AdditionalProperties ??= [];
 
-        // transforms 파라미터 주입
-        if (_openRouterConfig.Transforms is { Count: > 0 })
-            request.AdditionalProperties["transforms"] =
-                JsonSerializer.SerializeToElement(_openRouterConfig.Transforms);
-
-        // route 파라미터 주입
-        if (!string.IsNullOrEmpty(_openRouterConfig.Route))
-            request.AdditionalProperties["route"] =
-                JsonSerializer.SerializeToElement(_openRouterConfig.Route);
-
         // provider preferences 주입
-        if (_openRouterConfig.ProviderPreferences != null)
+        if (_config.ProviderPreferences != null)
         {
-            var prefs = _openRouterConfig.ProviderPreferences;
+            var prefs = _config.ProviderPreferences;
             var providerObj = new Dictionary<string, object?>();
 
             if (prefs.AllowFallbacks.HasValue)
@@ -55,6 +54,6 @@ internal class OpenRouterMessageGenerator : CompatibleChatMessageGenerator
                     JsonSerializer.SerializeToElement(providerObj);
         }
 
-        return (T)request;
+        return request;
     }
 }

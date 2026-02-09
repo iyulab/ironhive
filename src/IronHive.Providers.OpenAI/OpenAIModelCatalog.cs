@@ -24,7 +24,7 @@ public class OpenAIModelCatalog : IModelCatalog
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<IModelSpec>> ListModelsAsync(
+    public virtual async Task<IEnumerable<IModelSpec>> ListModelsAsync(
         CancellationToken cancellationToken = default)
     {
         var models = await _client.GetListModelsAsync(cancellationToken);
@@ -39,7 +39,7 @@ public class OpenAIModelCatalog : IModelCatalog
     }
 
     /// <inheritdoc />
-    public async Task<IModelSpec?> FindModelAsync(
+    public virtual async Task<IModelSpec?> FindModelAsync(
         string modelId, 
         CancellationToken cancellationToken)
     {

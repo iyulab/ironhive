@@ -67,6 +67,13 @@ public class OpenAIChatCompletionClient : OpenAIClientBase
                     yield return message;
                 }
             }
+
+            // 특정 플랫폼(gpu_stack)의 경우
+            if (line.StartsWith("error:"))
+            {
+                var data = line.Substring("error:".Length).Trim();
+                throw new HttpRequestException(data);
+            }
         }
     }
 }

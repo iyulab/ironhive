@@ -10,8 +10,11 @@ using IronHive.Core.Tools;
 using IronHive.Providers.Anthropic;
 using IronHive.Providers.GoogleAI;
 using IronHive.Providers.OpenAI;
+using IronHive.Providers.OpenAI.Compatible.XAI;
 using Microsoft.Extensions.DependencyInjection;
+using System.Buffers.Text;
 using System.Data;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 
 DotEnv.Load(new DotEnvOptions(
@@ -25,14 +28,27 @@ var request = new MessageGenerationRequest
     Messages = [
         new UserMessage
         {
-            Content = [new TextMessageContent
-            {
-                Value = "Write a poem about IronHive in Korean.",
-            }]
+            Content = 
+            [
+                new TextMessageContent
+                {
+                    Value = "Write a poem about with image in Korean.",
+                },
+                new ImageMessageContent
+                {
+                    Format = ImageFormat.Jpeg,
+                    Base64 = Convert.ToBase64String(File.ReadAllBytes("dragon.jpg"))
+                }
+            ]
         }
     ],
     System = "cool",
-    //ThinkingEffort = MessageThinkingEffort.Low
+    ThinkingEffort = MessageThinkingEffort.Low
+};
+var options = new JsonSerializerOptions
+{
+    WriteIndented = true,
+    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
 };
 
 //request.Model = "gpt-5";
@@ -43,12 +59,11 @@ var request = new MessageGenerationRequest
 //    ApiKey = key
 //});
 //var msg = await openai.GenerateMessageAsync(request);
-//Console.WriteLine(JsonSerializer.Serialize(msg));
+//Console.WriteLine(JsonSerializer.Serialize(msg, options));
 //await foreach (var chunk in openai.GenerateStreamingMessageAsync(request))
 //{
-//    Console.Write(JsonSerializer.Serialize(chunk));
+//    Console.Write(JsonSerializer.Serialize(chunk, options));
 //}
-
 
 //request.Model = "claude-haiku-4-5";
 //var key = Environment.GetEnvironmentVariable("ANTHROPIC")
@@ -58,10 +73,10 @@ var request = new MessageGenerationRequest
 //    ApiKey = key
 //});
 //var msg = await anthro.GenerateMessageAsync(request);
-//Console.WriteLine(JsonSerializer.Serialize(msg));
+//Console.WriteLine(JsonSerializer.Serialize(msg, options));
 //await foreach (var chunk in anthro.GenerateStreamingMessageAsync(request))
 //{
-//    Console.Write(JsonSerializer.Serialize(chunk));
+//    Console.Write(JsonSerializer.Serialize(chunk, options));
 //}
 
 
@@ -73,26 +88,25 @@ var request = new MessageGenerationRequest
 //    ApiKey = key
 //});
 //var msg = await google.GenerateMessageAsync(request);
-//Console.WriteLine(JsonSerializer.Serialize(msg));
+//Console.WriteLine(JsonSerializer.Serialize(msg, options));
 //await foreach (var chunk in google.GenerateStreamingMessageAsync(request))
 //{
-//    Console.Write(JsonSerializer.Serialize(chunk));
+//    Console.Write(JsonSerializer.Serialize(chunk, options));
 //}
 
 
 request.Model = "grok-4-1-fast-reasoning";
 var key = Environment.GetEnvironmentVariable("XAI")
     ?? throw new Exception("XAI_API_KEY is not set in .env file");
-var openai = new OpenAIChatMessageGenerator(new OpenAIConfig
+var xai = new XAIMessageGenerator(new XAIConfig
 {
-    BaseUrl = "https://api.x.ai/v1",
     ApiKey = key
 });
-var msg = await openai.GenerateMessageAsync(request);
-Console.WriteLine(JsonSerializer.Serialize(msg));
-await foreach (var chunk in openai.GenerateStreamingMessageAsync(request))
+var msg = await xai.GenerateMessageAsync(request);
+Console.WriteLine(JsonSerializer.Serialize(msg, options));
+await foreach (var chunk in xai.GenerateStreamingMessageAsync(request))
 {
-    Console.Write(JsonSerializer.Serialize(chunk));
+    Console.Write(JsonSerializer.Serialize(chunk, options));
 }
 
 return;

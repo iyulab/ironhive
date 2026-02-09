@@ -1,4 +1,5 @@
 using System.Text.Json;
+using IronHive.Abstractions.Messages;
 using IronHive.Providers.OpenAI.Payloads.ChatCompletion;
 
 namespace IronHive.Providers.OpenAI.Compatible.DeepSeek;
@@ -6,44 +7,39 @@ namespace IronHive.Providers.OpenAI.Compatible.DeepSeek;
 /// <summary>
 /// DeepSeek 서비스를 위한 메시지 생성기입니다.
 /// </summary>
-internal class DeepSeekMessageGenerator : CompatibleChatMessageGenerator
+public class DeepSeekMessageGenerator : OpenAIChatMessageGenerator
 {
-    private readonly DeepSeekConfig _deepSeekConfig;
+    private readonly DeepSeekConfig _config;
 
-    public DeepSeekMessageGenerator(DeepSeekConfig config) : base(config)
+    public DeepSeekMessageGenerator(DeepSeekConfig config) : base(config.ToOpenAI())
     {
-        _deepSeekConfig = config;
+        _config = config;
     }
 
-    protected override T PostProcessRequest<T>(ChatCompletionRequest request)
+    protected override ChatCompletionRequest OnBeforeSend(
+        MessageGenerationRequest source,
+        ChatCompletionRequest request)
     {
-        // n=1 강제 (DeepSeek은 1만 지원)
-        request.N = 1;
-
         // 미지원 파라미터 제거
-        request.LogitBias = null;
+        request.Temperature = null;
+        request.TopP = null;
+        request.PresencePenalty = null;
+        request.FrequencyPenalty = null;
         request.LogProbs = null;
         request.TopLogProbs = null;
 
         // Thinking 모드 활성화
-        if (_deepSeekConfig.EnableThinking)
+        if (source.ThinkingEffort != null && source.ThinkingEffort != MessageThinkingEffort.None)
         {
-            request.AdditionalProperties ??= [];
-            var thinking = new Dictionary<string, object> { ["type"] = "enabled" };
-            if (_deepSeekConfig.ThinkingBudgetTokens.HasValue)
+            request.AdditionalProperties = new Dictionary<string, JsonElement>
             {
-                thinking["budget_tokens"] = _deepSeekConfig.ThinkingBudgetTokens.Value;
-            }
-            request.AdditionalProperties["thinking"] =
-                JsonSerializer.SerializeToElement(thinking);
-
-            // 추론 모드에서 무시되는 파라미터 제거
-            request.Temperature = null;
-            request.TopP = null;
-            request.PresencePenalty = null;
-            request.FrequencyPenalty = null;
+                ["thinking"] = JsonSerializer.SerializeToElement(new Dictionary<string, object>
+                {
+                    ["type"] = "enabled",
+                })
+            };
         }
 
-        return (T)request;
+        return request;
     }
 }
