@@ -8,7 +8,7 @@ namespace IronHive.Providers.OpenAI.Payloads.Responses;
 /// POST /v1/responses 응답 바디에 해당하는 클래스
 /// <see href="https://platform.openai.com/docs/api-reference/responses/object"/>
 /// </summary>
-public class ResponsesResponse: JsonExtensionBase
+public class ResponsesResponse: JsonExtensibleBase
 {
     [JsonPropertyName("background")]
     public required bool Background { get; set; }

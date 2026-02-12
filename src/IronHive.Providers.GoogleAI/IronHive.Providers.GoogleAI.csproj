@@ -5,6 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Google.GenAI" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\IronHive.Abstractions\IronHive.Abstractions.csproj" />
   </ItemGroup>
 

@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace IronHive.Providers.OpenAI.Payloads.ChatCompletion;
 
-public class ChatCompletionResponse: JsonExtensionBase
+public class ChatCompletionResponse: JsonExtensibleBase
 {
     [JsonPropertyName("choices")]
     public IEnumerable<ChatChoice>? Choices { get; set; }

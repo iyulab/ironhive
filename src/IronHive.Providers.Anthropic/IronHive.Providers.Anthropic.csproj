@@ -5,6 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Anthropic" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\IronHive.Abstractions\IronHive.Abstractions.csproj" />
   </ItemGroup>
 

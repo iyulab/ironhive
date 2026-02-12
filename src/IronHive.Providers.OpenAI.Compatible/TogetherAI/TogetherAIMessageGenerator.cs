@@ -1,4 +1,4 @@
-using System.Text.Json;
+using System.Text.Json.Nodes;
 using IronHive.Abstractions.Messages;
 using IronHive.Providers.OpenAI.Payloads.ChatCompletion;
 
@@ -26,11 +26,10 @@ public class TogetherAIMessageGenerator : OpenAIChatMessageGenerator
         request.ReasoningEffort = null;
 
         // Together AI 전용 파라미터 주입
-        request.AdditionalProperties ??= [];
+        request.ExtraBody ??= new JsonObject();
 
         if (!string.IsNullOrEmpty(_config.SafetyModel))
-            request.AdditionalProperties["safety_model"] =
-                JsonSerializer.SerializeToElement(_config.SafetyModel);
+            request.ExtraBody["safety_model"] = JsonValue.Create(_config.SafetyModel);
 
         return request;
     }

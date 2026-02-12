@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using IronHive.Abstractions.Messages;
 using IronHive.Providers.OpenAI.Payloads.ChatCompletion;
 using IronHive.Providers.OpenAI.Payloads.Responses;
@@ -25,33 +26,32 @@ public class OpenRouterMessageGenerator : OpenAIResponseMessageGenerator
         request.Background = null;
         request.Conversation = null;
         request.TopLogProbs = null;
-        
-        request.AdditionalProperties ??= [];
+
+        request.ExtraBody ??= new JsonObject();
 
         // provider preferences 주입
         if (_config.ProviderPreferences != null)
         {
             var prefs = _config.ProviderPreferences;
-            var providerObj = new Dictionary<string, object?>();
+            var providerObj = new JsonObject();
 
             if (prefs.AllowFallbacks.HasValue)
                 providerObj["allow_fallbacks"] = prefs.AllowFallbacks.Value;
             if (prefs.RequireParameters.HasValue)
                 providerObj["require_parameters"] = prefs.RequireParameters.Value;
             if (prefs.Order is { Count: > 0 })
-                providerObj["order"] = prefs.Order;
+                providerObj["order"] = JsonSerializer.SerializeToNode(prefs.Order);
             if (prefs.Ignore is { Count: > 0 })
-                providerObj["ignore"] = prefs.Ignore;
+                providerObj["ignore"] = JsonSerializer.SerializeToNode(prefs.Ignore);
             if (prefs.Quantizations is { Count: > 0 })
-                providerObj["quantizations"] = prefs.Quantizations;
+                providerObj["quantizations"] = JsonSerializer.SerializeToNode(prefs.Quantizations);
             if (!string.IsNullOrEmpty(prefs.DataCollection))
                 providerObj["data_collection"] = prefs.DataCollection;
             if (!string.IsNullOrEmpty(prefs.Sort))
                 providerObj["sort"] = prefs.Sort;
 
             if (providerObj.Count > 0)
-                request.AdditionalProperties["provider"] =
-                    JsonSerializer.SerializeToElement(providerObj);
+                request.ExtraBody["provider"] = providerObj;
         }
 
         return request;

@@ -1,9 +1,14 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.ClientModel;
+using System.Runtime.CompilerServices;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Messages.Roles;
 using IronHive.Providers.OpenAI.Clients;
 using IronHive.Providers.OpenAI.Payloads.ChatCompletion;
+//using OpenAI;
+//using OpenAI.Chat;
+//using OpenAI.Responses;
+using ChatFinishReason = IronHive.Providers.OpenAI.Payloads.ChatCompletion.ChatFinishReason;
 
 namespace IronHive.Providers.OpenAI;
 

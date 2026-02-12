@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using System.Text.Json;
 using System.Text.Encodings.Web;
+using IronHive.Abstractions.Json;
 
 namespace IronHive.Providers.OpenAI;
 
@@ -50,7 +51,8 @@ public class OpenAIConfig
         AllowOutOfOrderMetadataProperties = true, // 다형성 역직렬화시 첫번째 속성이 아닌 경우에도 인식(성능 저하 있음)
         Converters =
         {
-            new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower)
+            new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower),
+            new ExtraBodyJsonConverterFactory(),
         },
     };
 

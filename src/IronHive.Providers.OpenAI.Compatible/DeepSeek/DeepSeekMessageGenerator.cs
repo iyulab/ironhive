@@ -1,4 +1,4 @@
-using System.Text.Json;
+using System.Text.Json.Nodes;
 using IronHive.Abstractions.Messages;
 using IronHive.Providers.OpenAI.Payloads.ChatCompletion;
 
@@ -31,12 +31,9 @@ public class DeepSeekMessageGenerator : OpenAIChatMessageGenerator
         // Thinking 모드 활성화
         if (source.ThinkingEffort != null && source.ThinkingEffort != MessageThinkingEffort.None)
         {
-            request.AdditionalProperties = new Dictionary<string, JsonElement>
+            request.ExtraBody = new()
             {
-                ["thinking"] = JsonSerializer.SerializeToElement(new Dictionary<string, object>
-                {
-                    ["type"] = "enabled",
-                })
+                ["thinking"] = new JsonObject { ["type"] = "enabled" }
             };
         }
 

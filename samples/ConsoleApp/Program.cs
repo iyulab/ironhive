@@ -1,4 +1,5 @@
-﻿using dotenv.net;
+﻿using ConsoleApp;
+using dotenv.net;
 using IronHive.Abstractions;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
@@ -16,6 +17,10 @@ using System.Buffers.Text;
 using System.Data;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+
+// === JsonExtension ExtraBody 샘플 ===
+JsonExtensionSample.Run();
+return;
 
 DotEnv.Load(new DotEnvOptions(
     envFilePaths: [".env"],
@@ -62,7 +67,7 @@ var options = new JsonSerializerOptions
 //Console.WriteLine(JsonSerializer.Serialize(msg, options));
 //await foreach (var chunk in openai.GenerateStreamingMessageAsync(request))
 //{
-//    Console.Write(JsonSerializer.Serialize(chunk, options));
+//    Console.WriteLine(JsonSerializer.Serialize(chunk, options));
 //}
 
 //request.Model = "claude-haiku-4-5";
@@ -76,37 +81,38 @@ var options = new JsonSerializerOptions
 //Console.WriteLine(JsonSerializer.Serialize(msg, options));
 //await foreach (var chunk in anthro.GenerateStreamingMessageAsync(request))
 //{
-//    Console.Write(JsonSerializer.Serialize(chunk, options));
+//    Console.WriteLine(JsonSerializer.Serialize(chunk, options));
 //}
 
 
-//request.Model = "gemini-3-flash-preview";
-//var key = Environment.GetEnvironmentVariable("GOOGLE")
-//    ?? throw new Exception("GOOGLE_API_KEY is not set in .env file");
-//var google = new GoogleAIMessageGenerator(new GoogleAIConfig
-//{
-//    ApiKey = key
-//});
-//var msg = await google.GenerateMessageAsync(request);
-//Console.WriteLine(JsonSerializer.Serialize(msg, options));
-//await foreach (var chunk in google.GenerateStreamingMessageAsync(request))
-//{
-//    Console.Write(JsonSerializer.Serialize(chunk, options));
-//}
-
-
-request.Model = "grok-4-1-fast-reasoning";
-var key = Environment.GetEnvironmentVariable("XAI")
-    ?? throw new Exception("XAI_API_KEY is not set in .env file");
-var xai = new XAIMessageGenerator(new XAIConfig
+request.Model = "gemini-3-flash-preview";
+var key = Environment.GetEnvironmentVariable("GOOGLE")
+    ?? throw new Exception("GOOGLE_API_KEY is not set in .env file");
+var google = new GoogleAIMessageGenerator(new GoogleAIConfig
 {
     ApiKey = key
 });
-var msg = await xai.GenerateMessageAsync(request);
+var msg = await google.GenerateMessageAsync(request);
 Console.WriteLine(JsonSerializer.Serialize(msg, options));
-await foreach (var chunk in xai.GenerateStreamingMessageAsync(request))
+await foreach (var chunk in google.GenerateStreamingMessageAsync(request))
 {
-    Console.Write(JsonSerializer.Serialize(chunk, options));
+    Console.WriteLine(JsonSerializer.Serialize(chunk, options));
 }
+
+
+//request.Model = "grok-4-1-fast-reasoning";
+//var key = Environment.GetEnvironmentVariable("XAI")
+//    ?? throw new Exception("XAI_API_KEY is not set in .env file");
+//var xai = new XAIMessageGenerator(new XAIConfig
+//{
+//    ApiKey = key
+//});
+//var msg = await xai.GenerateMessageAsync(request);
+//Console.WriteLine(JsonSerializer.Serialize(msg, options));
+//await foreach (var chunk in xai.GenerateStreamingMessageAsync(request))
+//{
+//    Console.WriteLine(JsonSerializer.Serialize(chunk, options));
+//}
+
 
 return;
