@@ -1,16 +1,13 @@
-﻿using IronHive.Abstractions.Embedding;
-using IronHive.Providers.GoogleAI.Clients;
-using IronHive.Providers.GoogleAI.Payloads;
-using IronHive.Providers.GoogleAI.Payloads.EmbedContent;
-using IronHive.Providers.GoogleAI.Payloads.Tokens;
+using Google.GenAI;
+using Google.GenAI.Types;
+using IronHive.Abstractions.Embedding;
 
 namespace IronHive.Providers.GoogleAI;
 
 /// <inheritdoc />
 public class GoogleAIEmbeddingGenerator : IEmbeddingGenerator
 {
-    private readonly GoogleAIEmbedContentClient _client;
-    private readonly GoogleAITokensClient _tokenizer;
+    private readonly Client _client;
 
     public GoogleAIEmbeddingGenerator(string apiKey)
         : this(new GoogleAIConfig { ApiKey = apiKey })
@@ -18,104 +15,82 @@ public class GoogleAIEmbeddingGenerator : IEmbeddingGenerator
 
     public GoogleAIEmbeddingGenerator(GoogleAIConfig config)
     {
-        _client = new GoogleAIEmbedContentClient(config);
-        _tokenizer = new GoogleAITokensClient(config);
+        _client = GoogleAIClientFactory.CreateClient(config);
     }
 
     /// <inheritdoc />
     public void Dispose()
     {
         _client.Dispose();
-        _tokenizer.Dispose();
         GC.SuppressFinalize(this);
     }
 
     /// <inheritdoc />
     public async Task<float[]> EmbedAsync(
-        string modelId, 
-        string input, 
+        string modelId,
+        string input,
         CancellationToken cancellationToken = default)
     {
-        var res = await _client.PostEmbedContentAsync(new EmbedContentRequest
-        {
-            Model = modelId,
-            Content = new Content
-            {
-                Parts = [ new ContentPart { Text = input } ]
-            }
-        }, cancellationToken);
-        
-        return res.Embedding.Values;
+        var res = await _client.Models.EmbedContentAsync(modelId, input);
+        var embedding = res.Embeddings?.FirstOrDefault()
+            ?? throw new InvalidOperationException("No embedding found in response.");
+
+        return embedding.Values?.Select(v => (float)v).ToArray()
+            ?? throw new InvalidOperationException("No embedding values found in response.");
     }
 
     /// <inheritdoc />
     public async Task<IEnumerable<EmbeddingResult>> EmbedBatchAsync(
-        string modelId, 
-        IEnumerable<string> inputs, 
+        string modelId,
+        IEnumerable<string> inputs,
         CancellationToken cancellationToken = default)
     {
-        var res = await _client.PostBatchEmbedContentAsync(new BatchEmbedContentRequest
+        var contents = inputs.Select(input => new Content
         {
-            Requests = inputs.Select(input => new EmbedContentRequest
-            {
-                Model = modelId,
-                Content = new Content
-                {
-                    Parts = [ new ContentPart { Text = input } ]
-                }
-            }).ToArray()
-        }, cancellationToken);
+            Parts = [new Part { Text = input }]
+        }).ToList();
 
-        return res.Embeddings.Select((e, i) => new EmbeddingResult
+        var res = await _client.Models.EmbedContentAsync(modelId, contents);
+
+        return (res.Embeddings ?? []).Select((e, i) => new EmbeddingResult
         {
             Index = i,
-            Embedding = e.Values
+            Embedding = e.Values?.Select(v => (float)v).ToArray()
         });
     }
 
     /// <inheritdoc />
     public async Task<int> CountTokensAsync(
-        string modelId, 
-        string input, 
+        string modelId,
+        string input,
         CancellationToken cancellationToken = default)
     {
-        var res = await _tokenizer.PostCountTokensAsync(new CountTokensRequest
-        {
-            Model = modelId,
-            Contents =
-            [
-                new Content
-                {
-                    Parts = [ new ContentPart { Text = input } ]
-                }
-            ]
-        }, cancellationToken);
-
-        return res.TotalTokens 
+        var res = await _client.Models.CountTokensAsync(modelId, input);
+        return res.TotalTokens
             ?? throw new InvalidOperationException("No token count found for the input.");
     }
 
     /// <inheritdoc />
     public async Task<IEnumerable<EmbeddingTokens>> CountTokensBatchAsync(
-        string modelId, 
-        IEnumerable<string> inputs, 
+        string modelId,
+        IEnumerable<string> inputs,
         CancellationToken cancellationToken = default)
     {
-        var res = await _tokenizer.PostCountTokensAsync(new CountTokensRequest
-        {
-            Model = modelId,
-            Contents = inputs.Select(input => new Content
-            {
-                Parts = [ new ContentPart { Text = input } ]
-            }).ToArray()
-        }, cancellationToken);
+        var inputList = inputs.ToList();
+        var results = new List<EmbeddingTokens>(inputList.Count);
 
-        return res.PromptTokensDetails?.Select((d, i) => new EmbeddingTokens
+        for (int i = 0; i < inputList.Count; i++)
         {
-            Index = i,
-            Text = inputs.ElementAt(i),
-            TokenCount = d.TokenCount 
-                ?? throw new InvalidOperationException($"No token count found for the input[{i}].")
-        }) ?? [];
+            var res = await _client.Models.CountTokensAsync(modelId, inputList[i]);
+            results.Add(new EmbeddingTokens
+            {
+                Index = i,
+                Text = inputList[i],
+                TokenCount = res.TotalTokens
+                    ?? throw new InvalidOperationException($"No token count found for the input[{i}].")
+            });
+        }
+
+        return results;
     }
 }

@@ -1,5 +1,4 @@
 ﻿using IronHive.Providers.Anthropic;
-using IronHive.Providers.Anthropic.Share;
 
 namespace IronHive.Abstractions;
 

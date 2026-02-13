@@ -19,8 +19,8 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 
 // === JsonExtension ExtraBody 샘플 ===
-JsonExtensionSample.Run();
-return;
+//JsonExtensionSample.Run();
+//return;
 
 DotEnv.Load(new DotEnvOptions(
     envFilePaths: [".env"],
@@ -85,19 +85,19 @@ var options = new JsonSerializerOptions
 //}
 
 
-request.Model = "gemini-3-flash-preview";
-var key = Environment.GetEnvironmentVariable("GOOGLE")
-    ?? throw new Exception("GOOGLE_API_KEY is not set in .env file");
-var google = new GoogleAIMessageGenerator(new GoogleAIConfig
-{
-    ApiKey = key
-});
-var msg = await google.GenerateMessageAsync(request);
-Console.WriteLine(JsonSerializer.Serialize(msg, options));
-await foreach (var chunk in google.GenerateStreamingMessageAsync(request))
-{
-    Console.WriteLine(JsonSerializer.Serialize(chunk, options));
-}
+//request.Model = "gemini-3-flash-preview";
+//var key = Environment.GetEnvironmentVariable("GOOGLE")
+//    ?? throw new Exception("GOOGLE_API_KEY is not set in .env file");
+//var google = new GoogleAIMessageGenerator(new GoogleAIConfig
+//{
+//    ApiKey = key
+//});
+//var msg = await google.GenerateMessageAsync(request);
+//Console.WriteLine(JsonSerializer.Serialize(msg, options));
+//await foreach (var chunk in google.GenerateStreamingMessageAsync(request))
+//{
+//    Console.WriteLine(JsonSerializer.Serialize(chunk, options));
+//}
 
 
 //request.Model = "grok-4-1-fast-reasoning";

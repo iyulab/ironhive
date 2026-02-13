@@ -1,7 +1,6 @@
 ﻿using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Messages;
 using IronHive.Providers.Anthropic;
-using IronHive.Providers.Anthropic.Share;
 
 namespace IronHive.Abstractions.Registries;
 

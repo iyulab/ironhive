@@ -1,17 +1,24 @@
-﻿using IronHive.Abstractions.Messages;
+using Google.GenAI;
+using Google.GenAI.Types;
+using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Messages.Roles;
-using IronHive.Providers.GoogleAI.Clients;
-using IronHive.Providers.GoogleAI.Payloads.GenerateContent;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using GoogleContent = Google.GenAI.Types.Content;
+using GooglePart = Google.GenAI.Types.Part;
+using GoogleTool = Google.GenAI.Types.Tool;
+using GoogleFunctionDeclaration = Google.GenAI.Types.FunctionDeclaration;
+using GoogleThinkingConfig = Google.GenAI.Types.ThinkingConfig;
+using GoogleGenerateContentConfig = Google.GenAI.Types.GenerateContentConfig;
 
 namespace IronHive.Providers.GoogleAI;
 
 /// <inheritdoc />
 public class GoogleAIMessageGenerator : IMessageGenerator
 {
-    private readonly GoogleAIGenerateContentClient _client;
+    private readonly Client _client;
 
     public GoogleAIMessageGenerator(string apiKey)
         : this(new GoogleAIConfig { ApiKey = apiKey })
@@ -19,7 +26,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
 
     public GoogleAIMessageGenerator(GoogleAIConfig config)
     {
-        _client = new GoogleAIGenerateContentClient(config);
+        _client = GoogleAIClientFactory.CreateClient(config);
     }
 
     /// <inheritdoc />
@@ -31,11 +38,12 @@ public class GoogleAIMessageGenerator : IMessageGenerator
 
     /// <inheritdoc />
     public async Task<MessageResponse> GenerateMessageAsync(
-        MessageGenerationRequest request, 
+        MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var req = request.ToGoogleAI();
-        var response = await _client.GenerateContentAsync(req, cancellationToken);
+        var (model, contents, config) = ToGoogleAIParams(request);
+        var response = await _client.Models.GenerateContentAsync(
+            model, contents, config);
 
         MessageDoneReason? reason = null;
         var usage = new MessageTokenUsage();
@@ -57,7 +65,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                     message.Content.Add(new ThinkingMessageContent
                     {
                         Format = ThinkingFormat.Summary,
-                        Signature = part.ThoughtSignature,
+                        Signature = part.ThoughtSignature != null ? Convert.ToBase64String(part.ThoughtSignature) : null,
                         Value = part.Text
                     });
                 }
@@ -72,11 +80,11 @@ public class GoogleAIMessageGenerator : IMessageGenerator
             }
 
             // 생각(Thought) 시그니처 업데이트
-            if (!string.IsNullOrWhiteSpace(part.ThoughtSignature))
+            if (part.ThoughtSignature is { Length: > 0 })
             {
                 if (message.Content.LastOrDefault(c => c is ThinkingMessageContent) is ThinkingMessageContent last)
                 {
-                    last.Signature = part.ThoughtSignature;
+                    last.Signature = Convert.ToBase64String(part.ThoughtSignature);
                 }
             }
 
@@ -89,11 +97,9 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                     Id = part.FunctionCall.Id ?? Guid.NewGuid().ToShort(),
                     Name = part.FunctionCall.Name,
                     Input = JsonSerializer.Serialize(part.FunctionCall.Args),
-                    IsApproved = request.Tools?.TryGet(part.FunctionCall.Name, out var t) != true || t?.RequiresApproval == false
+                    IsApproved = request.Tools?.TryGet(part.FunctionCall.Name!, out var t) != true || t?.RequiresApproval == false
                 });
             }
-            
-            // 이하 생략 (blob 등)
         }
 
         // 완료 이유 매핑
@@ -125,26 +131,27 @@ public class GoogleAIMessageGenerator : IMessageGenerator
 
     /// <inheritdoc />
     public async IAsyncEnumerable<StreamingMessageResponse> GenerateStreamingMessageAsync(
-        MessageGenerationRequest request, 
+        MessageGenerationRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var req = request.ToGoogleAI();
+        var (model, contents, config) = ToGoogleAIParams(request);
 
         // 인덱스 추적 관리용
         (int, MessageContent)? current = null;
 
         string id = string.Empty;
-        string model = string.Empty;
+        string modelVersion = string.Empty;
         MessageDoneReason? reason = null;
         MessageTokenUsage? usage = null;
 
-        await foreach (var res in _client.StreamGenerateContentAsync(req, cancellationToken))
+        await foreach (var res in _client.Models.GenerateContentStreamAsync(
+            model, contents, config))
         {
             // 메시지 시작
             if (current == null)
             {
                 id = res.ResponseId ?? Guid.NewGuid().ToString();
-                model = res.ModelVersion ?? req.Model;
+                modelVersion = res.ModelVersion ?? model;
                 yield return new StreamingMessageBeginResponse
                 {
                     Id = id
@@ -191,7 +198,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                             current = (0, new ThinkingMessageContent
                             {
                                 Format = ThinkingFormat.Summary,
-                                Signature = part.ThoughtSignature,
+                                Signature = part.ThoughtSignature != null ? Convert.ToBase64String(part.ThoughtSignature) : null,
                                 Value = part.Text
                             });
                         }
@@ -224,27 +231,23 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                             Content = current.Value.Item2
                         };
                     }
-                    else
-                    {
-                        // 아무 것도 하지 않음
-                    }
                 }
                 // 이전 업데이트 이후 추가시
                 else
                 {
                     (int index, MessageContent content) = current.Value;
 
-                    if (!string.IsNullOrWhiteSpace(part.ThoughtSignature))
+                    if (part.ThoughtSignature is { Length: > 0 })
                     {
                         // 생각(Thought) 시그니처 업데이트 및 이전 생각 완료
-                        if (content is ThinkingMessageContent thinkingContent)
+                        if (content is ThinkingMessageContent)
                         {
                             yield return new StreamingContentUpdatedResponse
                             {
                                 Index = index,
                                 Updated = new ThinkingUpdatedContent
                                 {
-                                    Signature = part.ThoughtSignature
+                                    Signature = Convert.ToBase64String(part.ThoughtSignature)
                                 }
                             };
                             yield return new StreamingContentCompletedResponse
@@ -269,7 +272,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                             current = (index + 1, new ThinkingMessageContent
                             {
                                 Format = ThinkingFormat.Summary,
-                                Signature = part.ThoughtSignature,
+                                Signature = part.ThoughtSignature != null ? Convert.ToBase64String(part.ThoughtSignature) : null,
                                 Value = part.Text
                             });
                             yield return new StreamingContentAddedResponse
@@ -334,10 +337,6 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                             Content = current.Value.Item2
                         };
                     }
-                    else
-                    {
-                        // 아무 것도 하지 않음
-                    }
                 }
             }
         }
@@ -363,7 +362,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
             DoneReason = reason,
             TokenUsage = usage,
             Id = id,
-            Model = model,
+            Model = modelVersion,
             Timestamp = DateTime.UtcNow,
         };
     }
@@ -374,13 +373,288 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         return reason switch
         {
             FinishReason.STOP => MessageDoneReason.EndTurn,
-
             FinishReason.MAX_TOKENS => MessageDoneReason.MaxTokens,
-            
-            FinishReason.SAFETY or FinishReason.IMAGE_SAFETY or 
+            FinishReason.SAFETY or FinishReason.IMAGE_SAFETY or
             FinishReason.PROHIBITED_CONTENT or FinishReason.SPII => MessageDoneReason.ContentFilter,
-            
             _ => MessageDoneReason.Unknown
         };
+    }
+
+    /// <summary>
+    /// IronHive의 MessageGenerationRequest를 Google GenAI SDK의 타입들로 변환합니다.
+    /// </summary>
+    private static (string model, List<GoogleContent> contents, GoogleGenerateContentConfig config) ToGoogleAIParams(
+        MessageGenerationRequest request)
+    {
+        var contents = new List<GoogleContent>();
+        foreach (var msg in request.Messages)
+        {
+            // 사용자 메시지
+            if (msg is UserMessage user)
+            {
+                var parts = new List<GooglePart>();
+                foreach (var item in user.Content)
+                {
+                    // 텍스트 메시지
+                    if (item is TextMessageContent text)
+                    {
+                        parts.Add(new GooglePart
+                        {
+                            Text = text.Value ?? string.Empty
+                        });
+                    }
+                    // 파일 문서 메시지
+                    else if (item is DocumentMessageContent document)
+                    {
+                        parts.Add(new GooglePart
+                        {
+                            Text = $"document({document.ContentType}): \n{document.Data}\n",
+                        });
+                    }
+                    // 이미지 메시지
+                    else if (item is ImageMessageContent image)
+                    {
+                        parts.Add(new GooglePart
+                        {
+                            InlineData = new Google.GenAI.Types.Blob
+                            {
+                                MimeType = image.Format switch
+                                {
+                                    ImageFormat.Png => "image/png",
+                                    ImageFormat.Jpeg => "image/jpeg",
+                                    ImageFormat.Webp => "image/webp",
+                                    _ => throw new NotImplementedException("not supported yet")
+                                },
+                                Data = Convert.FromBase64String(image.Base64 ?? string.Empty)
+                            }
+                        });
+                    }
+                    else
+                    {
+                        throw new NotImplementedException("not supported yet");
+                    }
+                }
+                contents.Add(new GoogleContent
+                {
+                    Role = "user",
+                    Parts = parts
+                });
+            }
+            // AI 메시지
+            else if (msg is AssistantMessage assistant)
+            {
+                var modelParts = new List<GooglePart>();
+                var userParts = new List<GooglePart>();
+
+                string? ts = null; // 사고 (Thinking) 메시지 시그니처 추적용
+                foreach (var item in assistant.Content)
+                {
+                    // 사고 메시지
+                    if (item is ThinkingMessageContent thinking)
+                    {
+                        modelParts.Add(new GooglePart
+                        {
+                            Thought = true,
+                            Text = thinking.Value ?? string.Empty,
+                        });
+
+                        // 시그니처 갱신
+                        if (!string.IsNullOrWhiteSpace(thinking.Signature))
+                        {
+                            ts = thinking.Signature;
+                        }
+                    }
+                    // 텍스트 메시지
+                    else if (item is TextMessageContent text)
+                    {
+                        var part = new GooglePart
+                        {
+                            Text = text.Value ?? string.Empty,
+                        };
+
+                        // 이전 사고 시그니처가 있으면 연결 및 초기화
+                        if (!string.IsNullOrWhiteSpace(ts))
+                        {
+                            part.ThoughtSignature = Convert.FromBase64String(ts);
+                            ts = null;
+                        }
+
+                        modelParts.Add(part);
+                    }
+                    // 도구 메시지
+                    else if (item is ToolMessageContent tool)
+                    {
+                        // 도구 호출 메시지
+                        var part = new GooglePart
+                        {
+                            FunctionCall = new Google.GenAI.Types.FunctionCall
+                            {
+                                Id = tool.Id,
+                                Name = tool.Name,
+                                Args = JsonSerializer.Deserialize<Dictionary<string, object>>(tool.Input ?? "{}")
+                            }
+                        };
+                        // 이전 사고 시그니처가 있으면 연결 및 초기화
+                        if (!string.IsNullOrWhiteSpace(ts))
+                        {
+                            part.ThoughtSignature = Convert.FromBase64String(ts);
+                            ts = null;
+                        }
+                        modelParts.Add(part);
+
+                        // 도구 결과 메시지
+                        userParts.Add(new GooglePart
+                        {
+                            FunctionResponse = new Google.GenAI.Types.FunctionResponse
+                            {
+                                Id = tool.Id,
+                                Name = tool.Name,
+                                Response = tool.Output != null
+                                    ? JsonSerializer.Deserialize<Dictionary<string, object>>(
+                                        JsonSerializer.Serialize(tool.Output))
+                                    : new Dictionary<string, object>()
+                            }
+                        });
+                    }
+                    else
+                    {
+                        throw new NotImplementedException("not supported yet");
+                    }
+                }
+
+                contents.Add(new GoogleContent
+                {
+                    Role = "model",
+                    Parts = modelParts
+                });
+                if (userParts.Count > 0)
+                {
+                    contents.Add(new GoogleContent
+                    {
+                        Role = "user",
+                        Parts = userParts
+                    });
+                }
+            }
+            else
+            {
+                throw new NotImplementedException("not supported yet");
+            }
+        }
+
+        // 도구 변환
+        List<GoogleTool>? tools = null;
+        if (request.Tools?.Any() == true)
+        {
+            tools =
+            [
+                new GoogleTool
+                {
+                    FunctionDeclarations = request.Tools.Select(t => new GoogleFunctionDeclaration
+                    {
+                        Name = t.UniqueName,
+                        Description = t.Description ?? string.Empty,
+                        ParametersJsonSchema = t.Parameters is not null
+                            ? JsonSerializer.Deserialize<Dictionary<string, object>>(
+                                JsonSerializer.Serialize(t.Parameters))
+                            : null
+                    }).ToList()
+                }
+            ];
+        }
+
+        // Thinking 설정
+        GoogleThinkingConfig? thinkingConfig = null;
+        if (request.ThinkingEffort is not null and not MessageThinkingEffort.None)
+        {
+            thinkingConfig = new GoogleThinkingConfig
+            {
+                IncludeThoughts = true,
+                ThinkingBudget = CalculateThinkingTokens(request)
+            };
+        }
+
+        var config = new GoogleGenerateContentConfig
+        {
+            SystemInstruction = string.IsNullOrWhiteSpace(request.System) ? null : new GoogleContent
+            {
+                Parts = [new GooglePart { Text = request.System }]
+            },
+            Tools = tools,
+            CandidateCount = 1,
+            MaxOutputTokens = request.MaxTokens,
+            StopSequences = request.StopSequences?.ToList(),
+            TopP = request.TopP,
+            TopK = request.TopK,
+            Temperature = request.Temperature,
+            ThinkingConfig = thinkingConfig,
+        };
+
+        return (request.Model, contents, config);
+    }
+
+    /// <summary>
+    /// 추론(Thinking) 사용 시 토큰 예산을 계산합니다.
+    /// <see href="https://ai.google.dev/gemini-api/docs/thinking#set-budget">모델별 토큰 범위</see>
+    /// </summary>
+    private static int CalculateThinkingTokens(MessageGenerationRequest request)
+    {
+        string model = request.Model.ToLowerInvariant();
+
+        // Gemini 2.5 Pro (128 ~ 32768)
+        if (model.Contains("gemini-2.5-pro"))
+        {
+            return request.ThinkingEffort switch
+            {
+                MessageThinkingEffort.Low => 1024,
+                MessageThinkingEffort.Medium => 8192,
+                MessageThinkingEffort.High => 32768,
+                _ => -1 // dynamic
+            };
+        }
+        // Gemini 2.5 Flash (0 ~ 24576)
+        else if (model.Contains("gemini-2.5-flash"))
+        {
+            return request.ThinkingEffort switch
+            {
+                MessageThinkingEffort.Low => 1024,
+                MessageThinkingEffort.Medium => 8192,
+                MessageThinkingEffort.High => 24576,
+                _ => -1 // dynamic
+            };
+        }
+        // Gemini 2.5 Flash Lite(512 ~ 24576)
+        else if (model.Contains("gemini-2.5-flash-lite"))
+        {
+            return request.ThinkingEffort switch
+            {
+                MessageThinkingEffort.Low => 512,
+                MessageThinkingEffort.Medium => 8192,
+                MessageThinkingEffort.High => 24576,
+                _ => 0
+            };
+        }
+        // Robotics-ER 1.5 Preview(512 ~ 24576)
+        else if (model.Contains("robotics-er-1.5"))
+        {
+            return request.ThinkingEffort switch
+            {
+                MessageThinkingEffort.Low => 512,
+                MessageThinkingEffort.Medium => 8192,
+                MessageThinkingEffort.High => 24576,
+                _ => 0
+            };
+        }
+        // 이외 모델(512 ~ 8192)
+        else
+        {
+            return request.ThinkingEffort switch
+            {
+                MessageThinkingEffort.Low => 512,
+                MessageThinkingEffort.Medium => 2048,
+                MessageThinkingEffort.High => 8192,
+                _ => 0
+            };
+        }
     }
 }

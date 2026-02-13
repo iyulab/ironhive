@@ -1,13 +1,13 @@
-﻿using IronHive.Abstractions.Catalog;
-using IronHive.Providers.Anthropic.Clients;
-using IronHive.Providers.Anthropic.Payloads.Models;
+using Anthropic;
+using Anthropic.Models.Models;
+using IronHive.Abstractions.Catalog;
 
 namespace IronHive.Providers.Anthropic;
 
 /// <inheritdoc />
 public class AnthropicModelCatalog : IModelCatalog
 {
-    private readonly AnthropicModelsClient _client;
+    private readonly IAnthropicClient _client;
 
     public AnthropicModelCatalog(string apiKey)
         : this(new AnthropicConfig { ApiKey = apiKey })
@@ -15,13 +15,12 @@ public class AnthropicModelCatalog : IModelCatalog
 
     public AnthropicModelCatalog(AnthropicConfig config)
     {
-        _client = new AnthropicModelsClient(config);
+        _client = AnthropicClientFactory.CreateClient(config);
     }
 
     /// <inheritdoc />
     public void Dispose()
     {
-        _client.Dispose();
         GC.SuppressFinalize(this);
     }
 
@@ -29,34 +28,46 @@ public class AnthropicModelCatalog : IModelCatalog
     public async Task<IEnumerable<IModelSpec>> ListModelsAsync(
         CancellationToken cancellationToken = default)
     {
-        var req = new ListModelsRequest
+        var page = await _client.Models.List(new ModelListParams
         {
-            Limit = 999,
-        };
-        var res = await _client.GetModelsAsync(req, cancellationToken);
+            Limit = 1000,
+        }, cancellationToken);
 
-        return res.Data.Select(m => new GenericModelSpec
+        var models = new List<IModelSpec>();
+        await foreach (var model in page.Paginate(cancellationToken))
         {
-            ModelId = m.Id,
-            DisplayName = m.DisplayName,
-            CreatedAt = m.CreatedAt,
-        });
+            models.Add(new GenericModelSpec
+            {
+                ModelId = model.ID,
+                DisplayName = model.DisplayName,
+                CreatedAt = model.CreatedAt.UtcDateTime,
+            });
+        }
+
+        return models;
     }
 
     /// <inheritdoc />
     public async Task<IModelSpec?> FindModelAsync(
-        string modelId, 
+        string modelId,
         CancellationToken cancellationToken = default)
     {
-        var model = await _client.GetModelAsync(modelId, cancellationToken);
-
-        return model is not null
-            ? new GenericModelSpec
+        try
+        {
+            var model = await _client.Models.Retrieve(new ModelRetrieveParams
             {
-                ModelId = model.Id,
+                ModelID = modelId
+            }, cancellationToken);
+            return new GenericModelSpec
+            {
+                ModelId = model.ID,
                 DisplayName = model.DisplayName,
-                CreatedAt = model.CreatedAt,
-            }
-            : null;
+                CreatedAt = model.CreatedAt.UtcDateTime,
+            };
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

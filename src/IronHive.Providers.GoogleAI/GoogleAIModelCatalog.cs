@@ -1,13 +1,12 @@
-﻿using IronHive.Abstractions.Catalog;
-using IronHive.Providers.GoogleAI.Clients;
-using IronHive.Providers.GoogleAI.Payloads.Models;
+using Google.GenAI;
+using IronHive.Abstractions.Catalog;
 
 namespace IronHive.Providers.GoogleAI;
 
 /// <inheritdoc />
 public class GoogleAIModelCatalog : IModelCatalog
 {
-    private readonly GoogleAIModelsClient _client;
+    private readonly Client _client;
 
     public GoogleAIModelCatalog(string apiKey)
         : this(new GoogleAIConfig { ApiKey = apiKey })
@@ -15,7 +14,7 @@ public class GoogleAIModelCatalog : IModelCatalog
 
     public GoogleAIModelCatalog(GoogleAIConfig config)
     {
-        _client = new GoogleAIModelsClient(config);
+        _client = GoogleAIClientFactory.CreateClient(config);
     }
 
     /// <inheritdoc />
@@ -30,53 +29,51 @@ public class GoogleAIModelCatalog : IModelCatalog
         CancellationToken cancellationToken = default)
     {
         var list = new List<IModelSpec>();
-        var next = string.Empty;
-        do
+        var pager = await _client.Models.ListAsync(
+            new Google.GenAI.Types.ListModelsConfig { PageSize = 1000 });
+
+        await foreach (var model in pager)
         {
-            var response = await _client.GetModelsAsync(new ModelsListRequest
-            {
-                PageSize = 1000,
-                PageToken = next
-            }, cancellationToken);
-            foreach (var model in response.Models)
-            {
-                list.Add(ConvertToModelSpec(model));
-            }
-            next = response.NextPageToken;
+            list.Add(ConvertToModelSpec(model));
         }
-        while (string.IsNullOrEmpty(next) == false);
 
         return list;
     }
 
     /// <inheritdoc />
     public async Task<IModelSpec?> FindModelAsync(
-        string modelId, 
+        string modelId,
         CancellationToken cancellationToken = default)
     {
-        var model = await _client.GetModelAsync(modelId, cancellationToken);
-        if (model is null)
+        try
+        {
+            var model = await _client.Models.GetAsync(modelId);
+            return ConvertToModelSpec(model);
+        }
+        catch
+        {
             return null;
-
-        return ConvertToModelSpec(model);
+        }
     }
 
-    /// <summary> 
-    /// 모델을 규격에 맞게 변환합니다. 
+    /// <summary>
+    /// 모델을 규격에 맞게 변환합니다.
     /// </summary>
-    private static IModelSpec ConvertToModelSpec(GoogleAIModel model)
+    private static IModelSpec ConvertToModelSpec(Google.GenAI.Types.Model model)
     {
         // 모델 ID를 정규화합니다.
         static string NormalizeName(string modelId) =>
             modelId.StartsWith("models/") ? modelId[7..] : modelId;
 
+        var actions = model.SupportedActions ?? [];
+
         // LLM 채팅 모델인지 확인합니다.
-        if (model.SupportedGenerationMethods.Contains("generateContent") &&
-            model.SupportedGenerationMethods.Contains("countTokens"))
+        if (actions.Contains("generateContent") &&
+            actions.Contains("countTokens"))
         {
             return new ChatModelSpec
             {
-                ModelId = NormalizeName(model.Name),
+                ModelId = NormalizeName(model.Name ?? string.Empty),
                 DisplayName = model.DisplayName,
                 Description = model.Description,
                 ContextWindow = model.InputTokenLimit,
@@ -84,12 +81,12 @@ public class GoogleAIModelCatalog : IModelCatalog
             };
         }
         // 임베딩 모델인지 확인합니다.
-        else if (model.SupportedGenerationMethods.Contains("embedContent") ||
-                 model.SupportedGenerationMethods.Contains("embedText"))
+        else if (actions.Contains("embedContent") ||
+                 actions.Contains("embedText"))
         {
             return new EmbeddingModelSpec
             {
-                ModelId = NormalizeName(model.Name),
+                ModelId = NormalizeName(model.Name ?? string.Empty),
                 DisplayName = model.DisplayName,
                 Description = model.Description,
                 MaxInputTokens = model.InputTokenLimit,
@@ -100,7 +97,7 @@ public class GoogleAIModelCatalog : IModelCatalog
         {
             return new GenericModelSpec
             {
-                ModelId = NormalizeName(model.Name),
+                ModelId = NormalizeName(model.Name ?? string.Empty),
                 DisplayName = model.DisplayName,
                 Description = model.Description,
             };
