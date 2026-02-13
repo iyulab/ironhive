@@ -21,7 +21,6 @@
     <ProjectReference Include="..\..\src\IronHive.Core\IronHive.Core.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Providers.OpenAI\IronHive.Providers.OpenAI.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Providers.Anthropic\IronHive.Providers.Anthropic.csproj" />
-    <ProjectReference Include="..\..\src\IronHive.Providers.Ollama\IronHive.Providers.Ollama.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Providers.GoogleAI\IronHive.Providers.GoogleAI.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Storages.Qdrant\IronHive.Storages.Qdrant.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Storages.RabbitMQ\IronHive.Storages.RabbitMQ.csproj" />

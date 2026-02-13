@@ -455,9 +455,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
         return new MessageCreateParams
         {
             Model = request.Model,
-            System = string.IsNullOrWhiteSpace(request.System)
-                ? null
-                : request.System,
+            System = new MessageCreateParamsSystem(request.System ?? string.Empty),
             Messages = messages,
             MaxTokens = maxTokens,
             StopSequences = request.StopSequences?.ToList(),

@@ -1,11 +1,12 @@
-﻿using IronHive.Providers.Ollama;
+using IronHive.Providers.OpenAI;
+using IronHive.Providers.OpenAI.Compatible.Ollama;
 
 namespace IronHive.Abstractions;
 
-public static class HiveServiceBuilderExtensions
+public static partial class CompatibleHiveServiceBuilderExtensions
 {
     /// <summary>
-    /// Ollama의 모든 서비스들을 지정된 이름으로 설정합니다.
+    /// Ollama 서비스들을 추가합니다.
     /// </summary>
     public static IHiveServiceBuilder AddOllamaProviders(
         this IHiveServiceBuilder builder,
@@ -14,14 +15,14 @@ public static class HiveServiceBuilderExtensions
         OllamaServiceType serviceType = OllamaServiceType.All)
     {
         if (serviceType.HasFlag(OllamaServiceType.Models))
-            builder.AddModelCatalog(providerName, new OllamaModelCatalog(config));
+            builder.AddModelCatalog(providerName, new OpenAIModelCatalog(config.ToOpenAI()));
 
-        if (serviceType.HasFlag(OllamaServiceType.Chat))
+        if (serviceType.HasFlag(OllamaServiceType.Language))
             builder.AddMessageGenerator(providerName, new OllamaMessageGenerator(config));
 
         if (serviceType.HasFlag(OllamaServiceType.Embeddings))
-            builder.AddEmbeddingGenerator(providerName, new OllamaEmbeddingGenerator(config));
-    
+            builder.AddEmbeddingGenerator(providerName, new OpenAIEmbeddingGenerator(config.ToOpenAI()));
+
         return builder;
     }
 }

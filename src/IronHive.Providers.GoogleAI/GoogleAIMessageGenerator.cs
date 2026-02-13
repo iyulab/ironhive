@@ -95,7 +95,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                 message.Content.Add(new ToolMessageContent
                 {
                     Id = part.FunctionCall.Id ?? Guid.NewGuid().ToShort(),
-                    Name = part.FunctionCall.Name,
+                    Name = part.FunctionCall.Name ?? string.Empty,
                     Input = JsonSerializer.Serialize(part.FunctionCall.Args),
                     IsApproved = request.Tools?.TryGet(part.FunctionCall.Name!, out var t) != true || t?.RequiresApproval == false
                 });

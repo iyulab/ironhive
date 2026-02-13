@@ -23,7 +23,6 @@
   <Folder Name="/10. src/Providers/">
     <Project Path="src/IronHive.Providers.Anthropic/IronHive.Providers.Anthropic.csproj" />
     <Project Path="src/IronHive.Providers.GoogleAI/IronHive.Providers.GoogleAI.csproj" />
-    <Project Path="src/IronHive.Providers.Ollama/IronHive.Providers.Ollama.csproj" />
     <Project Path="src/IronHive.Providers.OpenAI.Compatible/IronHive.Providers.OpenAI.Compatible.csproj" Id="10957542-bbbc-4d74-80b6-fc0d6ef13b55" />
     <Project Path="src/IronHive.Providers.OpenAI/IronHive.Providers.OpenAI.csproj" />
   </Folder>

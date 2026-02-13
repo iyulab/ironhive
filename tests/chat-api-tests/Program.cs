@@ -16,7 +16,6 @@ using IronHive.Core.Tools;
 using IronHive.Providers.OpenAI;
 using IronHive.Providers.Anthropic;
 using IronHive.Providers.GoogleAI;
-using IronHive.Providers.Ollama;
 
 // Parse command line arguments
 string? targetProvider = null;
@@ -37,7 +36,6 @@ var providerTests = new Dictionary<string, Func<Task<List<(string Scenario, Test
     ["anthropic"] = TestAnthropic,
     ["google"] = TestGoogleAI,
     ["xai"] = TestXAI,
-    ["ollama"] = TestOllama,
     ["lmstudio"] = TestLMStudio,
     ["gpustack"] = TestGPUStack,
 };
@@ -1685,30 +1683,6 @@ async Task<List<(string, TestResult)>> TestXAI()
     }
 
     return await RunScenarios(null, generator, model);
-}
-
-async Task<List<(string, TestResult)>> TestOllama()
-{
-    var baseUrl = GetEnv("OLLAMA_BASE_URL") ?? "http://localhost:11434/api/";
-    var envModel = GetEnv("OLLAMA_MODEL");
-
-    var config = new OllamaConfig { BaseUrl = baseUrl };
-    var catalog = new OllamaModelCatalog(config);
-    var generator = new OllamaMessageGenerator(config);
-
-    try
-    {
-        var models = await catalog.ListModelsAsync();
-        if (!models.Any())
-            return [("skip", TestResult.Skip("Ollama running but no models installed"))];
-
-        var model = !string.IsNullOrEmpty(envModel) ? envModel : models.First().ModelId;
-        return await RunScenarios(null, generator, model);
-    }
-    catch (HttpRequestException)
-    {
-        return [("skip", TestResult.Skip("Ollama not running"))];
-    }
 }
 
 async Task<List<(string, TestResult)>> TestLMStudio()
