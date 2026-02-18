@@ -28,7 +28,7 @@ public class QdrantConfig
     /// Qdrant와의 통신에 HTTPS를 사용할지 여부를 나타냅니다.
     /// 기본값은 false입니다.
     /// </summary>
-    public bool Https { get; set; } = false;
+    public bool Https { get; set; }
 
     /// <summary>
     /// gRPC 호출 시 적용할 타임아웃 시간입니다.

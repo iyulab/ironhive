@@ -107,13 +107,13 @@ public class LoggingMiddleware : IAgentMiddleware, IStreamingAgentMiddleware
         }
     }
 
-    private void LogStart(IAgent agent, IReadOnlyList<Message> messages, bool streaming = false)
+    private void LogStart(IAgent agent, List<Message> messages, bool streaming = false)
     {
         if (_options.LogAction == null)
             return;
 
         var messageCount = messages.Count;
-        var lastMessage = messages.LastOrDefault();
+        var lastMessage = messages.Count > 0 ? messages[^1] : null;
         var preview = GetMessagePreview(lastMessage);
         var mode = streaming ? "streaming" : "invoke";
 

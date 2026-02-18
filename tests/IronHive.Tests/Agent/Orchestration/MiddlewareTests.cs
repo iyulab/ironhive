@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using FluentAssertions;
 using IronHive.Abstractions.Agent;
@@ -500,7 +501,7 @@ public class MiddlewareTests
 
     #region Test Middlewares
 
-    private class TestMiddleware : IAgentMiddleware
+    private sealed class TestMiddleware : IAgentMiddleware
     {
         private readonly string _name;
         private readonly List<string> _order;
@@ -523,7 +524,7 @@ public class MiddlewareTests
         }
     }
 
-    private class InputModifyingMiddleware : IAgentMiddleware
+    private sealed class InputModifyingMiddleware : IAgentMiddleware
     {
         private readonly string _prefix;
 
@@ -553,7 +554,7 @@ public class MiddlewareTests
         }
     }
 
-    private class ShortCircuitMiddleware : IAgentMiddleware
+    private sealed class ShortCircuitMiddleware : IAgentMiddleware
     {
         private readonly string _response;
 
@@ -576,7 +577,7 @@ public class MiddlewareTests
         }
     }
 
-    private class FailingMiddleware : IAgentMiddleware
+    private sealed class FailingMiddleware : IAgentMiddleware
     {
         private readonly int _failUntilAttempt;
         private readonly Func<Exception>? _exceptionFactory;
@@ -603,7 +604,7 @@ public class MiddlewareTests
         }
     }
 
-    private class SlowMiddleware : IAgentMiddleware
+    private sealed class SlowMiddleware : IAgentMiddleware
     {
         private readonly TimeSpan _delay;
 
@@ -633,7 +634,7 @@ public class MiddlewareTests
         return msg.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "";
     }
 
-    private class MockAgent : IAgent
+    private sealed class MockAgent : IAgent
     {
         public string Provider { get; set; } = "mock";
         public string Model { get; set; } = "mock-model";
@@ -783,7 +784,7 @@ public class MiddlewareTests
     }
 
     [Fact]
-    public void CircuitBreakerMiddleware_ShouldResetManually()
+    public async Task CircuitBreakerMiddleware_ShouldResetManually()
     {
         // Arrange
         var middleware = new CircuitBreakerMiddleware(failureThreshold: 1, breakDuration: TimeSpan.FromMinutes(1));
@@ -792,10 +793,10 @@ public class MiddlewareTests
         // Act - 실패로 Open
         try
         {
-            middleware.InvokeAsync(
+            await middleware.InvokeAsync(
                 agent,
                 MakeUserMessages("test"),
-                _ => throw new InvalidOperationException("fail")).Wait();
+                _ => throw new InvalidOperationException("fail"));
         }
         catch { }
 
@@ -838,7 +839,7 @@ public class MiddlewareTests
                     Interlocked.Decrement(ref executing);
                     return new MessageResponse
                     {
-                        Id = i.ToString(),
+                        Id = i.ToString(CultureInfo.InvariantCulture),
                         DoneReason = MessageDoneReason.EndTurn,
                         Message = new AssistantMessage { Content = [new TextMessageContent { Value = "ok" }] }
                     };

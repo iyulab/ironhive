@@ -59,8 +59,10 @@ public interface IHiveServiceBuilder
     /// <summary>
     /// 작업들을 DI 컨테이너에 등록합니다.
     /// </summary>
-    IHiveServiceBuilder AddWorkflowStep<T>(string stepName, T? step = null) 
+#pragma warning disable CA1716 // Identifiers should not match keywords — 'step' is domain-specific and not a VB.NET concern
+    IHiveServiceBuilder AddWorkflowStep<T>(string stepName, T? step = null)
         where T : class, IWorkflowStep;
+#pragma warning restore CA1716
 
     /// <summary>
     /// HiveService 인스턴스를 생성합니다.

@@ -15,10 +15,10 @@ public class OpenAIModelsClient : OpenAIClientBase
     public async Task<IEnumerable<OpenAIModel>> GetListModelsAsync(
         CancellationToken cancellationToken = default)
     {
-        var jsonDoc = await _client.GetFromJsonAsync<JsonDocument>(
-            OpenAIConstants.GetModelsPath.RemovePrefix('/'), _jsonOptions, cancellationToken);
+        var jsonDoc = await Client.GetFromJsonAsync<JsonDocument>(
+            OpenAIConstants.GetModelsPath.RemovePrefix('/'), JsonOptions, cancellationToken);
 
-        var models = jsonDoc?.RootElement.GetProperty("data").Deserialize<IEnumerable<OpenAIModel>>(_jsonOptions);
+        var models = jsonDoc?.RootElement.GetProperty("data").Deserialize<IEnumerable<OpenAIModel>>(JsonOptions);
         return models?.OrderByDescending(m => m.Created)
             .ToArray() ?? [];
     }
@@ -28,7 +28,7 @@ public class OpenAIModelsClient : OpenAIClientBase
         CancellationToken cancellationToken = default)
     {
         var path = Path.Combine(OpenAIConstants.GetModelsPath, modelId).RemovePrefix('/');
-        var model = await _client.GetFromJsonAsync<OpenAIModel>(path, _jsonOptions, cancellationToken);
+        var model = await Client.GetFromJsonAsync<OpenAIModel>(path, JsonOptions, cancellationToken);
         return model;
     }
 }

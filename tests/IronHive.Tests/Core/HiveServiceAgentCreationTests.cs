@@ -2,7 +2,7 @@ using FluentAssertions;
 using IronHive.Abstractions.Agent;
 using IronHive.Core;
 using Microsoft.Extensions.DependencyInjection;
-using Moq;
+using NSubstitute;
 
 namespace IronHive.Tests.Core;
 
@@ -13,15 +13,15 @@ namespace IronHive.Tests.Core;
 public class HiveServiceAgentCreationTests
 {
     private readonly HiveService _service;
-    private readonly Mock<IAgentService> _mockAgentService;
+    private readonly IAgentService _mockAgentService;
 
     public HiveServiceAgentCreationTests()
     {
         var builder = new HiveServiceBuilder();
 
         // Replace with mock
-        _mockAgentService = new Mock<IAgentService>();
-        builder.Services.AddSingleton(_mockAgentService.Object);
+        _mockAgentService = Substitute.For<IAgentService>();
+        builder.Services.AddSingleton(_mockAgentService);
 
         _service = (HiveService)builder.Build();
     }
@@ -37,17 +37,17 @@ public class HiveServiceAgentCreationTests
             Workflow = expectedYaml
         };
 
-        var mockAgent = new Mock<IAgent>();
+        var mockAgent = Substitute.For<IAgent>();
         _mockAgentService
-            .Setup(s => s.CreateAgentFromYaml(expectedYaml))
-            .Returns(mockAgent.Object);
+            .CreateAgentFromYaml(expectedYaml)
+            .Returns(mockAgent);
 
         // Act
         var result = _service.CreateAgentFrom(card);
 
         // Assert
         result.Should().NotBeNull();
-        _mockAgentService.Verify(s => s.CreateAgentFromYaml(expectedYaml), Times.Once);
+        _mockAgentService.Received(1).CreateAgentFromYaml(expectedYaml);
     }
 
     [Fact]
@@ -102,16 +102,16 @@ public class HiveServiceAgentCreationTests
     {
         // Arrange
         var yaml = "agent:\n  name: Test\n  provider: openai\n  model: gpt-4o";
-        var mockAgent = new Mock<IAgent>();
+        var mockAgent = Substitute.For<IAgent>();
         _mockAgentService
-            .Setup(s => s.CreateAgentFromYaml(yaml))
-            .Returns(mockAgent.Object);
+            .CreateAgentFromYaml(yaml)
+            .Returns(mockAgent);
 
         // Act
         var result = _service.CreateAgentFromYaml(yaml);
 
         // Assert
-        result.Should().Be(mockAgent.Object);
-        _mockAgentService.Verify(s => s.CreateAgentFromYaml(yaml), Times.Once);
+        result.Should().Be(mockAgent);
+        _mockAgentService.Received(1).CreateAgentFromYaml(yaml);
     }
 }

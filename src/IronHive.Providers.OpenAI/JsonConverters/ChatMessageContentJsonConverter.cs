@@ -7,7 +7,7 @@ namespace IronHive.Providers.OpenAI.JsonConverters;
 /// <summary>
 /// 단일 문자열 메시지를 처리하기 위한 JsonConverter입니다.
 /// </summary>
-internal class ChatMessageContentJsonConverter : JsonConverter<ICollection<ChatMessageContent>>
+internal sealed class ChatMessageContentJsonConverter : JsonConverter<ICollection<ChatMessageContent>>
 {
     public override ICollection<ChatMessageContent>? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {

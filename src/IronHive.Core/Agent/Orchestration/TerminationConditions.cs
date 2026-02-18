@@ -12,7 +12,7 @@ public class MaxRoundsTermination : ITerminationCondition
 
     public MaxRoundsTermination(int maxRounds)
     {
-        if (maxRounds <= 0) throw new ArgumentOutOfRangeException(nameof(maxRounds));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxRounds);
         _maxRounds = maxRounds;
     }
 
@@ -66,7 +66,7 @@ public class TokenBudgetTermination : ITerminationCondition
 
     public TokenBudgetTermination(int maxTokens)
     {
-        if (maxTokens <= 0) throw new ArgumentOutOfRangeException(nameof(maxTokens));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxTokens);
         _maxTokens = maxTokens;
     }
 

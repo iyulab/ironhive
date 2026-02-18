@@ -22,7 +22,7 @@ public class StreamingChatCompletionResponse: JsonExtensibleBase
     /// always "chat.completion.chunk"
     /// </summary>
     [JsonPropertyName("object")]
-    public string Object { get; } = "chat.completion.chunk";
+    public string ObjectType { get; } = "chat.completion.chunk";
 
     [JsonPropertyName("service_tier")]
     public string? ServiceTier { get; set; }

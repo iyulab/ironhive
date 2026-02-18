@@ -4,6 +4,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <!-- All CA/CS suppressions resolved (cycle-68 CA, cycle-81 CS0117) -->
     <Version>0.3.3</Version>
     <!-- 기본적으로 NuGet 패키지 생성 비활성화 -->
     <IsPackable>false</IsPackable>

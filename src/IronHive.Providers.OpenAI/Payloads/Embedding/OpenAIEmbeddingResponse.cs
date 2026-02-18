@@ -8,7 +8,7 @@ public class OpenAIEmbeddingResponse
     /// "list" always.
     /// </summary>
     [JsonPropertyName("object")]
-    public string Object { get; } = "list";
+    public string ObjectType { get; } = "list";
 
     [JsonPropertyName("data")]
     public IEnumerable<OpenAIEmbedding>? Data { get; set; }

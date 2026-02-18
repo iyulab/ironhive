@@ -43,7 +43,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
     {
         var (model, contents, config) = ToGoogleAIParams(request);
         var response = await _client.Models.GenerateContentAsync(
-            model, contents, config);
+            model, contents, config, cancellationToken);
 
         MessageDoneReason? reason = null;
         var usage = new MessageTokenUsage();
@@ -145,7 +145,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         MessageTokenUsage? usage = null;
 
         await foreach (var res in _client.Models.GenerateContentStreamAsync(
-            model, contents, config))
+            model, contents, config, cancellationToken))
         {
             // 메시지 시작
             if (current == null)
@@ -370,14 +370,28 @@ public class GoogleAIMessageGenerator : IMessageGenerator
     /// <summary> Google AI의 FinishReason을 MessageDoneReason으로 매핑합니다. </summary>
     private static MessageDoneReason ResolveReason(FinishReason? reason)
     {
-        return reason switch
+        if (reason is null)
         {
-            FinishReason.STOP => MessageDoneReason.EndTurn,
-            FinishReason.MAX_TOKENS => MessageDoneReason.MaxTokens,
-            FinishReason.SAFETY or FinishReason.IMAGE_SAFETY or
-            FinishReason.PROHIBITED_CONTENT or FinishReason.SPII => MessageDoneReason.ContentFilter,
-            _ => MessageDoneReason.Unknown
-        };
+            return MessageDoneReason.Unknown;
+        }
+
+        if (reason == FinishReason.Stop)
+        {
+            return MessageDoneReason.EndTurn;
+        }
+
+        if (reason == FinishReason.MaxTokens)
+        {
+            return MessageDoneReason.MaxTokens;
+        }
+
+        if (reason == FinishReason.Safety || reason == FinishReason.ImageSafety ||
+            reason == FinishReason.ProhibitedContent || reason == FinishReason.Spii)
+        {
+            return MessageDoneReason.ContentFilter;
+        }
+
+        return MessageDoneReason.Unknown;
     }
 
     /// <summary>

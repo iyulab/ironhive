@@ -994,7 +994,7 @@ async Task<List<(string, TestResult)>> RunErrorTests()
         var executed = new List<string>();
         var agent1 = new MockAgent("fail", "mock", "Failing")
         {
-            ResponseFuncAsync = _ => { executed.Add("fail"); throw new Exception("boom"); }
+            ResponseFuncAsync = _ => { executed.Add("fail"); throw new InvalidOperationException("boom"); }
         };
         var agent2 = new MockAgent("after", "mock", "After")
         {
@@ -1023,7 +1023,7 @@ async Task<List<(string, TestResult)>> RunErrorTests()
         var executed = new List<string>();
         var agent1 = new MockAgent("fail", "mock", "Failing")
         {
-            ResponseFuncAsync = _ => { executed.Add("fail"); throw new Exception("boom"); }
+            ResponseFuncAsync = _ => { executed.Add("fail"); throw new InvalidOperationException("boom"); }
         };
         var agent2 = new MockAgent("continue", "mock", "Continue")
         {
@@ -1052,7 +1052,7 @@ async Task<List<(string, TestResult)>> RunErrorTests()
         var agents = Enumerable.Range(1, 3).Select(i =>
         {
             var agent = new MockAgent($"fail-{i}", "mock", $"Fail {i}");
-            agent.ResponseFuncAsync = _ => throw new Exception($"error-{i}");
+            agent.ResponseFuncAsync = _ => throw new InvalidOperationException($"error-{i}");
             return (IAgent)agent;
         }).ToArray();
 
@@ -2168,8 +2168,8 @@ async Task<List<(string, TestResult)>> RunLlmIntegrationTests()
     var anthropicKey = GetEnv("ANTHROPIC_API_KEY");
 
     // Check if any API key is available
-    if ((string.IsNullOrWhiteSpace(openAiKey) || openAiKey.StartsWith("sk-xxxx")) &&
-        (string.IsNullOrWhiteSpace(anthropicKey) || anthropicKey.StartsWith("sk-ant-xxxx")))
+    if ((string.IsNullOrWhiteSpace(openAiKey) || openAiKey.StartsWith("sk-xxxx", StringComparison.Ordinal)) &&
+        (string.IsNullOrWhiteSpace(anthropicKey) || anthropicKey.StartsWith("sk-ant-xxxx", StringComparison.Ordinal)))
     {
         results.Add(("skip", TestResult.Skip("No API keys configured (OPENAI_API_KEY or ANTHROPIC_API_KEY)")));
         return results;
@@ -2181,14 +2181,14 @@ async Task<List<(string, TestResult)>> RunLlmIntegrationTests()
     string? primaryProvider = null;
     string? primaryModel = null;
 
-    if (!string.IsNullOrWhiteSpace(openAiKey) && !openAiKey.StartsWith("sk-xxxx"))
+    if (!string.IsNullOrWhiteSpace(openAiKey) && !openAiKey.StartsWith("sk-xxxx", StringComparison.Ordinal))
     {
         builder.AddOpenAIProviders("openai", new OpenAIConfig { ApiKey = openAiKey }, OpenAIServiceType.Responses);
         primaryProvider = "openai";
         primaryModel = GetEnv("OPENAI_MODEL") ?? "gpt-4o-mini";
     }
 
-    if (!string.IsNullOrWhiteSpace(anthropicKey) && !anthropicKey.StartsWith("sk-ant-xxxx"))
+    if (!string.IsNullOrWhiteSpace(anthropicKey) && !anthropicKey.StartsWith("sk-ant-xxxx", StringComparison.Ordinal))
     {
         builder.AddAnthropicProviders("anthropic", new AnthropicConfig { ApiKey = anthropicKey });
         if (primaryProvider == null)
@@ -2346,7 +2346,7 @@ async Task<List<(string, TestResult)>> RunLlmIntegrationTests()
         // Ask a math question — should select math-expert
         var result = await orch.ExecuteAsync(MakeUserMessages("What is 15 multiplied by 7?"));
 
-        var selectedAgent = result.Steps.FirstOrDefault()?.AgentName;
+        var selectedAgent = (result.Steps.Count > 0 ? result.Steps[0] : null)?.AgentName;
         var ok = result.IsSuccess && selectedAgent == "math-expert";
 
         results.Add(("llm-speaker-math", ok
@@ -2356,7 +2356,7 @@ async Task<List<(string, TestResult)>> RunLlmIntegrationTests()
         // Ask a history question — should select history-expert
         var result2 = await orch.ExecuteAsync(MakeUserMessages("When did World War II end?"));
 
-        var selectedAgent2 = result2.Steps.FirstOrDefault()?.AgentName;
+        var selectedAgent2 = (result2.Steps.Count > 0 ? result2.Steps[0] : null)?.AgentName;
         var ok2 = result2.IsSuccess && selectedAgent2 == "history-expert";
 
         results.Add(("llm-speaker-history", ok2
@@ -2464,7 +2464,7 @@ string? GetEnv(string key) => Environment.GetEnvironmentVariable(key);
 // Mock Agent Implementation
 // =============================================================================
 
-class MockAgent : IAgent
+sealed class MockAgent : IAgent
 {
     public string Provider { get; set; }
     public string Model { get; set; }
@@ -2571,7 +2571,7 @@ class MockAgent : IAgent
 // Simple Executor (for TypedPipeline tests)
 // =============================================================================
 
-class SimpleExecutor<TInput, TOutput> : ITypedExecutor<TInput, TOutput>
+sealed class SimpleExecutor<TInput, TOutput> : ITypedExecutor<TInput, TOutput>
 {
     private readonly Func<TInput, TOutput> _func;
 
@@ -2593,7 +2593,7 @@ class SimpleExecutor<TInput, TOutput> : ITypedExecutor<TInput, TOutput>
 // TestResult Record
 // =============================================================================
 
-record TestResult(bool Success, string Message, bool Skipped = false)
+sealed record TestResult(bool Success, string Message, bool Skipped = false)
 {
     public static TestResult Pass(string message) => new(true, message);
     public static TestResult Error(string error) => new(false, error);
@@ -2604,7 +2604,7 @@ record TestResult(bool Success, string Message, bool Skipped = false)
 // Middleware Helper Classes
 // =============================================================================
 
-class TestOrderMiddleware : IAgentMiddleware
+sealed class TestOrderMiddleware : IAgentMiddleware
 {
     private readonly string _name;
     private readonly List<string> _order;
@@ -2627,7 +2627,7 @@ class TestOrderMiddleware : IAgentMiddleware
     }
 }
 
-class ShortCircuitMiddleware : IAgentMiddleware
+sealed class ShortCircuitMiddleware : IAgentMiddleware
 {
     private readonly string _response;
     public ShortCircuitMiddleware(string response) { _response = response; }
@@ -2649,7 +2649,7 @@ class ShortCircuitMiddleware : IAgentMiddleware
     }
 }
 
-class CountingMiddleware : IAgentMiddleware
+sealed class CountingMiddleware : IAgentMiddleware
 {
     private readonly Action _onCall;
     public CountingMiddleware(Action onCall) { _onCall = onCall; }
@@ -2667,7 +2667,7 @@ class CountingMiddleware : IAgentMiddleware
 /// <summary>
 /// 지정된 횟수만큼 실패한 후 성공하는 미들웨어
 /// </summary>
-class FailAfterMiddleware : IAgentMiddleware
+sealed class FailAfterMiddleware : IAgentMiddleware
 {
     private readonly int _failUntil;
     private readonly Action? _onFail;
@@ -2697,7 +2697,7 @@ class FailAfterMiddleware : IAgentMiddleware
 /// <summary>
 /// 지정된 시간만큼 지연시키는 미들웨어 (테스트용)
 /// </summary>
-class SlowMiddleware : IAgentMiddleware
+sealed class SlowMiddleware : IAgentMiddleware
 {
     private readonly TimeSpan _delay;
 

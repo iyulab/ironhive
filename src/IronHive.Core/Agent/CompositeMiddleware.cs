@@ -8,7 +8,7 @@ namespace IronHive.Core.Agent;
 /// </summary>
 public class CompositeMiddleware : IAgentMiddleware, IStreamingAgentMiddleware
 {
-    private readonly IReadOnlyList<IAgentMiddleware> _middlewares;
+    private readonly List<IAgentMiddleware> _middlewares;
     private readonly string _name;
 
     public CompositeMiddleware(string name, params IAgentMiddleware[] middlewares)

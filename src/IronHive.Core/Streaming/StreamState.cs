@@ -111,7 +111,7 @@ public sealed class StreamState : IStreamState
     }
 }
 
-internal class StringBuilder
+internal sealed class StringBuilder
 {
     private readonly System.Text.StringBuilder _sb = new();
 

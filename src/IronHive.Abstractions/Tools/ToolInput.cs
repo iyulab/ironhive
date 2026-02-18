@@ -8,7 +8,9 @@ namespace IronHive.Abstractions.Tools;
 /// 도구 실행 시 전달되는 입력 데이터를 래핑한 타입입니다.
 /// 내부적으로 키-값 쌍으로 구성되며, 읽기 전용 딕셔너리로 사용됩니다.
 /// </summary>
+#pragma warning disable CA1710 // Identifiers should have correct suffix — ToolInput is a domain-specific wrapper, not a generic dictionary
 public class ToolInput : IReadOnlyDictionary<string, object?>
+#pragma warning restore CA1710
 {
     private readonly Dictionary<string, object?> _items;
 

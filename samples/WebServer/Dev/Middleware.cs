@@ -10,7 +10,7 @@ namespace WebServer.Dev;
 /// <summary>
 /// 개발 디버그 && 추적용 미들웨어
 /// </summary>
-public class Middleware
+public partial class Middleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger _logger;
@@ -26,6 +26,8 @@ public class Middleware
         // 요청 본문을 읽기 위해 스트림을 재설정 가능하게 함
         context.Request.EnableBuffering();
         var type = context.Request.ContentType;
+        var method = context.Request.Method;
+        var path = context.Request.Path.ToString();
 
         // 요청 본문 읽기
         if (type == "application/json")
@@ -38,14 +40,14 @@ public class Middleware
             var body = await reader.ReadToEndAsync();
             // 스트림 위치를 처음으로 되돌림
             context.Request.Body.Position = 0;
-            _logger.LogInformation($"[Request] {context.Request.Method} {context.Request.Path} {body}");
+            LogRequestWithBody(_logger, method, path, body);
         }
         else if (type != null && type.Contains("multipart/form-data"))
         {
             //var form = await context.Request.ReadFormAsync();
             //var fileNames = form.Files.Select(f => f.FileName);
             //_logger.LogInformation($"[Request] {context.Request.Method} {context.Request.Path} {string.Join(", ", fileNames)}");
-            _logger.LogInformation($"[Request] {context.Request.Method} {context.Request.Path} [multipart/form-data]");
+            LogRequestMultipart(_logger, method, path);
         }
         else
         {
@@ -65,16 +67,32 @@ public class Middleware
             }
             catch (JsonException ex)
             {
-                _logger.LogError($"JSON 파싱 오류: {ex.Message}");
+                LogJsonParseError(_logger, ex.Message);
             }
             finally
             {
                 context.Request.Body.Position = 0;
             }
-            _logger.LogInformation($"[Request] {context.Request.Method} {context.Request.Path}");
+            LogRequest(_logger, method, path);
         }
 
         // 다음 미들웨어 호출
         await _next(context);
     }
+
+    #region LoggerMessage
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "[Request] {Method} {Path} {Body}")]
+    private static partial void LogRequestWithBody(ILogger logger, string method, string path, string body);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "[Request] {Method} {Path} [multipart/form-data]")]
+    private static partial void LogRequestMultipart(ILogger logger, string method, string path);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "[Request] {Method} {Path}")]
+    private static partial void LogRequest(ILogger logger, string method, string path);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "JSON 파싱 오류: {ErrorMessage}")]
+    private static partial void LogJsonParseError(ILogger logger, string errorMessage);
+
+    #endregion
 }

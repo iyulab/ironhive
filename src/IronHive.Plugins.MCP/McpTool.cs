@@ -57,8 +57,8 @@ public class McpTool : ITool
         var text = result.Content.Select(c => c.ToString());
         var content = string.Join("\n", text);
         
-        // TODO: MCP 호출 결과 확인 필요
-        return result.IsError.GetValueOrDefault(true)
+        // MCP protocol: IsError absent means success
+        return result.IsError is true
             ? ToolOutput.Failure(content)
             : ToolOutput.Success(content);
     }

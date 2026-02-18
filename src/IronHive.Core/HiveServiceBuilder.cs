@@ -53,9 +53,9 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     public IServiceCollection Services { get; }
 
     /// <inheritdoc />
-    public IHiveServiceBuilder AddModelCatalog(string providerName, IModelCatalog provider)
+    public IHiveServiceBuilder AddModelCatalog(string providerName, IModelCatalog catalog)
     {
-        _providers.TryAdd<IModelCatalog>(providerName, provider);
+        _providers.TryAdd<IModelCatalog>(providerName, catalog);
         return this;
     }
 

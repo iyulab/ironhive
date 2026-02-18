@@ -263,7 +263,7 @@ public class MessageService : IMessageService
                         Index = idx,
                     }, cancellationToken).ConfigureAwait(false);
 
-                    var options = toolItems.FirstOrDefault(t => string.Equals(t.Name, tmc.Name))?.Options;
+                    var options = toolItems.FirstOrDefault(t => string.Equals(t.Name, tmc.Name, StringComparison.Ordinal))?.Options;
                     var input = new ToolInput(tmc.Input, options, _services);
                     tmc.Output = _tools.TryGet(tmc.Name, out var tool)
                         ? await tool.InvokeAsync(input, cancellationToken).ConfigureAwait(false)

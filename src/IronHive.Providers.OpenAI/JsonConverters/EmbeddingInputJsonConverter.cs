@@ -6,7 +6,7 @@ namespace IronHive.Providers.OpenAI.JsonConverters;
 /// <summary>
 /// 단일 문자열 또는 문자열 목록을 처리하는 JsonConverter입니다.
 /// </summary>
-internal class EmbeddingInputJsonConverter : JsonConverter<IEnumerable<string>>
+internal sealed class EmbeddingInputJsonConverter : JsonConverter<IEnumerable<string>>
 {
     public override IEnumerable<string>? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {

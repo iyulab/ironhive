@@ -4,25 +4,25 @@ namespace IronHive.Providers.OpenAI.Clients;
 
 public abstract class OpenAIClientBase : IDisposable
 {
-    protected readonly HttpClient _client;
-    protected readonly JsonSerializerOptions _jsonOptions;
+    protected HttpClient Client { get; }
+    protected JsonSerializerOptions JsonOptions { get; }
 
     protected OpenAIClientBase(OpenAIConfig config)
     {
-        _client = CreateHttpClient(config);
-        _jsonOptions = config.JsonOptions;
+        Client = CreateHttpClient(config);
+        JsonOptions = config.JsonOptions;
     }
 
     protected OpenAIClientBase(string apiKey)
     {
         var config = new OpenAIConfig { ApiKey = apiKey };
-        _client = CreateHttpClient(config);
-        _jsonOptions = config.JsonOptions;
+        Client = CreateHttpClient(config);
+        JsonOptions = config.JsonOptions;
     }
 
     public virtual void Dispose()
     {
-        _client.Dispose();
+        Client.Dispose();
         GC.SuppressFinalize(this);
     }
 
@@ -37,7 +37,7 @@ public abstract class OpenAIClientBase : IDisposable
 
         if (!string.IsNullOrWhiteSpace(config.ApiKey))
             client.DefaultRequestHeaders.Add(
-                OpenAIConstants.AuthorizationHeaderName, string.Format(OpenAIConstants.AuthorizationHeaderValue, config.ApiKey));
+                OpenAIConstants.AuthorizationHeaderName, $"Bearer {config.ApiKey}");
 
         if (!string.IsNullOrWhiteSpace(config.Organization))
             client.DefaultRequestHeaders.Add(

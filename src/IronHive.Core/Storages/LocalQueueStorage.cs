@@ -28,7 +28,7 @@ public class LocalQueueStorage : IQueueStorage
         _jsonOptions = config.JsonOptions;
 
         if (config.CacheSize < 1)
-            throw new ArgumentOutOfRangeException(nameof(config.CacheSize), "Cache size must be greater than zero.");
+            throw new ArgumentOutOfRangeException(nameof(config), "Cache size must be greater than zero.");
         _cacheSize = config.CacheSize;
 
         DirectoryPath = config.DirectoryPath;

@@ -2,7 +2,7 @@ using FluentAssertions;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Registries;
 using IronHive.Core.Services;
-using Moq;
+using NSubstitute;
 
 namespace IronHive.Tests.Services;
 
@@ -12,13 +12,13 @@ namespace IronHive.Tests.Services;
 /// </summary>
 public class EmbeddingServiceTests
 {
-    private readonly Mock<IProviderRegistry> _mockProviderRegistry;
+    private readonly IProviderRegistry _mockProviderRegistry;
     private readonly EmbeddingService _service;
 
     public EmbeddingServiceTests()
     {
-        _mockProviderRegistry = new Mock<IProviderRegistry>();
-        _service = new EmbeddingService(_mockProviderRegistry.Object);
+        _mockProviderRegistry = Substitute.For<IProviderRegistry>();
+        _service = new EmbeddingService(_mockProviderRegistry);
     }
 
     #region EmbedAsync Tests
@@ -27,9 +27,9 @@ public class EmbeddingServiceTests
     public async Task EmbedAsync_ShouldThrow_WhenProviderNotFound()
     {
         // Arrange
-        IEmbeddingGenerator? generator = null;
+        IEmbeddingGenerator generator = null!;
         _mockProviderRegistry
-            .Setup(r => r.TryGet("nonexistent", out generator))
+            .TryGet("nonexistent", out generator)
             .Returns(false);
 
         // Act
@@ -45,15 +45,19 @@ public class EmbeddingServiceTests
     {
         // Arrange
         var expectedEmbedding = new float[] { 0.1f, 0.2f, 0.3f };
-        var mockGenerator = new Mock<IEmbeddingGenerator>();
+        var mockGenerator = Substitute.For<IEmbeddingGenerator>();
         mockGenerator
-            .Setup(g => g.EmbedAsync("text-embedding-3-small", "Hello world", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(expectedEmbedding);
+            .EmbedAsync("text-embedding-3-small", "Hello world", Arg.Any<CancellationToken>())
+            .Returns(expectedEmbedding);
 
-        IEmbeddingGenerator? generator = mockGenerator.Object;
+        IEmbeddingGenerator generator = null!;
         _mockProviderRegistry
-            .Setup(r => r.TryGet("openai", out generator))
-            .Returns(true);
+            .TryGet("openai", out generator)
+            .Returns(callInfo =>
+            {
+                callInfo[1] = mockGenerator;
+                return true;
+            });
 
         // Act
         var result = await _service.EmbedAsync("openai", "text-embedding-3-small", "Hello world");
@@ -61,9 +65,8 @@ public class EmbeddingServiceTests
         // Assert
         result.Should().NotBeNull();
         result.Should().BeEquivalentTo(expectedEmbedding);
-        mockGenerator.Verify(
-            g => g.EmbedAsync("text-embedding-3-small", "Hello world", It.IsAny<CancellationToken>()),
-            Times.Once);
+        await mockGenerator.Received(1)
+            .EmbedAsync("text-embedding-3-small", "Hello world", Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -71,15 +74,19 @@ public class EmbeddingServiceTests
     {
         // Arrange
         var embedding1536d = Enumerable.Range(0, 1536).Select(i => (float)i / 1536).ToArray();
-        var mockGenerator = new Mock<IEmbeddingGenerator>();
+        var mockGenerator = Substitute.For<IEmbeddingGenerator>();
         mockGenerator
-            .Setup(g => g.EmbedAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(embedding1536d);
+            .EmbedAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(embedding1536d);
 
-        IEmbeddingGenerator? generator = mockGenerator.Object;
+        IEmbeddingGenerator generator = null!;
         _mockProviderRegistry
-            .Setup(r => r.TryGet("openai", out generator))
-            .Returns(true);
+            .TryGet("openai", out generator)
+            .Returns(callInfo =>
+            {
+                callInfo[1] = mockGenerator;
+                return true;
+            });
 
         // Act
         var result = await _service.EmbedAsync("openai", "text-embedding-ada-002", "test");
@@ -96,9 +103,9 @@ public class EmbeddingServiceTests
     public async Task EmbedBatchAsync_ShouldThrow_WhenProviderNotFound()
     {
         // Arrange
-        IEmbeddingGenerator? generator = null;
+        IEmbeddingGenerator generator = null!;
         _mockProviderRegistry
-            .Setup(r => r.TryGet("nonexistent", out generator))
+            .TryGet("nonexistent", out generator)
             .Returns(false);
 
         var inputs = new[] { "text1", "text2" };
@@ -121,15 +128,19 @@ public class EmbeddingServiceTests
             new() { Index = 1, Embedding = [0.3f, 0.4f] }
         };
 
-        var mockGenerator = new Mock<IEmbeddingGenerator>();
+        var mockGenerator = Substitute.For<IEmbeddingGenerator>();
         mockGenerator
-            .Setup(g => g.EmbedBatchAsync(It.IsAny<string>(), It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(expectedResults);
+            .EmbedBatchAsync(Arg.Any<string>(), Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(expectedResults);
 
-        IEmbeddingGenerator? generator = mockGenerator.Object;
+        IEmbeddingGenerator generator = null!;
         _mockProviderRegistry
-            .Setup(r => r.TryGet("openai", out generator))
-            .Returns(true);
+            .TryGet("openai", out generator)
+            .Returns(callInfo =>
+            {
+                callInfo[1] = mockGenerator;
+                return true;
+            });
 
         var inputs = new[] { "text1", "text2" };
 
@@ -139,9 +150,8 @@ public class EmbeddingServiceTests
         // Assert
         result.Should().NotBeNull();
         result.Should().HaveCount(2);
-        mockGenerator.Verify(
-            g => g.EmbedBatchAsync("text-embedding-3-small", inputs, It.IsAny<CancellationToken>()),
-            Times.Once);
+        await mockGenerator.Received(1)
+            .EmbedBatchAsync("text-embedding-3-small", inputs, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -155,15 +165,19 @@ public class EmbeddingServiceTests
             new() { Index = 2, Embedding = [3.0f] }
         };
 
-        var mockGenerator = new Mock<IEmbeddingGenerator>();
+        var mockGenerator = Substitute.For<IEmbeddingGenerator>();
         mockGenerator
-            .Setup(g => g.EmbedBatchAsync(It.IsAny<string>(), It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(expectedResults);
+            .EmbedBatchAsync(Arg.Any<string>(), Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(expectedResults);
 
-        IEmbeddingGenerator? generator = mockGenerator.Object;
+        IEmbeddingGenerator generator = null!;
         _mockProviderRegistry
-            .Setup(r => r.TryGet("openai", out generator))
-            .Returns(true);
+            .TryGet("openai", out generator)
+            .Returns(callInfo =>
+            {
+                callInfo[1] = mockGenerator;
+                return true;
+            });
 
         var inputs = new[] { "first", "second", "third" };
 
@@ -184,9 +198,9 @@ public class EmbeddingServiceTests
     public async Task CountTokensAsync_ShouldThrow_WhenProviderNotFound()
     {
         // Arrange
-        IEmbeddingGenerator? generator = null;
+        IEmbeddingGenerator generator = null!;
         _mockProviderRegistry
-            .Setup(r => r.TryGet("nonexistent", out generator))
+            .TryGet("nonexistent", out generator)
             .Returns(false);
 
         // Act
@@ -201,39 +215,46 @@ public class EmbeddingServiceTests
     public async Task CountTokensAsync_ShouldDelegateToGenerator()
     {
         // Arrange
-        var mockGenerator = new Mock<IEmbeddingGenerator>();
+        var mockGenerator = Substitute.For<IEmbeddingGenerator>();
         mockGenerator
-            .Setup(g => g.CountTokensAsync("text-embedding-3-small", "Hello world", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(2);
+            .CountTokensAsync("text-embedding-3-small", "Hello world", Arg.Any<CancellationToken>())
+            .Returns(2);
 
-        IEmbeddingGenerator? generator = mockGenerator.Object;
+        IEmbeddingGenerator generator = null!;
         _mockProviderRegistry
-            .Setup(r => r.TryGet("openai", out generator))
-            .Returns(true);
+            .TryGet("openai", out generator)
+            .Returns(callInfo =>
+            {
+                callInfo[1] = mockGenerator;
+                return true;
+            });
 
         // Act
         var result = await _service.CountTokensAsync("openai", "text-embedding-3-small", "Hello world");
 
         // Assert
         result.Should().Be(2);
-        mockGenerator.Verify(
-            g => g.CountTokensAsync("text-embedding-3-small", "Hello world", It.IsAny<CancellationToken>()),
-            Times.Once);
+        await mockGenerator.Received(1)
+            .CountTokensAsync("text-embedding-3-small", "Hello world", Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task CountTokensAsync_ShouldReturnZero_ForEmptyInput()
     {
         // Arrange
-        var mockGenerator = new Mock<IEmbeddingGenerator>();
+        var mockGenerator = Substitute.For<IEmbeddingGenerator>();
         mockGenerator
-            .Setup(g => g.CountTokensAsync(It.IsAny<string>(), "", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(0);
+            .CountTokensAsync(Arg.Any<string>(), "", Arg.Any<CancellationToken>())
+            .Returns(0);
 
-        IEmbeddingGenerator? generator = mockGenerator.Object;
+        IEmbeddingGenerator generator = null!;
         _mockProviderRegistry
-            .Setup(r => r.TryGet("openai", out generator))
-            .Returns(true);
+            .TryGet("openai", out generator)
+            .Returns(callInfo =>
+            {
+                callInfo[1] = mockGenerator;
+                return true;
+            });
 
         // Act
         var result = await _service.CountTokensAsync("openai", "model", "");
@@ -250,9 +271,9 @@ public class EmbeddingServiceTests
     public async Task CountTokensBatchAsync_ShouldThrow_WhenProviderNotFound()
     {
         // Arrange
-        IEmbeddingGenerator? generator = null;
+        IEmbeddingGenerator generator = null!;
         _mockProviderRegistry
-            .Setup(r => r.TryGet("nonexistent", out generator))
+            .TryGet("nonexistent", out generator)
             .Returns(false);
 
         var inputs = new[] { "text1", "text2" };
@@ -275,15 +296,19 @@ public class EmbeddingServiceTests
             new() { Index = 1, Text = "Hello world", TokenCount = 3 }
         };
 
-        var mockGenerator = new Mock<IEmbeddingGenerator>();
+        var mockGenerator = Substitute.For<IEmbeddingGenerator>();
         mockGenerator
-            .Setup(g => g.CountTokensBatchAsync(It.IsAny<string>(), It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(expectedResults);
+            .CountTokensBatchAsync(Arg.Any<string>(), Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(expectedResults);
 
-        IEmbeddingGenerator? generator = mockGenerator.Object;
+        IEmbeddingGenerator generator = null!;
         _mockProviderRegistry
-            .Setup(r => r.TryGet("openai", out generator))
-            .Returns(true);
+            .TryGet("openai", out generator)
+            .Returns(callInfo =>
+            {
+                callInfo[1] = mockGenerator;
+                return true;
+            });
 
         var inputs = new[] { "Hello", "Hello world" };
 
@@ -293,9 +318,8 @@ public class EmbeddingServiceTests
         // Assert
         result.Should().NotBeNull();
         result.Should().HaveCount(2);
-        mockGenerator.Verify(
-            g => g.CountTokensBatchAsync("model", inputs, It.IsAny<CancellationToken>()),
-            Times.Once);
+        await mockGenerator.Received(1)
+            .CountTokensBatchAsync("model", inputs, Arg.Any<CancellationToken>());
     }
 
     #endregion
@@ -306,7 +330,7 @@ public class EmbeddingServiceTests
     public void Constructor_ShouldNotThrow_WithValidDependency()
     {
         // Act
-        var act = () => new EmbeddingService(_mockProviderRegistry.Object);
+        var act = () => new EmbeddingService(_mockProviderRegistry);
 
         // Assert
         act.Should().NotThrow();

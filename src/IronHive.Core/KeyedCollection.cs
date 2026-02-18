@@ -66,7 +66,7 @@ public class KeyedCollection<TKey, TItem> : IKeyedCollection<TKey, TItem>
         ArgumentNullException.ThrowIfNull(item);
         var key = _keySelector(item);
         if (!_items.TryAdd(key, item))
-            throw new ArgumentException($"An item with the same key already exists. Key: '{key}'.");
+            throw new ArgumentException($"An item with the same key already exists. Key: '{key}'.", nameof(item));
     }
 
     /// <inheritdoc />
@@ -78,12 +78,14 @@ public class KeyedCollection<TKey, TItem> : IKeyedCollection<TKey, TItem>
     }
 
     /// <inheritdoc />
+#pragma warning disable CA1716 // Identifiers should not match keywords — implements IKeyedCollection.Set, renaming would break API
     public virtual void Set(TItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
         var key = _keySelector(item);
         _items[key] = item;
     }
+#pragma warning restore CA1716
 
     /// <inheritdoc />
     public void SetRange(IEnumerable<TItem> items)
@@ -153,11 +155,11 @@ public class KeyedCollection<TKey, TItem> : IKeyedCollection<TKey, TItem>
     {
         ArgumentNullException.ThrowIfNull(array);
         ArgumentOutOfRangeException.ThrowIfNegative(arrayIndex);
-        if (arrayIndex > array.Length) throw new ArgumentException("arrayIndex is out of range.");
+        if (arrayIndex > array.Length) throw new ArgumentException("arrayIndex is out of range.", nameof(arrayIndex));
 
         var snapshot = _items.Values.ToArray();
         if (array.Length - arrayIndex < snapshot.Length)
-            throw new ArgumentException("The destination array has insufficient space.");
+            throw new ArgumentException("The destination array has insufficient space.", nameof(array));
 
         snapshot.CopyTo(array, arrayIndex);
     }

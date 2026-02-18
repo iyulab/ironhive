@@ -1,4 +1,5 @@
 ﻿using IronHive.Abstractions.Queue;
+using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Text.Json;
@@ -8,9 +9,10 @@ namespace IronHive.Storages.RabbitMQ;
 /// <summary>
 /// RabbitMQ를 사용하여 큐 스토리지를 구현한 클래스입니다.
 /// </summary>
-public class RabbitMQueueStorage : IQueueStorage
+public partial class RabbitMQueueStorage : IQueueStorage
 {
     private readonly RabbitMQConfig _config;
+    private readonly ILogger<RabbitMQueueStorage>? _logger;
 
     private IConnection? _conn;
 
@@ -21,9 +23,12 @@ public class RabbitMQueueStorage : IQueueStorage
     // 발행 직렬화 (채널은 스레드-세이프 아님)
     private readonly SemaphoreSlim _pubLock = new(1, 1);
 
-    public RabbitMQueueStorage(RabbitMQConfig config)
+    public RabbitMQueueStorage(
+        RabbitMQConfig config,
+        ILogger<RabbitMQueueStorage>? logger = null)
     {
         _config = config;
+        _logger = logger;
     }
 
     /// <summary>
@@ -71,7 +76,8 @@ public class RabbitMQueueStorage : IQueueStorage
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[ERROR] Consumer error: {ex.Message}");
+                    if (_logger is not null)
+                        LogConsumerError(_logger, ex, QueueName);
                     await channel.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: false);
                 }
             };
@@ -232,4 +238,11 @@ public class RabbitMQueueStorage : IQueueStorage
             arguments: args,
             cancellationToken: ct);
     }
+
+    #region LoggerMessage
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Consumer error on queue '{QueueName}'")]
+    private static partial void LogConsumerError(ILogger logger, Exception ex, string queueName);
+
+    #endregion
 }

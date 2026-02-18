@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
 using IronHive.Abstractions.Agent;
@@ -94,7 +95,7 @@ public class ParallelOrchestrator : OrchestratorBase
     {
         var successfulSteps = steps.Where(s => s.IsSuccess).ToList();
 
-        if (!successfulSteps.Any())
+        if (successfulSteps.Count == 0)
         {
             var errors = string.Join("; ", steps.Select(s => s.Error ?? "Unknown error"));
             return OrchestrationResult.Failure($"All agents failed: {errors}", steps, duration);
@@ -131,7 +132,7 @@ public class ParallelOrchestrator : OrchestratorBase
             AggregateTokenUsage(steps));
     }
 
-    private static Message MergeResponses(List<AgentStepResult> steps)
+    private static AssistantMessage MergeResponses(List<AgentStepResult> steps)
     {
         var sb = new StringBuilder();
 
@@ -140,7 +141,7 @@ public class ParallelOrchestrator : OrchestratorBase
             var msg = ExtractMessage(step.Response);
             if (msg != null)
             {
-                sb.AppendLine($"[{step.AgentName}]:");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"[{step.AgentName}]:");
                 foreach (var content in GetMessageContent(msg))
                 {
                     if (content is TextMessageContent textContent)

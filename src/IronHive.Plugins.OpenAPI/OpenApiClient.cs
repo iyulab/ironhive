@@ -68,7 +68,7 @@ public sealed class OpenApiClient : IDisposable
                 var servers = op.Servers?.Count > 0 ? op.Servers.ToList()
                     : pathItem.Servers?.Count > 0 ? pathItem.Servers.ToList()
                     : _doc.Servers?.ToList()
-                    ?? throw new Exception("not have server");
+                    ?? throw new InvalidOperationException("not have server");
                 var baseUris = servers.SelectMany(s => s.ExtractServerUrls());
 
                 // 보안 인증 추출

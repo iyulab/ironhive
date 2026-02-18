@@ -1,5 +1,7 @@
 ﻿using IronHive.Abstractions.Files;
 
+namespace IronHive.Core.Files;
+
 /// <inheritdoc />
 public class FileExtractionService<T> : IFileExtractionService<T>
 {
@@ -38,7 +40,7 @@ public class FileExtractionService<T> : IFileExtractionService<T>
         Stream data, 
         CancellationToken cancellationToken = default)
     {
-        if (data is null) throw new ArgumentNullException(nameof(data));
+        ArgumentNullException.ThrowIfNull(data);
         if (string.IsNullOrWhiteSpace(fileName)) throw new ArgumentException("Empty file name.", nameof(fileName));
 
         if (data.CanSeek) data.Position = 0;

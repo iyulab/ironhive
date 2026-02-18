@@ -15,9 +15,9 @@ public class OpenAIEmbeddingClient : OpenAIClientBase
         OpenAIEmbeddingRequest request,
         CancellationToken cancellationToken = default)
     {
-        var json = JsonSerializer.Serialize(request, _jsonOptions);
+        var json = JsonSerializer.Serialize(request, JsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        using var response = await _client.PostAsync(OpenAIConstants.PostEmbeddingPath.RemovePrefix('/'), content, cancellationToken);
+        using var response = await Client.PostAsync(OpenAIConstants.PostEmbeddingPath.RemovePrefix('/'), content, cancellationToken);
         if (!response.IsSuccessStatusCode && response.TryExtractMessage(out string error))
             throw new HttpRequestException(error);
         response.EnsureSuccessStatusCode();

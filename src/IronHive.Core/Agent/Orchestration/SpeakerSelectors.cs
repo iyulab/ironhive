@@ -1,3 +1,4 @@
+using System.Globalization;
 using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
@@ -88,7 +89,7 @@ public class LlmSpeakerSelector : ISpeakerSelector
             var text = string.Join("", content.OfType<TextMessageContent>().Select(c => c.Value));
             if (!string.IsNullOrWhiteSpace(text))
             {
-                historyBuilder.AppendLine($"[{role}]: {text}");
+                historyBuilder.AppendLine(CultureInfo.InvariantCulture, $"[{role}]: {text}");
             }
         }
 

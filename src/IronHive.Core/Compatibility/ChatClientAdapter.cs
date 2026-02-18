@@ -36,11 +36,11 @@ public class ChatClientAdapter : IChatClient
 
     /// <inheritdoc />
     public async Task<ChatResponse> GetResponseAsync(
-        IEnumerable<ChatMessage> chatMessages,
+        IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
         CancellationToken cancellationToken = default)
     {
-        var messageList = chatMessages.ToList();
+        var messageList = messages.ToList();
         var request = ConvertToRequest(messageList, options);
         var response = await _generator.GenerateMessageAsync(request, cancellationToken)
             .ConfigureAwait(false);
@@ -50,11 +50,11 @@ public class ChatClientAdapter : IChatClient
 
     /// <inheritdoc />
     public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
-        IEnumerable<ChatMessage> chatMessages,
+        IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var messageList = chatMessages.ToList();
+        var messageList = messages.ToList();
         var request = ConvertToRequest(messageList, options);
         string? completionId = null;
 
@@ -68,7 +68,7 @@ public class ChatClientAdapter : IChatClient
     }
 
     /// <inheritdoc />
-    public object? GetService(Type serviceType, object? key = null)
+    public object? GetService(Type serviceType, object? serviceKey = null)
     {
         if (serviceType == typeof(IMessageGenerator))
             return _generator;
@@ -120,7 +120,7 @@ public class ChatClientAdapter : IChatClient
                 {
                     userMessage.Content.Add(new TextMessageContent { Value = textContent.Text ?? string.Empty });
                 }
-                else if (content is DataContent dataContent && dataContent.MediaType?.StartsWith("image/") == true)
+                else if (content is DataContent dataContent && dataContent.MediaType?.StartsWith("image/", StringComparison.Ordinal) == true)
                 {
                     userMessage.Content.Add(new ImageMessageContent
                     {

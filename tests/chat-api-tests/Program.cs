@@ -1559,7 +1559,7 @@ string? Truncate(string? value, int maxLength)
 async Task<List<(string, TestResult)>> TestOpenAI()
 {
     var apiKey = GetEnv("OPENAI_API_KEY");
-    if (string.IsNullOrWhiteSpace(apiKey) || apiKey.StartsWith("sk-xxxx"))
+    if (string.IsNullOrWhiteSpace(apiKey) || apiKey.StartsWith("sk-xxxx", StringComparison.Ordinal))
         return [("skip", TestResult.Skip("OPENAI_API_KEY not configured"))];
 
     var config = new OpenAIConfig
@@ -1583,7 +1583,7 @@ async Task<List<(string, TestResult)>> TestAzureOpenAI()
     var deployment = GetEnv("AZURE_OPENAI_DEPLOYMENT") ?? "gpt-4o-mini";
     var apiVersion = GetEnv("AZURE_OPENAI_API_VERSION") ?? "2024-02-15-preview";
 
-    if (string.IsNullOrWhiteSpace(apiKey) || apiKey.StartsWith("xxxx"))
+    if (string.IsNullOrWhiteSpace(apiKey) || apiKey.StartsWith("xxxx", StringComparison.Ordinal))
         return [("skip", TestResult.Skip("AZURE_OPENAI_API_KEY not configured"))];
     if (string.IsNullOrWhiteSpace(endpoint) || endpoint.Contains("your-resource"))
         return [("skip", TestResult.Skip("AZURE_OPENAI_ENDPOINT not configured"))];
@@ -1604,7 +1604,7 @@ async Task<List<(string, TestResult)>> TestAzureOpenAI()
 async Task<List<(string, TestResult)>> TestAnthropic()
 {
     var apiKey = GetEnv("ANTHROPIC_API_KEY");
-    if (string.IsNullOrWhiteSpace(apiKey) || apiKey.StartsWith("sk-ant-xxxx"))
+    if (string.IsNullOrWhiteSpace(apiKey) || apiKey.StartsWith("sk-ant-xxxx", StringComparison.Ordinal))
         return [("skip", TestResult.Skip("ANTHROPIC_API_KEY not configured"))];
 
     var config = new AnthropicConfig
@@ -1622,7 +1622,7 @@ async Task<List<(string, TestResult)>> TestAnthropic()
 async Task<List<(string, TestResult)>> TestGoogleAI()
 {
     var apiKey = GetEnv("GOOGLE_API_KEY");
-    if (string.IsNullOrWhiteSpace(apiKey) || apiKey.StartsWith("AIza-xxxx"))
+    if (string.IsNullOrWhiteSpace(apiKey) || apiKey.StartsWith("AIza-xxxx", StringComparison.Ordinal))
         return [("skip", TestResult.Skip("GOOGLE_API_KEY not configured"))];
 
     var config = new GoogleAIConfig
@@ -1640,7 +1640,7 @@ async Task<List<(string, TestResult)>> TestGoogleAI()
 async Task<List<(string, TestResult)>> TestXAI()
 {
     var apiKey = GetEnv("XAI_API_KEY");
-    if (string.IsNullOrWhiteSpace(apiKey) || apiKey.StartsWith("xai-xxxx"))
+    if (string.IsNullOrWhiteSpace(apiKey) || apiKey.StartsWith("xai-xxxx", StringComparison.Ordinal))
         return [("skip", TestResult.Skip("XAI_API_KEY not configured"))];
 
     var config = new OpenAIConfig
@@ -1716,7 +1716,7 @@ async Task<List<(string, TestResult)>> TestGPUStack()
     var apiKey = GetEnv("GPUSTACK_API_KEY");
     var envModel = GetEnv("GPUSTACK_MODEL");
 
-    if (string.IsNullOrWhiteSpace(apiKey) || apiKey.StartsWith("gpustack-xxxx"))
+    if (string.IsNullOrWhiteSpace(apiKey) || apiKey.StartsWith("gpustack-xxxx", StringComparison.Ordinal))
         return [("skip", TestResult.Skip("GPUSTACK_API_KEY not configured"))];
 
     var config = new OpenAIConfig { BaseUrl = baseUrl, ApiKey = apiKey };
@@ -1742,7 +1742,7 @@ async Task<List<(string, TestResult)>> TestGPUStack()
 // Test Result
 // =============================================================================
 
-record TestResult(bool Success, bool Skipped, string Message, string? Model = null, string? Thinking = null, string? Response = null)
+sealed record TestResult(bool Success, bool Skipped, string Message, string? Model = null, string? Thinking = null, string? Response = null)
 {
     public static TestResult Pass(string message, string? model = null, string? thinking = null, string? response = null)
         => new(true, false, message, model, thinking, response);

@@ -7,7 +7,9 @@ using IronHive.Abstractions.Vector;
 namespace IronHive.Core.Memory;
 
 /// <inheritdoc />
+#pragma warning disable CA1711 // Identifiers should not have incorrect suffix — implements IMemoryCollection, "Collection" refers to vector storage collection
 public class MemoryCollection : IMemoryCollection
+#pragma warning restore CA1711
 {
     private readonly IStorageRegistry _storages;
     private readonly IEmbeddingService _embedder;

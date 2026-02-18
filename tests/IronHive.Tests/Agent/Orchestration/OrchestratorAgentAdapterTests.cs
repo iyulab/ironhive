@@ -130,7 +130,7 @@ public class OrchestratorAgentAdapterTests
         return last?.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "";
     }
 
-    private class MockAgent : IAgent
+    private sealed class MockAgent : IAgent
     {
         public string Provider { get; set; } = "mock";
         public string Model { get; set; } = "mock-model";

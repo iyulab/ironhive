@@ -18,7 +18,7 @@ public class AmazonS3FileStorage : IFileStorage
     public AmazonS3FileStorage(AmazonS3Config config)
     {
         if (string.IsNullOrWhiteSpace(config.BucketName))
-            throw new ArgumentException("S3 버킷 이름이 필요합니다.", nameof(config.BucketName));
+            throw new ArgumentException("S3 버킷 이름이 필요합니다.", nameof(config));
 
         _config = config;
         _client = CreateClient(config);
@@ -222,13 +222,13 @@ public class AmazonS3FileStorage : IFileStorage
     private static AmazonS3Client CreateClient(AmazonS3Config config)
     {
         if (string.IsNullOrWhiteSpace(config.AccessKey))
-            throw new ArgumentException("AWS IAM 액세스 키가 필요합니다.");
+            throw new ArgumentException("AWS IAM 액세스 키가 필요합니다.", nameof(config));
 
         if (string.IsNullOrWhiteSpace(config.SecretAccessKey))
-            throw new ArgumentException("AWS IAM 비밀 액세스 키가 필요합니다.");
+            throw new ArgumentException("AWS IAM 비밀 액세스 키가 필요합니다.", nameof(config));
 
         if (string.IsNullOrWhiteSpace(config.RegionCode))
-            throw new ArgumentException("AWS S3 서비스가 위치한 지역 코드가 필요합니다.");
+            throw new ArgumentException("AWS S3 서비스가 위치한 지역 코드가 필요합니다.", nameof(config));
 
         var clientConfig = new AmazonS3ClientConfig
         {

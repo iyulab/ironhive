@@ -1,6 +1,5 @@
 ﻿using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Tools;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
@@ -88,7 +87,7 @@ public static class FunctionToolFactory
     public static ITool CreateFrom(Delegate function, DelegateDescriptor descriptor)
     {
         if (string.IsNullOrWhiteSpace(descriptor.Name))
-            throw new ArgumentException("툴 이름은 비어있을 수 없습니다.", nameof(descriptor.Name));
+            throw new ArgumentException("툴 이름은 비어있을 수 없습니다.", nameof(descriptor));
 
         var method = function.Method;
         var parameters = BuildJsonSchemaParameters(method);
@@ -177,7 +176,7 @@ public record DelegateDescriptor
     
     public string? Description { get; set; }
     
-    public bool RequiresApproval { get; set; } = false;
+    public bool RequiresApproval { get; set; }
 
     public long Timeout { get; set; } = 60;
 }

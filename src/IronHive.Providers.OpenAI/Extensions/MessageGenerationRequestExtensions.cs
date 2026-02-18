@@ -303,7 +303,7 @@ public static class MessageGenerationRequestExtensions
     /// <summary>Ensures that the image content is in a valid Base64 URL format.</summary>
     private static string EnsureBase64Url(ImageMessageContent image)
     {
-        if (image.Base64.StartsWith("data:"))
+        if (image.Base64.StartsWith("data:", StringComparison.Ordinal))
             return image.Base64;
 
         var mime = image.Format switch

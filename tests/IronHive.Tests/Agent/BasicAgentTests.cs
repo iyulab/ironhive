@@ -4,7 +4,7 @@ using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Agent;
-using Moq;
+using NSubstitute;
 
 namespace IronHive.Tests.Agent;
 
@@ -14,11 +14,11 @@ namespace IronHive.Tests.Agent;
 /// </summary>
 public class BasicAgentTests
 {
-    private readonly Mock<IMessageService> _mockMessageService;
+    private readonly IMessageService _mockMessageService;
 
     public BasicAgentTests()
     {
-        _mockMessageService = new Mock<IMessageService>();
+        _mockMessageService = Substitute.For<IMessageService>();
     }
 
     private BasicAgent CreateAgent(
@@ -27,7 +27,7 @@ public class BasicAgentTests
         string name = "TestAgent",
         string description = "Test agent description")
     {
-        return new BasicAgent(_mockMessageService.Object)
+        return new BasicAgent(_mockMessageService)
         {
             Provider = provider,
             Model = model,
@@ -122,8 +122,8 @@ public class BasicAgentTests
         };
 
         _mockMessageService
-            .Setup(s => s.GenerateMessageAsync(It.IsAny<MessageRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(expectedResponse);
+            .GenerateMessageAsync(Arg.Any<MessageRequest>(), Arg.Any<CancellationToken>())
+            .Returns(expectedResponse);
 
         // Act
         var result = await agent.InvokeAsync(messages);
@@ -131,9 +131,8 @@ public class BasicAgentTests
         // Assert
         result.Should().NotBeNull();
         result.DoneReason.Should().Be(MessageDoneReason.EndTurn);
-        _mockMessageService.Verify(
-            s => s.GenerateMessageAsync(It.IsAny<MessageRequest>(), It.IsAny<CancellationToken>()),
-            Times.Once);
+        await _mockMessageService.Received(1)
+            .GenerateMessageAsync(Arg.Any<MessageRequest>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -148,9 +147,8 @@ public class BasicAgentTests
 
         MessageRequest? capturedRequest = null;
         _mockMessageService
-            .Setup(s => s.GenerateMessageAsync(It.IsAny<MessageRequest>(), It.IsAny<CancellationToken>()))
-            .Callback<MessageRequest, CancellationToken>((req, _) => capturedRequest = req)
-            .ReturnsAsync(new MessageResponse
+            .GenerateMessageAsync(Arg.Do<MessageRequest>(req => capturedRequest = req), Arg.Any<CancellationToken>())
+            .Returns(new MessageResponse
             {
                 Id = "msg-gen",
                 DoneReason = MessageDoneReason.EndTurn,
@@ -180,9 +178,8 @@ public class BasicAgentTests
 
         MessageRequest? capturedRequest = null;
         _mockMessageService
-            .Setup(s => s.GenerateMessageAsync(It.IsAny<MessageRequest>(), It.IsAny<CancellationToken>()))
-            .Callback<MessageRequest, CancellationToken>((req, _) => capturedRequest = req)
-            .ReturnsAsync(new MessageResponse
+            .GenerateMessageAsync(Arg.Do<MessageRequest>(req => capturedRequest = req), Arg.Any<CancellationToken>())
+            .Returns(new MessageResponse
             {
                 Id = "msg-gen",
                 DoneReason = MessageDoneReason.EndTurn,
@@ -215,9 +212,8 @@ public class BasicAgentTests
 
         MessageRequest? capturedRequest = null;
         _mockMessageService
-            .Setup(s => s.GenerateMessageAsync(It.IsAny<MessageRequest>(), It.IsAny<CancellationToken>()))
-            .Callback<MessageRequest, CancellationToken>((req, _) => capturedRequest = req)
-            .ReturnsAsync(new MessageResponse
+            .GenerateMessageAsync(Arg.Do<MessageRequest>(req => capturedRequest = req), Arg.Any<CancellationToken>())
+            .Returns(new MessageResponse
             {
                 Id = "msg-gen",
                 DoneReason = MessageDoneReason.EndTurn,
@@ -247,9 +243,8 @@ public class BasicAgentTests
 
         MessageRequest? capturedRequest = null;
         _mockMessageService
-            .Setup(s => s.GenerateMessageAsync(It.IsAny<MessageRequest>(), It.IsAny<CancellationToken>()))
-            .Callback<MessageRequest, CancellationToken>((req, _) => capturedRequest = req)
-            .ReturnsAsync(new MessageResponse
+            .GenerateMessageAsync(Arg.Do<MessageRequest>(req => capturedRequest = req), Arg.Any<CancellationToken>())
+            .Returns(new MessageResponse
             {
                 Id = "msg-gen",
                 DoneReason = MessageDoneReason.EndTurn,
@@ -287,7 +282,7 @@ public class BasicAgentTests
         };
 
         _mockMessageService
-            .Setup(s => s.GenerateStreamingMessageAsync(It.IsAny<MessageRequest>(), It.IsAny<CancellationToken>()))
+            .GenerateStreamingMessageAsync(Arg.Any<MessageRequest>(), Arg.Any<CancellationToken>())
             .Returns(streamingResponses.ToAsyncEnumerable());
 
         // Act
@@ -299,9 +294,8 @@ public class BasicAgentTests
 
         // Assert
         responses.Should().HaveCount(3);
-        _mockMessageService.Verify(
-            s => s.GenerateStreamingMessageAsync(It.IsAny<MessageRequest>(), It.IsAny<CancellationToken>()),
-            Times.Once);
+        _mockMessageService.Received(1)
+            .GenerateStreamingMessageAsync(Arg.Any<MessageRequest>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -316,8 +310,7 @@ public class BasicAgentTests
 
         MessageRequest? capturedRequest = null;
         _mockMessageService
-            .Setup(s => s.GenerateStreamingMessageAsync(It.IsAny<MessageRequest>(), It.IsAny<CancellationToken>()))
-            .Callback<MessageRequest, CancellationToken>((req, _) => capturedRequest = req)
+            .GenerateStreamingMessageAsync(Arg.Do<MessageRequest>(req => capturedRequest = req), Arg.Any<CancellationToken>())
             .Returns(AsyncEnumerable.Empty<StreamingMessageResponse>());
 
         // Act

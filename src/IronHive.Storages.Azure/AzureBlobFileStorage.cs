@@ -114,13 +114,13 @@ public class AzureBlobFileStorage : IFileStorage
 
     /// <inheritdoc />
     public async Task DeleteFileAsync(
-        string path, 
+        string filePath,
         CancellationToken cancellationToken = default)
     {
-        if (IsDirectory(path))
-            throw new ArgumentException("디렉터리 경로로 파일을 삭제할 수 없습니다.", nameof(path));
+        if (IsDirectory(filePath))
+            throw new ArgumentException("디렉터리 경로로 파일을 삭제할 수 없습니다.", nameof(filePath));
 
-        var blob = _client.GetBlobClient(path);
+        var blob = _client.GetBlobClient(filePath);
         await blob.DeleteIfExistsAsync(cancellationToken: cancellationToken);
     }
 
@@ -163,10 +163,10 @@ public class AzureBlobFileStorage : IFileStorage
             AzureStorageAuthTypes.AccountKey => new BlobServiceClient(GetBlobStorageUri(config), GetSharedKeyCredential(config), options),
             AzureStorageAuthTypes.SASToken => new BlobServiceClient(GetBlobStorageUri(config), GetSasTokenCredential(config), options),
             AzureStorageAuthTypes.AzureIdentity => new BlobServiceClient(GetBlobStorageUri(config), config.TokenCredential, options),
-            _ => throw new ArgumentOutOfRangeException(nameof(config.AuthType), "알 수 없는 Azure Storage 인증 유형입니다.")
+            _ => throw new ArgumentOutOfRangeException(nameof(config), "알 수 없는 Azure Storage 인증 유형입니다.")
         };
         if (string.IsNullOrWhiteSpace(config.StorageName))
-            throw new ArgumentException("ContainerName은 비어 있을 수 없습니다.", nameof(config.StorageName));
+            throw new ArgumentException("ContainerName은 비어 있을 수 없습니다.", nameof(config));
 
         var container = client.GetBlobContainers(prefix: config.StorageName)
                               .FirstOrDefault(item => item.Name == config.StorageName);
@@ -182,7 +182,7 @@ public class AzureBlobFileStorage : IFileStorage
     private static Uri GetBlobStorageUri(AzureStorageConfig config)
     {
         if (string.IsNullOrWhiteSpace(config.AccountName))
-            throw new ArgumentException("AccountName은 비어 있을 수 없습니다.", nameof(config.AccountName));
+            throw new ArgumentException("AccountName은 비어 있을 수 없습니다.", nameof(config));
         return new Uri($"https://{config.AccountName}.blob.core.windows.net");
     }
 
@@ -192,7 +192,7 @@ public class AzureBlobFileStorage : IFileStorage
     private static StorageSharedKeyCredential GetSharedKeyCredential(AzureStorageConfig config)
     {
         if (string.IsNullOrWhiteSpace(config.AccountName))
-            throw new ArgumentException("AccountName은 비어 있을 수 없습니다.", nameof(config.AccountName));
+            throw new ArgumentException("AccountName은 비어 있을 수 없습니다.", nameof(config));
         return new StorageSharedKeyCredential(config.AccountName, config.AccountKey);
     }
 
@@ -202,7 +202,7 @@ public class AzureBlobFileStorage : IFileStorage
     private static AzureSasCredential GetSasTokenCredential(AzureStorageConfig config)
     {
         if (string.IsNullOrWhiteSpace(config.SASToken))
-            throw new ArgumentException("SASToken은 비어 있을 수 없습니다.", nameof(config.SASToken));
+            throw new ArgumentException("SASToken은 비어 있을 수 없습니다.", nameof(config));
         return new AzureSasCredential(config.SASToken);
     }
 }

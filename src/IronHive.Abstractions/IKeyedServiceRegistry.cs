@@ -63,8 +63,10 @@ public interface IKeyedServiceRegistry<TKey, TBase>
     /// </typeparam>
     /// <param name="key">설정할 항목의 키.</param>
     /// <param name="item">설정할 인스턴스.</param>
+#pragma warning disable CA1716 // Identifiers should not match keywords — 'Set' is established API, renaming would break consumers
     void Set<TDerived>(TKey key, TBase item)
         where TDerived : class, TBase;
+#pragma warning restore CA1716
 
     /// <summary>
     /// 지정한 키에 해당하는 항목을 삭제합니다.

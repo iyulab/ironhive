@@ -42,9 +42,9 @@ public sealed class OpenApiClientFactory
         var (doc, dialog) = OpenApiDocument.Parse(content, settings: settings);
 
         if (dialog is not null && dialog.Errors.Count > 0)
-            throw new Exception("OpenAPI 문서 파싱 실패: " + string.Join("; ", dialog.Errors.Select(e => e.Message)));
+            throw new InvalidOperationException("OpenAPI 문서 파싱 실패: " + string.Join("; ", dialog.Errors.Select(e => e.Message)));
         if (doc is null)
-            throw new Exception("OpenAPI 문서를 불러오지 못했습니다.");
+            throw new InvalidOperationException("OpenAPI 문서를 불러오지 못했습니다.");
 
         return Create(clientName, doc, options);
     }
@@ -65,9 +65,9 @@ public sealed class OpenApiClientFactory
         var (doc, dialog) = await OpenApiDocument.LoadAsync(url: url, token: cancellationToken);
 
         if (dialog is not null && dialog.Errors.Count > 0)
-            throw new Exception("OpenAPI 문서 파싱 실패: " + string.Join("; ", dialog.Errors.Select(e => e.Message)));
+            throw new InvalidOperationException("OpenAPI 문서 파싱 실패: " + string.Join("; ", dialog.Errors.Select(e => e.Message)));
         if (doc is null)
-            throw new Exception("OpenAPI 문서를 불러오지 못했습니다.");
+            throw new InvalidOperationException("OpenAPI 문서를 불러오지 못했습니다.");
 
         return Create(clientName, doc, options);
     }

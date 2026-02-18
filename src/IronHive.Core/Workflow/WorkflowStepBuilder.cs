@@ -133,7 +133,7 @@ public class WorkflowStepBuilder<TContext>
     private void AddStep<TStep>(string name) where TStep : class, IWorkflowStep
     {
         var step = _services is null
-            ? Activator.CreateInstance(typeof(TStep)) as IWorkflowStep
+            ? (IWorkflowStep)Activator.CreateInstance<TStep>()
             : _services.GetKeyedService<IWorkflowStep>(name)
               ?? ActivatorUtilities.CreateInstance<TStep>(_services);
         if (step is null)

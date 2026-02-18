@@ -195,7 +195,7 @@ public static class SqliteVecInstaller
         using var sha = SHA256.Create();
         using var stream = File.OpenRead(filePath);
         var hash = sha.ComputeHash(stream);
-        return "sha256:" + BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+        return "sha256:" + Convert.ToHexStringLower(hash);
     }
 
     #endregion

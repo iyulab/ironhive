@@ -164,7 +164,9 @@ public sealed partial class ApacheFileMediaTypeDetector : IFileMediaTypeDetector
                 return;
             }
 
-            var text = resp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+            using var stream = resp.Content.ReadAsStream();
+            using var reader = new StreamReader(stream);
+            var text = reader.ReadToEnd();
 
             var newItems = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             var newExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -231,10 +233,7 @@ public sealed partial class ApacheFileMediaTypeDetector : IFileMediaTypeDetector
                     items[ext] = mediaType;
                     extensions.Add(ext);
                 }
-                else
-                {
-                    Console.WriteLine($"[Warning] Duplicate extension mapping ignored: {ext} -> {mediaType} (already mapped to {items[ext]})");
-                }
+                // Duplicate extension mapping — first registration wins (intentionally ignored)
             }
         }
     }

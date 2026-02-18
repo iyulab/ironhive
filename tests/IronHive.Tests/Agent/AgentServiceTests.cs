@@ -1,7 +1,7 @@
 using FluentAssertions;
 using IronHive.Abstractions.Messages;
 using IronHive.Core.Agent;
-using Moq;
+using NSubstitute;
 
 namespace IronHive.Tests.Agent;
 
@@ -15,8 +15,8 @@ public class AgentServiceTests
 
     public AgentServiceTests()
     {
-        var mockMessageService = new Mock<IMessageService>();
-        _service = new AgentService(mockMessageService.Object);
+        var mockMessageService = Substitute.For<IMessageService>();
+        _service = new AgentService(mockMessageService);
     }
 
     #region YAML Tests

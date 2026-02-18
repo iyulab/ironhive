@@ -40,11 +40,13 @@ public interface IKeyedCollection<TKey, TItem> : ICollection<TItem>
     void AddRange(IEnumerable<TItem> items);
 
     /// <summary>
-    /// 항목을 컬렉션에 추가하거나, 동일 키가 이미 존재하면 해당 항목을 교체합니다.  
+    /// 항목을 컬렉션에 추가하거나, 동일 키가 이미 존재하면 해당 항목을 교체합니다.
     /// 데이터의 최신 상태를 보장할 때 유용합니다.
     /// </summary>
     /// <param name="item">추가하거나 교체할 항목</param>
+#pragma warning disable CA1716 // Identifiers should not match keywords — 'Set' is established API, renaming would break consumers
     void Set(TItem item);
+#pragma warning restore CA1716
 
     /// <summary>
     /// 여러 항목을 컬렉션에 추가하거나 교체합니다. (키 중복 시 교체)

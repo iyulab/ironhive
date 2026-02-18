@@ -197,7 +197,7 @@ public class HandoffOrchestratorTests
         };
     }
 
-    private class MockAgent : IAgent
+    private sealed class MockAgent : IAgent
     {
         public string Provider { get; set; } = "mock";
         public string Model { get; set; } = "mock-model";

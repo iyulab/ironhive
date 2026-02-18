@@ -9,7 +9,7 @@ public class ToolOutput
     /// <summary>
     /// 도구 실행이 성공했는지를 나타냅니다.
     /// </summary>
-    public bool IsSuccess { get; set; } = false;
+    public bool IsSuccess { get; set; }
 
     /// <summary>
     /// LLM에게 반환할 도구 실행에 대한 결과 데이터입니다.

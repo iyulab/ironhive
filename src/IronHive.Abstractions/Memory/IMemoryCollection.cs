@@ -5,7 +5,9 @@ namespace IronHive.Abstractions.Memory;
 /// <summary>
 /// 벡터 스토리지를 사용하는 메모리 컬렉션을 나타냅니다.
 /// </summary>
+#pragma warning disable CA1711 // Identifiers should not have incorrect suffix — "Collection" here refers to a vector storage collection, not ICollection
 public interface IMemoryCollection
+#pragma warning restore CA1711
 {
     /// <summary>
     /// 벡터 스토리지의 이름입니다.

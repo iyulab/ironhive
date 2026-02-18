@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
@@ -16,6 +17,11 @@ namespace IronHive.Core.Agent.Orchestration;
 /// </summary>
 public class HubSpokeOrchestrator : OrchestratorBase
 {
+    private static readonly JsonSerializerOptions s_caseInsensitiveJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     private IAgent? _hubAgent;
     private readonly List<IAgent> _spokeAgents = [];
 
@@ -55,7 +61,7 @@ public class HubSpokeOrchestrator : OrchestratorBase
             return OrchestrationResult.Failure("Hub agent is not set. Call SetHubAgent first.");
         }
 
-        if (!_spokeAgents.Any())
+        if (_spokeAgents.Count == 0)
         {
             return OrchestrationResult.Failure("No spoke agents registered. Call AddSpokeAgent first.");
         }
@@ -140,7 +146,7 @@ public class HubSpokeOrchestrator : OrchestratorBase
         // Hub에게 보낼 컨텍스트 구성
         var hubMessages = new List<Message>(messages);
 
-        if (round > 0 && previousSteps.Any())
+        if (round > 0 && previousSteps.Count > 0)
         {
             // 이전 라운드 결과 요약 추가
             var summaryContent = BuildPreviousRoundSummary(previousSteps, round);
@@ -170,7 +176,7 @@ public class HubSpokeOrchestrator : OrchestratorBase
     {
         var results = new List<AgentStepResult>();
 
-        if (!tasks.Any())
+        if (tasks.Count == 0)
         {
             return results;
         }
@@ -268,20 +274,20 @@ public class HubSpokeOrchestrator : OrchestratorBase
         var sb = new StringBuilder();
         foreach (var agent in _spokeAgents)
         {
-            sb.AppendLine($"- {agent.Name}: {agent.Description}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"- {agent.Name}: {agent.Description}");
         }
         return sb.ToString();
     }
 
-    private string BuildPreviousRoundSummary(List<AgentStepResult> steps, int round)
+    private static string BuildPreviousRoundSummary(List<AgentStepResult> steps, int round)
     {
         var sb = new StringBuilder();
-        sb.AppendLine($"=== Previous Round {round} Results ===");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"=== Previous Round {round} Results ===");
 
         foreach (var step in steps.TakeLast(steps.Count / round))
         {
-            sb.AppendLine($"Agent: {step.AgentName}");
-            sb.AppendLine($"Success: {step.IsSuccess}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Agent: {step.AgentName}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Success: {step.IsSuccess}");
 
             if (step.IsSuccess)
             {
@@ -292,14 +298,14 @@ public class HubSpokeOrchestrator : OrchestratorBase
                     {
                         if (content is TextMessageContent textContent)
                         {
-                            sb.AppendLine($"Output: {textContent.Value}");
+                            sb.AppendLine(CultureInfo.InvariantCulture, $"Output: {textContent.Value}");
                         }
                     }
                 }
             }
             else
             {
-                sb.AppendLine($"Error: {step.Error}");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"Error: {step.Error}");
             }
             sb.AppendLine();
         }
@@ -318,7 +324,7 @@ public class HubSpokeOrchestrator : OrchestratorBase
 
         foreach (var result in spokeResults)
         {
-            sb.AppendLine($"[{result.AgentName}]:");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"[{result.AgentName}]:");
             if (result.IsSuccess)
             {
                 var msg = ExtractMessage(result.Response);
@@ -335,7 +341,7 @@ public class HubSpokeOrchestrator : OrchestratorBase
             }
             else
             {
-                sb.AppendLine($"Failed: {result.Error}");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"Failed: {result.Error}");
             }
             sb.AppendLine();
         }
@@ -373,10 +379,7 @@ public class HubSpokeOrchestrator : OrchestratorBase
             if (jsonStart >= 0 && jsonEnd > jsonStart)
             {
                 var json = content.Substring(jsonStart, jsonEnd - jsonStart + 1);
-                var parsed = JsonSerializer.Deserialize<HubResponseJson>(json, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
+                var parsed = JsonSerializer.Deserialize<HubResponseJson>(json, s_caseInsensitiveJsonOptions);
 
                 if (parsed != null)
                 {

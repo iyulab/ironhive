@@ -6,7 +6,7 @@ public static class StringExtensions
     /// 문자열의 접미사를 지정한 값으로 만듭니다.
     /// </summary>
     public static string EnsureSuffix(this string str, string value)
-        => str.EndsWith(value) ? str : str + value;
+        => str.EndsWith(value, StringComparison.Ordinal) ? str : str + value;
 
     /// <summary>
     /// 문자열의 접미사를 지정한 값으로 만듭니다.
@@ -18,7 +18,7 @@ public static class StringExtensions
     /// 문자열에 해당 접미사가 있는 경우 제거합니다.
     /// </summary>
     public static string RemoveSuffix(this string str, string value)
-        => str.EndsWith(value) ? str.Substring(0, str.Length - value.Length) : str;
+        => str.EndsWith(value, StringComparison.Ordinal) ? str.Substring(0, str.Length - value.Length) : str;
 
     /// <summary>
     /// 문자열에 해당 접미사가 있는 경우 제거합니다.
@@ -30,7 +30,7 @@ public static class StringExtensions
     /// 문자열의 접두사를 지정한 값으로 만듭니다.
     /// </summary>
     public static string EnsurePrefix(this string str, string value)
-        => str.StartsWith(value) ? str : value + str;
+        => str.StartsWith(value, StringComparison.Ordinal) ? str : value + str;
 
     /// <summary>
     /// 문자열의 접두사를 지정한 값으로 만듭니다.
@@ -42,7 +42,7 @@ public static class StringExtensions
     /// 문자열에 해당 접두사가 있는 경우 제거합니다.
     /// </summary>
     public static string RemovePrefix(this string str, string value)
-        => str.StartsWith(value) ? str.Substring(value.Length) : str;
+        => str.StartsWith(value, StringComparison.Ordinal) ? str.Substring(value.Length) : str;
 
     /// <summary>
     /// 문자열에 해당 접두사가 있는 경우 제거합니다.

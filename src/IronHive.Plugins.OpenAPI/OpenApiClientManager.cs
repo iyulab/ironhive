@@ -64,7 +64,7 @@ public sealed class OpenApiClientManager
                 // 새 도구 등록
                 client.ListToolsAsync(cancellationToken).ContinueWith(task =>
                 {
-                    _tools.RemoveAll(t => t is OpenApiTool ot && ot.ClientName.Equals(client.ClientName));
+                    _tools.RemoveAll(t => t is OpenApiTool ot && ot.ClientName.Equals(client.ClientName, StringComparison.Ordinal));
                     _tools.SetRange(task.Result);
                 });
 
@@ -84,7 +84,7 @@ public sealed class OpenApiClientManager
         if (_clients.TryRemove(clientName, out var client))
         {
             // 클라이언트의 도구 제거
-            _tools.RemoveAll(t => t is OpenApiTool ot && ot.ClientName.Equals(clientName));
+            _tools.RemoveAll(t => t is OpenApiTool ot && ot.ClientName.Equals(clientName, StringComparison.Ordinal));
             // 리소스 해제
             client.Dispose();
         }

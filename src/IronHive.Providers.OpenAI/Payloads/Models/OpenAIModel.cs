@@ -25,7 +25,7 @@ public class OpenAIModel
     /// always "model"
     /// </summary>
     [JsonPropertyName("object")]
-    public string Object { get; } = "model";
+    public string ObjectType { get; } = "model";
 
     /// <summary>
     /// The model owner.

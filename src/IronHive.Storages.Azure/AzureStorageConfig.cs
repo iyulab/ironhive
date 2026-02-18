@@ -3,6 +3,8 @@ using Azure.Identity;
 
 using System.Text.Json.Serialization;
 
+namespace IronHive.Storages.Azure;
+
 /// <summary>
 /// Azure Storage에 연결하기 위해 사용할 수 있는 다양한 인증 유형을 나타냅니다.
 /// </summary>
@@ -98,26 +100,26 @@ public class AzureStorageConfig
         {
             case AzureStorageAuthTypes.ConnectionString:
                 if (string.IsNullOrWhiteSpace(ConnectionString))
-                    throw new ArgumentException("ConnectionString is required when AuthType is ConnectionString.");
+                    throw new ArgumentException("ConnectionString is required when AuthType is ConnectionString.", nameof(ConnectionString));
                 break;
 
             case AzureStorageAuthTypes.AccountKey:
                 if (string.IsNullOrWhiteSpace(AccountName))
-                    throw new ArgumentException("AccountName is required when AuthType is AccountKey.");
+                    throw new ArgumentException("AccountName is required when AuthType is AccountKey.", nameof(AccountName));
                 if (string.IsNullOrWhiteSpace(AccountKey))
-                    throw new ArgumentException("AccountKey is required when AuthType is AccountKey.");
+                    throw new ArgumentException("AccountKey is required when AuthType is AccountKey.", nameof(AccountKey));
                 break;
 
             case AzureStorageAuthTypes.SASToken:
                 if (string.IsNullOrWhiteSpace(AccountName))
-                    throw new ArgumentException("AccountName is required when AuthType is SASToken");
+                    throw new ArgumentException("AccountName is required when AuthType is SASToken", nameof(AccountName));
                 if (string.IsNullOrWhiteSpace(SASToken))
-                    throw new ArgumentException("SASToken is required when AuthType is SASToken");
+                    throw new ArgumentException("SASToken is required when AuthType is SASToken", nameof(SASToken));
                 break;
 
             case AzureStorageAuthTypes.AzureIdentity:
                 if (string.IsNullOrWhiteSpace(AccountName))
-                    throw new ArgumentException("AccountName is required when AuthType is AzureIdentity.");
+                    throw new ArgumentException("AccountName is required when AuthType is AzureIdentity.", nameof(AccountName));
                 break;
 
             default:

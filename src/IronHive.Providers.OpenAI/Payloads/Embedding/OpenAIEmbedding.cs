@@ -14,5 +14,5 @@ public class OpenAIEmbedding
     /// "embedding" only
     /// </summary>
     [JsonPropertyName("object")]
-    public string Object { get; } = "embedding";
+    public string ObjectType { get; } = "embedding";
 }

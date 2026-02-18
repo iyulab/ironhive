@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Data.Sqlite;
@@ -18,7 +19,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
     private readonly string _connectionString;
     private readonly string _moduleVersion;
 
-    private volatile bool _ensuredCollMetaTable = false;
+    private volatile bool _ensuredCollMetaTable;
 
     public LocalVectorStorage(LocalVectorConfig config)
     {
@@ -86,7 +87,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
         cmd.CommandText = sql;
         cmd.Parameters.AddWithValue("$n", collectionName);
         var result = await cmd.ExecuteScalarAsync(cancellationToken);
-        return Convert.ToInt64(result) > 0;
+        return Convert.ToInt64(result, CultureInfo.InvariantCulture) > 0;
     }
 
     /// <inheritdoc />
@@ -280,7 +281,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
                 Payload = JsonSerializer.Deserialize<IDictionary<string, object?>>(
                     rdr.IsDBNull(2) ? null : (byte[])rdr["payload"])
                     ?? new Dictionary<string, object?>(),
-                LastUpsertedAt = DateTimeOffset.Parse(rdr.GetString(3)).UtcDateTime,
+                LastUpsertedAt = DateTimeOffset.Parse(rdr.GetString(3), CultureInfo.InvariantCulture).UtcDateTime,
                 Vectors = Array.Empty<float>() // 메타 조회이므로 임베딩은 비워둠
             });
         }
@@ -503,7 +504,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
                 Payload = JsonSerializer.Deserialize<IDictionary<string, object?>>(
                     rdr.IsDBNull(2) ? null : (byte[])rdr["payload"])
                     ?? new Dictionary<string, object?>(),
-                LastUpsertedAt = DateTimeOffset.Parse(rdr.GetString(3)).UtcDateTime,
+                LastUpsertedAt = DateTimeOffset.Parse(rdr.GetString(3), CultureInfo.InvariantCulture).UtcDateTime,
                 Vectors = [] // 메타 조회이므로 임베딩은 비워둠
             });
         }
@@ -579,7 +580,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
     private static string EnsureCollectionName(string collectionName)
     {
         if (string.IsNullOrWhiteSpace(collectionName))
-            throw new ArgumentNullException("collection name can not be null");
+            throw new ArgumentNullException(nameof(collectionName));
 
         if (!CollectionNameRegex().IsMatch(collectionName))
             throw new ArgumentException("컬렉션 이름은 영문자/숫자/밑줄만 가능하며 숫자로 시작할 수 없습니다.", nameof(collectionName));

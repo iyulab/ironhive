@@ -59,7 +59,7 @@ public sealed class OpenApiTool : ITool
                     using var res = await _http.SendAsync(req, cancellationToken).ConfigureAwait(false);
                     var text = await res.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
                     if (!res.IsSuccessStatusCode)
-                        throw new Exception($"HTTP {(int)res.StatusCode} {res.ReasonPhrase} {text}");
+                        throw new HttpRequestException($"HTTP {(int)res.StatusCode} {res.ReasonPhrase} {text}");
 
                     // ToolOutput의 payload 크기 제한(120,000자) 옵션 도입 필요
                     var payload = text.Length > 120_000 ? text[..120_000] : text;

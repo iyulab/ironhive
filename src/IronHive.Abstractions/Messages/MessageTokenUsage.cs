@@ -8,12 +8,12 @@ public class MessageTokenUsage
     /// <summary>
     /// 입력에 사용된 토큰 수입니다.
     /// </summary>
-    public int InputTokens { get; set; } = 0;
+    public int InputTokens { get; set; }
 
     /// <summary>
     /// 출력에 사용된 토큰 수입니다.
     /// </summary>
-    public int OutputTokens { get; set; } = 0;
+    public int OutputTokens { get; set; }
 
     /// <summary>
     /// 총 사용된 토큰 수입니다. (입력 + 출력)

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -90,12 +91,12 @@ public class CachingMiddleware : IAgentMiddleware
         var keyBuilder = new StringBuilder();
 
         // 에이전트 식별 정보
-        keyBuilder.Append($"agent:{agent.Name}:{agent.Model}:");
+        keyBuilder.Append(CultureInfo.InvariantCulture, $"agent:{agent.Name}:{agent.Model}:");
 
         // Instructions가 캐시 키에 영향을 주는지 여부
         if (_options.IncludeInstructionsInKey && !string.IsNullOrEmpty(agent.Instructions))
         {
-            keyBuilder.Append($"instructions:{agent.Instructions}:");
+            keyBuilder.Append(CultureInfo.InvariantCulture, $"instructions:{agent.Instructions}:");
         }
 
         // 메시지 내용
@@ -107,7 +108,7 @@ public class CachingMiddleware : IAgentMiddleware
                 AssistantMessage am => ("assistant", ExtractTextContent(am.Content)),
                 _ => ("unknown", "")
             };
-            keyBuilder.Append($"[{role}:{content}]");
+            keyBuilder.Append(CultureInfo.InvariantCulture, $"[{role}:{content}]");
         }
 
         // SHA256 해시로 키 생성
@@ -131,7 +132,7 @@ public class CachingMiddleware : IAgentMiddleware
         return DateTime.UtcNow - entry.CreatedAt > _options.Expiration;
     }
 
-    private bool ShouldCache(MessageResponse response)
+    private static bool ShouldCache(MessageResponse response)
     {
         // 완료된 응답만 캐싱
         return response.DoneReason == MessageDoneReason.EndTurn
@@ -155,7 +156,7 @@ public class CachingMiddleware : IAgentMiddleware
         }
     }
 
-    private class CacheEntry
+    private sealed class CacheEntry
     {
         public required MessageResponse Response { get; init; }
         public DateTime CreatedAt { get; init; }

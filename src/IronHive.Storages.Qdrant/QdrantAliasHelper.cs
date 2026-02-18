@@ -5,7 +5,7 @@ namespace IronHive.Storages.Qdrant;
 /// <summary>
 /// Qdrant의 컬렉션 별칭을 사용하여 컬렉션 메타데이터를 저장하고 추출하는 헬퍼 클래스입니다.
 /// </summary>
-internal class QdrantAliasHelper
+internal sealed class QdrantAliasHelper
 {
     // 컬렉션 별칭의 접두사와 구분자를 정의합니다.
     // Qdrant에서 컬렉션 별칭은 커스텀 메타데이터를 저장하는 데 사용됩니다.

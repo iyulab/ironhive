@@ -100,11 +100,11 @@ public static class ProxyManager
 
     public static void RemoveProxy(string url)
     {
-        if (!_apps.ContainsKey(url))
+        if (!_apps.TryGetValue(url, out var app))
         {
             throw new InvalidOperationException($"Proxy for {url} does not exist.");
         }
-        _apps[url].StopAsync().GetAwaiter().GetResult();
+        app.StopAsync().GetAwaiter().GetResult();
         _apps.Remove(url);
     }
 }

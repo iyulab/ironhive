@@ -27,7 +27,7 @@ public class ExtraBodyJsonConverterFactory : JsonConverterFactory
 /// 역직렬화 시 미매핑 속성을 ExtraBody로 수집하는 컨버터입니다.
 /// inner options(팩토리 제거된 복사본)를 통해 STJ에 위임하여 재귀를 방지합니다.
 /// </summary>
-internal class ExtraBodyJsonConverter<T> : JsonConverter<T> where T : JsonExtensibleBase
+internal sealed class ExtraBodyJsonConverter<T> : JsonConverter<T> where T : JsonExtensibleBase
 {
     private JsonSerializerOptions? _innerOptions;
 

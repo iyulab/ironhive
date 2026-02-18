@@ -21,7 +21,7 @@ public class ChatCompletionResponse: JsonExtensibleBase
     /// always "chat.completion"
     /// </summary>
     [JsonPropertyName("object")]
-    public string Object { get; } = "chat.completion";
+    public string ObjectType { get; } = "chat.completion";
 
     [JsonPropertyName("service_tier")]
     public string? ServiceTier { get; set; }

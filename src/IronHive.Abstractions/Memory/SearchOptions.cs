@@ -21,7 +21,7 @@ public sealed record SearchOptions
     /// <summary>
     /// 검색 결과로 허용되는 최소 점수 (기본값: 0).
     /// </summary>
-    public float MinScore { get; init; } = 0;
+    public float MinScore { get; init; }
 
     /// <summary>
     /// 검색 결과의 최대 개수 (기본값: 5).

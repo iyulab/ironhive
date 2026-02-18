@@ -31,7 +31,7 @@ public class GoogleAIEmbeddingGenerator : IEmbeddingGenerator
         string input,
         CancellationToken cancellationToken = default)
     {
-        var res = await _client.Models.EmbedContentAsync(modelId, input);
+        var res = await _client.Models.EmbedContentAsync(modelId, input, cancellationToken: cancellationToken);
         var embedding = res.Embeddings?.FirstOrDefault()
             ?? throw new InvalidOperationException("No embedding found in response.");
 
@@ -50,7 +50,7 @@ public class GoogleAIEmbeddingGenerator : IEmbeddingGenerator
             Parts = [new Part { Text = input }]
         }).ToList();
 
-        var res = await _client.Models.EmbedContentAsync(modelId, contents);
+        var res = await _client.Models.EmbedContentAsync(modelId, contents, cancellationToken: cancellationToken);
 
         return (res.Embeddings ?? []).Select((e, i) => new EmbeddingResult
         {
@@ -65,7 +65,7 @@ public class GoogleAIEmbeddingGenerator : IEmbeddingGenerator
         string input,
         CancellationToken cancellationToken = default)
     {
-        var res = await _client.Models.CountTokensAsync(modelId, input);
+        var res = await _client.Models.CountTokensAsync(modelId, input, cancellationToken: cancellationToken);
         return res.TotalTokens
             ?? throw new InvalidOperationException("No token count found for the input.");
     }
@@ -81,7 +81,7 @@ public class GoogleAIEmbeddingGenerator : IEmbeddingGenerator
 
         for (int i = 0; i < inputList.Count; i++)
         {
-            var res = await _client.Models.CountTokensAsync(modelId, inputList[i]);
+            var res = await _client.Models.CountTokensAsync(modelId, inputList[i], cancellationToken: cancellationToken);
             results.Add(new EmbeddingTokens
             {
                 Index = i,

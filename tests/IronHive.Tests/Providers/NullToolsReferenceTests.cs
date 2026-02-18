@@ -1,6 +1,6 @@
 using FluentAssertions;
 using IronHive.Abstractions.Tools;
-using Moq;
+using NSubstitute;
 
 namespace IronHive.Tests.Providers;
 
@@ -38,11 +38,11 @@ public class NullToolsReferenceTests
     public void IsApproved_ShouldBeTrue_WhenToolNotFoundInCollection()
     {
         // Arrange
-        var mockTools = new Mock<IToolCollection>();
+        var mockTools = Substitute.For<IToolCollection>();
         ITool? outTool = null;
-        mockTools.Setup(x => x.TryGet(It.IsAny<string>(), out outTool)).Returns(false);
+        mockTools.TryGet(Arg.Any<string>(), out outTool).Returns(false);
 
-        var tools = mockTools.Object;
+        var tools = mockTools;
         var toolName = "nonexistent_tool";
 
         // Act
@@ -59,14 +59,18 @@ public class NullToolsReferenceTests
     public void IsApproved_ShouldBeFalse_WhenToolRequiresApproval()
     {
         // Arrange
-        var mockTool = new Mock<ITool>();
-        mockTool.Setup(x => x.RequiresApproval).Returns(true);
+        var mockTool = Substitute.For<ITool>();
+        mockTool.RequiresApproval.Returns(true);
 
-        var mockTools = new Mock<IToolCollection>();
-        var tool = mockTool.Object;
-        mockTools.Setup(x => x.TryGet(It.IsAny<string>(), out tool)).Returns(true);
+        var mockTools = Substitute.For<IToolCollection>();
+        ITool tool = null!;
+        mockTools.TryGet(Arg.Any<string>(), out tool).Returns(callInfo =>
+        {
+            callInfo[1] = mockTool;
+            return true;
+        });
 
-        var tools = mockTools.Object;
+        var tools = mockTools;
         var toolName = "approval_required_tool";
 
         // Act
@@ -83,14 +87,18 @@ public class NullToolsReferenceTests
     public void IsApproved_ShouldBeTrue_WhenToolDoesNotRequireApproval()
     {
         // Arrange
-        var mockTool = new Mock<ITool>();
-        mockTool.Setup(x => x.RequiresApproval).Returns(false);
+        var mockTool = Substitute.For<ITool>();
+        mockTool.RequiresApproval.Returns(false);
 
-        var mockTools = new Mock<IToolCollection>();
-        var tool = mockTool.Object;
-        mockTools.Setup(x => x.TryGet(It.IsAny<string>(), out tool)).Returns(true);
+        var mockTools = Substitute.For<IToolCollection>();
+        ITool tool = null!;
+        mockTools.TryGet(Arg.Any<string>(), out tool).Returns(callInfo =>
+        {
+            callInfo[1] = mockTool;
+            return true;
+        });
 
-        var tools = mockTools.Object;
+        var tools = mockTools;
         var toolName = "auto_approved_tool";
 
         // Act
@@ -120,14 +128,18 @@ public class NullToolsReferenceTests
 
         if (toolsIsNotNull && tryGetReturns.HasValue)
         {
-            var mockTool = new Mock<ITool>();
-            mockTool.Setup(x => x.RequiresApproval).Returns(requiresApproval);
+            var mockTool = Substitute.For<ITool>();
+            mockTool.RequiresApproval.Returns(requiresApproval);
 
-            var mockTools = new Mock<IToolCollection>();
-            var tool = tryGetReturns.Value ? mockTool.Object : null;
-            mockTools.Setup(x => x.TryGet(It.IsAny<string>(), out tool)).Returns(tryGetReturns.Value);
+            var mockTools = Substitute.For<IToolCollection>();
+            ITool tool = null!;
+            mockTools.TryGet(Arg.Any<string>(), out tool).Returns(callInfo =>
+            {
+                callInfo[1] = tryGetReturns.Value ? mockTool : null;
+                return tryGetReturns.Value;
+            });
 
-            tools = mockTools.Object;
+            tools = mockTools;
         }
 
         // Act - The exact pattern used in all providers after the fix

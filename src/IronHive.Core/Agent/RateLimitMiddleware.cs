@@ -8,7 +8,7 @@ namespace IronHive.Core.Agent;
 /// API 호출 빈도를 제한하는 미들웨어입니다.
 /// 슬라이딩 윈도우 방식으로 rate limit을 적용합니다.
 /// </summary>
-public class RateLimitMiddleware : IAgentMiddleware
+public class RateLimitMiddleware : IAgentMiddleware, IDisposable
 {
     private readonly RateLimitMiddlewareOptions _options;
     private readonly ConcurrentQueue<DateTime> _requestTimestamps = new();
@@ -102,6 +102,15 @@ public class RateLimitMiddleware : IAgentMiddleware
             var cutoff = DateTime.UtcNow - _options.Window;
             return _requestTimestamps.Count(t => t >= cutoff);
         }
+    }
+
+    /// <summary>
+    /// 세마포어 리소스를 해제합니다.
+    /// </summary>
+    public void Dispose()
+    {
+        _semaphore.Dispose();
+        GC.SuppressFinalize(this);
     }
 }
 

@@ -62,7 +62,7 @@ public class EmbeddingGeneratorAdapter : IEmbeddingGenerator<string, Embedding<f
     }
 
     /// <inheritdoc />
-    public object? GetService(Type serviceType, object? key = null)
+    public object? GetService(Type serviceType, object? serviceKey = null)
     {
         if (serviceType == typeof(IronHiveEmbedding.IEmbeddingGenerator))
             return _generator;

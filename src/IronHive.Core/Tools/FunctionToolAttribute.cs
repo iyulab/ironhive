@@ -34,7 +34,7 @@ public class FunctionToolAttribute : Attribute
     /// <summary>
     /// 도구 사용 시 승인이 필요한지 여부를 나타냅니다. 기본값은 false입니다.
     /// </summary>
-    public bool RequiresApproval { get; set; } = false;
+    public bool RequiresApproval { get; set; }
 
     /// <summary>
     /// 도구 사용시 제한 시간입니다. 초 단위로 지정하며, 기본값은 1분(60초)입니다.

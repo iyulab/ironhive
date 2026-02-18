@@ -11,7 +11,7 @@ public class TextDecoder : IFileDecoder<string>
     /// <inheritdoc />
     public bool SupportsMimeType(string mimeType)
     {
-        return mimeType.StartsWith("text/");
+        return mimeType.StartsWith("text/", StringComparison.Ordinal);
     }
 
     /// <inheritdoc />

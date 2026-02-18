@@ -7,7 +7,7 @@ namespace IronHive.Core.Agent;
 /// 격리된 실행 풀로 리소스 고갈을 방지하는 미들웨어입니다.
 /// Bulkhead 패턴을 구현하여 동시 실행 수를 제한합니다.
 /// </summary>
-public class BulkheadMiddleware : IAgentMiddleware
+public class BulkheadMiddleware : IAgentMiddleware, IDisposable
 {
     private readonly BulkheadMiddlewareOptions _options;
     private readonly SemaphoreSlim _semaphore;
@@ -123,6 +123,16 @@ public class BulkheadMiddleware : IAgentMiddleware
             throw;
         }
     }
+
+    /// <summary>
+    /// 세마포어 리소스를 해제합니다.
+    /// </summary>
+    public void Dispose()
+    {
+        _semaphore.Dispose();
+        _queueSemaphore?.Dispose();
+        GC.SuppressFinalize(this);
+    }
 }
 
 /// <summary>
@@ -149,7 +159,7 @@ public class BulkheadMiddlewareOptions
     /// 대기열 최대 크기 (기본값: 0 - 무제한)
     /// 0보다 크면 대기열이 가득 찼을 때 요청을 거부합니다.
     /// </summary>
-    public int MaxQueueSize { get; set; } = 0;
+    public int MaxQueueSize { get; set; }
 
     /// <summary>
     /// 대기열에서 슬롯을 기다리는 최대 시간 (기본값: 무한대)

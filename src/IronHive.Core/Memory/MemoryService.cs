@@ -86,7 +86,7 @@ public class MemoryService : IMemoryService
         await storage.CreateCollectionAsync(new VectorCollectionInfo
         {
             Name = collectionName,
-            Dimensions = embeddings.Count(),
+            Dimensions = embeddings.Length,
             EmbeddingProvider = embeddingProvider,
             EmbeddingModel = embeddingModel,
         }, cancellationToken);

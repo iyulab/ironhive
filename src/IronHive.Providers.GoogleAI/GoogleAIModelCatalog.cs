@@ -30,7 +30,8 @@ public class GoogleAIModelCatalog : IModelCatalog
     {
         var list = new List<IModelSpec>();
         var pager = await _client.Models.ListAsync(
-            new Google.GenAI.Types.ListModelsConfig { PageSize = 1000 });
+            new Google.GenAI.Types.ListModelsConfig { PageSize = 1000 },
+            cancellationToken);
 
         await foreach (var model in pager)
         {
@@ -47,7 +48,7 @@ public class GoogleAIModelCatalog : IModelCatalog
     {
         try
         {
-            var model = await _client.Models.GetAsync(modelId);
+            var model = await _client.Models.GetAsync(modelId, cancellationToken: cancellationToken);
             return ConvertToModelSpec(model);
         }
         catch
@@ -63,7 +64,7 @@ public class GoogleAIModelCatalog : IModelCatalog
     {
         // 모델 ID를 정규화합니다.
         static string NormalizeName(string modelId) =>
-            modelId.StartsWith("models/") ? modelId[7..] : modelId;
+            modelId.StartsWith("models/", StringComparison.Ordinal) ? modelId[7..] : modelId;
 
         var actions = model.SupportedActions ?? [];
 

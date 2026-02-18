@@ -126,13 +126,13 @@ public class AzureFileShareStorage : IFileStorage
 
     /// <inheritdoc />
     public async Task DeleteFileAsync(
-        string path, 
+        string filePath,
         CancellationToken cancellationToken = default)
     {
-        if (IsDirectory(path))
-            throw new ArgumentException("디렉터리 경로로 파일을 삭제할 수 없습니다.", nameof(path));
+        if (IsDirectory(filePath))
+            throw new ArgumentException("디렉터리 경로로 파일을 삭제할 수 없습니다.", nameof(filePath));
 
-        var fileClient = GetFileClient(path);
+        var fileClient = GetFileClient(filePath);
         await fileClient.DeleteIfExistsAsync(cancellationToken: cancellationToken);
     }
 
@@ -153,7 +153,7 @@ public class AzureFileShareStorage : IFileStorage
     /// <summary>
     /// 디렉터리를 재귀적으로 삭제합니다.
     /// </summary>
-    private async Task DeleteDirectoryRecursiveAsync(
+    private static async Task DeleteDirectoryRecursiveAsync(
         ShareDirectoryClient directoryClient,
         CancellationToken cancellationToken)
     {
@@ -223,11 +223,11 @@ public class AzureFileShareStorage : IFileStorage
             AzureStorageAuthTypes.AccountKey => new ShareServiceClient(GetFileStorageUri(config), GetSharedKeyCredential(config), options),
             AzureStorageAuthTypes.SASToken => new ShareServiceClient(GetFileStorageUri(config), GetSasTokenCredential(config), options),
             AzureStorageAuthTypes.AzureIdentity => new ShareServiceClient(GetFileStorageUri(config), config.TokenCredential, options),
-            _ => throw new ArgumentOutOfRangeException(nameof(config.AuthType), "알 수 없는 Azure Storage 인증 유형입니다.")
+            _ => throw new ArgumentOutOfRangeException(nameof(config), "알 수 없는 Azure Storage 인증 유형입니다.")
         };
         
         if (string.IsNullOrWhiteSpace(config.StorageName))
-            throw new ArgumentException("ShareName은 비어 있을 수 없습니다.", nameof(config.StorageName));
+            throw new ArgumentException("ShareName은 비어 있을 수 없습니다.", nameof(config));
 
         var share = client.GetShares(prefix: config.StorageName)
                           .FirstOrDefault(s => s.Name == config.StorageName);
@@ -244,7 +244,7 @@ public class AzureFileShareStorage : IFileStorage
     private static Uri GetFileStorageUri(AzureStorageConfig config)
     {
         if (string.IsNullOrWhiteSpace(config.AccountName))
-            throw new ArgumentException("AccountName은 비어 있을 수 없습니다.", nameof(config.AccountName));
+            throw new ArgumentException("AccountName은 비어 있을 수 없습니다.", nameof(config));
         return new Uri($"https://{config.AccountName}.file.core.windows.net");
     }
 
@@ -254,7 +254,7 @@ public class AzureFileShareStorage : IFileStorage
     private static StorageSharedKeyCredential GetSharedKeyCredential(AzureStorageConfig config)
     {
         if (string.IsNullOrWhiteSpace(config.AccountName))
-            throw new ArgumentException("AccountName은 비어 있을 수 없습니다.", nameof(config.AccountName));
+            throw new ArgumentException("AccountName은 비어 있을 수 없습니다.", nameof(config));
         return new StorageSharedKeyCredential(config.AccountName, config.AccountKey);
     }
 
@@ -264,7 +264,7 @@ public class AzureFileShareStorage : IFileStorage
     private static AzureSasCredential GetSasTokenCredential(AzureStorageConfig config)
     {
         if (string.IsNullOrWhiteSpace(config.SASToken))
-            throw new ArgumentException("SASToken은 비어 있을 수 없습니다.", nameof(config.SASToken));
+            throw new ArgumentException("SASToken은 비어 있을 수 없습니다.", nameof(config));
         return new AzureSasCredential(config.SASToken);
     }
 }

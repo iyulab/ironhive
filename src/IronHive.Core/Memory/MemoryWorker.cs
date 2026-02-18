@@ -16,7 +16,7 @@ public class MemoryWorker : IMemoryWorker
 
     private SemaphoreSlim? _gate;
     private IQueueConsumer? _consumer;
-    private int _flag = 0; // 0: 정지됨, 1: 실행 중
+    private int _flag; // 0: 정지됨, 1: 실행 중
 
     public MemoryWorker(IQueueStorage queue, IWorkflow<MemoryContext> pipeline)
     {

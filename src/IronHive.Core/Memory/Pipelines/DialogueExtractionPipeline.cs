@@ -60,7 +60,7 @@ public partial class DialogueExtractionPipeline : IMemoryPipeline<DialogueExtrac
             dialogues.AddRange(ParseFrom(text));
         }
 
-        context.Payload.Add("chunks", dialogues);
+        context.Payload["chunks"] = dialogues;
         return TaskStepResult.Success();
     }
 

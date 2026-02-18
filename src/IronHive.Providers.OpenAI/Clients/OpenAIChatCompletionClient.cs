@@ -17,14 +17,14 @@ public class OpenAIChatCompletionClient : OpenAIClientBase
         CancellationToken cancellationToken = default)
     {
         request.Stream = false;
-        var json = JsonSerializer.Serialize(request, _jsonOptions);
+        var json = JsonSerializer.Serialize(request, JsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        using var response = await _client.PostAsync(OpenAIConstants.PostChatCompletionPath.RemovePrefix('/'), content, cancellationToken);
+        using var response = await Client.PostAsync(OpenAIConstants.PostChatCompletionPath.RemovePrefix('/'), content, cancellationToken);
         if (!response.IsSuccessStatusCode && response.TryExtractMessage(out string error))
             throw new HttpRequestException(error);
         response.EnsureSuccessStatusCode();
 
-        var message = await response.Content.ReadFromJsonAsync<ChatCompletionResponse>(_jsonOptions, cancellationToken)
+        var message = await response.Content.ReadFromJsonAsync<ChatCompletionResponse>(JsonOptions, cancellationToken)
             ?? throw new InvalidOperationException("Failed to deserialize response.");
         return message;
     }
@@ -35,11 +35,11 @@ public class OpenAIChatCompletionClient : OpenAIClientBase
     {
         request.Stream = true;
         request.StreamOptions = new ChatCompletionStreamOptions { IncludeUsage = true };
-        var json = JsonSerializer.Serialize(request, _jsonOptions);
+        var json = JsonSerializer.Serialize(request, JsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         using var _request = new HttpRequestMessage(HttpMethod.Post, OpenAIConstants.PostChatCompletionPath.RemovePrefix('/'));
         _request.Content = content;
-        using var response = await _client.SendAsync(_request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        using var response = await Client.SendAsync(_request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         if (!response.IsSuccessStatusCode && response.TryExtractMessage(out string error))
             throw new HttpRequestException(error);
         response.EnsureSuccessStatusCode();
@@ -50,18 +50,16 @@ public class OpenAIChatCompletionClient : OpenAIClientBase
         string? line;
         while ((line = await reader.ReadLineAsync(cancellationToken)) is not null)
         {
-            //Console.WriteLine(line);
-
             if (string.IsNullOrWhiteSpace(line))
                 continue;
 
-            if (line.StartsWith("data:"))
+            if (line.StartsWith("data:", StringComparison.Ordinal))
             {
                 var data = line.Substring("data:".Length).Trim();
                 if (!data.StartsWith('{') || !data.EndsWith('}'))
                     continue;
 
-                var message = JsonSerializer.Deserialize<StreamingChatCompletionResponse>(data, _jsonOptions);
+                var message = JsonSerializer.Deserialize<StreamingChatCompletionResponse>(data, JsonOptions);
                 if (message != null)
                 {
                     yield return message;
@@ -69,7 +67,7 @@ public class OpenAIChatCompletionClient : OpenAIClientBase
             }
 
             // 특정 플랫폼(gpu_stack)의 경우
-            if (line.StartsWith("error:"))
+            if (line.StartsWith("error:", StringComparison.Ordinal))
             {
                 var data = line.Substring("error:".Length).Trim();
                 throw new HttpRequestException(data);

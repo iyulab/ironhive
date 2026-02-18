@@ -81,7 +81,7 @@ public class TypedPipelineBuilder<TFirst, TCurrent>
 /// <summary>
 /// 두 Executor를 체이닝하는 내부 구현입니다.
 /// </summary>
-internal class ChainedExecutor<TInput, TMiddle, TOutput> : ITypedExecutor<TInput, TOutput>
+internal sealed class ChainedExecutor<TInput, TMiddle, TOutput> : ITypedExecutor<TInput, TOutput>
 {
     private readonly ITypedExecutor<TInput, TMiddle> _first;
     private readonly ITypedExecutor<TMiddle, TOutput> _second;

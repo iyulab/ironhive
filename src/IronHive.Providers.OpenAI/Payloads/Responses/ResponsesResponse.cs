@@ -76,7 +76,7 @@ public class ResponsesResponse: JsonExtensibleBase
     /// always "response"
     /// </summary>
     [JsonPropertyName("object")]
-    public string Object { get; } = "response";
+    public string ObjectType { get; } = "response";
 
     /// <summary>
     /// 모델이 생성한 메시지들의 배열

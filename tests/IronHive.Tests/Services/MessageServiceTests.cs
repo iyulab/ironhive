@@ -5,7 +5,7 @@ using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Registries;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Services;
-using Moq;
+using NSubstitute;
 
 namespace IronHive.Tests.Services;
 
@@ -15,25 +15,25 @@ namespace IronHive.Tests.Services;
 /// </summary>
 public class MessageServiceTests
 {
-    private readonly Mock<IServiceProvider> _mockServiceProvider;
-    private readonly Mock<IProviderRegistry> _mockProviderRegistry;
-    private readonly Mock<IToolCollection> _mockToolCollection;
+    private readonly IServiceProvider _mockServiceProvider;
+    private readonly IProviderRegistry _mockProviderRegistry;
+    private readonly IToolCollection _mockToolCollection;
     private readonly MessageService _service;
 
     public MessageServiceTests()
     {
-        _mockServiceProvider = new Mock<IServiceProvider>();
-        _mockProviderRegistry = new Mock<IProviderRegistry>();
-        _mockToolCollection = new Mock<IToolCollection>();
+        _mockServiceProvider = Substitute.For<IServiceProvider>();
+        _mockProviderRegistry = Substitute.For<IProviderRegistry>();
+        _mockToolCollection = Substitute.For<IToolCollection>();
 
         _mockToolCollection
-            .Setup(t => t.FilterBy(It.IsAny<IEnumerable<string>>()))
-            .Returns(_mockToolCollection.Object);
+            .FilterBy(Arg.Any<IEnumerable<string>>())
+            .Returns(_mockToolCollection);
 
         _service = new MessageService(
-            _mockServiceProvider.Object,
-            _mockProviderRegistry.Object,
-            _mockToolCollection.Object);
+            _mockServiceProvider,
+            _mockProviderRegistry,
+            _mockToolCollection);
     }
 
     [Fact]
@@ -47,9 +47,9 @@ public class MessageServiceTests
             Messages = [new UserMessage { Content = [new TextMessageContent { Value = "Hello" }] }]
         };
 
-        IMessageGenerator? generator = null;
+        IMessageGenerator generator = null!;
         _mockProviderRegistry
-            .Setup(r => r.TryGet("nonexistent-provider", out generator))
+            .TryGet("nonexistent-provider", out generator)
             .Returns(false);
 
         // Act
@@ -64,7 +64,7 @@ public class MessageServiceTests
     public async Task GenerateMessageAsync_ShouldDelegateToGenerator()
     {
         // Arrange
-        var mockGenerator = new Mock<IMessageGenerator>();
+        var mockGenerator = Substitute.For<IMessageGenerator>();
         var expectedResponse = new MessageResponse
         {
             Id = "msg-1",
@@ -76,13 +76,17 @@ public class MessageServiceTests
         };
 
         mockGenerator
-            .Setup(g => g.GenerateMessageAsync(It.IsAny<MessageGenerationRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(expectedResponse);
+            .GenerateMessageAsync(Arg.Any<MessageGenerationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(expectedResponse);
 
-        IMessageGenerator? generator = mockGenerator.Object;
+        IMessageGenerator generator = null!;
         _mockProviderRegistry
-            .Setup(r => r.TryGet("openai", out generator))
-            .Returns(true);
+            .TryGet("openai", out generator)
+            .Returns(callInfo =>
+            {
+                callInfo[1] = mockGenerator;
+                return true;
+            });
 
         var request = new MessageRequest
         {
@@ -98,32 +102,34 @@ public class MessageServiceTests
         result.Should().NotBeNull();
         result.DoneReason.Should().Be(MessageDoneReason.EndTurn);
         result.Message.Should().NotBeNull();
-        mockGenerator.Verify(
-            g => g.GenerateMessageAsync(It.IsAny<MessageGenerationRequest>(), It.IsAny<CancellationToken>()),
-            Times.Once);
+        await mockGenerator.Received(1)
+            .GenerateMessageAsync(Arg.Any<MessageGenerationRequest>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task GenerateMessageAsync_ShouldPassModelToGenerator()
     {
         // Arrange
-        var mockGenerator = new Mock<IMessageGenerator>();
+        var mockGenerator = Substitute.For<IMessageGenerator>();
         MessageGenerationRequest? capturedRequest = null;
 
         mockGenerator
-            .Setup(g => g.GenerateMessageAsync(It.IsAny<MessageGenerationRequest>(), It.IsAny<CancellationToken>()))
-            .Callback<MessageGenerationRequest, CancellationToken>((req, _) => capturedRequest = req)
-            .ReturnsAsync(new MessageResponse
+            .GenerateMessageAsync(Arg.Do<MessageGenerationRequest>(req => capturedRequest = req), Arg.Any<CancellationToken>())
+            .Returns(new MessageResponse
             {
                 Id = "msg-gen",
                 DoneReason = MessageDoneReason.EndTurn,
                 Message = new AssistantMessage()
             });
 
-        IMessageGenerator? generator = mockGenerator.Object;
+        IMessageGenerator generator = null!;
         _mockProviderRegistry
-            .Setup(r => r.TryGet("openai", out generator))
-            .Returns(true);
+            .TryGet("openai", out generator)
+            .Returns(callInfo =>
+            {
+                callInfo[1] = mockGenerator;
+                return true;
+            });
 
         var request = new MessageRequest
         {
@@ -144,23 +150,26 @@ public class MessageServiceTests
     public async Task GenerateMessageAsync_ShouldPassSystemPromptToGenerator()
     {
         // Arrange
-        var mockGenerator = new Mock<IMessageGenerator>();
+        var mockGenerator = Substitute.For<IMessageGenerator>();
         MessageGenerationRequest? capturedRequest = null;
 
         mockGenerator
-            .Setup(g => g.GenerateMessageAsync(It.IsAny<MessageGenerationRequest>(), It.IsAny<CancellationToken>()))
-            .Callback<MessageGenerationRequest, CancellationToken>((req, _) => capturedRequest = req)
-            .ReturnsAsync(new MessageResponse
+            .GenerateMessageAsync(Arg.Do<MessageGenerationRequest>(req => capturedRequest = req), Arg.Any<CancellationToken>())
+            .Returns(new MessageResponse
             {
                 Id = "msg-gen",
                 DoneReason = MessageDoneReason.EndTurn,
                 Message = new AssistantMessage()
             });
 
-        IMessageGenerator? generator = mockGenerator.Object;
+        IMessageGenerator generator = null!;
         _mockProviderRegistry
-            .Setup(r => r.TryGet("openai", out generator))
-            .Returns(true);
+            .TryGet("openai", out generator)
+            .Returns(callInfo =>
+            {
+                callInfo[1] = mockGenerator;
+                return true;
+            });
 
         var request = new MessageRequest
         {
@@ -182,23 +191,26 @@ public class MessageServiceTests
     public async Task GenerateMessageAsync_ShouldPassTemperatureToGenerator()
     {
         // Arrange
-        var mockGenerator = new Mock<IMessageGenerator>();
+        var mockGenerator = Substitute.For<IMessageGenerator>();
         MessageGenerationRequest? capturedRequest = null;
 
         mockGenerator
-            .Setup(g => g.GenerateMessageAsync(It.IsAny<MessageGenerationRequest>(), It.IsAny<CancellationToken>()))
-            .Callback<MessageGenerationRequest, CancellationToken>((req, _) => capturedRequest = req)
-            .ReturnsAsync(new MessageResponse
+            .GenerateMessageAsync(Arg.Do<MessageGenerationRequest>(req => capturedRequest = req), Arg.Any<CancellationToken>())
+            .Returns(new MessageResponse
             {
                 Id = "msg-gen",
                 DoneReason = MessageDoneReason.EndTurn,
                 Message = new AssistantMessage()
             });
 
-        IMessageGenerator? generator = mockGenerator.Object;
+        IMessageGenerator generator = null!;
         _mockProviderRegistry
-            .Setup(r => r.TryGet("openai", out generator))
-            .Returns(true);
+            .TryGet("openai", out generator)
+            .Returns(callInfo =>
+            {
+                callInfo[1] = mockGenerator;
+                return true;
+            });
 
         var request = new MessageRequest
         {
@@ -227,9 +239,9 @@ public class MessageServiceTests
             Messages = [new UserMessage { Content = [new TextMessageContent { Value = "Hello" }] }]
         };
 
-        IMessageGenerator? generator = null;
+        IMessageGenerator generator = null!;
         _mockProviderRegistry
-            .Setup(r => r.TryGet("nonexistent-provider", out generator))
+            .TryGet("nonexistent-provider", out generator)
             .Returns(false);
 
         // Act
@@ -250,7 +262,7 @@ public class MessageServiceTests
     public async Task GenerateStreamingMessageAsync_ShouldYieldBeginResponse()
     {
         // Arrange
-        var mockGenerator = new Mock<IMessageGenerator>();
+        var mockGenerator = Substitute.For<IMessageGenerator>();
 
         var streamingResponses = new List<StreamingMessageResponse>
         {
@@ -265,13 +277,17 @@ public class MessageServiceTests
         };
 
         mockGenerator
-            .Setup(g => g.GenerateStreamingMessageAsync(It.IsAny<MessageGenerationRequest>(), It.IsAny<CancellationToken>()))
+            .GenerateStreamingMessageAsync(Arg.Any<MessageGenerationRequest>(), Arg.Any<CancellationToken>())
             .Returns(streamingResponses.ToAsyncEnumerable());
 
-        IMessageGenerator? generator = mockGenerator.Object;
+        IMessageGenerator generator = null!;
         _mockProviderRegistry
-            .Setup(r => r.TryGet("openai", out generator))
-            .Returns(true);
+            .TryGet("openai", out generator)
+            .Returns(callInfo =>
+            {
+                callInfo[1] = mockGenerator;
+                return true;
+            });
 
         var request = new MessageRequest
         {
@@ -296,7 +312,7 @@ public class MessageServiceTests
     public async Task GenerateStreamingMessageAsync_ShouldYieldDoneResponse()
     {
         // Arrange
-        var mockGenerator = new Mock<IMessageGenerator>();
+        var mockGenerator = Substitute.For<IMessageGenerator>();
 
         var streamingResponses = new List<StreamingMessageResponse>
         {
@@ -311,13 +327,17 @@ public class MessageServiceTests
         };
 
         mockGenerator
-            .Setup(g => g.GenerateStreamingMessageAsync(It.IsAny<MessageGenerationRequest>(), It.IsAny<CancellationToken>()))
+            .GenerateStreamingMessageAsync(Arg.Any<MessageGenerationRequest>(), Arg.Any<CancellationToken>())
             .Returns(streamingResponses.ToAsyncEnumerable());
 
-        IMessageGenerator? generator = mockGenerator.Object;
+        IMessageGenerator generator = null!;
         _mockProviderRegistry
-            .Setup(r => r.TryGet("openai", out generator))
-            .Returns(true);
+            .TryGet("openai", out generator)
+            .Returns(callInfo =>
+            {
+                callInfo[1] = mockGenerator;
+                return true;
+            });
 
         var request = new MessageRequest
         {
@@ -344,9 +364,9 @@ public class MessageServiceTests
     {
         // Act
         var act = () => new MessageService(
-            _mockServiceProvider.Object,
-            _mockProviderRegistry.Object,
-            _mockToolCollection.Object);
+            _mockServiceProvider,
+            _mockProviderRegistry,
+            _mockToolCollection);
 
         // Assert
         act.Should().NotThrow();

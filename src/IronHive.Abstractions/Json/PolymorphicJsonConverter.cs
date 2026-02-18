@@ -59,11 +59,10 @@ public class PolymorphicJsonConverter<T> : JsonConverter<T> where T : class
                 throw new JsonException($"Missing discriminator property '{_discriminatorName}'.");
 
             var discriminatorValue = discriminatorProperty.Value.GetString();
-            if (string.IsNullOrEmpty(discriminatorValue) || !_typeMapper.ContainsKey(discriminatorValue))
+            if (string.IsNullOrEmpty(discriminatorValue) || !_typeMapper.TryGetValue(discriminatorValue, out var targetType))
                 throw new JsonException($"Unknown discriminator value '{discriminatorValue}', Are you missing a type mapping?");
 
             var jsonObject = jsonDoc.RootElement.GetRawText();
-            var targetType = _typeMapper[discriminatorValue];
             var instance = JsonSerializer.Deserialize(jsonObject, targetType, options)
                 ?? throw new JsonException($"Failed to deserialize JSON to '{targetType.Name}'.");
 
@@ -109,7 +108,7 @@ public class PolymorphicJsonConverter<T> : JsonConverter<T> where T : class
                 catch (ReflectionTypeLoadException ex)
                 {
                     // 어플리케이션 중단 없이 로드할 수 없는 타입을 건너뜁니다.
-                    Debug.WriteLine($"Error loading types from assembly '{assembly.FullName}': {ex.Message}");
+                    Trace.TraceWarning($"Error loading types from assembly '{assembly.FullName}': {ex.Message}");
                     return ex.Types.Where(t => t != null)!;
                 }
             })
@@ -124,10 +123,8 @@ public class PolymorphicJsonConverter<T> : JsonConverter<T> where T : class
             if (discriminatorValueAttr == null) continue;
 
             // 중복 판별자 값이 있는 경우 예외를 발생시킵니다.
-            if (typeMapper.ContainsKey(discriminatorValueAttr.Value))
+            if (!typeMapper.TryAdd(discriminatorValueAttr.Value, type))
                 throw new JsonException($"Duplicate discriminator value '{discriminatorValueAttr.Value}'.");
-
-            typeMapper[discriminatorValueAttr.Value] = type;
         }
 
         return typeMapper;

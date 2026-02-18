@@ -15,6 +15,12 @@ namespace IronHive.Core.Workflow;
 /// </summary>
 public class WorkflowFactory
 {
+    private static readonly JsonSerializerOptions s_jsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower) }
+    };
+
     private readonly IServiceProvider? _services;
 
     public WorkflowFactory(IServiceProvider? services = null)
@@ -97,11 +103,8 @@ public class WorkflowFactory
     /// <returns><see cref="IWorkflow{TContext}"/> 구현체.</returns>
     public IWorkflow<TContext> CreateFromJson<TContext>(string json)
     {
-        var def = JsonSerializer.Deserialize<WorkflowDefinition>(json, new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true,
-            Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower) }
-        }) ?? throw new InvalidOperationException("JSON 역직렬화 결과가 null입니다.");
+        var def = JsonSerializer.Deserialize<WorkflowDefinition>(json, s_jsonOptions)
+                  ?? throw new InvalidOperationException("JSON 역직렬화 결과가 null입니다.");
         return CreateFrom<TContext>(def);
     }
 }

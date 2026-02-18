@@ -119,7 +119,7 @@ public class McpClientManager
             if (t is not McpTool tool)
                 return false;
 
-            return tool.ServerName.Equals(client.ServerName);
+            return tool.ServerName.Equals(client.ServerName, StringComparison.Ordinal);
         });
     }
 
@@ -136,7 +136,7 @@ public class McpClientManager
             if (t is not McpTool tool)
                 return false;
 
-            return tool.ServerName.Equals(client.ServerName);
+            return tool.ServerName.Equals(client.ServerName, StringComparison.Ordinal);
         });
     }
 }

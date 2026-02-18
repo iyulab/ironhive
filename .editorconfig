@@ -11,3 +11,7 @@ indent_size = 2
 # Ignore specific diagnostics
 [*.cs]
 dotnet_diagnostic.CS1573.severity = none
+
+# Test projects: allow underscores in test method names (e.g., Method_Should_Work)
+[tests/**/*.cs]
+dotnet_diagnostic.CA1707.severity = none

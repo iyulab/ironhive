@@ -179,11 +179,11 @@ public class QdrantVectorStorage : IVectorStorage
     /// <inheritdoc />
     public async Task UpsertVectorsAsync(
         string collectionName,
-        IEnumerable<VectorRecord> records,
+        IEnumerable<VectorRecord> vectors,
         CancellationToken cancellationToken = default)
     {
         var points = new List<PointStruct>();
-        foreach (var record in records)
+        foreach (var record in vectors)
         {
             var point = new PointStruct
             {

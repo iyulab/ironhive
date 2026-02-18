@@ -62,7 +62,7 @@ public class SemaphoreSlimDisposeTests
         act.Should().NotThrow();
     }
 
-    private class SemaphoreWrapper : IDisposable
+    private sealed class SemaphoreWrapper : IDisposable
     {
         private readonly SemaphoreSlim _semaphore;
 

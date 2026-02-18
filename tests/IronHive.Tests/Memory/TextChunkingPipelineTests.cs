@@ -2,7 +2,7 @@ using FluentAssertions;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Memory;
 using IronHive.Core.Memory.Pipelines;
-using Moq;
+using NSubstitute;
 
 namespace IronHive.Tests.Memory;
 
@@ -12,22 +12,22 @@ namespace IronHive.Tests.Memory;
 /// </summary>
 public class TextChunkingPipelineTests
 {
-    private readonly Mock<IEmbeddingService> _mockEmbedder;
+    private readonly IEmbeddingService _mockEmbedder;
     private readonly TextChunkingPipeline _pipeline;
 
     public TextChunkingPipelineTests()
     {
-        _mockEmbedder = new Mock<IEmbeddingService>();
+        _mockEmbedder = Substitute.For<IEmbeddingService>();
         // 기본적으로 문자 수 / 4를 토큰으로 계산
         _mockEmbedder
-            .Setup(x => x.CountTokensAsync(
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync((string p, string m, string text, CancellationToken ct) => text.Length / 4);
+            .CountTokensAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(callInfo => callInfo.ArgAt<string>(2).Length / 4);
 
-        _pipeline = new TextChunkingPipeline(_mockEmbedder.Object);
+        _pipeline = new TextChunkingPipeline(_mockEmbedder);
     }
 
     [Fact]
@@ -227,7 +227,7 @@ This is the third paragraph.";
     /// <summary>
     /// 테스트용 비-Vector 타겟
     /// </summary>
-    private class TestMemoryTarget : IMemoryTarget
+    private sealed class TestMemoryTarget : IMemoryTarget
     {
     }
 }

@@ -5,7 +5,7 @@ using IronHive.Abstractions.Registries;
 using IronHive.Abstractions.Tools;
 using IronHive.Core;
 using Microsoft.Extensions.DependencyInjection;
-using Moq;
+using NSubstitute;
 
 namespace IronHive.Tests.Core;
 

@@ -46,7 +46,7 @@ public class RabbitMQConfig
     /// <summary>
     /// SSL 사용 여부
     /// </summary>
-    public bool SslEnabled { get; set; } = false;
+    public bool SslEnabled { get; set; }
 
     /// <summary>
     /// Queue 메시지를 JSON으로 직렬화할 때 사용할 옵션

@@ -3,7 +3,6 @@ using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Tools;
-using Microsoft.AspNetCore.Mvc;
 
 namespace IronHive.Core.Tools;
 
@@ -93,8 +92,7 @@ public sealed class FunctionTool : ITool
             if (completed != execTask)
             {
                 // 호출자 취소가 우선
-                if (cancellationToken.IsCancellationRequested)
-                    throw new OperationCanceledException(cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
                 
                 // 타임아웃: 내부 작업에 취소 신호 전파
                 timeoutCts.Cancel();
@@ -201,7 +199,7 @@ public sealed class FunctionTool : ITool
             // 8) 인자가 존재하지 않고, 필수 인자인 경우
             else
             {
-                throw new ArgumentException($"Parameter '{name}' is required");
+                throw new ArgumentException($"Parameter '{name}' is required", name);
             }
         }
 

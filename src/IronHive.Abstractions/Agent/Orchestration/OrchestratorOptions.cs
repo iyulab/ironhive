@@ -69,7 +69,7 @@ public class SequentialOrchestratorOptions : OrchestratorOptions
     /// <summary>
     /// 모든 메시지 히스토리를 누적하여 전달할지 여부. 기본값: false
     /// </summary>
-    public bool AccumulateHistory { get; set; } = false;
+    public bool AccumulateHistory { get; set; }
 }
 
 /// <summary>
@@ -101,7 +101,7 @@ public class HubSpokeOrchestratorOptions : OrchestratorOptions
     /// <summary>
     /// Spoke 에이전트 병렬 실행 여부. 기본값: false
     /// </summary>
-    public bool ParallelSpokes { get; set; } = false;
+    public bool ParallelSpokes { get; set; }
 
     /// <summary>
     /// 병렬 실행 시 최대 동시 Spoke 수
