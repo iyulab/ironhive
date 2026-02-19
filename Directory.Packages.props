@@ -39,7 +39,6 @@
   </ItemGroup>
   <ItemGroup Label="Serialization">
     <PackageVersion Include="MessagePack" Version="3.1.4" />
-    <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageVersion Include="YamlDotNet" Version="16.3.0" />
     <PackageVersion Include="Tomlyn" Version="0.20.0" />
   </ItemGroup>
