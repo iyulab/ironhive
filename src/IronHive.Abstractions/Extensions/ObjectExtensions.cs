@@ -19,12 +19,22 @@ public static class ObjectExtensions
     /// <param name="options">JsonSerializer 옵션 (선택)</param>
     /// <returns>변환 성공 여부</returns>
     public static bool TryConvertTo<T>(
-        this object? obj, 
-        [MaybeNullWhen(false)] out T value, 
+        this object? obj,
+        [MaybeNullWhen(false)] out T value,
         JsonSerializerOptions? options = null)
     {
-        value = obj.ConvertTo<T>(options);
-        return value != null;
+        // Intentionally use non-generic overload to get object? result,
+        // avoiding value type unboxing NRE in the generic ConvertTo<T>.
+#pragma warning disable CA2263
+        var result = obj.ConvertTo(typeof(T), options);
+#pragma warning restore CA2263
+        if (result is null)
+        {
+            value = default!;
+            return false;
+        }
+        value = (T)result;
+        return true;
     }
 
     /// <summary>
@@ -55,10 +65,13 @@ public static class ObjectExtensions
     /// <param name="options">JsonSerializer 옵션 (선택)</param>
     /// <returns>변환된 객체 또는 기본값</returns>
     public static T? ConvertTo<T>(
-        this object? obj, 
+        this object? obj,
         JsonSerializerOptions? options = null)
     {
-        return (T?)obj.ConvertTo(typeof(T), options);
+        var result = obj.ConvertTo(typeof(T), options);
+        if (result is null)
+            return default;
+        return (T)result;
     }
 
     /// <summary>

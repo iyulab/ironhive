@@ -106,6 +106,36 @@ public class ObjectExtensionsTests
     }
 
     [Fact]
+    public void ConvertTo_InvalidStringToValueType_ReturnsDefault()
+    {
+        object obj = "not-a-number";
+
+        var result = obj.ConvertTo<int>();
+
+        result.Should().Be(0);
+    }
+
+    [Fact]
+    public void ConvertTo_NullToValueType_ReturnsDefault()
+    {
+        object? obj = null;
+
+        var result = obj.ConvertTo<int>();
+
+        result.Should().Be(0);
+    }
+
+    [Fact]
+    public void ConvertTo_InvalidStringToBool_ReturnsDefault()
+    {
+        object obj = "not-a-bool";
+
+        var result = obj.ConvertTo<bool>();
+
+        result.Should().BeFalse();
+    }
+
+    [Fact]
     public void ConvertTo_AssignableType_ReturnsSameObject()
     {
         var list = new List<string> { "a", "b" };
@@ -139,6 +169,28 @@ public class ObjectExtensionsTests
 
         success.Should().BeFalse();
         value.Should().BeNull();
+    }
+
+    [Fact]
+    public void TryConvertTo_InvalidStringToValueType_ReturnsFalse()
+    {
+        object obj = "not-a-number";
+
+        var success = obj.TryConvertTo<int>(out var value);
+
+        success.Should().BeFalse();
+        value.Should().Be(0);
+    }
+
+    [Fact]
+    public void TryConvertTo_NullToValueType_ReturnsFalse()
+    {
+        object? obj = null;
+
+        var success = obj.TryConvertTo<int>(out var value);
+
+        success.Should().BeFalse();
+        value.Should().Be(0);
     }
 
     [Fact]
