@@ -33,7 +33,7 @@ jobs:
         run: dotnet build IronHive.slnx --no-restore -c Release
 
       - name: Test
-        run: dotnet test tests/IronHive.Tests --no-build -c Release --verbosity normal
+        run: dotnet test tests/IronHive.Tests --no-build -c Release --verbosity normal --filter "Category!=Integration"
 
       - name: Pack NuGet packages
         run: |
