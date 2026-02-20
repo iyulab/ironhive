@@ -455,10 +455,18 @@ public class MiddlewareImplementationTests
     [Fact]
     public async Task Bulkhead_QueueFull_Rejects()
     {
+        var task1Entered = new TaskCompletionSource();
+        var queuedCount = 0;
+        var task2Queued = new TaskCompletionSource();
         using var bulkhead = new BulkheadMiddleware(new BulkheadMiddlewareOptions
         {
             MaxConcurrency = 1,
-            MaxQueueSize = 1
+            MaxQueueSize = 1,
+            OnQueued = (_, _, _) =>
+            {
+                if (Interlocked.Increment(ref queuedCount) == 2)
+                    task2Queued.TrySetResult();
+            }
         });
 
         var blocker = new TaskCompletionSource<MessageResponse>();
@@ -466,14 +474,14 @@ public class MiddlewareImplementationTests
         // Request 1: takes the execution slot
         var task1 = Task.Run(() => bulkhead.InvokeAsync(
             MakeAgent("a"), MakeMessages("1"),
-            _ => blocker.Task));
-        await Task.Delay(50);
+            _ => { task1Entered.SetResult(); return blocker.Task; }));
+        await task1Entered.Task;
 
         // Request 2: enters the queue
         var task2 = Task.Run(() => bulkhead.InvokeAsync(
             MakeAgent("a"), MakeMessages("2"),
             _ => Task.FromResult(MakeResponse("ok"))));
-        await Task.Delay(50);
+        await task2Queued.Task;
 
         // Request 3: queue full → rejected
         var act = () => bulkhead.InvokeAsync(
@@ -489,10 +497,11 @@ public class MiddlewareImplementationTests
     [Fact]
     public async Task Bulkhead_QueueTimeout_Rejects()
     {
+        var task1Entered = new TaskCompletionSource();
         using var bulkhead = new BulkheadMiddleware(new BulkheadMiddlewareOptions
         {
             MaxConcurrency = 1,
-            QueueTimeout = TimeSpan.FromMilliseconds(1)
+            QueueTimeout = TimeSpan.FromMilliseconds(100)
         });
 
         var blocker = new TaskCompletionSource<MessageResponse>();
@@ -500,8 +509,8 @@ public class MiddlewareImplementationTests
         // Take the execution slot
         var task1 = Task.Run(() => bulkhead.InvokeAsync(
             MakeAgent("a"), MakeMessages("1"),
-            _ => blocker.Task));
-        await Task.Delay(50);
+            _ => { task1Entered.SetResult(); return blocker.Task; }));
+        await task1Entered.Task;
 
         // Next request times out waiting for slot
         var act = () => bulkhead.InvokeAsync(
@@ -517,19 +526,20 @@ public class MiddlewareImplementationTests
     [Fact]
     public async Task Bulkhead_OnRejectedCallback_Called()
     {
+        var task1Entered = new TaskCompletionSource();
         var rejectedAgent = "";
         using var bulkhead = new BulkheadMiddleware(new BulkheadMiddlewareOptions
         {
             MaxConcurrency = 1,
-            QueueTimeout = TimeSpan.FromMilliseconds(1),
+            QueueTimeout = TimeSpan.FromMilliseconds(100),
             OnRejected = (name, _, _) => rejectedAgent = name
         });
 
         var blocker = new TaskCompletionSource<MessageResponse>();
         var task1 = Task.Run(() => bulkhead.InvokeAsync(
             MakeAgent("a"), MakeMessages("1"),
-            _ => blocker.Task));
-        await Task.Delay(50);
+            _ => { task1Entered.SetResult(); return blocker.Task; }));
+        await task1Entered.Task;
 
         try
         {
