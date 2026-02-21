@@ -54,6 +54,23 @@ public class OrchestratorOptions
     /// null이거나 비어있으면 미들웨어 없이 에이전트 직접 실행.
     /// </summary>
     public IList<IAgentMiddleware>? AgentMiddlewares { get; set; }
+
+    /// <summary>
+    /// 서브에이전트에 전달할 메시지를 스코핑하는 컨텍스트 스코프.
+    /// null이면 스코핑 없이 전체 메시지를 전달합니다.
+    /// </summary>
+    public IContextScope? ContextScope { get; set; }
+
+    /// <summary>
+    /// 서브에이전트 결과를 증류하여 컨텍스트 부담을 줄이는 결과 증류기.
+    /// null이면 증류 없이 원본 결과를 사용합니다.
+    /// </summary>
+    public IResultDistiller? ResultDistiller { get; set; }
+
+    /// <summary>
+    /// 결과 증류 옵션. ResultDistiller가 설정된 경우에만 사용됩니다.
+    /// </summary>
+    public ResultDistillationOptions? ResultDistillationOptions { get; set; }
 }
 
 /// <summary>
