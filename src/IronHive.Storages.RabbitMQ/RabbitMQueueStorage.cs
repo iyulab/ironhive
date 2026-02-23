@@ -86,7 +86,7 @@ public partial class RabbitMQueueStorage : IQueueStorage
                 QueueName = QueueName,
             };
         }
-        catch
+        catch (Exception)
         {
             // Dispose channel if setup fails to prevent resource leak
             channel.Dispose();

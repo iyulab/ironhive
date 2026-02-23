@@ -33,7 +33,7 @@ public static class HttpMessageExtensions
             message = FindPropertyValue(json, name);
             return !string.IsNullOrEmpty(message);
         }
-        catch
+        catch (Exception)
         {
             return false;
         }

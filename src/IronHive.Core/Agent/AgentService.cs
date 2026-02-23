@@ -59,7 +59,7 @@ public class AgentService : IAgentService
                 config = JsonSerializer.Deserialize<AgentConfig>(json, JsonOptions);
             }
         }
-        catch
+        catch (JsonException)
         {
             // Fallback to direct parsing
             config = JsonSerializer.Deserialize<AgentConfig>(json, JsonOptions);
@@ -105,7 +105,7 @@ public class AgentService : IAgentService
                 config = YamlDeserializer.Deserialize<AgentConfig>(yaml);
             }
         }
-        catch
+        catch (Exception)
         {
             // Fallback to direct parsing
             config = YamlDeserializer.Deserialize<AgentConfig>(yaml);

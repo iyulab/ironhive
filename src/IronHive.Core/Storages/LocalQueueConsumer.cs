@@ -1,11 +1,13 @@
 ﻿using IronHive.Abstractions.Queue;
+using Microsoft.Extensions.Logging;
 
 namespace IronHive.Core.Storages;
 
 /// <inheritdoc />
-public sealed class LocalQueueConsumer<T> : IQueueConsumer
+public sealed partial class LocalQueueConsumer<T> : IQueueConsumer
 {
     private readonly LocalQueueStorage _storage;
+    private readonly ILogger? _logger;
     private readonly FileSystemWatcher _watcher;
     private readonly SemaphoreSlim _pumpGate = new(1, 1);
 
@@ -13,9 +15,10 @@ public sealed class LocalQueueConsumer<T> : IQueueConsumer
     private Task? _pumpLoopTask;
     private CancellationTokenSource? _cts;
 
-    public LocalQueueConsumer(LocalQueueStorage storage)
+    public LocalQueueConsumer(LocalQueueStorage storage, ILogger? logger = null)
     {
         _storage = storage;
+        _logger = logger;
         _watcher = CreateFileSystemWatcher(storage.DirectoryPath);
     }
 
@@ -31,8 +34,8 @@ public sealed class LocalQueueConsumer<T> : IQueueConsumer
     /// <inheritdoc />
     public void Dispose()
     {
-        try { _watcher.Dispose(); } catch { }
-        try { _cts?.Cancel(); } catch { }
+        try { _watcher.Dispose(); } catch (Exception) { }
+        try { _cts?.Cancel(); } catch (Exception) { }
 
         _pumpGate.Dispose();
         _cts?.Dispose();
@@ -139,8 +142,8 @@ public sealed class LocalQueueConsumer<T> : IQueueConsumer
                         }
                         catch (Exception ex)
                         {
-                            // 임시 로그
-                            Console.Error.WriteLine($"[LocalQueueConsumer] OnReceived handler error: {ex}");
+                            if (_logger is not null)
+                                LogOnReceivedError(_logger, ex);
                         }
                     }
                 }
@@ -186,4 +189,7 @@ public sealed class LocalQueueConsumer<T> : IQueueConsumer
 
         return watcher;
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "OnReceived handler error in LocalQueueConsumer")]
+    private static partial void LogOnReceivedError(ILogger logger, Exception ex);
 }

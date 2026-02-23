@@ -25,9 +25,9 @@ public static class DisposalHelper
                 d.Dispose();
             }
         }
-        catch
+        catch (Exception)
         {
-            // Silently
+            // Dispose failures are intentionally swallowed to prevent masking original exceptions
         }
     }
 
@@ -51,9 +51,9 @@ public static class DisposalHelper
                 d.Dispose();
             }
         }
-        catch
+        catch (Exception)
         {
-            // Silently
+            // Dispose failures are intentionally swallowed to prevent masking original exceptions
         }
     }
 }

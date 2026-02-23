@@ -41,7 +41,7 @@ public sealed partial class ApacheFileMediaTypeDetector : IFileMediaTypeDetector
             // 초기 로드 (동기 블로킹)
             RefreshIfNeeded(true);
         }
-        catch
+        catch (Exception)
         {
             Dispose();
             throw;

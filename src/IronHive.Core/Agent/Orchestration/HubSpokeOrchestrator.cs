@@ -447,7 +447,7 @@ public class HubSpokeOrchestrator : OrchestratorBase
                 }
             }
         }
-        catch
+        catch (JsonException)
         {
             // JSON 파싱 실패 시 완료로 간주
         }
