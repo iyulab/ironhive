@@ -140,6 +140,13 @@ public abstract class OrchestratorBase : IAgentOrchestrator
         var stopwatch = Stopwatch.StartNew();
         var inputMessages = messages.ToList();
 
+        // Apply context scoping if configured
+        if (Options.ContextScope is not null)
+        {
+            var scoped = Options.ContextScope.ScopeMessages(inputMessages, agent.Name);
+            inputMessages = scoped is List<Message> list ? list : [.. scoped];
+        }
+
         using var activity = IronHiveTelemetry.StartAgentActivity(agent.Name, agent.Description);
 
         try
@@ -163,6 +170,14 @@ public abstract class OrchestratorBase : IAgentOrchestrator
                 operationName: IronHiveTelemetry.Operations.AgentInvoke,
                 durationSeconds: stopwatch.Elapsed.TotalSeconds,
                 success: true);
+
+            // Apply result distillation if configured
+            if (Options.ResultDistiller is not null)
+            {
+                response = await Options.ResultDistiller.DistillAsync(
+                    agent.Name, response, Options.ResultDistillationOptions, cancellationToken)
+                    .ConfigureAwait(false);
+            }
 
             return new AgentStepResult
             {

@@ -148,7 +148,7 @@ public static class ObjectExtensions
                 return JsonSerializer.Deserialize(jsonStr, target, options);
             }
         }
-        catch
+        catch (Exception)
         {
             return null;
         }

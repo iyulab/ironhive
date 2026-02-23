@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using System.Threading.Channels;
 using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
@@ -49,8 +48,31 @@ public partial class HandoffOrchestrator : OrchestratorBase
 
         try
         {
+            // 체크포인트에서 재개
+            var checkpoint = await LoadCheckpointAsync(cts.Token).ConfigureAwait(false);
+            var completedSteps = checkpoint?.CompletedSteps.ToList() ?? [];
+            steps.AddRange(completedSteps);
+
+            // 대화 히스토리 복원
+            if (checkpoint?.CurrentMessages.Count > 0)
+            {
+                conversationHistory = checkpoint.CurrentMessages.ToList();
+            }
+
+            // 완료된 단계에서 핸드오프 체인 추적하여 재개 지점 결정
             var currentAgentName = Options.InitialAgentName;
             var transitionCount = 0;
+
+            foreach (var completedStep in completedSteps)
+            {
+                var text = GetResponseText(completedStep.Response);
+                var h = ParseHandoff(text);
+                if (h != null)
+                {
+                    currentAgentName = h.Value.TargetAgent;
+                    transitionCount++;
+                }
+            }
 
             while (transitionCount <= Options.MaxTransitions)
             {
@@ -59,6 +81,17 @@ public partial class HandoffOrchestrator : OrchestratorBase
                     return OrchestrationResult.Failure(
                         $"Agent '{currentAgentName}' not found.",
                         steps, stopwatch.Elapsed);
+                }
+
+                // 승인 체크
+                if (!await CheckApprovalAsync(currentAgent, steps.LastOrDefault(), cts.Token).ConfigureAwait(false))
+                {
+                    await SaveCheckpointAsync(steps, conversationHistory, cts.Token).ConfigureAwait(false);
+                    stopwatch.Stop();
+                    return OrchestrationResult.Failure(
+                        $"Approval denied for agent '{currentAgentName}'",
+                        steps,
+                        stopwatch.Elapsed);
                 }
 
                 // 시스템 프롬프트에 handoff 정보 주입
@@ -75,6 +108,7 @@ public partial class HandoffOrchestrator : OrchestratorBase
                     {
                         if (Options.StopOnAgentFailure)
                         {
+                            await SaveCheckpointAsync(steps, conversationHistory, cts.Token).ConfigureAwait(false);
                             return OrchestrationResult.Failure(
                                 step.Error ?? $"Agent '{currentAgentName}' failed.",
                                 steps, stopwatch.Elapsed);
@@ -114,6 +148,9 @@ public partial class HandoffOrchestrator : OrchestratorBase
 
                         currentAgentName = handoff.Value.TargetAgent;
                         transitionCount++;
+
+                        // 전환 후 체크포인트 저장
+                        await SaveCheckpointAsync(steps, conversationHistory, cts.Token).ConfigureAwait(false);
                         continue;
                     }
 
@@ -147,6 +184,9 @@ public partial class HandoffOrchestrator : OrchestratorBase
                     Content = [new TextMessageContent { Value = "Orchestration completed." }]
                 };
 
+            // 성공 시 체크포인트 삭제
+            await DeleteCheckpointAsync(cancellationToken).ConfigureAwait(false);
+
             return OrchestrationResult.Success(
                 finalMessage,
                 steps,
@@ -174,185 +214,53 @@ public partial class HandoffOrchestrator : OrchestratorBase
         IEnumerable<Message> messages,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var channel = Channel.CreateUnbounded<OrchestrationStreamEvent>();
+        // ExecuteAsync에 위임하여 체크포인트/승인 로직 일관성 유지
+        var result = await ExecuteAsync(messages, cancellationToken).ConfigureAwait(false);
 
-        var executeTask = Task.Run(async () =>
+        yield return new OrchestrationStreamEvent { EventType = OrchestrationEventType.Started };
+
+        foreach (var step in result.Steps)
         {
-            var stopwatch = Stopwatch.StartNew();
-            var steps = new List<AgentStepResult>();
-            var conversationHistory = messages.ToList();
-
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            cts.CancelAfter(Options.Timeout);
-
-            try
+            yield return new OrchestrationStreamEvent
             {
-                await channel.Writer.WriteAsync(new OrchestrationStreamEvent
+                EventType = OrchestrationEventType.AgentStarted,
+                AgentName = step.AgentName
+            };
+
+            yield return new OrchestrationStreamEvent
+            {
+                EventType = step.IsSuccess
+                    ? OrchestrationEventType.AgentCompleted
+                    : OrchestrationEventType.AgentFailed,
+                AgentName = step.AgentName,
+                CompletedResponse = step.Response,
+                Error = step.Error
+            };
+
+            // handoff 이벤트 감지
+            if (step.IsSuccess)
+            {
+                var responseText = GetResponseText(step.Response);
+                var handoff = ParseHandoff(responseText);
+                if (handoff != null)
                 {
-                    EventType = OrchestrationEventType.Started
-                }, cts.Token).ConfigureAwait(false);
-
-                var currentAgentName = Options.InitialAgentName;
-                var transitionCount = 0;
-
-                while (transitionCount <= Options.MaxTransitions)
-                {
-                    if (!_agentMap.TryGetValue(currentAgentName, out var currentAgent))
+                    yield return new OrchestrationStreamEvent
                     {
-                        await channel.Writer.WriteAsync(new OrchestrationStreamEvent
-                        {
-                            EventType = OrchestrationEventType.Failed,
-                            Error = $"Agent '{currentAgentName}' not found."
-                        }, cts.Token).ConfigureAwait(false);
-                        return;
-                    }
-
-                    var originalPrompt = currentAgent.Instructions;
-                    InjectHandoffInstructions(currentAgent, currentAgentName);
-
-                    try
-                    {
-                        await channel.Writer.WriteAsync(new OrchestrationStreamEvent
-                        {
-                            EventType = OrchestrationEventType.AgentStarted,
-                            AgentName = currentAgentName
-                        }, cts.Token).ConfigureAwait(false);
-
-                        var step = await ExecuteAgentAsync(currentAgent, conversationHistory, cts.Token)
-                            .ConfigureAwait(false);
-                        steps.Add(step);
-
-                        if (!step.IsSuccess)
-                        {
-                            await channel.Writer.WriteAsync(new OrchestrationStreamEvent
-                            {
-                                EventType = OrchestrationEventType.AgentFailed,
-                                AgentName = currentAgentName,
-                                Error = step.Error
-                            }, cts.Token).ConfigureAwait(false);
-
-                            if (Options.StopOnAgentFailure)
-                            {
-                                await channel.Writer.WriteAsync(new OrchestrationStreamEvent
-                                {
-                                    EventType = OrchestrationEventType.Failed,
-                                    Error = step.Error,
-                                    Result = OrchestrationResult.Failure(step.Error ?? "Agent failed.", steps, stopwatch.Elapsed)
-                                }, cts.Token).ConfigureAwait(false);
-                                return;
-                            }
-                            break;
-                        }
-
-                        await channel.Writer.WriteAsync(new OrchestrationStreamEvent
-                        {
-                            EventType = OrchestrationEventType.AgentCompleted,
-                            AgentName = currentAgentName,
-                            CompletedResponse = step.Response
-                        }, cts.Token).ConfigureAwait(false);
-
-                        var responseMessage = ExtractMessage(step.Response);
-                        if (responseMessage != null)
-                        {
-                            conversationHistory.Add(responseMessage);
-                        }
-
-                        var responseText = GetResponseText(step.Response);
-                        var handoff = ParseHandoff(responseText);
-
-                        if (handoff != null)
-                        {
-                            if (!_agentMap.ContainsKey(handoff.Value.TargetAgent))
-                            {
-                                await channel.Writer.WriteAsync(new OrchestrationStreamEvent
-                                {
-                                    EventType = OrchestrationEventType.Failed,
-                                    Error = $"Handoff target '{handoff.Value.TargetAgent}' not found."
-                                }, cts.Token).ConfigureAwait(false);
-                                return;
-                            }
-
-                            await channel.Writer.WriteAsync(new OrchestrationStreamEvent
-                            {
-                                EventType = OrchestrationEventType.Handoff,
-                                AgentName = handoff.Value.TargetAgent
-                            }, cts.Token).ConfigureAwait(false);
-
-                            if (!string.IsNullOrEmpty(handoff.Value.Context))
-                            {
-                                conversationHistory.Add(new UserMessage
-                                {
-                                    Content = [new TextMessageContent { Value = handoff.Value.Context }]
-                                });
-                            }
-
-                            currentAgentName = handoff.Value.TargetAgent;
-                            transitionCount++;
-                            continue;
-                        }
-
-                        // no handoff
-                        if (Options.NoHandoffHandler != null)
-                        {
-                            var followUp = await Options.NoHandoffHandler(currentAgentName, step)
-                                .ConfigureAwait(false);
-                            if (followUp != null)
-                            {
-                                await channel.Writer.WriteAsync(new OrchestrationStreamEvent
-                                {
-                                    EventType = OrchestrationEventType.HumanInputRequired,
-                                    AgentName = currentAgentName
-                                }, cts.Token).ConfigureAwait(false);
-
-                                conversationHistory.Add(followUp);
-                                continue;
-                            }
-                        }
-
-                        break;
-                    }
-                    finally
-                    {
-                        currentAgent.Instructions = originalPrompt;
-                    }
-                }
-
-                stopwatch.Stop();
-                var lastStep = steps.LastOrDefault();
-                var finalMessage = lastStep?.Response?.Message as Message
-                    ?? new AssistantMessage
-                    {
-                        Content = [new TextMessageContent { Value = "Orchestration completed." }]
+                        EventType = OrchestrationEventType.Handoff,
+                        AgentName = handoff.Value.TargetAgent
                     };
-
-                await channel.Writer.WriteAsync(new OrchestrationStreamEvent
-                {
-                    EventType = OrchestrationEventType.Completed,
-                    Result = OrchestrationResult.Success(finalMessage, steps, stopwatch.Elapsed, AggregateTokenUsage(steps))
-                }, cts.Token).ConfigureAwait(false);
+                }
             }
-            catch (Exception ex)
-            {
-                stopwatch.Stop();
-                await channel.Writer.WriteAsync(new OrchestrationStreamEvent
-                {
-                    EventType = OrchestrationEventType.Failed,
-                    Error = ex.Message,
-                    Result = OrchestrationResult.Failure(ex.Message, steps, stopwatch.Elapsed)
-                }, cancellationToken).ConfigureAwait(false);
-            }
-            finally
-            {
-                channel.Writer.Complete();
-            }
-        }, cancellationToken);
-
-        await foreach (var evt in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
-        {
-            yield return evt;
         }
 
-        await executeTask.ConfigureAwait(false);
+        yield return new OrchestrationStreamEvent
+        {
+            EventType = result.IsSuccess
+                ? OrchestrationEventType.Completed
+                : OrchestrationEventType.Failed,
+            Result = result,
+            Error = result.Error
+        };
     }
 
     private void InjectHandoffInstructions(IAgent agent, string agentName)

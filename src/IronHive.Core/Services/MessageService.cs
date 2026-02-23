@@ -5,7 +5,9 @@ using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Registries;
 using IronHive.Abstractions.Tools;
+using IronHive.Core.Tools;
 using IronHive.Core.Utilities;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace IronHive.Core.Services;
 
@@ -15,12 +17,14 @@ public class MessageService : IMessageService
     private readonly IServiceProvider _services;
     private readonly IProviderRegistry _providers;
     private readonly IToolCollection _tools;
+    private readonly IToolResultFilter? _resultFilter;
 
     public MessageService(IServiceProvider services, IProviderRegistry providers, IToolCollection tools)
     {
         _services = services;
         _providers = providers;
         _tools = tools;
+        _resultFilter = services.GetService<IToolResultFilter>();
     }
 
     /// <inheritdoc />
@@ -268,6 +272,12 @@ public class MessageService : IMessageService
                     tmc.Output = _tools.TryGet(tmc.Name, out var tool)
                         ? await tool.InvokeAsync(input, cancellationToken).ConfigureAwait(false)
                         : ToolOutput.Failure($"Could not find tool '{tmc.Name}', invocation failed.");
+
+                    // Apply result filter if configured
+                    if (_resultFilter is not null && tmc.Output is { Result: not null })
+                    {
+                        tmc.Output = _resultFilter.Filter(tmc.Name, tmc.Output);
+                    }
 
                     await channel.Writer.WriteAsync(new StreamingContentUpdatedResponse
                     {

@@ -41,14 +41,62 @@ public class ParallelOrchestrator : OrchestratorBase
 
         try
         {
-            var tasks = Options.MaxConcurrency.HasValue
-                ? ExecuteWithConcurrencyLimit(inputMessages, cts.Token)
-                : ExecuteAllParallel(inputMessages, cts.Token);
+            // 체크포인트에서 재개
+            var checkpoint = await LoadCheckpointAsync(cts.Token).ConfigureAwait(false);
+            var completedSteps = checkpoint?.CompletedSteps.ToList() ?? [];
+            var completedAgentNames = new HashSet<string>(completedSteps.Select(s => s.AgentName));
 
-            var steps = await tasks.ConfigureAwait(false);
+            // 이미 완료된 에이전트를 제외한 실행 대상
+            var agentsToExecute = Agents.Where(a => !completedAgentNames.Contains(a.Name)).ToList();
+
+            // 승인 체크 (병렬 실행 전에 순차 확인)
+            var approvedAgents = new List<IAgent>();
+            foreach (var agent in agentsToExecute)
+            {
+                if (!await CheckApprovalAsync(agent, completedSteps.LastOrDefault(), cts.Token).ConfigureAwait(false))
+                {
+                    await SaveCheckpointAsync(completedSteps, inputMessages, cts.Token).ConfigureAwait(false);
+                    stopwatch.Stop();
+                    return OrchestrationResult.Failure(
+                        $"Approval denied for agent '{agent.Name}'",
+                        completedSteps,
+                        stopwatch.Elapsed);
+                }
+                approvedAgents.Add(agent);
+            }
+
+            // 승인된 에이전트 병렬 실행
+            List<AgentStepResult> newSteps;
+            if (approvedAgents.Count > 0)
+            {
+                newSteps = Options.MaxConcurrency.HasValue
+                    ? await ExecuteWithConcurrencyLimit(approvedAgents, inputMessages, cts.Token).ConfigureAwait(false)
+                    : await ExecuteAllParallel(approvedAgents, inputMessages, cts.Token).ConfigureAwait(false);
+            }
+            else
+            {
+                newSteps = [];
+            }
+
+            // 이전 체크포인트 결과와 병합
+            var allSteps = new List<AgentStepResult>(completedSteps);
+            allSteps.AddRange(newSteps);
+
             stopwatch.Stop();
 
-            return ProcessResults(steps, stopwatch.Elapsed);
+            var result = ProcessResults(allSteps, stopwatch.Elapsed);
+
+            // 완료 시 체크포인트 삭제
+            if (result.IsSuccess)
+            {
+                await DeleteCheckpointAsync(cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                await SaveCheckpointAsync(allSteps, inputMessages, cts.Token).ConfigureAwait(false);
+            }
+
+            return result;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -60,21 +108,23 @@ public class ParallelOrchestrator : OrchestratorBase
     }
 
     private async Task<List<AgentStepResult>> ExecuteAllParallel(
+        IReadOnlyList<IAgent> agents,
         List<Message> messages,
         CancellationToken cancellationToken)
     {
-        var tasks = Agents.Select(agent => ExecuteAgentAsync(agent, messages, cancellationToken));
+        var tasks = agents.Select(agent => ExecuteAgentAsync(agent, messages, cancellationToken));
         var results = await Task.WhenAll(tasks).ConfigureAwait(false);
         return results.ToList();
     }
 
     private async Task<List<AgentStepResult>> ExecuteWithConcurrencyLimit(
+        IReadOnlyList<IAgent> agents,
         List<Message> messages,
         CancellationToken cancellationToken)
     {
         var semaphore = new SemaphoreSlim(Options.MaxConcurrency!.Value);
 
-        var tasks = Agents.Select(async agent =>
+        var tasks = agents.Select(async agent =>
         {
             await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
             try

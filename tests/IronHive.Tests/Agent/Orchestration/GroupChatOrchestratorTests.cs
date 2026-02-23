@@ -212,6 +212,183 @@ public class GroupChatOrchestratorTests
         result.Steps.Should().HaveCount(3); // stopped at keyword, not at 10
     }
 
+    #region Checkpoint & Approval
+
+    [Fact]
+    public async Task Execute_WithCheckpoint_DeletesOnSuccess()
+    {
+        var store = new InMemoryCheckpointStore();
+
+        var orch = new GroupChatOrchestratorBuilder()
+            .AddAgent(new MockAgent("a") { ResponseFunc = _ => "done" })
+            .WithRoundRobin()
+            .TerminateAfterRounds(1)
+            .SetCheckpointStore(store)
+            .SetOrchestrationId("ck-success")
+            .Build();
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+
+        result.IsSuccess.Should().BeTrue();
+        var ckpt = await store.LoadAsync("ck-success");
+        ckpt.Should().BeNull("checkpoint should be deleted on success");
+    }
+
+    [Fact]
+    public async Task Execute_WithCheckpoint_SavesOnFailure()
+    {
+        var store = new InMemoryCheckpointStore();
+
+        var orch = new GroupChatOrchestratorBuilder()
+            .AddAgent(new MockAgent("a")
+            {
+                ResponseFunc = _ => throw new InvalidOperationException("boom")
+            })
+            .WithRoundRobin()
+            .TerminateAfterRounds(3)
+            .SetCheckpointStore(store)
+            .SetOrchestrationId("ck-fail")
+            .Build();
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+
+        result.IsSuccess.Should().BeFalse();
+        var ckpt = await store.LoadAsync("ck-fail");
+        ckpt.Should().NotBeNull("checkpoint should be saved on failure");
+        ckpt!.CompletedSteps.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task Execute_ResumesFromCheckpoint_SkipsCompletedRounds()
+    {
+        var store = new InMemoryCheckpointStore();
+        var orchId = "ck-resume";
+
+        // Pre-populate checkpoint: rounds 0 and 1 already completed
+        var step0 = new AgentStepResult
+        {
+            AgentName = "a",
+            IsSuccess = true,
+            Duration = TimeSpan.FromSeconds(1),
+            Response = new MessageResponse
+            {
+                Id = "step-0",
+                DoneReason = MessageDoneReason.EndTurn,
+                Message = new AssistantMessage
+                {
+                    Name = "a",
+                    Content = [new TextMessageContent { Value = "response-a" }]
+                }
+            }
+        };
+        var step1 = new AgentStepResult
+        {
+            AgentName = "b",
+            IsSuccess = true,
+            Duration = TimeSpan.FromSeconds(1),
+            Response = new MessageResponse
+            {
+                Id = "step-1",
+                DoneReason = MessageDoneReason.EndTurn,
+                Message = new AssistantMessage
+                {
+                    Name = "b",
+                    Content = [new TextMessageContent { Value = "response-b" }]
+                }
+            }
+        };
+
+        await store.SaveAsync(orchId, new OrchestrationCheckpoint
+        {
+            OrchestrationId = orchId,
+            OrchestratorName = "GroupChatOrchestrator",
+            CompletedStepCount = 2,
+            CompletedSteps = [step0, step1],
+            CurrentMessages =
+            [
+                new UserMessage { Content = [new TextMessageContent { Value = "go" }] },
+                new AssistantMessage { Name = "a", Content = [new TextMessageContent { Value = "response-a" }] },
+                new AssistantMessage { Name = "b", Content = [new TextMessageContent { Value = "response-b" }] }
+            ]
+        });
+
+        var executedAgents = new List<string>();
+
+        var orch = new GroupChatOrchestratorBuilder()
+            .AddAgent(new MockAgent("a") { ResponseFunc = _ => { executedAgents.Add("a"); return "from-a"; } })
+            .AddAgent(new MockAgent("b") { ResponseFunc = _ => { executedAgents.Add("b"); return "from-b"; } })
+            .WithRoundRobin()
+            .TerminateAfterRounds(4)
+            .SetCheckpointStore(store)
+            .SetOrchestrationId(orchId)
+            .Build();
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+
+        result.IsSuccess.Should().BeTrue();
+        // RoundRobin continues from round 2: a, b (rounds 2 and 3)
+        executedAgents.Should().HaveCount(2, "only rounds 2-3 should execute");
+        result.Steps.Should().HaveCount(4, "2 checkpoint steps + 2 new steps");
+    }
+
+    [Fact]
+    public async Task Execute_ApprovalDenied_SavesCheckpointAndFails()
+    {
+        var store = new InMemoryCheckpointStore();
+        var approvalCalls = new List<string>();
+
+        var orch = new GroupChatOrchestratorBuilder()
+            .AddAgent(new MockAgent("a") { ResponseFunc = _ => "from-a" })
+            .AddAgent(new MockAgent("b") { ResponseFunc = _ => "from-b" })
+            .WithRoundRobin()
+            .TerminateAfterRounds(4)
+            .SetCheckpointStore(store)
+            .SetOrchestrationId("ck-approval")
+            .SetApprovalHandler((agentName, _) =>
+            {
+                approvalCalls.Add(agentName);
+                return Task.FromResult(agentName != "b"); // deny agent "b"
+            })
+            .Build();
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("Approval denied for agent 'b'");
+        approvalCalls.Should().Contain("a").And.Contain("b");
+
+        var ckpt = await store.LoadAsync("ck-approval");
+        ckpt.Should().NotBeNull("checkpoint should be saved when approval is denied");
+        ckpt!.CompletedSteps.Should().HaveCount(1, "only agent 'a' completed before 'b' was denied");
+    }
+
+    [Fact]
+    public async Task Execute_ApprovalForSpecificAgents_OnlyChecksListed()
+    {
+        var approvalCalls = new List<string>();
+
+        var orch = new GroupChatOrchestratorBuilder()
+            .AddAgent(new MockAgent("a") { ResponseFunc = _ => "from-a" })
+            .AddAgent(new MockAgent("b") { ResponseFunc = _ => "from-b" })
+            .WithRoundRobin()
+            .TerminateAfterRounds(2)
+            .SetApprovalHandler((agentName, _) =>
+            {
+                approvalCalls.Add(agentName);
+                return Task.FromResult(true);
+            })
+            .SetRequireApprovalForAgents("b")
+            .Build();
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+
+        result.IsSuccess.Should().BeTrue();
+        approvalCalls.Should().NotContain("a", "agent 'a' is not in RequireApprovalForAgents");
+        approvalCalls.Should().Contain("b");
+    }
+
+    #endregion
+
     #region Helpers
 
     private static IEnumerable<Message> MakeUserMessages(string text)

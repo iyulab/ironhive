@@ -180,6 +180,185 @@ public class HandoffOrchestratorTests
         events.Should().Contain(e => e.EventType == OrchestrationEventType.Completed);
     }
 
+    #region Checkpoint & Approval
+
+    [Fact]
+    public async Task Execute_WithCheckpoint_DeletesOnSuccess()
+    {
+        var store = new InMemoryCheckpointStore();
+
+        var orch = new HandoffOrchestratorBuilder()
+            .AddAgent(new MockAgent("a") { ResponseFunc = _ => "done" })
+            .SetInitialAgent("a")
+            .SetCheckpointStore(store)
+            .SetOrchestrationId("ck-success")
+            .Build();
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+
+        result.IsSuccess.Should().BeTrue();
+        var ckpt = await store.LoadAsync("ck-success");
+        ckpt.Should().BeNull("checkpoint should be deleted on success");
+    }
+
+    [Fact]
+    public async Task Execute_WithCheckpoint_SavesOnFailure()
+    {
+        var store = new InMemoryCheckpointStore();
+
+        var orch = new HandoffOrchestratorBuilder()
+            .AddAgent(new MockAgent("a")
+            {
+                ResponseFunc = _ => throw new InvalidOperationException("boom")
+            })
+            .SetInitialAgent("a")
+            .SetCheckpointStore(store)
+            .SetOrchestrationId("ck-fail")
+            .Build();
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+
+        result.IsSuccess.Should().BeFalse();
+        var ckpt = await store.LoadAsync("ck-fail");
+        ckpt.Should().NotBeNull("checkpoint should be saved on failure");
+        ckpt!.CompletedSteps.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task Execute_ResumesFromCheckpoint_SkipsCompletedTransitions()
+    {
+        var store = new InMemoryCheckpointStore();
+        var orchId = "ck-resume";
+
+        // Pre-populate checkpoint: triage already completed with handoff to billing
+        var triageStep = new AgentStepResult
+        {
+            AgentName = "triage",
+            IsSuccess = true,
+            Duration = TimeSpan.FromSeconds(1),
+            Response = new MessageResponse
+            {
+                Id = "step-1",
+                DoneReason = MessageDoneReason.EndTurn,
+                Message = new AssistantMessage
+                {
+                    Name = "triage",
+                    Content = [new TextMessageContent { Value = """{"handoff_to": "billing", "context": "issue"}""" }]
+                }
+            }
+        };
+
+        await store.SaveAsync(orchId, new OrchestrationCheckpoint
+        {
+            OrchestrationId = orchId,
+            OrchestratorName = "HandoffOrchestrator",
+            CompletedStepCount = 1,
+            CompletedSteps = [triageStep],
+            CurrentMessages =
+            [
+                new UserMessage { Content = [new TextMessageContent { Value = "go" }] },
+                new AssistantMessage { Name = "triage", Content = [new TextMessageContent { Value = """{"handoff_to": "billing", "context": "issue"}""" }] },
+                new UserMessage { Content = [new TextMessageContent { Value = "issue" }] }
+            ]
+        });
+
+        var executedAgents = new List<string>();
+
+        var orch = new HandoffOrchestratorBuilder()
+            .AddAgent(new MockAgent("triage")
+            {
+                ResponseFunc = _ => { executedAgents.Add("triage"); return "from triage"; }
+            })
+            .AddAgent(new MockAgent("billing")
+            {
+                ResponseFunc = _ => { executedAgents.Add("billing"); return "billing resolved"; }
+            },
+                new HandoffTarget { AgentName = "triage", Description = "Back to triage" })
+            .SetInitialAgent("triage")
+            .SetCheckpointStore(store)
+            .SetOrchestrationId(orchId)
+            .Build();
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+
+        result.IsSuccess.Should().BeTrue();
+        executedAgents.Should().NotContain("triage", "triage was already completed in checkpoint");
+        executedAgents.Should().Contain("billing", "billing should run as next agent");
+        result.Steps.Should().HaveCount(2, "checkpoint step + new billing step");
+    }
+
+    [Fact]
+    public async Task Execute_ApprovalDenied_SavesCheckpointAndFails()
+    {
+        var store = new InMemoryCheckpointStore();
+        var approvalCalls = new List<string>();
+
+        var orch = new HandoffOrchestratorBuilder()
+            .AddAgent(new MockAgent("triage")
+            {
+                ResponseFunc = _ => """{"handoff_to": "billing"}"""
+            },
+                new HandoffTarget { AgentName = "billing", Description = "Billing" })
+            .AddAgent(new MockAgent("billing")
+            {
+                ResponseFunc = _ => "resolved"
+            },
+                new HandoffTarget { AgentName = "triage", Description = "Triage" })
+            .SetInitialAgent("triage")
+            .SetCheckpointStore(store)
+            .SetOrchestrationId("ck-approval")
+            .SetApprovalHandler((agentName, _) =>
+            {
+                approvalCalls.Add(agentName);
+                return Task.FromResult(agentName != "billing"); // deny billing
+            })
+            .Build();
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("Approval denied for agent 'billing'");
+        approvalCalls.Should().Contain("triage").And.Contain("billing");
+
+        var ckpt = await store.LoadAsync("ck-approval");
+        ckpt.Should().NotBeNull("checkpoint should be saved when approval is denied");
+        ckpt!.CompletedSteps.Should().HaveCount(1, "triage step completed before billing was denied");
+    }
+
+    [Fact]
+    public async Task Execute_ApprovalForSpecificAgents_OnlyChecksListed()
+    {
+        var approvalCalls = new List<string>();
+
+        var orch = new HandoffOrchestratorBuilder()
+            .AddAgent(new MockAgent("triage")
+            {
+                ResponseFunc = _ => """{"handoff_to": "billing"}"""
+            },
+                new HandoffTarget { AgentName = "billing", Description = "Billing" })
+            .AddAgent(new MockAgent("billing")
+            {
+                ResponseFunc = _ => "resolved"
+            },
+                new HandoffTarget { AgentName = "triage", Description = "Triage" })
+            .SetInitialAgent("triage")
+            .SetApprovalHandler((agentName, _) =>
+            {
+                approvalCalls.Add(agentName);
+                return Task.FromResult(true);
+            })
+            .SetRequireApprovalForAgents("billing")
+            .Build();
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+
+        result.IsSuccess.Should().BeTrue();
+        approvalCalls.Should().NotContain("triage", "triage is not in RequireApprovalForAgents");
+        approvalCalls.Should().Contain("billing");
+    }
+
+    #endregion
+
     #region Helpers
 
     private static IEnumerable<Message> MakeUserMessages(string text)

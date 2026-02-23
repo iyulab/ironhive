@@ -308,6 +308,250 @@ public class SequentialOrchestratorTests
         events.Should().Contain(e => e.EventType == OrchestrationEventType.Failed);
     }
 
+    #region Checkpoint & Approval
+
+    [Fact]
+    public async Task Execute_WithCheckpoint_DeletesOnSuccess()
+    {
+        var store = new InMemoryCheckpointStore();
+        var orch = new SequentialOrchestrator(new SequentialOrchestratorOptions
+        {
+            CheckpointStore = store,
+            OrchestrationId = "ck-success"
+        });
+        orch.AddAgent(new MockAgent("a") { ResponseFunc = _ => "ok" });
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+
+        result.IsSuccess.Should().BeTrue();
+        var ckpt = await store.LoadAsync("ck-success");
+        ckpt.Should().BeNull("checkpoint should be deleted on success");
+    }
+
+    [Fact]
+    public async Task Execute_WithCheckpoint_SavesOnFailure()
+    {
+        var store = new InMemoryCheckpointStore();
+        var orch = new SequentialOrchestrator(new SequentialOrchestratorOptions
+        {
+            CheckpointStore = store,
+            OrchestrationId = "ck-fail",
+            StopOnAgentFailure = true
+        });
+        orch.AddAgent(new MockAgent("a") { ResponseFunc = _ => throw new InvalidOperationException("boom") });
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+
+        result.IsSuccess.Should().BeFalse();
+        var ckpt = await store.LoadAsync("ck-fail");
+        ckpt.Should().NotBeNull("checkpoint should be saved on failure");
+        ckpt!.CompletedSteps.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task Execute_ResumesFromCheckpoint_SkipsCompletedAgents()
+    {
+        var store = new InMemoryCheckpointStore();
+        var orchId = "ck-resume";
+
+        // Pre-populate checkpoint: agent "a" already completed
+        var existingStep = new AgentStepResult
+        {
+            AgentName = "a",
+            IsSuccess = true,
+            Duration = TimeSpan.FromSeconds(1),
+            Response = new MessageResponse
+            {
+                Id = "step-1",
+                DoneReason = MessageDoneReason.EndTurn,
+                Message = new AssistantMessage
+                {
+                    Name = "a",
+                    Content = [new TextMessageContent { Value = "from-a" }]
+                }
+            }
+        };
+        await store.SaveAsync(orchId, new OrchestrationCheckpoint
+        {
+            OrchestrationId = orchId,
+            OrchestratorName = "SequentialOrchestrator",
+            CompletedStepCount = 1,
+            CompletedSteps = [existingStep],
+            CurrentMessages = [new AssistantMessage { Name = "a", Content = [new TextMessageContent { Value = "from-a" }] }]
+        });
+
+        var executedAgents = new List<string>();
+        var orch = new SequentialOrchestrator(new SequentialOrchestratorOptions
+        {
+            CheckpointStore = store,
+            OrchestrationId = orchId
+        });
+        orch.AddAgent(new MockAgent("a") { ResponseFunc = _ => { executedAgents.Add("a"); return "from-a"; } });
+        orch.AddAgent(new MockAgent("b") { ResponseFunc = _ => { executedAgents.Add("b"); return "from-b"; } });
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+
+        result.IsSuccess.Should().BeTrue();
+        executedAgents.Should().NotContain("a", "agent 'a' was already completed in checkpoint");
+        executedAgents.Should().Contain("b", "agent 'b' should run");
+        result.Steps.Should().HaveCount(2, "both checkpoint and new results should be merged");
+    }
+
+    [Fact]
+    public async Task Execute_ApprovalDenied_SavesCheckpoint()
+    {
+        var store = new InMemoryCheckpointStore();
+        var orch = new SequentialOrchestrator(new SequentialOrchestratorOptions
+        {
+            CheckpointStore = store,
+            OrchestrationId = "ck-approval",
+            ApprovalHandler = (agentName, _) =>
+                Task.FromResult(agentName != "b")
+        });
+        orch.AddAgent(new MockAgent("a") { ResponseFunc = _ => "from-a" });
+        orch.AddAgent(new MockAgent("b") { ResponseFunc = _ => "from-b" });
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("Approval denied for agent 'b'");
+
+        var ckpt = await store.LoadAsync("ck-approval");
+        ckpt.Should().NotBeNull("checkpoint should be saved when approval is denied");
+        ckpt!.CompletedSteps.Should().HaveCount(1, "only agent 'a' completed");
+    }
+
+    [Fact]
+    public async Task Execute_ApprovalForSpecificAgents_OnlyChecksListed()
+    {
+        var approvalCalls = new List<string>();
+
+        var orch = new SequentialOrchestrator(new SequentialOrchestratorOptions
+        {
+            ApprovalHandler = (agentName, _) =>
+            {
+                approvalCalls.Add(agentName);
+                return Task.FromResult(true);
+            },
+            RequireApprovalForAgents = ["b"]
+        });
+        orch.AddAgent(new MockAgent("a") { ResponseFunc = _ => "from-a" });
+        orch.AddAgent(new MockAgent("b") { ResponseFunc = _ => "from-b" });
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+
+        result.IsSuccess.Should().BeTrue();
+        approvalCalls.Should().NotContain("a", "agent 'a' is not in RequireApprovalForAgents");
+        approvalCalls.Should().Contain("b");
+    }
+
+    [Fact]
+    public async Task ExecuteStreaming_WithCheckpoint_DeletesOnSuccess()
+    {
+        var store = new InMemoryCheckpointStore();
+        var orch = new SequentialOrchestrator(new SequentialOrchestratorOptions
+        {
+            CheckpointStore = store,
+            OrchestrationId = "stream-ck-del"
+        });
+        orch.AddAgent(new MockAgent("a") { ResponseFunc = _ => "from-a" });
+        orch.AddAgent(new MockAgent("b") { ResponseFunc = _ => "from-b" });
+
+        var events = new List<OrchestrationStreamEvent>();
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("go")))
+        {
+            events.Add(evt);
+        }
+
+        events.Should().Contain(e => e.EventType == OrchestrationEventType.Completed);
+        var ckpt = await store.LoadAsync("stream-ck-del");
+        ckpt.Should().BeNull("checkpoint should be deleted on streaming success");
+    }
+
+    [Fact]
+    public async Task ExecuteStreaming_ApprovalDenied_YieldsFailedEvent()
+    {
+        var store = new InMemoryCheckpointStore();
+        var orch = new SequentialOrchestrator(new SequentialOrchestratorOptions
+        {
+            CheckpointStore = store,
+            OrchestrationId = "stream-ck-approval",
+            ApprovalHandler = (agentName, _) => Task.FromResult(agentName != "b"),
+            RequireApprovalForAgents = ["b"]
+        });
+        orch.AddAgent(new MockAgent("a") { ResponseFunc = _ => "from-a" });
+        orch.AddAgent(new MockAgent("b") { ResponseFunc = _ => "from-b" });
+
+        var events = new List<OrchestrationStreamEvent>();
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("go")))
+        {
+            events.Add(evt);
+        }
+
+        events.Should().Contain(e => e.EventType == OrchestrationEventType.ApprovalDenied);
+        events.Should().Contain(e => e.EventType == OrchestrationEventType.Failed);
+
+        var ckpt = await store.LoadAsync("stream-ck-approval");
+        ckpt.Should().NotBeNull("checkpoint should be saved when streaming approval is denied");
+        ckpt!.CompletedSteps.Should().HaveCount(1, "only agent 'a' completed");
+    }
+
+    [Fact]
+    public async Task ExecuteStreaming_ResumesFromCheckpoint_SkipsCompletedAgents()
+    {
+        var store = new InMemoryCheckpointStore();
+        var orchId = "stream-ck-resume";
+
+        // Pre-populate checkpoint: agent "a" already completed
+        await store.SaveAsync(orchId, new OrchestrationCheckpoint
+        {
+            OrchestrationId = orchId,
+            OrchestratorName = "SequentialOrchestrator",
+            CompletedStepCount = 1,
+            CompletedSteps =
+            [
+                new AgentStepResult
+                {
+                    AgentName = "a",
+                    IsSuccess = true,
+                    Duration = TimeSpan.FromSeconds(1),
+                    Response = new MessageResponse
+                    {
+                        Id = "step-1",
+                        DoneReason = MessageDoneReason.EndTurn,
+                        Message = new AssistantMessage
+                        {
+                            Name = "a",
+                            Content = [new TextMessageContent { Value = "from-a" }]
+                        }
+                    }
+                }
+            ],
+            CurrentMessages = [new AssistantMessage { Name = "a", Content = [new TextMessageContent { Value = "from-a" }] }]
+        });
+
+        var executedAgents = new List<string>();
+        var orch = new SequentialOrchestrator(new SequentialOrchestratorOptions
+        {
+            CheckpointStore = store,
+            OrchestrationId = orchId
+        });
+        orch.AddAgent(new MockAgent("a") { ResponseFunc = _ => { executedAgents.Add("a"); return "from-a"; } });
+        orch.AddAgent(new MockAgent("b") { ResponseFunc = _ => { executedAgents.Add("b"); return "from-b"; } });
+
+        var events = new List<OrchestrationStreamEvent>();
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("go")))
+        {
+            events.Add(evt);
+        }
+
+        events.Should().Contain(e => e.EventType == OrchestrationEventType.Completed);
+        executedAgents.Should().NotContain("a", "agent 'a' was already completed in checkpoint");
+        executedAgents.Should().Contain("b");
+    }
+
+    #endregion
+
     #region Helpers
 
     private static IEnumerable<Message> MakeUserMessages(string text)

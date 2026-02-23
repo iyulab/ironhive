@@ -112,7 +112,7 @@ public class BulkheadMiddleware : IAgentMiddleware, IDisposable
                 _semaphore.Release();
             }
         }
-        catch
+        catch (Exception)
         {
             if (_queueSemaphore != null && Volatile.Read(ref _currentQueued) > 0)
             {

@@ -13,6 +13,10 @@
 - [x] Human-in-the-Loop (ApprovalHandler, RequireApprovalForAgents)
 - [x] 타입 안전 Executor (ITypedExecutor, AgentExecutor, TypedPipeline)
 - [x] Observability 상수 정리 (StartOrchestrationActivity)
-- [ ] 파일 기반 CheckpointStore 구현 (JSON 직렬화)
-- [ ] ParallelOrchestrator/HubSpokeOrchestrator에 체크포인트/승인 통합
-- [ ] GraphOrchestrator Fan-Out 병렬 실행 최적화
+- [x] 파일 기반 CheckpointStore 구현 (JSON 직렬화)
+- [x] ParallelOrchestrator 체크포인트/승인 통합
+- [x] GraphOrchestrator Fan-Out 병렬 실행 + LoadCheckpoint 추가
+- [x] HubSpokeOrchestrator 체크포인트/승인 통합
+- [x] HandoffOrchestrator 체크포인트/승인 통합
+- [x] GroupChatOrchestrator 체크포인트/승인 통합
+

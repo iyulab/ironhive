@@ -343,6 +343,174 @@ public class HubSpokeOrchestratorTests
         events.Should().Contain(e => e.EventType == OrchestrationEventType.Failed);
     }
 
+    #region Checkpoint & Approval
+
+    [Fact]
+    public async Task Execute_WithCheckpoint_DeletesOnSuccess()
+    {
+        var store = new InMemoryCheckpointStore();
+        var hub = new MockAgent("hub")
+        {
+            ResponseFunc = _ => "{\"complete\": true}"
+        };
+        var spoke = new MockAgent("spoke");
+
+        var orch = new HubSpokeOrchestrator(new HubSpokeOrchestratorOptions
+        {
+            CheckpointStore = store,
+            OrchestrationId = "hs-chk-1"
+        });
+        orch.SetHubAgent(hub);
+        orch.AddSpokeAgent(spoke);
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("test"));
+
+        result.IsSuccess.Should().BeTrue();
+
+        var checkpoint = await store.LoadAsync("hs-chk-1");
+        checkpoint.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Execute_WithCheckpoint_SavesOnHubFailure()
+    {
+        var store = new InMemoryCheckpointStore();
+        var hub = new MockAgent("hub")
+        {
+            ResponseFunc = _ => throw new InvalidOperationException("hub fail!")
+        };
+        var spoke = new MockAgent("spoke");
+
+        var orch = new HubSpokeOrchestrator(new HubSpokeOrchestratorOptions
+        {
+            CheckpointStore = store,
+            OrchestrationId = "hs-chk-2"
+        });
+        orch.SetHubAgent(hub);
+        orch.AddSpokeAgent(spoke);
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("test"));
+
+        result.IsSuccess.Should().BeFalse();
+
+        var checkpoint = await store.LoadAsync("hs-chk-2");
+        checkpoint.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Execute_ResumesFromCheckpoint_SkipsCompletedRounds()
+    {
+        var store = new InMemoryCheckpointStore();
+        var hubCallCount = 0;
+
+        // Round 0: hub delegates to spoke, Round 1: hub completes
+        var hub = new MockAgent("hub")
+        {
+            ResponseFunc = _ =>
+            {
+                hubCallCount++;
+                // Always complete on the first call (which is round 1 after resume)
+                return "{\"complete\": true}";
+            }
+        };
+        var spoke = new MockAgent("spoke");
+
+        // Round 0 이미 완료된 체크포인트
+        var existingCheckpoint = new OrchestrationCheckpoint
+        {
+            OrchestrationId = "hs-resume-1",
+            OrchestratorName = "test",
+            CompletedStepCount = 2,
+            CompletedSteps =
+            [
+                new AgentStepResult
+                {
+                    AgentName = "hub",
+                    Input = MakeUserMessages("test").ToList(),
+                    Response = new MessageResponse
+                    {
+                        Id = "prev-hub",
+                        DoneReason = MessageDoneReason.EndTurn,
+                        Message = new AssistantMessage
+                        {
+                            Name = "hub",
+                            Content = [new TextMessageContent { Value = "{\"complete\": false, \"tasks\": [{\"agent\": \"spoke\", \"instruction\": \"do work\"}]}" }]
+                        }
+                    },
+                    IsSuccess = true,
+                    Duration = TimeSpan.FromMilliseconds(50)
+                },
+                new AgentStepResult
+                {
+                    AgentName = "spoke",
+                    Input = [],
+                    Response = new MessageResponse
+                    {
+                        Id = "prev-spoke",
+                        DoneReason = MessageDoneReason.EndTurn,
+                        Message = new AssistantMessage
+                        {
+                            Name = "spoke",
+                            Content = [new TextMessageContent { Value = "spoke result" }]
+                        }
+                    },
+                    IsSuccess = true,
+                    Duration = TimeSpan.FromMilliseconds(30)
+                }
+            ],
+            CurrentMessages = MakeUserMessages("test").ToList()
+        };
+        await store.SaveAsync("hs-resume-1", existingCheckpoint);
+
+        var orch = new HubSpokeOrchestrator(new HubSpokeOrchestratorOptions
+        {
+            CheckpointStore = store,
+            OrchestrationId = "hs-resume-1"
+        });
+        orch.SetHubAgent(hub);
+        orch.AddSpokeAgent(spoke);
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("test"));
+
+        result.IsSuccess.Should().BeTrue();
+        // Hub는 round 1부터 시작하므로 1번만 호출
+        hubCallCount.Should().Be(1);
+        // 전체 steps: 2 (체크포인트) + 1 (hub round 1)
+        result.Steps.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public async Task Execute_ApprovalDenied_ForSpokeAgent_SavesCheckpoint()
+    {
+        var store = new InMemoryCheckpointStore();
+        var hub = new MockAgent("hub")
+        {
+            ResponseFunc = _ => "{\"complete\": false, \"tasks\": [{\"agent\": \"spoke\", \"instruction\": \"do work\"}]}"
+        };
+        var spoke = new MockAgent("spoke");
+
+        var orch = new HubSpokeOrchestrator(new HubSpokeOrchestratorOptions
+        {
+            CheckpointStore = store,
+            OrchestrationId = "hs-approval-1",
+            ApprovalHandler = (agentName, _) => Task.FromResult(agentName != "spoke"),
+            RequireApprovalForAgents = ["spoke"]
+        });
+        orch.SetHubAgent(hub);
+        orch.AddSpokeAgent(spoke);
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("test"));
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("Approval denied");
+        result.Error.Should().Contain("spoke");
+
+        var checkpoint = await store.LoadAsync("hs-approval-1");
+        checkpoint.Should().NotBeNull();
+    }
+
+    #endregion
+
     #region Helpers
 
     private static IEnumerable<Message> MakeUserMessages(string text)

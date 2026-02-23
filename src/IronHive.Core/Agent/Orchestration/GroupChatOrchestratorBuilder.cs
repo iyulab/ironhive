@@ -15,6 +15,10 @@ public class GroupChatOrchestratorBuilder
     private string? _name;
     private TimeSpan _timeout = TimeSpan.FromMinutes(5);
     private TimeSpan _agentTimeout = TimeSpan.FromMinutes(2);
+    private ICheckpointStore? _checkpointStore;
+    private string? _orchestrationId;
+    private Func<string, AgentStepResult?, Task<bool>>? _approvalHandler;
+    private HashSet<string>? _requireApprovalForAgents;
 
     /// <summary>
     /// 에이전트를 추가합니다.
@@ -139,6 +143,43 @@ public class GroupChatOrchestratorBuilder
     }
 
     /// <summary>
+    /// 체크포인트 저장소를 설정합니다.
+    /// </summary>
+    public GroupChatOrchestratorBuilder SetCheckpointStore(ICheckpointStore store)
+    {
+        _checkpointStore = store;
+        return this;
+    }
+
+    /// <summary>
+    /// 오케스트레이션 ID를 설정합니다.
+    /// </summary>
+    public GroupChatOrchestratorBuilder SetOrchestrationId(string orchestrationId)
+    {
+        _orchestrationId = orchestrationId;
+        return this;
+    }
+
+    /// <summary>
+    /// 에이전트 실행 전 승인 핸들러를 설정합니다.
+    /// </summary>
+    public GroupChatOrchestratorBuilder SetApprovalHandler(
+        Func<string, AgentStepResult?, Task<bool>> handler)
+    {
+        _approvalHandler = handler;
+        return this;
+    }
+
+    /// <summary>
+    /// 승인이 필요한 에이전트를 지정합니다.
+    /// </summary>
+    public GroupChatOrchestratorBuilder SetRequireApprovalForAgents(params string[] agents)
+    {
+        _requireApprovalForAgents = [.. agents];
+        return this;
+    }
+
+    /// <summary>
     /// GroupChat 오케스트레이터를 빌드합니다.
     /// </summary>
     public GroupChatOrchestrator Build()
@@ -159,7 +200,11 @@ public class GroupChatOrchestratorBuilder
             AgentTimeout = _agentTimeout,
             SpeakerSelector = _speakerSelector,
             TerminationCondition = _terminationCondition,
-            MaxRounds = _maxRounds
+            MaxRounds = _maxRounds,
+            CheckpointStore = _checkpointStore,
+            OrchestrationId = _orchestrationId,
+            ApprovalHandler = _approvalHandler,
+            RequireApprovalForAgents = _requireApprovalForAgents,
         };
 
         return new GroupChatOrchestrator(options, new Dictionary<string, IAgent>(_agentMap));
