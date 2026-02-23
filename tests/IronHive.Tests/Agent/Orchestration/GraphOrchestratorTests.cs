@@ -356,7 +356,336 @@ public class GraphOrchestratorTests
 
     #endregion
 
+    #region Checkpoint & Fan-Out Parallel
+
+    [Fact]
+    public async Task Execute_FanOut_ExecutesInParallel()
+    {
+        // A → B, A → C, B → D, C → D
+        // B와 C는 같은 토폴로지 레벨 → 병렬 실행 가능
+        // 동시 실행 확인: CountdownEvent로 두 에이전트가 동시에 실행 중임을 검증
+        var barrier = new CountdownEvent(2);
+        var bothReachedBarrier = false;
+
+        var a = new MockAgent("a") { ResponseFunc = _ => "from-a" };
+        var b = new MockAgent("b")
+        {
+            ResponseFunc = _ =>
+            {
+                barrier.Signal();
+                bothReachedBarrier = barrier.Wait(TimeSpan.FromSeconds(3));
+                return "from-b";
+            }
+        };
+        var c = new MockAgent("c")
+        {
+            ResponseFunc = _ =>
+            {
+                barrier.Signal();
+                bothReachedBarrier = barrier.Wait(TimeSpan.FromSeconds(3));
+                return "from-c";
+            }
+        };
+        var d = new MockAgent("d") { ResponseFunc = _ => "from-d" };
+
+        var orch = new GraphOrchestratorBuilder()
+            .AddNode("a", a)
+            .AddNode("b", b)
+            .AddNode("c", c)
+            .AddNode("d", d)
+            .AddEdge("a", "b")
+            .AddEdge("a", "c")
+            .AddEdge("b", "d")
+            .AddEdge("c", "d")
+            .SetStartNode("a")
+            .SetOutputNode("d")
+            .Build();
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("start"));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Steps.Should().HaveCount(4);
+
+        // B와 C가 동시에 barrier에 도달했으면 병렬 실행이 확인됨
+        bothReachedBarrier.Should().BeTrue("B and C should execute concurrently");
+    }
+
+    [Fact]
+    public async Task Execute_WithCheckpoint_DeletesOnSuccess()
+    {
+        var store = new InMemoryCheckpointStore();
+        var a = new MockAgent("a");
+        var b = new MockAgent("b");
+
+        var orch = new GraphOrchestratorBuilder()
+            .WithOptions(new GraphOrchestratorOptions
+            {
+                CheckpointStore = store,
+                OrchestrationId = "graph-chk-1"
+            })
+            .AddNode("a", a)
+            .AddNode("b", b)
+            .AddEdge("a", "b")
+            .SetStartNode("a")
+            .SetOutputNode("b")
+            .Build();
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("test"));
+
+        result.IsSuccess.Should().BeTrue();
+
+        // 성공 시 체크포인트가 삭제되어야 함
+        var checkpoint = await store.LoadAsync("graph-chk-1");
+        checkpoint.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Execute_WithCheckpoint_SavesOnFailure()
+    {
+        var store = new InMemoryCheckpointStore();
+        var a = new MockAgent("a");
+        var failing = new MockAgent("failing")
+        {
+            ResponseFunc = _ => throw new InvalidOperationException("fail!")
+        };
+
+        var orch = new GraphOrchestratorBuilder()
+            .WithOptions(new GraphOrchestratorOptions
+            {
+                CheckpointStore = store,
+                OrchestrationId = "graph-chk-2",
+                StopOnAgentFailure = true
+            })
+            .AddNode("a", a)
+            .AddNode("f", failing)
+            .AddEdge("a", "f")
+            .SetStartNode("a")
+            .SetOutputNode("f")
+            .Build();
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("test"));
+
+        result.IsSuccess.Should().BeFalse();
+
+        // 실패 시 체크포인트가 저장되어야 함
+        var checkpoint = await store.LoadAsync("graph-chk-2");
+        checkpoint.Should().NotBeNull();
+        checkpoint!.CompletedSteps.Should().HaveCountGreaterThanOrEqualTo(1);
+    }
+
+    [Fact]
+    public async Task Execute_ResumesFromCheckpoint_SkipsCompletedNodes()
+    {
+        var store = new InMemoryCheckpointStore();
+        var callOrder = new List<string>();
+
+        var a = new MockAgent("a") { ResponseFunc = _ => { callOrder.Add("a"); return "from-a"; } };
+        var b = new MockAgent("b") { ResponseFunc = _ => { callOrder.Add("b"); return "from-b"; } };
+
+        // 먼저 a만 완료된 체크포인트를 저장
+        var existingCheckpoint = new OrchestrationCheckpoint
+        {
+            OrchestrationId = "graph-resume-1",
+            OrchestratorName = "test",
+            CompletedStepCount = 1,
+            CompletedSteps =
+            [
+                new AgentStepResult
+                {
+                    AgentName = "a",
+                    Input = MakeUserMessages("test").ToList(),
+                    Response = new MessageResponse
+                    {
+                        Id = "prev-1",
+                        DoneReason = MessageDoneReason.EndTurn,
+                        Message = new AssistantMessage
+                        {
+                            Name = "a",
+                            Content = [new TextMessageContent { Value = "from-a" }]
+                        }
+                    },
+                    IsSuccess = true,
+                    Duration = TimeSpan.FromMilliseconds(50)
+                }
+            ]
+        };
+        await store.SaveAsync("graph-resume-1", existingCheckpoint);
+
+        var orch = new GraphOrchestratorBuilder()
+            .WithOptions(new GraphOrchestratorOptions
+            {
+                CheckpointStore = store,
+                OrchestrationId = "graph-resume-1"
+            })
+            .AddNode("a", a)
+            .AddNode("b", b)
+            .AddEdge("a", "b")
+            .SetStartNode("a")
+            .SetOutputNode("b")
+            .Build();
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("test"));
+
+        result.IsSuccess.Should().BeTrue();
+        // a는 체크포인트에서 복원되었으므로 재실행되지 않아야 함
+        callOrder.Should().NotContain("a");
+        callOrder.Should().Contain("b");
+        // 전체 steps는 a(체크포인트) + b(신규)
+        result.Steps.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task Execute_ApprovalDenied_SavesCheckpointAndFails()
+    {
+        var store = new InMemoryCheckpointStore();
+        var a = new MockAgent("a");
+        var b = new MockAgent("b");
+
+        var orch = new GraphOrchestratorBuilder()
+            .WithOptions(new GraphOrchestratorOptions
+            {
+                CheckpointStore = store,
+                OrchestrationId = "graph-approval-1",
+                ApprovalHandler = (agentName, _) => Task.FromResult(agentName != "b"),
+                RequireApprovalForAgents = ["b"]
+            })
+            .AddNode("a", a)
+            .AddNode("b", b)
+            .AddEdge("a", "b")
+            .SetStartNode("a")
+            .SetOutputNode("b")
+            .Build();
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("test"));
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("Approval denied");
+        result.Error.Should().Contain("b");
+
+        // 체크포인트가 저장되어야 함 (a는 완료)
+        var checkpoint = await store.LoadAsync("graph-approval-1");
+        checkpoint.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task ExecuteStreaming_WithCheckpoint_DeletesOnSuccess()
+    {
+        var store = new InMemoryCheckpointStore();
+        var a = new MockAgent("a");
+        var b = new MockAgent("b");
+
+        var orch = new GraphOrchestratorBuilder()
+            .WithOptions(new GraphOrchestratorOptions
+            {
+                CheckpointStore = store,
+                OrchestrationId = "stream-chk-del"
+            })
+            .AddNode("a", a)
+            .AddNode("b", b)
+            .AddEdge("a", "b")
+            .SetStartNode("a")
+            .SetOutputNode("b")
+            .Build();
+
+        var events = new List<OrchestrationStreamEvent>();
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("go")))
+        {
+            events.Add(evt);
+        }
+
+        events.Should().Contain(e => e.EventType == OrchestrationEventType.Completed);
+        var checkpoint = await store.LoadAsync("stream-chk-del");
+        checkpoint.Should().BeNull("checkpoint should be deleted on streaming success");
+    }
+
+    [Fact]
+    public async Task ExecuteStreaming_WithCheckpoint_SavesPerNode()
+    {
+        var saveCalls = 0;
+        var store = new InMemoryCheckpointStore();
+
+        // SaveAsync 호출 횟수 추적
+        var trackingStore = new TrackingSaveCheckpointStore(store, () => saveCalls++);
+
+        var a = new MockAgent("a");
+        var b = new MockAgent("b");
+
+        var orch = new GraphOrchestratorBuilder()
+            .WithOptions(new GraphOrchestratorOptions
+            {
+                CheckpointStore = trackingStore,
+                OrchestrationId = "stream-chk-save"
+            })
+            .AddNode("a", a)
+            .AddNode("b", b)
+            .AddEdge("a", "b")
+            .SetStartNode("a")
+            .SetOutputNode("b")
+            .Build();
+
+        await foreach (var _ in orch.ExecuteStreamingAsync(MakeUserMessages("go")))
+        { }
+
+        // 각 노드 완료 후 저장됨 (a, b = 2 saves)
+        saveCalls.Should().BeGreaterThanOrEqualTo(2, "checkpoint should be saved after each node");
+    }
+
+    [Fact]
+    public async Task ExecuteStreaming_ApprovalDenied_YieldsFailedEvent()
+    {
+        var store = new InMemoryCheckpointStore();
+        var a = new MockAgent("a");
+        var b = new MockAgent("b");
+
+        var orch = new GraphOrchestratorBuilder()
+            .WithOptions(new GraphOrchestratorOptions
+            {
+                CheckpointStore = store,
+                OrchestrationId = "stream-approval-deny",
+                ApprovalHandler = (agentName, _) => Task.FromResult(agentName != "b"),
+                RequireApprovalForAgents = ["b"]
+            })
+            .AddNode("a", a)
+            .AddNode("b", b)
+            .AddEdge("a", "b")
+            .SetStartNode("a")
+            .SetOutputNode("b")
+            .Build();
+
+        var events = new List<OrchestrationStreamEvent>();
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("go")))
+        {
+            events.Add(evt);
+        }
+
+        events.Should().Contain(e => e.EventType == OrchestrationEventType.Failed
+            && e.Error != null && e.Error.Contains("Approval denied"));
+
+        var checkpoint = await store.LoadAsync("stream-approval-deny");
+        checkpoint.Should().NotBeNull("checkpoint should be saved when approval is denied");
+    }
+
+    #endregion
+
     #region Helpers
+
+    /// <summary>
+    /// SaveAsync 호출을 추적하는 래퍼 CheckpointStore
+    /// </summary>
+    private sealed class TrackingSaveCheckpointStore(ICheckpointStore inner, Action onSave) : ICheckpointStore
+    {
+        public Task<OrchestrationCheckpoint?> LoadAsync(string orchestrationId, CancellationToken ct = default)
+            => inner.LoadAsync(orchestrationId, ct);
+
+        public Task SaveAsync(string orchestrationId, OrchestrationCheckpoint checkpoint, CancellationToken ct = default)
+        {
+            onSave();
+            return inner.SaveAsync(orchestrationId, checkpoint, ct);
+        }
+
+        public Task DeleteAsync(string orchestrationId, CancellationToken ct = default)
+            => inner.DeleteAsync(orchestrationId, ct);
+    }
 
     private static IEnumerable<Message> MakeUserMessages(string text)
     {

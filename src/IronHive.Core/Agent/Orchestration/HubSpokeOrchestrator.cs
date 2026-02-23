@@ -75,8 +75,34 @@ public class HubSpokeOrchestrator : OrchestratorBase
 
         try
         {
-            for (var round = 0; round < Options.MaxRounds; round++)
+            // 체크포인트에서 재개
+            var checkpoint = await LoadCheckpointAsync(cts.Token).ConfigureAwait(false);
+            var completedSteps = checkpoint?.CompletedSteps.ToList() ?? [];
+            steps.AddRange(completedSteps);
+
+            // 이전 완료 라운드 수 계산 (Hub 에이전트 호출 횟수 = 라운드 수)
+            var completedRounds = completedSteps.Count(s => s.AgentName == _hubAgent!.Name);
+
+            // 체크포인트에서 currentMessages 복원
+            if (checkpoint?.CurrentMessages.Count > 0)
             {
+                currentMessages = checkpoint.CurrentMessages.ToList();
+            }
+
+            for (var round = completedRounds; round < Options.MaxRounds; round++)
+            {
+                // Hub 승인 체크
+                var previousStep = steps.LastOrDefault();
+                if (!await CheckApprovalAsync(_hubAgent!, previousStep, cts.Token).ConfigureAwait(false))
+                {
+                    await SaveCheckpointAsync(steps, currentMessages, cts.Token).ConfigureAwait(false);
+                    stopwatch.Stop();
+                    return OrchestrationResult.Failure(
+                        $"Approval denied for hub agent '{_hubAgent!.Name}'",
+                        steps,
+                        stopwatch.Elapsed);
+                }
+
                 // 1. Hub에게 현재 상황을 보내고 지시 받기
                 var hubInstruction = await GetHubInstructionAsync(
                     currentMessages, steps, round, cts.Token).ConfigureAwait(false);
@@ -85,6 +111,7 @@ public class HubSpokeOrchestrator : OrchestratorBase
 
                 if (!hubInstruction.IsSuccess)
                 {
+                    await SaveCheckpointAsync(steps, currentMessages, cts.Token).ConfigureAwait(false);
                     return OrchestrationResult.Failure(
                         hubInstruction.Error ?? "Hub agent failed",
                         steps,
@@ -99,11 +126,31 @@ public class HubSpokeOrchestrator : OrchestratorBase
                     // Hub가 완료를 선언
                     stopwatch.Stop();
                     var finalMessage = ExtractMessage(hubInstruction.Response);
+                    await DeleteCheckpointAsync(cancellationToken).ConfigureAwait(false);
                     return OrchestrationResult.Success(
                         finalMessage ?? new AssistantMessage { Content = [] },
                         steps,
                         stopwatch.Elapsed,
                         AggregateTokenUsage(steps));
+                }
+
+                // Spoke 승인 체크
+                foreach (var task in hubResponse.Tasks)
+                {
+                    var spokeAgent = _spokeAgents.FirstOrDefault(a =>
+                        a.Name.Equals(task.AgentName, StringComparison.OrdinalIgnoreCase));
+                    if (spokeAgent != null)
+                    {
+                        if (!await CheckApprovalAsync(spokeAgent, steps.LastOrDefault(), cts.Token).ConfigureAwait(false))
+                        {
+                            await SaveCheckpointAsync(steps, currentMessages, cts.Token).ConfigureAwait(false);
+                            stopwatch.Stop();
+                            return OrchestrationResult.Failure(
+                                $"Approval denied for spoke agent '{spokeAgent.Name}'",
+                                steps,
+                                stopwatch.Elapsed);
+                        }
+                    }
                 }
 
                 // 2. Spoke 에이전트들 실행
@@ -114,12 +161,17 @@ public class HubSpokeOrchestrator : OrchestratorBase
 
                 // 3. Spoke 결과를 현재 메시지에 추가
                 currentMessages = BuildNextRoundMessages(currentMessages, spokeResults);
+
+                // 라운드 완료 후 체크포인트 저장
+                await SaveCheckpointAsync(steps, currentMessages, cts.Token).ConfigureAwait(false);
             }
 
             // 최대 라운드 도달
             stopwatch.Stop();
-            var lastHubStep = steps.LastOrDefault(s => s.AgentName == _hubAgent.Name && s.IsSuccess);
+            var lastHubStep = steps.LastOrDefault(s => s.AgentName == _hubAgent!.Name && s.IsSuccess);
             var output = ExtractMessage(lastHubStep?.Response);
+
+            await DeleteCheckpointAsync(cancellationToken).ConfigureAwait(false);
 
             return OrchestrationResult.Success(
                 output ?? new AssistantMessage { Content = [] },

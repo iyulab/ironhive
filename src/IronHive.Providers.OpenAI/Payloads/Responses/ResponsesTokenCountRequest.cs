@@ -1,8 +1,9 @@
 ﻿using System.Text.Json.Serialization;
+using IronHive.Abstractions.Json;
 
 namespace IronHive.Providers.OpenAI.Payloads.Responses;
 
-public class ResponsesTokenCountRequest
+public class ResponsesTokenCountRequest : JsonExtensibleBase
 {
     [JsonPropertyName("conversation")]
     public ResponsesConversation? Conversation { get; set; }

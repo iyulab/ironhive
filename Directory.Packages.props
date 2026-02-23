@@ -63,6 +63,6 @@
     <PackageVersion Include="Scriban" Version="6.5.3" />
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="10.1.4" />
     <PackageVersion Include="Tavily" Version="1.0.0" />
-    <PackageVersion Include="ModelContextProtocol" Version="0.9.0-preview.1" />
+    <PackageVersion Include="ModelContextProtocol" Version="0.9.0-preview.2" />
   </ItemGroup>
 </Project>

@@ -1,9 +1,10 @@
 ﻿using System.Text.Json.Serialization;
+using IronHive.Abstractions.Json;
 using IronHive.Providers.OpenAI.JsonConverters;
 
 namespace IronHive.Providers.OpenAI.Payloads.Embedding;
 
-public class OpenAIEmbeddingRequest
+public class OpenAIEmbeddingRequest : JsonExtensibleBase
 {
     [JsonPropertyName("input")]
     [JsonConverter(typeof(EmbeddingInputJsonConverter))]

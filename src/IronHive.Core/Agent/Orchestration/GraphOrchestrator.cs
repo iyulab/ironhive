@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -61,7 +62,7 @@ public class GraphOrchestrator : OrchestratorBase
 
         var stopwatch = Stopwatch.StartNew();
         var steps = new List<AgentStepResult>();
-        var nodeResults = new Dictionary<string, AgentStepResult>();
+        var nodeResults = new ConcurrentDictionary<string, AgentStepResult>();
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(Options.Timeout);
@@ -73,83 +74,147 @@ public class GraphOrchestrator : OrchestratorBase
         {
             var inputMessages = messages.ToList();
 
-            // 토폴로지 순서로 실행할 노드 목록 생성
-            var executionOrder = GetTopologicalOrder();
+            // 체크포인트에서 재개
+            var checkpoint = await LoadCheckpointAsync(cts.Token).ConfigureAwait(false);
+            var completedSteps = checkpoint?.CompletedSteps.ToList() ?? [];
+            var completedNodeIds = new HashSet<string>();
 
-            foreach (var nodeId in executionOrder)
+            // 체크포인트의 완료된 단계를 nodeResults에 복원
+            foreach (var step in completedSteps)
             {
-                var node = _nodes[nodeId];
-
-                // 인입 엣지 확인: 모든 소스 노드의 결과에서 조건을 만족하는지 확인
-                var incomingEdges = _edges.Where(e => e.TargetId == nodeId).ToList();
-                IEnumerable<Message> nodeInput;
-
-                if (incomingEdges.Count == 0)
+                steps.Add(step);
+                // AgentName → nodeId 매핑 (노드 ID와 에이전트 이름이 다를 수 있으므로 역매핑)
+                var matchingNodeId = _nodes.FirstOrDefault(n => n.Value.Agent.Name == step.AgentName).Key;
+                if (matchingNodeId != null)
                 {
-                    // 시작 노드: 원본 입력 사용
-                    nodeInput = inputMessages;
+                    nodeResults[matchingNodeId] = step;
+                    completedNodeIds.Add(matchingNodeId);
+                }
+            }
+
+            // 토폴로지 레벨별로 실행
+            var levels = GetTopologicalLevels();
+
+            foreach (var level in levels)
+            {
+                // 이미 완료된 노드 제외
+                var nodesToExecute = level.Where(id => !completedNodeIds.Contains(id)).ToList();
+                if (nodesToExecute.Count == 0) continue;
+
+                // 레벨 내 노드들을 필터링 (엣지 조건, 승인 확인)
+                var executableNodes = new List<(string NodeId, IEnumerable<Message> Input)>();
+
+                foreach (var nodeId in nodesToExecute)
+                {
+                    var node = _nodes[nodeId];
+
+                    // 인입 엣지 확인
+                    var incomingEdges = _edges.Where(e => e.TargetId == nodeId).ToList();
+                    IEnumerable<Message> nodeInput;
+
+                    if (incomingEdges.Count == 0)
+                    {
+                        nodeInput = inputMessages;
+                    }
+                    else
+                    {
+                        var shouldExecute = true;
+                        var collectedMessages = new List<Message>();
+
+                        foreach (var edge in incomingEdges)
+                        {
+                            if (!nodeResults.TryGetValue(edge.SourceId, out var sourceResult))
+                            {
+                                shouldExecute = false;
+                                break;
+                            }
+
+                            if (edge.Condition != null && !edge.Condition(sourceResult))
+                            {
+                                shouldExecute = false;
+                                break;
+                            }
+
+                            var sourceMessage = ExtractMessage(sourceResult.Response);
+                            if (sourceMessage != null)
+                            {
+                                collectedMessages.Add(sourceMessage);
+                            }
+                        }
+
+                        if (!shouldExecute) continue;
+                        nodeInput = collectedMessages.Count > 0 ? collectedMessages : inputMessages;
+                    }
+
+                    // 승인 체크 (순차)
+                    var previousStep = steps.LastOrDefault();
+                    if (!await CheckApprovalAsync(node.Agent, previousStep, cts.Token).ConfigureAwait(false))
+                    {
+                        await SaveCheckpointAsync(steps, inputMessages, cts.Token).ConfigureAwait(false);
+                        stopwatch.Stop();
+                        return OrchestrationResult.Failure(
+                            $"Approval denied for agent '{node.Agent.Name}'",
+                            steps,
+                            stopwatch.Elapsed);
+                    }
+
+                    executableNodes.Add((nodeId, nodeInput));
+                }
+
+                if (executableNodes.Count == 0) continue;
+
+                // 같은 레벨의 노드들을 병렬 실행
+                if (executableNodes.Count == 1)
+                {
+                    // 단일 노드: 직접 실행
+                    var (nodeId, nodeInput) = executableNodes[0];
+                    var stepResult = await ExecuteAgentAsync(_nodes[nodeId].Agent, nodeInput, cts.Token).ConfigureAwait(false);
+                    steps.Add(stepResult);
+                    nodeResults[nodeId] = stepResult;
+
+                    if (!stepResult.IsSuccess && Options.StopOnAgentFailure)
+                    {
+                        await SaveCheckpointAsync(steps, inputMessages, cts.Token).ConfigureAwait(false);
+                        stopwatch.Stop();
+                        return OrchestrationResult.Failure(
+                            stepResult.Error ?? $"Agent '{_nodes[nodeId].Agent.Name}' failed",
+                            steps,
+                            stopwatch.Elapsed);
+                    }
                 }
                 else
                 {
-                    // Fan-In: 모든 인입 엣지의 소스 노드 결과를 확인
-                    var shouldExecute = true;
-                    var collectedMessages = new List<Message>();
-
-                    foreach (var edge in incomingEdges)
+                    // 복수 노드: 병렬 실행
+                    var tasks = executableNodes.Select(async n =>
                     {
-                        if (!nodeResults.TryGetValue(edge.SourceId, out var sourceResult))
-                        {
-                            shouldExecute = false;
-                            break;
-                        }
+                        var result = await ExecuteAgentAsync(_nodes[n.NodeId].Agent, n.Input, cts.Token).ConfigureAwait(false);
+                        nodeResults[n.NodeId] = result;
+                        return (n.NodeId, Result: result);
+                    });
 
-                        // 엣지 조건 평가
-                        if (edge.Condition != null && !edge.Condition(sourceResult))
-                        {
-                            shouldExecute = false;
-                            break;
-                        }
+                    var parallelResults = await Task.WhenAll(tasks).ConfigureAwait(false);
 
-                        var sourceMessage = ExtractMessage(sourceResult.Response);
-                        if (sourceMessage != null)
-                        {
-                            collectedMessages.Add(sourceMessage);
-                        }
+                    foreach (var (nodeId, result) in parallelResults)
+                    {
+                        steps.Add(result);
                     }
 
-                    if (!shouldExecute) continue;
-
-                    nodeInput = collectedMessages.Count > 0 ? collectedMessages : inputMessages;
+                    if (Options.StopOnAgentFailure)
+                    {
+                        var failed = parallelResults.FirstOrDefault(r => !r.Result.IsSuccess);
+                        if (failed.NodeId != null)
+                        {
+                            await SaveCheckpointAsync(steps, inputMessages, cts.Token).ConfigureAwait(false);
+                            stopwatch.Stop();
+                            return OrchestrationResult.Failure(
+                                failed.Result.Error ?? $"Agent '{_nodes[failed.NodeId].Agent.Name}' failed",
+                                steps,
+                                stopwatch.Elapsed);
+                        }
+                    }
                 }
 
-                // 승인 체크
-                var previousStep = steps.LastOrDefault();
-                if (!await CheckApprovalAsync(node.Agent, previousStep, cts.Token).ConfigureAwait(false))
-                {
-                    await SaveCheckpointAsync(steps, inputMessages, cts.Token).ConfigureAwait(false);
-                    stopwatch.Stop();
-                    return OrchestrationResult.Failure(
-                        $"Approval denied for agent '{node.Agent.Name}'",
-                        steps,
-                        stopwatch.Elapsed);
-                }
-
-                // Fan-Out: 출력 엣지가 여럿이면 이후 단계에서 병렬 실행됨
-                // (토폴로지 순서에서 자연스럽게 처리)
-                var stepResult = await ExecuteAgentAsync(node.Agent, nodeInput, cts.Token).ConfigureAwait(false);
-                steps.Add(stepResult);
-                nodeResults[nodeId] = stepResult;
-
-                if (!stepResult.IsSuccess && Options.StopOnAgentFailure)
-                {
-                    stopwatch.Stop();
-                    return OrchestrationResult.Failure(
-                        stepResult.Error ?? $"Agent '{node.Agent.Name}' failed",
-                        steps,
-                        stopwatch.Elapsed);
-                }
-
-                // 체크포인트 저장
+                // 레벨 완료 후 체크포인트 저장
                 await SaveCheckpointAsync(steps, inputMessages, cts.Token).ConfigureAwait(false);
             }
 
@@ -233,14 +298,34 @@ public class GraphOrchestrator : OrchestratorBase
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(Options.Timeout);
 
+            // 체크포인트에서 재개
+            var checkpoint = await LoadCheckpointAsync(cts.Token).ConfigureAwait(false);
+            var completedSteps = checkpoint?.CompletedSteps.ToList() ?? [];
+            var completedNodeIds = new HashSet<string>();
+
+            foreach (var step in completedSteps)
+            {
+                steps.Add(step);
+                var matchingNodeId = _nodes.FirstOrDefault(n => n.Value.Agent.Name == step.AgentName).Key;
+                if (matchingNodeId != null)
+                {
+                    nodeResults[matchingNodeId] = step;
+                    completedNodeIds.Add(matchingNodeId);
+                }
+            }
+
             await writer.WriteAsync(
                 new OrchestrationStreamEvent { EventType = OrchestrationEventType.Started },
                 cancellationToken).ConfigureAwait(false);
 
-            var executionOrder = GetTopologicalOrder();
+            // 토폴로지 레벨을 평탄화하여 순차 실행 순서 생성
+            var executionOrder = GetTopologicalLevels().SelectMany(level => level).ToList();
 
             foreach (var nodeId in executionOrder)
             {
+                // 체크포인트에서 이미 완료된 노드는 건너뛰기
+                if (completedNodeIds.Contains(nodeId)) continue;
+
                 var node = _nodes[nodeId];
 
                 // 인입 엣지 확인
@@ -279,6 +364,23 @@ public class GraphOrchestrator : OrchestratorBase
 
                     if (!shouldExecute) continue;
                     nodeInput = collectedMessages.Count > 0 ? collectedMessages : inputMessages;
+                }
+
+                // 승인 체크
+                var previousStep = steps.LastOrDefault();
+                if (!await CheckApprovalAsync(node.Agent, previousStep, cts.Token).ConfigureAwait(false))
+                {
+                    await SaveCheckpointAsync(steps, inputMessages, cts.Token).ConfigureAwait(false);
+                    await writer.WriteAsync(new OrchestrationStreamEvent
+                    {
+                        EventType = OrchestrationEventType.Failed,
+                        Error = $"Approval denied for agent '{node.Agent.Name}'",
+                        Result = OrchestrationResult.Failure(
+                            $"Approval denied for agent '{node.Agent.Name}'",
+                            steps,
+                            stopwatch.Elapsed)
+                    }, cancellationToken).ConfigureAwait(false);
+                    return;
                 }
 
                 await writer.WriteAsync(new OrchestrationStreamEvent
@@ -352,6 +454,9 @@ public class GraphOrchestrator : OrchestratorBase
                         AgentName = node.Agent.Name,
                         CompletedResponse = response
                     }, cancellationToken).ConfigureAwait(false);
+
+                    // 노드 완료 후 체크포인트 저장
+                    await SaveCheckpointAsync(steps, inputMessages, cts.Token).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
                 {
@@ -427,6 +532,9 @@ public class GraphOrchestrator : OrchestratorBase
             }
             else
             {
+                // 완료 시 체크포인트 삭제
+                await DeleteCheckpointAsync(cancellationToken).ConfigureAwait(false);
+
                 await writer.WriteAsync(new OrchestrationStreamEvent
                 {
                     EventType = OrchestrationEventType.Completed,
@@ -445,9 +553,10 @@ public class GraphOrchestrator : OrchestratorBase
     }
 
     /// <summary>
-    /// Kahn 알고리즘으로 토폴로지 정렬 수행
+    /// Kahn 알고리즘으로 토폴로지 정렬 수행 (레벨별 그룹화)
+    /// 같은 레벨의 노드들은 서로 독립적이므로 병렬 실행 가능
     /// </summary>
-    private List<string> GetTopologicalOrder()
+    private List<List<string>> GetTopologicalLevels()
     {
         var inDegree = new Dictionary<string, int>();
         var adjacency = new Dictionary<string, List<string>>();
@@ -487,22 +596,33 @@ public class GraphOrchestrator : OrchestratorBase
             queue = reordered;
         }
 
-        var result = new List<string>();
+        var levels = new List<List<string>>();
         while (queue.Count > 0)
         {
-            var current = queue.Dequeue();
-            result.Add(current);
+            var currentLevel = new List<string>();
+            var nextQueue = new Queue<string>();
 
-            foreach (var neighbor in adjacency[current])
+            while (queue.Count > 0)
             {
-                inDegree[neighbor]--;
-                if (inDegree[neighbor] == 0)
+                currentLevel.Add(queue.Dequeue());
+            }
+
+            foreach (var current in currentLevel)
+            {
+                foreach (var neighbor in adjacency[current])
                 {
-                    queue.Enqueue(neighbor);
+                    inDegree[neighbor]--;
+                    if (inDegree[neighbor] == 0)
+                    {
+                        nextQueue.Enqueue(neighbor);
+                    }
                 }
             }
+
+            levels.Add(currentLevel);
+            queue = nextQueue;
         }
 
-        return result;
+        return levels;
     }
 }

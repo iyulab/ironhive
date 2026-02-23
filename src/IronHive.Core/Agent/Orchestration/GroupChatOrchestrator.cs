@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Threading.Channels;
 using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
@@ -46,7 +45,21 @@ public class GroupChatOrchestrator : OrchestratorBase
 
         try
         {
-            for (var round = 0; round < Options.MaxRounds; round++)
+            // 체크포인트에서 재개
+            var checkpoint = await LoadCheckpointAsync(cts.Token).ConfigureAwait(false);
+            var completedSteps = checkpoint?.CompletedSteps.ToList() ?? [];
+            steps.AddRange(completedSteps);
+
+            // 대화 히스토리 복원
+            if (checkpoint?.CurrentMessages.Count > 0)
+            {
+                conversationHistory = checkpoint.CurrentMessages.ToList();
+            }
+
+            // 완료된 라운드 수로 재개 지점 결정
+            var startRound = completedSteps.Count;
+
+            for (var round = startRound; round < Options.MaxRounds; round++)
             {
                 // 다음 발언자 선택 (초기 메시지 포함 대화 히스토리 전달)
                 var nextSpeaker = await Options.SpeakerSelector.SelectNextSpeakerAsync(
@@ -62,6 +75,17 @@ public class GroupChatOrchestrator : OrchestratorBase
                         steps, stopwatch.Elapsed);
                 }
 
+                // 승인 체크
+                if (!await CheckApprovalAsync(agent, steps.LastOrDefault(), cts.Token).ConfigureAwait(false))
+                {
+                    await SaveCheckpointAsync(steps, conversationHistory, cts.Token).ConfigureAwait(false);
+                    stopwatch.Stop();
+                    return OrchestrationResult.Failure(
+                        $"Approval denied for agent '{nextSpeaker}'",
+                        steps,
+                        stopwatch.Elapsed);
+                }
+
                 // 에이전트 실행
                 var step = await ExecuteAgentAsync(agent, conversationHistory, cts.Token)
                     .ConfigureAwait(false);
@@ -71,6 +95,7 @@ public class GroupChatOrchestrator : OrchestratorBase
                 {
                     if (Options.StopOnAgentFailure)
                     {
+                        await SaveCheckpointAsync(steps, conversationHistory, cts.Token).ConfigureAwait(false);
                         return OrchestrationResult.Failure(
                             step.Error ?? $"Agent '{nextSpeaker}' failed.",
                             steps, stopwatch.Elapsed);
@@ -84,6 +109,9 @@ public class GroupChatOrchestrator : OrchestratorBase
                 {
                     conversationHistory.Add(responseMessage);
                 }
+
+                // 라운드 완료 후 체크포인트 저장
+                await SaveCheckpointAsync(steps, conversationHistory, cts.Token).ConfigureAwait(false);
 
                 // 종료 조건 체크
                 var shouldTerminate = await Options.TerminationCondition.ShouldTerminateAsync(
@@ -101,6 +129,9 @@ public class GroupChatOrchestrator : OrchestratorBase
                 {
                     Content = [new TextMessageContent { Value = "GroupChat completed." }]
                 };
+
+            // 성공 시 체크포인트 삭제
+            await DeleteCheckpointAsync(cancellationToken).ConfigureAwait(false);
 
             return OrchestrationResult.Success(
                 finalMessage,
@@ -129,135 +160,43 @@ public class GroupChatOrchestrator : OrchestratorBase
         IEnumerable<Message> messages,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var channel = Channel.CreateUnbounded<OrchestrationStreamEvent>();
+        // ExecuteAsync에 위임하여 체크포인트/승인 로직 일관성 유지
+        var result = await ExecuteAsync(messages, cancellationToken).ConfigureAwait(false);
 
-        var executeTask = Task.Run(async () =>
+        yield return new OrchestrationStreamEvent { EventType = OrchestrationEventType.Started };
+
+        foreach (var step in result.Steps)
         {
-            var stopwatch = Stopwatch.StartNew();
-            var steps = new List<AgentStepResult>();
-            var conversationHistory = messages.ToList();
-
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            cts.CancelAfter(Options.Timeout);
-
-            try
+            yield return new OrchestrationStreamEvent
             {
-                await channel.Writer.WriteAsync(new OrchestrationStreamEvent
-                {
-                    EventType = OrchestrationEventType.Started
-                }, cts.Token).ConfigureAwait(false);
+                EventType = OrchestrationEventType.SpeakerSelected,
+                AgentName = step.AgentName
+            };
 
-                for (var round = 0; round < Options.MaxRounds; round++)
-                {
-                    var nextSpeaker = await Options.SpeakerSelector.SelectNextSpeakerAsync(
-                        steps, conversationHistory, Agents, cts.Token).ConfigureAwait(false);
-
-                    if (nextSpeaker == null)
-                        break;
-
-                    if (!_agentMap.TryGetValue(nextSpeaker, out var agent))
-                    {
-                        await channel.Writer.WriteAsync(new OrchestrationStreamEvent
-                        {
-                            EventType = OrchestrationEventType.Failed,
-                            Error = $"Selected speaker '{nextSpeaker}' not found."
-                        }, cts.Token).ConfigureAwait(false);
-                        return;
-                    }
-
-                    await channel.Writer.WriteAsync(new OrchestrationStreamEvent
-                    {
-                        EventType = OrchestrationEventType.SpeakerSelected,
-                        AgentName = nextSpeaker
-                    }, cts.Token).ConfigureAwait(false);
-
-                    await channel.Writer.WriteAsync(new OrchestrationStreamEvent
-                    {
-                        EventType = OrchestrationEventType.AgentStarted,
-                        AgentName = nextSpeaker
-                    }, cts.Token).ConfigureAwait(false);
-
-                    var step = await ExecuteAgentAsync(agent, conversationHistory, cts.Token)
-                        .ConfigureAwait(false);
-                    steps.Add(step);
-
-                    if (!step.IsSuccess)
-                    {
-                        await channel.Writer.WriteAsync(new OrchestrationStreamEvent
-                        {
-                            EventType = OrchestrationEventType.AgentFailed,
-                            AgentName = nextSpeaker,
-                            Error = step.Error
-                        }, cts.Token).ConfigureAwait(false);
-
-                        if (Options.StopOnAgentFailure)
-                        {
-                            await channel.Writer.WriteAsync(new OrchestrationStreamEvent
-                            {
-                                EventType = OrchestrationEventType.Failed,
-                                Error = step.Error,
-                                Result = OrchestrationResult.Failure(step.Error ?? "Agent failed.", steps, stopwatch.Elapsed)
-                            }, cts.Token).ConfigureAwait(false);
-                            return;
-                        }
-                        continue;
-                    }
-
-                    await channel.Writer.WriteAsync(new OrchestrationStreamEvent
-                    {
-                        EventType = OrchestrationEventType.AgentCompleted,
-                        AgentName = nextSpeaker,
-                        CompletedResponse = step.Response
-                    }, cts.Token).ConfigureAwait(false);
-
-                    var responseMessage = ExtractMessage(step.Response);
-                    if (responseMessage != null)
-                    {
-                        conversationHistory.Add(responseMessage);
-                    }
-
-                    var shouldTerminate = await Options.TerminationCondition.ShouldTerminateAsync(
-                        steps, cts.Token).ConfigureAwait(false);
-
-                    if (shouldTerminate)
-                        break;
-                }
-
-                stopwatch.Stop();
-                var lastStep = steps.LastOrDefault();
-                var finalMessage = lastStep?.Response?.Message as Message
-                    ?? new AssistantMessage
-                    {
-                        Content = [new TextMessageContent { Value = "GroupChat completed." }]
-                    };
-
-                await channel.Writer.WriteAsync(new OrchestrationStreamEvent
-                {
-                    EventType = OrchestrationEventType.Completed,
-                    Result = OrchestrationResult.Success(finalMessage, steps, stopwatch.Elapsed, AggregateTokenUsage(steps))
-                }, cts.Token).ConfigureAwait(false);
-            }
-            catch (Exception ex)
+            yield return new OrchestrationStreamEvent
             {
-                stopwatch.Stop();
-                await channel.Writer.WriteAsync(new OrchestrationStreamEvent
-                {
-                    EventType = OrchestrationEventType.Failed,
-                    Error = ex.Message,
-                    Result = OrchestrationResult.Failure(ex.Message, steps, stopwatch.Elapsed)
-                }, cancellationToken).ConfigureAwait(false);
-            }
-            finally
-            {
-                channel.Writer.Complete();
-            }
-        }, cancellationToken);
+                EventType = OrchestrationEventType.AgentStarted,
+                AgentName = step.AgentName
+            };
 
-        await foreach (var evt in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
-        {
-            yield return evt;
+            yield return new OrchestrationStreamEvent
+            {
+                EventType = step.IsSuccess
+                    ? OrchestrationEventType.AgentCompleted
+                    : OrchestrationEventType.AgentFailed,
+                AgentName = step.AgentName,
+                CompletedResponse = step.Response,
+                Error = step.Error
+            };
         }
 
-        await executeTask.ConfigureAwait(false);
+        yield return new OrchestrationStreamEvent
+        {
+            EventType = result.IsSuccess
+                ? OrchestrationEventType.Completed
+                : OrchestrationEventType.Failed,
+            Result = result,
+            Error = result.Error
+        };
     }
 }
