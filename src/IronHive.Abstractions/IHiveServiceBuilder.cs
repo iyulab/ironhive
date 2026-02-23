@@ -1,6 +1,7 @@
 ﻿using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Files;
+using IronHive.Abstractions.Images;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Queue;
 using IronHive.Abstractions.Tools;
@@ -35,6 +36,11 @@ public interface IHiveServiceBuilder
     /// 새로운 메시지 생성기를 등록합니다.
     /// </summary>
     IHiveServiceBuilder AddMessageGenerator(string providerName, IMessageGenerator generator);
+
+    /// <summary>
+    /// 새로운 이미지 생성기를 등록합니다.
+    /// </summary>
+    IHiveServiceBuilder AddImageGenerator(string providerName, IImageGenerator generator);
 
     /// <summary>
     /// 파일 저장소를 추가합니다.

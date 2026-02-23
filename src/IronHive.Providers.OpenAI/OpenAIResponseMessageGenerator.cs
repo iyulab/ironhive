@@ -35,7 +35,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var req = OnBeforeSend(request, request.ToOpenAI());
+        var req = OnBefore(request, request.ToOpenAI());
         var res = await _client.PostResponsesAsync(req, cancellationToken);
 
         var content = new List<MessageContent>();
@@ -99,7 +99,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
             reason = MessageDoneReason.ToolCall;
         }
 
-        return OnAfterReceive(res, new MessageResponse
+        return OnAfter(res, new MessageResponse
         {
             Id = res.Id ?? Guid.NewGuid().ToString(),
             DoneReason = reason,
@@ -123,7 +123,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var req = OnBeforeSend(request, request.ToOpenAI());
+        var req = OnBefore(request, request.ToOpenAI());
 
         int pIndex = 0; // 컨텐츠 파트 인덱스(배열 컨텐츠 추적)
         var reason = MessageDoneReason.EndTurn;
@@ -341,7 +341,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
     }
 
     /// <summary>
-    /// OpenAI API 클라이언트에 요청을 보내기 직전에 호출됩니다.
+    /// 요청을 보내기 전에 처리할 수 있는 가상 메서드입니다.
     /// </summary>
     /// <param name="source">
     /// 변환 전의 공용 요청 객체입니다.
@@ -350,13 +350,13 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
     /// 공용 요청에서 변환된 OpenAI Responses 요청 객체입니다.
     /// </param>
     /// <returns>수정된 Responses 요청 객체</returns>
-    protected virtual ResponsesRequest OnBeforeSend(
+    protected virtual ResponsesRequest OnBefore(
         MessageGenerationRequest source,
         ResponsesRequest request)
         => request;
 
     /// <summary>
-    /// OpenAI API 응답을 공용 응답으로 변환한 후, 반환 직전에 호출됩니다.
+    /// 응답을 받은 후 처리할 수 있는 가상 메서드입니다.
     /// </summary>
     /// <param name="source">
     /// OpenAI API에서 받은 원본 Responses 응답 객체입니다.
@@ -365,7 +365,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
     /// 원본 응답에서 변환된 공용 응답 객체입니다.
     /// </param>
     /// <returns>수정된 공용 응답 객체</returns>
-    protected virtual MessageResponse OnAfterReceive(
+    protected virtual MessageResponse OnAfter(
         ResponsesResponse source,
         MessageResponse response)
         => response;

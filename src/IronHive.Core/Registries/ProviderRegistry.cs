@@ -1,5 +1,6 @@
 ﻿using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Embedding;
+using IronHive.Abstractions.Images;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Registries;
 
@@ -23,4 +24,8 @@ public class ProviderRegistry : KeyedServiceRegistry<string, IProviderItem>, IPr
     /// <inheritdoc />
     public void SetEmbeddingGenerator(string providerName, IEmbeddingGenerator generator)
         => Set<IEmbeddingGenerator>(providerName, generator);
+
+    /// <inheritdoc />
+    public void SetImageGenerator(string providerName, IImageGenerator generator)
+        => Set<IImageGenerator>(providerName, generator);
 }

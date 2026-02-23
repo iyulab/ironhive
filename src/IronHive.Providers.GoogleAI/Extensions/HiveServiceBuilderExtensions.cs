@@ -22,6 +22,9 @@ public static class HiveServiceBuilderExtensions
         if (serviceType.HasFlag(GoogleAIServiceType.Embeddings))
             builder.AddEmbeddingGenerator(providerName, new GoogleAIEmbeddingGenerator(config));
 
+        if (serviceType.HasFlag(GoogleAIServiceType.Images))
+            builder.AddImageGenerator(providerName, new GoogleAIImageGenerator(config));
+
         return builder;
     }
 }

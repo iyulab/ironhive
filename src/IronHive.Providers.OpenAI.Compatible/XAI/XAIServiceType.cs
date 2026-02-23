@@ -21,7 +21,12 @@ public enum XAIServiceType
     Language = 1 << 1,
 
     /// <summary>
+    /// 이미지 생성 서비스입니다.
+    /// </summary>
+    Images = 1 << 2,
+
+    /// <summary>
     /// 모든 서비스를 포함합니다.
     /// </summary>
-    All = Models | Language 
+    All = Models | Language | Images
 }

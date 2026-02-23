@@ -20,6 +20,9 @@ public static partial class CompatibleHiveServiceBuilderExtensions
         if (serviceType.HasFlag(XAIServiceType.Language))
             builder.AddMessageGenerator(providerName, new XAIMessageGenerator(config));
         
+        if (serviceType.HasFlag(XAIServiceType.Images))
+            builder.AddImageGenerator(providerName, new XAIImageGenerator(config));
+        
         return builder;
     }
 }

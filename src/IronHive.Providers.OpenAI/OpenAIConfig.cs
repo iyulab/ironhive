@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
 using System.Text.Json;
 using System.Text.Encodings.Web;
-using IronHive.Abstractions.Json;
+using IronHive.Providers.OpenAI.JsonConverters;
 
 namespace IronHive.Providers.OpenAI;
 

@@ -2,7 +2,7 @@
 
 namespace IronHive.Providers.OpenAI.Payloads.Embedding;
 
-public class OpenAIEmbeddingResponse
+public class OpenAIEmbeddingResponse: OpenAIPayloadBase
 {
     /// <summary>
     /// "list" always.

@@ -22,7 +22,12 @@ public enum GoogleAIServiceType
     Embeddings = 1 << 2,
 
     /// <summary>
+    /// 이미지 생성 서비스 유형입니다.
+    /// </summary>
+    Images = 1 << 3,
+
+    /// <summary>
     /// 모든 Google AI 서비스 유형을 포함합니다.
     /// </summary>
-    All = Models | Messages | Embeddings
+    All = Models | Messages | Embeddings | Images
 }

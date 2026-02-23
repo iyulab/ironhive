@@ -1,4 +1,4 @@
-﻿using IronHive.Abstractions.Embedding;
+using IronHive.Abstractions.Embedding;
 using IronHive.Providers.OpenAI.Clients;
 using IronHive.Providers.OpenAI.Payloads.Embedding;
 using Tiktoken;
@@ -38,14 +38,18 @@ public class OpenAIEmbeddingGenerator : IEmbeddingGenerator
         string input, 
         CancellationToken cancellationToken = default)
     {
-        var res = await _client.PostEmbeddingAsync(new OpenAIEmbeddingRequest
+        var request = new OpenAIEmbeddingRequest
         {
             Model = modelId,
             Input = [ input ]
-        }, cancellationToken);
+        };
 
-        return res.Data?.FirstOrDefault()?.Embedding?.ToArray()
+        var payload = OnBeforeEmbed(request);
+        var res = await _client.PostEmbeddingAsync(payload, cancellationToken);
+        var embedding = res.Data?.FirstOrDefault()?.Embedding?.ToArray()
             ?? throw new InvalidOperationException("No embedding found for the input.");
+
+        return embedding;
     }
 
     /// <inheritdoc />
@@ -64,11 +68,14 @@ public class OpenAIEmbeddingGenerator : IEmbeddingGenerator
             var inputs = chunk.Select(x => x.Text).ToList();
             var indices = chunk.Select(x => x.Index).ToList();
 
-            var res = await _client.PostEmbeddingAsync(new OpenAIEmbeddingRequest
+            var request = new OpenAIEmbeddingRequest
             {
                 Model = modelId,
                 Input = inputs
-            }, cancellationToken);
+            };
+
+            var payload = OnBeforeEmbed(request);
+            var res = await _client.PostEmbeddingAsync(payload, cancellationToken);
 
             return res.Data?.Select(r => new EmbeddingResult
             {
@@ -77,12 +84,9 @@ public class OpenAIEmbeddingGenerator : IEmbeddingGenerator
             }) ?? [];
         });
 
-        var results = (await Task.WhenAll(tasks))
+        return (await Task.WhenAll(tasks))
             .SelectMany(r => r)
-            .OrderBy(r => r.Index)
-            .ToList();
-
-        return results;
+            .OrderBy(r => r.Index);
     }
 
     /// <inheritdoc />
@@ -121,4 +125,9 @@ public class OpenAIEmbeddingGenerator : IEmbeddingGenerator
         // 생성자에서 인덱스 순으로 정렬을 보장합니다.
         return [.. items];
     }
+
+    /// <summary>
+    /// 임베딩 요청을 보내기 전에 처리할 수 있는 가상 메서드입니다.
+    /// </summary>
+    protected virtual OpenAIEmbeddingRequest OnBeforeEmbed(OpenAIEmbeddingRequest request) => request;
 }

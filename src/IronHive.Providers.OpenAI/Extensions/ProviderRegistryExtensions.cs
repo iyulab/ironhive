@@ -1,5 +1,6 @@
 ﻿using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Embedding;
+using IronHive.Abstractions.Images;
 using IronHive.Abstractions.Messages;
 using IronHive.Providers.OpenAI;
 
@@ -28,6 +29,9 @@ public static class ProviderRegistryExtensions
         if (serviceType.HasFlag(OpenAIServiceType.Embeddings))
             providers.SetEmbeddingGenerator(providerName, new OpenAIEmbeddingGenerator(config));
 
+        if (serviceType.HasFlag(OpenAIServiceType.Images))
+            providers.SetImageGenerator(providerName, new OpenAIImageGenerator(config));
+
         if (serviceType.HasFlag(OpenAIServiceType.Responses))
             providers.SetMessageGenerator(providerName, new OpenAIResponseMessageGenerator(config));
     }
@@ -48,5 +52,8 @@ public static class ProviderRegistryExtensions
 
         if (serviceType.HasFlag(OpenAIServiceType.Embeddings))
             providers.Remove<IEmbeddingGenerator>(providerName);
+
+        if (serviceType.HasFlag(OpenAIServiceType.Images))
+            providers.Remove<IImageGenerator>(providerName);
     }
 }

@@ -1,18 +1,18 @@
-﻿using System.Reflection;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
-namespace IronHive.Abstractions.Json;
+namespace IronHive.Providers.OpenAI.JsonConverters;
 
 /// <summary>
-/// <see cref="JsonExtensibleBase"/>를 상속하는 타입에 대해
+/// <see cref="OpenAIPayloadBase"/>를 상속하는 타입에 대해
 /// ExtraBody를 deep merge/split 처리하는 컨버터 팩토리입니다.
 /// </summary>
 public class ExtraBodyJsonConverterFactory : JsonConverterFactory
 {
     public override bool CanConvert(Type typeToConvert)
-        => typeof(JsonExtensibleBase).IsAssignableFrom(typeToConvert)
+        => typeof(OpenAIPayloadBase).IsAssignableFrom(typeToConvert)
         && !typeToConvert.IsAbstract;
 
     public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options)
@@ -27,7 +27,7 @@ public class ExtraBodyJsonConverterFactory : JsonConverterFactory
 /// 역직렬화 시 미매핑 속성을 ExtraBody로 수집하는 컨버터입니다.
 /// inner options(팩토리 제거된 복사본)를 통해 STJ에 위임하여 재귀를 방지합니다.
 /// </summary>
-internal sealed class ExtraBodyJsonConverter<T> : JsonConverter<T> where T : JsonExtensibleBase
+internal sealed class ExtraBodyJsonConverter<T> : JsonConverter<T> where T : OpenAIPayloadBase
 {
     private JsonSerializerOptions? _innerOptions;
 

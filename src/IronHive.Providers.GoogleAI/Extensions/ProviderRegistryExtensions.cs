@@ -1,5 +1,6 @@
 ﻿using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Embedding;
+using IronHive.Abstractions.Images;
 using IronHive.Abstractions.Messages;
 using IronHive.Providers.GoogleAI;
 
@@ -24,6 +25,9 @@ public static class ProviderRegistryExtensions
 
         if (serviceType.HasFlag(GoogleAIServiceType.Embeddings))
             providers.SetEmbeddingGenerator(providerName, new GoogleAIEmbeddingGenerator(config));
+
+        if (serviceType.HasFlag(GoogleAIServiceType.Images))
+            providers.SetImageGenerator(providerName, new GoogleAIImageGenerator(config));
     }
 
     /// <summary>
@@ -42,5 +46,8 @@ public static class ProviderRegistryExtensions
 
         if (serviceType.HasFlag(GoogleAIServiceType.Embeddings))
             providers.Remove<IEmbeddingGenerator>(providerName);
+
+        if (serviceType.HasFlag(GoogleAIServiceType.Images))
+            providers.Remove<IImageGenerator>(providerName);
     }
 }

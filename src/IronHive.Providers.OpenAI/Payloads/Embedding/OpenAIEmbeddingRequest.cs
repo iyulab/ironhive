@@ -3,7 +3,7 @@ using IronHive.Providers.OpenAI.JsonConverters;
 
 namespace IronHive.Providers.OpenAI.Payloads.Embedding;
 
-public class OpenAIEmbeddingRequest
+public class OpenAIEmbeddingRequest: OpenAIPayloadBase
 {
     [JsonPropertyName("input")]
     [JsonConverter(typeof(EmbeddingInputJsonConverter))]

@@ -2,7 +2,8 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
-using IronHive.Abstractions.Json;
+using IronHive.Providers.OpenAI;
+using IronHive.Providers.OpenAI.JsonConverters;
 
 namespace ConsoleApp;
 
@@ -61,7 +62,7 @@ public static class JsonExtensionSample
     }
 }
 
-public class SampleRequest : JsonExtensibleBase
+public class SampleRequest : OpenAIPayloadBase
 {
     [JsonPropertyName("name")]
     public string? Name { get; set; }

@@ -38,7 +38,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var req = OnBeforeSend(request, request.ToOpenAILegacy());
+        var req = OnBefore(request, request.ToOpenAILegacy());
         var res = await _client.PostChatCompletionAsync(req, cancellationToken);
         var choice = res.Choices?.FirstOrDefault();
         var content = new List<MessageContent>();
@@ -86,7 +86,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
             }
         }
 
-        return OnAfterReceive(res, new MessageResponse
+        return OnAfter(res, new MessageResponse
         {
             Id = res.Id ?? Guid.NewGuid().ToString(),
             DoneReason = choice?.FinishReason switch
@@ -118,7 +118,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var req = OnBeforeSend(request, request.ToOpenAILegacy());
+        var req = OnBefore(request, request.ToOpenAILegacy());
 
         // 인덱스 추적 관리용
         (int, MessageContent)? current = null;
@@ -379,7 +379,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
     }
 
     /// <summary>
-    /// OpenAI API 클라이언트에 요청을 보내기 직전에 호출됩니다.
+    /// 요청을 보내기 전에 처리할 수 있는 가상 메서드입니다.
     /// </summary>
     /// <param name="source">
     /// 변환 전의 공용 요청 객체입니다.
@@ -388,13 +388,13 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
     /// 공용 요청에서 변환된 OpenAI ChatCompletion 요청 객체입니다.
     /// </param>
     /// <returns>수정된 ChatCompletion 요청 객체</returns>
-    protected virtual ChatCompletionRequest OnBeforeSend(
+    protected virtual ChatCompletionRequest OnBefore(
         MessageGenerationRequest source,
         ChatCompletionRequest request)
         => request;
 
     /// <summary>
-    /// OpenAI API 응답을 공용 응답으로 변환한 후, 반환 직전에 호출됩니다.
+    /// 응답을 받은 후 처리할 수 있는 가상 메서드입니다.
     /// </summary>
     /// <param name="source">
     /// OpenAI API에서 받은 원본 ChatCompletion 응답 객체입니다.
@@ -403,7 +403,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
     /// 원본 응답에서 변환된 공용 응답 객체입니다.
     /// </param>
     /// <returns>수정된 공용 응답 객체</returns>
-    protected virtual MessageResponse OnAfterReceive(
+    protected virtual MessageResponse OnAfter(
         ChatCompletionResponse source,
         MessageResponse response)
         => response;

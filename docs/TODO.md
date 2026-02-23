@@ -1,16 +1,13 @@
 # TODO LIST
 
-### Providers Migration
-- Anthropic & Google Provider => SDK로 변경(OpenAI는 보류)
-- OpenAI Provider AddProperties 삭제 => ExtraBody로 업그레이드(중복 프로퍼티들 가능하게.. 커스텀 어트리뷰트 생성)
-- Ollama Package 삭제 => OpenAI.Compatible로 이동(OpenAI API로 업그레이드 됨)
-- Google의 ThinkSignature 처리방법이 특이함, text or functioncall에 넣어야 하므로, Interactive API등 다른 방법을 고려
-
-### Agent
-- 기능 설계
+### Providers
+- OpenAI SDK로 업그레이드 보류(Response API에 ExtraBody기능 추가 될때까지)
+- Google의 ThinkSignature 처리방법 재확인(text or functioncall contents에 thinking_signature가 포함되어야 함, 공통 MessageGenerator의 요청객체의 signature 처리방법에 대한 변경 혹은 Interactive API등 다른 방법 고려 필요)
+- [ ] VideoGenerator 기능 추가
+- [ ] AudioProcessor 기능 추가(TTS, STT, Music)
 
 ### Orchestration
-- [x] Sequential, Parallel, Hub-Spoke 오케스트레이터
+- [x] Sequential, Parallel, Hub-Spoke 오케스트레이W터
 - [x] Graph(DAG) 오케스트레이터 (조건부 엣지, Fan-In/Fan-Out)
 - [x] 체크포인팅 (ICheckpointStore, InMemoryCheckpointStore)
 - [x] Human-in-the-Loop (ApprovalHandler, RequireApprovalForAgents)
@@ -19,12 +16,3 @@
 - [ ] 파일 기반 CheckpointStore 구현 (JSON 직렬화)
 - [ ] ParallelOrchestrator/HubSpokeOrchestrator에 체크포인트/승인 통합
 - [ ] GraphOrchestrator Fan-Out 병렬 실행 최적화
-
-### Providers
-- ImageGenerator 기능 추가
-- VideoGenerator 기능 추가
-- AudioGenerator 기능 추가(TTS, STT?, Music)
-
-#### Queue Storages
-- QueueStorage에 Dequeue 또는 Consume 시 Hidden_Timeout 고려
-- RabbitMQ, Azure ServiceBus, AWS SQS, Google Pub/Sub DeadLetter 지원 확인

@@ -25,6 +25,9 @@ public static class HiveServiceBuilderExtensions
         if (serviceType.HasFlag(OpenAIServiceType.Embeddings))
             builder.AddEmbeddingGenerator(providerName, new OpenAIEmbeddingGenerator(config));
 
+        if (serviceType.HasFlag(OpenAIServiceType.Images))
+            builder.AddImageGenerator(providerName, new OpenAIImageGenerator(config));
+
         if (serviceType.HasFlag(OpenAIServiceType.Responses))
             builder.AddMessageGenerator(providerName, new OpenAIResponseMessageGenerator(config));
 
