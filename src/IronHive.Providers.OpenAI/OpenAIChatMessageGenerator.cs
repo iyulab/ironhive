@@ -38,7 +38,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var req = OnBeforeSend(request, request.ToOpenAILegacy());
+        var req = OnBeforeGenerate(request, request.ToOpenAILegacy());
         var res = await _client.PostChatCompletionAsync(req, cancellationToken);
         var choice = res.Choices?.FirstOrDefault();
         var content = new List<MessageContent>();
@@ -86,7 +86,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
             }
         }
 
-        return OnAfterReceive(res, new MessageResponse
+        return OnAfterGenerate(res, new MessageResponse
         {
             Id = res.Id ?? Guid.NewGuid().ToString(),
             DoneReason = choice?.FinishReason switch
@@ -118,7 +118,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var req = OnBeforeSend(request, request.ToOpenAILegacy());
+        var req = OnBeforeGenerate(request, request.ToOpenAILegacy());
 
         // 인덱스 추적 관리용
         (int, MessageContent)? current = null;
@@ -138,7 +138,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
             {
                 id = res.Id ?? Guid.NewGuid().ToString();
                 model = res.Model ?? req.Model;
-                await foreach (var rr in OnStreamingReceive(res, new StreamingMessageBeginResponse
+                await foreach (var rr in OnStreamingGenerate(res, new StreamingMessageBeginResponse
                 {
                     Id = id
                 }))
@@ -198,7 +198,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
                             // 현재 컨텐츠가 ToolMessageContent이고, 인덱스가 동일한 경우 업데이트
                             if (funcIndex == currentToolIndex)
                             {
-                                await foreach (var rr in OnStreamingReceive(res, new StreamingContentDeltaResponse
+                                await foreach (var rr in OnStreamingGenerate(res, new StreamingContentDeltaResponse
                                 {
                                     Index = index,
                                     Delta = new ToolDeltaContent
@@ -214,7 +214,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
                             // 이전 컨텐츠 종료 및 새 컨텐츠 시작
                             else
                             {
-                                await foreach (var rr in OnStreamingReceive(res, new StreamingContentCompletedResponse
+                                await foreach (var rr in OnStreamingGenerate(res, new StreamingContentCompletedResponse
                                 {
                                     Index = index,
                                 }))
@@ -229,7 +229,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
                                     Input = func.Function?.Arguments,
                                 });
                                 currentToolIndex = funcIndex;
-                                await foreach (var rr in OnStreamingReceive(res, new StreamingContentAddedResponse
+                                await foreach (var rr in OnStreamingGenerate(res, new StreamingContentAddedResponse
                                 {
                                     Index = current.Value.Item1,
                                     Content = current.Value.Item2
@@ -243,7 +243,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
                         // 이전 컨텐츠 종료 및 새 컨텐츠 시작
                         else
                         {
-                            await foreach (var rr in OnStreamingReceive(res, new StreamingContentCompletedResponse
+                            await foreach (var rr in OnStreamingGenerate(res, new StreamingContentCompletedResponse
                             {
                                 Index = index,
                             }))
@@ -258,7 +258,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
                                 Input = func.Function?.Arguments,
                             });
                             currentToolIndex = funcIndex;
-                            await foreach (var rr in OnStreamingReceive(res, new StreamingContentAddedResponse
+                            await foreach (var rr in OnStreamingGenerate(res, new StreamingContentAddedResponse
                             {
                                 Index = current.Value.Item1,
                                 Content = current.Value.Item2
@@ -279,7 +279,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
                             Input = func.Function?.Arguments,
                         });
                         currentToolIndex = funcIndex;
-                        await foreach (var rr in OnStreamingReceive(res, new StreamingContentAddedResponse
+                        await foreach (var rr in OnStreamingGenerate(res, new StreamingContentAddedResponse
                         {
                             Index = current.Value.Item1,
                             Content = current.Value.Item2
@@ -302,7 +302,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
                     // 현재 컨텐츠가 TextMessageContent인 경우
                     if (content is TextMessageContent textContent)
                     {
-                        await foreach (var rr in OnStreamingReceive(res, new StreamingContentDeltaResponse
+                        await foreach (var rr in OnStreamingGenerate(res, new StreamingContentDeltaResponse
                         {
                             Index = index,
                             Delta = new TextDeltaContent
@@ -318,7 +318,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
                     // 이전 컨텐츠 종료 및 새 컨텐츠 시작
                     else
                     {
-                        await foreach (var rr in OnStreamingReceive(res, new StreamingContentCompletedResponse
+                        await foreach (var rr in OnStreamingGenerate(res, new StreamingContentCompletedResponse
                         {
                             Index = index,
                         }))
@@ -326,7 +326,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
                             yield return rr;
                         }
                         current = (index + 1, new TextMessageContent { Value = text });
-                        await foreach (var rr in OnStreamingReceive(res, new StreamingContentAddedResponse
+                        await foreach (var rr in OnStreamingGenerate(res, new StreamingContentAddedResponse
                         {
                             Index = current.Value.Item1,
                             Content = current.Value.Item2
@@ -340,7 +340,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
                 else
                 {
                     current = (0, new TextMessageContent { Value = text });
-                    await foreach (var rr in OnStreamingReceive(res, new StreamingContentAddedResponse
+                    await foreach (var rr in OnStreamingGenerate(res, new StreamingContentAddedResponse
                     {
                         Index = current.Value.Item1,
                         Content = current.Value.Item2
@@ -355,7 +355,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
         // 남아 있는 컨텐츠 처리
         if (current.HasValue)
         {
-            await foreach (var rr in OnStreamingReceive(lastChunk, new StreamingContentCompletedResponse
+            await foreach (var rr in OnStreamingGenerate(lastChunk, new StreamingContentCompletedResponse
             {
                 Index = current.Value.Item1,
             }))
@@ -365,7 +365,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
         }
 
         // 종료
-        await foreach (var rr in OnStreamingReceive(lastChunk, new StreamingMessageDoneResponse
+        await foreach (var rr in OnStreamingGenerate(lastChunk, new StreamingMessageDoneResponse
         {
             DoneReason = reason,
             TokenUsage = usage,
@@ -388,7 +388,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
     /// 공용 요청에서 변환된 OpenAI ChatCompletion 요청 객체입니다.
     /// </param>
     /// <returns>수정된 ChatCompletion 요청 객체</returns>
-    protected virtual ChatCompletionRequest OnBeforeSend(
+    protected virtual ChatCompletionRequest OnBeforeGenerate(
         MessageGenerationRequest source,
         ChatCompletionRequest request)
         => request;
@@ -403,7 +403,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
     /// 원본 응답에서 변환된 공용 응답 객체입니다.
     /// </param>
     /// <returns>수정된 공용 응답 객체</returns>
-    protected virtual MessageResponse OnAfterReceive(
+    protected virtual MessageResponse OnAfterGenerate(
         ChatCompletionResponse source,
         MessageResponse response)
         => response;
@@ -425,7 +425,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
     /// 원본 청크에서 변환된 공용 스트리밍 응답입니다.
     /// </param>
     /// <returns>최종적으로 소비자에게 전달될 스트리밍 응답들</returns>
-    protected virtual async IAsyncEnumerable<StreamingMessageResponse> OnStreamingReceive(
+    protected virtual async IAsyncEnumerable<StreamingMessageResponse> OnStreamingGenerate(
         StreamingChatCompletionResponse? source,
         StreamingMessageResponse chunk)
     {

@@ -16,7 +16,7 @@ public class TogetherAIMessageGenerator : OpenAIChatMessageGenerator
         _config = config;
     }
 
-    protected override ChatCompletionRequest OnBeforeSend(
+    protected override ChatCompletionRequest OnBeforeGenerate(
         MessageGenerationRequest source,
         ChatCompletionRequest request)
     {

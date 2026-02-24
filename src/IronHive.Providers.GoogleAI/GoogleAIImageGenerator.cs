@@ -23,6 +23,11 @@ public class GoogleAIImageGenerator : IImageGenerator
         _client = GoogleAIClientFactory.CreateClient(config);
     }
 
+    public GoogleAIImageGenerator(VertexAIConfig config)
+    {
+        _client = GoogleAIClientFactory.CreateClient(config);
+    }
+
     /// <inheritdoc />
     public void Dispose()
     {

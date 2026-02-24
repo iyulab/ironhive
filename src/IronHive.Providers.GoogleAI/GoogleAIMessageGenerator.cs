@@ -29,6 +29,11 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         _client = GoogleAIClientFactory.CreateClient(config);
     }
 
+    public GoogleAIMessageGenerator(VertexAIConfig config)
+    {
+        _client = GoogleAIClientFactory.CreateClient(config);
+    }
+
     /// <inheritdoc />
     public void Dispose()
     {

@@ -9,6 +9,10 @@
 //return;
 
 // === Image Generation & Edit 샘플 ===
-await ImageSample.Run();
+//await ImageSample.Run();
+//return;
+
+// === Video Generation 샘플 ===
+await VideoSample.Run();
 return;
 

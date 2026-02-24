@@ -18,6 +18,11 @@ public class GoogleAIEmbeddingGenerator : IEmbeddingGenerator
         _client = GoogleAIClientFactory.CreateClient(config);
     }
 
+    public GoogleAIEmbeddingGenerator(VertexAIConfig config)
+    {
+        _client = GoogleAIClientFactory.CreateClient(config);
+    }
+
     /// <inheritdoc />
     public void Dispose()
     {

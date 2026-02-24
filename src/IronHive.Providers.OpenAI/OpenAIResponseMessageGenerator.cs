@@ -35,7 +35,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var req = OnBeforeSend(request, request.ToOpenAI());
+        var req = OnBeforeGenerate(request, request.ToOpenAI());
         var res = await _client.PostResponsesAsync(req, cancellationToken);
 
         var content = new List<MessageContent>();
@@ -99,7 +99,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
             reason = MessageDoneReason.ToolCall;
         }
 
-        return OnAfterReceive(res, new MessageResponse
+        return OnAfterGenerate(res, new MessageResponse
         {
             Id = res.Id ?? Guid.NewGuid().ToString(),
             DoneReason = reason,
@@ -123,7 +123,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var req = OnBeforeSend(request, request.ToOpenAI());
+        var req = OnBeforeGenerate(request, request.ToOpenAI());
 
         int pIndex = 0; // 컨텐츠 파트 인덱스(배열 컨텐츠 추적)
         var reason = MessageDoneReason.EndTurn;
@@ -133,7 +133,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
             // 1. 메시지 시작 이벤트
             if (res is StreamingCreatedResponse scr)
             {
-                await foreach (var rr in OnStreamingReceive(res, new StreamingMessageBeginResponse
+                await foreach (var rr in OnStreamingGenerate(res, new StreamingMessageBeginResponse
                 {
                     Id = scr.Response.Id,
                 }))
@@ -147,7 +147,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
                 // 추론 생성
                 if (oar.Item is ResponsesReasoningItem ri)
                 {
-                    await foreach (var rr in OnStreamingReceive(res, new StreamingContentAddedResponse
+                    await foreach (var rr in OnStreamingGenerate(res, new StreamingContentAddedResponse
                     {
                         Index = oar.OutputIndex,
                         Content = new ThinkingMessageContent
@@ -167,7 +167,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
                 else if (oar.Item is ResponsesFunctionToolCallItem tci)
                 {
                     reason = MessageDoneReason.ToolCall; // 툴 호출 설정
-                    await foreach (var rr in OnStreamingReceive(res, new StreamingContentAddedResponse
+                    await foreach (var rr in OnStreamingGenerate(res, new StreamingContentAddedResponse
                     {
                         Index = oar.OutputIndex,
                         Content = new ToolMessageContent
@@ -192,7 +192,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
             {
                 if (car.Part is ResponsesTextItemPart tip)
                 {
-                    await foreach (var rr in OnStreamingReceive(res, new StreamingContentAddedResponse
+                    await foreach (var rr in OnStreamingGenerate(res, new StreamingContentAddedResponse
                     {
                         Index = car.OutputIndex,
                         Content = new TextMessageContent
@@ -215,7 +215,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
                 var isAdded = pIndex != td.ContentIndex;
                 if (isAdded) pIndex = td.ContentIndex.GetValueOrDefault(0);
 
-                await foreach (var rr in OnStreamingReceive(res, new StreamingContentDeltaResponse
+                await foreach (var rr in OnStreamingGenerate(res, new StreamingContentDeltaResponse
                 {
                     Index = td.OutputIndex,
                     Delta = new TextDeltaContent
@@ -233,7 +233,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
                 var isAdded = pIndex != rsd.SummaryIndex;
                 if (isAdded) pIndex = rsd.SummaryIndex;
 
-                await foreach (var rr in OnStreamingReceive(res, new StreamingContentDeltaResponse
+                await foreach (var rr in OnStreamingGenerate(res, new StreamingContentDeltaResponse
                 {
                     Index = rsd.OutputIndex,
                     Delta = new ThinkingDeltaContent
@@ -248,7 +248,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
             // 3. 컨텐츠 생성(툴)
             else if (res is StreamingFunctionToolDeltaResponse tdr)
             {
-                await foreach (var rr in OnStreamingReceive(res, new StreamingContentDeltaResponse
+                await foreach (var rr in OnStreamingGenerate(res, new StreamingContentDeltaResponse
                 {
                     Index = tdr.OutputIndex,
                     Delta = new ToolDeltaContent
@@ -266,7 +266,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
                 // 추론 컨텐츠 업데이트
                 if (odr.Item is ResponsesReasoningItem ri)
                 {
-                    await foreach (var rr in OnStreamingReceive(res, new StreamingContentUpdatedResponse
+                    await foreach (var rr in OnStreamingGenerate(res, new StreamingContentUpdatedResponse
                     {
                         Index = odr.OutputIndex,
                         Updated = new ThinkingUpdatedContent
@@ -280,7 +280,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
                 }
 
                 pIndex = 0; // 파트 리셋
-                await foreach (var rr in OnStreamingReceive(res, new StreamingContentCompletedResponse
+                await foreach (var rr in OnStreamingGenerate(res, new StreamingContentCompletedResponse
                 {
                     Index = odr.OutputIndex
                 }))
@@ -291,7 +291,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
             // 5. 메시지 종료
             else if (res is StreamingCompletedResponse sdr)
             {
-                await foreach (var rr in OnStreamingReceive(res, new StreamingMessageDoneResponse
+                await foreach (var rr in OnStreamingGenerate(res, new StreamingMessageDoneResponse
                 {
                     DoneReason = reason,
                     Id = sdr.Response.Id,
@@ -315,7 +315,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
                     "max_output_tokens" => MessageDoneReason.MaxTokens,
                     _ => MessageDoneReason.Unknown,
                 };
-                await foreach (var rr in OnStreamingReceive(res, new StreamingMessageDoneResponse
+                await foreach (var rr in OnStreamingGenerate(res, new StreamingMessageDoneResponse
                 {
                     DoneReason = reason,
                     Id = sir.Response.Id,
@@ -350,7 +350,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
     /// 공용 요청에서 변환된 OpenAI Responses 요청 객체입니다.
     /// </param>
     /// <returns>수정된 Responses 요청 객체</returns>
-    protected virtual ResponsesRequest OnBeforeSend(
+    protected virtual ResponsesRequest OnBeforeGenerate(
         MessageGenerationRequest source,
         ResponsesRequest request)
         => request;
@@ -365,7 +365,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
     /// 원본 응답에서 변환된 공용 응답 객체입니다.
     /// </param>
     /// <returns>수정된 공용 응답 객체</returns>
-    protected virtual MessageResponse OnAfterReceive(
+    protected virtual MessageResponse OnAfterGenerate(
         ResponsesResponse source,
         MessageResponse response)
         => response;
@@ -386,7 +386,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
     /// 원본 청크에서 변환된 공용 스트리밍 응답입니다.
     /// </param>
     /// <returns>최종적으로 소비자에게 전달될 스트리밍 응답들</returns>
-    protected virtual async IAsyncEnumerable<StreamingMessageResponse> OnStreamingReceive(
+    protected virtual async IAsyncEnumerable<StreamingMessageResponse> OnStreamingGenerate(
         StreamingResponsesResponse source,
         StreamingMessageResponse chunk)
     {

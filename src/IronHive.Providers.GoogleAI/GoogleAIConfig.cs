@@ -1,3 +1,5 @@
+using Google.GenAI.Types;
+
 namespace IronHive.Providers.GoogleAI;
 
 /// <summary>
@@ -6,15 +8,15 @@ namespace IronHive.Providers.GoogleAI;
 public class GoogleAIConfig
 {
     /// <summary>
-    /// Google AI API의 기본 URL을 가져오거나 설정합니다.
-    /// 기본값은 "https://generativelanguage.googleapis.com/v1beta/".
-    /// </summary>
-    public string BaseUrl { get; set; } = string.Empty;
-
-    /// <summary>
     /// Google AI API에 대한 요청을 인증하는 데 사용되는 API 키를 가져오거나 설정합니다.
     /// </summary>
-    public string ApiKey { get; set; } = string.Empty;
+    public string? ApiKey { get; set; }
+
+    /// <summary>
+    /// Google AI API에 대한 HTTP 요청의 구성 옵션을 나타냅니다. 
+    /// BaseUrl과 같은 속성을 포함하여 API 엔드포인트를 사용자 정의할 수 있습니다.
+    /// </summary>
+    public HttpOptions? HttpOptions { get; set; }
 
     /// <summary>
     /// API key 유무를 검증합니다.

@@ -9,6 +9,7 @@ using IronHive.Abstractions.Images;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Queue;
 using IronHive.Abstractions.Vector;
+using IronHive.Abstractions.Videos;
 using IronHive.Core.Services;
 using IronHive.Core.Files;
 using IronHive.Core.Tools;
@@ -46,6 +47,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         Services.TryAddSingleton<IMessageService, MessageService>();
         Services.TryAddSingleton<IEmbeddingService, EmbeddingService>();
         Services.TryAddSingleton<IImageService, ImageService>();
+        Services.TryAddSingleton<IVideoService, VideoService>();
         Services.TryAddSingleton<IFileStorageService, FileStorageService>();
         Services.TryAddSingleton<IMemoryService, MemoryService>();
         Services.TryAddSingleton<IAgentService, AgentService>();
@@ -79,6 +81,13 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     public IHiveServiceBuilder AddImageGenerator(string providerName, IImageGenerator generator)
     {
         _providers.TryAdd<IImageGenerator>(providerName, generator);
+        return this;
+    }
+
+    /// <inheritdoc />
+    public IHiveServiceBuilder AddVideoGenerator(string providerName, IVideoGenerator generator)
+    {
+        _providers.TryAdd<IVideoGenerator>(providerName, generator);
         return this;
     }
 

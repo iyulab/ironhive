@@ -1,5 +1,4 @@
 ﻿using System.Text.Json.Nodes;
-using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Providers.OpenAI.Payloads.Responses;
 using IronHive.Providers.OpenAI.Payloads.ChatCompletion;
@@ -11,7 +10,7 @@ using ImageMessageContent = IronHive.Abstractions.Messages.Content.ImageMessageC
 
 namespace IronHive.Abstractions.Messages;
 
-public static class MessageGenerationRequestExtensions
+public static class MessageRequestExtensions
 {
     /// <summary>
     /// 메시지 생성 요청을 OpenAI의 ResponsesRequest로 변환합니다.

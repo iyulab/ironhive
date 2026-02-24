@@ -17,6 +17,11 @@ public class GoogleAIModelCatalog : IModelCatalog
         _client = GoogleAIClientFactory.CreateClient(config);
     }
 
+    public GoogleAIModelCatalog(VertexAIConfig config)
+    {
+        _client = GoogleAIClientFactory.CreateClient(config);
+    }
+
     /// <inheritdoc />
     public void Dispose()
     {

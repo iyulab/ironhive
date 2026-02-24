@@ -17,7 +17,7 @@ public class FireworksMessageGenerator : OpenAIResponseMessageGenerator
         _config = config;
     }
 
-    protected override ResponsesRequest OnBeforeSend(
+    protected override ResponsesRequest OnBeforeGenerate(
         MessageGenerationRequest source,
         ResponsesRequest request)
     {

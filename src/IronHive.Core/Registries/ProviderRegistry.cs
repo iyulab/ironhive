@@ -3,6 +3,7 @@ using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Images;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Registries;
+using IronHive.Abstractions.Videos;
 
 namespace IronHive.Core.Registries;
 
@@ -28,4 +29,8 @@ public class ProviderRegistry : KeyedServiceRegistry<string, IProviderItem>, IPr
     /// <inheritdoc />
     public void SetImageGenerator(string providerName, IImageGenerator generator)
         => Set<IImageGenerator>(providerName, generator);
+
+    /// <inheritdoc />
+    public void SetVideoGenerator(string providerName, IVideoGenerator generator)
+        => Set<IVideoGenerator>(providerName, generator);
 }

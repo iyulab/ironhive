@@ -32,6 +32,11 @@ public enum OpenAIServiceType
     Images = 1 << 4,
 
     /// <summary>
+    /// 비디오 생성 서비스 (Sora)
+    /// </summary>
+    Videos = 1 << 5,
+
+    /// <summary>
     /// 모든 OpenAI 서비스를 포함합니다. (LLM 기반 서비스는 Responses API를 기본으로 포함합니다.)
     /// </summary>
     All = Models | Responses | Embeddings | Images,

@@ -31,6 +31,9 @@ public static class HiveServiceBuilderExtensions
         if (serviceType.HasFlag(OpenAIServiceType.Responses))
             builder.AddMessageGenerator(providerName, new OpenAIResponseMessageGenerator(config));
 
+        if (serviceType.HasFlag(OpenAIServiceType.Videos))
+            builder.AddVideoGenerator(providerName, new OpenAIVideoGenerator(config));
+
         return builder;
     }
 }

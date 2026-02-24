@@ -129,5 +129,7 @@ public class OpenAIEmbeddingGenerator : IEmbeddingGenerator
     /// <summary>
     /// 임베딩 요청을 보내기 전에 처리할 수 있는 가상 메서드입니다.
     /// </summary>
-    protected virtual OpenAIEmbeddingRequest OnBeforeEmbed(OpenAIEmbeddingRequest request) => request;
+    protected virtual OpenAIEmbeddingRequest OnBeforeEmbed(
+        OpenAIEmbeddingRequest request) 
+        => request;
 }

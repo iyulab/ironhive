@@ -2,6 +2,7 @@
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Images;
 using IronHive.Abstractions.Messages;
+using IronHive.Abstractions.Videos;
 
 namespace IronHive.Abstractions.Registries;
 
@@ -46,4 +47,11 @@ public interface IProviderRegistry : IKeyedServiceRegistry<string, IProviderItem
     /// <param name="providerName">등록할 Provider의 고유 이름</param>
     /// <param name="generator">이미지 생성 서비스</param>
     void SetImageGenerator(string providerName, IImageGenerator generator);
+
+    /// <summary>
+    /// 특정 Provider에 비디오 생성기(<see cref="IVideoGenerator"/>)를 등록합니다.
+    /// </summary>
+    /// <param name="providerName">등록할 Provider의 고유 이름</param>
+    /// <param name="generator">비디오 생성 서비스</param>
+    void SetVideoGenerator(string providerName, IVideoGenerator generator);
 }

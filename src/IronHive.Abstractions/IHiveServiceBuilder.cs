@@ -6,6 +6,7 @@ using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Queue;
 using IronHive.Abstractions.Tools;
 using IronHive.Abstractions.Vector;
+using IronHive.Abstractions.Videos;
 using IronHive.Abstractions.Workflow;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -41,6 +42,11 @@ public interface IHiveServiceBuilder
     /// 새로운 이미지 생성기를 등록합니다.
     /// </summary>
     IHiveServiceBuilder AddImageGenerator(string providerName, IImageGenerator generator);
+
+    /// <summary>
+    /// 새로운 비디오 생성기를 등록합니다.
+    /// </summary>
+    IHiveServiceBuilder AddVideoGenerator(string providerName, IVideoGenerator generator);
 
     /// <summary>
     /// 파일 저장소를 추가합니다.

@@ -27,6 +27,11 @@ public enum GoogleAIServiceType
     Images = 1 << 3,
 
     /// <summary>
+    /// 비디오 생성 서비스 유형입니다 (Veo).
+    /// </summary>
+    Videos = 1 << 4,
+
+    /// <summary>
     /// 모든 Google AI 서비스 유형을 포함합니다.
     /// </summary>
     All = Models | Messages | Embeddings | Images
