@@ -38,7 +38,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var req = OnBefore(request, request.ToOpenAILegacy());
+        var req = OnBeforeSend(request, request.ToOpenAILegacy());
         var res = await _client.PostChatCompletionAsync(req, cancellationToken);
         var choice = res.Choices?.FirstOrDefault();
         var content = new List<MessageContent>();
@@ -86,7 +86,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
             }
         }
 
-        return OnAfter(res, new MessageResponse
+        return OnAfterReceive(res, new MessageResponse
         {
             Id = res.Id ?? Guid.NewGuid().ToString(),
             DoneReason = choice?.FinishReason switch
@@ -118,7 +118,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var req = OnBefore(request, request.ToOpenAILegacy());
+        var req = OnBeforeSend(request, request.ToOpenAILegacy());
 
         // 인덱스 추적 관리용
         (int, MessageContent)? current = null;
@@ -388,7 +388,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
     /// 공용 요청에서 변환된 OpenAI ChatCompletion 요청 객체입니다.
     /// </param>
     /// <returns>수정된 ChatCompletion 요청 객체</returns>
-    protected virtual ChatCompletionRequest OnBefore(
+    protected virtual ChatCompletionRequest OnBeforeSend(
         MessageGenerationRequest source,
         ChatCompletionRequest request)
         => request;
@@ -403,7 +403,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
     /// 원본 응답에서 변환된 공용 응답 객체입니다.
     /// </param>
     /// <returns>수정된 공용 응답 객체</returns>
-    protected virtual MessageResponse OnAfter(
+    protected virtual MessageResponse OnAfterReceive(
         ChatCompletionResponse source,
         MessageResponse response)
         => response;
