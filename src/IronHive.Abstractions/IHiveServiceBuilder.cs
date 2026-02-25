@@ -1,4 +1,5 @@
-﻿using IronHive.Abstractions.Catalog;
+﻿using IronHive.Abstractions.Audio;
+using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Images;
@@ -47,6 +48,11 @@ public interface IHiveServiceBuilder
     /// 새로운 비디오 생성기를 등록합니다.
     /// </summary>
     IHiveServiceBuilder AddVideoGenerator(string providerName, IVideoGenerator generator);
+
+    /// <summary>
+    /// 새로운 오디오 프로세서를 등록합니다.
+    /// </summary>
+    IHiveServiceBuilder AddAudioProcessor(string providerName, IAudioProcessor processor);
 
     /// <summary>
     /// 파일 저장소를 추가합니다.

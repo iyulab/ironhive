@@ -1,4 +1,5 @@
-﻿using IronHive.Abstractions.Catalog;
+﻿using IronHive.Abstractions.Audio;
+using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Images;
 using IronHive.Abstractions.Messages;
@@ -54,4 +55,11 @@ public interface IProviderRegistry : IKeyedServiceRegistry<string, IProviderItem
     /// <param name="providerName">등록할 Provider의 고유 이름</param>
     /// <param name="generator">비디오 생성 서비스</param>
     void SetVideoGenerator(string providerName, IVideoGenerator generator);
+
+    /// <summary>
+    /// 특정 Provider에 오디오 처리기(<see cref="IAudioProcessor"/>)를 등록합니다.
+    /// </summary>
+    /// <param name="providerName">등록할 Provider의 고유 이름</param>
+    /// <param name="processor">오디오 처리 서비스</param>
+    void SetAudioProcessor(string providerName, IAudioProcessor processor);
 }

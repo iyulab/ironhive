@@ -28,6 +28,9 @@ public static class HiveServiceBuilderExtensions
         if (serviceType.HasFlag(GoogleAIServiceType.Videos))
             builder.AddVideoGenerator(providerName, new GoogleAIVideoGenerator(config));
 
+        if (serviceType.HasFlag(GoogleAIServiceType.Audio))
+            builder.AddAudioProcessor(providerName, new GoogleAIAudioProcessor(config));
+
         return builder;
     }
 
@@ -54,6 +57,9 @@ public static class HiveServiceBuilderExtensions
 
         if (serviceType.HasFlag(GoogleAIServiceType.Videos))
             builder.AddVideoGenerator(providerName, new GoogleAIVideoGenerator(config));
+
+        if (serviceType.HasFlag(GoogleAIServiceType.Audio))
+            builder.AddAudioProcessor(providerName, new GoogleAIAudioProcessor(config));
 
         return builder;
     }

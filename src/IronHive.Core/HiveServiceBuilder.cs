@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Tools;
 using IronHive.Abstractions;
+using IronHive.Abstractions.Audio;
 using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Images;
@@ -48,6 +49,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         Services.TryAddSingleton<IEmbeddingService, EmbeddingService>();
         Services.TryAddSingleton<IImageService, ImageService>();
         Services.TryAddSingleton<IVideoService, VideoService>();
+        Services.TryAddSingleton<IAudioService, AudioService>();
         Services.TryAddSingleton<IFileStorageService, FileStorageService>();
         Services.TryAddSingleton<IMemoryService, MemoryService>();
         Services.TryAddSingleton<IAgentService, AgentService>();
@@ -88,6 +90,13 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     public IHiveServiceBuilder AddVideoGenerator(string providerName, IVideoGenerator generator)
     {
         _providers.TryAdd<IVideoGenerator>(providerName, generator);
+        return this;
+    }
+
+    /// <inheritdoc />
+    public IHiveServiceBuilder AddAudioProcessor(string providerName, IAudioProcessor processor)
+    {
+        _providers.TryAdd<IAudioProcessor>(providerName, processor);
         return this;
     }
 

@@ -24,8 +24,8 @@ public class OpenAIVideoClient : OpenAIClientBase
 
         if (request.Image?.Data != null && !string.IsNullOrEmpty(request.Image.MimeType))
         {
-            var imgContent = new ByteArrayContent(request.Image.Data);
-            imgContent.Headers.ContentType = new MediaTypeHeaderValue(request.Image.MimeType);
+            var imageContent = new ByteArrayContent(request.Image.Data);
+            imageContent.Headers.ContentType = new MediaTypeHeaderValue(request.Image.MimeType);
             var extension = request.Image.MimeType switch
             {
                 "image/jpeg" => "jpg",
@@ -33,7 +33,7 @@ public class OpenAIVideoClient : OpenAIClientBase
                 "image/webp" => "webp",
                 _ => "bin"
             };
-            content.Add(imgContent, "input_reference", $"input_reference.{extension}");
+            content.Add(imageContent, "input_reference", $"input_reference.{extension}");
         }
 
         content.Add(new StringContent(request.Model), "model");

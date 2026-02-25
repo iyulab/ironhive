@@ -32,10 +32,24 @@ public class OpenAIImageGenerator : IImageGenerator
         ImageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var payload = OnBeforeGenerate(request, request.ToOpenAI());
+        var payload = OnBeforeGenerate(request, new CreateImagesRequest
+        {
+            Model = request.Model,
+            Prompt = request.Prompt,
+            N = request.N,
+            Size = request.Size is GeneratedImageCustomSize customSize
+                ? customSize.Value
+                : null,
+
+            // DALL-E만 지원하는 필드로, Base64를 반환받도록 설정합니다.
+            ResponseFormat = request.Model.StartsWith("dall-e", StringComparison.OrdinalIgnoreCase)
+                ? "b64_json"
+                : null
+        });
+
         var response = await _client.PostCreateImagesAsync(payload, cancellationToken);
         
-        var imageResponse = new ImageGenerationResponse
+        return OnAfterGenerate(response, new ImageGenerationResponse
         {
             Images = response.Data?
                 .Where(d => !string.IsNullOrEmpty(d.B64Json))
@@ -46,9 +60,7 @@ public class OpenAIImageGenerator : IImageGenerator
                     RevisedPrompt = d.RevisedPrompt
                 })
                 .ToList() ?? []
-        };
-
-        return OnAfterGenerate(response, imageResponse);
+        });
     }
 
     /// <inheritdoc />
@@ -56,10 +68,32 @@ public class OpenAIImageGenerator : IImageGenerator
         ImageEditRequest request,
         CancellationToken cancellationToken = default)
     {
-        var payload = OnBeforeEdit(request, request.ToOpenAI());
+        var payload = OnBeforeEdit(request, new EditImagesRequest
+        {
+            Model = request.Model,
+            Prompt = request.Prompt,
+            Images = request.Images
+                .Where(img => img.Data.Length > 0 && !string.IsNullOrEmpty(img.MimeType))
+                .Select(img => new OpenAIInputImageData
+                {
+                    ImageUrl = img.ToBase64()
+                })
+                .ToList(),
+            Mask = request.Mask != null && request.Mask.Data.Length > 0 && !string.IsNullOrEmpty(request.Mask.MimeType)
+                ? new OpenAIInputImageData
+                {
+                    ImageUrl = request.Mask.ToBase64()
+                }
+                : null,
+            N = request.N,
+            Size = request.Size is GeneratedImageCustomSize customSize
+                ? customSize.Value
+                : null,
+        });
+
         var response = await _client.PostEditImagesAsync(payload, cancellationToken);
 
-        var imageResponse = new ImageGenerationResponse
+        return OnAfterEdit(response, new ImageGenerationResponse
         {
             Images = response.Data?
                 .Where(d => !string.IsNullOrEmpty(d.B64Json))
@@ -70,9 +104,7 @@ public class OpenAIImageGenerator : IImageGenerator
                     RevisedPrompt = d.RevisedPrompt
                 })
                 .ToList() ?? []
-        };
-
-        return OnAfterEdit(response, imageResponse);
+        });
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
-﻿using IronHive.Abstractions.Catalog;
+﻿using IronHive.Abstractions.Audio;
+using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Images;
 using IronHive.Abstractions.Messages;
@@ -26,7 +27,10 @@ public static class ProviderRegistryExtensions
 
         if (serviceType.HasFlag(OpenAIServiceType.ChatCompletion))
             providers.SetMessageGenerator(providerName, new OpenAIChatMessageGenerator(config));
-        
+
+        if (serviceType.HasFlag(OpenAIServiceType.Responses))
+            providers.SetMessageGenerator(providerName, new OpenAIResponseMessageGenerator(config));
+
         if (serviceType.HasFlag(OpenAIServiceType.Embeddings))
             providers.SetEmbeddingGenerator(providerName, new OpenAIEmbeddingGenerator(config));
 
@@ -36,8 +40,8 @@ public static class ProviderRegistryExtensions
         if (serviceType.HasFlag(OpenAIServiceType.Videos))
             providers.SetVideoGenerator(providerName, new OpenAIVideoGenerator(config));
 
-        if (serviceType.HasFlag(OpenAIServiceType.Responses))
-            providers.SetMessageGenerator(providerName, new OpenAIResponseMessageGenerator(config));
+        if (serviceType.HasFlag(OpenAIServiceType.Audio))
+            providers.SetAudioProcessor(providerName, new OpenAIAudioProcessor(config));
     }
 
     /// <summary>
@@ -62,5 +66,8 @@ public static class ProviderRegistryExtensions
 
         if (serviceType.HasFlag(OpenAIServiceType.Videos))
             providers.Remove<IVideoGenerator>(providerName);
+
+        if (serviceType.HasFlag(OpenAIServiceType.Audio))
+            providers.Remove<IAudioProcessor>(providerName);
     }
 }

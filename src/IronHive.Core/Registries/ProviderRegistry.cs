@@ -1,4 +1,5 @@
-﻿using IronHive.Abstractions.Catalog;
+﻿using IronHive.Abstractions.Audio;
+using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Images;
 using IronHive.Abstractions.Messages;
@@ -33,4 +34,8 @@ public class ProviderRegistry : KeyedServiceRegistry<string, IProviderItem>, IPr
     /// <inheritdoc />
     public void SetVideoGenerator(string providerName, IVideoGenerator generator)
         => Set<IVideoGenerator>(providerName, generator);
+
+    /// <inheritdoc />
+    public void SetAudioProcessor(string providerName, IAudioProcessor processor)
+        => Set<IAudioProcessor>(providerName, processor);
 }

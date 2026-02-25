@@ -32,7 +32,12 @@ public enum GoogleAIServiceType
     Videos = 1 << 4,
 
     /// <summary>
+    /// 오디오 처리 서비스 유형입니다 (TTS/STT via GenerateContent).
+    /// </summary>
+    Audio = 1 << 5,
+
+    /// <summary>
     /// 모든 Google AI 서비스 유형을 포함합니다.
     /// </summary>
-    All = Models | Messages | Embeddings | Images
+    All = Models | Messages | Embeddings | Images | Videos | Audio
 }

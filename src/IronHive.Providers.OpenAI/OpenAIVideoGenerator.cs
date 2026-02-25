@@ -30,9 +30,20 @@ public class OpenAIVideoGenerator : IVideoGenerator
         IProgress<VideoGenerationProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        var payload = new CreateVideoRequest
+        {
+            Model = request.Model,
+            Prompt = request.Prompt,
+            Image = request.Image,
+            Seconds = request.DurationSeconds,
+            Size = request.Size is GeneratedVideoCustomSize customSize
+                ? customSize.Value
+                : null
+        };
+
         // 1. Job 생성
         var response = await _client.CreateVideoAsync(
-            request.ToOpenAI(),
+            payload,
             cancellationToken);
 
         var videoId = response.Id

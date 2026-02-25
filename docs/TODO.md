@@ -3,8 +3,6 @@
 ### Providers
 - OpenAI SDK로 업그레이드 보류(Response API에 ExtraBody기능 추가 될때까지)
 - Google의 ThinkSignature 처리방법 재확인(text or functioncall contents에 thinking_signature가 포함되어야 함, 공통 MessageGenerator의 요청객체의 signature 처리방법에 대한 변경 혹은 Interactive API등 다른 방법 고려 필요)
-- [ ] VideoGenerator 기능 추가
-- [ ] AudioProcessor 기능 추가(TTS, STT, Music)
 
 ### Orchestration
 - [x] Sequential, Parallel, Hub-Spoke 오케스트레이W터

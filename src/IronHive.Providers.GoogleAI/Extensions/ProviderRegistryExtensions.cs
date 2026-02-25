@@ -1,4 +1,5 @@
-﻿using IronHive.Abstractions.Catalog;
+﻿using IronHive.Abstractions.Audio;
+using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Images;
 using IronHive.Abstractions.Messages;
@@ -32,6 +33,9 @@ public static class ProviderRegistryExtensions
 
         if (serviceType.HasFlag(GoogleAIServiceType.Videos))
             providers.SetVideoGenerator(providerName, new GoogleAIVideoGenerator(config));
+
+        if (serviceType.HasFlag(GoogleAIServiceType.Audio))
+            providers.SetAudioProcessor(providerName, new GoogleAIAudioProcessor(config));
     }
 
     /// <summary>
@@ -57,6 +61,9 @@ public static class ProviderRegistryExtensions
 
         if (serviceType.HasFlag(GoogleAIServiceType.Videos))
             providers.SetVideoGenerator(providerName, new GoogleAIVideoGenerator(config));
+
+        if (serviceType.HasFlag(GoogleAIServiceType.Audio))
+            providers.SetAudioProcessor(providerName, new GoogleAIAudioProcessor(config));
     }
 
     /// <summary>
@@ -81,5 +88,8 @@ public static class ProviderRegistryExtensions
 
         if (serviceType.HasFlag(GoogleAIServiceType.Videos))
             providers.Remove<IVideoGenerator>(providerName);
+
+        if (serviceType.HasFlag(GoogleAIServiceType.Audio))
+            providers.Remove<IAudioProcessor>(providerName);
     }
 }

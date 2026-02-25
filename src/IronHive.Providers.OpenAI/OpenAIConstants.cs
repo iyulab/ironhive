@@ -18,4 +18,6 @@ internal sealed class OpenAIConstants
     internal const string PostImagesGenerationsPath = "/images/generations";
     internal const string PostImagesEditsPath = "/images/edits";
     internal const string PostVideosPath = "/videos";
+    internal const string PostAudioSpeechPath = "/audio/speech";
+    internal const string PostAudioTranscriptionsPath = "/audio/transcriptions";
 }
