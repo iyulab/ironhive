@@ -140,6 +140,16 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// <para>
+    /// 이 메서드는 내부 <see cref="IServiceCollection"/>에서 새로운 <see cref="IServiceProvider"/>를 생성합니다.
+    /// <c>new HiveServiceBuilder()</c>로 생성한 경우, 호스트 DI 컨테이너와 격리된 별도 컨테이너가 만들어집니다.
+    /// </para>
+    /// <para>
+    /// <c>AddHiveServiceCore()</c> 확장 메서드를 통해 생성한 빌더와 혼용하지 마세요.
+    /// 두 경로를 동시에 사용하면 독립된 <see cref="IHiveService"/> 인스턴스가 생겨 레지스트리 불일치가 발생합니다.
+    /// </para>
+    /// </remarks>
     public IHiveService Build()
     {
         var provider = Services.BuildServiceProvider();

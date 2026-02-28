@@ -18,6 +18,9 @@ public class SequentialOrchestrator : OrchestratorBase
 {
     private new SequentialOrchestratorOptions Options => (SequentialOrchestratorOptions)base.Options;
 
+    /// <inheritdoc />
+    public override bool SupportsRealTimeStreaming => true;
+
     public SequentialOrchestrator(SequentialOrchestratorOptions? options = null)
         : base(options ?? new SequentialOrchestratorOptions())
     {
@@ -240,7 +243,7 @@ public class SequentialOrchestrator : OrchestratorBase
                     using var agentCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
                     agentCts.CancelAfter(Options.AgentTimeout);
 
-                    await foreach (var chunk in agent.InvokeStreamingAsync(input, agentCts.Token).ConfigureAwait(false))
+                    await foreach (var chunk in ExecuteAgentStreamingAsync(agent, input, agentCts.Token).ConfigureAwait(false))
                     {
                         // 실시간으로 MessageDelta 이벤트 발행
                         await writer.WriteAsync(new OrchestrationStreamEvent

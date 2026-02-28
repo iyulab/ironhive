@@ -548,4 +548,11 @@ public class ParallelOrchestratorTests
     }
 
     #endregion
+
+    [Fact]
+    public void SupportsRealTimeStreaming_ReturnsFalse()
+    {
+        var orch = new ParallelOrchestrator();
+        orch.SupportsRealTimeStreaming.Should().BeFalse();
+    }
 }

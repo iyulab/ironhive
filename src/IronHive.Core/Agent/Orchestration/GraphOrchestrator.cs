@@ -32,6 +32,9 @@ public class GraphOrchestrator : OrchestratorBase
 
     private new GraphOrchestratorOptions Options => (GraphOrchestratorOptions)base.Options;
 
+    /// <inheritdoc />
+    public override bool SupportsRealTimeStreaming => true;
+
     internal GraphOrchestrator(
         GraphOrchestratorOptions options,
         IReadOnlyDictionary<string, AgentGraphNode> nodes,
@@ -398,7 +401,7 @@ public class GraphOrchestrator : OrchestratorBase
                     using var agentCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
                     agentCts.CancelAfter(Options.AgentTimeout);
 
-                    await foreach (var chunk in node.Agent.InvokeStreamingAsync(nodeInput, agentCts.Token).ConfigureAwait(false))
+                    await foreach (var chunk in ExecuteAgentStreamingAsync(node.Agent, nodeInput, agentCts.Token).ConfigureAwait(false))
                     {
                         await writer.WriteAsync(new OrchestrationStreamEvent
                         {

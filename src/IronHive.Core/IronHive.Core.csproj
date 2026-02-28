@@ -10,6 +10,7 @@
     <PackageReference Include="MessagePack" />
     <PackageReference Include="Microsoft.Data.Sqlite" />
     <PackageReference Include="Microsoft.Extensions.AI.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Resilience" />
     <PackageReference Include="OpenTelemetry.Api" />
     <PackageReference Include="PdfPig" />

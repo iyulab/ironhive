@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Globalization;
-using System.Runtime.CompilerServices;
 using System.Text;
 using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
@@ -103,6 +102,13 @@ public class ParallelOrchestrator : OrchestratorBase
             stopwatch.Stop();
             return OrchestrationResult.Failure(
                 $"Orchestration timed out after {Options.Timeout.TotalSeconds}s",
+                duration: stopwatch.Elapsed);
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            return OrchestrationResult.Failure(
+                $"Parallel orchestration failed: {ex.Message}",
                 duration: stopwatch.Elapsed);
         }
     }
@@ -210,35 +216,8 @@ public class ParallelOrchestrator : OrchestratorBase
     }
 
     /// <inheritdoc />
-    public override async IAsyncEnumerable<OrchestrationStreamEvent> ExecuteStreamingAsync(
+    public override IAsyncEnumerable<OrchestrationStreamEvent> ExecuteStreamingAsync(
         IEnumerable<Message> messages,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        // 병렬 오케스트레이터의 스트리밍은 각 에이전트 실행의 시작/완료 이벤트만 제공
-        var result = await ExecuteAsync(messages, cancellationToken).ConfigureAwait(false);
-
-        yield return new OrchestrationStreamEvent { EventType = OrchestrationEventType.Started };
-
-        foreach (var step in result.Steps)
-        {
-            yield return new OrchestrationStreamEvent
-            {
-                EventType = step.IsSuccess
-                    ? OrchestrationEventType.AgentCompleted
-                    : OrchestrationEventType.AgentFailed,
-                AgentName = step.AgentName,
-                CompletedResponse = step.Response,
-                Error = step.Error
-            };
-        }
-
-        yield return new OrchestrationStreamEvent
-        {
-            EventType = result.IsSuccess
-                ? OrchestrationEventType.Completed
-                : OrchestrationEventType.Failed,
-            Result = result,
-            Error = result.Error
-        };
-    }
+        CancellationToken cancellationToken = default)
+        => WrapAsStreamAsync(messages, cancellationToken);
 }

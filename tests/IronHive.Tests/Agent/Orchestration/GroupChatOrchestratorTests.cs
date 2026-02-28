@@ -464,4 +464,17 @@ public class GroupChatOrchestratorTests
     }
 
     #endregion
+
+    [Fact]
+    public void SupportsRealTimeStreaming_ReturnsFalse()
+    {
+        var agent = new MockAgent("a") { ResponseFunc = _ => "ok" };
+        var orch = new GroupChatOrchestratorBuilder()
+            .AddAgent(agent)
+            .WithRoundRobin()
+            .TerminateAfterRounds(1)
+            .Build();
+
+        orch.SupportsRealTimeStreaming.Should().BeFalse();
+    }
 }

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
@@ -19,6 +20,12 @@ public abstract class OrchestratorBase : IAgentOrchestrator
 
     /// <inheritdoc />
     public IReadOnlyList<IAgent> Agents => _agents.AsReadOnly();
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// 기본값은 <c>false</c>입니다. 실시간 스트리밍을 지원하는 오케스트레이터는 이 속성을 오버라이드해야 합니다.
+    /// </remarks>
+    public virtual bool SupportsRealTimeStreaming => false;
 
     /// <summary>
     /// 옵션
@@ -247,7 +254,7 @@ public abstract class OrchestratorBase : IAgentOrchestrator
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(Options.AgentTimeout);
 
-        await foreach (var chunk in agent.InvokeStreamingAsync(messages, cts.Token).ConfigureAwait(false))
+        await foreach (var chunk in InvokeStreamingWithMiddlewaresAsync(agent, messages, cts.Token).ConfigureAwait(false))
         {
             yield return chunk;
         }
@@ -306,6 +313,42 @@ public abstract class OrchestratorBase : IAgentOrchestrator
     }
 
     /// <summary>
+    /// <see cref="ExecuteAsync"/>를 호출한 후 결과를 스트리밍 이벤트 시퀀스로 래핑합니다.
+    /// <see cref="SupportsRealTimeStreaming"/>이 <c>false</c>인 오케스트레이터에서 사용합니다.
+    /// 실시간 <see cref="OrchestrationEventType.MessageDelta"/> 이벤트는 생성되지 않습니다.
+    /// </summary>
+    protected async IAsyncEnumerable<OrchestrationStreamEvent> WrapAsStreamAsync(
+        IEnumerable<Message> messages,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var result = await ExecuteAsync(messages, cancellationToken).ConfigureAwait(false);
+
+        yield return new OrchestrationStreamEvent { EventType = OrchestrationEventType.Started };
+
+        foreach (var step in result.Steps)
+        {
+            yield return new OrchestrationStreamEvent
+            {
+                EventType = step.IsSuccess
+                    ? OrchestrationEventType.AgentCompleted
+                    : OrchestrationEventType.AgentFailed,
+                AgentName = step.AgentName,
+                CompletedResponse = step.Response,
+                Error = step.Error
+            };
+        }
+
+        yield return new OrchestrationStreamEvent
+        {
+            EventType = result.IsSuccess
+                ? OrchestrationEventType.Completed
+                : OrchestrationEventType.Failed,
+            Result = result,
+            Error = result.Error
+        };
+    }
+
+    /// <summary>
     /// 미들웨어 체인을 거쳐 에이전트를 실행합니다.
     /// </summary>
     private async Task<MessageResponse> InvokeWithMiddlewaresAsync(
@@ -331,5 +374,33 @@ public abstract class OrchestratorBase : IAgentOrchestrator
         }
 
         return await pipeline(messages).ConfigureAwait(false);
+    }
+
+    private IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingWithMiddlewaresAsync(
+        IAgent agent,
+        IEnumerable<Message> messages,
+        CancellationToken cancellationToken)
+    {
+        var streamingMiddlewares = Options.AgentMiddlewares?
+            .OfType<IStreamingAgentMiddleware>()
+            .ToList();
+
+        if (streamingMiddlewares == null || streamingMiddlewares.Count == 0)
+        {
+            return agent.InvokeStreamingAsync(messages, cancellationToken);
+        }
+
+        // 스트리밍 미들웨어 체인 구성: 마지막 미들웨어부터 역순으로 래핑
+        Func<IEnumerable<Message>, IAsyncEnumerable<StreamingMessageResponse>> pipeline =
+            msgs => agent.InvokeStreamingAsync(msgs, cancellationToken);
+
+        for (var i = streamingMiddlewares.Count - 1; i >= 0; i--)
+        {
+            var middleware = streamingMiddlewares[i];
+            var next = pipeline;
+            pipeline = msgs => middleware.InvokeStreamingAsync(agent, msgs, next, cancellationToken);
+        }
+
+        return pipeline(messages);
     }
 }

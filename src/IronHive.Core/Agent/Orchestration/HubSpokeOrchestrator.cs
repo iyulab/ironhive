@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using System.Globalization;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
@@ -15,7 +15,7 @@ namespace IronHive.Core.Agent.Orchestration;
 /// Hub-Spoke 패턴 오케스트레이터입니다.
 /// 중앙 Hub 에이전트가 작업을 분배하고 Spoke 에이전트들의 결과를 조율합니다.
 /// </summary>
-public class HubSpokeOrchestrator : OrchestratorBase
+public partial class HubSpokeOrchestrator : OrchestratorBase
 {
     private static readonly JsonSerializerOptions s_caseInsensitiveJsonOptions = new()
     {
@@ -121,6 +121,16 @@ public class HubSpokeOrchestrator : OrchestratorBase
                 // Hub 응답 파싱
                 var hubResponse = ParseHubResponse(hubInstruction.Response);
 
+                if (hubResponse.Error != null)
+                {
+                    await SaveCheckpointAsync(steps, currentMessages, cts.Token).ConfigureAwait(false);
+                    stopwatch.Stop();
+                    return OrchestrationResult.Failure(
+                        hubResponse.Error,
+                        steps,
+                        stopwatch.Elapsed);
+                }
+
                 if (hubResponse.IsComplete)
                 {
                     // Hub가 완료를 선언
@@ -187,6 +197,14 @@ public class HubSpokeOrchestrator : OrchestratorBase
                 steps,
                 stopwatch.Elapsed);
         }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            return OrchestrationResult.Failure(
+                $"HubSpoke orchestration failed: {ex.Message}",
+                steps,
+                stopwatch.Elapsed);
+        }
     }
 
     private async Task<AgentStepResult> GetHubInstructionAsync(
@@ -201,7 +219,7 @@ public class HubSpokeOrchestrator : OrchestratorBase
         if (round > 0 && previousSteps.Count > 0)
         {
             // 이전 라운드 결과 요약 추가
-            var summaryContent = BuildPreviousRoundSummary(previousSteps, round);
+            var summaryContent = BuildPreviousRoundSummary(previousSteps, round, _hubAgent!.Name);
             hubMessages.Add(new UserMessage
             {
                 Content = [new TextMessageContent { Value = summaryContent }]
@@ -331,12 +349,21 @@ public class HubSpokeOrchestrator : OrchestratorBase
         return sb.ToString();
     }
 
-    private static string BuildPreviousRoundSummary(List<AgentStepResult> steps, int round)
+    private static string BuildPreviousRoundSummary(List<AgentStepResult> steps, int round, string hubAgentName)
     {
         var sb = new StringBuilder();
         sb.AppendLine(CultureInfo.InvariantCulture, $"=== Previous Round {round} Results ===");
 
-        foreach (var step in steps.TakeLast(steps.Count / round))
+        // Find the last hub step — all subsequent steps are the previous round's spoke results.
+        // This correctly handles varying numbers of spoke tasks per round,
+        // unlike the previous steps.Count / round calculation which shrunk the window over time.
+        var lastHubIndex = steps.FindLastIndex(s =>
+            string.Equals(s.AgentName, hubAgentName, StringComparison.OrdinalIgnoreCase));
+        var previousRoundSteps = lastHubIndex >= 0
+            ? steps.Skip(lastHubIndex + 1)
+            : steps.AsEnumerable();
+
+        foreach (var step in previousRoundSteps)
         {
             sb.AppendLine(CultureInfo.InvariantCulture, $"Agent: {step.AgentName}");
             sb.AppendLine(CultureInfo.InvariantCulture, $"Success: {step.IsSuccess}");
@@ -422,15 +449,21 @@ public class HubSpokeOrchestrator : OrchestratorBase
             return new HubResponseParsed { IsComplete = true };
         }
 
+        // 코드 블록 내용 추출 (```json ... ``` 형태)
+        var codeBlockMatch = CodeBlockRegex().Match(content);
+        var textToSearch = codeBlockMatch.Success
+            ? codeBlockMatch.Groups[1].Value
+            : content;
+
         try
         {
             // JSON 블록 추출 시도
-            var jsonStart = content.IndexOf('{');
-            var jsonEnd = content.LastIndexOf('}');
+            var jsonStart = textToSearch.IndexOf('{');
+            var jsonEnd = textToSearch.LastIndexOf('}');
 
             if (jsonStart >= 0 && jsonEnd > jsonStart)
             {
-                var json = content.Substring(jsonStart, jsonEnd - jsonStart + 1);
+                var json = textToSearch.Substring(jsonStart, jsonEnd - jsonStart + 1);
                 var parsed = JsonSerializer.Deserialize<HubResponseJson>(json, s_caseInsensitiveJsonOptions);
 
                 if (parsed != null)
@@ -447,51 +480,33 @@ public class HubSpokeOrchestrator : OrchestratorBase
                 }
             }
         }
-        catch (JsonException)
+        catch (JsonException ex)
         {
-            // JSON 파싱 실패 시 완료로 간주
-        }
-
-        return new HubResponseParsed { IsComplete = true };
-    }
-
-    /// <inheritdoc />
-    public override async IAsyncEnumerable<OrchestrationStreamEvent> ExecuteStreamingAsync(
-        IEnumerable<Message> messages,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        // Hub-Spoke 패턴은 복잡한 상호작용이 필요하므로
-        // 스트리밍 버전은 각 단계의 시작/완료 이벤트만 제공
-        var result = await ExecuteAsync(messages, cancellationToken).ConfigureAwait(false);
-
-        yield return new OrchestrationStreamEvent { EventType = OrchestrationEventType.Started };
-
-        foreach (var step in result.Steps)
-        {
-            yield return new OrchestrationStreamEvent
+            return new HubResponseParsed
             {
-                EventType = step.IsSuccess
-                    ? OrchestrationEventType.AgentCompleted
-                    : OrchestrationEventType.AgentFailed,
-                AgentName = step.AgentName,
-                CompletedResponse = step.Response,
-                Error = step.Error
+                IsComplete = false,
+                Error = $"Failed to parse hub response JSON: {ex.Message}"
             };
         }
 
-        yield return new OrchestrationStreamEvent
+        // JSON을 찾을 수 없는 경우 에러 반환
+        return new HubResponseParsed
         {
-            EventType = result.IsSuccess
-                ? OrchestrationEventType.Completed
-                : OrchestrationEventType.Failed,
-            Result = result,
-            Error = result.Error
+            IsComplete = false,
+            Error = "Hub response does not contain valid JSON"
         };
     }
+
+    /// <inheritdoc />
+    public override IAsyncEnumerable<OrchestrationStreamEvent> ExecuteStreamingAsync(
+        IEnumerable<Message> messages,
+        CancellationToken cancellationToken = default)
+        => WrapAsStreamAsync(messages, cancellationToken);
 
     private sealed class HubResponseParsed
     {
         public bool IsComplete { get; init; }
+        public string? Error { get; init; }
         public List<SpokeTask> Tasks { get; init; } = [];
     }
 
@@ -512,4 +527,8 @@ public class HubSpokeOrchestrator : OrchestratorBase
         public string? Agent { get; set; }
         public string? Instruction { get; set; }
     }
+
+    // 코드 블록: ```json ... ``` 또는 ``` ... ```
+    [GeneratedRegex(@"```(?:json)?\s*(\{[^`]*\})\s*```", RegexOptions.Singleline)]
+    private static partial Regex CodeBlockRegex();
 }

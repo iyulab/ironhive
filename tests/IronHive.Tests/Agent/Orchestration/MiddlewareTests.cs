@@ -342,6 +342,35 @@ public class MiddlewareTests
         events.Should().NotBeEmpty();
     }
 
+    [Fact]
+    public async Task StreamingMiddleware_InOrchestrator_ShouldApplyToStreamingPath()
+    {
+        // Arrange: SequentialOrchestrator의 스트리밍 경로에서 스트리밍 미들웨어가 적용되는지 검증
+        var logs = new List<string>();
+        var middleware = new LoggingMiddleware(msg => logs.Add(msg));
+
+        var agent = new MockAgent("a1") { ResponseFunc = _ => "output" };
+
+        var orch = new SequentialOrchestrator(new SequentialOrchestratorOptions
+        {
+            PassOutputAsInput = true,
+            AgentMiddlewares = [middleware]
+        });
+        orch.AddAgent(agent);
+
+        // Act: 스트리밍 실행
+        var events = new List<OrchestrationStreamEvent>();
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("hello")))
+        {
+            events.Add(evt);
+        }
+
+        // Assert: 스트리밍 미들웨어 로그가 남아야 함
+        events.Should().Contain(e => e.EventType == OrchestrationEventType.Completed);
+        logs.Should().Contain(l => l.Contains("streaming", StringComparison.OrdinalIgnoreCase),
+            "스트리밍 미들웨어가 오케스트레이터 스트리밍 경로에서 실행되어야 합니다");
+    }
+
     #endregion
 
     #region CachingMiddleware Tests

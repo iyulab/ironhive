@@ -234,7 +234,7 @@ public class HubSpokeOrchestratorTests
     }
 
     [Fact]
-    public async Task Execute_HubReturnsInvalidJson_TreatedAsComplete()
+    public async Task Execute_HubReturnsInvalidJson_TreatedAsFailure()
     {
         var hub = new MockAgent("hub")
         {
@@ -252,8 +252,64 @@ public class HubSpokeOrchestratorTests
 
         var result = await orch.ExecuteAsync(MakeUserMessages("input"));
 
-        // Invalid JSON is treated as complete
+        // Invalid JSON is treated as a parse failure
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("does not contain valid JSON");
+        result.Steps.Should().HaveCount(1); // only hub
+    }
+
+    [Fact]
+    public async Task Execute_HubReturnsJsonInCodeFence_ParsedCorrectly()
+    {
+        var hubCallCount = 0;
+        var hub = new MockAgent("hub")
+        {
+            ResponseFunc = _ =>
+            {
+                hubCallCount++;
+                if (hubCallCount == 1)
+                    return "Here is my plan:\n```json\n{\"complete\": false, \"tasks\": [{\"agent\": \"worker\", \"instruction\": \"do work\"}]}\n```";
+                return "```json\n{\"complete\": true}\n```";
+            }
+        };
+        var worker = new MockAgent("worker")
+        {
+            Description = "Worker",
+            ResponseFunc = _ => "done"
+        };
+
+        var orch = new HubSpokeOrchestrator();
+        orch.SetHubAgent(hub);
+        orch.AddSpokeAgent(worker);
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+
         result.IsSuccess.Should().BeTrue();
+        // Steps: hub(round1) + spoke(worker) + hub(round2)
+        result.Steps.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public async Task Execute_HubReturnsMalformedJson_ReturnsFailureWithError()
+    {
+        var hub = new MockAgent("hub")
+        {
+            ResponseFunc = _ => "{\"complete\": invalid_value}"
+        };
+        var spoke = new MockAgent("worker")
+        {
+            Description = "Worker",
+            ResponseFunc = _ => "ok"
+        };
+
+        var orch = new HubSpokeOrchestrator();
+        orch.SetHubAgent(hub);
+        orch.AddSpokeAgent(spoke);
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("Failed to parse hub response JSON");
         result.Steps.Should().HaveCount(1); // only hub
     }
 
@@ -572,4 +628,11 @@ public class HubSpokeOrchestratorTests
     }
 
     #endregion
+
+    [Fact]
+    public void SupportsRealTimeStreaming_ReturnsFalse()
+    {
+        var orch = new HubSpokeOrchestrator();
+        orch.SupportsRealTimeStreaming.Should().BeFalse();
+    }
 }

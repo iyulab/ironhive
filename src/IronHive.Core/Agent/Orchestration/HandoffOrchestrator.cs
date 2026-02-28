@@ -94,85 +94,80 @@ public partial class HandoffOrchestrator : OrchestratorBase
                         stopwatch.Elapsed);
                 }
 
-                // 시스템 프롬프트에 handoff 정보 주입
-                var originalPrompt = currentAgent.Instructions;
-                InjectHandoffInstructions(currentAgent, currentAgentName);
+                // handoff 지시사항을 메시지에 주입 (에이전트 상태 변경 없음 — 스레드 안전)
+                var handoffText = BuildHandoffInstructionText(currentAgentName);
+                var agentMessages = handoffText != null
+                    ? PrependHandoffInstructions(conversationHistory, handoffText)
+                    : conversationHistory;
 
-                try
+                var step = await ExecuteAgentAsync(currentAgent, agentMessages, cts.Token)
+                    .ConfigureAwait(false);
+                steps.Add(step);
+
+                if (!step.IsSuccess)
                 {
-                    var step = await ExecuteAgentAsync(currentAgent, conversationHistory, cts.Token)
-                        .ConfigureAwait(false);
-                    steps.Add(step);
-
-                    if (!step.IsSuccess)
+                    if (Options.StopOnAgentFailure)
                     {
-                        if (Options.StopOnAgentFailure)
-                        {
-                            await SaveCheckpointAsync(steps, conversationHistory, cts.Token).ConfigureAwait(false);
-                            return OrchestrationResult.Failure(
-                                step.Error ?? $"Agent '{currentAgentName}' failed.",
-                                steps, stopwatch.Elapsed);
-                        }
-                        break;
-                    }
-
-                    // 응답을 대화 히스토리에 추가
-                    var responseMessage = ExtractMessage(step.Response);
-                    if (responseMessage != null)
-                    {
-                        conversationHistory.Add(responseMessage);
-                    }
-
-                    // handoff 감지
-                    var responseText = GetResponseText(step.Response);
-                    var handoff = ParseHandoff(responseText);
-
-                    if (handoff != null)
-                    {
-                        // 유효한 handoff 대상인지 확인
-                        if (!_agentMap.ContainsKey(handoff.Value.TargetAgent))
-                        {
-                            return OrchestrationResult.Failure(
-                                $"Handoff target '{handoff.Value.TargetAgent}' not found.",
-                                steps, stopwatch.Elapsed);
-                        }
-
-                        // 컨텍스트가 있으면 대화 히스토리에 추가
-                        if (!string.IsNullOrEmpty(handoff.Value.Context))
-                        {
-                            conversationHistory.Add(new UserMessage
-                            {
-                                Content = [new TextMessageContent { Value = handoff.Value.Context }]
-                            });
-                        }
-
-                        currentAgentName = handoff.Value.TargetAgent;
-                        transitionCount++;
-
-                        // 전환 후 체크포인트 저장
                         await SaveCheckpointAsync(steps, conversationHistory, cts.Token).ConfigureAwait(false);
-                        continue;
+                        return OrchestrationResult.Failure(
+                            step.Error ?? $"Agent '{currentAgentName}' failed.",
+                            steps, stopwatch.Elapsed);
                     }
-
-                    // handoff 없음
-                    if (Options.NoHandoffHandler != null)
-                    {
-                        var followUp = await Options.NoHandoffHandler(currentAgentName, step)
-                            .ConfigureAwait(false);
-                        if (followUp != null)
-                        {
-                            conversationHistory.Add(followUp);
-                            continue;
-                        }
-                    }
-
-                    // 종료
                     break;
                 }
-                finally
+
+                // 응답을 대화 히스토리에 추가
+                var responseMessage = ExtractMessage(step.Response);
+                if (responseMessage != null)
                 {
-                    currentAgent.Instructions = originalPrompt;
+                    conversationHistory.Add(responseMessage);
                 }
+
+                // handoff 감지
+                var responseText = GetResponseText(step.Response);
+                var handoff = ParseHandoff(responseText);
+
+                if (handoff != null)
+                {
+                    // 유효한 handoff 대상인지 확인
+                    if (!_agentMap.ContainsKey(handoff.Value.TargetAgent))
+                    {
+                        return OrchestrationResult.Failure(
+                            $"Handoff target '{handoff.Value.TargetAgent}' not found.",
+                            steps, stopwatch.Elapsed);
+                    }
+
+                    // 컨텍스트가 있으면 대화 히스토리에 추가
+                    if (!string.IsNullOrEmpty(handoff.Value.Context))
+                    {
+                        conversationHistory.Add(new UserMessage
+                        {
+                            Content = [new TextMessageContent { Value = handoff.Value.Context }]
+                        });
+                    }
+
+                    currentAgentName = handoff.Value.TargetAgent;
+                    transitionCount++;
+
+                    // 전환 후 체크포인트 저장
+                    await SaveCheckpointAsync(steps, conversationHistory, cts.Token).ConfigureAwait(false);
+                    continue;
+                }
+
+                // handoff 없음
+                if (Options.NoHandoffHandler != null)
+                {
+                    var followUp = await Options.NoHandoffHandler(currentAgentName, step)
+                        .ConfigureAwait(false);
+                    if (followUp != null)
+                    {
+                        conversationHistory.Add(followUp);
+                        continue;
+                    }
+                }
+
+                // 종료
+                break;
             }
 
             stopwatch.Stop();
@@ -263,15 +258,15 @@ public partial class HandoffOrchestrator : OrchestratorBase
         };
     }
 
-    private void InjectHandoffInstructions(IAgent agent, string agentName)
+    private string? BuildHandoffInstructionText(string agentName)
     {
         if (!_handoffMap.TryGetValue(agentName, out var targets) || targets.Count == 0)
-            return;
+            return null;
 
         var handoffInfo = string.Join("\n", targets.Select(t =>
             $"- \"{t.AgentName}\": {t.Description ?? "No description"}"));
 
-        var instruction = $$"""
+        return $$"""
 
             [HANDOFF INSTRUCTIONS - IMPORTANT]
             When you need another agent's expertise, you MUST hand off by responding with ONLY this JSON format:
@@ -288,8 +283,21 @@ public partial class HandoffOrchestrator : OrchestratorBase
             Example handoff response (when math expertise is needed):
             {"handoff_to": "math-expert", "context": "User asked about calculus derivatives"}
             """;
+    }
 
-        agent.Instructions = (agent.Instructions ?? "") + instruction;
+    private static List<Message> PrependHandoffInstructions(
+        List<Message> messages,
+        string handoffInstructions)
+    {
+        var result = new List<Message>(messages.Count + 1)
+        {
+            new UserMessage
+            {
+                Content = [new TextMessageContent { Value = handoffInstructions }]
+            }
+        };
+        result.AddRange(messages);
+        return result;
     }
 
     private static string GetResponseText(MessageResponse? response)

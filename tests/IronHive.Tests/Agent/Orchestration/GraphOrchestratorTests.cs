@@ -756,4 +756,17 @@ public class GraphOrchestratorTests
     }
 
     #endregion
+
+    [Fact]
+    public void SupportsRealTimeStreaming_ReturnsTrue()
+    {
+        var agent = new MockAgent("a") { ResponseFunc = _ => "ok" };
+        var orch = new GraphOrchestratorBuilder()
+            .AddNode("a", agent)
+            .SetStartNode("a")
+            .SetOutputNode("a")
+            .Build();
+
+        orch.SupportsRealTimeStreaming.Should().BeTrue();
+    }
 }

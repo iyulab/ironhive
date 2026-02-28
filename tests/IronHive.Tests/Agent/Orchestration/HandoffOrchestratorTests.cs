@@ -361,6 +361,125 @@ public class HandoffOrchestratorTests
 
     #region Helpers
 
+
+    [Fact]
+    public async Task Execute_DoesNotMutateAgentInstructions()
+    {
+        // Arrange: 에이전트의 원본 Instructions가 변경되지 않아야 함
+        const string originalInstructions = "You are a helpful triage agent.";
+        var triage = new MockAgent("triage")
+        {
+            Instructions = originalInstructions,
+            ResponseFunc = _ => "I can help you directly!"
+        };
+
+        var billing = new MockAgent("billing") { Instructions = "Billing agent" };
+
+        var orch = new HandoffOrchestratorBuilder()
+            .AddAgent(triage,
+                new HandoffTarget { AgentName = "billing", Description = "Billing issues" })
+            .AddAgent(billing,
+                new HandoffTarget { AgentName = "triage", Description = "Triage" })
+            .SetInitialAgent("triage")
+            .Build();
+
+        // Act
+        var result = await orch.ExecuteAsync(MakeUserMessages("test"));
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        triage.Instructions.Should().Be(originalInstructions,
+            "에이전트의 Instructions는 오케스트레이션 후에도 변경되면 안 됩니다");
+        billing.Instructions.Should().Be("Billing agent");
+    }
+
+    [Fact]
+    public async Task Execute_ConcurrentExecution_InstructionsNotCorrupted()
+    {
+        // Arrange: 동일 에이전트 인스턴스를 여러 오케스트레이터에서 동시 실행
+        const string originalInstructions = "Shared agent instructions";
+        var callCount = 0;
+
+        var sharedAgent = new MockAgent("agent")
+        {
+            Instructions = originalInstructions,
+            ResponseFuncAsync = async msgs =>
+            {
+                Interlocked.Increment(ref callCount);
+                await Task.Delay(50); // 동시 실행 시 overlap 유도
+                return "Done";
+            }
+        };
+
+        var orch1 = new HandoffOrchestratorBuilder()
+            .AddAgent(sharedAgent, new HandoffTarget { AgentName = "other", Description = "Other" })
+            .AddAgent(new MockAgent("other"), new HandoffTarget { AgentName = "agent", Description = "Agent" })
+            .SetInitialAgent("agent")
+            .Build();
+
+        var orch2 = new HandoffOrchestratorBuilder()
+            .AddAgent(sharedAgent, new HandoffTarget { AgentName = "other2", Description = "Other2" })
+            .AddAgent(new MockAgent("other2"), new HandoffTarget { AgentName = "agent", Description = "Agent" })
+            .SetInitialAgent("agent")
+            .Build();
+
+        // Act: 동시 실행
+        var tasks = new[]
+        {
+            orch1.ExecuteAsync(MakeUserMessages("request 1")),
+            orch2.ExecuteAsync(MakeUserMessages("request 2"))
+        };
+        var results = await Task.WhenAll(tasks);
+
+        // Assert: 모든 실행 성공하고 Instructions 불변
+        results.Should().AllSatisfy(r => r.IsSuccess.Should().BeTrue());
+        sharedAgent.Instructions.Should().Be(originalInstructions,
+            "동시 실행 후에도 Instructions는 원래 값이어야 합니다");
+        callCount.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Execute_HandoffInstructionsPassedViaMessages()
+    {
+        // Arrange: handoff 지시사항이 메시지로 전달되는지 검증
+        List<Message>? capturedMessages = null;
+
+        var triage = new MockAgent("triage")
+        {
+            ResponseFunc = msgs =>
+            {
+                capturedMessages = msgs.ToList();
+                return """{"handoff_to": "billing", "context": "billing question"}""";
+            }
+        };
+
+        var billing = new MockAgent("billing")
+        {
+            ResponseFunc = _ => "Billing resolved"
+        };
+
+        var orch = new HandoffOrchestratorBuilder()
+            .AddAgent(triage,
+                new HandoffTarget { AgentName = "billing", Description = "Billing issues" })
+            .AddAgent(billing,
+                new HandoffTarget { AgentName = "triage", Description = "Triage" })
+            .SetInitialAgent("triage")
+            .Build();
+
+        // Act
+        await orch.ExecuteAsync(MakeUserMessages("I have a billing question"));
+
+        // Assert: triage 에이전트가 받은 메시지에 handoff 지시사항이 포함되어야 함
+        capturedMessages.Should().NotBeNull();
+        capturedMessages!.Count.Should().BeGreaterThan(1,
+            "handoff 지시사항 메시지가 앞에 추가되어야 합니다");
+        var firstMessage = capturedMessages[0] as UserMessage;
+        firstMessage.Should().NotBeNull();
+        var textContent = firstMessage!.Content.OfType<TextMessageContent>().First();
+        textContent.Value.Should().Contain("HANDOFF INSTRUCTIONS");
+        textContent.Value.Should().Contain("billing");
+    }
+
     private static IEnumerable<Message> MakeUserMessages(string text)
     {
         return [new UserMessage { Content = [new TextMessageContent { Value = text }] }];
@@ -428,4 +547,16 @@ public class HandoffOrchestratorTests
     }
 
     #endregion
+
+    [Fact]
+    public void SupportsRealTimeStreaming_ReturnsFalse()
+    {
+        var agent = new MockAgent("a") { ResponseFunc = _ => "ok" };
+        var orch = new HandoffOrchestratorBuilder()
+            .AddAgent(agent)
+            .SetInitialAgent("a")
+            .Build();
+
+        orch.SupportsRealTimeStreaming.Should().BeFalse();
+    }
 }

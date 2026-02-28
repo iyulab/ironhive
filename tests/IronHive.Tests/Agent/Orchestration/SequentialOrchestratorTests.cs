@@ -628,4 +628,11 @@ public class SequentialOrchestratorTests
     }
 
     #endregion
+
+    [Fact]
+    public void SupportsRealTimeStreaming_ReturnsTrue()
+    {
+        var orch = new SequentialOrchestrator();
+        orch.SupportsRealTimeStreaming.Should().BeTrue();
+    }
 }

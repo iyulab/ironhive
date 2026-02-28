@@ -40,7 +40,20 @@ public interface IAgentOrchestrator
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// 이 오케스트레이터가 실시간 스트리밍을 지원하는지 여부를 나타냅니다.
+    /// <c>true</c>이면 <see cref="ExecuteStreamingAsync"/>가 에이전트 실행 중 실시간으로 이벤트를 전달합니다.
+    /// <c>false</c>이면 <see cref="ExecuteAsync"/>를 먼저 완료한 후 결과를 이벤트 시퀀스로 래핑합니다.
+    /// </summary>
+    bool SupportsRealTimeStreaming => false;
+
+    /// <summary>
     /// 오케스트레이션을 스트리밍 방식으로 실행합니다.
+    /// <para>
+    /// <see cref="SupportsRealTimeStreaming"/>이 <c>false</c>인 경우,
+    /// 이 메서드는 <see cref="ExecuteAsync"/>를 내부적으로 호출한 후 완료된 결과를
+    /// 이벤트 시퀀스로 변환합니다. 실시간 진행 상황이 필요한 경우
+    /// <see cref="SupportsRealTimeStreaming"/>을 확인하세요.
+    /// </para>
     /// </summary>
     /// <param name="messages">초기 입력 메시지</param>
     /// <param name="cancellationToken">취소 토큰</param>
