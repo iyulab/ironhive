@@ -44,7 +44,7 @@ namespace IronHive.Providers.OpenAI.Payloads.Responses;
 [JsonDerivedType(typeof(StreamingReasoningTextDeltaResponse), "response.reasoning_text.delta")]
 [JsonDerivedType(typeof(StreamingReasoningTextDoneResponse), "response.reasoning_text.done")]
 [JsonDerivedType(typeof(StreamingErrorResponse), "error")]
-public abstract class StreamingResponsesResponse
+public abstract class StreamingResponsesResponse : OpenAIPayloadBase
 {
     [JsonPropertyName("sequence_number")]
     public int SequenceNumber { get; set; }

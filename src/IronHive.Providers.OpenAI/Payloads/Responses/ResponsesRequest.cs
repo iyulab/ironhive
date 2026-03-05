@@ -60,7 +60,7 @@ public class ResponsesRequest : OpenAIPayloadBase
     /// 최대 16개의 키-밸류 쌍을 포함할 수 있는 메타데이터 (선택).
     /// </summary>
     [JsonPropertyName("metadata")]
-    public KeyValuePair<string, string>? Metadata { get; set; }
+    public IDictionary<string, string>? Metadata { get; set; }
 
     /// <summary>
     /// OpenAI 모델 ID

@@ -12,13 +12,37 @@ namespace IronHive.Providers.OpenAI.JsonConverters;
 public class ExtraBodyJsonConverterFactory : JsonConverterFactory
 {
     public override bool CanConvert(Type typeToConvert)
-        => typeof(OpenAIPayloadBase).IsAssignableFrom(typeToConvert)
-        && !typeToConvert.IsAbstract;
+    {
+        // OpenAIPayloadBase를 상속/구현한 concrete 타입만
+        if (!typeof(OpenAIPayloadBase).IsAssignableFrom(typeToConvert) || typeToConvert.IsAbstract)
+            return false;
+
+        // 폴리모픽 스트리밍 이벤트 계열은 제외 (STJ 다형성과 충돌 방지)
+        if (IsPolymorphicFamily(typeToConvert))
+            return false;
+
+        return true;
+    }
 
     public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options)
     {
         var converterType = typeof(ExtraBodyJsonConverter<>).MakeGenericType(typeToConvert);
         return (JsonConverter)Activator.CreateInstance(converterType)!;
+    }
+
+    private static bool IsPolymorphicFamily(Type typeToConvert)
+    {
+        // 자기 자신 + 상속 체인 중 어디든 JsonPolymorphic / JsonDerivedType 있으면 폴리모픽 패밀리로 간주
+        for (var cur = typeToConvert; cur != null && cur != typeof(object); cur = cur.BaseType)
+        {
+            if (Attribute.IsDefined(cur, typeof(JsonPolymorphicAttribute), inherit: false))
+                return true;
+
+            if (cur.GetCustomAttributes(typeof(JsonDerivedTypeAttribute), inherit: false).Length > 0)
+                return true;
+        }
+
+        return false;
     }
 }
 
@@ -65,7 +89,6 @@ internal sealed class ExtraBodyJsonConverter<T> : JsonConverter<T> where T : Ope
     }
 
     // --- Inner options (재귀 방지용, 팩토리 제거된 복사본) ---
-
     private JsonSerializerOptions EnsureInnerOptions(JsonSerializerOptions options)
     {
         if (_innerOptions != null)
@@ -82,7 +105,6 @@ internal sealed class ExtraBodyJsonConverter<T> : JsonConverter<T> where T : Ope
     }
 
     // --- Write helpers ---
-
     private static void DeepMerge(JsonObject target, JsonObject source)
     {
         foreach (var kvp in source)
@@ -101,7 +123,6 @@ internal sealed class ExtraBodyJsonConverter<T> : JsonConverter<T> where T : Ope
     }
 
     // --- Read helpers ---
-
     private static JsonObject? ExtractUnknownProperties(
         JsonElement element, Type targetType, JsonSerializerOptions options)
     {

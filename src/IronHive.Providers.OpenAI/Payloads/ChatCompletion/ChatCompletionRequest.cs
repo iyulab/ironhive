@@ -42,7 +42,7 @@ public class ChatCompletionRequest : OpenAIPayloadBase
     /// (Not Use)
     /// </summary>
     [JsonPropertyName("metadata")]
-    public KeyValuePair<string, string>? Metadata { get; set; }
+    public IDictionary<string, string>? Metadata { get; set; }
 
     /// <summary>
     /// (Not Use) output content type default is ["text"], audio model can ["text", "audio"]
