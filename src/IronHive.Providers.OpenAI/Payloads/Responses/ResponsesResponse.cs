@@ -64,7 +64,7 @@ public class ResponsesResponse: OpenAIPayloadBase
     /// 최대 16개의 키-값 쌍 데이터
     /// </summary>
     [JsonPropertyName("metadata")]
-    public KeyValuePair<string, string>? Metadata { get; set; }
+    public Dictionary<string, string>? Metadata { get; set; }
 
     /// <summary>
     /// 사용된 모델 식별자
