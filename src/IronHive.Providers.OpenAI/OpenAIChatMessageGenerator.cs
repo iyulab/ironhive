@@ -43,6 +43,16 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
         var choice = res.Choices?.FirstOrDefault();
         var content = new List<MessageContent>();
 
+        // reasoning_content (structured thinking from Qwen3, DeepSeek, etc.)
+        var reasoning = choice?.Message?.ReasoningContent;
+        if (!string.IsNullOrWhiteSpace(reasoning))
+        {
+            content.Add(new ThinkingMessageContent
+            {
+                Value = reasoning
+            });
+        }
+
         // 텍스트 생성
         var text = choice?.Message?.Content;
 
@@ -179,6 +189,58 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
             var delta = choice.Delta;
             if (delta == null)
                 continue;
+
+            // reasoning_content (structured thinking from Qwen3, DeepSeek, etc.)
+            var reasoning = delta.ReasoningContent;
+            if (reasoning != null)
+            {
+                if (current.HasValue)
+                {
+                    var (index, content) = current.Value;
+                    if (content is ThinkingMessageContent)
+                    {
+                        await foreach (var rr in OnStreamingGenerate(res, new StreamingContentDeltaResponse
+                        {
+                            Index = index,
+                            Delta = new ThinkingDeltaContent { Data = reasoning }
+                        }))
+                        {
+                            yield return rr;
+                        }
+                    }
+                    else
+                    {
+                        await foreach (var rr in OnStreamingGenerate(res, new StreamingContentCompletedResponse
+                        {
+                            Index = index,
+                        }))
+                        {
+                            yield return rr;
+                        }
+                        current = (index + 1, new ThinkingMessageContent { Value = reasoning });
+                        await foreach (var rr in OnStreamingGenerate(res, new StreamingContentAddedResponse
+                        {
+                            Index = current.Value.Item1,
+                            Content = current.Value.Item2
+                        }))
+                        {
+                            yield return rr;
+                        }
+                    }
+                }
+                else
+                {
+                    current = (0, new ThinkingMessageContent { Value = reasoning });
+                    await foreach (var rr in OnStreamingGenerate(res, new StreamingContentAddedResponse
+                    {
+                        Index = current.Value.Item1,
+                        Content = current.Value.Item2
+                    }))
+                    {
+                        yield return rr;
+                    }
+                }
+            }
 
             // 툴 사용
             var tools = delta.ToolCalls;

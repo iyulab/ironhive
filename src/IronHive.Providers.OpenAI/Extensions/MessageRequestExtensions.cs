@@ -246,7 +246,7 @@ public static class MessageRequestExtensions
                                 Function = new ChatFunctionToolCall.FunctionSchema
                                 {
                                     Name = tool.Name,
-                                    Arguments = tool.Input
+                                    Arguments = tool.Input ?? "{}"
                                 }
                             });
 
@@ -273,9 +273,15 @@ public static class MessageRequestExtensions
             }
         }
 
+        // Detect open-source thinking models (Qwen3, DeepSeek-R1, etc.)
+        var modelLower = request.Model?.ToLowerInvariant() ?? "";
+        var isThinkingModel = modelLower.Contains("thinking") ||
+                              modelLower.Contains("deepseek-r1") ||
+                              modelLower.StartsWith("qwq", StringComparison.Ordinal);
+
         return new ChatCompletionRequest
         {
-            Model = request.Model,
+            Model = request.Model!,
             Messages = messages,
             MaxCompletionTokens = request.MaxTokens,
             Tools = request.Tools?.Select(t => new ChatFunctionTool
@@ -294,6 +300,7 @@ public static class MessageRequestExtensions
                 MessageThinkingEffort.High => ChatReasoningEffort.High,
                 _ => null
             } : null,
+            EnableThinking = isThinkingModel ? true : null,
             Temperature = !enabledReasoning ? request.Temperature : null,
             TopP = !enabledReasoning ? request.TopP : null,
         };

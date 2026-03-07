@@ -160,6 +160,14 @@ public class ChatCompletionRequest : OpenAIPayloadBase
 
     [JsonPropertyName("web_search_options")]
     public ChatWebSearchOptions? WebSearchOptions { get; set; }
+
+    /// <summary>
+    /// Enables structured thinking output for reasoning models (Qwen3, DeepSeek, etc.).
+    /// When true, the model returns thinking in a separate <c>reasoning_content</c> field
+    /// instead of inline <c>&lt;think&gt;</c> tags.
+    /// </summary>
+    [JsonPropertyName("enable_thinking")]
+    public bool? EnableThinking { get; set; }
 }
 
 public class ChatCompletionStreamOptions

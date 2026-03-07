@@ -205,14 +205,25 @@ public class ChatClientAdapter : IChatClient
 
             case StreamingContentDeltaResponse delta:
                 var contents = new List<AIContent>();
+                AdditionalPropertiesDictionary? updateProps = null;
                 if (delta.Delta is TextDeltaContent textDelta)
                 {
                     contents.Add(new TextContent(textDelta.Value));
                 }
+                else if (delta.Delta is ThinkingDeltaContent thinkingDelta)
+                {
+                    // Signal thinking content via AdditionalProperties so ThinkingAgentLoop picks it up.
+                    // Key matches IndexThinking.Client.ThinkingChatClient.ThinkingContentKey.
+                    updateProps = new AdditionalPropertiesDictionary
+                    {
+                        ["IndexThinking.ThinkingContent"] = thinkingDelta.Data
+                    };
+                }
                 return new ChatResponseUpdate
                 {
                     ResponseId = completionId,
-                    Contents = contents
+                    Contents = contents,
+                    AdditionalProperties = updateProps
                 };
 
             case StreamingMessageDoneResponse done:
