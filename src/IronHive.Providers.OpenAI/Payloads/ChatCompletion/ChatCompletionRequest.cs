@@ -162,7 +162,7 @@ public class ChatCompletionRequest : OpenAIPayloadBase
     public ChatWebSearchOptions? WebSearchOptions { get; set; }
 
     /// <summary>
-    /// Enables structured thinking output for reasoning models (Qwen3, DeepSeek, etc.).
+    /// Enables structured thinking output for models that support it.
     /// When true, the model returns thinking in a separate <c>reasoning_content</c> field
     /// instead of inline <c>&lt;think&gt;</c> tags.
     /// </summary>

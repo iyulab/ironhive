@@ -273,12 +273,6 @@ public static class MessageRequestExtensions
             }
         }
 
-        // Detect open-source thinking models (Qwen3, DeepSeek-R1, etc.)
-        var modelLower = request.Model?.ToLowerInvariant() ?? "";
-        var isThinkingModel = modelLower.Contains("thinking") ||
-                              modelLower.Contains("deepseek-r1") ||
-                              modelLower.StartsWith("qwq", StringComparison.Ordinal);
-
         return new ChatCompletionRequest
         {
             Model = request.Model!,
@@ -300,7 +294,7 @@ public static class MessageRequestExtensions
                 MessageThinkingEffort.High => ChatReasoningEffort.High,
                 _ => null
             } : null,
-            EnableThinking = isThinkingModel ? true : null,
+            EnableThinking = request.EnableStructuredThinking,
             Temperature = !enabledReasoning ? request.Temperature : null,
             TopP = !enabledReasoning ? request.TopP : null,
         };

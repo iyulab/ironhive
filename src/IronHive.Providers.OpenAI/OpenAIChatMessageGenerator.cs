@@ -43,7 +43,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
         var choice = res.Choices?.FirstOrDefault();
         var content = new List<MessageContent>();
 
-        // reasoning_content (structured thinking from Qwen3, DeepSeek, etc.)
+        // reasoning_content (structured thinking output from models that support it)
         var reasoning = choice?.Message?.ReasoningContent;
         if (!string.IsNullOrWhiteSpace(reasoning))
         {
@@ -190,7 +190,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
             if (delta == null)
                 continue;
 
-            // reasoning_content (structured thinking from Qwen3, DeepSeek, etc.)
+            // reasoning_content (structured thinking output from models that support it)
             var reasoning = delta.ReasoningContent;
             if (reasoning != null)
             {

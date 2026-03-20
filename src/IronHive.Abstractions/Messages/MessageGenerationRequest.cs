@@ -43,4 +43,11 @@ public class MessageGenerationRequest : MessageGenerationParameters
     /// 설정된 경우 모델의 추론 깊이를 조절할 수 있습니다.
     /// </summary>
     public MessageThinkingEffort? ThinkingEffort { get; set; }
+
+    /// <summary>
+    /// 모델이 구조화된 사고 출력(reasoning_content 분리)을 지원할 때 이를 활성화할지 여부입니다.
+    /// true로 설정하면 모델은 사고 과정을 별도 필드로 분리하여 반환합니다.
+    /// null이면 프로바이더가 자체적으로 판단합니다.
+    /// </summary>
+    public bool? EnableStructuredThinking { get; set; }
 }
