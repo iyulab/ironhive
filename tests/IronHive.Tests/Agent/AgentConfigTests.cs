@@ -1,5 +1,6 @@
 using FluentAssertions;
 using IronHive.Abstractions.Agent;
+using IronHive.Core.Agent;
 
 namespace IronHive.Tests.Agent;
 

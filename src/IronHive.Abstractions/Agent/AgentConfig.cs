@@ -1,6 +1,3 @@
-using IronHive.Abstractions.Messages;
-using IronHive.Abstractions.Tools;
-
 namespace IronHive.Abstractions.Agent;
 
 /// <summary>
@@ -48,52 +45,6 @@ public class AgentConfig
     /// 텍스트 생성 매개변수입니다.
     /// </summary>
     public AgentParametersConfig? Parameters { get; set; }
-
-    /// <summary>
-    /// 설정 유효성을 검증합니다.
-    /// </summary>
-    public void Validate()
-    {
-        if (string.IsNullOrWhiteSpace(Name))
-            throw new ArgumentException("Agent name is required.", nameof(Name));
-        if (string.IsNullOrWhiteSpace(Provider))
-            throw new ArgumentException("Agent provider is required.", nameof(Provider));
-        if (string.IsNullOrWhiteSpace(Model))
-            throw new ArgumentException("Agent model is required.", nameof(Model));
-    }
-
-    /// <summary>
-    /// ToolItem 목록으로 변환합니다.
-    /// </summary>
-    public IEnumerable<ToolItem>? ToToolItems()
-    {
-        if (Tools == null || Tools.Count == 0)
-            return null;
-
-        return Tools.Select(toolName => new ToolItem
-        {
-            Name = toolName,
-            Options = ToolOptions?.GetValueOrDefault(toolName)
-        });
-    }
-
-    /// <summary>
-    /// MessageGenerationParameters로 변환합니다.
-    /// </summary>
-    public MessageGenerationParameters? ToParameters()
-    {
-        if (Parameters == null)
-            return null;
-
-        return new MessageGenerationParameters
-        {
-            MaxTokens = Parameters.MaxTokens,
-            Temperature = Parameters.Temperature,
-            TopP = Parameters.TopP,
-            TopK = Parameters.TopK,
-            StopSequences = Parameters.StopSequences
-        };
-    }
 }
 
 /// <summary>
