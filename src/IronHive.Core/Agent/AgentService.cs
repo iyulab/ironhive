@@ -77,7 +77,8 @@ public class AgentService : IAgentService
         if (string.IsNullOrWhiteSpace(toml))
             throw new ArgumentException("TOML string cannot be null or empty.", nameof(toml));
 
-        var tomlModel = Toml.ToModel(toml);
+        var tomlModel = TomlSerializer.Deserialize<TomlTable>(toml)
+            ?? throw new ArgumentException("Failed to parse TOML string.", nameof(toml));
         var config = ParseTomlToConfig(tomlModel);
 
         return CreateAgentFromConfig(config);
