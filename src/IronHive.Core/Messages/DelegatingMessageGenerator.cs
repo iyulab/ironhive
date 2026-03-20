@@ -1,4 +1,6 @@
-namespace IronHive.Abstractions.Messages;
+using IronHive.Abstractions.Messages;
+
+namespace IronHive.Core.Messages;
 
 /// <summary>
 /// <see cref="IMessageGenerator"/>의 데코레이터 기반 확장을 위한 추상 기반 클래스입니다.

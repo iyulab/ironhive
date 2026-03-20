@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Resilience;
+using IronHive.Core.Messages;
 using Polly;
 
 namespace IronHive.Core.Resilience;
