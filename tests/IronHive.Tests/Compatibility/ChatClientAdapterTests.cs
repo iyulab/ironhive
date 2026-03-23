@@ -2,6 +2,7 @@ using FluentAssertions;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Messages.Roles;
+using IronHive.Abstractions.Tools;
 using IronHive.Core.Compatibility;
 using Microsoft.Extensions.AI;
 using NSubstitute;
@@ -250,6 +251,8 @@ public class ChatClientAdapterTests : IDisposable
         toolContent.Id.Should().Be("call-1");
         toolContent.Name.Should().Be("get_weather");
         toolContent.IsApproved.Should().BeTrue();
+        toolContent.Input.Should().Contain("city");
+        toolContent.Input.Should().Contain("Seoul");
     }
 
     [Fact]
@@ -336,6 +339,8 @@ public class ChatClientAdapterTests : IDisposable
         var fc = msg.Contents.OfType<FunctionCallContent>().Single();
         fc.CallId.Should().Be("tool-1");
         fc.Name.Should().Be("search");
+        fc.Arguments.Should().NotBeNull();
+        fc.Arguments!["query"].Should().Be("test");
     }
 
     [Fact]
@@ -521,15 +526,20 @@ public class ChatClientAdapterTests : IDisposable
     }
 
     [Fact]
-    public async Task GetStreamingResponseAsync_NonTextDelta_ReturnsEmptyContents()
+    public async Task GetStreamingResponseAsync_ToolDeltaWithoutCompletion_ProducesNoOutput()
     {
         var chunks = new List<StreamingMessageResponse>
         {
             new StreamingMessageBeginResponse { Id = "stream-1" },
+            new StreamingContentAddedResponse
+            {
+                Index = 0,
+                Content = new ToolMessageContent { Id = "t-1", Name = "tool", IsApproved = true }
+            },
             new StreamingContentDeltaResponse
             {
                 Index = 0,
-                Delta = new ToolDeltaContent { Input = "{\"key\":" }
+                Delta = new ToolDeltaContent { Input = "{}" }
             }
         };
         SetupStreamingGenerator(chunks);
@@ -541,8 +551,7 @@ public class ChatClientAdapterTests : IDisposable
             updates.Add(update);
         }
 
-        updates.Should().ContainSingle();
-        updates[0].Contents.OfType<TextContent>().Should().BeEmpty();
+        updates.Should().BeEmpty("incomplete tool call buffer should not emit output");
     }
 
     [Fact]
@@ -567,6 +576,115 @@ public class ChatClientAdapterTests : IDisposable
         }
 
         updates.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetStreamingResponseAsync_ToolCallSequence_EmitsCompleteFunctionCall()
+    {
+        var chunks = new List<StreamingMessageResponse>
+        {
+            new StreamingMessageBeginResponse { Id = "stream-1" },
+            new StreamingContentAddedResponse
+            {
+                Index = 0,
+                Content = new ToolMessageContent { Id = "tool-1", Name = "get_weather", IsApproved = true }
+            },
+            new StreamingContentDeltaResponse
+            {
+                Index = 0,
+                Delta = new ToolDeltaContent { Input = "{\"city\":" }
+            },
+            new StreamingContentDeltaResponse
+            {
+                Index = 0,
+                Delta = new ToolDeltaContent { Input = "\"Seoul\"}" }
+            },
+            new StreamingContentCompletedResponse { Index = 0 }
+        };
+        SetupStreamingGenerator(chunks);
+
+        var messages = new List<ChatMessage> { new(ChatRole.User, "Weather?") };
+        var updates = new List<ChatResponseUpdate>();
+        await foreach (var update in _adapter.GetStreamingResponseAsync(messages))
+        {
+            updates.Add(update);
+        }
+
+        var fcUpdate = updates.Should().ContainSingle().Subject;
+        var fc = fcUpdate.Contents.OfType<FunctionCallContent>().Single();
+        fc.CallId.Should().Be("tool-1");
+        fc.Name.Should().Be("get_weather");
+        fc.Arguments.Should().NotBeNull();
+        fc.Arguments!["city"].Should().Be("Seoul");
+    }
+
+    [Fact]
+    public async Task GetStreamingResponseAsync_ErrorChunk_ThrowsInvalidOperation()
+    {
+        var chunks = new List<StreamingMessageResponse>
+        {
+            new StreamingMessageBeginResponse { Id = "stream-1" },
+            new StreamingMessageErrorResponse { Code = 500, Message = "Internal error" }
+        };
+        SetupStreamingGenerator(chunks);
+
+        var messages = new List<ChatMessage> { new(ChatRole.User, "Hi") };
+
+        var act = async () =>
+        {
+            await foreach (var _ in _adapter.GetStreamingResponseAsync(messages)) { }
+        };
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Internal error*");
+    }
+
+    #endregion
+
+    #region GetResponseAsync — Tool result merging
+
+    [Fact]
+    public async Task GetResponseAsync_FunctionResultContent_MergedIntoToolOutput()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+
+        var functionCall = new FunctionCallContent("call-1", "get_weather",
+            new Dictionary<string, object?> { ["city"] = "Seoul" });
+        var functionResult = new FunctionResultContent("call-1", "22\u00b0C, sunny");
+
+        var messages = new List<ChatMessage>
+        {
+            new(ChatRole.Assistant, [functionCall]),
+            new(ChatRole.Tool, [functionResult])
+        };
+
+        await _adapter.GetResponseAsync(messages);
+
+        var req = capturedRequest();
+        req.Messages.Should().HaveCount(1);
+        var assistantMsg = req.Messages.First().Should().BeOfType<AssistantMessage>().Subject;
+        var toolContent = assistantMsg.Content.OfType<ToolMessageContent>().Single();
+        toolContent.Output.Should().NotBeNull();
+        toolContent.Output!.Result.Should().Be("22\u00b0C, sunny");
+    }
+
+    [Fact]
+    public async Task GetResponseAsync_NullModelInResponse_FallsBackToConfiguredModel()
+    {
+        SetupGeneratorReturns(new MessageResponse
+        {
+            Id = "resp",
+            Message = new AssistantMessage
+            {
+                Model = null,
+                Content = { new TextMessageContent { Value = "ok" } }
+            }
+        });
+
+        var messages = new List<ChatMessage> { new(ChatRole.User, "Hi") };
+        var response = await _adapter.GetResponseAsync(messages);
+
+        response.ModelId.Should().Be("test-model");
     }
 
     #endregion

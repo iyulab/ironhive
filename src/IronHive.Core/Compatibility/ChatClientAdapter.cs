@@ -1,4 +1,6 @@
 using System.Runtime.CompilerServices;
+using System.Text;
+using System.Text.Json;
 using Microsoft.Extensions.AI;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
@@ -60,12 +62,70 @@ public class ChatClientAdapter : IChatClient
         var request = ConvertToRequest(messageList, options);
         string? completionId = null;
 
+        // Buffer tool calls: index -> (callId, name, argumentsJson)
+        var toolCallBuffers = new Dictionary<int, (string CallId, string Name, StringBuilder Arguments)>();
+
         await foreach (var chunk in _generator.GenerateStreamingMessageAsync(request, cancellationToken)
             .ConfigureAwait(false))
         {
-            var update = ConvertToStreamingUpdate(chunk, ref completionId);
-            if (update != null)
-                yield return update;
+            switch (chunk)
+            {
+                case StreamingContentAddedResponse added when added.Content is ToolMessageContent tool:
+                    toolCallBuffers[added.Index] = (
+                        tool.Id ?? Guid.NewGuid().ToString(),
+                        tool.Name ?? string.Empty,
+                        new StringBuilder());
+                    break;
+
+                case StreamingContentDeltaResponse delta when delta.Delta is ToolDeltaContent toolDelta:
+                    if (toolCallBuffers.TryGetValue(delta.Index, out var buffer))
+                    {
+                        buffer.Arguments.Append(toolDelta.Input);
+                    }
+                    break;
+
+                case StreamingContentCompletedResponse completed:
+                    if (toolCallBuffers.TryGetValue(completed.Index, out var completedTool))
+                    {
+                        var argsJson = completedTool.Arguments.ToString();
+                        Dictionary<string, object?>? arguments = null;
+                        if (!string.IsNullOrEmpty(argsJson))
+                        {
+                            var raw = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(argsJson);
+                            if (raw is not null)
+                            {
+                                arguments = [];
+                                foreach (var kvp in raw)
+                                {
+                                    arguments[kvp.Key] = ConvertJsonElement(kvp.Value);
+                                }
+                            }
+                        }
+
+                        yield return new ChatResponseUpdate
+                        {
+                            ResponseId = completionId,
+                            Contents = [new FunctionCallContent(
+                                callId: completedTool.CallId,
+                                name: completedTool.Name,
+                                arguments: arguments)]
+                        };
+                        toolCallBuffers.Remove(completed.Index);
+                    }
+                    break;
+
+                case StreamingMessageErrorResponse error:
+                    throw new InvalidOperationException(
+                        $"Streaming error: {error.Code} - {error.Message}");
+
+                default:
+                    var update = ConvertToStreamingUpdate(chunk, ref completionId);
+                    if (update is not null)
+                    {
+                        yield return update;
+                    }
+                    break;
+            }
         }
     }
 
@@ -89,12 +149,21 @@ public class ChatClientAdapter : IChatClient
         var request = new MessageGenerationRequest
         {
             Model = options?.ModelId ?? _modelId,
-            Messages = [],
-            MaxTokens = options?.MaxOutputTokens,
-            Temperature = options?.Temperature,
-            TopP = options?.TopP,
-            StopSequences = options?.StopSequences?.ToList()
+            Messages = []
         };
+
+        // Collect tool results keyed by callId for merging into assistant messages
+        var toolResults = new Dictionary<string, string>();
+        foreach (var msg in chatMessages)
+        {
+            foreach (var content in msg.Contents)
+            {
+                if (content is FunctionResultContent result && result.CallId is not null)
+                {
+                    toolResults[result.CallId] = result.Result?.ToString() ?? string.Empty;
+                }
+            }
+        }
 
         foreach (var msg in chatMessages)
         {
@@ -104,31 +173,48 @@ public class ChatClientAdapter : IChatClient
             }
             else
             {
-                request.Messages.Add(ConvertMessage(msg));
+                var converted = ConvertMessage(msg, toolResults);
+                if (converted is not null)
+                {
+                    request.Messages.Add(converted);
+                }
             }
         }
 
-        if (options?.Tools is { Count: > 0 })
+        if (options is not null)
         {
-            var adapted = options.Tools.Select(t => (ITool)new AIToolAdapter(t));
-            request.Tools = new ToolCollection(adapted);
+            request.Temperature = options.Temperature;
+            request.MaxTokens = options.MaxOutputTokens;
+            request.TopP = options.TopP;
+            request.StopSequences = options.StopSequences?.ToList();
+
+            if (options.Tools is { Count: > 0 })
+            {
+                var adapted = options.Tools.Select(t => (ITool)new AIToolAdapter(t));
+                request.Tools = new ToolCollection(adapted);
+            }
         }
 
         return request;
     }
 
-    private static Message ConvertMessage(ChatMessage message)
+    private static Message? ConvertMessage(ChatMessage message, Dictionary<string, string> toolResults)
     {
         if (message.Role == ChatRole.User)
         {
             var userMessage = new UserMessage();
+
             foreach (var content in message.Contents)
             {
                 if (content is TextContent textContent)
                 {
-                    userMessage.Content.Add(new TextMessageContent { Value = textContent.Text ?? string.Empty });
+                    userMessage.Content.Add(new TextMessageContent
+                    {
+                        Value = textContent.Text ?? string.Empty
+                    });
                 }
-                else if (content is DataContent dataContent && dataContent.MediaType?.StartsWith("image/", StringComparison.Ordinal) == true)
+                else if (content is DataContent dataContent
+                    && dataContent.MediaType?.StartsWith("image/", StringComparison.Ordinal) == true)
                 {
                     userMessage.Content.Add(new ImageMessageContent
                     {
@@ -137,33 +223,70 @@ public class ChatClientAdapter : IChatClient
                     });
                 }
             }
-            return userMessage;
+
+            if (userMessage.Content.Count == 0 && !string.IsNullOrEmpty(message.Text))
+            {
+                userMessage.Content.Add(new TextMessageContent
+                {
+                    Value = message.Text
+                });
+            }
+
+            return userMessage.Content.Count > 0 ? userMessage : null;
         }
-        else // Assistant
+        else if (message.Role == ChatRole.Assistant)
         {
             var assistantMessage = new AssistantMessage();
+
             foreach (var content in message.Contents)
             {
-                if (content is TextContent textContent)
+                switch (content)
                 {
-                    assistantMessage.Content.Add(new TextMessageContent { Value = textContent.Text ?? string.Empty });
-                }
-                else if (content is FunctionCallContent functionCall)
-                {
-                    assistantMessage.Content.Add(new ToolMessageContent
-                    {
-                        IsApproved = true,
-                        Id = functionCall.CallId ?? Guid.NewGuid().ToString(),
-                        Name = functionCall.Name,
-                        Input = functionCall.Arguments?.ToString()
-                    });
+                    case TextContent textContent:
+                        assistantMessage.Content.Add(new TextMessageContent
+                        {
+                            Value = textContent.Text ?? string.Empty
+                        });
+                        break;
+
+                    case FunctionCallContent functionCall:
+                        var callId = functionCall.CallId ?? Guid.NewGuid().ToString();
+                        var toolMsg = new ToolMessageContent
+                        {
+                            Id = callId,
+                            Name = functionCall.Name,
+                            Input = functionCall.Arguments is not null
+                                ? JsonSerializer.Serialize(functionCall.Arguments)
+                                : "{}",
+                            IsApproved = true
+                        };
+
+                        if (toolResults.TryGetValue(callId, out var result))
+                        {
+                            toolMsg.Output = new ToolOutput(true, result);
+                        }
+
+                        assistantMessage.Content.Add(toolMsg);
+                        break;
                 }
             }
+
+            if (assistantMessage.Content.Count == 0 && !string.IsNullOrEmpty(message.Text))
+            {
+                assistantMessage.Content.Add(new TextMessageContent
+                {
+                    Value = message.Text
+                });
+            }
+
             return assistantMessage;
         }
+
+        // Skip ChatRole.Tool messages — results are merged into assistant messages above
+        return null;
     }
 
-    private static ChatResponse ConvertToResponse(MessageResponse response)
+    private ChatResponse ConvertToResponse(MessageResponse response)
     {
         var contents = new List<AIContent>();
 
@@ -175,12 +298,24 @@ public class ChatClientAdapter : IChatClient
             }
             else if (content is ToolMessageContent toolContent)
             {
+                Dictionary<string, object?>? arguments = null;
+                if (!string.IsNullOrEmpty(toolContent.Input))
+                {
+                    var raw = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(toolContent.Input);
+                    if (raw is not null)
+                    {
+                        arguments = [];
+                        foreach (var kvp in raw)
+                        {
+                            arguments[kvp.Key] = ConvertJsonElement(kvp.Value);
+                        }
+                    }
+                }
+
                 contents.Add(new FunctionCallContent(
                     toolContent.Id,
                     toolContent.Name,
-                    toolContent.Input != null
-                        ? new Dictionary<string, object?> { ["input"] = toolContent.Input }
-                        : null));
+                    arguments));
             }
         }
 
@@ -191,12 +326,12 @@ public class ChatClientAdapter : IChatClient
             ResponseId = response.Id,
             CreatedAt = response.Timestamp,
             FinishReason = ConvertDoneReason(response.DoneReason),
-            ModelId = response.Message.Model,
+            ModelId = response.Message.Model ?? _modelId,
             Usage = response.TokenUsage != null ? new UsageDetails
             {
                 InputTokenCount = response.TokenUsage.InputTokens,
                 OutputTokenCount = response.TokenUsage.OutputTokens,
-                TotalTokenCount = response.TokenUsage.InputTokens + response.TokenUsage.OutputTokens
+                TotalTokenCount = response.TokenUsage.TotalTokens
             } : null
         };
     }
@@ -271,4 +406,14 @@ public class ChatClientAdapter : IChatClient
             _ => ImageFormat.Jpeg
         };
     }
+
+    private static object? ConvertJsonElement(JsonElement element) => element.ValueKind switch
+    {
+        JsonValueKind.String => element.GetString(),
+        JsonValueKind.Number => element.TryGetInt64(out var l) ? l : element.GetDouble(),
+        JsonValueKind.True => true,
+        JsonValueKind.False => false,
+        JsonValueKind.Null or JsonValueKind.Undefined => null,
+        _ => element
+    };
 }
