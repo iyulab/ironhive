@@ -3,6 +3,8 @@ using Microsoft.Extensions.AI;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Messages.Roles;
+using IronHive.Abstractions.Tools;
+using IronHive.Core.Tools;
 
 namespace IronHive.Core.Compatibility;
 
@@ -104,6 +106,12 @@ public class ChatClientAdapter : IChatClient
             {
                 request.Messages.Add(ConvertMessage(msg));
             }
+        }
+
+        if (options?.Tools is { Count: > 0 })
+        {
+            var adapted = options.Tools.Select(t => (ITool)new AIToolAdapter(t));
+            request.Tools = new ToolCollection(adapted);
         }
 
         return request;

@@ -571,6 +571,136 @@ public class ChatClientAdapterTests : IDisposable
 
     #endregion
 
+    #region GetResponseAsync — Tool forwarding
+
+    [Fact]
+    public async Task GetResponseAsync_WithTools_ForwardsToolsToRequest()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+        var messages = new List<ChatMessage> { new(ChatRole.User, "Hello") };
+
+        var tool = AIFunctionFactory.Create(() => "result", "test_tool", "A test tool");
+        var options = new ChatOptions { Tools = [tool] };
+
+        await _adapter.GetResponseAsync(messages, options);
+
+        var req = capturedRequest();
+        req.Tools.Should().NotBeNull();
+        req.Tools.Should().HaveCount(1);
+        req.Tools!.First().UniqueName.Should().Be("test_tool");
+        req.Tools!.First().Description.Should().Be("A test tool");
+    }
+
+    [Fact]
+    public async Task GetResponseAsync_WithMultipleTools_ForwardsAllTools()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+        var messages = new List<ChatMessage> { new(ChatRole.User, "Hello") };
+
+        var tool1 = AIFunctionFactory.Create((string city) => $"Weather in {city}", "get_weather", "Get weather");
+        var tool2 = AIFunctionFactory.Create((string query) => $"Results for {query}", "search", "Search the web");
+        var options = new ChatOptions { Tools = [tool1, tool2] };
+
+        await _adapter.GetResponseAsync(messages, options);
+
+        var req = capturedRequest();
+        req.Tools.Should().HaveCount(2);
+        req.Tools!.Select(t => t.UniqueName).Should().BeEquivalentTo(["get_weather", "search"]);
+    }
+
+    [Fact]
+    public async Task GetResponseAsync_WithNoTools_ToolsIsNull()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+        var messages = new List<ChatMessage> { new(ChatRole.User, "Hello") };
+
+        await _adapter.GetResponseAsync(messages);
+
+        var req = capturedRequest();
+        req.Tools.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetResponseAsync_WithEmptyTools_ToolsIsNull()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+        var messages = new List<ChatMessage> { new(ChatRole.User, "Hello") };
+        var options = new ChatOptions { Tools = [] };
+
+        await _adapter.GetResponseAsync(messages, options);
+
+        var req = capturedRequest();
+        req.Tools.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetResponseAsync_ToolWithParameters_ForwardsJsonSchema()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+        var messages = new List<ChatMessage> { new(ChatRole.User, "Hello") };
+
+        var tool = AIFunctionFactory.Create(
+            (string city, string unit) => $"{city}: 25°{unit}",
+            "get_weather",
+            "Get weather for a city");
+        var options = new ChatOptions { Tools = [tool] };
+
+        await _adapter.GetResponseAsync(messages, options);
+
+        var req = capturedRequest();
+        var forwardedTool = req.Tools!.First();
+        forwardedTool.Parameters.Should().NotBeNull();
+        var schemaJson = forwardedTool.Parameters!.ToString()!;
+        schemaJson.Should().Contain("city");
+        schemaJson.Should().Contain("unit");
+    }
+
+    [Fact]
+    public async Task GetResponseAsync_ToolWithoutParameters_ParametersIsNull()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+        var messages = new List<ChatMessage> { new(ChatRole.User, "Hello") };
+
+        // Non-AIFunction AITool has no JsonSchema
+        var tool = AIFunctionFactory.Create(() => "result", "no_params_tool", "Tool without params");
+        var options = new ChatOptions { Tools = [tool] };
+
+        await _adapter.GetResponseAsync(messages, options);
+
+        var req = capturedRequest();
+        req.Tools!.First().UniqueName.Should().Be("no_params_tool");
+    }
+
+    [Fact]
+    public async Task GetResponseAsync_ToolsAndOtherOptions_AllPreserved()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+        var messages = new List<ChatMessage>
+        {
+            new(ChatRole.System, "You are helpful"),
+            new(ChatRole.User, "Hello")
+        };
+
+        var tool = AIFunctionFactory.Create(() => "result", "my_tool", "My tool");
+        var options = new ChatOptions
+        {
+            Temperature = 0.5f,
+            MaxOutputTokens = 512,
+            Tools = [tool]
+        };
+
+        await _adapter.GetResponseAsync(messages, options);
+
+        var req = capturedRequest();
+        req.Temperature.Should().Be(0.5f);
+        req.MaxTokens.Should().Be(512);
+        req.System.Should().Be("You are helpful");
+        req.Tools.Should().HaveCount(1);
+        req.Tools!.First().UniqueName.Should().Be("my_tool");
+    }
+
+    #endregion
+
     #region Helpers
 
     private Func<MessageGenerationRequest> SetupGeneratorReturns(MessageResponse? response = null)
