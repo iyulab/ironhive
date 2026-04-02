@@ -1,11 +1,13 @@
-# Visual Studio / Visual Studio Code
+# IDE
 .vs/
 .vscode/
+.idea/
 
 # .NET Core
 project.lock.json
 project.fragment.lock.json
 artifacts/
+
 # **/Properties/
 .config/
 *.user
@@ -24,12 +26,20 @@ node_modules/
 package-lock.json
 dist/
 
+# Environment
+.env
+*.env
+
+# AI
+.claude/
+.agents/
+CLAUDE.md
+AGENTS.md
+
 # User Files
 claudedocs/
-CLAUDE.md
 dev-docs/
-.env
+.serena/
 *.local
 nul
-.claude/
-.serena/
+CHECKLIST.md

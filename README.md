@@ -65,6 +65,16 @@ await foreach (var chunk in agent.InvokeStreamingAsync(messages))
 }
 ```
 
+## Skills Usage
+
+AI 코딩 에이전트(GitHub Copilot, Claude Code, Cursor 등)에서 IronHive Skills를 사용하려면:
+
+```bash
+npx skills add iyulab/ironhive
+```
+
+설치 후 에이전트가 IronHive API 패턴, 오케스트레이션, RAG 파이프라인, 툴 사용법을 자동으로 인식합니다.
+
 ## 패키지
 
 | 패키지 | 설명 |
