@@ -24,4 +24,10 @@
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
 
+  <PropertyGroup Condition="Exists('$(MSBuildThisFileDirectory)../../local-packages')">
+    <RestoreAdditionalProjectSources>
+      $(RestoreAdditionalProjectSources);$(MSBuildThisFileDirectory)../../local-packages
+    </RestoreAdditionalProjectSources>
+  </PropertyGroup>
+
 </Project>
