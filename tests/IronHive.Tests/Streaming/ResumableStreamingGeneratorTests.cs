@@ -259,6 +259,15 @@ public class ResumableStreamingGeneratorTests
                 return CancellingAsyncEnumerable(cts, ct);
             });
 
+        // TaskCompletionSource로 MarkAsDisconnectedAsync 호출을 결정론적으로 감지
+        var disconnectedTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _stateManager.MarkAsDisconnectedAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                disconnectedTcs.TrySetResult();
+                return Task.CompletedTask;
+            });
+
         var sut = new ResumableStreamingGenerator(_generator, _stateManager);
         var request = new MessageGenerationRequest { Model = "test-model" };
 
@@ -275,8 +284,8 @@ public class ResumableStreamingGeneratorTests
             // Expected
         }
 
-        // Wait for background processing to complete
-        await Task.Delay(500);
+        // 고정 딜레이 대신 실제 호출 시점까지 대기 (최대 5초)
+        await disconnectedTcs.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         await _stateManager.Received(1).MarkAsDisconnectedAsync(
             "cancel-stream", Arg.Any<CancellationToken>());
