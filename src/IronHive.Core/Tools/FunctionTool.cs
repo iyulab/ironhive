@@ -56,13 +56,6 @@ public sealed class FunctionTool : ITool
     /// </summary>
     public long Timeout { get; set; } = 60;
 
-    /// <summary>
-    /// 도구 결과의 최대 크기(문자 수)입니다.
-    /// 결과가 이 크기를 초과하면 에러를 반환합니다.
-    /// 기본값은 30,000자입니다. 0으로 설정하면 제한 없음.
-    /// </summary>
-    public int MaxOutput { get; set; } = 30_000;
-
     /// <inheritdoc />
     public async Task<ToolOutput> InvokeAsync(
         ToolInput input,
@@ -105,11 +98,6 @@ public sealed class FunctionTool : ITool
             var result = await execTask.ConfigureAwait(false);
             var json = JsonSerializer.Serialize(result, JsonDefaultOptions.Options);
 
-            // Check result size limit (0 means unlimited)
-            if (MaxOutput > 0 && json.Length > MaxOutput)
-            {
-                return ToolOutput.Failure($"The result is too large ({json.Length:N0} chars, max {MaxOutput:N0}). Please try again with different parameters.");
-            }
             return ToolOutput.Success(json);
         }
         catch (OperationCanceledException)

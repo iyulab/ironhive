@@ -44,5 +44,5 @@ public class MessageRequest : MessageGenerationParameters
     /// 무한 루프를 방지하고 연산을 제어하는 안전장치입니다.
     /// </summary>
     [JsonIgnore]
-    public int MaxLoopCount { get; set; } = 10;
+    public int MaxLoopCount { get; set; } = 50;
 }

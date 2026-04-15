@@ -461,10 +461,6 @@ public class AnthropicMessageGenerator : IMessageGenerator
             StopSequences = request.StopSequences?.ToList(),
             Tools = tools?.Count > 0 ? tools : null,
             Thinking = thinking,
-            // 추론 모델의 경우 토큰샘플링 방식을 임의로 설정할 수 없습니다.
-            Temperature = thinking != null ? null : request.Temperature,
-            TopP = thinking != null ? null : request.TopP,
-            TopK = thinking != null ? null : (long?)request.TopK,
         };
     }
 
