@@ -87,20 +87,7 @@ public class ChatClientAdapter : IChatClient
                 case StreamingContentCompletedResponse completed:
                     if (toolCallBuffers.TryGetValue(completed.Index, out var completedTool))
                     {
-                        var argsJson = completedTool.Arguments.ToString();
-                        Dictionary<string, object?>? arguments = null;
-                        if (!string.IsNullOrEmpty(argsJson))
-                        {
-                            var raw = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(argsJson);
-                            if (raw is not null)
-                            {
-                                arguments = [];
-                                foreach (var kvp in raw)
-                                {
-                                    arguments[kvp.Key] = ConvertJsonElement(kvp.Value);
-                                }
-                            }
-                        }
+                        var arguments = ParseToolArguments(completedTool.Arguments.ToString());
 
                         yield return new ChatResponseUpdate
                         {
@@ -298,24 +285,11 @@ public class ChatClientAdapter : IChatClient
             }
             else if (content is ToolMessageContent toolContent)
             {
-                Dictionary<string, object?>? arguments = null;
-                if (!string.IsNullOrEmpty(toolContent.Input))
-                {
-                    var raw = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(toolContent.Input);
-                    if (raw is not null)
-                    {
-                        arguments = [];
-                        foreach (var kvp in raw)
-                        {
-                            arguments[kvp.Key] = ConvertJsonElement(kvp.Value);
-                        }
-                    }
-                }
-
+                var args = ParseToolArguments(toolContent.Input);
                 contents.Add(new FunctionCallContent(
                     toolContent.Id,
                     toolContent.Name,
-                    arguments));
+                    args));
             }
         }
 
@@ -405,6 +379,35 @@ public class ChatClientAdapter : IChatClient
             "image/webp" => ImageFormat.Webp,
             _ => ImageFormat.Jpeg
         };
+    }
+
+    // Some local LLMs (e.g. Gemma 4 E4B) emit non-object JSON for tool-call arguments
+    // (`[]`, `[null]`, scalars). Treat any non-object root as "no args" rather than
+    // throwing JsonException mid-stream. See Filer issue 2026-04-28.
+    private static Dictionary<string, object?>? ParseToolArguments(string? json)
+    {
+        if (string.IsNullOrEmpty(json))
+            return null;
+
+        JsonElement root;
+        try
+        {
+            root = JsonSerializer.Deserialize<JsonElement>(json);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+
+        if (root.ValueKind != JsonValueKind.Object)
+            return null;
+
+        var arguments = new Dictionary<string, object?>();
+        foreach (var prop in root.EnumerateObject())
+        {
+            arguments[prop.Name] = ConvertJsonElement(prop.Value);
+        }
+        return arguments;
     }
 
     private static object? ConvertJsonElement(JsonElement element) => element.ValueKind switch

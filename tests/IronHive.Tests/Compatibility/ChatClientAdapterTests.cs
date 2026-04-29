@@ -819,6 +819,95 @@ public class ChatClientAdapterTests : IDisposable
 
     #endregion
 
+    #region Non-object tool-call args robustness (regression — Filer issue 2026-04-28)
+
+    // Some local LLMs (e.g. Gemma 4 E4B) emit non-object JSON for tool-call arguments
+    // (`[]`, `[null]`, scalars). The adapter previously deserialized via
+    // `JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(...)` and threw
+    // `JsonException` mid-stream, making the failure unrecoverable for downstream
+    // consumers. The contract is: coerce non-object roots to "no args" rather than throw.
+
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("[null]")]
+    [InlineData("\"plain string\"")]
+    [InlineData("42")]
+    [InlineData("true")]
+    public async Task GetResponseAsync_ToolCallResponse_NonObjectJsonArgs_CoercedToNoArgs(string nonObjectJson)
+    {
+        SetupGeneratorReturns(new MessageResponse
+        {
+            Id = "resp-noargs",
+            DoneReason = MessageDoneReason.ToolCall,
+            Message = new AssistantMessage
+            {
+                Content =
+                {
+                    new ToolMessageContent
+                    {
+                        IsApproved = true,
+                        Id = "tool-noargs",
+                        Name = "search_knowledge",
+                        Input = nonObjectJson
+                    }
+                }
+            }
+        });
+
+        var messages = new List<ChatMessage> { new(ChatRole.User, "Search") };
+
+        // Must not throw JsonException — was the regression from Filer issue 2026-04-28.
+        var response = await _adapter.GetResponseAsync(messages);
+
+        var fc = response.Messages.First().Contents.OfType<FunctionCallContent>().Single();
+        fc.CallId.Should().Be("tool-noargs");
+        fc.Name.Should().Be("search_knowledge");
+        (fc.Arguments is null || fc.Arguments.Count == 0)
+            .Should().BeTrue("non-object JSON root should coerce to no-args, not throw");
+    }
+
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("[null]")]
+    [InlineData("\"plain\"")]
+    [InlineData("42")]
+    public async Task GetStreamingResponseAsync_ToolCallSequence_NonObjectJsonArgs_CoercedToNoArgs(
+        string nonObjectJson)
+    {
+        var chunks = new List<StreamingMessageResponse>
+        {
+            new StreamingMessageBeginResponse { Id = "stream-noargs" },
+            new StreamingContentAddedResponse
+            {
+                Index = 0,
+                Content = new ToolMessageContent { Id = "tool-stream", Name = "search_knowledge", IsApproved = true }
+            },
+            new StreamingContentDeltaResponse
+            {
+                Index = 0,
+                Delta = new ToolDeltaContent { Input = nonObjectJson }
+            },
+            new StreamingContentCompletedResponse { Index = 0 }
+        };
+        SetupStreamingGenerator(chunks);
+
+        var messages = new List<ChatMessage> { new(ChatRole.User, "Search") };
+
+        var updates = new List<ChatResponseUpdate>();
+        await foreach (var update in _adapter.GetStreamingResponseAsync(messages))
+        {
+            updates.Add(update);
+        }
+
+        var fc = updates.SelectMany(u => u.Contents).OfType<FunctionCallContent>().Single();
+        fc.CallId.Should().Be("tool-stream");
+        fc.Name.Should().Be("search_knowledge");
+        (fc.Arguments is null || fc.Arguments.Count == 0)
+            .Should().BeTrue("non-object JSON root should coerce to no-args, not throw");
+    }
+
+    #endregion
+
     #region Helpers
 
     private Func<MessageGenerationRequest> SetupGeneratorReturns(MessageResponse? response = null)
