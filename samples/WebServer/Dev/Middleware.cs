@@ -91,7 +91,7 @@ public partial class Middleware
     [LoggerMessage(Level = LogLevel.Information, Message = "[Request] {Method} {Path}")]
     private static partial void LogRequest(ILogger logger, string method, string path);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "JSON 파싱 오류: {ErrorMessage}")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "JSON parse error: {ErrorMessage}")]
     private static partial void LogJsonParseError(ILogger logger, string errorMessage);
 
     #endregion
