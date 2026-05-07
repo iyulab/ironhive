@@ -17,7 +17,7 @@ public class LogLanguageConventionTests
     public static IEnumerable<object[]> IronHiveCoreAssemblyTypes()
     {
         var assembly = typeof(AgentService).Assembly;
-        foreach (var type in SafeGetTypes(assembly).Where(t => !t.IsCompilerGenerated()))
+        foreach (var type in SafeGetTypes(assembly).Where(t => t is not null && !t.IsCompilerGenerated()))
         {
             yield return new object[] { type };
         }
@@ -26,7 +26,7 @@ public class LogLanguageConventionTests
     public static IEnumerable<object[]> RabbitMQAssemblyTypes()
     {
         var assembly = typeof(RabbitMQueueStorage).Assembly;
-        foreach (var type in SafeGetTypes(assembly).Where(t => !t.IsCompilerGenerated()))
+        foreach (var type in SafeGetTypes(assembly).Where(t => t is not null && !t.IsCompilerGenerated()))
         {
             yield return new object[] { type };
         }
