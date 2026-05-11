@@ -16,12 +16,6 @@ public static class ImageSample
 {
     public static async Task Run()
     {
-        DotEnv.Load(new DotEnvOptions(
-            envFilePaths: [".env"],
-            trimValues: true,
-            overwriteExistingVars: false
-        ));
-
         var openaiApiKey = Environment.GetEnvironmentVariable("OPENAI")
             ?? throw new InvalidOperationException("OPENAI API KEY is not set in .env file");
 

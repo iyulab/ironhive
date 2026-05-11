@@ -480,6 +480,13 @@ public class AnthropicMessageGenerator : IMessageGenerator
         // 추론을 사용할 경우 예산 토큰을 설정합니다.
         if (request.ThinkingEffort is not null and not MessageThinkingEffort.None)
         {
+            // 최신 모델들은 특수하게 Adaptive 추론 전략을 사용합니다.
+            var adaptiveModels = new[] { "claude-opus-4-7", "claude-opus-4-6", "claude-sonnet-4-6" };
+            if (adaptiveModels.Any(m => request.Model.StartsWith(m, StringComparison.Ordinal)))
+            {
+                return (maxTokens, new ThinkingConfigAdaptive { });
+            }
+
             // 절대값 기반 + 비례값 기반 혼합 전략
             int budgetTokens = (int)(request.ThinkingEffort switch
             {

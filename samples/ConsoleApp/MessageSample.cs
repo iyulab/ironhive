@@ -59,19 +59,19 @@ public static class MessageSample
         //}
 
         // Anthropic 샘플
-        //request.Model = "claude-haiku-4-5";
-        //var key = Environment.GetEnvironmentVariable("ANTHROPIC")
-        //    ?? throw new InvalidOperationException("ANTHROPIC_API_KEY is not set in .env file");
-        //var anthro = new AnthropicMessageGenerator(new AnthropicConfig
-        //{
-        //    ApiKey = key
-        //});
-        //var msg = await anthro.GenerateMessageAsync(request);
-        //Console.WriteLine(JsonSerializer.Serialize(msg, options));
-        //await foreach (var chunk in anthro.GenerateStreamingMessageAsync(request))
-        //{
-        //    Console.WriteLine(JsonSerializer.Serialize(chunk, options));
-        //}
+        request.Model = "claude-opus-4-7";
+        var key = Environment.GetEnvironmentVariable("ANTHROPIC")
+            ?? throw new InvalidOperationException("ANTHROPIC_API_KEY is not set in .env file");
+        var anthro = new AnthropicMessageGenerator(new AnthropicConfig
+        {
+            ApiKey = key
+        });
+        var msg = await anthro.GenerateMessageAsync(request);
+        Console.WriteLine(JsonSerializer.Serialize(msg, options));
+        await foreach (var chunk in anthro.GenerateStreamingMessageAsync(request))
+        {
+            Console.WriteLine(JsonSerializer.Serialize(chunk, options));
+        }
 
         // Google AI 샘플
         //request.Model = "gemini-3-flash-preview";

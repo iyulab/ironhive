@@ -23,12 +23,6 @@ public static class AudioSample
 
     public static async Task Run()
     {
-        DotEnv.Load(new DotEnvOptions(
-            envFilePaths: [".env"],
-            trimValues: true,
-            overwriteExistingVars: false
-        ));
-
         var openaiApiKey = Environment.GetEnvironmentVariable("OPENAI")
             ?? throw new InvalidOperationException("OPENAI API 키가 설정되어 있지 않습니다.");
         var googleApiKey = Environment.GetEnvironmentVariable("GOOGLE");
