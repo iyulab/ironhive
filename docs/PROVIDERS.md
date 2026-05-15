@@ -184,15 +184,17 @@ builder
 
 ## 공통 생성 파라미터
 
-모든 프로바이더에서 사용 가능한 `GenerationOptions`:
+`MessageRequest`(또는 `BasicAgent.Parameters`)에서 설정 가능한 `MessageGenerationParameters`:
 
 ```csharp
-var options = new GenerationOptions
+var request = new MessageRequest
 {
+    Provider = "openai",
+    Model = "gpt-4o-mini",
+    Messages = messages,
     Temperature = 0.7f,      // 창의성 (0.0 ~ 2.0)
     MaxTokens = 4096,        // 최대 출력 토큰
     TopP = 0.9f,             // 핵 샘플링
     StopSequences = ["END"], // 중단 시퀀스
-    // ... 프로바이더별 추가 옵션
 };
 ```

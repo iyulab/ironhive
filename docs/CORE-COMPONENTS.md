@@ -59,7 +59,11 @@ LLM과의 대화를 처리하고 도구 호출 루프를 관리합니다.
 ```csharp
 public interface IMessageService
 {
-    IAsyncEnumerable<MessageResponse> GenerateMessageAsync(
+    Task<MessageResponse> GenerateMessageAsync(
+        MessageRequest request,
+        CancellationToken cancellationToken = default);
+
+    IAsyncEnumerable<StreamingMessageResponse> GenerateStreamingMessageAsync(
         MessageRequest request,
         CancellationToken cancellationToken = default);
 }
@@ -74,12 +78,9 @@ var request = new MessageRequest
     Model = "gpt-4o-mini",         // 모델 ID
     System = "You are helpful.",   // 시스템 프롬프트
     Messages = messages,           // 대화 메시지 목록
-    Tools = ["search", "calc"],    // 사용할 도구 이름 (null = 전체)
-    Options = new GenerationOptions
-    {
-        Temperature = 0.7f,
-        MaxTokens = 4096
-    }
+    Tools = [],                    // 사용할 도구 목록 (기본: 빈 목록)
+    Temperature = 0.7f,
+    MaxTokens = 4096
 };
 ```
 
@@ -88,10 +89,11 @@ var request = new MessageRequest
 ```csharp
 public class MessageResponse
 {
-    public string? Id { get; set; }           // 응답 ID
-    public string? DoneReason { get; set; }   // 완료 이유 (stop, tool_use 등)
-    public Message? Message { get; set; }      // 생성된 메시지
-    public TokenUsage? Usage { get; set; }    // 토큰 사용량
+    public required string Id { get; set; }                  // 응답 ID
+    public MessageDoneReason? DoneReason { get; set; }       // 완료 이유 (EndTurn, ToolCall 등)
+    public required AssistantMessage Message { get; set; }   // 생성된 메시지
+    public MessageTokenUsage? TokenUsage { get; set; }       // 토큰 사용량
+    public DateTime Timestamp { get; set; }                  // 응답 생성 시각
 }
 ```
 
@@ -116,12 +118,13 @@ MessageService는 자동으로 도구 호출을 감지하고 실행합니다:
 ```csharp
 public class BasicAgent : IAgent
 {
-    public string? Name { get; set; }           // 에이전트 이름
-    public string? Provider { get; set; }       // 프로바이더
-    public string? Model { get; set; }          // 모델
-    public string? Instruction { get; set; }    // 시스템 프롬프트
-    public IEnumerable<string>? Tools { get; set; }  // 사용 도구
-    public GenerationOptions? Options { get; set; }  // 생성 옵션
+    public required string Name { get; set; }           // 에이전트 이름
+    public required string Provider { get; set; }       // 프로바이더
+    public required string Model { get; set; }          // 모델
+    public required string Description { get; set; }    // 에이전트 설명
+    public string? Instructions { get; set; }           // 시스템 프롬프트
+    public IEnumerable<ToolItem>? Tools { get; set; }   // 사용 도구
+    public MessageGenerationParameters? Parameters { get; set; }  // 생성 옵션
 }
 ```
 
@@ -131,10 +134,11 @@ public class BasicAgent : IAgent
 var agent = new BasicAgent(messageService)
 {
     Name = "Assistant",
+    Description = "일반 도우미 에이전트",
     Provider = "openai",
     Model = "gpt-4o-mini",
-    Instruction = "You are a helpful assistant.",
-    Tools = ["web_search", "calculator"]
+    Instructions = "You are a helpful assistant.",
+    Tools = [new ToolItem("web_search"), new ToolItem("calculator")]
 };
 
 await foreach (var response in agent.InvokeAsync(messages))

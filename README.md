@@ -95,8 +95,10 @@ npx skills add iyulab/ironhive
 ## 문서
 
 - [아키텍처](docs/ARCHITECTURE.md) — 시스템 설계, 의존성 그래프, 확장 패턴
-- [설계 노트](docs/DESIGN.md) — Builder/Service API, 오케스트레이션 패턴
-- [프로젝트 구조](docs/STRUCTURE.md) — 서비스 분류 및 생명주기
+- [핵심 컴포넌트](docs/CORE-COMPONENTS.md) — 핵심 서비스 및 클래스 상세
+- [에이전트 & 오케스트레이션](docs/AGENTS.md) — 멀티에이전트 패턴
+- [프로바이더](docs/PROVIDERS.md) — AI 프로바이더 설정
+- [플러그인](docs/PLUGINS.md) — MCP / OpenAPI 통합
 
 ## 요구 사항
 
