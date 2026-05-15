@@ -32,6 +32,7 @@
     <ProjectReference Include="..\..\src\IronHive.Storages.Azure\IronHive.Storages.Azure.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Plugins.MCP\IronHive.Plugins.MCP.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Plugins.OpenAPI\IronHive.Plugins.OpenAPI.csproj" />
+    <ProjectReference Include="..\..\src\IronHive.Providers.OpenAI.Compatible\IronHive.Providers.OpenAI.Compatible.csproj" />
   </ItemGroup>
 
 </Project>
