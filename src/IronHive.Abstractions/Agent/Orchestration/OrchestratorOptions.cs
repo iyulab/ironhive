@@ -103,6 +103,12 @@ public class ParallelOrchestratorOptions : OrchestratorOptions
     /// 결과 집계 방식
     /// </summary>
     public ParallelResultAggregation ResultAggregation { get; set; } = ParallelResultAggregation.All;
+
+    /// <summary>
+    /// 모든 에이전트가 성공해야 전체 성공으로 간주할지 여부.
+    /// true이면 하나라도 실패 시 Failure 반환. false(기본값)이면 하나라도 성공하면 Success 반환.
+    /// </summary>
+    public bool RequireAllSuccess { get; set; }
 }
 
 /// <summary>

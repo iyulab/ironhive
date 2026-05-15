@@ -157,6 +157,13 @@ public class ParallelOrchestrator : OrchestratorBase
             return OrchestrationResult.Failure($"All agents failed: {errors}", steps, duration);
         }
 
+        if (Options.RequireAllSuccess && successfulSteps.Count < steps.Count)
+        {
+            var failedNames = string.Join(", ", steps.Where(s => !s.IsSuccess).Select(s => s.AgentName));
+            return OrchestrationResult.Failure(
+                $"RequireAllSuccess: agents failed: {failedNames}", steps, duration);
+        }
+
         Message finalOutput;
 
         switch (Options.ResultAggregation)

@@ -555,4 +555,63 @@ public class ParallelOrchestratorTests
         var orch = new ParallelOrchestrator();
         orch.SupportsRealTimeStreaming.Should().BeFalse();
     }
+
+    #region RequireAllSuccess
+
+    [Fact]
+    public async Task Execute_RequireAllSuccess_AllSucceed_ReturnsSuccess()
+    {
+        var a = new MockAgent("a") { ResponseFunc = _ => "from-a" };
+        var b = new MockAgent("b") { ResponseFunc = _ => "from-b" };
+
+        var orch = new ParallelOrchestrator(new ParallelOrchestratorOptions
+        {
+            RequireAllSuccess = true
+        });
+        orch.AddAgents([a, b]);
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Steps.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task Execute_RequireAllSuccess_OneAgentFails_ReturnsFailure()
+    {
+        var a = new MockAgent("a") { ResponseFunc = _ => throw new InvalidOperationException("fail-a") };
+        var b = new MockAgent("b") { ResponseFunc = _ => "from-b" };
+
+        var orch = new ParallelOrchestrator(new ParallelOrchestratorOptions
+        {
+            RequireAllSuccess = true
+        });
+        orch.AddAgents([a, b]);
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("RequireAllSuccess").And.Contain("a");
+        result.Steps.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task Execute_RequireAllSuccessFalse_OneAgentFails_StillReturnsSuccess()
+    {
+        var a = new MockAgent("a") { ResponseFunc = _ => throw new InvalidOperationException("fail-a") };
+        var b = new MockAgent("b") { ResponseFunc = _ => "from-b" };
+
+        var orch = new ParallelOrchestrator(new ParallelOrchestratorOptions
+        {
+            RequireAllSuccess = false
+        });
+        orch.AddAgents([a, b]);
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+
+        result.IsSuccess.Should().BeTrue("partial success is allowed by default");
+        result.Steps.Should().HaveCount(2);
+    }
+
+    #endregion
 }
