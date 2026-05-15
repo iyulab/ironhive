@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Nodes;
+using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Providers.OpenAI.Payloads.Responses;
 using IronHive.Providers.OpenAI.Payloads.ChatCompletion;
@@ -37,14 +38,6 @@ public static class MessageRequestExtensions
                         um.Content.Add(new ResponsesInputTextContent
                         {
                             Text = text.Value ?? string.Empty
-                        });
-                    }
-                    // 파일 문서 메시지
-                    else if (item is DocumentMessageContent document)
-                    {
-                        um.Content.Add(new ResponsesInputFileContent
-                        {
-                            FileData = document.Data,
                         });
                     }
                     // 이미지 메시지
@@ -135,23 +128,42 @@ public static class MessageRequestExtensions
             Instructions = request.System,
             Input = items,
             MaxOutputTokens = request.MaxTokens,
+            Text = request.Output != null ? new ResponsesText
+            {
+                Format = new JsonSchemaResponseFormat
+                {
+                    Name = request.Output.Name,
+                    Schema = JsonSchemaFactory.Build(request.Output),
+                    Strict = false,
+                }
+            } : null,
             Tools = request.Tools?.Select(t => new ResponsesFunctionTool
             {
                 Name = t.UniqueName,
                 Description = t.Description,
-                Parameters = t.Parameters ?? new JsonObject { ["type"] = "object", ["properties"] = new JsonObject() }
+                Parameters = t.Parameters ?? new JsonObject 
+                { 
+                    ["type"] = "object", 
+                    ["properties"] = new JsonObject() 
+                }
             }),
-            Include = enabledReasoning ? [ "reasoning.encrypted_content" ] : null,
-            Reasoning = enabledReasoning ? new ResponsesReasoning
+            Include = enabledReasoning ? 
+            [
+                "reasoning.encrypted_content" 
+            ] : null,
+            Reasoning = request.ThinkingEffort != null ? new ResponsesReasoning
             {
                 Effort = request.ThinkingEffort switch
                 {
+                    MessageThinkingEffort.None => ResponsesReasoningEffort.None,
+                    MessageThinkingEffort.Minimal => ResponsesReasoningEffort.Minimal,
                     MessageThinkingEffort.Low => ResponsesReasoningEffort.Low,
                     MessageThinkingEffort.Medium => ResponsesReasoningEffort.Medium,
                     MessageThinkingEffort.High => ResponsesReasoningEffort.High,
+                    MessageThinkingEffort.XHigh => ResponsesReasoningEffort.Xhigh,
                     _ => ResponsesReasoningEffort.Low
                 },
-                Summary = ResponsesReasoningSummary.Detailed,
+                Summary = enabledReasoning ? ResponsesReasoningSummary.Detailed : null
             }: null,
             // 추론 모델의 경우 토큰샘플링 방식을 임의로 설정할 수 없습니다.
             Temperature = enabledReasoning ? null : request.Temperature,
@@ -162,17 +174,12 @@ public static class MessageRequestExtensions
     /// <summary>
     /// 메시지 생성 요청을 OpenAI의 ChatCompletionRequest로 변환합니다.
     /// </summary>
-    public static ChatCompletionRequest ToOpenAILegacy(this MessageGenerationRequest request)
+    public static ChatCompletionRequest ToOpenAILegacy(this MessageGenerationRequest request, bool openai = true)
     {
-        var enabledReasoning = request.ThinkingEffort != MessageThinkingEffort.None;
-
         var messages = new List<OpenAIMessage>();
         if (!string.IsNullOrWhiteSpace(request.System))
         {
-            if (enabledReasoning)
-                messages.Add(new DeveloperChatMessage { Content = request.System });
-            else
-                messages.Add(new SystemChatMessage { Content = request.System });
+            messages.Add(new SystemChatMessage { Content = request.System });
         }
 
         foreach (var message in request.Messages)
@@ -189,14 +196,6 @@ public static class MessageRequestExtensions
                         um.Content.Add(new TextChatMessageContent
                         {
                             Text = text.Value ?? string.Empty
-                        });
-                    }
-                    // 파일 문서 메시지
-                    else if (item is DocumentMessageContent document)
-                    {
-                        um.Content.Add(new TextChatMessageContent
-                        {
-                            Text = $"Document Content:\n{document.Data}"
                         });
                     }
                     // 이미지 메시지
@@ -273,30 +272,64 @@ public static class MessageRequestExtensions
             }
         }
 
+        var enabledReasoning = request.ThinkingEffort != null && request.ThinkingEffort != MessageThinkingEffort.None;
         return new ChatCompletionRequest
         {
             Model = request.Model!,
             Messages = messages,
             MaxCompletionTokens = request.MaxTokens,
+            ResponseFormat = request.Output != null ? new JsonSchemaChatResponseFormat
+            {
+                JsonSchema = new JsonSchemaChatResponseFormat.JsonFormat
+                {
+                    Name = request.Output.Name,
+                    Schema = JsonSchemaFactory.Build(request.Output),
+                    Strict = false,
+                }
+            }
+            : null,
             Tools = request.Tools?.Select(t => new ChatFunctionTool
             {
                 Function = new ChatFunctionTool.FunctionSchema
                 {
                     Name = t.UniqueName,
                     Description = t.Description,
-                    Parameters = t.Parameters ?? new JsonObject { ["type"] = "object", ["properties"] = new JsonObject() }
+                    Parameters = t.Parameters ?? new JsonObject 
+                    { 
+                        ["type"] = "object", 
+                        ["properties"] = new JsonObject() 
+                    }
                 }
             }),
-            ReasoningEffort = enabledReasoning ? request.ThinkingEffort switch
+            ReasoningEffort = request.ThinkingEffort != null ? request.ThinkingEffort switch
             {
+                MessageThinkingEffort.None => ChatReasoningEffort.None,
+                MessageThinkingEffort.Minimal => ChatReasoningEffort.Minimal,
                 MessageThinkingEffort.Low => ChatReasoningEffort.Low,
                 MessageThinkingEffort.Medium => ChatReasoningEffort.Medium,
                 MessageThinkingEffort.High => ChatReasoningEffort.High,
+                MessageThinkingEffort.XHigh => ChatReasoningEffort.Xhigh,
                 _ => null
             } : null,
-            EnableThinking = request.EnableStructuredThinking,
             Temperature = !enabledReasoning ? request.Temperature : null,
             TopP = !enabledReasoning ? request.TopP : null,
+            ExtraBody = openai == false ? new JsonObject
+            {
+                // 1. vLLM 및 호환 엔진용 표준 파라미터 (토큰 버젯 임의 정의)
+                ["thinking_token_budget"] = request.ThinkingEffort switch
+                {
+                    MessageThinkingEffort.None => 0,           // 추론 비활성화
+                    MessageThinkingEffort.Minimal => 256,      // 아주 간단한 정정이나 확인
+                    MessageThinkingEffort.Low => 512,          // 일반적인 대화 내 가벼운 논리 흐름
+                    MessageThinkingEffort.Medium => 1024,      // 프로그래밍 디버깅, 간단한 수학
+                    MessageThinkingEffort.High => 2048,        // 복잡한 알고리즘, 논리 추론
+                    MessageThinkingEffort.XHigh => 4096,       // 심층 분석, 긴 단계의 다중 추론
+                    _ => 0
+                },
+
+                // 2. llama.cpp 서버는 API를 통한 가변 토큰 설정을 지원하지 않음, 서버 측에서 설정
+                //["reasoning_budget"] = thinkingBudget
+            } : null
         };
     }
 

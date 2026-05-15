@@ -39,6 +39,11 @@ public class OpenAIConfig
     public IDictionary<string, string> DefaultHeaders { get; set; } = new Dictionary<string, string>();
 
     /// <summary>
+    /// Http요청의 타임아웃을 가져오거나 설정합니다. (Default: 10분)
+    /// </summary>
+    public TimeSpan TimeOut { get; set; } = TimeSpan.FromMinutes(10);
+
+    /// <summary>
     /// 요청/응답의 JSON 직렬화 및 역직렬화에 사용되는 옵션을 가져오거나 설정합니다.
     /// </summary>
     [JsonIgnore]

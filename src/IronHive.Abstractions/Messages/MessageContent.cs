@@ -9,11 +9,15 @@ namespace IronHive.Abstractions.Messages;
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(TextMessageContent), "text")]
 [JsonDerivedType(typeof(ImageMessageContent), "image")]
-[JsonDerivedType(typeof(DocumentMessageContent), "document")]
 [JsonDerivedType(typeof(ToolMessageContent), "tool")]
 [JsonDerivedType(typeof(ThinkingMessageContent), "thinking")]
 public abstract class MessageContent
 {
+    /// <summary>
+    /// Provider가 멀티턴 연속성을 위해 사용하는 서명 데이터입니다.
+    /// Anthropic: thinking 블록의 암호화 서명, Google: function call의 thought_signature
+    /// </summary>
+    public string? Signature { get; set; }
     /// <summary>
     /// delta 객체의 타입에 맞춰서 현재 객체에 반영됩니다.
     /// 파생 클래스에서 재정의하여 해당 델타 타입을 처리할 수 있습니다.
@@ -30,7 +34,10 @@ public abstract class MessageContent
     /// </summary>
     public virtual void Update(MessageUpdatedContent updated)
     {
-        throw new InvalidOperationException(
-            $"Unsupported update type: content={GetType().Name}, update={updated.GetType().Name}");
+        if (updated is SignatureUpdatedContent signatureUpdated)
+            Signature = signatureUpdated.Signature;
+        else
+            throw new InvalidOperationException(
+                $"Unsupported update type: content={GetType().Name}, update={updated.GetType().Name}");
     }
 }

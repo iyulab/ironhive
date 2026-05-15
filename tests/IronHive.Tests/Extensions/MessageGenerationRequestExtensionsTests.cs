@@ -68,23 +68,6 @@ public class MessageGenerationRequestExtensionsTests
     }
 
     [Fact]
-    public void ToOpenAI_UserMessage_DocumentContent_MapsToResponsesInputFile()
-    {
-        var request = CreateRequest();
-        request.Messages.Add(new UserMessage
-        {
-            Content = [new DocumentMessageContent { Data = "doc-content" }]
-        });
-
-        var result = request.ToOpenAI();
-
-        var msg = result.Input!.First().Should().BeOfType<ResponsesMessageItem>().Subject;
-        msg.Content.Should().ContainSingle();
-        var file = msg.Content.First().Should().BeOfType<ResponsesInputFileContent>().Subject;
-        file.FileData.Should().Be("doc-content");
-    }
-
-    [Fact]
     public void ToOpenAI_UserMessage_ImageContent_MapsToResponsesInputImage()
     {
         var request = CreateRequest();
@@ -268,18 +251,6 @@ public class MessageGenerationRequestExtensionsTests
 
         result.Messages.Should().ContainSingle();
         result.Messages!.First().Should().BeOfType<SystemChatMessage>();
-    }
-
-    [Fact]
-    public void ToOpenAILegacy_SystemWithReasoning_MapsToDeveloperMessage()
-    {
-        var request = CreateRequest();
-        request.System = "Be helpful";
-        request.ThinkingEffort = MessageThinkingEffort.High;
-
-        var result = request.ToOpenAILegacy();
-
-        result.Messages!.First().Should().BeOfType<DeveloperChatMessage>();
     }
 
     [Fact]

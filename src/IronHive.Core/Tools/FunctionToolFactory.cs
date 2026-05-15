@@ -1,12 +1,11 @@
 ﻿using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Tools;
 using Microsoft.Extensions.DependencyInjection;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
-using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Schema;
-using DescriptionAttribute = System.ComponentModel.DescriptionAttribute;
 
 namespace IronHive.Core.Tools;
 
@@ -17,29 +16,11 @@ namespace IronHive.Core.Tools;
 /// </summary>
 public static class FunctionToolFactory
 {
-    // property 스키마 생성 옵션
+    // 파라미터는 nullable 허용, description 어트리뷰트 반영
     private static readonly JsonSchemaExporterOptions _propSchemaOptions = new()
     {
         TreatNullObliviousAsNonNullable = false,
-        TransformSchemaNode = (ctx, node) =>
-        {
-            // 기본 설명 추가
-            var attrs = ctx.PropertyInfo?.AttributeProvider?.GetCustomAttributes(true);
-            if (TryGetDescription(attrs ?? [], out var description))
-            {
-                // Handle the case where the schema is a Boolean.
-                if (node is not JsonObject jObj)
-                {
-                    node = jObj = new JsonObject();
-                    if (node.GetValueKind() is JsonValueKind.False)
-                        jObj.Add("not", true);
-                }
-
-                jObj.Insert(0, "description", description);
-            }
-            
-            return node;
-        }
+        TransformSchemaNode = JsonSchemaFactory.HandleTransform,
     };
 
     /// <summary>
@@ -48,37 +29,16 @@ public static class FunctionToolFactory
     public static IEnumerable<ITool> CreateFrom<T>()
         where T : class
     {
-        return CreateFrom(typeof(T));
+        return CreateFromObject(typeof(T), instance: null);
     }
 
     /// <summary>
-    /// public/non-public 인스턴스/정적 메서드 중 FunctionToolAttribute가 붙은 메서드를 찾아 툴 모음으로 만듭니다.
+    /// 인스턴스의 FunctionToolAttribute가 붙은 메서드를 찾아 툴 모음으로 만듭니다.
+    /// 인스턴스가 직접 바인딩되므로 DI 없이 호출됩니다.
     /// </summary>
-    public static IEnumerable<ITool> CreateFrom(Type type)
+    public static IEnumerable<ITool> CreateFrom(object instance)
     {
-        var tools = new List<ITool>();
-        var methods = type.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
-        foreach (var method in methods)
-        {
-            var attr = method.GetCustomAttribute<FunctionToolAttribute>();
-            if (attr is null) continue;
-
-            var name = attr.Name ?? method.Name;
-            var desc = attr.Description ?? method.GetCustomAttribute<DescriptionAttribute>()?.Description;
-            var requires = attr.RequiresApproval;
-            var timeout = attr.Timeout;
-            var parameters = BuildJsonSchemaParameters(method);
-            
-            tools.Add(new FunctionTool(method)
-            {
-                Name = name,
-                Description = desc,
-                Parameters = parameters,
-                RequiresApproval = requires,
-                Timeout = timeout
-            });
-        }
-        return tools;
+        return CreateFromObject(instance.GetType(), instance);
     }
 
     /// <summary>
@@ -100,6 +60,50 @@ public static class FunctionToolFactory
             RequiresApproval = descriptor.RequiresApproval,
             Timeout = descriptor.Timeout
         };
+    }
+
+    private static List<ITool> CreateFromObject(Type type, object? instance)
+    {
+        var tools = new List<ITool>();
+        var methods = type.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+        foreach (var method in methods)
+        {
+            var attr = method.GetCustomAttribute<FunctionToolAttribute>();
+            if (attr is null) continue;
+
+            var name = attr.Name ?? method.Name;
+            var desc = attr.Description ?? method.GetCustomAttribute<DescriptionAttribute>()?.Description;
+            var requires = attr.RequiresApproval;
+            var timeout = attr.Timeout;
+            var parameters = BuildJsonSchemaParameters(method);
+
+            FunctionTool tool;
+            if (instance is not null && !method.IsStatic)
+            {
+                tool = new FunctionTool(method, instance)
+                {
+                    Name = name,
+                    Description = desc,
+                    Parameters = parameters,
+                    RequiresApproval = requires,
+                    Timeout = timeout
+                };
+            }
+            else
+            {
+                tool = new FunctionTool(method)
+                {
+                    Name = name,
+                    Description = desc,
+                    Parameters = parameters,
+                    RequiresApproval = requires,
+                    Timeout = timeout
+                };
+            }
+
+            tools.Add(tool);
+        }
+        return tools;
     }
 
     /// <summary>
@@ -131,10 +135,10 @@ public static class FunctionToolFactory
                     a is FromServicesAttribute || a is FromKeyedServicesAttribute))
                 continue;
 
-            // JSON 스키마 생성
-            var node = JsonDefaultOptions.Options.GetJsonSchemaAsNode(param.ParameterType, _propSchemaOptions);
+            // JSON 스키마 생성 (파라미터는 nullable 허용 + 프로퍼티 description 반영)
+            var node = JsonSchemaFactory.Build(param.ParameterType, _propSchemaOptions);
 
-            // 설명 추가
+            // 파라미터 자체의 [Description] / [Display] 반영 (ctx.PropertyInfo로 접근 불가한 영역)
             if (TryGetDescription(param.GetCustomAttributes(true), out var description))
             {
                 node.Root["description"] = description;

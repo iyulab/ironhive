@@ -269,7 +269,7 @@ public class OpenAIResponseMessageGenerator : IMessageGenerator
                     await foreach (var rr in OnStreamingGenerate(res, new StreamingContentUpdatedResponse
                     {
                         Index = odr.OutputIndex,
-                        Updated = new ThinkingUpdatedContent
+                        Updated = new SignatureUpdatedContent
                         {
                             Signature = ri.EncryptedContent ?? string.Empty
                         }

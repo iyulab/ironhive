@@ -72,7 +72,7 @@ public class ThinkingMessageContentTests
     public void Update_ThinkingUpdated_ShouldSetSignature()
     {
         var content = new ThinkingMessageContent { Value = "data", Signature = null };
-        var updated = new ThinkingUpdatedContent { Signature = "sig-abc-123" };
+        var updated = new SignatureUpdatedContent { Signature = "sig-abc-123" };
 
         content.Update(updated);
 
@@ -181,15 +181,12 @@ public class ToolMessageContentMergeUpdateTests
     [Fact]
     public void Update_WrongUpdatedType_ShouldThrow()
     {
-        var content = new ToolMessageContent
-        {
-            Id = "1", Name = "tool", IsApproved = true
-        };
-        var updated = new ThinkingUpdatedContent { Signature = "sig" };
+        var content = new ThinkingMessageContent { Value = "thinking" };
+        var updated = new ToolUpdatedContent { Output = null };
 
         var act = () => content.Update(updated);
 
         act.Should().Throw<InvalidOperationException>()
-            .Which.Message.Should().Contain("ToolMessageContent");
+            .Which.Message.Should().Contain("ThinkingMessageContent");
     }
 }

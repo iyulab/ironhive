@@ -133,19 +133,63 @@ internal sealed class ExtraBodyJsonConverter<T> : JsonConverter<T> where T : Ope
         {
             if (knownProps.TryGetValue(prop.Name, out var propType))
             {
-                // known 프로퍼티 내부에서 재귀적으로 미매핑 속성 추출
+                // 1. 이미 알려진 속성이 '객체(Object)' 타입인 경우 내부를 더 탐색합니다.
                 if (prop.Value.ValueKind == JsonValueKind.Object)
                 {
                     var nested = ExtractUnknownProperties(prop.Value, propType, options);
                     if (nested is { Count: > 0 })
                     {
                         extras ??= new JsonObject();
+                        // 하위 계층 구조(예: choices -> message)를 그대로 유지하며 병합합니다.
                         extras[prop.Name] = nested;
+                    }
+                }
+                // 2. 알려진 속성이 '배열(Array)'인 경우 (choices 가여기에 해당)
+                else if (prop.Value.ValueKind == JsonValueKind.Array)
+                {
+                    JsonArray? arrayExtras = null;
+
+                    // 배열 내부 요소가 객체라면, 각 요소 안의 미매핑 속성을 검사합니다.
+                    // 이 때 choices[0] 의 타입(예: Choice)을 알아내기 위해 제네릭 아규먼트나 엘리먼트 타입을 추적합니다.
+                    Type? elementType = propType.IsArray ? propType.GetElementType()
+                        : (propType.IsGenericType ? propType.GetGenericArguments()[0] : null);
+
+                    if (elementType != null)
+                    {
+                        int index = 0;
+                        foreach (var item in prop.Value.EnumerateArray())
+                        {
+                            if (item.ValueKind == JsonValueKind.Object)
+                            {
+                                var nested = ExtractUnknownProperties(item, elementType, options);
+                                if (nested is { Count: > 0 })
+                                {
+                                    arrayExtras ??= new JsonArray();
+
+                                    // 원본 배열과 인덱스 싱크를 맞추기 위해 
+                                    // 앞선 요소들이 빈 값이라면 빈 객체{}로 채워줍니다.
+                                    while (arrayExtras.Count < index)
+                                    {
+                                        arrayExtras.Add(new JsonObject());
+                                    }
+
+                                    arrayExtras.Add(nested);
+                                }
+                            }
+                            index++;
+                        }
+                    }
+
+                    if (arrayExtras is { Count: > 0 })
+                    {
+                        extras ??= new JsonObject();
+                        extras[prop.Name] = arrayExtras;
                     }
                 }
             }
             else
             {
+                // 3. 미매핑 속성 발견 시 기존과 동일하게 수집
                 extras ??= new JsonObject();
                 extras[prop.Name] = JsonNode.Parse(prop.Value.GetRawText());
             }

@@ -15,6 +15,7 @@ namespace IronHive.Providers.OpenAI;
 /// <inheritdoc />
 public class OpenAIChatMessageGenerator : IMessageGenerator
 {
+    private readonly bool _openai;
     private readonly OpenAIChatCompletionClient _client;
 
     public OpenAIChatMessageGenerator(string apiKey)
@@ -23,6 +24,8 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
 
     public OpenAIChatMessageGenerator(OpenAIConfig config)
     {
+        _openai = string.IsNullOrWhiteSpace(config.BaseUrl) || 
+            config.BaseUrl.StartsWith("https://api.openai.com", StringComparison.OrdinalIgnoreCase);
         _client = new OpenAIChatCompletionClient(config);
     }
 
@@ -38,19 +41,25 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var req = OnBeforeGenerate(request, request.ToOpenAILegacy());
+        var req = OnBeforeGenerate(request, request.ToOpenAILegacy(_openai));
         var res = await _client.PostChatCompletionAsync(req, cancellationToken);
         var choice = res.Choices?.FirstOrDefault();
         var content = new List<MessageContent>();
 
-        // reasoning_content (structured thinking output from models that support it)
-        var reasoning = choice?.Message?.ReasoningContent;
-        if (!string.IsNullOrWhiteSpace(reasoning))
+        // reasoning_content
+        var messageNode = res.ExtraBody?["choices"]?[0]?["message"];
+        if (messageNode != null)
         {
-            content.Add(new ThinkingMessageContent
+            string? reasoning = messageNode["reasoning_content"]?.GetValue<string>()
+                             ?? messageNode["reasoning"]?.GetValue<string>();
+
+            if (!string.IsNullOrWhiteSpace(reasoning))
             {
-                Value = reasoning
-            });
+                content.Add(new ThinkingMessageContent 
+                { 
+                    Value = reasoning 
+                });
+            }
         }
 
         // 텍스트 생성
@@ -128,7 +137,7 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var req = OnBeforeGenerate(request, request.ToOpenAILegacy());
+        var req = OnBeforeGenerate(request, request.ToOpenAILegacy(_openai));
 
         // 인덱스 추적 관리용
         (int, MessageContent)? current = null;
@@ -190,8 +199,10 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
             if (delta == null)
                 continue;
 
-            // reasoning_content (structured thinking output from models that support it)
-            var reasoning = delta.ReasoningContent;
+            // ExtraBody에서 reasoning_content(또는 reasoning) 추출
+            var deltaNode = res.ExtraBody?["choices"]?[0]?["delta"];
+            var reasoning = deltaNode?["reasoning_content"]?.ToString()
+                         ?? deltaNode?["reasoning"]?.ToString();
             if (reasoning != null)
             {
                 if (current.HasValue)

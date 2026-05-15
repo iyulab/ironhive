@@ -1,4 +1,6 @@
-﻿namespace IronHive.Abstractions.Messages;
+﻿using System.Text.Json.Serialization;
+
+namespace IronHive.Abstractions.Messages;
 
 /// <summary>
 /// 텍스트를 생성할 때 사용할 설정을 정의합니다.
@@ -34,4 +36,12 @@ public class MessageGenerationParameters
     /// 예: {"\n", "."}으로 설정하면 줄 바꿈이나 마침표가 나오면 생성이 끝납니다.
     /// </summary>
     public ICollection<string>? StopSequences { get; set; }
+
+    /// <summary>
+    /// 구조화된 JSON 출력을 원할 때 지정하는 출력 타입입니다.
+    /// null이면 기본 텍스트 출력이며, 타입을 지정하면 해당 타입의 JSON 스키마를 provider에 전달합니다.
+    /// 반환값은 그대로 텍스트(JSON 문자열)로 오며, 역직렬화는 클라이언트가 처리합니다.
+    /// </summary>
+    [JsonIgnore]
+    public Type? Output { get; set; }
 }

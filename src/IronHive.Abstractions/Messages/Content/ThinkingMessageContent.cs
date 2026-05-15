@@ -11,11 +11,6 @@ public class ThinkingMessageContent : MessageContent
     public ThinkingFormat? Format { get; set; }
 
     /// <summary>
-    /// 추론 메시지의 컨텍스트를 유지하기 위한 데이터입니다.
-    /// </summary>
-    public string? Signature { get; set; }
-
-    /// <summary>
     /// 추론 콘텐츠 블록의 내용입니다.
     /// </summary>
     public string Value { get; set; } = string.Empty;
@@ -29,14 +24,7 @@ public class ThinkingMessageContent : MessageContent
             base.Merge(delta);
     }
 
-    /// <inheritdoc />
-    public override void Update(MessageUpdatedContent updated)
-    {
-        if (updated is ThinkingUpdatedContent thinkingUpdated)
-            Signature = thinkingUpdated.Signature;
-        else
-            base.Update(updated);
-    }
+
 }
 
 /// <summary>

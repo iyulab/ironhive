@@ -2,14 +2,15 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Runtime.CompilerServices;
 using Anthropic;
+using Anthropic.Helpers;
 using Anthropic.Models.Messages;
+using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Messages.Roles;
 using MessageContent = IronHive.Abstractions.Messages.MessageContent;
 using TextMessageContent = IronHive.Abstractions.Messages.Content.TextMessageContent;
 using ImageMessageContent = IronHive.Abstractions.Messages.Content.ImageMessageContent;
-using DocumentMessageContent = IronHive.Abstractions.Messages.Content.DocumentMessageContent;
 using ThinkingMessageContent = IronHive.Abstractions.Messages.Content.ThinkingMessageContent;
 
 namespace IronHive.Providers.Anthropic;
@@ -89,12 +90,12 @@ public class AnthropicMessageGenerator : IMessageGenerator
         return new MessageResponse
         {
             Id = res.ID,
-            DoneReason = res.StopReason?.ToString() switch
+            DoneReason = res.StopReason?.Value() switch
             {
-                "tool_use" => MessageDoneReason.ToolCall,
-                "end_turn" => MessageDoneReason.EndTurn,
-                "max_tokens" => MessageDoneReason.MaxTokens,
-                "stop_sequence" => MessageDoneReason.StopSequence,
+                StopReason.ToolUse => MessageDoneReason.ToolCall,
+                StopReason.EndTurn or StopReason.PauseTurn => MessageDoneReason.EndTurn,
+                StopReason.MaxTokens => MessageDoneReason.MaxTokens,
+                StopReason.StopSequence or StopReason.Refusal => MessageDoneReason.StopSequence,
                 _ => null
             },
             Message = new AssistantMessage
@@ -214,7 +215,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
                     yield return new StreamingContentUpdatedResponse
                     {
                         Index = index,
-                        Updated = new ThinkingUpdatedContent
+                        Updated = new SignatureUpdatedContent
                         {
                             Signature = signature.Signature,
                         }
@@ -263,12 +264,12 @@ public class AnthropicMessageGenerator : IMessageGenerator
                 {
                     Id = id,
                     Model = model,
-                    DoneReason = mde.Delta.StopReason?.ToString() switch
+                    DoneReason = mde.Delta.StopReason?.Value() switch
                     {
-                        "tool_use" => MessageDoneReason.ToolCall,
-                        "end_turn" => MessageDoneReason.EndTurn,
-                        "stop_sequence" => MessageDoneReason.StopSequence,
-                        "max_tokens" => MessageDoneReason.MaxTokens,
+                        StopReason.ToolUse => MessageDoneReason.ToolCall,
+                        StopReason.EndTurn or StopReason.PauseTurn => MessageDoneReason.EndTurn,
+                        StopReason.MaxTokens => MessageDoneReason.MaxTokens,
+                        StopReason.StopSequence or StopReason.Refusal => MessageDoneReason.StopSequence,
                         _ => null
                     },
                     TokenUsage = usage,
@@ -298,14 +299,6 @@ public class AnthropicMessageGenerator : IMessageGenerator
                         blocks.Add(new TextBlockParam
                         {
                             Text = text.Value ?? string.Empty
-                        });
-                    }
-                    // 파일 문서 메시지
-                    else if (item is DocumentMessageContent document)
-                    {
-                        blocks.Add(new TextBlockParam
-                        {
-                            Text = $"Document Content:\n{document.Data}"
                         });
                     }
                     // 이미지 메시지
@@ -452,6 +445,17 @@ public class AnthropicMessageGenerator : IMessageGenerator
             return toolUnion;
         })?.ToList();
 
+        // 출력 구성 지원
+        OutputConfig? outputConfig = null;
+        if (request.Output != null)
+        {
+            var createJsonFormat = typeof(StructuredOutput)
+                .GetMethod(nameof(StructuredOutput.CreateJsonFormat))!
+                .MakeGenericMethod(request.Output);
+            var format = (JsonOutputFormat)createJsonFormat.Invoke(null, null)!;
+            outputConfig = new OutputConfig { Format = format };
+        }
+
         return new MessageCreateParams
         {
             Model = request.Model,
@@ -461,6 +465,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
             StopSequences = request.StopSequences?.ToList(),
             Tools = tools?.Count > 0 ? tools : null,
             Thinking = thinking,
+            OutputConfig = outputConfig,
         };
     }
 
@@ -469,18 +474,14 @@ public class AnthropicMessageGenerator : IMessageGenerator
     /// </summary>
     private static (int, ThinkingConfigParam?) CalculateTokens(MessageGenerationRequest request)
     {
-        // MaxToken이 필수요청사항으로 sonnet은 "64000", opus는 "32000" 이외 "8192"값을 기본으로 함
-        var maxTokens = request.MaxTokens ??
-        (
-            request.Model.Contains("sonnet") ? 64_000
-            : request.Model.Contains("opus") ? 32_000
-            : 8192
-        );
+        // MaxToken이 필수요청사항으로 64K로 기본값을 설정합니다.
+        var maxTokens = request.MaxTokens ?? 64000;
 
         // 추론을 사용할 경우 예산 토큰을 설정합니다.
         if (request.ThinkingEffort is not null and not MessageThinkingEffort.None)
         {
-            // 최신 모델들은 특수하게 Adaptive 추론 전략을 사용합니다.
+            // 최신 모델들은 Adaptive 추론 전략을 사용합니다.
+            // ref: https://platform.claude.com/docs/en/build-with-claude/adaptive-thinking
             var adaptiveModels = new[] { "claude-opus-4-7", "claude-opus-4-6", "claude-sonnet-4-6" };
             if (adaptiveModels.Any(m => request.Model.StartsWith(m, StringComparison.Ordinal)))
             {

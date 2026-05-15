@@ -1,5 +1,6 @@
 using Google.GenAI;
 using Google.GenAI.Types;
+using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Messages.Roles;
@@ -70,7 +71,6 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                     message.Content.Add(new ThinkingMessageContent
                     {
                         Format = ThinkingFormat.Summary,
-                        Signature = part.ThoughtSignature != null ? Convert.ToBase64String(part.ThoughtSignature) : null,
                         Value = part.Text
                     });
                 }
@@ -84,15 +84,6 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                 }
             }
 
-            // 생각(Thought) 시그니처 업데이트
-            if (part.ThoughtSignature is { Length: > 0 })
-            {
-                if (message.Content.LastOrDefault(c => c is ThinkingMessageContent) is ThinkingMessageContent last)
-                {
-                    last.Signature = Convert.ToBase64String(part.ThoughtSignature);
-                }
-            }
-
             // 함수 호출 메시지 처리
             if (part.FunctionCall != null)
             {
@@ -102,7 +93,10 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                     Id = part.FunctionCall.Id ?? Guid.NewGuid().ToShort(),
                     Name = part.FunctionCall.Name ?? string.Empty,
                     Input = JsonSerializer.Serialize(part.FunctionCall.Args),
-                    IsApproved = request.Tools?.TryGet(part.FunctionCall.Name!, out var t) != true || t?.RequiresApproval == false
+                    IsApproved = request.Tools?.TryGet(part.FunctionCall.Name!, out var t) != true || t?.RequiresApproval == false,
+                    Signature = part.ThoughtSignature is { Length: > 0 }
+                        ? Convert.ToBase64String(part.ThoughtSignature)
+                        : null
                 });
             }
         }
@@ -152,6 +146,8 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         await foreach (var res in _client.Models.GenerateContentStreamAsync(
             model, contents, config, cancellationToken))
         {
+            Console.WriteLine($"Received response chunk: {JsonSerializer.Serialize(res)}");
+
             // 메시지 시작
             if (current == null)
             {
@@ -203,7 +199,6 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                             current = (0, new ThinkingMessageContent
                             {
                                 Format = ThinkingFormat.Summary,
-                                Signature = part.ThoughtSignature != null ? Convert.ToBase64String(part.ThoughtSignature) : null,
                                 Value = part.Text
                             });
                         }
@@ -229,6 +224,9 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                             Name = part.FunctionCall.Name ?? string.Empty,
                             Input = JsonSerializer.Serialize(part.FunctionCall.Args),
                             IsApproved = request.Tools?.TryGet(part.FunctionCall.Name!, out var t) != true || t?.RequiresApproval == false,
+                            Signature = part.ThoughtSignature is { Length: > 0 }
+                                ? Convert.ToBase64String(part.ThoughtSignature)
+                                : null
                         });
                         yield return new StreamingContentAddedResponse
                         {
@@ -241,26 +239,6 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                 else
                 {
                     (int index, MessageContent content) = current.Value;
-
-                    if (part.ThoughtSignature is { Length: > 0 })
-                    {
-                        // 생각(Thought) 시그니처 업데이트 및 이전 생각 완료
-                        if (content is ThinkingMessageContent)
-                        {
-                            yield return new StreamingContentUpdatedResponse
-                            {
-                                Index = index,
-                                Updated = new ThinkingUpdatedContent
-                                {
-                                    Signature = Convert.ToBase64String(part.ThoughtSignature)
-                                }
-                            };
-                            yield return new StreamingContentCompletedResponse
-                            {
-                                Index = index,
-                            };
-                        }
-                    }
 
                     if (!string.IsNullOrWhiteSpace(part.Text))
                     {
@@ -277,7 +255,6 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                             current = (index + 1, new ThinkingMessageContent
                             {
                                 Format = ThinkingFormat.Summary,
-                                Signature = part.ThoughtSignature != null ? Convert.ToBase64String(part.ThoughtSignature) : null,
                                 Value = part.Text
                             });
                             yield return new StreamingContentAddedResponse
@@ -335,6 +312,9 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                             Name = part.FunctionCall.Name ?? string.Empty,
                             Input = JsonSerializer.Serialize(part.FunctionCall.Args),
                             IsApproved = request.Tools?.TryGet(part.FunctionCall.Name!, out var t) != true || t?.RequiresApproval == false,
+                            Signature = part.ThoughtSignature is { Length: > 0 }
+                                ? Convert.ToBase64String(part.ThoughtSignature)
+                                : null
                         });
                         yield return new StreamingContentAddedResponse
                         {
@@ -422,14 +402,6 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                             Text = text.Value ?? string.Empty
                         });
                     }
-                    // 파일 문서 메시지
-                    else if (item is DocumentMessageContent document)
-                    {
-                        parts.Add(new GooglePart
-                        {
-                            Text = $"document({document.ContentType}): \n{document.Data}\n",
-                        });
-                    }
                     // 이미지 메시지
                     else if (item is ImageMessageContent image)
                     {
@@ -465,7 +437,6 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                 var modelParts = new List<GooglePart>();
                 var userParts = new List<GooglePart>();
 
-                string? ts = null; // 사고 (Thinking) 메시지 시그니처 추적용
                 foreach (var item in assistant.Content)
                 {
                     // 사고 메시지
@@ -476,29 +447,14 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                             Thought = true,
                             Text = thinking.Value ?? string.Empty,
                         });
-
-                        // 시그니처 갱신
-                        if (!string.IsNullOrWhiteSpace(thinking.Signature))
-                        {
-                            ts = thinking.Signature;
-                        }
                     }
                     // 텍스트 메시지
                     else if (item is TextMessageContent text)
                     {
-                        var part = new GooglePart
+                        modelParts.Add(new GooglePart
                         {
                             Text = text.Value ?? string.Empty,
-                        };
-
-                        // 이전 사고 시그니처가 있으면 연결 및 초기화
-                        if (!string.IsNullOrWhiteSpace(ts))
-                        {
-                            part.ThoughtSignature = Convert.FromBase64String(ts);
-                            ts = null;
-                        }
-
-                        modelParts.Add(part);
+                        });
                     }
                     // 도구 메시지
                     else if (item is ToolMessageContent tool)
@@ -511,14 +467,11 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                                 Id = tool.Id,
                                 Name = tool.Name,
                                 Args = JsonSerializer.Deserialize<Dictionary<string, object>>(tool.Input ?? "{}")
-                            }
+                            },
+                            ThoughtSignature = !string.IsNullOrWhiteSpace(tool.Signature)
+                                ? Convert.FromBase64String(tool.Signature)
+                                : null
                         };
-                        // 이전 사고 시그니처가 있으면 연결 및 초기화
-                        if (!string.IsNullOrWhiteSpace(ts))
-                        {
-                            part.ThoughtSignature = Convert.FromBase64String(ts);
-                            ts = null;
-                        }
                         modelParts.Add(part);
 
                         // 도구 결과 메시지
@@ -607,6 +560,10 @@ public class GoogleAIMessageGenerator : IMessageGenerator
             TopK = request.TopK,
             Temperature = request.Temperature,
             ThinkingConfig = thinkingConfig,
+            ResponseMimeType = request.Output != null ? "application/json" : null,
+            ResponseJsonSchema = request.Output != null
+                ? JsonSchemaFactory.Build(request.Output)
+                : null,
         };
 
         return (request.Model, contents, config);

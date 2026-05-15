@@ -33,6 +33,15 @@ public sealed class FunctionTool : ITool
         _method = method;
     }
 
+    /// <summary>
+    /// <see cref="MethodInfo"/>와 대상 인스턴스를 받아 바인딩합니다.
+    /// </summary>
+    public FunctionTool(MethodInfo method, object target)
+    {
+        _method = method;
+        _target = target;
+    }
+
     /// <inheritdoc />
     public string UniqueName => $"func_{Name}";
 

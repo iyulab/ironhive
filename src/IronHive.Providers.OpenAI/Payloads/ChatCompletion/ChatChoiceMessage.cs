@@ -7,12 +7,6 @@ public class ChatChoiceMessage
     [JsonPropertyName("content")]
     public string? Content { get; set; }
 
-    /// <summary>
-    /// Reasoning/thinking content from structured thinking models.
-    /// </summary>
-    [JsonPropertyName("reasoning_content")]
-    public string? ReasoningContent { get; set; }
-
     [JsonPropertyName("refusal")]
     public string? Refusal { get; set; }
 
@@ -42,13 +36,6 @@ public class ChatChoiceMessageDelta
 {
     [JsonPropertyName("content")]
     public string? Content { get; set; }
-
-    /// <summary>
-    /// Reasoning/thinking content returned by models with structured thinking enabled.
-    /// Populated when <c>enable_thinking: true</c> is set in the request.
-    /// </summary>
-    [JsonPropertyName("reasoning_content")]
-    public string? ReasoningContent { get; set; }
 
     [JsonPropertyName("refusal")]
     public string? Refusal { get; set; }

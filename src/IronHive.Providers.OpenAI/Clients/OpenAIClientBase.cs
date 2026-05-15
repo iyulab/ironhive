@@ -32,7 +32,8 @@ public abstract class OpenAIClientBase : IDisposable
         {
             BaseAddress = string.IsNullOrWhiteSpace(config.BaseUrl)
                 ? new Uri(OpenAIConstants.DefaultBaseUrl.EnsureSuffix('/'))
-                : new Uri(config.BaseUrl.EnsureSuffix('/'))
+                : new Uri(config.BaseUrl.EnsureSuffix('/')),
+            Timeout = config.TimeOut
         };
 
         if (!string.IsNullOrWhiteSpace(config.ApiKey))

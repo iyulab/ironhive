@@ -12,6 +12,11 @@ public enum MessageThinkingEffort
     None,
 
     /// <summary>
+    /// 매우 최소한의 생각을 요구합니다. 빠른 응답이 필요할 때 사용합니다.
+    /// </summary>
+    Minimal,
+
+    /// <summary>
     /// 최소한의 생각을 요구합니다. 빠른 응답이 필요할 때 사용합니다.
     /// </summary>
     Low,
@@ -24,5 +29,10 @@ public enum MessageThinkingEffort
     /// <summary>
     /// 깊은 생각을 요구합니다. 복잡한 문제를 해결할 때 사용합니다.
     /// </summary>
-    High
+    High,
+
+    /// <summary>
+    /// 더 깊은 생각을 요구합니다. 매우 복잡한 문제를 해결하거나 창의적인 아이디어가 필요할 때 사용합니다.
+    /// </summary>
+    XHigh
 }
