@@ -567,6 +567,63 @@ public class HubSpokeOrchestratorTests
 
     #endregion
 
+    #region ParallelSpokes StopOnAgentFailure
+
+    [Fact]
+    public async Task Execute_ParallelSpokes_SpokeFailure_StopOnAgentFailureTrue_ReturnsFailure()
+    {
+        var hub = new MockAgent("hub")
+        {
+            ResponseFunc = _ => "{\"complete\": false, \"tasks\": [{\"agent\": \"nonexistent\", \"instruction\": \"work\"}]}"
+        };
+        var spoke = new MockAgent("worker") { ResponseFunc = _ => "ok" };
+
+        var orch = new HubSpokeOrchestrator(new HubSpokeOrchestratorOptions
+        {
+            ParallelSpokes = true,
+            StopOnAgentFailure = true
+        });
+        orch.SetHubAgent(hub);
+        orch.AddSpokeAgent(spoke);
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("nonexistent");
+    }
+
+    [Fact]
+    public async Task Execute_ParallelSpokes_SpokeFailure_StopOnAgentFailureFalse_ContinuesToHub()
+    {
+        var hubCallCount = 0;
+        var hub = new MockAgent("hub")
+        {
+            ResponseFunc = _ =>
+            {
+                hubCallCount++;
+                if (hubCallCount == 1)
+                    return "{\"complete\": false, \"tasks\": [{\"agent\": \"nonexistent\", \"instruction\": \"work\"}]}";
+                return "{\"complete\": true}";
+            }
+        };
+        var spoke = new MockAgent("worker") { ResponseFunc = _ => "ok" };
+
+        var orch = new HubSpokeOrchestrator(new HubSpokeOrchestratorOptions
+        {
+            ParallelSpokes = true,
+            StopOnAgentFailure = false
+        });
+        orch.SetHubAgent(hub);
+        orch.AddSpokeAgent(spoke);
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Steps.Should().Contain(s => s.AgentName == "nonexistent" && !s.IsSuccess);
+    }
+
+    #endregion
+
     #region Helpers
 
     private static IEnumerable<Message> MakeUserMessages(string text)

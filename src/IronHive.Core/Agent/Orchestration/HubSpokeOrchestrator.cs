@@ -169,6 +169,14 @@ public partial class HubSpokeOrchestrator : OrchestratorBase
 
                 steps.AddRange(spokeResults);
 
+                if (Options.StopOnAgentFailure && spokeResults.Any(r => !r.IsSuccess))
+                {
+                    await SaveCheckpointAsync(steps, currentMessages, cts.Token).ConfigureAwait(false);
+                    stopwatch.Stop();
+                    var failedNames = string.Join(", ", spokeResults.Where(r => !r.IsSuccess).Select(r => r.AgentName));
+                    return OrchestrationResult.Failure($"Spoke agent(s) failed: {failedNames}", steps, stopwatch.Elapsed);
+                }
+
                 // 3. Spoke 결과를 현재 메시지에 추가
                 currentMessages = BuildNextRoundMessages(currentMessages, spokeResults);
 
