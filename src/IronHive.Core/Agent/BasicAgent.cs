@@ -55,7 +55,6 @@ public class BasicAgent : IAgent
         return _message.GenerateStreamingMessageAsync(request, cancellationToken);
     }
 
-    // 만들기...
     private MessageRequest CreateRequest(IEnumerable<Message> messages) => new()
     {
         Messages = messages.ToList(),

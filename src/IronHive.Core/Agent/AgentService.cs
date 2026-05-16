@@ -49,7 +49,9 @@ public class AgentService : IAgentService
         try
         {
             var root = JsonSerializer.Deserialize<AgentConfigRoot>(json, JsonOptions);
-            if (root?.Agent != null && !string.IsNullOrWhiteSpace(root.Agent.Name))
+            if (root?.Agent != null && (
+                !string.IsNullOrWhiteSpace(root.Agent.Provider) ||
+                !string.IsNullOrWhiteSpace(root.Agent.Model)))
             {
                 config = root.Agent;
             }

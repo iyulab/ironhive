@@ -178,6 +178,21 @@ agent:
            .WithMessage("*provider*");
     }
 
+    [Fact]
+    public void CreateAgentFromJson_ShouldSucceed_WhenNameMissing()
+    {
+        // Arrange
+        var json = @"{""agent"":{""provider"":""openai"",""model"":""gpt-4o""}}";
+
+        // Act
+        var agent = _service.CreateAgentFromJson(json);
+
+        // Assert
+        agent.Provider.Should().Be("openai");
+        agent.Model.Should().Be("gpt-4o");
+        agent.Name.Should().BeEmpty();
+    }
+
     #endregion
 
     #region TOML Tests
