@@ -12,7 +12,7 @@ public class BasicAgent : IAgent
     private readonly IMessageService _message;
 
     /// <inheritdoc />
-    public required string Provider { get; set; }
+    public string Provider { get; set; } = string.Empty;
 
     /// <inheritdoc />
     public required string Model { get; set; }

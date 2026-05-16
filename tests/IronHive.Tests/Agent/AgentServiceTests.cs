@@ -162,23 +162,6 @@ agent:
     }
 
     [Fact]
-    public void CreateAgentFromJson_ShouldThrow_WhenProviderMissing()
-    {
-        // Arrange
-        var json = @"{
-            ""name"": ""NoProviderBot"",
-            ""model"": ""gpt-4o""
-        }";
-
-        // Act
-        var act = () => _service.CreateAgentFromJson(json);
-
-        // Assert
-        act.Should().Throw<ArgumentException>()
-           .WithMessage("*provider*");
-    }
-
-    [Fact]
     public void CreateAgentFromJson_ShouldSucceed_WhenNameMissing()
     {
         // Arrange

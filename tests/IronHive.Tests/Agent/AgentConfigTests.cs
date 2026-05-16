@@ -40,25 +40,6 @@ public class AgentConfigTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void Validate_MissingProvider_ShouldThrow(string? provider)
-    {
-        var config = new AgentConfig
-        {
-            Name = "agent",
-            Provider = provider!,
-            Model = "gpt-4o"
-        };
-
-        var act = () => config.Validate();
-
-        act.Should().Throw<ArgumentException>()
-            .Which.ParamName.Should().Be("Provider");
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
     public void Validate_MissingModel_ShouldThrow(string? model)
     {
         var config = new AgentConfig
