@@ -233,7 +233,7 @@ public class MessageService : IMessageService
     /// </summary>
     private IMessageGenerator ResolveGenerator(string? provider)
     {
-        if (string.IsNullOrEmpty(provider))
+        if (string.IsNullOrWhiteSpace(provider))
         {
             var entries = _providers.Entries<IMessageGenerator>().ToList();
             if (entries.Count == 0)
@@ -242,7 +242,7 @@ public class MessageService : IMessageService
             if (entries.Count > 1)
                 throw new InvalidOperationException(
                     $"Multiple message generators are registered ({string.Join(", ", entries.Select(e => e.Key))}). " +
-                    "Specify a provider via AgentConfig.Provider.");
+                    "Specify a provider via MessageRequest.Provider.");
             return entries[0].Value;
         }
 
