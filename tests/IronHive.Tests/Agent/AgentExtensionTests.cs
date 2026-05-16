@@ -108,13 +108,13 @@ public class AgentExtensionTests
                 Arg.Any<CancellationToken>())
             .Returns(AsyncEnumerable.Empty<StreamingMessageResponse>());
 
-        var chunks = new List<StreamingMessageResponse>();
-        await foreach (var chunk in innerAgent.InvokeStreamingAsync("안녕"))
-            chunks.Add(chunk);
+        await foreach (var _ in innerAgent.InvokeStreamingAsync("안녕")) { }
 
         capturedMsgs.Should().NotBeNull();
         var msgList = capturedMsgs!.ToList();
         msgList.Should().HaveCount(1);
-        msgList[0].Should().BeOfType<IronHive.Abstractions.Messages.Roles.UserMessage>();
+        var userMsg = msgList[0].Should().BeOfType<IronHive.Abstractions.Messages.Roles.UserMessage>().Subject;
+        userMsg.Content.OfType<IronHive.Abstractions.Messages.Content.TextMessageContent>()
+            .First().Value.Should().Be("안녕");
     }
 }
