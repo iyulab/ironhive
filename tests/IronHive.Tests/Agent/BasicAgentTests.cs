@@ -24,8 +24,8 @@ public class BasicAgentTests
     private BasicAgent CreateAgent(
         string provider = "openai",
         string model = "gpt-4o",
-        string name = "TestAgent",
-        string description = "Test agent description")
+        string name = "",
+        string description = "")
     {
         return new BasicAgent(_mockMessageService)
         {
@@ -39,16 +39,17 @@ public class BasicAgentTests
     #region Property Tests
 
     [Fact]
-    public void Agent_ShouldHave_RequiredProperties()
+    public void Agent_ShouldHave_DefaultEmptyNameAndDescription()
     {
-        // Arrange & Act
-        var agent = CreateAgent();
+        // BasicAgent can be created without Name and Description
+        var agent = new BasicAgent(_mockMessageService)
+        {
+            Provider = "openai",
+            Model = "gpt-4o"
+        };
 
-        // Assert
-        agent.Provider.Should().Be("openai");
-        agent.Model.Should().Be("gpt-4o");
-        agent.Name.Should().Be("TestAgent");
-        agent.Description.Should().Be("Test agent description");
+        agent.Name.Should().BeEmpty();
+        agent.Description.Should().BeEmpty();
     }
 
     [Fact]

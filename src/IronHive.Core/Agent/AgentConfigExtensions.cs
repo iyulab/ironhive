@@ -15,8 +15,6 @@ public static class AgentConfigExtensions
 #pragma warning disable CA2208 // paramName is intentionally the property name being validated
     public static void Validate(this AgentConfig config)
     {
-        if (string.IsNullOrWhiteSpace(config.Name))
-            throw new ArgumentException("Agent name is required.", nameof(AgentConfig.Name));
         if (string.IsNullOrWhiteSpace(config.Provider))
             throw new ArgumentException("Agent provider is required.", nameof(AgentConfig.Provider));
         if (string.IsNullOrWhiteSpace(config.Model))

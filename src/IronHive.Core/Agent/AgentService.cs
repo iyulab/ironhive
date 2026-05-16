@@ -96,7 +96,9 @@ public class AgentService : IAgentService
         try
         {
             var root = YamlDeserializer.Deserialize<AgentConfigRoot>(yaml);
-            if (root?.Agent != null && !string.IsNullOrWhiteSpace(root.Agent.Name))
+            if (root?.Agent != null && (
+                !string.IsNullOrWhiteSpace(root.Agent.Provider) ||
+                !string.IsNullOrWhiteSpace(root.Agent.Model)))
             {
                 config = root.Agent;
             }

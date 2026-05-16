@@ -21,23 +21,19 @@ public class AgentConfigTests
         act.Should().NotThrow();
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void Validate_MissingName_ShouldThrow(string? name)
+    [Fact]
+    public void Validate_ModelOnly_ShouldNotThrow()
     {
         var config = new AgentConfig
         {
-            Name = name!,
             Provider = "openai",
             Model = "gpt-4o"
+            // Name omitted — default empty string, should not throw
         };
 
         var act = () => config.Validate();
 
-        act.Should().Throw<ArgumentException>()
-            .Which.ParamName.Should().Be("Name");
+        act.Should().NotThrow();
     }
 
     [Theory]

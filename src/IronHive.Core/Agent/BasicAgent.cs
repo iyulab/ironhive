@@ -18,10 +18,10 @@ public class BasicAgent : IAgent
     public required string Model { get; set; }
 
     /// <inheritdoc />
-    public required string Name { get; set; }
-    
+    public string Name { get; set; } = string.Empty;
+
     /// <inheritdoc />
-    public required string Description { get; set; }
+    public string Description { get; set; } = string.Empty;
 
     /// <inheritdoc />
     public string? Instructions { get; set; }

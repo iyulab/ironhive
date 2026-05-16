@@ -77,9 +77,9 @@ model: claude-3-sonnet
     }
 
     [Fact]
-    public void CreateAgentFromYaml_ShouldThrow_WhenNameMissing()
+    public void CreateAgentFromYaml_ShouldSucceed_WhenNameMissing()
     {
-        // Arrange
+        // Name is optional — agent can be created without it
         var yaml = @"
 agent:
   provider: openai
@@ -87,11 +87,13 @@ agent:
 ";
 
         // Act
-        var act = () => _service.CreateAgentFromYaml(yaml);
+        var agent = _service.CreateAgentFromYaml(yaml);
 
         // Assert
-        act.Should().Throw<ArgumentException>()
-           .WithMessage("*name*");
+        agent.Should().NotBeNull();
+        agent.Provider.Should().Be("openai");
+        agent.Model.Should().Be("gpt-4o");
+        agent.Name.Should().BeEmpty();
     }
 
     [Fact]
