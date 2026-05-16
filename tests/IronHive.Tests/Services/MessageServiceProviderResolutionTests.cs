@@ -83,4 +83,65 @@ public class MessageServiceProviderResolutionTests
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Specify a provider*");
     }
+
+    [Fact]
+    public async Task GenerateStreamingMessageAsync_EmptyProvider_SingleGenerator_AutoSelects()
+    {
+        var generator = Substitute.For<IMessageGenerator>();
+        generator.GenerateStreamingMessageAsync(Arg.Any<MessageGenerationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(AsyncEnumerable.Empty<StreamingMessageResponse>());
+
+        var providerRegistry = new ProviderRegistry();
+        providerRegistry.TryAdd<IMessageGenerator>("openai", generator);
+
+        var tools = Substitute.For<IToolCollection>();
+        tools.FilterBy(Arg.Any<IEnumerable<string>>()).Returns(tools);
+
+        var svc = new MessageService(Substitute.For<IServiceProvider>(), providerRegistry, tools);
+
+        // await foreach로 열거를 시작해야 예외/정상 동작 확인 가능
+        // 예외가 발생하지 않으면 auto-select 성공
+        var act = async () =>
+        {
+            await foreach (var _ in svc.GenerateStreamingMessageAsync(MakeRequest(provider: ""))) { }
+        };
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task GenerateStreamingMessageAsync_EmptyProvider_NoGenerator_Throws()
+    {
+        var providerRegistry = new ProviderRegistry();
+        var tools = Substitute.For<IToolCollection>();
+        tools.FilterBy(Arg.Any<IEnumerable<string>>()).Returns(tools);
+        var svc = new MessageService(Substitute.For<IServiceProvider>(), providerRegistry, tools);
+
+        var act = async () =>
+        {
+            await foreach (var _ in svc.GenerateStreamingMessageAsync(MakeRequest(provider: ""))) { }
+        };
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*No message generators*");
+    }
+
+    [Fact]
+    public async Task GenerateStreamingMessageAsync_EmptyProvider_MultipleGenerators_Throws()
+    {
+        var providerRegistry = new ProviderRegistry();
+        providerRegistry.TryAdd<IMessageGenerator>("openai", Substitute.For<IMessageGenerator>());
+        providerRegistry.TryAdd<IMessageGenerator>("anthropic", Substitute.For<IMessageGenerator>());
+
+        var tools = Substitute.For<IToolCollection>();
+        tools.FilterBy(Arg.Any<IEnumerable<string>>()).Returns(tools);
+        var svc = new MessageService(Substitute.For<IServiceProvider>(), providerRegistry, tools);
+
+        var act = async () =>
+        {
+            await foreach (var _ in svc.GenerateStreamingMessageAsync(MakeRequest(provider: ""))) { }
+        };
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Specify a provider*");
+    }
 }

@@ -32,23 +32,7 @@ public class MessageService : IMessageService
         MessageRequest request,
         CancellationToken cancellationToken = default)
     {
-        IMessageGenerator generator;
-        if (string.IsNullOrEmpty(request.Provider))
-        {
-            var entries = _providers.Entries<IMessageGenerator>().ToList();
-            if (entries.Count == 0)
-                throw new InvalidOperationException(
-                    "No message generators are registered. Call AddMessageGenerator() during setup.");
-            if (entries.Count > 1)
-                throw new InvalidOperationException(
-                    $"Multiple message generators are registered ({string.Join(", ", entries.Select(e => e.Key))}). " +
-                    "Specify a provider via AgentConfig.Provider.");
-            generator = entries[0].Value;
-        }
-        else if (!_providers.TryGet<IMessageGenerator>(request.Provider, out generator!))
-        {
-            throw new KeyNotFoundException($"Message generator '{request.Provider}' is not registered.");
-        }
+        var generator = ResolveGenerator(request.Provider);
 
         // 요청 준비
         MessageDoneReason? reason;
@@ -119,23 +103,7 @@ public class MessageService : IMessageService
         MessageRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        IMessageGenerator generator;
-        if (string.IsNullOrEmpty(request.Provider))
-        {
-            var entries = _providers.Entries<IMessageGenerator>().ToList();
-            if (entries.Count == 0)
-                throw new InvalidOperationException(
-                    "No message generators are registered. Call AddMessageGenerator() during setup.");
-            if (entries.Count > 1)
-                throw new InvalidOperationException(
-                    $"Multiple message generators are registered ({string.Join(", ", entries.Select(e => e.Key))}). " +
-                    "Specify a provider via AgentConfig.Provider.");
-            generator = entries[0].Value;
-        }
-        else if (!_providers.TryGet<IMessageGenerator>(request.Provider, out generator!))
-        {
-            throw new KeyNotFoundException($"Message generator '{request.Provider}' is not registered.");
-        }
+        var generator = ResolveGenerator(request.Provider);
 
         string messageId = request.Messages.LastOrDefault() is AssistantMessage lastMessage
             ? lastMessage.Id
@@ -257,6 +225,30 @@ public class MessageService : IMessageService
             Model = model,
             Timestamp = DateTime.UtcNow
         };
+    }
+
+    /// <summary>
+    /// Resolves the <see cref="IMessageGenerator"/> for the given provider key.
+    /// When <paramref name="provider"/> is null or empty, auto-selects if exactly one generator is registered.
+    /// </summary>
+    private IMessageGenerator ResolveGenerator(string? provider)
+    {
+        if (string.IsNullOrEmpty(provider))
+        {
+            var entries = _providers.Entries<IMessageGenerator>().ToList();
+            if (entries.Count == 0)
+                throw new InvalidOperationException(
+                    "No message generators are registered. Call AddMessageGenerator() during setup.");
+            if (entries.Count > 1)
+                throw new InvalidOperationException(
+                    $"Multiple message generators are registered ({string.Join(", ", entries.Select(e => e.Key))}). " +
+                    "Specify a provider via AgentConfig.Provider.");
+            return entries[0].Value;
+        }
+
+        if (!_providers.TryGet<IMessageGenerator>(provider, out var generator))
+            throw new KeyNotFoundException($"Message generator '{provider}' is not registered.");
+        return generator;
     }
 
     /// <summary>
