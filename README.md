@@ -38,9 +38,12 @@ dotnet add package IronHive.Providers.OpenAI    # 또는 Anthropic, GoogleAI, Ol
 
 ## 빠른 시작
 
+### Standalone (콘솔, 단순 스크립트)
+
 ```csharp
 using IronHive.Core;
 using IronHive.Providers.OpenAI;
+using IronHive.Abstractions.Messages.Content;
 
 var hive = new HiveServiceBuilder()
     .AddMessageGenerator("openai", new OpenAIMessageGenerator(new OpenAIConfig
@@ -49,19 +52,48 @@ var hive = new HiveServiceBuilder()
     }))
     .Build();
 
+// Provider가 하나면 자동 선택 — Provider 생략 가능
 var agent = hive.CreateAgent(config =>
 {
-    config.Provider = "openai";
     config.Model = "gpt-4o";
-    config.SystemPrompt = "You are a helpful assistant.";
+    config.Instructions = "You are a helpful assistant.";
 });
 
-var response = await agent.InvokeAsync(messages);
+// string 오버로드로 단순 호출
+var response = await agent.InvokeAsync("안녕하세요");
+var text = response.Message?.Content
+    .OfType<TextMessageContent>().FirstOrDefault()?.Value;
 
 // 스트리밍
-await foreach (var chunk in agent.InvokeStreamingAsync(messages))
+await foreach (var chunk in agent.InvokeStreamingAsync("안녕하세요"))
 {
-    Console.Write(chunk.Content);
+    // chunk 처리
+}
+```
+
+### ASP.NET Core DI 통합
+
+```csharp
+// Program.cs
+builder.Services.AddHiveServiceCore()
+    .AddMessageGenerator("openai", new OpenAIMessageGenerator(new OpenAIConfig
+    {
+        ApiKey = builder.Configuration["OpenAI:ApiKey"]!
+    }));
+
+// 서비스에서 IHiveService 주입
+public class ChatService(IHiveService hive)
+{
+    public async Task<string> ChatAsync(string text)
+    {
+        var agent = hive.CreateAgent(config =>
+        {
+            config.Model = "gpt-4o";
+        });
+        var response = await agent.InvokeAsync(text);
+        return response.Message?.Content
+            .OfType<TextMessageContent>().FirstOrDefault()?.Value ?? string.Empty;
+    }
 }
 ```
 
