@@ -555,8 +555,10 @@ public class ChatClientAdapterTests : IDisposable
     }
 
     [Fact]
-    public async Task GetStreamingResponseAsync_UnknownChunkType_Skipped()
+    public async Task GetStreamingResponseAsync_TextAddedChunk_EmitsFirstTextContent()
     {
+        // StreamingContentAddedResponse with TextMessageContent carries the first chunk of a text
+        // block (before any deltas arrive). The adapter must emit it so the first character is not dropped.
         var chunks = new List<StreamingMessageResponse>
         {
             new StreamingMessageBeginResponse { Id = "stream-1" },
@@ -564,6 +566,32 @@ public class ChatClientAdapterTests : IDisposable
             {
                 Index = 0,
                 Content = new TextMessageContent { Value = "added" }
+            }
+        };
+        SetupStreamingGenerator(chunks);
+
+        var messages = new List<ChatMessage> { new(ChatRole.User, "Hi") };
+        var updates = new List<ChatResponseUpdate>();
+        await foreach (var update in _adapter.GetStreamingResponseAsync(messages))
+        {
+            updates.Add(update);
+        }
+
+        updates.Should().HaveCount(1);
+        var textContent = updates[0].Contents.OfType<TextContent>().Single();
+        textContent.Text.Should().Be("added");
+    }
+
+    [Fact]
+    public async Task GetStreamingResponseAsync_TextAddedChunk_EmptyValue_Skipped()
+    {
+        var chunks = new List<StreamingMessageResponse>
+        {
+            new StreamingMessageBeginResponse { Id = "stream-1" },
+            new StreamingContentAddedResponse
+            {
+                Index = 0,
+                Content = new TextMessageContent { Value = "" }
             }
         };
         SetupStreamingGenerator(chunks);
