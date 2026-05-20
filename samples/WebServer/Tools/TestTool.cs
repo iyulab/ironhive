@@ -41,18 +41,18 @@ public class TestTool
 
     [FunctionTool(Name = "search_web", RequiresApproval = true)]
     [Description("Performs a web search and returns the results.")]
-    public async Task<SearchResponse> SearchWebAsycn(
+    public async Task<CreateSearchResponse> SearchWebAsycn(
         [Description("The query string to search for.")] string query,
         CancellationToken cancellationToken)
     {
         await Task.Delay(5000, cancellationToken);
 
-        using var client = new TavilyClient();
-        var result = await client.SearchAsync(
-            includeAnswer: true,
-            includeRawContent: false,
-            apiKey: Environment.GetEnvironmentVariable("TAVILY_KEY") ?? string.Empty,
+        using var client = new TavilyClient(
+            apiKey: Environment.GetEnvironmentVariable("TAVILY_KEY") ?? string.Empty);
+        var result = await client.CreateSearchAsync(
             query: query,
+            includeAnswer: null,
+            includeRawContent: null,
             cancellationToken: cancellationToken);
         return result;
     }
