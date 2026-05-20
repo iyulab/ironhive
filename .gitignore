@@ -20,6 +20,8 @@ obj/
 *.nuget.props
 *.nuget.targets
 # packages/
+local-nuget-packages/
+local-packages/
 
 # Node.js
 node_modules/
