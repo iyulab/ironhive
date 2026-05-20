@@ -71,10 +71,40 @@ public class ChatClientAdapter : IChatClient
             switch (chunk)
             {
                 case StreamingContentAddedResponse added when added.Content is ToolMessageContent tool:
+                    var initialArguments = new StringBuilder();
+                    if (!string.IsNullOrEmpty(tool.Input))
+                        initialArguments.Append(tool.Input);
                     toolCallBuffers[added.Index] = (
                         tool.Id ?? Guid.NewGuid().ToString(),
                         tool.Name ?? string.Empty,
-                        new StringBuilder());
+                        initialArguments);
+                    break;
+
+                // The first text/thinking chunk arrives in StreamingContentAddedResponse.Content.Value,
+                // not as a delta — emit it so the first character is not silently dropped.
+                case StreamingContentAddedResponse added when added.Content is TextMessageContent textAdded:
+                    if (!string.IsNullOrEmpty(textAdded.Value))
+                    {
+                        yield return new ChatResponseUpdate
+                        {
+                            ResponseId = completionId,
+                            Contents = [new TextContent(textAdded.Value)]
+                        };
+                    }
+                    break;
+
+                case StreamingContentAddedResponse added when added.Content is ThinkingMessageContent thinkingAdded:
+                    if (!string.IsNullOrEmpty(thinkingAdded.Value))
+                    {
+                        yield return new ChatResponseUpdate
+                        {
+                            ResponseId = completionId,
+                            AdditionalProperties = new AdditionalPropertiesDictionary
+                            {
+                                ["IndexThinking.ThinkingContent"] = thinkingAdded.Value
+                            }
+                        };
+                    }
                     break;
 
                 case StreamingContentDeltaResponse delta when delta.Delta is ToolDeltaContent toolDelta:
