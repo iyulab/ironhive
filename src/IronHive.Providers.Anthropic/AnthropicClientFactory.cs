@@ -10,12 +10,14 @@ internal static class AnthropicClientFactory
         return client.WithOptions(options =>
         {
             var updated = options with { };
+            if (!string.IsNullOrWhiteSpace(config.BaseUrl))
+                updated = updated with { BaseUrl = config.BaseUrl };
             if (!string.IsNullOrWhiteSpace(config.ApiKey))
                 updated = updated with { ApiKey = config.ApiKey };
             if (!string.IsNullOrWhiteSpace(config.AuthToken))
                 updated = updated with { AuthToken = config.AuthToken };
-            if (!string.IsNullOrWhiteSpace(config.BaseUrl))
-                updated = updated with { BaseUrl = config.BaseUrl };
+            if (config.ExtraHeaders != null)
+                updated = updated with { ExtraHeaders = config.ExtraHeaders.AsReadOnly() };
             if (config.MaxRetries.HasValue)
                 updated = updated with { MaxRetries = config.MaxRetries.Value };
             if (config.Timeout.HasValue)

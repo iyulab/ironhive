@@ -23,6 +23,11 @@ namespace IronHive.Providers.Anthropic;
 public class AnthropicConfig
 {
     /// <summary>
+    /// Anthropic API의 기본 URL입니다.
+    /// </summary>
+    public string? BaseUrl { get; set; }
+
+    /// <summary>
     /// Anthropic API 인증에 사용되는 API Key입니다.
     /// </summary>
     /// <remarks>
@@ -41,9 +46,9 @@ public class AnthropicConfig
     public string? AuthToken { get; set; }
 
     /// <summary>
-    /// Anthropic API의 기본 URL입니다.
+    /// 추가적인 HTTP 요청 헤더를 설정할 수 있는 딕셔너리입니다.
     /// </summary>
-    public string? BaseUrl { get; set; }
+    public IDictionary<string, string>? ExtraHeaders { get; set; }
 
     /// <summary>
     /// API 호출 실패 시 재시도할 최대 횟수입니다.
@@ -52,7 +57,7 @@ public class AnthropicConfig
 
     /// <summary>
     /// API 요청의 타임아웃 시간입니다.
-    /// </summary>d
+    /// </summary>
     public TimeSpan? Timeout { get; set; }
     
     /// <summary>

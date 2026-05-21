@@ -315,7 +315,10 @@ public static class MessageRequestExtensions
             TopP = !enabledReasoning ? request.TopP : null,
             ExtraBody = openai == false ? new JsonObject
             {
-                // 1. vLLM 및 호환 엔진용 표준 파라미터 (토큰 버젯 임의 정의)
+                // vLLM 추가 파라미터
+                // https://docs.vllm.ai/en/latest/features/reasoning_outputs/
+
+                // Supports Budget "Qwen", "DeepSeek", "Nemotron"
                 ["thinking_token_budget"] = request.ThinkingEffort switch
                 {
                     MessageThinkingEffort.None => 0,           // 추론 비활성화
@@ -326,9 +329,12 @@ public static class MessageRequestExtensions
                     MessageThinkingEffort.XHigh => 4096,       // 심층 분석, 긴 단계의 다중 추론
                     _ => 0
                 },
-
-                // 2. llama.cpp 서버는 API를 통한 가변 토큰 설정을 지원하지 않음, 서버 측에서 설정
-                //["reasoning_budget"] = thinkingBudget
+                // Server Default Override
+                ["chat_template_kwargs"] = new JsonObject
+                {
+                    ["thinking"] = enabledReasoning,           // DeepSeek, IBM Granite
+                    ["enable_thinking"] = enabledReasoning,    // Qwen
+                }
             } : null
         };
     }

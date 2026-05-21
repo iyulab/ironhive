@@ -146,8 +146,6 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         await foreach (var res in _client.Models.GenerateContentStreamAsync(
             model, contents, config, cancellationToken))
         {
-            Console.WriteLine($"Received response chunk: {JsonSerializer.Serialize(res)}");
-
             // 메시지 시작
             if (current == null)
             {

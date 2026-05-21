@@ -39,7 +39,7 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
   </ItemGroup>
   <ItemGroup Label="Serialization">
-    <PackageVersion Include="MessagePack" Version="3.1.4" />
+    <PackageVersion Include="MessagePack" Version="3.1.5" />
     <PackageVersion Include="YamlDotNet" Version="17.1.0" />
     <PackageVersion Include="Tomlyn" Version="2.4.0" />
   </ItemGroup>
