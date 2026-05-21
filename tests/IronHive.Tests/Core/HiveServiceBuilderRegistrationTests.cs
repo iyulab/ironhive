@@ -147,6 +147,65 @@ public class HiveServiceBuilderRegistrationTests
         resolved.Should().BeSameAs(storage2);
     }
 
+    // --- AddWorkflowStep fail-fast ---
+
+    [Fact]
+    public void AddWorkflowStep_DuplicateName_ThrowsInvalidOperationException()
+    {
+        var builder = new HiveServiceBuilder();
+        var step = Substitute.For<IWorkflowTask<object>>();
+        builder.AddWorkflowStep<IWorkflowTask<object>>("step1", (IWorkflowTask<object>)step);
+
+        var act = () => builder.AddWorkflowStep<IWorkflowTask<object>>("step1", (IWorkflowTask<object>)step);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*step1*already registered*SetWorkflowStep*");
+    }
+
+    [Fact]
+    public void AddWorkflowStep_DifferentNames_BothSucceed()
+    {
+        var builder = new HiveServiceBuilder();
+        var step1 = Substitute.For<IWorkflowTask<object>>();
+        var step2 = Substitute.For<IWorkflowTask<object>>();
+
+        var act = () =>
+        {
+            builder.AddWorkflowStep<IWorkflowTask<object>>("step1", (IWorkflowTask<object>)step1);
+            builder.AddWorkflowStep<IWorkflowTask<object>>("step2", (IWorkflowTask<object>)step2);
+        };
+
+        act.Should().NotThrow();
+    }
+
+    // --- SetWorkflowStep upsert ---
+
+    [Fact]
+    public void SetWorkflowStep_DuplicateName_Replaces()
+    {
+        var builder = new HiveServiceBuilder();
+        var step1 = Substitute.For<IWorkflowTask<object>>();
+        var step2 = Substitute.For<IWorkflowTask<object>>();
+        builder.AddWorkflowStep<IWorkflowTask<object>>("step1", (IWorkflowTask<object>)step1);
+
+        // SetWorkflowStep should not throw when replacing
+        var act = () => builder.SetWorkflowStep<IWorkflowTask<object>>("step1", (IWorkflowTask<object>)step2);
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void SetWorkflowStep_NewName_AddsEntry()
+    {
+        var builder = new HiveServiceBuilder();
+        var step = Substitute.For<IWorkflowTask<object>>();
+
+        // SetWorkflowStep on a name that does not exist yet should also succeed
+        var act = () => builder.SetWorkflowStep<IWorkflowTask<object>>("step1", (IWorkflowTask<object>)step);
+
+        act.Should().NotThrow();
+    }
+
     // --- Workflow surface ---
 
     [Fact]

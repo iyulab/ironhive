@@ -129,10 +129,20 @@ public interface IHiveServiceBuilder
     IHiveServiceBuilder AddTool(ITool tool);
 
     /// <summary>
-    /// 작업들을 DI 컨테이너에 등록합니다.
+    /// 작업 단계를 DI 컨테이너에 등록합니다. 동일 이름이 이미 등록된 경우 <see cref="InvalidOperationException"/>을 발생시킵니다.
+    /// 덮어쓰려면 <c>SetWorkflowStep</c>를 사용하세요.
     /// </summary>
 #pragma warning disable CA1716 // Identifiers should not match keywords — 'step' is domain-specific and not a VB.NET concern
     IHiveServiceBuilder AddWorkflowStep<T>(string stepName, T? step = null)
+        where T : class, IWorkflowStep;
+#pragma warning restore CA1716
+
+    /// <summary>
+    /// 작업 단계를 등록하거나 동일 이름이 있으면 교체합니다 (upsert).
+    /// If a step named <paramref name="stepName"/> already exists it is overwritten.
+    /// </summary>
+#pragma warning disable CA1716 // Identifiers should not match keywords — 'step' is domain-specific and not a VB.NET concern
+    IHiveServiceBuilder SetWorkflowStep<T>(string stepName, T? step = null)
         where T : class, IWorkflowStep;
 #pragma warning restore CA1716
 

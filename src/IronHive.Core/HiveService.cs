@@ -43,7 +43,6 @@ public class HiveService : IHiveService, IAsyncDisposable
     /// <inheritdoc />
     public IWorkflowFactory Workflows { get; }
 
-    /// <inheritdoc />
     private IAgentService Agents { get; }
 
     /// <inheritdoc />

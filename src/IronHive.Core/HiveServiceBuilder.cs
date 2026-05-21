@@ -204,6 +204,29 @@ public class HiveServiceBuilder : IHiveServiceBuilder, IAsyncDisposable
     public IHiveServiceBuilder AddWorkflowStep<T>(string stepName, T? step = null)
         where T : class, IWorkflowStep
     {
+        if (Services.Any(d => d.ServiceKey is string k
+                           && k == stepName
+                           && d.ServiceType == typeof(IWorkflowStep)))
+            throw new InvalidOperationException(
+                $"A workflow step named '{stepName}' is already registered. Use SetWorkflowStep() to replace it.");
+
+        if (step is not null)
+            Services.AddKeyedSingleton<IWorkflowStep>(stepName, step);
+        else
+            Services.AddKeyedTransient<IWorkflowStep, T>(stepName);
+        return this;
+    }
+
+    /// <inheritdoc />
+    public IHiveServiceBuilder SetWorkflowStep<T>(string stepName, T? step = null)
+        where T : class, IWorkflowStep
+    {
+        var existing = Services.FirstOrDefault(d => d.ServiceKey is string k
+                                                 && k == stepName
+                                                 && d.ServiceType == typeof(IWorkflowStep));
+        if (existing is not null)
+            Services.Remove(existing);
+
         if (step is not null)
             Services.AddKeyedSingleton<IWorkflowStep>(stepName, step);
         else
