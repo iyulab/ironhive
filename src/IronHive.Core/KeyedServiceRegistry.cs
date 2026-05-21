@@ -6,7 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace IronHive.Core;
 
 /// <inheritdoc />
-public class KeyedServiceRegistry<TKey, TBase> : IKeyedServiceRegistry<TKey, TBase>
+public class KeyedServiceRegistry<TKey, TBase> : IKeyedServiceRegistry<TKey, TBase>, IAsyncDisposable
     where TKey : notnull
     where TBase : class
 {
@@ -121,6 +121,22 @@ public class KeyedServiceRegistry<TKey, TBase> : IKeyedServiceRegistry<TKey, TBa
             }
         }
         return removed;
+    }
+
+    /// <summary>
+    /// Disposes all registered items that implement <see cref="IAsyncDisposable"/> or <see cref="IDisposable"/>.
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        foreach (var bucket in _buckets.Values)
+        {
+            foreach (var item in bucket.Values)
+            {
+                await DisposalHelper.DisposeSafelyAsync(item).ConfigureAwait(false);
+            }
+        }
+        _buckets.Clear();
+        GC.SuppressFinalize(this);
     }
 
     /// <summary>

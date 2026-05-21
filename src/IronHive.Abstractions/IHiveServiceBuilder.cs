@@ -25,49 +25,103 @@ public interface IHiveServiceBuilder
 
 
     /// <summary>
-    /// 새로운 모델 제공자를 등록합니다.
+    /// 새로운 모델 제공자를 등록합니다. 동일 이름이 이미 등록된 경우 <see cref="InvalidOperationException"/>을 발생시킵니다.
+    /// 덮어쓰려면 <see cref="SetModelCatalog"/>를 사용하세요.
     /// </summary>
     IHiveServiceBuilder AddModelCatalog(string providerName, IModelCatalog catalog);
 
     /// <summary>
-    /// 새로운 임베딩 생성기를 등록합니다.
+    /// 모델 제공자를 등록하거나 동일 이름이 있으면 교체합니다 (upsert).
+    /// </summary>
+    IHiveServiceBuilder SetModelCatalog(string providerName, IModelCatalog catalog);
+
+    /// <summary>
+    /// 새로운 임베딩 생성기를 등록합니다. 동일 이름이 이미 등록된 경우 <see cref="InvalidOperationException"/>을 발생시킵니다.
+    /// 덮어쓰려면 <see cref="SetEmbeddingGenerator"/>를 사용하세요.
     /// </summary>
     IHiveServiceBuilder AddEmbeddingGenerator(string providerName, IEmbeddingGenerator generator);
 
     /// <summary>
-    /// 새로운 메시지 생성기를 등록합니다.
+    /// 임베딩 생성기를 등록하거나 동일 이름이 있으면 교체합니다 (upsert).
+    /// </summary>
+    IHiveServiceBuilder SetEmbeddingGenerator(string providerName, IEmbeddingGenerator generator);
+
+    /// <summary>
+    /// 새로운 메시지 생성기를 등록합니다. 동일 이름이 이미 등록된 경우 <see cref="InvalidOperationException"/>을 발생시킵니다.
+    /// 덮어쓰려면 <see cref="SetMessageGenerator"/>를 사용하세요.
     /// </summary>
     IHiveServiceBuilder AddMessageGenerator(string providerName, IMessageGenerator generator);
 
     /// <summary>
-    /// 새로운 이미지 생성기를 등록합니다.
+    /// 메시지 생성기를 등록하거나 동일 이름이 있으면 교체합니다 (upsert).
+    /// </summary>
+    IHiveServiceBuilder SetMessageGenerator(string providerName, IMessageGenerator generator);
+
+    /// <summary>
+    /// 새로운 이미지 생성기를 등록합니다. 동일 이름이 이미 등록된 경우 <see cref="InvalidOperationException"/>을 발생시킵니다.
+    /// 덮어쓰려면 <see cref="SetImageGenerator"/>를 사용하세요.
     /// </summary>
     IHiveServiceBuilder AddImageGenerator(string providerName, IImageGenerator generator);
 
     /// <summary>
-    /// 새로운 비디오 생성기를 등록합니다.
+    /// 이미지 생성기를 등록하거나 동일 이름이 있으면 교체합니다 (upsert).
+    /// </summary>
+    IHiveServiceBuilder SetImageGenerator(string providerName, IImageGenerator generator);
+
+    /// <summary>
+    /// 새로운 비디오 생성기를 등록합니다. 동일 이름이 이미 등록된 경우 <see cref="InvalidOperationException"/>을 발생시킵니다.
+    /// 덮어쓰려면 <see cref="SetVideoGenerator"/>를 사용하세요.
     /// </summary>
     IHiveServiceBuilder AddVideoGenerator(string providerName, IVideoGenerator generator);
 
     /// <summary>
-    /// 새로운 오디오 프로세서를 등록합니다.
+    /// 비디오 생성기를 등록하거나 동일 이름이 있으면 교체합니다 (upsert).
+    /// </summary>
+    IHiveServiceBuilder SetVideoGenerator(string providerName, IVideoGenerator generator);
+
+    /// <summary>
+    /// 새로운 오디오 프로세서를 등록합니다. 동일 이름이 이미 등록된 경우 <see cref="InvalidOperationException"/>을 발생시킵니다.
+    /// 덮어쓰려면 <see cref="SetAudioProcessor"/>를 사용하세요.
     /// </summary>
     IHiveServiceBuilder AddAudioProcessor(string providerName, IAudioProcessor processor);
 
     /// <summary>
-    /// 파일 저장소를 추가합니다.
+    /// 오디오 프로세서를 등록하거나 동일 이름이 있으면 교체합니다 (upsert).
+    /// </summary>
+    IHiveServiceBuilder SetAudioProcessor(string providerName, IAudioProcessor processor);
+
+    /// <summary>
+    /// 파일 저장소를 추가합니다. 동일 이름이 이미 등록된 경우 <see cref="InvalidOperationException"/>을 발생시킵니다.
+    /// 덮어쓰려면 <see cref="SetFileStorage"/>를 사용하세요.
     /// </summary>
     IHiveServiceBuilder AddFileStorage(string storageName, IFileStorage storage);
 
     /// <summary>
-    /// 큐 저장소를 설정합니다.
+    /// 파일 저장소를 등록하거나 동일 이름이 있으면 교체합니다 (upsert).
+    /// </summary>
+    IHiveServiceBuilder SetFileStorage(string storageName, IFileStorage storage);
+
+    /// <summary>
+    /// 큐 저장소를 추가합니다. 동일 이름이 이미 등록된 경우 <see cref="InvalidOperationException"/>을 발생시킵니다.
+    /// 덮어쓰려면 <see cref="SetQueueStorage"/>를 사용하세요.
     /// </summary>
     IHiveServiceBuilder AddQueueStorage(string storageName, IQueueStorage storage);
 
     /// <summary>
-    /// 벡터 저장소를 설정합니다.
+    /// 큐 저장소를 등록하거나 동일 이름이 있으면 교체합니다 (upsert).
+    /// </summary>
+    IHiveServiceBuilder SetQueueStorage(string storageName, IQueueStorage storage);
+
+    /// <summary>
+    /// 벡터 저장소를 추가합니다. 동일 이름이 이미 등록된 경우 <see cref="InvalidOperationException"/>을 발생시킵니다.
+    /// 덮어쓰려면 <see cref="SetVectorStorage"/>를 사용하세요.
     /// </summary>
     IHiveServiceBuilder AddVectorStorage(string storageName, IVectorStorage storage);
+
+    /// <summary>
+    /// 벡터 저장소를 등록하거나 동일 이름이 있으면 교체합니다 (upsert).
+    /// </summary>
+    IHiveServiceBuilder SetVectorStorage(string storageName, IVectorStorage storage);
 
     /// <summary>
     /// 툴을 추가합니다.

@@ -25,7 +25,7 @@ using IronHive.Abstractions.Memory;
 namespace IronHive.Core;
 
 /// <inheritdoc />
-public class HiveServiceBuilder : IHiveServiceBuilder
+public class HiveServiceBuilder : IHiveServiceBuilder, IAsyncDisposable
 {
     private readonly ProviderRegistry _providers = new();
     private readonly StorageRegistry _storages = new();
@@ -61,63 +61,135 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     /// <inheritdoc />
     public IHiveServiceBuilder AddModelCatalog(string providerName, IModelCatalog catalog)
     {
+        ThrowIfProviderExists<IModelCatalog>(providerName, nameof(SetModelCatalog));
         _providers.TryAdd<IModelCatalog>(providerName, catalog);
+        return this;
+    }
+
+    /// <inheritdoc />
+    public IHiveServiceBuilder SetModelCatalog(string providerName, IModelCatalog catalog)
+    {
+        _providers.Set<IModelCatalog>(providerName, catalog);
         return this;
     }
 
     /// <inheritdoc />
     public IHiveServiceBuilder AddEmbeddingGenerator(string providerName, IEmbeddingGenerator generator)
     {
+        ThrowIfProviderExists<IEmbeddingGenerator>(providerName, nameof(SetEmbeddingGenerator));
         _providers.TryAdd<IEmbeddingGenerator>(providerName, generator);
+        return this;
+    }
+
+    /// <inheritdoc />
+    public IHiveServiceBuilder SetEmbeddingGenerator(string providerName, IEmbeddingGenerator generator)
+    {
+        _providers.Set<IEmbeddingGenerator>(providerName, generator);
         return this;
     }
 
     /// <inheritdoc />
     public IHiveServiceBuilder AddMessageGenerator(string providerName, IMessageGenerator generator)
     {
+        ThrowIfProviderExists<IMessageGenerator>(providerName, nameof(SetMessageGenerator));
         _providers.TryAdd<IMessageGenerator>(providerName, generator);
+        return this;
+    }
+
+    /// <inheritdoc />
+    public IHiveServiceBuilder SetMessageGenerator(string providerName, IMessageGenerator generator)
+    {
+        _providers.Set<IMessageGenerator>(providerName, generator);
         return this;
     }
 
     /// <inheritdoc />
     public IHiveServiceBuilder AddImageGenerator(string providerName, IImageGenerator generator)
     {
+        ThrowIfProviderExists<IImageGenerator>(providerName, nameof(SetImageGenerator));
         _providers.TryAdd<IImageGenerator>(providerName, generator);
+        return this;
+    }
+
+    /// <inheritdoc />
+    public IHiveServiceBuilder SetImageGenerator(string providerName, IImageGenerator generator)
+    {
+        _providers.Set<IImageGenerator>(providerName, generator);
         return this;
     }
 
     /// <inheritdoc />
     public IHiveServiceBuilder AddVideoGenerator(string providerName, IVideoGenerator generator)
     {
+        ThrowIfProviderExists<IVideoGenerator>(providerName, nameof(SetVideoGenerator));
         _providers.TryAdd<IVideoGenerator>(providerName, generator);
+        return this;
+    }
+
+    /// <inheritdoc />
+    public IHiveServiceBuilder SetVideoGenerator(string providerName, IVideoGenerator generator)
+    {
+        _providers.Set<IVideoGenerator>(providerName, generator);
         return this;
     }
 
     /// <inheritdoc />
     public IHiveServiceBuilder AddAudioProcessor(string providerName, IAudioProcessor processor)
     {
+        ThrowIfProviderExists<IAudioProcessor>(providerName, nameof(SetAudioProcessor));
         _providers.TryAdd<IAudioProcessor>(providerName, processor);
+        return this;
+    }
+
+    /// <inheritdoc />
+    public IHiveServiceBuilder SetAudioProcessor(string providerName, IAudioProcessor processor)
+    {
+        _providers.Set<IAudioProcessor>(providerName, processor);
         return this;
     }
 
     /// <inheritdoc />
     public IHiveServiceBuilder AddFileStorage(string storageName, IFileStorage storage)
     {
+        ThrowIfStorageExists<IFileStorage>(storageName, nameof(SetFileStorage));
         _storages.TryAdd<IFileStorage>(storageName, storage);
+        return this;
+    }
+
+    /// <inheritdoc />
+    public IHiveServiceBuilder SetFileStorage(string storageName, IFileStorage storage)
+    {
+        _storages.Set<IFileStorage>(storageName, storage);
         return this;
     }
 
     /// <inheritdoc />
     public IHiveServiceBuilder AddQueueStorage(string storageName, IQueueStorage storage)
     {
+        ThrowIfStorageExists<IQueueStorage>(storageName, nameof(SetQueueStorage));
         _storages.TryAdd<IQueueStorage>(storageName, storage);
+        return this;
+    }
+
+    /// <inheritdoc />
+    public IHiveServiceBuilder SetQueueStorage(string storageName, IQueueStorage storage)
+    {
+        _storages.Set<IQueueStorage>(storageName, storage);
         return this;
     }
 
     /// <inheritdoc />
     public IHiveServiceBuilder AddVectorStorage(string storageName, IVectorStorage storage)
     {
+        ThrowIfStorageExists<IVectorStorage>(storageName, nameof(SetVectorStorage));
         _storages.TryAdd<IVectorStorage>(storageName, storage);
+        return this;
+    }
+
+    /// <inheritdoc />
+    public IHiveServiceBuilder SetVectorStorage(string storageName, IVectorStorage storage)
+    {
+        _storages.Set<IVectorStorage>(storageName, storage);
         return this;
     }
 
@@ -164,5 +236,37 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     {
         if (Services.Any(d => d.ServiceType == typeof(T)))
             throw new InvalidOperationException($"{typeof(T).Name} is already registered, the registration must be done only once.");
+    }
+
+    /// <summary>
+    /// Provider 레지스트리에 지정 이름/타입이 이미 등록되어 있으면 <see cref="InvalidOperationException"/>을 발생시킵니다.
+    /// </summary>
+    private void ThrowIfProviderExists<TDerived>(string name, string setMethodName)
+        where TDerived : class, IProviderItem
+    {
+        if (_providers.Contains<TDerived>(name))
+            throw new InvalidOperationException(
+                $"A {typeof(TDerived).Name} named '{name}' is already registered. Use {setMethodName}() to replace it.");
+    }
+
+    /// <summary>
+    /// Storage 레지스트리에 지정 이름/타입이 이미 등록되어 있으면 <see cref="InvalidOperationException"/>을 발생시킵니다.
+    /// </summary>
+    private void ThrowIfStorageExists<TDerived>(string name, string setMethodName)
+        where TDerived : class, IStorageItem
+    {
+        if (_storages.Contains<TDerived>(name))
+            throw new InvalidOperationException(
+                $"A {typeof(TDerived).Name} named '{name}' is already registered. Use {setMethodName}() to replace it.");
+    }
+
+    /// <summary>
+    /// Disposes provider and storage registries if not yet transferred to a built service.
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        await _providers.DisposeAsync().ConfigureAwait(false);
+        await _storages.DisposeAsync().ConfigureAwait(false);
+        GC.SuppressFinalize(this);
     }
 }

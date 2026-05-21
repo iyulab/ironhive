@@ -4,6 +4,8 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using YamlDotNet.Serialization;
 
+#pragma warning disable CA1724 // Type name conflicts with namespace — WorkflowFactory is the established concrete class name
+
 namespace IronHive.Core.Workflow;
 
 /// <summary>
@@ -13,7 +15,7 @@ namespace IronHive.Core.Workflow;
 /// - 필요 시 YAML/JSON 정의로부터 역직렬화하여 생성하는 진입점도 제공합니다.
 /// </para>
 /// </summary>
-public class WorkflowFactory
+public class WorkflowFactory : IWorkflowFactory
 {
     private static readonly JsonSerializerOptions s_jsonOptions = new()
     {

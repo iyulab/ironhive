@@ -3,13 +3,15 @@ using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Registries;
 using IronHive.Abstractions.Tools;
+using IronHive.Abstractions.Workflow;
 using IronHive.Core.Memory;
+using IronHive.Core.Workflow;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace IronHive.Core;
 
 /// <inheritdoc />
-public class HiveService : IHiveService
+public class HiveService : IHiveService, IAsyncDisposable
 {
     public HiveService(IServiceProvider services)
     {
@@ -20,6 +22,7 @@ public class HiveService : IHiveService
         Tools = services.GetRequiredService<IToolCollection>();
         Memory = services.GetRequiredService<IMemoryService>();
         Agents = services.GetRequiredService<IAgentService>();
+        Workflows = new WorkflowFactory(services);
     }
 
     /// <inheritdoc />
@@ -36,6 +39,9 @@ public class HiveService : IHiveService
 
     /// <inheritdoc />
     public IMemoryService Memory { get; }
+
+    /// <inheritdoc />
+    public IWorkflowFactory Workflows { get; }
 
     /// <inheritdoc />
     private IAgentService Agents { get; }
@@ -59,6 +65,19 @@ public class HiveService : IHiveService
     public IAgent CreateAgentFromYaml(string yaml)
     {
         return Agents.CreateAgentFromYaml(yaml);
+    }
+
+    /// <summary>
+    /// Disposes the service provider if it implements <see cref="IAsyncDisposable"/> or <see cref="IDisposable"/>.
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        if (Services is IAsyncDisposable asyncDisposable)
+            await asyncDisposable.DisposeAsync().ConfigureAwait(false);
+        else if (Services is IDisposable disposable)
+            disposable.Dispose();
+
+        GC.SuppressFinalize(this);
     }
 }
 

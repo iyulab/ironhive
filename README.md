@@ -28,12 +28,30 @@
 - **파일 처리** — PDF, Word, PowerPoint, 이미지
 - **플러그인** — MCP, OpenAPI 통합
 - **M.E.AI 호환** — `ChatClientAdapter` / `EmbeddingGeneratorAdapter`
+- **워크플로우** — `IHiveService.Workflows`를 통해 YAML/JSON/정의 기반 워크플로우 빌드 (`IWorkflowFactory`)
 
 ## 설치
 
 ```bash
 dotnet add package IronHive.Core
 dotnet add package IronHive.Providers.OpenAI    # 또는 Anthropic, GoogleAI, Ollama
+```
+
+## 빌더 API 규칙
+
+`HiveServiceBuilder`의 등록 메서드는 두 가지 동사를 구분합니다:
+
+| 동사 | 의미 |
+|------|------|
+| `AddX(name, item)` | 신규 등록. 동일 이름이 이미 존재하면 `InvalidOperationException` |
+| `SetX(name, item)` | Upsert. 동일 이름이 있으면 교체, 없으면 추가 |
+
+```csharp
+builder
+    .AddMessageGenerator("openai", gen1)   // 첫 등록 — OK
+    .SetMessageGenerator("openai", gen2)   // 교체 — OK
+    // .AddMessageGenerator("openai", gen3) // 두 번 Add — throws InvalidOperationException
+    ;
 ```
 
 ## 빠른 시작
