@@ -1,6 +1,7 @@
 ﻿using IronHive.Providers.Anthropic;
 using IronHive.Providers.OpenAI;
 using IronHive.Abstractions;
+using IronHive.Core.Extensions;
 using WebServer.Tools;
 
 using IronHive.Providers.GoogleAI;

@@ -1,12 +1,13 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using IronHive.Core.Storages;
-using IronHive.Core.Tools;
+﻿using IronHive.Abstractions;
+using IronHive.Abstractions.Files;
 using IronHive.Core.Files;
 using IronHive.Core.Files.Decoders;
-using IronHive.Abstractions.Files;
 using IronHive.Core.Files.Detectors;
+using IronHive.Core.Storages;
+using IronHive.Core.Tools;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace IronHive.Abstractions;
+namespace IronHive.Core.Extensions;
 
 public static class HiveServiceBuilderExtensions
 {

@@ -1,5 +1,6 @@
 using IronHive.Abstractions;
 using IronHive.Abstractions.Messages;
+using IronHive.Core.Extensions;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Tools;

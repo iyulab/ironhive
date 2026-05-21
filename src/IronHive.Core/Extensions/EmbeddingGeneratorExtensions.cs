@@ -1,7 +1,8 @@
 ﻿using IronHive.Core.Compatibility;
 using Microsoft.Extensions.AI;
+using IHiveEmbeddingGenerator = IronHive.Abstractions.Embedding.IEmbeddingGenerator;
 
-namespace IronHive.Abstractions.Embedding;
+namespace IronHive.Core.Extensions;
 
 public static class EmbeddingGeneratorExtensions
 {
@@ -13,7 +14,7 @@ public static class EmbeddingGeneratorExtensions
     /// <param name="providerName">Provider 이름 (선택)</param>
     /// <returns>IEmbeddingGenerator 인스턴스</returns>
     public static IEmbeddingGenerator<string, Embedding<float>> AsEmbeddingGenerator(
-        this IEmbeddingGenerator generator,
+        this IHiveEmbeddingGenerator generator,
         string modelId,
         string? providerName = null)
     {
