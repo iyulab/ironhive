@@ -45,10 +45,12 @@ public class GpuStackMessageGenerator : IMessageGenerator
             if (currentUrl == _lastResolvedUrl)
                 return _inner;
 
-            var oldInner = _inner;
+            // NOTE: 이전 inner는 Dispose하지 않습니다.
+            // 락 밖에서 이전 _inner 참조를 이미 획득한 다른 스레드가 in-flight 요청 중일 수 있으며,
+            // Dispose 시 ObjectDisposedException이 발생합니다.
+            // 엔드포인트 변경은 드문 이벤트이므로, GC가 참조가 없어진 시점에 자동 회수합니다.
             _inner = new OpenAIChatMessageGenerator(_config.ToOpenAI());
             _lastResolvedUrl = currentUrl;
-            oldInner.Dispose();
         }
 
         return _inner;
