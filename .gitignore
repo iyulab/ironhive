@@ -45,3 +45,6 @@ dev-docs/
 *.local
 nul
 CHECKLIST.md
+
+# IDE language server cache
+*.lscache
