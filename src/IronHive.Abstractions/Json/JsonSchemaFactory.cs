@@ -13,12 +13,17 @@ namespace IronHive.Abstractions.Json;
 /// </summary>
 public static class JsonSchemaFactory
 {
+    // NOTE: this options instance is used ONLY for schema generation
+    // (GetJsonSchemaAsNode below), never to (de)serialize payloads. It must not
+    // enable NumberHandling.AllowReadingFromString: that flag makes the exporter
+    // emit numeric properties as a {"type":["string","number"], "pattern":"..."}
+    // union, which grammar-enforcing OpenAI-compatible backends (llama.cpp/vLLM
+    // via GPUStack) cannot constrain. Response-parsing leniency lives elsewhere.
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         MaxDepth = 32,
-        NumberHandling = JsonNumberHandling.AllowReadingFromString,
         TypeInfoResolver = JsonSerializerOptions.Default.TypeInfoResolver,
         Converters =
         {
@@ -47,6 +52,12 @@ public static class JsonSchemaFactory
     /// </summary>
     public static JsonNode HandleTransform(JsonSchemaExporterContext ctx, JsonNode node)
     {
+        // Normalize string-backed enums regardless of description: the exporter
+        // emits {"enum":[...]} without a "type", which some grammar-enforcing
+        // OpenAI-compatible backends reject. Add "type":"string" so the schema
+        // matches the OpenAI structured-outputs shape {"type":"string","enum":[...]}.
+        NormalizeStringEnum(node);
+
         var attrs = ctx.PropertyInfo?.AttributeProvider?.GetCustomAttributes(true);
         if (!TryGetDescription(attrs ?? [], out var description))
             return node;
@@ -59,6 +70,28 @@ public static class JsonSchemaFactory
         }
         jObj.Insert(0, "description", description);
         return node;
+    }
+
+    /// <summary>
+    /// 문자열 enum 노드(<c>{"enum":[...]}</c>)에 <c>"type":"string"</c>를 보강합니다.
+    /// 이미 type이 있거나 enum 값에 비문자열이 섞이면(정수 backed enum 등) 변경하지 않습니다.
+    /// </summary>
+    private static void NormalizeStringEnum(JsonNode node)
+    {
+        if (node is not JsonObject obj)
+            return;
+        if (obj.ContainsKey("type"))
+            return;
+        if (obj["enum"] is not JsonArray values || values.Count == 0)
+            return;
+
+        foreach (var value in values)
+        {
+            if (value is not JsonValue v || v.GetValueKind() != JsonValueKind.String)
+                return;
+        }
+
+        obj.Insert(0, "type", "string");
     }
 
     private static bool TryGetDescription(object[] attributes, out string description)
