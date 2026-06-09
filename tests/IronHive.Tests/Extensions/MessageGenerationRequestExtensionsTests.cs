@@ -3,6 +3,7 @@ using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Tools;
+using IronHive.Providers.OpenAI;
 using IronHive.Providers.OpenAI.Payloads.Responses;
 using IronHive.Providers.OpenAI.Payloads.ChatCompletion;
 

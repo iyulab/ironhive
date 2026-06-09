@@ -1,8 +1,8 @@
 ﻿using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Messages;
-using IronHive.Providers.Anthropic;
+using IronHive.Abstractions.Registries;
 
-namespace IronHive.Abstractions.Registries;
+namespace IronHive.Providers.Anthropic;
 
 public static class ProviderRegistryExtensions
 {

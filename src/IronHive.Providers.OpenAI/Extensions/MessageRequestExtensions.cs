@@ -1,5 +1,6 @@
 ﻿using System.Text.Json.Nodes;
 using IronHive.Abstractions.Json;
+using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Providers.OpenAI.Payloads.Responses;
 using IronHive.Providers.OpenAI.Payloads.ChatCompletion;
@@ -9,7 +10,7 @@ using OpenAIMessage = IronHive.Providers.OpenAI.Payloads.ChatCompletion.ChatMess
 using TextMessageContent = IronHive.Abstractions.Messages.Content.TextMessageContent;
 using ImageMessageContent = IronHive.Abstractions.Messages.Content.ImageMessageContent;
 
-namespace IronHive.Abstractions.Messages;
+namespace IronHive.Providers.OpenAI;
 
 public static class MessageRequestExtensions
 {

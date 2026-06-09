@@ -3,10 +3,10 @@ using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Images;
 using IronHive.Abstractions.Messages;
+using IronHive.Abstractions.Registries;
 using IronHive.Abstractions.Videos;
-using IronHive.Providers.OpenAI;
 
-namespace IronHive.Abstractions.Registries;
+namespace IronHive.Providers.OpenAI;
 
 public static class ProviderRegistryExtensions
 {
