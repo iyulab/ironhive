@@ -69,9 +69,7 @@ public static class MessageSample
         var hive = new HiveServiceBuilder()
             .AddOpenAIProviders("openai", new OpenAIConfig
             {
-                //ApiKey = Environment.GetEnvironmentVariable("OPENAI") ?? string.Empty
-                BaseUrl = "http://172.30.1.54/v1",
-                ApiKey = "gpustack_8c5d65c2ceddbe20_0f8bfbd4c422ff42d01fe7004e9b3e8b"
+                ApiKey = Environment.GetEnvironmentVariable("OPENAI") ?? string.Empty
             }, OpenAIServiceType.ChatCompletion)
             .AddAnthropicProviders("anthropic", new AnthropicConfig
             {
@@ -90,17 +88,16 @@ public static class MessageSample
         var generator = hive.Services.GetRequiredService<IMessageService>();
 
         // OpenAI 샘플
-        request.Provider = "openai";
+        // request.Provider = "openai";
         //request.Model = "gpt-5.5";
-        request.Model = "qwen3.6-27b-awq-int4";
 
         // Anthropic 샘플
-        //request.Provider = "anthropic";
-        //request.Model = "claude-opus-4-7";
+        request.Provider = "anthropic";
+        request.Model = "claude-fable-5";
 
         // Google AI 샘플
         //request.Provider = "google";
-        //request.Model = "gemini-3.1-flash-lite-preview";
+        //request.Model = "gemini-3.5-flash";
 
         // XAI 샘플
         //request.Provider = "xai";

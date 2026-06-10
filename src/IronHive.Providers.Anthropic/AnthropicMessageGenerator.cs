@@ -106,8 +106,8 @@ public class AnthropicMessageGenerator : IMessageGenerator
             },
             TokenUsage = new MessageTokenUsage
             {
-                InputTokens = (int)(res.Usage.InputTokens),
-                OutputTokens = (int)(res.Usage.OutputTokens)
+                InputTokens = (int)res.Usage.InputTokens,
+                OutputTokens = (int)res.Usage.OutputTokens
             },
         };
     }
@@ -131,7 +131,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
             {
                 id = mse.Message.ID;
                 model = mse.Message.Model;
-                usage.InputTokens = (int)(mse.Message.Usage.InputTokens);
+                usage.InputTokens = (int)mse.Message.Usage.InputTokens;
                 yield return new StreamingMessageBeginResponse
                 {
                     Id = id
@@ -427,9 +427,6 @@ public class AnthropicMessageGenerator : IMessageGenerator
             }
         }
 
-        // 필수요청사항인 토큰을 계산합니다.
-        var (maxTokens, thinking) = CalculateTokens(request);
-
         // 도구 변환
         var tools = request.Tools?.Select(t =>
         {
@@ -456,55 +453,62 @@ public class AnthropicMessageGenerator : IMessageGenerator
             outputConfig = new OutputConfig { Format = format };
         }
 
+        // 추론 구성 지원
+        ThinkingConfigParam? thinking = null;
+        if (request.ThinkingEffort is not null and not MessageThinkingEffort.None)
+        {
+            if (AnthropicModelNames.Old.Any(m => request.Model.Equals(m, StringComparison.Ordinal)))
+            {
+                // 구버전 모델들은 ThinkingConfigEnabled 방식으로 추론을 설정합니다.
+                // 토큰은 OpenAI o-series, Gemini thinking_budget 커뮤니티 기준을 참고.
+                thinking = request.ThinkingEffort switch
+                {
+                    MessageThinkingEffort.Minimal => (ThinkingConfigParam?)new ThinkingConfigEnabled(1_024),
+                    MessageThinkingEffort.Low => (ThinkingConfigParam?)new ThinkingConfigEnabled(4_000),
+                    MessageThinkingEffort.Medium => (ThinkingConfigParam?)new ThinkingConfigEnabled(10_000),
+                    MessageThinkingEffort.High => (ThinkingConfigParam?)new ThinkingConfigEnabled(20_000),
+                    MessageThinkingEffort.XHigh => (ThinkingConfigParam?)new ThinkingConfigEnabled(32_000),
+                    _ => null
+                };
+            }
+            else
+            {
+                // 최신 모델들은 Adaptive 추론 전략을 사용합니다.
+                // https://platform.claude.com/docs/en/build-with-claude/adaptive-thinking
+                thinking = new ThinkingConfigAdaptive { };
+            }
+        }
+
         return new MessageCreateParams
         {
             Model = request.Model,
             System = new MessageCreateParamsSystem(request.System ?? string.Empty),
             Messages = messages,
-            MaxTokens = maxTokens,
+            // 필수요청사항으로 64K로 기본값을 설정합니다.
+            MaxTokens = request.MaxTokens ?? 64000,
             StopSequences = request.StopSequences?.ToList(),
             Tools = tools?.Count > 0 ? tools : null,
             Thinking = thinking,
             OutputConfig = outputConfig,
         };
     }
+}
 
-    /// <summary>
-    /// 최대 토큰 수를 계산하고 추론 예산을 설정합니다.
-    /// </summary>
-    private static (int, ThinkingConfigParam?) CalculateTokens(MessageGenerationRequest request)
-    {
-        // MaxToken이 필수요청사항으로 64K로 기본값을 설정합니다.
-        var maxTokens = request.MaxTokens ?? 64000;
-
-        // 추론을 사용할 경우 예산 토큰을 설정합니다.
-        if (request.ThinkingEffort is not null and not MessageThinkingEffort.None)
-        {
-            // 최신 모델들은 Adaptive 추론 전략을 사용합니다.
-            // ref: https://platform.claude.com/docs/en/build-with-claude/adaptive-thinking
-            var adaptiveModels = new[] { "claude-opus-4-7", "claude-opus-4-6", "claude-sonnet-4-6" };
-            if (adaptiveModels.Any(m => request.Model.StartsWith(m, StringComparison.Ordinal)))
-            {
-                return (maxTokens, new ThinkingConfigAdaptive { });
-            }
-
-            // 절대값 기반 + 비례값 기반 혼합 전략
-            int budgetTokens = (int)(request.ThinkingEffort switch
-            {
-                MessageThinkingEffort.Low => Math.Min(maxTokens * 0.25, 12_000),    // 25%, 12K
-                MessageThinkingEffort.Medium => Math.Min(maxTokens * 0.50, 32_000), // 50%, 32K
-                MessageThinkingEffort.High => Math.Min(maxTokens * 0.75, 48_000),   // 75%, 48K
-                _ => 1024 // 최소값
-            });
-            // 최소 "1024"토큰이상 사용하도록 강제
-            budgetTokens = budgetTokens >= 1024 ? budgetTokens : 1024;
-            ThinkingConfigParam thinkingConfig = new ThinkingConfigEnabled
-            {
-                BudgetTokens = budgetTokens
-            };
-            return (maxTokens, thinkingConfig);
-        }
-
-        return (maxTokens, null);
-    }
+public static class AnthropicModelNames
+{
+    public static readonly string[] Old = 
+    [
+        "claude-haiku-4-5",
+        "claude-haiku-4-5-20251001",
+        "claude-sonnet-4",
+        "claude-sonnet-4-20250514",
+        "claude-sonnet-4-5",
+        "claude-sonnet-4-5-20250929",
+        "claude-opus-4",
+        "claude-opus-4-20250514",
+        "claude-opus-4-1",
+        "claude-opus-4-1-20250805",
+        "claude-opus-4-5",
+        "claude-opus-4-5-20251101",
+    ];
 }
