@@ -42,6 +42,29 @@ var config = new GpuStackConfig
 };
 ```
 
+### 동적 엔드포인트·API 키 (런타임 회전)
+
+엔드포인트와 API 키를 시작 시점에 고정하지 않고 **매 요청마다 동적으로** 조회할 수 있습니다.
+설정 소스(DB, secret store, 관리자 콘솔)에서 값이 바뀌면 재시작 없이 즉시 반영됩니다.
+`BaseUrlResolver`와 `ApiKeyResolver`는 대칭으로 동작하며, resolver가 `null`이거나
+빈 문자열을 반환하면 정적 `BaseUrl`/`ApiKey`로 fallback합니다(하위 호환).
+
+```csharp
+var config = new GpuStackConfig
+{
+    // 정적 값은 fallback으로 유지
+    BaseUrl = "http://localhost:8080",
+    ApiKey = "bootstrap-key",
+
+    // 매 요청 시 평가 — secret rotation / 콘솔 변경이 무중단 반영됨
+    BaseUrlResolver = () => settings.GetGpuStackEndpoint(),
+    ApiKeyResolver = () => settings.GetGpuStackApiKey(),
+};
+```
+
+내부 `GpuStackMessageGenerator`는 resolv된 `(BaseUrl, ApiKey)` 시그니처가 바뀔 때에만
+inner generator를 재생성하므로, 키만 회전해도 새 키가 정확히 적용됩니다.
+
 ## 제한사항
 
 GPUStack은 Chat Completions API 기반(`OpenAIChatMessageGenerator`)으로 동작합니다.

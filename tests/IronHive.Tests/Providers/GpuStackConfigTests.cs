@@ -52,4 +52,43 @@ public class GpuStackConfigTests
         var openAI = config.ToOpenAI();
         openAI.BaseUrl.Should().Be("http://localhost:8080/v1-openai/");
     }
+
+    [Fact]
+    public void ToOpenAI_ApiKeyResolver_IsUsed()
+    {
+        var config = new GpuStackConfig { ApiKey = "static", ApiKeyResolver = () => "dynamic" };
+        var openAI = config.ToOpenAI();
+        openAI.ApiKey.Should().Be("dynamic");
+    }
+
+    [Fact]
+    public void ToOpenAI_ApiKeyResolver_TakesPrecedenceOverStatic()
+    {
+        var config = new GpuStackConfig { ApiKey = "static" };
+        config.ToOpenAI().ApiKey.Should().Be("static");
+
+        config.ApiKeyResolver = () => "rotated";
+        config.ToOpenAI().ApiKey.Should().Be("rotated");
+    }
+
+    [Fact]
+    public void ToOpenAI_ApiKeyResolverReturnsNullOrEmpty_FallsBackToStatic()
+    {
+        var nullResolver = new GpuStackConfig { ApiKey = "static", ApiKeyResolver = () => null };
+        nullResolver.ToOpenAI().ApiKey.Should().Be("static");
+
+        var emptyResolver = new GpuStackConfig { ApiKey = "static", ApiKeyResolver = () => "  " };
+        emptyResolver.ToOpenAI().ApiKey.Should().Be("static");
+    }
+
+    [Fact]
+    public void ToOpenAI_ApiKeyResolver_EvaluatedOnEveryCall()
+    {
+        var current = "key-1";
+        var config = new GpuStackConfig { ApiKeyResolver = () => current };
+        config.ToOpenAI().ApiKey.Should().Be("key-1");
+
+        current = "key-2";
+        config.ToOpenAI().ApiKey.Should().Be("key-2");
+    }
 }
