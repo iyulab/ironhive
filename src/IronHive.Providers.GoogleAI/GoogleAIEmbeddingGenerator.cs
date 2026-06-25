@@ -15,12 +15,12 @@ public class GoogleAIEmbeddingGenerator : IEmbeddingGenerator
 
     public GoogleAIEmbeddingGenerator(GoogleAIConfig config)
     {
-        _client = GoogleAIClientFactory.CreateClient(config);
+        _client = GoogleAIClientFactory.Create(config);
     }
 
     public GoogleAIEmbeddingGenerator(VertexAIConfig config)
     {
-        _client = GoogleAIClientFactory.CreateClient(config);
+        _client = GoogleAIClientFactory.Create(config);
     }
 
     /// <inheritdoc />

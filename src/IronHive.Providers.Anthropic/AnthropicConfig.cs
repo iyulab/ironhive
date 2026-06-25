@@ -59,6 +59,11 @@ public class AnthropicConfig
     /// API 요청의 타임아웃 시간입니다.
     /// </summary>
     public TimeSpan? Timeout { get; set; }
+
+    /// <summary>
+    /// 사용자 정의 <see cref="HttpClient"/>를 설정할 수 있습니다.
+    /// </summary>
+    public HttpClient? HttpClient { get; set; }
     
     /// <summary>
     /// 설정 값의 유효성을 검증합니다.

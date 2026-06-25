@@ -20,12 +20,12 @@ public class GoogleAIVideoGenerator : IVideoGenerator
 
     public GoogleAIVideoGenerator(GoogleAIConfig config)
     {
-        _client = GoogleAIClientFactory.CreateClient(config);
+        _client = GoogleAIClientFactory.Create(config);
     }
 
     public GoogleAIVideoGenerator(VertexAIConfig config)
     {
-        _client = GoogleAIClientFactory.CreateClient(config);
+        _client = GoogleAIClientFactory.Create(config);
     }
 
     /// <inheritdoc />

@@ -20,12 +20,12 @@ public class GoogleAIImageGenerator : IImageGenerator
 
     public GoogleAIImageGenerator(GoogleAIConfig config)
     {
-        _client = GoogleAIClientFactory.CreateClient(config);
+        _client = GoogleAIClientFactory.Create(config);
     }
 
     public GoogleAIImageGenerator(VertexAIConfig config)
     {
-        _client = GoogleAIClientFactory.CreateClient(config);
+        _client = GoogleAIClientFactory.Create(config);
     }
 
     /// <inheritdoc />

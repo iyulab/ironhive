@@ -1,3 +1,4 @@
+using Google.Apis.Http;
 using Google.GenAI.Types;
 
 namespace IronHive.Providers.GoogleAI;
@@ -17,6 +18,11 @@ public class GoogleAIConfig
     /// BaseUrl과 같은 속성을 포함하여 API 엔드포인트를 사용자 정의할 수 있습니다.
     /// </summary>
     public HttpOptions? HttpOptions { get; set; }
+
+    /// <summary>
+    /// Google API 클라이언트의 동작을 구성하는 옵션을 나타냅니다
+    /// </summary>
+    public Func<HttpClient>? HttpClientFactory { get; set; }
 
     /// <summary>
     /// API key 유무를 검증합니다.

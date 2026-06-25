@@ -15,7 +15,7 @@ public class AnthropicModelCatalog : IModelCatalog
 
     public AnthropicModelCatalog(AnthropicConfig config)
     {
-        _client = AnthropicClientFactory.CreateClient(config);
+        _client = AnthropicClientFactory.Create(config);
     }
 
     /// <inheritdoc />
@@ -58,6 +58,7 @@ public class AnthropicModelCatalog : IModelCatalog
             {
                 ModelID = modelId
             }, cancellationToken);
+            
             return new GenericModelSpec
             {
                 ModelId = model.ID,

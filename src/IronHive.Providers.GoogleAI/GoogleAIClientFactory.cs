@@ -1,24 +1,33 @@
 using Google.GenAI;
+using Google.GenAI.Types;
 
 namespace IronHive.Providers.GoogleAI;
 
 internal static class GoogleAIClientFactory
 {
-    internal static Client CreateClient(GoogleAIConfig config)
+    internal static Client Create(GoogleAIConfig config)
     {
         return new Client(
             vertexAI: false,
             apiKey: config.ApiKey, 
-            httpOptions: config.HttpOptions);
+            httpOptions: config.HttpOptions,
+            clientOptions: config.HttpClientFactory != null ? new ClientOptions
+            {
+                HttpClientFactory = config.HttpClientFactory
+            } : null);
     }
 
-    internal static Client CreateClient(VertexAIConfig config)
+    internal static Client Create(VertexAIConfig config)
     {
         return new Client(
             vertexAI: true,
             credential: config.Credential, 
             project: config.Project,
             location: config.Location,
-            httpOptions: config.HttpOptions);
+            httpOptions: config.HttpOptions,
+            clientOptions: config.HttpClientFactory != null ? new ClientOptions
+            {
+                HttpClientFactory = config.HttpClientFactory
+            } : null);
     }
 }

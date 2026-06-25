@@ -4,7 +4,6 @@ using System.Runtime.CompilerServices;
 using Anthropic;
 using Anthropic.Helpers;
 using Anthropic.Models.Messages;
-using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Messages.Roles;
@@ -26,7 +25,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
 
     public AnthropicMessageGenerator(AnthropicConfig config)
     {
-        _client = AnthropicClientFactory.CreateClient(config);
+        _client = AnthropicClientFactory.Create(config);
     }
 
     /// <inheritdoc />

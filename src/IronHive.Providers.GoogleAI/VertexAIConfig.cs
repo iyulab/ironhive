@@ -33,6 +33,12 @@ public class VertexAIConfig
     public HttpOptions? HttpOptions { get; set; }
 
     /// <summary>
+    /// HTTP 클라이언트 팩토리를 가져오거나 설정합니다.
+    /// 이 속성을 사용하면 사용자 정의 HTTP 클라이언트를 생성할 수 있습니다.
+    /// </summary>
+    public Func<HttpClient>? HttpClientFactory { get; set; }
+
+    /// <summary>
     /// 구성이 유효한지 검증합니다.
     /// </summary>
     /// <returns>

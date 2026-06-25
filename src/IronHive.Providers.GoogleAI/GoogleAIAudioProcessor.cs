@@ -27,12 +27,12 @@ public partial class GoogleAIAudioProcessor : IAudioProcessor
 
     public GoogleAIAudioProcessor(GoogleAIConfig config)
     {
-        _client = GoogleAIClientFactory.CreateClient(config);
+        _client = GoogleAIClientFactory.Create(config);
     }
 
     public GoogleAIAudioProcessor(VertexAIConfig config)
     {
-        _client = GoogleAIClientFactory.CreateClient(config);
+        _client = GoogleAIClientFactory.Create(config);
     }
 
     /// <inheritdoc />

@@ -14,12 +14,12 @@ public class GoogleAIModelCatalog : IModelCatalog
 
     public GoogleAIModelCatalog(GoogleAIConfig config)
     {
-        _client = GoogleAIClientFactory.CreateClient(config);
+        _client = GoogleAIClientFactory.Create(config);
     }
 
     public GoogleAIModelCatalog(VertexAIConfig config)
     {
-        _client = GoogleAIClientFactory.CreateClient(config);
+        _client = GoogleAIClientFactory.Create(config);
     }
 
     /// <inheritdoc />
