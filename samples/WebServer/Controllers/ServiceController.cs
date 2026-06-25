@@ -94,7 +94,7 @@ public class ServiceController : ControllerBase
         {
             await WriteEventAsync(new StreamingMessageErrorResponse
             {
-                Code = 499,
+                Code = "499",
                 Message = ex.Message,
             }, "delta");
         }
@@ -102,7 +102,7 @@ public class ServiceController : ControllerBase
         {
             await WriteEventAsync(new StreamingMessageErrorResponse
             {
-                Code = 500,
+                Code = "500",
                 Message = ex.Message,
             }, "delta");
         }

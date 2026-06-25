@@ -652,7 +652,7 @@ public class ChatClientAdapterTests : IDisposable
         var chunks = new List<StreamingMessageResponse>
         {
             new StreamingMessageBeginResponse { Id = "stream-1" },
-            new StreamingMessageErrorResponse { Code = 500, Message = "Internal error" }
+            new StreamingMessageErrorResponse { Code = "500", Message = "Internal error" }
         };
         SetupStreamingGenerator(chunks);
 

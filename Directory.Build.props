@@ -7,11 +7,16 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
-    <!-- All CA/CS suppressions resolved (cycle-68 CA, cycle-81 CS0117) -->
+    <NoWarn>$(NoWarn);OPENAI001;OPENAI002</NoWarn>
     <Version>0.7.7</Version>
     <!-- 기본적으로 NuGet 패키지 생성 비활성화 -->
     <IsPackable>false</IsPackable>
   </PropertyGroup>
+
+  <!-- SQLitePCLRaw 2.1.11 has no patched release yet; suppress until upstream ships a fix -->
+  <ItemGroup>
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-2m69-gcr7-jv3q" />
+  </ItemGroup>
 
   <!-- 라이브러리 프로젝트 공통 설정 -->
   <PropertyGroup Condition="$(MSBuildProjectName.StartsWith('IronHive.'))">

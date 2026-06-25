@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>IronHive OpenAI compatible providers (xAI, Groq, DeepSeek, Together AI, Fireworks, Perplexity, OpenRouter, etc.)</Description>
+    <Description>IronHive OpenAI compatible providers (GPUStack)</Description>
   </PropertyGroup>
 
   <ItemGroup>

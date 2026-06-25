@@ -39,7 +39,7 @@ public static class Extensions
         };
 
         var core = services.AddHiveServiceCore()
-            .AddOpenAIProviders("openai", o_config, OpenAIServiceType.Responses)
+            .AddOpenAIProviders("openai", o_config)
             .AddAnthropicProviders("anthropic", a_config)
             .AddGoogleAIProviders("google", g_config)
             .AddAnthropicProviders("xai", x_config)

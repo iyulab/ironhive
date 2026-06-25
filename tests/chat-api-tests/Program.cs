@@ -35,7 +35,6 @@ var providerTests = new Dictionary<string, Func<Task<List<(string Scenario, Test
     ["azure-openai"] = TestAzureOpenAI,
     ["anthropic"] = TestAnthropic,
     ["google"] = TestGoogleAI,
-    ["xai"] = TestXAI,
     ["lmstudio"] = TestLMStudio,
     ["gpustack"] = TestGPUStack,
 };
@@ -1570,7 +1569,7 @@ async Task<List<(string, TestResult)>> TestOpenAI()
     };
 
     var catalog = new OpenAIModelCatalog(config);
-    var generator = new OpenAIResponseMessageGenerator(config);
+    var generator = new OpenAIMessageGenerator(config);
     var model = GetEnv("OPENAI_MODEL") ?? "gpt-4o-mini";
 
     return await RunScenarios(catalog, generator, model);
@@ -1596,7 +1595,7 @@ async Task<List<(string, TestResult)>> TestAzureOpenAI()
         ApiKey = apiKey
     };
 
-    var generator = new OpenAIChatMessageGenerator(config);
+    var generator = new OpenAIMessageGenerator(config);
 
     return await RunScenarios(null, generator, deployment);
 }
@@ -1637,54 +1636,6 @@ async Task<List<(string, TestResult)>> TestGoogleAI()
     return await RunScenarios(catalog, generator, model);
 }
 
-async Task<List<(string, TestResult)>> TestXAI()
-{
-    var apiKey = GetEnv("XAI_API_KEY");
-    if (string.IsNullOrWhiteSpace(apiKey) || apiKey.StartsWith("xai-xxxx", StringComparison.Ordinal))
-        return [("skip", TestResult.Skip("XAI_API_KEY not configured"))];
-
-    var config = new OpenAIConfig
-    {
-        BaseUrl = "https://api.x.ai/v1/",
-        ApiKey = apiKey,
-    };
-
-    var catalog = new OpenAIModelCatalog(config);
-    var generator = new OpenAIChatMessageGenerator(config);
-    var envModel = GetEnv("XAI_MODEL");
-
-    string model;
-    try
-    {
-        var models = await catalog.ListModelsAsync();
-        var modelList = models.ToList();
-        Console.WriteLine($"{"",4}xAI models: {string.Join(", ", modelList.Select(m => m.ModelId))}");
-
-        if (!string.IsNullOrEmpty(envModel))
-        {
-            model = envModel;
-        }
-        else
-        {
-            var chatModel = modelList.FirstOrDefault(m => m.ModelId == "grok-3-mini")
-                         ?? modelList.FirstOrDefault(m => m.ModelId == "grok-3")
-                         ?? modelList.FirstOrDefault(m =>
-                             !m.ModelId.Contains("image") &&
-                             !m.ModelId.Contains("vision") &&
-                             !m.ModelId.Contains("imagine") &&
-                             !m.ModelId.Contains("code"));
-            model = chatModel?.ModelId ?? "grok-3-mini";
-        }
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"{"",4}Catalog error: {ex.Message}");
-        model = envModel ?? "grok-3-mini";
-    }
-
-    return await RunScenarios(null, generator, model);
-}
-
 async Task<List<(string, TestResult)>> TestLMStudio()
 {
     var baseUrl = GetEnv("LMSTUDIO_BASE_URL") ?? "http://localhost:1234/v1/";
@@ -1693,7 +1644,7 @@ async Task<List<(string, TestResult)>> TestLMStudio()
 
     var config = new OpenAIConfig { BaseUrl = baseUrl, ApiKey = apiKey };
     var catalog = new OpenAIModelCatalog(config);
-    var generator = new OpenAIChatMessageGenerator(config);
+    var generator = new OpenAIMessageGenerator(config);
 
     try
     {
@@ -1721,7 +1672,7 @@ async Task<List<(string, TestResult)>> TestGPUStack()
 
     var config = new OpenAIConfig { BaseUrl = baseUrl, ApiKey = apiKey };
     var catalog = new OpenAIModelCatalog(config);
-    var generator = new OpenAIChatMessageGenerator(config);
+    var generator = new OpenAIMessageGenerator(config);
 
     try
     {

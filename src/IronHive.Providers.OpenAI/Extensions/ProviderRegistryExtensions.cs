@@ -1,11 +1,9 @@
-﻿using IronHive.Abstractions.Audio;
+using IronHive.Abstractions.Audio;
 using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Images;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Registries;
-using IronHive.Abstractions.Videos;
-
 namespace IronHive.Providers.OpenAI;
 
 public static class ProviderRegistryExtensions
@@ -19,26 +17,17 @@ public static class ProviderRegistryExtensions
         OpenAIConfig config,
         OpenAIServiceType serviceType = OpenAIServiceType.All)
     {
-        if (serviceType.HasFlag(OpenAIServiceType.ChatCompletion) && serviceType.HasFlag(OpenAIServiceType.Responses))
-            throw new ArgumentException("ChatCompletion and Responses cannot be enabled at the same time.", nameof(serviceType));
-
         if (serviceType.HasFlag(OpenAIServiceType.Models))
             providers.SetModelCatalog(providerName, new OpenAIModelCatalog(config));
 
-        if (serviceType.HasFlag(OpenAIServiceType.ChatCompletion))
-            providers.SetMessageGenerator(providerName, new OpenAIChatMessageGenerator(config));
-
-        if (serviceType.HasFlag(OpenAIServiceType.Responses))
-            providers.SetMessageGenerator(providerName, new OpenAIResponseMessageGenerator(config));
+        if (serviceType.HasFlag(OpenAIServiceType.Messages))
+            providers.SetMessageGenerator(providerName, new OpenAIMessageGenerator(config));
 
         if (serviceType.HasFlag(OpenAIServiceType.Embeddings))
             providers.SetEmbeddingGenerator(providerName, new OpenAIEmbeddingGenerator(config));
 
         if (serviceType.HasFlag(OpenAIServiceType.Images))
             providers.SetImageGenerator(providerName, new OpenAIImageGenerator(config));
-
-        if (serviceType.HasFlag(OpenAIServiceType.Videos))
-            providers.SetVideoGenerator(providerName, new OpenAIVideoGenerator(config));
 
         if (serviceType.HasFlag(OpenAIServiceType.Audio))
             providers.SetAudioProcessor(providerName, new OpenAIAudioProcessor(config));
@@ -55,7 +44,7 @@ public static class ProviderRegistryExtensions
         if (serviceType.HasFlag(OpenAIServiceType.Models))
             providers.Remove<IModelCatalog>(providerName);
 
-        if (serviceType.HasFlag(OpenAIServiceType.ChatCompletion) || serviceType.HasFlag(OpenAIServiceType.Responses))
+        if (serviceType.HasFlag(OpenAIServiceType.Messages))
             providers.Remove<IMessageGenerator>(providerName);
 
         if (serviceType.HasFlag(OpenAIServiceType.Embeddings))
@@ -63,9 +52,6 @@ public static class ProviderRegistryExtensions
 
         if (serviceType.HasFlag(OpenAIServiceType.Images))
             providers.Remove<IImageGenerator>(providerName);
-
-        if (serviceType.HasFlag(OpenAIServiceType.Videos))
-            providers.Remove<IVideoGenerator>(providerName);
 
         if (serviceType.HasFlag(OpenAIServiceType.Audio))
             providers.Remove<IAudioProcessor>(providerName);

@@ -57,7 +57,7 @@ public class ChatClientAdapterToolCallE2ETests : IDisposable
             BaseUrl = endpoint ?? string.Empty
         };
 
-        var generator = new OpenAIChatMessageGenerator(config);
+        var generator = new OpenAIMessageGenerator(config);
         _adapter = new ChatClientAdapter(generator, model ?? "gpt-4o-mini");
     }
 

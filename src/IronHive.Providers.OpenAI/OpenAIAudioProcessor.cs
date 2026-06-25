@@ -1,21 +1,15 @@
 using IronHive.Abstractions.Audio;
-using IronHive.Providers.OpenAI.Clients;
-using IronHive.Providers.OpenAI.Payloads.Audio;
+using OpenAI;
+using OpenAI.Audio;
 
 namespace IronHive.Providers.OpenAI;
 
 /// <summary>
 /// OpenAI를 사용하여 오디오를 처리하는 클래스입니다.
-/// <para>
-/// TTS: gpt-4o-mini-tts, tts-1, tts-1-hd
-/// </para>
-/// <para>
-/// STT: whisper-1, gpt-4o-transcribe, gpt-4o-mini-transcribe
-/// </para>
 /// </summary>
 public class OpenAIAudioProcessor : IAudioProcessor
 {
-    private readonly OpenAIAudioClient _client;
+    private readonly OpenAIClient _openai;
 
     public OpenAIAudioProcessor(string apiKey)
         : this(new OpenAIConfig { ApiKey = apiKey })
@@ -23,13 +17,12 @@ public class OpenAIAudioProcessor : IAudioProcessor
 
     public OpenAIAudioProcessor(OpenAIConfig config)
     {
-        _client = new OpenAIAudioClient(config);
+        _openai = OpenAIClientFactory.Create(config);
     }
 
     /// <inheritdoc />
     public void Dispose()
     {
-        _client.Dispose();
         GC.SuppressFinalize(this);
     }
 
@@ -38,78 +31,86 @@ public class OpenAIAudioProcessor : IAudioProcessor
         TextToSpeechRequest request,
         CancellationToken cancellationToken = default)
     {
-        var payload = OnBeforeGenerateSpeech(request, new CreateSpeechRequest
-        {
-            Model = request.Model,
-            Input = request.Text,
-            Voice = request.Voice,
-            ResponseFormat = "mp3",
-        });
+        var client = _openai.GetAudioClient(request.Model);
 
-        var content = await _client.PostCreateSpeechAsync(payload, cancellationToken);
+        var result = await client.GenerateSpeechAsync(
+            request.Text,
+            new GeneratedSpeechVoice(request.Voice),
+            new SpeechGenerationOptions
+            {
+                ResponseFormat = GeneratedSpeechFormat.Mp3
+            },
+            cancellationToken);
 
         return new TextToSpeechResponse
         {
             Audio = new GeneratedAudio
             {
                 MimeType = "audio/mp3",
-                Data = content,
+                Data = result.Value.ToArray(),
             }
         };
     }
-    
+
     /// <inheritdoc />
     public virtual async Task<SpeechToTextResponse> TranscribeAsync(
         SpeechToTextRequest request,
         CancellationToken cancellationToken = default)
     {
-        var payload = OnBeforeTranscribe(request, new CreateTranscriptionRequest
-        {
-            Audio = request.Audio,
-            Model = request.Model,
-            ResponseFormat = request.Model.Contains("diarize") 
-                ? "diarized_json" 
-                : "json",
-        });
+        var client = _openai.GetAudioClient(request.Model);
 
-        var response = await _client.PostCreateTranscriptionAsync(payload, cancellationToken);
-
-        return OnAfterTranscribe(response, new SpeechToTextResponse
+        using var stream = new MemoryStream(request.Audio.Data);
+        var filename = "audio." + request.Audio.MimeType switch
         {
-            Text = response.Text ?? string.Empty,
-            Segments = response.Segments != null && response.Segments.Any()
-                ? response.Segments.Select(s => new Abstractions.Audio.TranscriptionSegment
+            "audio/flac" => "flac",
+            "audio/mp3" or "audio/mpeg" => "mp3",
+            "audio/mp4" or "audio/m4a" => "m4a",
+            "audio/mpga" => "mpga",
+            "audio/ogg" => "ogg",
+            "audio/wav" or "audio/x-wav" => "wav",
+            "audio/webm" => "webm",
+            _ => "bin"
+        };
+
+        if (request.Model.Contains("diarize"))
+        {
+            var result = await client.TranscribeAudioDiarizedAsync(
+                stream,
+                filename,
+                new AudioTranscriptionOptions
                 {
-                    Speaker = s.Speaker,
-                    Start = s.Start,
-                    End = s.End,
-                    Text = s.Text,
-                }).ToList()
-                : null
-        });
+                    ResponseFormat = AudioTranscriptionFormat.Diarized,
+                    ChunkingStrategy = AudioTranscriptionDefaultChunkingStrategy.Auto,
+                },
+                cancellationToken);
+
+            var transcription = result.Value;
+            return new SpeechToTextResponse
+            {
+                Text = transcription.Text ?? string.Empty,
+                Segments = transcription.Segments?.Count > 0
+                    ? transcription.Segments.Select(s => new TranscriptionSegment
+                    {
+                        Speaker = s.SpeakerLabel,
+                        Start = (float)s.StartTime.TotalSeconds,
+                        End = (float)s.EndTime.TotalSeconds,
+                        Text = s.Text,
+                    }).ToList()
+                    : null
+            };
+        }
+        else
+        {
+            var result = await client.TranscribeAudioAsync(
+                stream,
+                filename,
+                cancellationToken: cancellationToken);
+
+            var transcription = result.Value;
+            return new SpeechToTextResponse
+            {
+                Text = transcription.Text ?? string.Empty,
+            };
+        }
     }
-
-    /// <summary>
-    /// TTS 요청을 보내기 전에 처리할 수 있는 가상 메서드입니다.
-    /// </summary>
-    protected virtual CreateSpeechRequest OnBeforeGenerateSpeech(
-        TextToSpeechRequest source,
-        CreateSpeechRequest request)
-        => request;
-
-    /// <summary>
-    /// STT 요청을 보내기 전에 처리할 수 있는 가상 메서드입니다.
-    /// </summary>
-    protected virtual CreateTranscriptionRequest OnBeforeTranscribe(
-        SpeechToTextRequest source,
-        CreateTranscriptionRequest request)
-        => request;
-
-    /// <summary>
-    /// STT 응답을 받은 후 처리할 수 있는 가상 메서드입니다.
-    /// </summary>
-    protected virtual SpeechToTextResponse OnAfterTranscribe(
-        CreateTranscriptionResponse source,
-        SpeechToTextResponse response)
-        => response;
 }

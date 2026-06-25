@@ -207,7 +207,7 @@ public class GoogleAIImageGenerator : IImageGenerator
 
     private static (string? Size, string? Ratio) GetPresetSize(GeneratedImageSize? size)
     {
-        if (size is GeneratedImagePresetSize preset)
+        if (size is GeneratedImageScaleSize preset)
         {
             return (preset.Resolution, preset.AspectRatio);
         }

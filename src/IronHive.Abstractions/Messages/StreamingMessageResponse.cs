@@ -85,6 +85,6 @@ public class StreamingMessageDoneResponse : StreamingMessageResponse
 /// </summary>
 public class StreamingMessageErrorResponse : StreamingMessageResponse
 {
-    public required int Code { get; set; }
+    public string? Code { get; set; }
     public string? Message { get; set; }
 }

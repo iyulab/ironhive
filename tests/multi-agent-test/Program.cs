@@ -2183,7 +2183,7 @@ async Task<List<(string, TestResult)>> RunLlmIntegrationTests()
 
     if (!string.IsNullOrWhiteSpace(openAiKey) && !openAiKey.StartsWith("sk-xxxx", StringComparison.Ordinal))
     {
-        builder.AddOpenAIProviders("openai", new OpenAIConfig { ApiKey = openAiKey }, OpenAIServiceType.Responses);
+        builder.AddOpenAIProviders("openai", new OpenAIConfig { ApiKey = openAiKey }, OpenAIServiceType.Messages);
         primaryProvider = "openai";
         primaryModel = GetEnv("OPENAI_MODEL") ?? "gpt-4o-mini";
     }

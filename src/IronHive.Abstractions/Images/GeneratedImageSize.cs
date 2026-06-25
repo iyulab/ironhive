@@ -3,12 +3,12 @@
 namespace IronHive.Abstractions.Images;
 
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
-[JsonDerivedType(typeof(GeneratedImagePresetSize), "preset")]
-[JsonDerivedType(typeof(GeneratedImageCustomSize), "custom")]
+[JsonDerivedType(typeof(GeneratedImageScaleSize), "scale")]
+[JsonDerivedType(typeof(GeneratedImagePixelSize), "pixel")]
 public abstract class GeneratedImageSize
 { }
 
-public class GeneratedImagePresetSize : GeneratedImageSize
+public class GeneratedImageScaleSize : GeneratedImageSize
 {
     /// <summary>
     /// 서비스 제공자가 정의하는 해상도 크기
@@ -23,11 +23,18 @@ public class GeneratedImagePresetSize : GeneratedImageSize
     public string? AspectRatio { get; set; }
 }
 
-public class GeneratedImageCustomSize : GeneratedImageSize
+/// <summary>
+/// 정확한 픽셀 단위로 이미지 크기를 지정합니다.
+/// </summary>
+public class GeneratedImagePixelSize : GeneratedImageSize
 {
     /// <summary>
-    /// 서비스 제공자가 정의하는 사전 정의된 크기
-    /// <para>예: "256x256", "512x512", "1024x1024"</para>
+    /// 이미지의 가로 크기 (px)
     /// </summary>
-    public string? Value { get; set; }
+    public int Width { get; set; }
+
+    /// <summary>
+    /// 이미지의 세로 크기 (px)
+    /// </summary>
+    public int Height { get; set; }
 }

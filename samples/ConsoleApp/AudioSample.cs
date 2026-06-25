@@ -49,7 +49,6 @@ public static class AudioSample
 
         // === 1. OpenAI Text-to-Speech (TTS) ===
         Console.WriteLine("1. OpenAI TTS - 텍스트를 음성으로 변환...");
-        
         var openaiTtsResponse = await audioService.GenerateSpeechAsync(
             provider: "openai",
             request: new TextToSpeechRequest
@@ -66,7 +65,6 @@ public static class AudioSample
 
         // === 2. OpenAI Speech-to-Text (STT) ===
         Console.WriteLine("2. OpenAI STT - 음성을 텍스트로 변환...");
-        
         var openaiAudioData = File.ReadAllBytes(openaiTtsFilePath);
         var openaiSttResponse = await audioService.TranscribeAsync(
             provider: "openai",
@@ -85,7 +83,6 @@ public static class AudioSample
 
         // === 3. Google AI Text-to-Speech (TTS) ===
         Console.WriteLine("3. Google AI TTS - 텍스트를 음성으로 변환...");
-                
         var googleTtsResponse = await audioService.GenerateSpeechAsync(
             provider: "google",
             request: new TextToSpeechRequest
@@ -102,7 +99,6 @@ public static class AudioSample
 
         // === 4. Google AI Speech-to-Text (STT) ===
         Console.WriteLine("4. Google AI STT - 음성을 텍스트로 변환...");
-                
         var googleAudioData = File.ReadAllBytes(googleTtsFilePath);
         var googleSttResponse = await audioService.TranscribeAsync(
             provider: "google",

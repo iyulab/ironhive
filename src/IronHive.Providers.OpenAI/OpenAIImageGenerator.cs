@@ -1,15 +1,18 @@
+using System.ClientModel;
 using IronHive.Abstractions.Images;
-using IronHive.Providers.OpenAI.Clients;
-using IronHive.Providers.OpenAI.Payloads.Images;
+using OpenAI;
+using OpenAI.Images;
+using OpenAIGeneratedImage = OpenAI.Images.GeneratedImage;
+using OpenAIGeneratedImageSize = OpenAI.Images.GeneratedImageSize;
 
 namespace IronHive.Providers.OpenAI;
 
 /// <summary>
-/// OpenAI DALL-E를 사용하여 이미지를 생성하는 클래스입니다.
+/// OpenAI를 사용하여 이미지를 생성하는 클래스입니다.
 /// </summary>
 public class OpenAIImageGenerator : IImageGenerator
 {
-    private readonly OpenAIImageClient _client;
+    private readonly OpenAIClient _openai;
 
     public OpenAIImageGenerator(string apiKey)
         : this(new OpenAIConfig { ApiKey = apiKey })
@@ -17,13 +20,12 @@ public class OpenAIImageGenerator : IImageGenerator
 
     public OpenAIImageGenerator(OpenAIConfig config)
     {
-        _client = new OpenAIImageClient(config);
+        _openai = OpenAIClientFactory.Create(config);
     }
 
     /// <inheritdoc />
     public void Dispose()
     {
-        _client.Dispose();
         GC.SuppressFinalize(this);
     }
 
@@ -32,35 +34,33 @@ public class OpenAIImageGenerator : IImageGenerator
         ImageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var payload = OnBeforeGenerate(request, new CreateImagesRequest
-        {
-            Model = request.Model,
-            Prompt = request.Prompt,
-            N = request.N,
-            Size = request.Size is GeneratedImageCustomSize customSize
-                ? customSize.Value
-                : null,
+        var client = _openai.GetImageClient(request.Model);
+        var options = new ImageGenerationOptions();
 
-            // DALL-E만 지원하는 필드로, Base64를 반환받도록 설정합니다.
-            ResponseFormat = request.Model.StartsWith("dall-e", StringComparison.OrdinalIgnoreCase)
-                ? "b64_json"
-                : null
-        });
-
-        var response = await _client.PostCreateImagesAsync(payload, cancellationToken);
-        
-        return OnAfterGenerate(response, new ImageGenerationResponse
+        if (request.Size is GeneratedImagePixelSize pixelSize && pixelSize.Width > 0 && pixelSize.Height > 0)
         {
-            Images = response.Data?
-                .Where(d => !string.IsNullOrEmpty(d.B64Json))
-                .Select(d => new GeneratedImage
+            options.Size = new OpenAIGeneratedImageSize(pixelSize.Width, pixelSize.Height);
+        }
+
+        var result = await client.GenerateImagesAsync(
+            request.Prompt,
+            request.N ?? 1,
+            options,
+            cancellationToken);
+        var images = result.Value;
+
+        return new ImageGenerationResponse
+        {
+            Images = images
+                .Where(img => img.ImageBytes != null)
+                .Select(img => new IronHive.Abstractions.Images.GeneratedImage
                 {
-                    Data = Convert.FromBase64String(d.B64Json!),
-                    MimeType = $"image/{response.OutputFormat ?? "png"}",
-                    RevisedPrompt = d.RevisedPrompt
+                    Data = img.ImageBytes!.ToArray(),
+                    MimeType = "image/png",
+                    RevisedPrompt = img.RevisedPrompt
                 })
-                .ToList() ?? []
-        });
+                .ToList()
+        };
     }
 
     /// <inheritdoc />
@@ -68,74 +68,71 @@ public class OpenAIImageGenerator : IImageGenerator
         ImageEditRequest request,
         CancellationToken cancellationToken = default)
     {
-        var payload = OnBeforeEdit(request, new EditImagesRequest
+        var images = request.Images?.Where(img => img.Data.Length > 0).ToList()
+            ?? throw new ArgumentException("At least one input image is required for editing.");
+        if (images.Count == 0)
+            throw new ArgumentException("At least one input image is required for editing.");
+
+        var client = _openai.GetImageClient(request.Model);
+        var options = new ImageEditOptions();
+
+        if (request.Size is GeneratedImagePixelSize pixelSize && pixelSize.Width > 0 && pixelSize.Height > 0)
         {
-            Model = request.Model,
-            Prompt = request.Prompt,
-            Images = request.Images
-                .Where(img => img.Data.Length > 0 && !string.IsNullOrEmpty(img.MimeType))
-                .Select(img => new OpenAIInputImageData
+            options.Size = new OpenAIGeneratedImageSize(pixelSize.Width, pixelSize.Height);
+        }
+
+        var mask = request.Mask;
+        using var maskStream = mask?.Data.Length > 0 ? new MemoryStream(mask.Data) : null;
+        var maskFilename = mask != null ? $"mask.{GetExtension(mask.MimeType)}" : null;
+
+        var tasks = images.Select(async image =>
+        {
+            using var stream = new MemoryStream(image.Data);
+            var ext = GetExtension(image.MimeType);
+            var filename = $"image.{ext}";
+
+            ClientResult<OpenAIGeneratedImage> result;
+            if (maskStream != null && maskFilename != null)
+            {
+                result = await client.GenerateImageEditAsync(
+                    stream, filename,
+                    request.Prompt,
+                    maskStream, maskFilename,
+                    options,
+                    cancellationToken);
+            }
+            else
+            {
+                result = await client.GenerateImageEditAsync(
+                    stream, filename,
+                    request.Prompt,
+                    options,
+                    cancellationToken);
+            }
+
+            var img = result.Value;
+            return img.ImageBytes != null
+                ? new IronHive.Abstractions.Images.GeneratedImage
                 {
-                    ImageUrl = img.ToBase64()
-                })
-                .ToList(),
-            Mask = request.Mask != null && request.Mask.Data.Length > 0 && !string.IsNullOrEmpty(request.Mask.MimeType)
-                ? new OpenAIInputImageData
-                {
-                    ImageUrl = request.Mask.ToBase64()
+                    Data = img.ImageBytes.ToArray(),
+                    MimeType = $"image/{ext}",
+                    RevisedPrompt = img.RevisedPrompt
                 }
-                : null,
-            N = request.N,
-            Size = request.Size is GeneratedImageCustomSize customSize
-                ? customSize.Value
-                : null,
+                : null;
         });
+        var results = await Task.WhenAll(tasks);
 
-        var response = await _client.PostEditImagesAsync(payload, cancellationToken);
-
-        return OnAfterEdit(response, new ImageGenerationResponse
+        return new ImageGenerationResponse
         {
-            Images = response.Data?
-                .Where(d => !string.IsNullOrEmpty(d.B64Json))
-                .Select(d => new GeneratedImage
-                {
-                    Data = Convert.FromBase64String(d.B64Json!),
-                    MimeType = $"image/{response.OutputFormat ?? "png"}",
-                    RevisedPrompt = d.RevisedPrompt
-                })
-                .ToList() ?? []
-        });
+            Images = results.Where(img => img != null).ToList()!
+        };
     }
 
-    /// <summary>
-    /// 이미지 생성 요청을 보내기 전에 처리할 수 있는 가상 메서드입니다.
-    /// </summary>
-    protected virtual CreateImagesRequest OnBeforeGenerate(
-        ImageGenerationRequest source,
-        CreateImagesRequest request)
-        => request;
-
-    /// <summary>
-    /// 이미지 편집 요청을 보내기 전에 처리할 수 있는 가상 메서드입니다.
-    /// </summary>
-    protected virtual EditImagesRequest OnBeforeEdit(
-        ImageEditRequest source,
-        EditImagesRequest request)
-        => request;
-
-    /// <summary>
-    /// 이미지 생성 응답을 받은 후 처리할 수 있는 가상 메서드입니다.
-    /// </summary>
-    protected virtual ImageGenerationResponse OnAfterGenerate(
-        CreateImagesResponse source,
-        ImageGenerationResponse response)
-        => response;
-
-    /// <summary>
-    /// 이미지 편집 응답을 받은 후 처리할 수 있는 가상 메서드입니다.
-    /// </summary>
-    protected virtual ImageGenerationResponse OnAfterEdit(
-        EditImagesResponse source,
-        ImageGenerationResponse response)
-        => response;
+    private static string GetExtension(string? mimeType) => mimeType switch
+    {
+        "image/png" => "png",
+        "image/jpeg" or "image/jpg" => "jpg",
+        "image/webp" => "webp",
+        _ => "png"
+    };
 }

@@ -9,7 +9,6 @@ using IronHive.Core.Tools;
 using IronHive.Providers.Anthropic;
 using IronHive.Providers.GoogleAI;
 using IronHive.Providers.OpenAI;
-using IronHive.Providers.OpenAI.Compatible.XAI;
 using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
 using System.Text.Encodings.Web;
@@ -63,14 +62,14 @@ public static class MessageSample
                 new ToolItem { Name = "func_Multiply", Options = new { } },
                 new ToolItem { Name = "func_Divide", Options = new { } }
             ],
-            //Output = typeof(OutputFormat)
+            // Output = typeof(OutputFormat)
         };
         
         var hive = new HiveServiceBuilder()
             .AddOpenAIProviders("openai", new OpenAIConfig
             {
                 ApiKey = Environment.GetEnvironmentVariable("OPENAI") ?? string.Empty
-            }, OpenAIServiceType.ChatCompletion)
+            }, OpenAIServiceType.Messages)
             .AddAnthropicProviders("anthropic", new AnthropicConfig
             {
                 ApiKey = Environment.GetEnvironmentVariable("ANTHROPIC") ?? string.Empty
@@ -79,29 +78,21 @@ public static class MessageSample
             {
                 ApiKey = Environment.GetEnvironmentVariable("GOOGLE") ?? string.Empty
             })
-            .AddXAIProviders("xai", new XAIConfig
-            {
-                ApiKey = Environment.GetEnvironmentVariable("XAI") ?? string.Empty
-            })
             .AddFunctionTool<Calculator>()
             .Build();
         var generator = hive.Services.GetRequiredService<IMessageService>();
 
         // OpenAI 샘플
-        // request.Provider = "openai";
-        //request.Model = "gpt-5.5";
+        request.Provider = "openai";
+        request.Model = "gpt-5.5";
 
         // Anthropic 샘플
-        request.Provider = "anthropic";
-        request.Model = "claude-fable-5";
+        // request.Provider = "anthropic";
+        // request.Model = "claude-fable-5";
 
         // Google AI 샘플
         //request.Provider = "google";
         //request.Model = "gemini-3.5-flash";
-
-        // XAI 샘플
-        //request.Provider = "xai";
-        //request.Model = "grok-4.3";
 
         var clone = request.Clone();
         clone.Output = typeof(OutputFormat);
