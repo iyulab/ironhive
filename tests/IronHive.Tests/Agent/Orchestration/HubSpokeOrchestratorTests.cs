@@ -4,7 +4,6 @@ using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Agent.Orchestration;
 
@@ -485,13 +484,9 @@ public class HubSpokeOrchestratorTests
                     Input = MakeUserMessages("test").ToList(),
                     Response = new MessageResponse
                     {
-                        Id = "prev-hub",
+                        ResponseId = "prev-hub",
                         DoneReason = MessageDoneReason.EndTurn,
-                        Message = new AssistantMessage
-                        {
-                            Name = "hub",
-                            Content = [new TextMessageContent { Value = "{\"complete\": false, \"tasks\": [{\"agent\": \"spoke\", \"instruction\": \"do work\"}]}" }]
-                        }
+                        Message = Message.Assistant("{\"complete\": false, \"tasks\": [{\"agent\": \"spoke\", \"instruction\": \"do work\"}]}")
                     },
                     IsSuccess = true,
                     Duration = TimeSpan.FromMilliseconds(50)
@@ -502,13 +497,9 @@ public class HubSpokeOrchestratorTests
                     Input = [],
                     Response = new MessageResponse
                     {
-                        Id = "prev-spoke",
+                        ResponseId = "prev-spoke",
                         DoneReason = MessageDoneReason.EndTurn,
-                        Message = new AssistantMessage
-                        {
-                            Name = "spoke",
-                            Content = [new TextMessageContent { Value = "spoke result" }]
-                        }
+                        Message = Message.Assistant("spoke result")
                     },
                     IsSuccess = true,
                     Duration = TimeSpan.FromMilliseconds(30)
@@ -628,7 +619,7 @@ public class HubSpokeOrchestratorTests
 
     private static IEnumerable<Message> MakeUserMessages(string text)
     {
-        return [new UserMessage { Content = [new TextMessageContent { Value = text }] }];
+        return [new Message { Role = MessageRole.User, Content = [new TextMessageContent { Value = text }] }];
     }
 
     private sealed class MockAgent : IAgent
@@ -650,11 +641,8 @@ public class HubSpokeOrchestratorTests
 
             return Task.FromResult(new MessageResponse
             {
-                Id = Guid.NewGuid().ToString("N"),
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new AssistantMessage
-                {
-                    Name = Name,
+                Message = new Message { Role = MessageRole.Assistant,
                     Content = [new TextMessageContent { Value = text }]
                 },
                 TokenUsage = new MessageTokenUsage { InputTokens = 10, OutputTokens = text.Length }
@@ -675,7 +663,6 @@ public class HubSpokeOrchestratorTests
             await Task.Yield();
             yield return new StreamingMessageDoneResponse
             {
-                Id = Guid.NewGuid().ToString("N"),
                 DoneReason = MessageDoneReason.EndTurn,
                 TokenUsage = new MessageTokenUsage { InputTokens = 10, OutputTokens = text.Length },
                 Model = "mock-model",

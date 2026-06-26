@@ -54,9 +54,9 @@ public class AgentExtensionTests
         innerAgent.InvokeAsync(Arg.Any<IEnumerable<Message>>(), Arg.Any<CancellationToken>())
             .Returns(new MessageResponse
             {
-                Id = "test",
+                ResponseId = "test",
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new IronHive.Abstractions.Messages.Roles.AssistantMessage
+                Message = new IronHive.Abstractions.Messages.Message
                 {
                     Content = [new IronHive.Abstractions.Messages.Content.TextMessageContent { Value = "ok" }]
                 },
@@ -79,9 +79,9 @@ public class AgentExtensionTests
                 Arg.Any<CancellationToken>())
             .Returns(new MessageResponse
             {
-                Id = "r1",
+                ResponseId = "r1",
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new IronHive.Abstractions.Messages.Roles.AssistantMessage
+                Message = new IronHive.Abstractions.Messages.Message
                 {
                     Content = [new IronHive.Abstractions.Messages.Content.TextMessageContent { Value = "hi" }]
                 }
@@ -93,7 +93,7 @@ public class AgentExtensionTests
         capturedMsgs.Should().NotBeNull();
         var msgs = capturedMsgs!.ToList();
         msgs.Should().HaveCount(1);
-        var userMsg = msgs[0].Should().BeOfType<IronHive.Abstractions.Messages.Roles.UserMessage>().Subject;
+        var userMsg = msgs[0].Should().BeOfType<IronHive.Abstractions.Messages.Message>().Subject;
         userMsg.Content.OfType<IronHive.Abstractions.Messages.Content.TextMessageContent>()
             .First().Value.Should().Be("안녕");
     }
@@ -113,7 +113,7 @@ public class AgentExtensionTests
         capturedMsgs.Should().NotBeNull();
         var msgList = capturedMsgs!.ToList();
         msgList.Should().HaveCount(1);
-        var userMsg = msgList[0].Should().BeOfType<IronHive.Abstractions.Messages.Roles.UserMessage>().Subject;
+        var userMsg = msgList[0].Should().BeOfType<IronHive.Abstractions.Messages.Message>().Subject;
         userMsg.Content.OfType<IronHive.Abstractions.Messages.Content.TextMessageContent>()
             .First().Value.Should().Be("안녕");
     }

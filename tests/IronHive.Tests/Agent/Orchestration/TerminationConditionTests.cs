@@ -2,7 +2,6 @@ using FluentAssertions;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Core.Agent.Orchestration;
 
 namespace IronHive.Tests.Agent.Orchestration;
@@ -294,10 +293,8 @@ public class TerminationConditionTests
             IsSuccess = true,
             Response = new MessageResponse
             {
-                Id = Guid.NewGuid().ToString("N"),
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new AssistantMessage
-                {
+                Message = new Message { Role = MessageRole.Assistant,
                     Content = [new TextMessageContent { Value = $"response-{i}" }]
                 },
                 TokenUsage = new MessageTokenUsage { InputTokens = 10, OutputTokens = 5 }
@@ -313,10 +310,8 @@ public class TerminationConditionTests
             IsSuccess = true,
             Response = new MessageResponse
             {
-                Id = Guid.NewGuid().ToString("N"),
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new AssistantMessage
-                {
+                Message = new Message { Role = MessageRole.Assistant,
                     Content = [new TextMessageContent { Value = text }]
                 },
                 TokenUsage = new MessageTokenUsage { InputTokens = 10, OutputTokens = text.Length }
@@ -332,12 +327,8 @@ public class TerminationConditionTests
             IsSuccess = true,
             Response = new MessageResponse
             {
-                Id = Guid.NewGuid().ToString("N"),
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new AssistantMessage
-                {
-                    Content = [new TextMessageContent { Value = "text" }]
-                },
+                Message = Message.Assistant("text"),
                 TokenUsage = new MessageTokenUsage { InputTokens = t.input, OutputTokens = t.output }
             }
         }).ToArray();

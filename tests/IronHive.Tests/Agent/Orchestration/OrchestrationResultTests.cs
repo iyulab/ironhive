@@ -1,7 +1,6 @@
 using FluentAssertions;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
-using IronHive.Abstractions.Messages.Roles;
 
 namespace IronHive.Tests.Agent.Orchestration;
 
@@ -10,7 +9,7 @@ public class OrchestrationResultTests
     [Fact]
     public void Success_ShouldSetCorrectProperties()
     {
-        var message = new AssistantMessage { Content = [] };
+        var message = new Message { Role = MessageRole.Assistant, Content = [] };
         var steps = new List<AgentStepResult>
         {
             new() { AgentName = "agent-1", IsSuccess = true }
@@ -35,7 +34,7 @@ public class OrchestrationResultTests
     [Fact]
     public void Success_WithoutTokenUsage_ShouldHaveNullTokenUsage()
     {
-        var message = new AssistantMessage { Content = [] };
+        var message = new Message { Role = MessageRole.Assistant, Content = [] };
         var steps = Array.Empty<AgentStepResult>();
 
         var result = OrchestrationResult.Success(message, steps, TimeSpan.Zero);

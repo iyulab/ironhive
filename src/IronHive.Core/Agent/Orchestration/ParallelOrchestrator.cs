@@ -5,7 +5,6 @@ using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 
 namespace IronHive.Core.Agent.Orchestration;
 
@@ -195,7 +194,7 @@ public class ParallelOrchestrator : OrchestratorBase
             AggregateTokenUsage(steps));
     }
 
-    private static AssistantMessage MergeResponses(List<AgentStepResult> steps)
+    private static Message MergeResponses(List<AgentStepResult> steps)
     {
         var sb = new StringBuilder();
 
@@ -216,8 +215,7 @@ public class ParallelOrchestrator : OrchestratorBase
             }
         }
 
-        return new AssistantMessage
-        {
+        return new Message { Role = MessageRole.Assistant,
             Content = [new TextMessageContent { Value = sb.ToString().Trim() }]
         };
     }

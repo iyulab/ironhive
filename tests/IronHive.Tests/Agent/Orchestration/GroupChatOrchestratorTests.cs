@@ -4,7 +4,6 @@ using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Agent.Orchestration;
 
@@ -272,13 +271,9 @@ public class GroupChatOrchestratorTests
             Duration = TimeSpan.FromSeconds(1),
             Response = new MessageResponse
             {
-                Id = "step-0",
+                ResponseId = "step-0",
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new AssistantMessage
-                {
-                    Name = "a",
-                    Content = [new TextMessageContent { Value = "response-a" }]
-                }
+                Message = Message.Assistant("response-a")
             }
         };
         var step1 = new AgentStepResult
@@ -288,13 +283,9 @@ public class GroupChatOrchestratorTests
             Duration = TimeSpan.FromSeconds(1),
             Response = new MessageResponse
             {
-                Id = "step-1",
+                ResponseId = "step-1",
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new AssistantMessage
-                {
-                    Name = "b",
-                    Content = [new TextMessageContent { Value = "response-b" }]
-                }
+                Message = Message.Assistant("response-b")
             }
         };
 
@@ -306,9 +297,9 @@ public class GroupChatOrchestratorTests
             CompletedSteps = [step0, step1],
             CurrentMessages =
             [
-                new UserMessage { Content = [new TextMessageContent { Value = "go" }] },
-                new AssistantMessage { Name = "a", Content = [new TextMessageContent { Value = "response-a" }] },
-                new AssistantMessage { Name = "b", Content = [new TextMessageContent { Value = "response-b" }] }
+                Message.User("go"),
+                Message.Assistant("response-a"),
+                Message.Assistant("response-b")
             ]
         });
 
@@ -393,14 +384,14 @@ public class GroupChatOrchestratorTests
 
     private static IEnumerable<Message> MakeUserMessages(string text)
     {
-        return [new UserMessage { Content = [new TextMessageContent { Value = text }] }];
+        return [new Message { Role = MessageRole.User, Content = [new TextMessageContent { Value = text }] }];
     }
 
     private static string GetTextFromMessage(Message? message)
     {
         return message switch
         {
-            AssistantMessage a => a.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "",
+            Message a => a.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "",
             _ => ""
         };
     }
@@ -435,11 +426,8 @@ public class GroupChatOrchestratorTests
 
             return new MessageResponse
             {
-                Id = Guid.NewGuid().ToString("N"),
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new AssistantMessage
-                {
-                    Name = Name,
+                Message = new Message { Role = MessageRole.Assistant,
                     Content = [new TextMessageContent { Value = text }]
                 },
                 TokenUsage = new MessageTokenUsage { InputTokens = 10, OutputTokens = text.Length }
@@ -450,11 +438,10 @@ public class GroupChatOrchestratorTests
             IEnumerable<Message> messages,
             [EnumeratorCancellation] CancellationToken ct = default)
         {
-            yield return new StreamingMessageBeginResponse { Id = Guid.NewGuid().ToString("N") };
+            yield return new StreamingMessageBeginResponse();
             await Task.Yield();
             yield return new StreamingMessageDoneResponse
             {
-                Id = Guid.NewGuid().ToString("N"),
                 DoneReason = MessageDoneReason.EndTurn,
                 TokenUsage = new MessageTokenUsage { InputTokens = 10, OutputTokens = 0 },
                 Model = "mock-model",

@@ -1,7 +1,6 @@
 using FluentAssertions;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Registries;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Services;
@@ -44,7 +43,7 @@ public class MessageServiceTests
         {
             Provider = "nonexistent-provider",
             Model = "test-model",
-            Messages = [new UserMessage { Content = [new TextMessageContent { Value = "Hello" }] }]
+            Messages = [Message.User("Hello")]
         };
 
         IMessageGenerator generator = null!;
@@ -67,12 +66,9 @@ public class MessageServiceTests
         var mockGenerator = Substitute.For<IMessageGenerator>();
         var expectedResponse = new MessageResponse
         {
-            Id = "msg-1",
+            ResponseId = "msg-1",
             DoneReason = MessageDoneReason.EndTurn,
-            Message = new AssistantMessage
-            {
-                Content = [new TextMessageContent { Value = "Hello back!" }]
-            }
+            Message = Message.Assistant("Hello back!")
         };
 
         mockGenerator
@@ -92,7 +88,7 @@ public class MessageServiceTests
         {
             Provider = "openai",
             Model = "gpt-4o",
-            Messages = [new UserMessage { Content = [new TextMessageContent { Value = "Hello" }] }]
+            Messages = [Message.User("Hello")]
         };
 
         // Act
@@ -117,10 +113,13 @@ public class MessageServiceTests
             .GenerateMessageAsync(Arg.Do<MessageGenerationRequest>(req => capturedRequest = req), Arg.Any<CancellationToken>())
             .Returns(new MessageResponse
             {
-                Id = "msg-gen",
+                ResponseId = "msg-gen",
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new AssistantMessage()
-            });
+                Message = new Message { Role = MessageRole.Assistant }
+            ,
+            Model = string.Empty,
+            Timestamp = DateTime.UtcNow
+        });
 
         IMessageGenerator generator = null!;
         _mockProviderRegistry
@@ -135,7 +134,7 @@ public class MessageServiceTests
         {
             Provider = "openai",
             Model = "gpt-4o-mini",
-            Messages = [new UserMessage { Content = [new TextMessageContent { Value = "Test" }] }]
+            Messages = [Message.User("Test")]
         };
 
         // Act
@@ -157,10 +156,13 @@ public class MessageServiceTests
             .GenerateMessageAsync(Arg.Do<MessageGenerationRequest>(req => capturedRequest = req), Arg.Any<CancellationToken>())
             .Returns(new MessageResponse
             {
-                Id = "msg-gen",
+                ResponseId = "msg-gen",
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new AssistantMessage()
-            });
+                Message = new Message { Role = MessageRole.Assistant }
+            ,
+            Model = string.Empty,
+            Timestamp = DateTime.UtcNow
+        });
 
         IMessageGenerator generator = null!;
         _mockProviderRegistry
@@ -176,7 +178,7 @@ public class MessageServiceTests
             Provider = "openai",
             Model = "gpt-4o",
             System = "You are a helpful assistant.",
-            Messages = [new UserMessage { Content = [new TextMessageContent { Value = "Test" }] }]
+            Messages = [Message.User("Test")]
         };
 
         // Act
@@ -198,10 +200,13 @@ public class MessageServiceTests
             .GenerateMessageAsync(Arg.Do<MessageGenerationRequest>(req => capturedRequest = req), Arg.Any<CancellationToken>())
             .Returns(new MessageResponse
             {
-                Id = "msg-gen",
+                ResponseId = "msg-gen",
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new AssistantMessage()
-            });
+                Message = new Message { Role = MessageRole.Assistant }
+            ,
+            Model = string.Empty,
+            Timestamp = DateTime.UtcNow
+        });
 
         IMessageGenerator generator = null!;
         _mockProviderRegistry
@@ -217,7 +222,7 @@ public class MessageServiceTests
             Provider = "openai",
             Model = "gpt-4o",
             Temperature = 0.7f,
-            Messages = [new UserMessage { Content = [new TextMessageContent { Value = "Test" }] }]
+            Messages = [Message.User("Test")]
         };
 
         // Act
@@ -236,7 +241,7 @@ public class MessageServiceTests
         {
             Provider = "nonexistent-provider",
             Model = "test-model",
-            Messages = [new UserMessage { Content = [new TextMessageContent { Value = "Hello" }] }]
+            Messages = [Message.User("Hello")]
         };
 
         IMessageGenerator generator = null!;
@@ -266,10 +271,10 @@ public class MessageServiceTests
 
         var streamingResponses = new List<StreamingMessageResponse>
         {
-            new StreamingMessageBeginResponse { Id = "msg-1" },
+            new StreamingMessageBeginResponse(),
             new StreamingMessageDoneResponse
             {
-                Id = "msg-1",
+                ResponseId = "msg-1",
                 DoneReason = MessageDoneReason.EndTurn,
                 Model = "gpt-4o",
                 Timestamp = DateTime.UtcNow
@@ -293,7 +298,7 @@ public class MessageServiceTests
         {
             Provider = "openai",
             Model = "gpt-4o",
-            Messages = [new UserMessage { Content = [new TextMessageContent { Value = "Test" }] }]
+            Messages = [Message.User("Test")]
         };
 
         // Act
@@ -316,10 +321,10 @@ public class MessageServiceTests
 
         var streamingResponses = new List<StreamingMessageResponse>
         {
-            new StreamingMessageBeginResponse { Id = "msg-1" },
+            new StreamingMessageBeginResponse(),
             new StreamingMessageDoneResponse
             {
-                Id = "msg-1",
+                ResponseId = "msg-1",
                 DoneReason = MessageDoneReason.EndTurn,
                 Model = "gpt-4o",
                 Timestamp = DateTime.UtcNow
@@ -343,7 +348,7 @@ public class MessageServiceTests
         {
             Provider = "openai",
             Model = "gpt-4o",
-            Messages = [new UserMessage { Content = [new TextMessageContent { Value = "Test" }] }]
+            Messages = [Message.User("Test")]
         };
 
         // Act

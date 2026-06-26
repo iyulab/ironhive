@@ -1,7 +1,6 @@
 using FluentAssertions;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Registries;
 using IronHive.Core.Services;
@@ -16,15 +15,15 @@ public class MessageServiceProviderResolutionTests
         {
             Provider = provider,
             Model = model,
-            Messages = [new UserMessage { Content = [new TextMessageContent { Value = "hi" }] }],
+            Messages = [Message.User("hi")],
             Tools = []
         };
 
     private static MessageResponse MakeResponse() => new()
     {
-        Id = "r1",
+        ResponseId = "r1",
         DoneReason = MessageDoneReason.EndTurn,
-        Message = new AssistantMessage { Content = [new TextMessageContent { Value = "ok" }] }
+        Message = Message.Assistant("ok")
     };
 
     [Fact]

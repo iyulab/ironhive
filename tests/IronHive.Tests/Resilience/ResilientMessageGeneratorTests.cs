@@ -2,7 +2,6 @@ using System.Runtime.CompilerServices;
 using FluentAssertions;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Resilience;
 using IronHive.Core.Resilience;
 using NSubstitute;
@@ -13,12 +12,9 @@ public class ResilientMessageGeneratorTests : IDisposable
 {
     private static readonly MessageResponse s_okResponse = new()
     {
-        Id = "test",
+        ResponseId = "test",
         DoneReason = MessageDoneReason.EndTurn,
-        Message = new AssistantMessage
-        {
-            Content = [new TextMessageContent { Value = "ok" }]
-        },
+        Message = Message.Assistant("ok"),
         TokenUsage = new MessageTokenUsage { InputTokens = 1, OutputTokens = 1 }
     };
 
@@ -150,10 +146,10 @@ public class ResilientMessageGeneratorTests : IDisposable
         var request = new MessageGenerationRequest { Model = "test-model" };
         var items = new StreamingMessageResponse[]
         {
-            new StreamingMessageBeginResponse { Id = "stream-1" },
+            new StreamingMessageBeginResponse(),
             new StreamingMessageDoneResponse
             {
-                Id = "stream-1",
+                ResponseId = "stream-1",
                 Model = "test-model",
                 Timestamp = DateTime.UtcNow,
                 DoneReason = MessageDoneReason.EndTurn,
@@ -179,7 +175,7 @@ public class ResilientMessageGeneratorTests : IDisposable
 
         results.Should().HaveCount(2);
         results[0].Should().BeOfType<StreamingMessageBeginResponse>()
-            .Which.Id.Should().Be("stream-1");
+            ;
         results[1].Should().BeOfType<StreamingMessageDoneResponse>();
     }
 

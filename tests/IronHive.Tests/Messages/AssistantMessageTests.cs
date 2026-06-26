@@ -1,7 +1,6 @@
 using FluentAssertions;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 
 namespace IronHive.Tests.Messages;
 
@@ -10,7 +9,7 @@ public class AssistantMessageTests
     [Fact]
     public void GroupContentByToolBoundary_EmptyContent_ShouldReturnEmpty()
     {
-        var message = new AssistantMessage { Content = [] };
+        var message = new Message { Role = MessageRole.Assistant, Content = [] };
 
         var result = message.GroupContentByToolBoundary().ToList();
 
@@ -20,8 +19,7 @@ public class AssistantMessageTests
     [Fact]
     public void GroupContentByToolBoundary_AllText_ShouldReturnSingleGroup()
     {
-        var message = new AssistantMessage
-        {
+        var message = new Message { Role = MessageRole.Assistant,
             Content =
             [
                 new TextMessageContent { Value = "hello" },
@@ -38,8 +36,7 @@ public class AssistantMessageTests
     [Fact]
     public void GroupContentByToolBoundary_AllTools_ShouldReturnSingleGroup()
     {
-        var message = new AssistantMessage
-        {
+        var message = new Message { Role = MessageRole.Assistant,
             Content =
             [
                 new ToolMessageContent { Id = "1", Name = "tool1", IsApproved = true },
@@ -56,8 +53,7 @@ public class AssistantMessageTests
     [Fact]
     public void GroupContentByToolBoundary_ToolThenText_ShouldSplitIntoTwoGroups()
     {
-        var message = new AssistantMessage
-        {
+        var message = new Message { Role = MessageRole.Assistant,
             Content =
             [
                 new ToolMessageContent { Id = "1", Name = "tool1", IsApproved = true },
@@ -77,8 +73,7 @@ public class AssistantMessageTests
     [Fact]
     public void GroupContentByToolBoundary_TextThenTool_ShouldReturnSingleGroup()
     {
-        var message = new AssistantMessage
-        {
+        var message = new Message { Role = MessageRole.Assistant,
             Content =
             [
                 new TextMessageContent { Value = "intro" },
@@ -98,8 +93,7 @@ public class AssistantMessageTests
     {
         // 문서 예제: [Thinking, Tool, Tool, Text, Tool, Text]
         //        => [Thinking, Tool, Tool], [Text, Tool], [Text]
-        var message = new AssistantMessage
-        {
+        var message = new Message { Role = MessageRole.Assistant,
             Content =
             [
                 new ThinkingMessageContent { Value = "thinking" },
@@ -122,10 +116,7 @@ public class AssistantMessageTests
     [Fact]
     public void GroupContentByToolBoundary_SingleText_ShouldReturnSingleGroup()
     {
-        var message = new AssistantMessage
-        {
-            Content = [new TextMessageContent { Value = "only text" }]
-        };
+        var message = Message.Assistant("only text");
 
         var result = message.GroupContentByToolBoundary().ToList();
 
@@ -136,8 +127,7 @@ public class AssistantMessageTests
     [Fact]
     public void GroupContentByToolBoundary_SingleTool_ShouldReturnSingleGroup()
     {
-        var message = new AssistantMessage
-        {
+        var message = new Message { Role = MessageRole.Assistant,
             Content = [new ToolMessageContent { Id = "1", Name = "tool1", IsApproved = true }]
         };
 

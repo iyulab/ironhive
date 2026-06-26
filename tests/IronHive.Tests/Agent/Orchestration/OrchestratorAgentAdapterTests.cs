@@ -4,7 +4,6 @@ using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Agent.Orchestration;
 
@@ -106,27 +105,22 @@ public class OrchestratorAgentAdapterTests
 
     private static IEnumerable<Message> MakeUserMessages(string text)
     {
-        return [new UserMessage { Content = [new TextMessageContent { Value = text }] }];
+        return [new Message { Role = MessageRole.User, Content = [new TextMessageContent { Value = text }] }];
     }
 
-    private static string GetText(AssistantMessage msg)
+    private static string GetText(Message msg)
     {
         return msg.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "";
     }
 
     private static string GetTextFromMessage(Message? message)
     {
-        return message switch
-        {
-            AssistantMessage a => a.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "",
-            UserMessage u => u.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "",
-            _ => ""
-        };
+        return (message?.Content ?? []).OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "";
     }
 
     private static string GetLastAssistantText(IEnumerable<Message> messages)
     {
-        var last = messages.OfType<AssistantMessage>().LastOrDefault();
+        var last = messages.OfType<Message>().LastOrDefault();
         return last?.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "";
     }
 
@@ -153,11 +147,8 @@ public class OrchestratorAgentAdapterTests
 
             return new MessageResponse
             {
-                Id = Guid.NewGuid().ToString("N"),
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new AssistantMessage
-                {
-                    Name = Name,
+                Message = new Message { Role = MessageRole.Assistant,
                     Content = [new TextMessageContent { Value = text }]
                 },
                 TokenUsage = new MessageTokenUsage { InputTokens = 10, OutputTokens = text.Length }
@@ -169,7 +160,7 @@ public class OrchestratorAgentAdapterTests
             [EnumeratorCancellation] CancellationToken ct = default)
         {
             var text = ResponseFunc != null ? ResponseFunc(messages) : "stream";
-            yield return new StreamingMessageBeginResponse { Id = Guid.NewGuid().ToString("N") };
+            yield return new StreamingMessageBeginResponse();
             yield return new StreamingContentDeltaResponse
             {
                 Index = 0,
@@ -178,7 +169,6 @@ public class OrchestratorAgentAdapterTests
             await Task.Yield();
             yield return new StreamingMessageDoneResponse
             {
-                Id = Guid.NewGuid().ToString("N"),
                 DoneReason = MessageDoneReason.EndTurn,
                 TokenUsage = new MessageTokenUsage { InputTokens = 10, OutputTokens = text.Length },
                 Model = "mock-model",

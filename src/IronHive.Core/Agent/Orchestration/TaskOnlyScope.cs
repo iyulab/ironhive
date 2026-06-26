@@ -1,6 +1,5 @@
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
-using IronHive.Abstractions.Messages.Roles;
 
 namespace IronHive.Core.Agent.Orchestration;
 
@@ -19,7 +18,7 @@ public class TaskOnlyScope : IContextScope
         // Find the last user message (the task)
         for (var i = messages.Count - 1; i >= 0; i--)
         {
-            if (messages[i] is UserMessage)
+            if (messages[i] is { Role: MessageRole.User })
             {
                 return [messages[i]];
             }

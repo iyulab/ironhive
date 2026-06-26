@@ -2,7 +2,6 @@ using FluentAssertions;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Core.Agent.Orchestration;
 
 namespace IronHive.Tests.Agent.Orchestration;
@@ -73,13 +72,13 @@ public class FileCheckpointStoreTests : IDisposable
         loaded.Should().NotBeNull();
         loaded!.CurrentMessages.Should().HaveCount(2);
 
-        var userMsg = loaded.CurrentMessages[0].Should().BeOfType<UserMessage>().Subject;
+        var userMsg = loaded.CurrentMessages[0].Should().BeOfType<Message>().Subject;
         userMsg.Content.Should().HaveCount(1);
         var textContent = userMsg.Content.First().Should().BeOfType<TextMessageContent>().Subject;
         textContent.Value.Should().Be("Hello");
 
-        var assistantMsg = loaded.CurrentMessages[1].Should().BeOfType<AssistantMessage>().Subject;
-        assistantMsg.Name.Should().Be("TestAgent");
+        loaded.CurrentMessages[1].Should().BeOfType<Message>()
+            .Which.Role.Should().Be(MessageRole.Assistant);
     }
 
     [Fact]
@@ -186,12 +185,12 @@ public class FileCheckpointStoreTests : IDisposable
             IsSuccess = false,
             Error = "Rate limit exceeded",
             Duration = TimeSpan.FromSeconds(3.5),
-            Input = [new UserMessage { Content = [new TextMessageContent { Value = "Summarize" }] }],
+            Input = [Message.User("Summarize")],
             Response = new MessageResponse
             {
-                Id = "resp-1",
+                ResponseId = "resp-1",
                 DoneReason = MessageDoneReason.MaxTokens,
-                Message = new AssistantMessage { Content = [new TextMessageContent { Value = "Partial..." }] },
+                Message = Message.Assistant("Partial..."),
                 TokenUsage = new MessageTokenUsage { InputTokens = 100, OutputTokens = 50 }
             }
         };
@@ -257,15 +256,8 @@ public class FileCheckpointStoreTests : IDisposable
             CompletedStepCount = 1,
             CurrentMessages =
             [
-                new UserMessage
-                {
-                    Content = [new TextMessageContent { Value = "Hello" }]
-                },
-                new AssistantMessage
-                {
-                    Name = "TestAgent",
-                    Content = [new TextMessageContent { Value = "Hi there!" }]
-                }
+                Message.User("Hello"),
+                Message.Assistant("Hi there!")
             ]
         };
     }

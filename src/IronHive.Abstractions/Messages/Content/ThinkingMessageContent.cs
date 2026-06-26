@@ -23,8 +23,6 @@ public class ThinkingMessageContent : MessageContent
         else
             base.Merge(delta);
     }
-
-
 }
 
 /// <summary>

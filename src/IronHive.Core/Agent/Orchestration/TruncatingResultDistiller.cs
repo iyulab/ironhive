@@ -1,7 +1,6 @@
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 
 namespace IronHive.Core.Agent.Orchestration;
 
@@ -21,7 +20,7 @@ public sealed class TruncatingResultDistiller : IResultDistiller
     {
         options ??= new ResultDistillationOptions();
 
-        var assistant = response.Message;
+        var assistant = response.Message!;
         var totalChars = GetTotalTextChars(assistant.Content);
 
         // Skip distillation for short results
@@ -32,19 +31,16 @@ public sealed class TruncatingResultDistiller : IResultDistiller
 
         var distilledContent = DistillContent(assistant.Content, options);
 
-        var distilledMessage = new AssistantMessage
-        {
-            Name = assistant.Name,
-            Model = assistant.Model,
-            Content = distilledContent
-        };
+        var distilledMessage = new Message { Role = MessageRole.Assistant, Content = distilledContent };
 
         var distilledResponse = new MessageResponse
         {
-            Id = response.Id,
+            ResponseId = response.ResponseId,
             DoneReason = response.DoneReason,
             Message = distilledMessage,
-            TokenUsage = response.TokenUsage
+            TokenUsage = response.TokenUsage,
+            Model = response.Model,
+            Timestamp = response.Timestamp
         };
 
         return Task.FromResult(distilledResponse);

@@ -8,9 +8,6 @@
 
 ### 그외
 - migration google interative api
-- fixed yield return when streaming is not started
-- fixed streaming_message when tool_completed_message when tool_result finished not tool_call finished
-- add feature Store and StoreId (when Google Interactive API established)
 - add feature EnableSuggesion (Custom content) in message_request
 - add feature GenerateBatchAsync, CountTokensAsync in message_generator
 - consider add vllm package 

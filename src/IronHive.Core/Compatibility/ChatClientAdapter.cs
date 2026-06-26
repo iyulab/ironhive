@@ -4,7 +4,6 @@ using System.Text.Json;
 using Microsoft.Extensions.AI;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Tools;
 
@@ -60,7 +59,6 @@ public class ChatClientAdapter : IChatClient
     {
         var messageList = messages.ToList();
         var request = ConvertToRequest(messageList, options);
-        string? completionId = null;
 
         // Buffer tool calls: index -> (callId, name, argumentsJson)
         var toolCallBuffers = new Dictionary<int, (string CallId, string Name, StringBuilder Arguments)>();
@@ -87,7 +85,7 @@ public class ChatClientAdapter : IChatClient
                     {
                         yield return new ChatResponseUpdate
                         {
-                            ResponseId = completionId,
+                            ResponseId = null,
                             Contents = [new TextContent(textAdded.Value)]
                         };
                     }
@@ -98,7 +96,7 @@ public class ChatClientAdapter : IChatClient
                     {
                         yield return new ChatResponseUpdate
                         {
-                            ResponseId = completionId,
+                            ResponseId = null,
                             AdditionalProperties = new AdditionalPropertiesDictionary
                             {
                                 ["IndexThinking.ThinkingContent"] = thinkingAdded.Value
@@ -121,7 +119,7 @@ public class ChatClientAdapter : IChatClient
 
                         yield return new ChatResponseUpdate
                         {
-                            ResponseId = completionId,
+                            ResponseId = null,
                             Contents = [new FunctionCallContent(
                                 callId: completedTool.CallId,
                                 name: completedTool.Name,
@@ -136,7 +134,7 @@ public class ChatClientAdapter : IChatClient
                         $"Streaming error: {error.Code} - {error.Message}");
 
                 default:
-                    var update = ConvertToStreamingUpdate(chunk, ref completionId);
+                    var update = ConvertToStreamingUpdate(chunk);
                     if (update is not null)
                     {
                         yield return update;
@@ -219,13 +217,13 @@ public class ChatClientAdapter : IChatClient
     {
         if (message.Role == ChatRole.User)
         {
-            var userMessage = new UserMessage();
+            var Message = new Message { Role = MessageRole.User };
 
             foreach (var content in message.Contents)
             {
                 if (content is TextContent textContent)
                 {
-                    userMessage.Content.Add(new TextMessageContent
+                    Message.Content.Add(new TextMessageContent
                     {
                         Value = textContent.Text ?? string.Empty
                     });
@@ -233,7 +231,7 @@ public class ChatClientAdapter : IChatClient
                 else if (content is DataContent dataContent
                     && dataContent.MediaType?.StartsWith("image/", StringComparison.Ordinal) == true)
                 {
-                    userMessage.Content.Add(new ImageMessageContent
+                    Message.Content.Add(new ImageMessageContent
                     {
                         Format = GetImageFormat(dataContent.MediaType),
                         Base64 = Convert.ToBase64String(dataContent.Data.ToArray())
@@ -241,26 +239,26 @@ public class ChatClientAdapter : IChatClient
                 }
             }
 
-            if (userMessage.Content.Count == 0 && !string.IsNullOrEmpty(message.Text))
+            if (Message.Content.Count == 0 && !string.IsNullOrEmpty(message.Text))
             {
-                userMessage.Content.Add(new TextMessageContent
+                Message.Content.Add(new TextMessageContent
                 {
                     Value = message.Text
                 });
             }
 
-            return userMessage.Content.Count > 0 ? userMessage : null;
+            return Message.Content.Count > 0 ? Message : null;
         }
         else if (message.Role == ChatRole.Assistant)
         {
-            var assistantMessage = new AssistantMessage();
+            var Message = new Message { Role = MessageRole.Assistant };
 
             foreach (var content in message.Contents)
             {
                 switch (content)
                 {
                     case TextContent textContent:
-                        assistantMessage.Content.Add(new TextMessageContent
+                        Message.Content.Add(new TextMessageContent
                         {
                             Value = textContent.Text ?? string.Empty
                         });
@@ -283,20 +281,20 @@ public class ChatClientAdapter : IChatClient
                             toolMsg.Output = new ToolOutput(true, result);
                         }
 
-                        assistantMessage.Content.Add(toolMsg);
+                        Message.Content.Add(toolMsg);
                         break;
                 }
             }
 
-            if (assistantMessage.Content.Count == 0 && !string.IsNullOrEmpty(message.Text))
+            if (Message.Content.Count == 0 && !string.IsNullOrEmpty(message.Text))
             {
-                assistantMessage.Content.Add(new TextMessageContent
+                Message.Content.Add(new TextMessageContent
                 {
                     Value = message.Text
                 });
             }
 
-            return assistantMessage;
+            return Message;
         }
 
         // Skip ChatRole.Tool messages — results are merged into assistant messages above
@@ -307,7 +305,7 @@ public class ChatClientAdapter : IChatClient
     {
         var contents = new List<AIContent>();
 
-        foreach (var content in response.Message.Content)
+        foreach (var content in response.Message?.Content ?? [])
         {
             if (content is TextMessageContent textContent)
             {
@@ -327,10 +325,10 @@ public class ChatClientAdapter : IChatClient
 
         return new ChatResponse(chatMessage)
         {
-            ResponseId = response.Id,
+            ResponseId = response.ResponseId,
             CreatedAt = response.Timestamp,
             FinishReason = ConvertDoneReason(response.DoneReason),
-            ModelId = response.Message.Model ?? _modelId,
+            ModelId = response.Model ?? _modelId,
             Usage = response.TokenUsage != null ? new UsageDetails
             {
                 InputTokenCount = response.TokenUsage.InputTokens,
@@ -340,14 +338,11 @@ public class ChatClientAdapter : IChatClient
         };
     }
 
-    private static ChatResponseUpdate? ConvertToStreamingUpdate(
-        StreamingMessageResponse chunk,
-        ref string? completionId)
+    private static ChatResponseUpdate? ConvertToStreamingUpdate(StreamingMessageResponse chunk)
     {
         switch (chunk)
         {
-            case StreamingMessageBeginResponse begin:
-                completionId = begin.Id;
+            case StreamingMessageBeginResponse:
                 return null;
 
             case StreamingContentDeltaResponse delta:
@@ -368,7 +363,7 @@ public class ChatClientAdapter : IChatClient
                 }
                 return new ChatResponseUpdate
                 {
-                    ResponseId = completionId,
+                    ResponseId = null,
                     Contents = contents,
                     AdditionalProperties = updateProps
                 };
@@ -376,7 +371,7 @@ public class ChatClientAdapter : IChatClient
             case StreamingMessageDoneResponse done:
                 return new ChatResponseUpdate
                 {
-                    ResponseId = done.Id,
+                    ResponseId = done.ResponseId,
                     CreatedAt = done.Timestamp,
                     FinishReason = ConvertDoneReason(done.DoneReason),
                     ModelId = done.Model

@@ -47,17 +47,4 @@ public class ToolMessageContent : MessageContent
         else
             base.Merge(delta);
     }
-
-    /// <inheritdoc />
-    public override void Update(MessageUpdatedContent updated)
-    {
-        if (updated is ToolUpdatedContent toolUpdated)
-        {
-            // Output은 내부에서 직접 설정됨
-        }
-        else
-        {
-            base.Update(updated);
-        }
-    }
 }

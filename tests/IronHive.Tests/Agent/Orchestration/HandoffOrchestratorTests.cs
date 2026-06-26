@@ -4,7 +4,6 @@ using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Agent.Orchestration;
 
@@ -238,11 +237,9 @@ public class HandoffOrchestratorTests
             Duration = TimeSpan.FromSeconds(1),
             Response = new MessageResponse
             {
-                Id = "step-1",
+                ResponseId = "step-1",
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new AssistantMessage
-                {
-                    Name = "triage",
+                Message = new Message { Role = MessageRole.Assistant,
                     Content = [new TextMessageContent { Value = """{"handoff_to": "billing", "context": "issue"}""" }]
                 }
             }
@@ -256,9 +253,9 @@ public class HandoffOrchestratorTests
             CompletedSteps = [triageStep],
             CurrentMessages =
             [
-                new UserMessage { Content = [new TextMessageContent { Value = "go" }] },
-                new AssistantMessage { Name = "triage", Content = [new TextMessageContent { Value = """{"handoff_to": "billing", "context": "issue"}""" }] },
-                new UserMessage { Content = [new TextMessageContent { Value = "issue" }] }
+                Message.User("go"),
+                new Message { Role = MessageRole.Assistant, Content = [new TextMessageContent { Value = """{"handoff_to": "billing", "context": "issue"}""" }] },
+                Message.User("issue")
             ]
         });
 
@@ -473,7 +470,7 @@ public class HandoffOrchestratorTests
         capturedMessages.Should().NotBeNull();
         capturedMessages!.Count.Should().BeGreaterThan(1,
             "handoff 지시사항 메시지가 앞에 추가되어야 합니다");
-        var firstMessage = capturedMessages[0] as UserMessage;
+        var firstMessage = capturedMessages[0] as Message;
         firstMessage.Should().NotBeNull();
         var textContent = firstMessage!.Content.OfType<TextMessageContent>().First();
         textContent.Value.Should().Contain("HANDOFF INSTRUCTIONS");
@@ -482,17 +479,12 @@ public class HandoffOrchestratorTests
 
     private static IEnumerable<Message> MakeUserMessages(string text)
     {
-        return [new UserMessage { Content = [new TextMessageContent { Value = text }] }];
+        return [new Message { Role = MessageRole.User, Content = [new TextMessageContent { Value = text }] }];
     }
 
     private static string GetTextFromMessage(Message? message)
     {
-        return message switch
-        {
-            AssistantMessage a => a.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "",
-            UserMessage u => u.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "",
-            _ => ""
-        };
+        return (message?.Content ?? []).OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "";
     }
 
     private sealed class MockAgent : IAgent
@@ -518,11 +510,8 @@ public class HandoffOrchestratorTests
 
             return new MessageResponse
             {
-                Id = Guid.NewGuid().ToString("N"),
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new AssistantMessage
-                {
-                    Name = Name,
+                Message = new Message { Role = MessageRole.Assistant,
                     Content = [new TextMessageContent { Value = text }]
                 },
                 TokenUsage = new MessageTokenUsage { InputTokens = 10, OutputTokens = text.Length }
@@ -533,11 +522,10 @@ public class HandoffOrchestratorTests
             IEnumerable<Message> messages,
             [EnumeratorCancellation] CancellationToken ct = default)
         {
-            yield return new StreamingMessageBeginResponse { Id = Guid.NewGuid().ToString("N") };
+            yield return new StreamingMessageBeginResponse();
             await Task.Yield();
             yield return new StreamingMessageDoneResponse
             {
-                Id = Guid.NewGuid().ToString("N"),
                 DoneReason = MessageDoneReason.EndTurn,
                 TokenUsage = new MessageTokenUsage { InputTokens = 10, OutputTokens = 0 },
                 Model = "mock-model",

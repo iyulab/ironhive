@@ -2,7 +2,6 @@ using FluentAssertions;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Agent.Orchestration;
 
@@ -131,12 +130,12 @@ public class SummaryContextScopeTests
         var scope = new SummaryContextScope(new SummaryContextScopeOptions { MinMessagesForSummary = 2 });
         var messages = new List<Message>
         {
-            new UserMessage { Content = [new TextMessageContent { Value = "Fix the bug" }] },
+            Message.User("Fix the bug"),
             MakeAssistantWithTools(
                 ("read_file", """{"path": "src/Foo.cs"}"""),
                 ("grep", """{"pattern": "TODO", "path": "src/"}""")
             ),
-            new UserMessage { Content = [new TextMessageContent { Value = "Continue" }] }
+            Message.User("Continue")
         };
 
         var result = scope.ScopeMessages(messages, "agent1");
@@ -153,13 +152,13 @@ public class SummaryContextScopeTests
         var scope = new SummaryContextScope(new SummaryContextScopeOptions { MinMessagesForSummary = 2 });
         var messages = new List<Message>
         {
-            new UserMessage { Content = [new TextMessageContent { Value = "Edit files" }] },
+            Message.User("Edit files"),
             MakeAssistantWithTools(
                 ("write_file", """{"path": "src/New.cs"}"""),
                 ("edit_file", """{"file_path": "src/Old.cs"}"""),
                 ("read_file", """{"path": "src/ReadOnly.cs"}""")
             ),
-            new UserMessage { Content = [new TextMessageContent { Value = "Done?" }] }
+            Message.User("Done?")
         };
 
         var result = scope.ScopeMessages(messages, "agent1");
@@ -178,13 +177,13 @@ public class SummaryContextScopeTests
         var scope = new SummaryContextScope(new SummaryContextScopeOptions { MinMessagesForSummary = 2 });
         var messages = new List<Message>
         {
-            new UserMessage { Content = [new TextMessageContent { Value = "Search" }] },
+            Message.User("Search"),
             MakeAssistantWithTools(
                 ("grep", """{"pattern": "foo"}"""),
                 ("grep", """{"pattern": "foo"}"""),
                 ("grep", """{"pattern": "bar"}""")
             ),
-            new UserMessage { Content = [new TextMessageContent { Value = "Next" }] }
+            Message.User("Next")
         };
 
         var result = scope.ScopeMessages(messages, "agent1");
@@ -201,15 +200,14 @@ public class SummaryContextScopeTests
         var scope = new SummaryContextScope(new SummaryContextScopeOptions { MinMessagesForSummary = 2 });
         var messages = new List<Message>
         {
-            new UserMessage { Content = [new TextMessageContent { Value = "Check" }] },
-            new AssistantMessage
-            {
+            Message.User("Check"),
+            new Message { Role = MessageRole.Assistant,
                 Content =
                 [
                     new ToolMessageContent { Id = "1", Name = "get_status", IsApproved = true }
                 ]
             },
-            new UserMessage { Content = [new TextMessageContent { Value = "Next" }] }
+            Message.User("Next")
         };
 
         var result = scope.ScopeMessages(messages, "agent1");
@@ -313,9 +311,9 @@ public class SummaryContextScopeTests
 
         var messages = new List<Message>
         {
-            new UserMessage { Content = [new TextMessageContent { Value = "Initial goal: analyze codebase" }] },
-            new AssistantMessage { Content = [new TextMessageContent { Value = "I will analyze the project structure first..." }] },
-            new UserMessage { Content = [new TextMessageContent { Value = "Summarize your findings" }] }
+            Message.User("Initial goal: analyze codebase"),
+            Message.Assistant("I will analyze the project structure first..."),
+            Message.User("Summarize your findings")
         };
 
         var result = await orch.ExecuteAsync(messages);
@@ -341,7 +339,7 @@ public class SummaryContextScopeTests
     private static List<Message> MakeUserMessages(params string[] texts)
     {
         return texts.Select(t =>
-            (Message)new UserMessage { Content = [new TextMessageContent { Value = t }] }
+            (Message)new Message { Role = MessageRole.User, Content = [new TextMessageContent { Value = t }] }
         ).ToList();
     }
 
@@ -349,13 +347,13 @@ public class SummaryContextScopeTests
     {
         return turns.Select<(string role, string text), Message>(t => t.role switch
         {
-            "user" => new UserMessage { Content = [new TextMessageContent { Value = t.text }] },
-            "assistant" => new AssistantMessage { Content = [new TextMessageContent { Value = t.text }] },
+            "user" => new Message { Role = MessageRole.User, Content = [new TextMessageContent { Value = t.text }] },
+            "assistant" => new Message { Role = MessageRole.Assistant, Content = [new TextMessageContent { Value = t.text }] },
             _ => throw new ArgumentException($"Unknown role: {t.role}")
         }).ToList();
     }
 
-    private static AssistantMessage MakeAssistantWithTools(params (string name, string? input)[] tools)
+    private static Message MakeAssistantWithTools(params (string name, string? input)[] tools)
     {
         var content = new List<MessageContent>();
         var id = 0;
@@ -370,17 +368,12 @@ public class SummaryContextScopeTests
             });
         }
 
-        return new AssistantMessage { Content = content };
+        return new Message { Role = MessageRole.Assistant, Content = content };
     }
 
     private static string GetText(Message message)
     {
-        return message switch
-        {
-            UserMessage u => u.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "",
-            AssistantMessage a => a.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "",
-            _ => ""
-        };
+        return (message?.Content ?? []).OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "";
     }
 
     // Reuse MockAgent from ContextScopeTests
@@ -403,11 +396,8 @@ public class SummaryContextScopeTests
             var text = ResponseFunc != null ? ResponseFunc(messages) : $"MockAgent '{Name}'";
             return Task.FromResult(new IronHive.Abstractions.Messages.MessageResponse
             {
-                Id = Guid.NewGuid().ToString("N"),
                 DoneReason = IronHive.Abstractions.Messages.MessageDoneReason.EndTurn,
-                Message = new AssistantMessage
-                {
-                    Name = Name,
+                Message = new Message { Role = MessageRole.Assistant,
                     Content = [new TextMessageContent { Value = text }]
                 },
                 TokenUsage = new IronHive.Abstractions.Messages.MessageTokenUsage

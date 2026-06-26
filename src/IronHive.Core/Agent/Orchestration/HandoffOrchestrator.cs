@@ -6,7 +6,6 @@ using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 
 namespace IronHive.Core.Agent.Orchestration;
 
@@ -140,8 +139,7 @@ public partial class HandoffOrchestrator : OrchestratorBase
                     // 컨텍스트가 있으면 대화 히스토리에 추가
                     if (!string.IsNullOrEmpty(handoff.Value.Context))
                     {
-                        conversationHistory.Add(new UserMessage
-                        {
+                        conversationHistory.Add(new Message { Role = MessageRole.User,
                             Content = [new TextMessageContent { Value = handoff.Value.Context }]
                         });
                     }
@@ -174,10 +172,7 @@ public partial class HandoffOrchestrator : OrchestratorBase
 
             var lastStep = steps.LastOrDefault();
             var finalMessage = lastStep?.Response?.Message as Message
-                ?? new AssistantMessage
-                {
-                    Content = [new TextMessageContent { Value = "Orchestration completed." }]
-                };
+                ?? Message.Assistant("Orchestration completed.");
 
             // 성공 시 체크포인트 삭제
             await DeleteCheckpointAsync(cancellationToken).ConfigureAwait(false);
@@ -291,8 +286,7 @@ public partial class HandoffOrchestrator : OrchestratorBase
     {
         var result = new List<Message>(messages.Count + 1)
         {
-            new UserMessage
-            {
+            new Message { Role = MessageRole.User,
                 Content = [new TextMessageContent { Value = handoffInstructions }]
             }
         };

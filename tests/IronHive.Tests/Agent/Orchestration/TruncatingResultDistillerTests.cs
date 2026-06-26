@@ -2,7 +2,6 @@ using FluentAssertions;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Agent.Orchestration;
 
@@ -40,9 +39,12 @@ public class TruncatingResultDistillerTests
     {
         var response = new MessageResponse
         {
-            Id = "test",
+            ResponseId = "test",
             DoneReason = MessageDoneReason.EndTurn,
-            Message = new AssistantMessage { Content = [] }
+            Message = new Message { Role = MessageRole.Assistant, Content = [] }
+        ,
+            Model = string.Empty,
+            Timestamp = DateTime.UtcNow
         };
 
         var result = await _distiller.DistillAsync("agent1", response);
@@ -135,7 +137,7 @@ public class TruncatingResultDistillerTests
 
         var result = await _distiller.DistillAsync("agent1", response, options);
 
-        var assistant = result.Message as AssistantMessage;
+        var assistant = result.Message as Message;
         assistant.Should().NotBeNull();
         assistant!.Content.OfType<ToolMessageContent>().Should().NotBeEmpty();
     }
@@ -159,7 +161,7 @@ public class TruncatingResultDistillerTests
 
         var result = await _distiller.DistillAsync("agent1", response, options);
 
-        var assistant = result.Message as AssistantMessage;
+        var assistant = result.Message as Message;
         assistant.Should().NotBeNull();
         assistant!.Content.OfType<ToolMessageContent>().Should().BeEmpty();
     }
@@ -183,7 +185,7 @@ public class TruncatingResultDistillerTests
 
         var result = await _distiller.DistillAsync("agent1", response, options);
 
-        var assistant = result.Message as AssistantMessage;
+        var assistant = result.Message as Message;
         var tool = assistant!.Content.OfType<ToolMessageContent>().First();
         tool.Output!.Result!.Length.Should().BeLessThan(10000);
     }
@@ -193,10 +195,9 @@ public class TruncatingResultDistillerTests
     {
         var response = new MessageResponse
         {
-            Id = "test",
+            ResponseId = "test",
             DoneReason = MessageDoneReason.EndTurn,
-            Message = new AssistantMessage
-            {
+            Message = new Message { Role = MessageRole.Assistant,
                 Content =
                 [
                     new TextMessageContent { Value = new string('A', 4000) },
@@ -221,7 +222,7 @@ public class TruncatingResultDistillerTests
 
         var result = await _distiller.DistillAsync("agent1", response, options);
 
-        var assistant = result.Message as AssistantMessage;
+        var assistant = result.Message as Message;
         var tool = assistant!.Content.OfType<ToolMessageContent>().First();
         tool.Name.Should().Be("pending_tool");
         tool.Output.Should().BeNull();
@@ -236,12 +237,9 @@ public class TruncatingResultDistillerTests
     {
         var response = new MessageResponse
         {
-            Id = "resp-123",
+            ResponseId = "resp-123",
             DoneReason = MessageDoneReason.EndTurn,
-            Message = new AssistantMessage
-            {
-                Name = "researcher",
-                Model = "gpt-4o",
+            Message = new Message { Role = MessageRole.Assistant,
                 Content = [new TextMessageContent { Value = new string('A', 5000) }]
             },
             TokenUsage = new MessageTokenUsage { InputTokens = 100, OutputTokens = 200 }
@@ -255,13 +253,13 @@ public class TruncatingResultDistillerTests
 
         var result = await _distiller.DistillAsync("researcher", response, options);
 
-        result.Id.Should().Be("resp-123");
+        result.ResponseId.Should().Be("resp-123");
         result.DoneReason.Should().Be(MessageDoneReason.EndTurn);
         result.TokenUsage!.InputTokens.Should().Be(100);
 
-        var assistant = result.Message as AssistantMessage;
-        assistant!.Name.Should().Be("researcher");
-        assistant.Model.Should().Be("gpt-4o");
+        var assistant = result.Message;
+        assistant.Should().NotBeNull();
+        assistant!.Role.Should().Be(MessageRole.Assistant);
     }
 
     #endregion
@@ -330,7 +328,7 @@ public class TruncatingResultDistillerTests
 
         var messages = new List<Message>
         {
-            new UserMessage { Content = [new TextMessageContent { Value = "Analyze" }] }
+            Message.User("Analyze")
         };
 
         var result = await orch.ExecuteAsync(messages);
@@ -340,7 +338,7 @@ public class TruncatingResultDistillerTests
         // The step result should have distilled content
         var stepText = result.Steps[0].Response?.Message switch
         {
-            AssistantMessage a => a.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value,
+            Message a => a.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value,
             _ => null
         };
 
@@ -357,10 +355,8 @@ public class TruncatingResultDistillerTests
     {
         return new MessageResponse
         {
-            Id = Guid.NewGuid().ToString("N"),
             DoneReason = MessageDoneReason.EndTurn,
-            Message = new AssistantMessage
-            {
+            Message = new Message { Role = MessageRole.Assistant,
                 Content = [new TextMessageContent { Value = text }]
             },
             TokenUsage = new MessageTokenUsage { InputTokens = 10, OutputTokens = text.Length / 4 }
@@ -375,10 +371,8 @@ public class TruncatingResultDistillerTests
     {
         return new MessageResponse
         {
-            Id = Guid.NewGuid().ToString("N"),
             DoneReason = MessageDoneReason.EndTurn,
-            Message = new AssistantMessage
-            {
+            Message = new Message { Role = MessageRole.Assistant,
                 Content =
                 [
                     new TextMessageContent { Value = textContent },
@@ -399,7 +393,7 @@ public class TruncatingResultDistillerTests
     {
         return response.Message switch
         {
-            AssistantMessage a => a.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "",
+            Message a => a.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "",
             _ => ""
         };
     }
@@ -424,11 +418,8 @@ public class TruncatingResultDistillerTests
             var text = ResponseFunc != null ? ResponseFunc(messages) : $"MockAgent '{Name}'";
             return Task.FromResult(new MessageResponse
             {
-                Id = Guid.NewGuid().ToString("N"),
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new AssistantMessage
-                {
-                    Name = Name,
+                Message = new Message { Role = MessageRole.Assistant,
                     Content = [new TextMessageContent { Value = text }]
                 },
                 TokenUsage = new MessageTokenUsage { InputTokens = 10, OutputTokens = text.Length }

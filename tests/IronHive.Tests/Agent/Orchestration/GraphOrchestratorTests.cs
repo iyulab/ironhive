@@ -4,7 +4,6 @@ using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Agent.Orchestration;
 
@@ -496,13 +495,9 @@ public class GraphOrchestratorTests
                     Input = MakeUserMessages("test").ToList(),
                     Response = new MessageResponse
                     {
-                        Id = "prev-1",
+                        ResponseId = "prev-1",
                         DoneReason = MessageDoneReason.EndTurn,
-                        Message = new AssistantMessage
-                        {
-                            Name = "a",
-                            Content = [new TextMessageContent { Value = "from-a" }]
-                        }
+                        Message = Message.Assistant("from-a")
                     },
                     IsSuccess = true,
                     Duration = TimeSpan.FromMilliseconds(50)
@@ -689,17 +684,12 @@ public class GraphOrchestratorTests
 
     private static IEnumerable<Message> MakeUserMessages(string text)
     {
-        return [new UserMessage { Content = [new TextMessageContent { Value = text }] }];
+        return [new Message { Role = MessageRole.User, Content = [new TextMessageContent { Value = text }] }];
     }
 
     private static string GetTextFromMessage(Message? message)
     {
-        return message switch
-        {
-            AssistantMessage a => a.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "",
-            UserMessage u => u.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "",
-            _ => ""
-        };
+        return (message?.Content ?? []).OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "";
     }
 
     private sealed class MockAgent : IAgent
@@ -721,11 +711,8 @@ public class GraphOrchestratorTests
 
             return Task.FromResult(new MessageResponse
             {
-                Id = Guid.NewGuid().ToString("N"),
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new AssistantMessage
-                {
-                    Name = Name,
+                Message = new Message { Role = MessageRole.Assistant,
                     Content = [new TextMessageContent { Value = text }]
                 },
                 TokenUsage = new MessageTokenUsage { InputTokens = 10, OutputTokens = text.Length }
@@ -746,7 +733,6 @@ public class GraphOrchestratorTests
             await Task.Yield();
             yield return new StreamingMessageDoneResponse
             {
-                Id = Guid.NewGuid().ToString("N"),
                 DoneReason = MessageDoneReason.EndTurn,
                 TokenUsage = new MessageTokenUsage { InputTokens = 10, OutputTokens = text.Length },
                 Model = "mock-model",

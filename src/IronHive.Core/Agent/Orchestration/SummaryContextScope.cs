@@ -4,7 +4,6 @@ using System.Text.RegularExpressions;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 
 namespace IronHive.Core.Agent.Orchestration;
 
@@ -49,8 +48,7 @@ public sealed partial class SummaryContextScope : IContextScope
         if (summary.HasContent)
         {
             var summaryText = summary.Format(_options.MaxGoalLength);
-            result.Add(new UserMessage
-            {
+            result.Add(new Message { Role = MessageRole.User,
                 Content = [new TextMessageContent { Value = summaryText }]
             });
         }
@@ -79,7 +77,7 @@ public sealed partial class SummaryContextScope : IContextScope
         foreach (var message in messages)
         {
             // Extract goal from first user message
-            if (message is UserMessage firstUser && !goalFound)
+            if (message is { Role: MessageRole.User } firstUser && !goalFound)
             {
                 var text = GetTextContent(firstUser.Content);
                 if (!string.IsNullOrWhiteSpace(text))
@@ -90,7 +88,7 @@ public sealed partial class SummaryContextScope : IContextScope
             }
 
             // Extract tool calls and file paths from assistant messages
-            if (message is AssistantMessage assistant)
+            if (message is { Role: MessageRole.Assistant } assistant)
             {
                 foreach (var content in assistant.Content)
                 {
@@ -216,14 +214,7 @@ public sealed partial class SummaryContextScope : IContextScope
 
     private static void ExtractErrorCodes(Message message, ConversationSummary summary)
     {
-        ICollection<MessageContent>? contents = message switch
-        {
-            UserMessage u => u.Content,
-            AssistantMessage a => a.Content,
-            _ => null
-        };
-
-        if (contents is null) return;
+        var contents = message.Content;
 
         foreach (var content in contents)
         {
@@ -244,11 +235,11 @@ public sealed partial class SummaryContextScope : IContextScope
 
     #region Helpers
 
-    private static UserMessage? FindLastUserMessage(IReadOnlyList<Message> messages)
+    private static Message? FindLastUserMessage(IReadOnlyList<Message> messages)
     {
         for (var i = messages.Count - 1; i >= 0; i--)
         {
-            if (messages[i] is UserMessage user)
+            if (messages[i] is { Role: MessageRole.User } user)
             {
                 return user;
             }

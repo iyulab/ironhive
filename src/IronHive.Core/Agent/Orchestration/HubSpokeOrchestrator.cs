@@ -7,7 +7,6 @@ using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 
 namespace IronHive.Core.Agent.Orchestration;
 
@@ -138,7 +137,7 @@ public partial class HubSpokeOrchestrator : OrchestratorBase
                     var finalMessage = ExtractMessage(hubInstruction.Response);
                     await DeleteCheckpointAsync(cancellationToken).ConfigureAwait(false);
                     return OrchestrationResult.Success(
-                        finalMessage ?? new AssistantMessage { Content = [] },
+                        finalMessage ?? new Message { Role = MessageRole.Assistant, Content = [] },
                         steps,
                         stopwatch.Elapsed,
                         AggregateTokenUsage(steps));
@@ -192,7 +191,7 @@ public partial class HubSpokeOrchestrator : OrchestratorBase
             await DeleteCheckpointAsync(cancellationToken).ConfigureAwait(false);
 
             return OrchestrationResult.Success(
-                output ?? new AssistantMessage { Content = [] },
+                output ?? new Message { Role = MessageRole.Assistant, Content = [] },
                 steps,
                 stopwatch.Elapsed,
                 AggregateTokenUsage(steps));
@@ -228,16 +227,14 @@ public partial class HubSpokeOrchestrator : OrchestratorBase
         {
             // 이전 라운드 결과 요약 추가
             var summaryContent = BuildPreviousRoundSummary(previousSteps, round, _hubAgent!.Name);
-            hubMessages.Add(new UserMessage
-            {
+            hubMessages.Add(new Message { Role = MessageRole.User,
                 Content = [new TextMessageContent { Value = summaryContent }]
             });
         }
 
         // 사용 가능한 Spoke 에이전트 정보 추가
         var spokeInfo = BuildSpokeAgentInfo();
-        hubMessages.Add(new UserMessage
-        {
+        hubMessages.Add(new Message { Role = MessageRole.User,
             Content = [new TextMessageContent
             {
                 Value = $"Available agents for delegation:\n{spokeInfo}\n\n" +
@@ -290,8 +287,7 @@ public partial class HubSpokeOrchestrator : OrchestratorBase
 
                     var messages = new List<Message>
                     {
-                        new UserMessage
-                        {
+                        new Message { Role = MessageRole.User,
                             Content = [new TextMessageContent { Value = task.Instruction }]
                         }
                     };
@@ -328,8 +324,7 @@ public partial class HubSpokeOrchestrator : OrchestratorBase
 
                 var messages = new List<Message>
                 {
-                    new UserMessage
-                    {
+                    new Message { Role = MessageRole.User,
                         Content = [new TextMessageContent { Value = task.Instruction }]
                     }
                 };
@@ -433,8 +428,7 @@ public partial class HubSpokeOrchestrator : OrchestratorBase
             sb.AppendLine();
         }
 
-        messages.Add(new UserMessage
-        {
+        messages.Add(new Message { Role = MessageRole.User,
             Content = [new TextMessageContent { Value = sb.ToString() }]
         });
 

@@ -2,7 +2,6 @@ using FluentAssertions;
 using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Core.Agent;
 using NSubstitute;
 
@@ -12,12 +11,9 @@ public class CircuitBreakerMiddlewareTests
 {
     private static readonly MessageResponse s_okResponse = new()
     {
-        Id = "test",
+        ResponseId = "test",
         DoneReason = MessageDoneReason.EndTurn,
-        Message = new AssistantMessage
-        {
-            Content = [new TextMessageContent { Value = "ok" }]
-        },
+        Message = Message.Assistant("ok"),
         TokenUsage = new MessageTokenUsage { InputTokens = 1, OutputTokens = 1 }
     };
 

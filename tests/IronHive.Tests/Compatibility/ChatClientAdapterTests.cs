@@ -1,7 +1,6 @@
 using FluentAssertions;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Compatibility;
 using Microsoft.Extensions.AI;
@@ -204,7 +203,7 @@ public class ChatClientAdapterTests : IDisposable
 
         var req = capturedRequest();
         req.Messages.Should().HaveCount(1);
-        var userMsg = req.Messages.First().Should().BeOfType<UserMessage>().Subject;
+        var userMsg = req.Messages.First().Should().BeOfType<Message>().Subject;
         userMsg.Content.Should().ContainSingle()
             .Which.Should().BeOfType<TextMessageContent>()
             .Which.Value.Should().Be("Hello world");
@@ -224,7 +223,7 @@ public class ChatClientAdapterTests : IDisposable
         await _adapter.GetResponseAsync(messages);
 
         var req = capturedRequest();
-        var userMsg = req.Messages.First().Should().BeOfType<UserMessage>().Subject;
+        var userMsg = req.Messages.First().Should().BeOfType<Message>().Subject;
         var imgContent = userMsg.Content.Should().ContainSingle()
             .Which.Should().BeOfType<ImageMessageContent>().Subject;
         imgContent.Format.Should().Be(ImageFormat.Png);
@@ -245,7 +244,7 @@ public class ChatClientAdapterTests : IDisposable
         await _adapter.GetResponseAsync(messages);
 
         var req = capturedRequest();
-        var assistantMsg = req.Messages.First().Should().BeOfType<AssistantMessage>().Subject;
+        var assistantMsg = req.Messages.First().Should().BeOfType<Message>().Subject;
         var toolContent = assistantMsg.Content.Should().ContainSingle()
             .Which.Should().BeOfType<ToolMessageContent>().Subject;
         toolContent.Id.Should().Be("call-1");
@@ -268,7 +267,7 @@ public class ChatClientAdapterTests : IDisposable
         await _adapter.GetResponseAsync(messages);
 
         var req = capturedRequest();
-        var userMsg = req.Messages.First().Should().BeOfType<UserMessage>().Subject;
+        var userMsg = req.Messages.First().Should().BeOfType<Message>().Subject;
         userMsg.Content.Should().ContainSingle()
             .Which.Should().BeOfType<TextMessageContent>();
     }
@@ -282,11 +281,9 @@ public class ChatClientAdapterTests : IDisposable
     {
         SetupGeneratorReturns(new MessageResponse
         {
-            Id = "resp-1",
+            ResponseId = "resp-1",
             DoneReason = MessageDoneReason.EndTurn,
-            Message = new AssistantMessage
-            {
-                Model = "test-model",
+            Message = new Message { Role = MessageRole.Assistant,
                 Content = { new TextMessageContent { Value = "Hello back!" } }
             },
             TokenUsage = new MessageTokenUsage
@@ -313,10 +310,9 @@ public class ChatClientAdapterTests : IDisposable
     {
         SetupGeneratorReturns(new MessageResponse
         {
-            Id = "resp-2",
+            ResponseId = "resp-2",
             DoneReason = MessageDoneReason.ToolCall,
-            Message = new AssistantMessage
-            {
+            Message = new Message { Role = MessageRole.Assistant,
                 Content =
                 {
                     new ToolMessageContent
@@ -348,9 +344,8 @@ public class ChatClientAdapterTests : IDisposable
     {
         SetupGeneratorReturns(new MessageResponse
         {
-            Id = "resp-3",
-            Message = new AssistantMessage
-            {
+            ResponseId = "resp-3",
+            Message = new Message { Role = MessageRole.Assistant,
                 Content = { new TextMessageContent { Value = "ok" } }
             },
             TokenUsage = null
@@ -376,10 +371,9 @@ public class ChatClientAdapterTests : IDisposable
     {
         SetupGeneratorReturns(new MessageResponse
         {
-            Id = "resp",
+            ResponseId = "resp",
             DoneReason = reason,
-            Message = new AssistantMessage
-            {
+            Message = new Message { Role = MessageRole.Assistant,
                 Content = { new TextMessageContent { Value = "ok" } }
             }
         });
@@ -396,10 +390,9 @@ public class ChatClientAdapterTests : IDisposable
     {
         SetupGeneratorReturns(new MessageResponse
         {
-            Id = "resp",
+            ResponseId = "resp",
             DoneReason = null,
-            Message = new AssistantMessage
-            {
+            Message = new Message { Role = MessageRole.Assistant,
                 Content = { new TextMessageContent { Value = "ok" } }
             }
         });
@@ -433,7 +426,7 @@ public class ChatClientAdapterTests : IDisposable
         await _adapter.GetResponseAsync(messages);
 
         var req = capturedRequest();
-        var userMsg = req.Messages.First().Should().BeOfType<UserMessage>().Subject;
+        var userMsg = req.Messages.First().Should().BeOfType<Message>().Subject;
         var imgContent = userMsg.Content.First().Should().BeOfType<ImageMessageContent>().Subject;
         imgContent.Format.Should().Be(expectedFormat);
     }
@@ -447,7 +440,7 @@ public class ChatClientAdapterTests : IDisposable
     {
         var chunks = new List<StreamingMessageResponse>
         {
-            new StreamingMessageBeginResponse { Id = "stream-1" }
+            new StreamingMessageBeginResponse()
         };
         SetupStreamingGenerator(chunks);
 
@@ -466,7 +459,7 @@ public class ChatClientAdapterTests : IDisposable
     {
         var chunks = new List<StreamingMessageResponse>
         {
-            new StreamingMessageBeginResponse { Id = "stream-1" },
+            new StreamingMessageBeginResponse(),
             new StreamingContentDeltaResponse
             {
                 Index = 0,
@@ -499,10 +492,10 @@ public class ChatClientAdapterTests : IDisposable
         var timestamp = new DateTime(2026, 2, 18, 12, 0, 0, DateTimeKind.Utc);
         var chunks = new List<StreamingMessageResponse>
         {
-            new StreamingMessageBeginResponse { Id = "stream-1" },
+            new StreamingMessageBeginResponse(),
             new StreamingMessageDoneResponse
             {
-                Id = "stream-1",
+                ResponseId = "stream-1",
                 DoneReason = MessageDoneReason.EndTurn,
                 Model = "test-model",
                 Timestamp = timestamp
@@ -530,7 +523,7 @@ public class ChatClientAdapterTests : IDisposable
     {
         var chunks = new List<StreamingMessageResponse>
         {
-            new StreamingMessageBeginResponse { Id = "stream-1" },
+            new StreamingMessageBeginResponse(),
             new StreamingContentAddedResponse
             {
                 Index = 0,
@@ -561,7 +554,7 @@ public class ChatClientAdapterTests : IDisposable
         // block (before any deltas arrive). The adapter must emit it so the first character is not dropped.
         var chunks = new List<StreamingMessageResponse>
         {
-            new StreamingMessageBeginResponse { Id = "stream-1" },
+            new StreamingMessageBeginResponse(),
             new StreamingContentAddedResponse
             {
                 Index = 0,
@@ -587,7 +580,7 @@ public class ChatClientAdapterTests : IDisposable
     {
         var chunks = new List<StreamingMessageResponse>
         {
-            new StreamingMessageBeginResponse { Id = "stream-1" },
+            new StreamingMessageBeginResponse(),
             new StreamingContentAddedResponse
             {
                 Index = 0,
@@ -611,7 +604,7 @@ public class ChatClientAdapterTests : IDisposable
     {
         var chunks = new List<StreamingMessageResponse>
         {
-            new StreamingMessageBeginResponse { Id = "stream-1" },
+            new StreamingMessageBeginResponse(),
             new StreamingContentAddedResponse
             {
                 Index = 0,
@@ -651,7 +644,7 @@ public class ChatClientAdapterTests : IDisposable
     {
         var chunks = new List<StreamingMessageResponse>
         {
-            new StreamingMessageBeginResponse { Id = "stream-1" },
+            new StreamingMessageBeginResponse(),
             new StreamingMessageErrorResponse { Code = "500", Message = "Internal error" }
         };
         SetupStreamingGenerator(chunks);
@@ -690,7 +683,7 @@ public class ChatClientAdapterTests : IDisposable
 
         var req = capturedRequest();
         req.Messages.Should().HaveCount(1);
-        var assistantMsg = req.Messages.First().Should().BeOfType<AssistantMessage>().Subject;
+        var assistantMsg = req.Messages.First().Should().BeOfType<Message>().Subject;
         var toolContent = assistantMsg.Content.OfType<ToolMessageContent>().Single();
         toolContent.Output.Should().NotBeNull();
         toolContent.Output!.Result.Should().Be("22\u00b0C, sunny");
@@ -701,10 +694,8 @@ public class ChatClientAdapterTests : IDisposable
     {
         SetupGeneratorReturns(new MessageResponse
         {
-            Id = "resp",
-            Message = new AssistantMessage
-            {
-                Model = null,
+            ResponseId = "resp",
+            Message = new Message { Role = MessageRole.Assistant,
                 Content = { new TextMessageContent { Value = "ok" } }
             }
         });
@@ -865,10 +856,9 @@ public class ChatClientAdapterTests : IDisposable
     {
         SetupGeneratorReturns(new MessageResponse
         {
-            Id = "resp-noargs",
+            ResponseId = "resp-noargs",
             DoneReason = MessageDoneReason.ToolCall,
-            Message = new AssistantMessage
-            {
+            Message = new Message { Role = MessageRole.Assistant,
                 Content =
                 {
                     new ToolMessageContent
@@ -904,7 +894,7 @@ public class ChatClientAdapterTests : IDisposable
     {
         var chunks = new List<StreamingMessageResponse>
         {
-            new StreamingMessageBeginResponse { Id = "stream-noargs" },
+            new StreamingMessageBeginResponse(),
             new StreamingContentAddedResponse
             {
                 Index = 0,
@@ -943,9 +933,8 @@ public class ChatClientAdapterTests : IDisposable
         MessageGenerationRequest? captured = null;
         var defaultResponse = response ?? new MessageResponse
         {
-            Id = "default-resp",
-            Message = new AssistantMessage
-            {
+            ResponseId = "default-resp",
+            Message = new Message { Role = MessageRole.Assistant,
                 Content = { new TextMessageContent { Value = "default" } }
             }
         };

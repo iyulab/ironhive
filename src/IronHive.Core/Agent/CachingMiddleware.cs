@@ -6,7 +6,6 @@ using System.Text.Json;
 using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 
 namespace IronHive.Core.Agent;
 
@@ -102,12 +101,8 @@ public class CachingMiddleware : IAgentMiddleware
         // 메시지 내용
         foreach (var message in messages)
         {
-            var (role, content) = message switch
-            {
-                UserMessage um => ("user", ExtractTextContent(um.Content)),
-                AssistantMessage am => ("assistant", ExtractTextContent(am.Content)),
-                _ => ("unknown", "")
-            };
+            var role = message.Role == MessageRole.User ? "user" : "assistant";
+            var content = ExtractTextContent(message.Content);
             keyBuilder.Append(CultureInfo.InvariantCulture, $"[{role}:{content}]");
         }
 

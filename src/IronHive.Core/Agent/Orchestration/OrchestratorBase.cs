@@ -3,7 +3,6 @@ using System.Runtime.CompilerServices;
 using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Core.Telemetry;
 
 namespace IronHive.Core.Agent.Orchestration;
@@ -165,7 +164,7 @@ public abstract class OrchestratorBase : IAgentOrchestrator
             stopwatch.Stop();
 
             activity.SetResponseInfo(
-                responseId: response.Id,
+                responseId: response.ResponseId,
                 model: agent.Model,
                 finishReason: response.DoneReason?.ToString(),
                 inputTokens: response.TokenUsage?.InputTokens,
@@ -280,12 +279,7 @@ public abstract class OrchestratorBase : IAgentOrchestrator
     /// </summary>
     protected static ICollection<MessageContent> GetMessageContent(Message? message)
     {
-        return message switch
-        {
-            AssistantMessage assistant => assistant.Content,
-            UserMessage user => user.Content,
-            _ => []
-        };
+        return message?.Content ?? [];
     }
 
     /// <summary>

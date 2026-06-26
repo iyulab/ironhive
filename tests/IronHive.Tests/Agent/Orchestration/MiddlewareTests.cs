@@ -5,7 +5,6 @@ using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Agent;
 using IronHive.Core.Agent.Orchestration;
@@ -40,7 +39,7 @@ public class MiddlewareTests
         {
             ResponseFunc = msgs =>
             {
-                receivedText = msgs.OfType<UserMessage>().Last()
+                receivedText = msgs.OfType<Message>().Last()
                     .Content.OfType<TextMessageContent>().First().Value;
                 return "ok";
             }
@@ -66,7 +65,7 @@ public class MiddlewareTests
         var response = await wrapped.InvokeAsync(MakeUserMessages("go"));
 
         agentCalled.Should().BeFalse();
-        GetText(response.Message).Should().Be("short-circuited");
+        GetText(response.Message!).Should().Be("short-circuited");
     }
 
     [Fact]
@@ -128,7 +127,7 @@ public class MiddlewareTests
         var response = await wrapped.InvokeAsync(MakeUserMessages("go"));
 
         callCount.Should().Be(1);
-        GetText(response.Message).Should().Be("success");
+        GetText(response.Message!).Should().Be("success");
     }
 
     [Fact]
@@ -154,7 +153,7 @@ public class MiddlewareTests
         callCount.Should().Be(1); // Only 1 successful call to agent
         failingMiddleware.CallCount.Should().Be(3); // Failed 2 times + 1 success
         retryAttempts.Should().Equal(1, 2);
-        GetText(response.Message).Should().Be("success");
+        GetText(response.Message!).Should().Be("success");
     }
 
     [Fact]
@@ -292,7 +291,7 @@ public class MiddlewareTests
 
         var response = await wrapped.InvokeAsync(MakeUserMessages("go"));
 
-        GetText(response.Message).Should().NotBeEmpty();
+        GetText(response.Message!).Should().NotBeEmpty();
     }
 
     #endregion
@@ -389,8 +388,8 @@ public class MiddlewareTests
         var response2 = await wrapped.InvokeAsync(MakeUserMessages("hello"));
 
         callCount.Should().Be(1); // 에이전트는 1번만 호출
-        GetText(response1.Message).Should().Be("cached");
-        GetText(response2.Message).Should().Be("cached");
+        GetText(response1.Message!).Should().Be("cached");
+        GetText(response2.Message!).Should().Be("cached");
     }
 
     [Fact]
@@ -405,8 +404,8 @@ public class MiddlewareTests
         var response2 = await wrapped.InvokeAsync(MakeUserMessages("world")); // 다른 입력
 
         callCount.Should().Be(2);
-        GetText(response1.Message).Should().Be("response-1");
-        GetText(response2.Message).Should().Be("response-2");
+        GetText(response1.Message!).Should().Be("response-1");
+        GetText(response2.Message!).Should().Be("response-2");
     }
 
     [Fact]
@@ -456,7 +455,7 @@ public class MiddlewareTests
 
         var response = await wrapped.InvokeAsync(MakeUserMessages("go"));
 
-        GetText(response.Message).Should().Be("fast response");
+        GetText(response.Message!).Should().Be("fast response");
     }
 
     [Fact]
@@ -566,10 +565,9 @@ public class MiddlewareTests
         {
             var modified = messages.Select(m =>
             {
-                if (m is UserMessage um)
+                if (m is { Role: MessageRole.User } um)
                 {
-                    return new UserMessage
-                    {
+                    return new Message { Role = MessageRole.User,
                         Content = um.Content.Select<MessageContent, MessageContent>(c =>
                             c is TextMessageContent tc
                                 ? new TextMessageContent { Value = _prefix + tc.Value }
@@ -596,10 +594,8 @@ public class MiddlewareTests
         {
             return Task.FromResult(new MessageResponse
             {
-                Id = Guid.NewGuid().ToString("N"),
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new AssistantMessage
-                {
+                Message = new Message { Role = MessageRole.Assistant,
                     Content = [new TextMessageContent { Value = _response }]
                 }
             });
@@ -655,10 +651,10 @@ public class MiddlewareTests
 
     private static IEnumerable<Message> MakeUserMessages(string text)
     {
-        return [new UserMessage { Content = [new TextMessageContent { Value = text }] }];
+        return [new Message { Role = MessageRole.User, Content = [new TextMessageContent { Value = text }] }];
     }
 
-    private static string GetText(AssistantMessage msg)
+    private static string GetText(Message msg)
     {
         return msg.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "";
     }
@@ -681,11 +677,8 @@ public class MiddlewareTests
             var text = ResponseFunc != null ? ResponseFunc(messages) : $"MockAgent '{Name}'";
             return Task.FromResult(new MessageResponse
             {
-                Id = Guid.NewGuid().ToString("N"),
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new AssistantMessage
-                {
-                    Name = Name,
+                Message = new Message { Role = MessageRole.Assistant,
                     Content = [new TextMessageContent { Value = text }]
                 },
                 TokenUsage = new MessageTokenUsage { InputTokens = 10, OutputTokens = text.Length }
@@ -697,7 +690,7 @@ public class MiddlewareTests
             [EnumeratorCancellation] CancellationToken ct = default)
         {
             await Task.Yield();
-            yield return new StreamingMessageBeginResponse { Id = Guid.NewGuid().ToString("N") };
+            yield return new StreamingMessageBeginResponse();
         }
     }
 
@@ -720,9 +713,9 @@ public class MiddlewareTests
             MakeUserMessages("test"),
             _ => Task.FromResult(new MessageResponse
             {
-                Id = "1",
+                ResponseId = "1",
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new AssistantMessage { Content = [new TextMessageContent { Value = "ok" }] }
+                Message = Message.Assistant("ok")
             }));
 
         Assert.Equal("ok", GetText(response.Message!));
@@ -804,9 +797,9 @@ public class MiddlewareTests
             MakeUserMessages("test"),
             _ => Task.FromResult(new MessageResponse
             {
-                Id = "1",
+                ResponseId = "1",
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new AssistantMessage { Content = [new TextMessageContent { Value = "ok" }] }
+                Message = Message.Assistant("ok")
             }));
 
         Assert.Equal(CircuitState.Closed, middleware.State);
@@ -868,9 +861,9 @@ public class MiddlewareTests
                     Interlocked.Decrement(ref executing);
                     return new MessageResponse
                     {
-                        Id = i.ToString(CultureInfo.InvariantCulture),
+                        ResponseId = i.ToString(CultureInfo.InvariantCulture),
                         DoneReason = MessageDoneReason.EndTurn,
-                        Message = new AssistantMessage { Content = [new TextMessageContent { Value = "ok" }] }
+                        Message = Message.Assistant("ok")
                     };
                 });
         }).ToArray();
@@ -904,9 +897,9 @@ public class MiddlewareTests
                 await gate.Task;
                 return new MessageResponse
                 {
-                    Id = "1",
+                    ResponseId = "1",
                     DoneReason = MessageDoneReason.EndTurn,
-                    Message = new AssistantMessage { Content = [new TextMessageContent { Value = "ok" }] }
+                    Message = Message.Assistant("ok")
                 };
             });
 
@@ -921,9 +914,9 @@ public class MiddlewareTests
                 await gate.Task;
                 return new MessageResponse
                 {
-                    Id = "2",
+                    ResponseId = "2",
                     DoneReason = MessageDoneReason.EndTurn,
-                    Message = new AssistantMessage { Content = [new TextMessageContent { Value = "ok" }] }
+                    Message = Message.Assistant("ok")
                 };
             });
 
@@ -960,9 +953,9 @@ public class MiddlewareTests
                 await gate.Task;
                 return new MessageResponse
                 {
-                    Id = "1",
+                    ResponseId = "1",
                     DoneReason = MessageDoneReason.EndTurn,
-                    Message = new AssistantMessage { Content = [new TextMessageContent { Value = "ok" }] }
+                    Message = Message.Assistant("ok")
                 };
             });
 

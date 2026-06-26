@@ -3,7 +3,6 @@ using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Core.Agent.Orchestration;
 using NSubstitute;
 
@@ -219,10 +218,8 @@ public class SpeakerSelectorTests
         manager.InvokeAsync(Arg.Any<IEnumerable<Message>>(), Arg.Any<CancellationToken>())
             .Returns(new MessageResponse
             {
-                Id = Guid.NewGuid().ToString("N"),
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new AssistantMessage
-                {
+                Message = new Message { Role = MessageRole.Assistant,
                     Content = [new TextMessageContent { Value = responseText }]
                 },
                 TokenUsage = new MessageTokenUsage { InputTokens = 10, OutputTokens = responseText.Length }

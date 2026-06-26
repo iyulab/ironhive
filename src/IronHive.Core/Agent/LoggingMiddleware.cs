@@ -179,15 +179,7 @@ public class LoggingMiddleware : IAgentMiddleware, IStreamingAgentMiddleware
         if (message == null)
             return null;
 
-        var content = message switch
-        {
-            IronHive.Abstractions.Messages.Roles.UserMessage um => um.Content,
-            IronHive.Abstractions.Messages.Roles.AssistantMessage am => am.Content,
-            _ => null
-        };
-
-        if (content == null)
-            return null;
+        var content = message.Content;
 
         var text = string.Join("", content.OfType<TextMessageContent>().Select(c => c.Value));
         return TruncateWithEllipsis(text, _options.MaxPreviewLength);
@@ -195,12 +187,7 @@ public class LoggingMiddleware : IAgentMiddleware, IStreamingAgentMiddleware
 
     private string? GetResponsePreview(MessageResponse response)
     {
-        var content = response.Message switch
-        {
-            IronHive.Abstractions.Messages.Roles.AssistantMessage am => am.Content,
-            _ => null
-        };
-
+        var content = response.Message?.Content;
         if (content == null)
             return null;
 

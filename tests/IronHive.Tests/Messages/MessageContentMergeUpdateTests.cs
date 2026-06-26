@@ -79,17 +79,6 @@ public class ThinkingMessageContentTests
         content.Signature.Should().Be("sig-abc-123");
     }
 
-    [Fact]
-    public void Update_WrongUpdatedType_ShouldThrow()
-    {
-        var content = new ThinkingMessageContent { Value = "data" };
-        var updated = new ToolUpdatedContent { Output = ToolOutput.Success("result") };
-
-        var act = () => content.Update(updated);
-
-        act.Should().Throw<InvalidOperationException>()
-            .Which.Message.Should().Contain("ThinkingMessageContent");
-    }
 }
 
 public class ToolMessageContentMergeUpdateTests
@@ -164,29 +153,4 @@ public class ToolMessageContentMergeUpdateTests
             .Which.Message.Should().Contain("ToolMessageContent");
     }
 
-    [Fact]
-    public void Update_ToolUpdated_ShouldNotThrow()
-    {
-        var content = new ToolMessageContent
-        {
-            Id = "1", Name = "tool", IsApproved = true
-        };
-        var updated = new ToolUpdatedContent { Output = ToolOutput.Success("result") };
-
-        var act = () => content.Update(updated);
-
-        act.Should().NotThrow();
-    }
-
-    [Fact]
-    public void Update_WrongUpdatedType_ShouldThrow()
-    {
-        var content = new ThinkingMessageContent { Value = "thinking" };
-        var updated = new ToolUpdatedContent { Output = null };
-
-        var act = () => content.Update(updated);
-
-        act.Should().Throw<InvalidOperationException>()
-            .Which.Message.Should().Contain("ThinkingMessageContent");
-    }
 }

@@ -10,7 +10,6 @@ using System.Text;
 using IronHive.Abstractions.Catalog;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Tools;
 using IronHive.Providers.OpenAI;
@@ -342,10 +341,7 @@ async Task<TestResult> TestBasic(IMessageGenerator generator, string model)
         System = "You are a helpful assistant. Respond briefly.",
         Messages =
         [
-            new UserMessage
-            {
-                Content = [new TextMessageContent { Value = "Say 'Hello, IronHive!' and nothing else." }]
-            }
+            Message.User("Say 'Hello, IronHive!' and nothing else.")
         ],
         ThinkingEffort = MessageThinkingEffort.Low
     };
@@ -385,10 +381,7 @@ async Task<TestResult> TestStreaming(IMessageGenerator generator, string model)
         System = "You are a helpful assistant. Respond briefly.",
         Messages =
         [
-            new UserMessage
-            {
-                Content = [new TextMessageContent { Value = "Count from 1 to 5." }]
-            }
+            Message.User("Count from 1 to 5.")
         ]
     };
 
@@ -477,10 +470,7 @@ async Task<TestResult> TestToolCalling(IMessageGenerator generator, string model
         System = "You are a helpful assistant. Use the provided tools when appropriate.",
         Messages =
         [
-            new UserMessage
-            {
-                Content = [new TextMessageContent { Value = "What is the current time? Use the tool to answer." }]
-            }
+            Message.User("What is the current time? Use the tool to answer.")
         ],
         Tools = tools
     };
@@ -520,10 +510,7 @@ async Task<TestResult> TestToolRoundTrip(IMessageGenerator generator, string mod
     // Step 1: Initial request — model should call the tool
     var messages = new List<Message>
     {
-        new UserMessage
-        {
-            Content = [new TextMessageContent { Value = "Call the get_secret_code tool and tell me the exact code it returns. Reply with only the code, nothing else." }]
-        }
+        Message.User("Call the get_secret_code tool and tell me the exact code it returns. Reply with only the code, nothing else.")
     };
 
     var request = new MessageGenerationRequest
@@ -592,8 +579,7 @@ async Task<TestResult> TestMultiTurn(IMessageGenerator generator, string model)
     // Turn 1: Establish context with a secret code
     var messages = new List<Message>
     {
-        new UserMessage
-        {
+        new Message { Role = MessageRole.User,
             Content = [new TextMessageContent { Value = $"Remember this secret code: {secretCode}. Just confirm you got it." }]
         }
     };
@@ -615,10 +601,7 @@ async Task<TestResult> TestMultiTurn(IMessageGenerator generator, string model)
     messages.Add(response1.Message!);
 
     // Turn 2: Ask about the secret code (requires context from turn 1)
-    messages.Add(new UserMessage
-    {
-        Content = [new TextMessageContent { Value = "What was the secret code I told you? Reply with only the code, nothing else." }]
-    });
+    messages.Add(Message.User("What was the secret code I told you? Reply with only the code, nothing else."));
 
     var request2 = new MessageGenerationRequest
     {
@@ -676,10 +659,7 @@ async Task<TestResult> TestToolWithParams(IMessageGenerator generator, string mo
         System = "You are a helpful assistant. Use tools when asked to calculate.",
         Messages =
         [
-            new UserMessage
-            {
-                Content = [new TextMessageContent { Value = "What is 17 + 28? Use the add_numbers tool." }]
-            }
+            Message.User("What is 17 + 28? Use the add_numbers tool.")
         ],
         Tools = tools
     };
@@ -725,10 +705,7 @@ async Task<TestResult> TestStreamingToolCall(IMessageGenerator generator, string
         System = "You are a helpful assistant. Use the provided tools when asked.",
         Messages =
         [
-            new UserMessage
-            {
-                Content = [new TextMessageContent { Value = "Call the check_status tool now." }]
-            }
+            Message.User("Call the check_status tool now.")
         ],
         Tools = tools
     };
@@ -845,10 +822,7 @@ async Task<TestResult> TestMultipleTools(IMessageGenerator generator, string mod
         System = "You are a helpful assistant. Use the appropriate tool to answer.",
         Messages =
         [
-            new UserMessage
-            {
-                Content = [new TextMessageContent { Value = "What's the weather in Seoul?" }]
-            }
+            Message.User("What's the weather in Seoul?")
         ],
         Tools = tools
     };
@@ -879,10 +853,7 @@ async Task<TestResult> TestThinkingEffortNone(IMessageGenerator generator, strin
         System = "You are a helpful assistant. Respond briefly.",
         Messages =
         [
-            new UserMessage
-            {
-                Content = [new TextMessageContent { Value = "Say 'No thinking!' and nothing else." }]
-            }
+            Message.User("Say 'No thinking!' and nothing else.")
         ],
         ThinkingEffort = MessageThinkingEffort.None
     };
@@ -913,10 +884,7 @@ async Task<TestResult> TestMaxTokens(IMessageGenerator generator, string model)
         System = "You are a helpful assistant.",
         Messages =
         [
-            new UserMessage
-            {
-                Content = [new TextMessageContent { Value = "List the first 20 prime numbers, one per line." }]
-            }
+            Message.User("List the first 20 prime numbers, one per line.")
         ],
         MaxTokens = 20,
         ThinkingEffort = MessageThinkingEffort.None
@@ -947,10 +915,7 @@ async Task<TestResult> TestThinkingEffortHigh(IMessageGenerator generator, strin
         System = "You are a helpful assistant. Think step by step.",
         Messages =
         [
-            new UserMessage
-            {
-                Content = [new TextMessageContent { Value = "What is 15 * 37? Think carefully before answering." }]
-            }
+            Message.User("What is 15 * 37? Think carefully before answering.")
         ],
         ThinkingEffort = MessageThinkingEffort.High
     };
@@ -983,10 +948,7 @@ async Task<TestResult> TestStopSequences(IMessageGenerator generator, string mod
         System = "You are a helpful assistant. Always respond exactly as instructed.",
         Messages =
         [
-            new UserMessage
-            {
-                Content = [new TextMessageContent { Value = "List these colors in order, separated by commas: red, blue, green, yellow, purple, orange" }]
-            }
+            Message.User("List these colors in order, separated by commas: red, blue, green, yellow, purple, orange")
         ],
         StopSequences = ["yellow"],
         ThinkingEffort = MessageThinkingEffort.None
@@ -1027,10 +989,7 @@ async Task<TestResult> TestStreamingRoundTrip(IMessageGenerator generator, strin
     // Step 1: Stream the initial request — expect tool call
     var messages = new List<Message>
     {
-        new UserMessage
-        {
-            Content = [new TextMessageContent { Value = "Call the get_beam_code tool and tell me the exact code it returns. Reply with only the code." }]
-        }
+        Message.User("Call the get_beam_code tool and tell me the exact code it returns. Reply with only the code.")
     };
 
     var request1 = new MessageGenerationRequest
@@ -1041,8 +1000,8 @@ async Task<TestResult> TestStreamingRoundTrip(IMessageGenerator generator, strin
         Tools = tools
     };
 
-    // Collect streaming step 1 — manually assemble AssistantMessage from stream
-    var step1Message = new AssistantMessage();
+    // Collect streaming step 1 — manually assemble Message from stream
+    var step1Message = new Message();
     MessageDoneReason? step1Reason = null;
     int step1Chunks = 0;
     var step1Events = new List<string>();
@@ -1052,8 +1011,7 @@ async Task<TestResult> TestStreamingRoundTrip(IMessageGenerator generator, strin
         step1Chunks++;
         switch (chunk)
         {
-            case StreamingMessageBeginResponse begin:
-                step1Message.Id = begin.Id;
+            case StreamingMessageBeginResponse:
                 step1Events.Add("Begin");
                 break;
             case StreamingContentAddedResponse added:
@@ -1150,10 +1108,7 @@ async Task<TestResult> TestErrorModel(IMessageGenerator generator)
         System = "You are a helpful assistant.",
         Messages =
         [
-            new UserMessage
-            {
-                Content = [new TextMessageContent { Value = "Hello" }]
-            }
+            Message.User("Hello")
         ]
     };
 
@@ -1188,10 +1143,7 @@ async Task<TestResult> TestNoSystem(IMessageGenerator generator, string model)
         // System intentionally omitted
         Messages =
         [
-            new UserMessage
-            {
-                Content = [new TextMessageContent { Value = "Say 'works' and nothing else." }]
-            }
+            Message.User("Say 'works' and nothing else.")
         ],
         ThinkingEffort = MessageThinkingEffort.None
     };
@@ -1222,10 +1174,7 @@ async Task<TestResult> TestTemperature(IMessageGenerator generator, string model
         System = "You are a helpful assistant. Be precise.",
         Messages =
         [
-            new UserMessage
-            {
-                Content = [new TextMessageContent { Value = "What is the capital of France? Reply with only the city name." }]
-            }
+            Message.User("What is the capital of France? Reply with only the city name.")
         ],
         Temperature = 0f,
         ThinkingEffort = MessageThinkingEffort.None
@@ -1267,8 +1216,7 @@ async Task<TestResult> TestImageInput(IMessageGenerator generator, string model)
         System = "You are a helpful assistant. Describe images concisely.",
         Messages =
         [
-            new UserMessage
-            {
+            new Message { Role = MessageRole.User,
                 Content =
                 [
                     new ImageMessageContent { Format = ImageFormat.Png, Base64 = base64 },
@@ -1316,8 +1264,7 @@ async Task<TestResult> TestImageStream(IMessageGenerator generator, string model
         System = "You are a helpful assistant. Describe images concisely.",
         Messages =
         [
-            new UserMessage
-            {
+            new Message { Role = MessageRole.User,
                 Content =
                 [
                     new ImageMessageContent { Format = ImageFormat.Png, Base64 = base64 },
@@ -1443,10 +1390,7 @@ async Task<TestResult> TestParallelToolCalls(IMessageGenerator generator, string
         System = "You are a helpful assistant. When the user asks for multiple things, call ALL relevant tools in a single response. Do NOT respond with text before calling all tools.",
         Messages =
         [
-            new UserMessage
-            {
-                Content = [new TextMessageContent { Value = "I need three things at once: 1) the weather in Tokyo, 2) the current time in KST timezone, 3) translate 'Hello' to Korean. Call all three tools now." }]
-            }
+            Message.User("I need three things at once: 1) the weather in Tokyo, 2) the current time in KST timezone, 3) translate 'Hello' to Korean. Call all three tools now.")
         ],
         Tools = tools,
         ThinkingEffort = MessageThinkingEffort.None
@@ -1483,10 +1427,7 @@ async Task<TestResult> TestTopP(IMessageGenerator generator, string model)
         System = "You are a helpful assistant. Be precise and brief.",
         Messages =
         [
-            new UserMessage
-            {
-                Content = [new TextMessageContent { Value = "What is the chemical symbol for water? Reply with only the symbol." }]
-            }
+            Message.User("What is the chemical symbol for water? Reply with only the symbol.")
         ],
         TopP = 0.1f,
         ThinkingEffort = MessageThinkingEffort.None

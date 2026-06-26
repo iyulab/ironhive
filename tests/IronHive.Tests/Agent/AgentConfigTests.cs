@@ -11,7 +11,6 @@ public class AgentConfigTests
     {
         var config = new AgentConfig
         {
-            Name = "test-agent",
             Provider = "openai",
             Model = "gpt-4o"
         };
@@ -44,7 +43,6 @@ public class AgentConfigTests
     {
         var config = new AgentConfig
         {
-            Name = "agent",
             Provider = "openai",
             Model = model!
         };

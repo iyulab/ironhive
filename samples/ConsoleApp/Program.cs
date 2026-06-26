@@ -8,8 +8,8 @@ DotEnv.Load(new DotEnvOptions(
 ));
 
 // === Message Generation 샘플 ===
-// await MessageSample.Run();
-// return;
+await MessageSample.Run();
+return;
 
 // === Image Generation & Edit 샘플 ===
 // await ImageSample.Run();

@@ -4,7 +4,6 @@ using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 
 namespace IronHive.Core.Agent.Orchestration;
 
@@ -125,10 +124,7 @@ public class GroupChatOrchestrator : OrchestratorBase
 
             var lastStep = steps.LastOrDefault();
             var finalMessage = lastStep?.Response?.Message as Message
-                ?? new AssistantMessage
-                {
-                    Content = [new TextMessageContent { Value = "GroupChat completed." }]
-                };
+                ?? Message.Assistant("GroupChat completed.");
 
             // 성공 시 체크포인트 삭제
             await DeleteCheckpointAsync(cancellationToken).ConfigureAwait(false);

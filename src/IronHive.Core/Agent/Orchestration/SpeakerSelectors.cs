@@ -3,7 +3,6 @@ using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 
 namespace IronHive.Core.Agent.Orchestration;
 
@@ -80,12 +79,8 @@ public class LlmSpeakerSelector : ISpeakerSelector
         // 초기 user 메시지 포함
         foreach (var msg in conversationHistory)
         {
-            var (role, content) = msg switch
-            {
-                UserMessage um => ("User", um.Content),
-                AssistantMessage am => (am.Name ?? "Assistant", am.Content),
-                _ => ("System", Enumerable.Empty<MessageContent>())
-            };
+            var role = msg.Role == MessageRole.User ? "User" : "Assistant";
+            var content = msg.Content;
             var text = string.Join("", content.OfType<TextMessageContent>().Select(c => c.Value));
             if (!string.IsNullOrWhiteSpace(text))
             {
@@ -112,14 +107,13 @@ public class LlmSpeakerSelector : ISpeakerSelector
 
         var messages = new[]
         {
-            new UserMessage
-            {
+            new Message { Role = MessageRole.User,
                 Content = [new TextMessageContent { Value = prompt }]
             }
         };
 
         var response = await _manager.InvokeAsync(messages, cancellationToken).ConfigureAwait(false);
-        var selectedName = response.Message.Content
+        var selectedName = response.Message?.Content
             .OfType<TextMessageContent>()
             .FirstOrDefault()?.Value?.Trim().Trim('"', '\'', ' ');
 

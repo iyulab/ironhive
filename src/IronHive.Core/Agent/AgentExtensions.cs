@@ -1,7 +1,6 @@
 using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 
 namespace IronHive.Core.Agent;
 
@@ -22,24 +21,24 @@ public static class AgentExtensions
     }
 
     /// <summary>
-    /// Invokes the agent with a plain text string converted to a <see cref="UserMessage"/>.
+    /// Invokes the agent with a plain text string converted to a <see cref="Message"/>.
     /// </summary>
     public static Task<MessageResponse> InvokeAsync(
         this IAgent agent,
         string userText,
         CancellationToken cancellationToken = default)
         => agent.InvokeAsync(
-            [new UserMessage { Content = [new TextMessageContent { Value = userText }] }],
+            [new Message { Role = MessageRole.User, Content = [new TextMessageContent { Value = userText }] }],
             cancellationToken);
 
     /// <summary>
-    /// Invokes the agent in streaming mode with a plain text string converted to a <see cref="UserMessage"/>.
+    /// Invokes the agent in streaming mode with a plain text string converted to a <see cref="Message"/>.
     /// </summary>
     public static IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingAsync(
         this IAgent agent,
         string userText,
         CancellationToken cancellationToken = default)
         => agent.InvokeStreamingAsync(
-            [new UserMessage { Content = [new TextMessageContent { Value = userText }] }],
+            [new Message { Role = MessageRole.User, Content = [new TextMessageContent { Value = userText }] }],
             cancellationToken);
 }

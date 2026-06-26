@@ -3,10 +3,8 @@ using Google.GenAI.Types;
 using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using GoogleContent = Google.GenAI.Types.Content;
 using GooglePart = Google.GenAI.Types.Part;
 using GoogleTool = Google.GenAI.Types.Tool;
@@ -53,10 +51,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
 
         MessageDoneReason? reason = null;
         var usage = new MessageTokenUsage();
-        var message = new AssistantMessage
-        {
-            Model = response.ModelVersion
-        };
+        var message = new Message { Role = MessageRole.Assistant };
         var first = response.Candidates?.FirstOrDefault()
             ?? throw new InvalidOperationException("No candidates in response.");
 
@@ -120,11 +115,10 @@ public class GoogleAIMessageGenerator : IMessageGenerator
 
         return new MessageResponse
         {
-            Id = response.ResponseId ?? Guid.NewGuid().ToShort(),
+            ResponseId = response.ResponseId,
             DoneReason = reason,
             Message = message,
             TokenUsage = usage,
-            Timestamp = DateTime.UtcNow
         };
     }
 
@@ -138,8 +132,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         // 인덱스 추적 관리용
         (int, MessageContent)? current = null;
 
-        string id = string.Empty;
-        string modelVersion = string.Empty;
+        string? id = null;
         MessageDoneReason? reason = null;
         MessageTokenUsage? usage = null;
 
@@ -149,12 +142,8 @@ public class GoogleAIMessageGenerator : IMessageGenerator
             // 메시지 시작
             if (current == null)
             {
-                id = res.ResponseId ?? Guid.NewGuid().ToString();
-                modelVersion = res.ModelVersion ?? model;
-                yield return new StreamingMessageBeginResponse
-                {
-                    Id = id
-                };
+                id = res.ResponseId;
+                yield return new StreamingMessageBeginResponse();
             }
 
             // 토큰 사용량(FinishReason 다음 호출)
@@ -342,11 +331,9 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         // 종료
         yield return new StreamingMessageDoneResponse
         {
+            ResponseId = id,
             DoneReason = reason,
             TokenUsage = usage,
-            Id = id,
-            Model = modelVersion,
-            Timestamp = DateTime.UtcNow,
         };
     }
 
@@ -387,7 +374,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         foreach (var msg in request.Messages)
         {
             // 사용자 메시지
-            if (msg is UserMessage user)
+            if (msg is { Role: MessageRole.User } user)
             {
                 var parts = new List<GooglePart>();
                 foreach (var item in user.Content)
@@ -430,7 +417,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                 });
             }
             // AI 메시지
-            else if (msg is AssistantMessage assistant)
+            else if (msg is { Role: MessageRole.Assistant } assistant)
             {
                 var modelParts = new List<GooglePart>();
                 var userParts = new List<GooglePart>();

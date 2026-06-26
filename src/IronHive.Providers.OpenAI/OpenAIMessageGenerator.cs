@@ -5,8 +5,9 @@ using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using OpenAI.Responses;
-using UserMessage = IronHive.Abstractions.Messages.Roles.UserMessage;
-using AssistantMessage = IronHive.Abstractions.Messages.Roles.AssistantMessage;
+using IronHiveMessage = IronHive.Abstractions.Messages.Message;
+using IronHiveMessageRole = IronHive.Abstractions.Messages.MessageRole;
+
 using TextMessageContent = IronHive.Abstractions.Messages.Content.TextMessageContent;
 using ImageMessageContent = IronHive.Abstractions.Messages.Content.ImageMessageContent;
 
@@ -102,12 +103,11 @@ public class OpenAIMessageGenerator : IMessageGenerator
 
         return new MessageResponse
         {
-            Id = response.Id ?? Guid.NewGuid().ToString(),
+            ResponseId = response.Id,
             DoneReason = reason,
-            Message = new AssistantMessage
-            {
-                Id = response.Id ?? Guid.NewGuid().ToString(),
-                Model = response.Model,
+            Message = new IronHiveMessage
+            { 
+                Role = IronHiveMessageRole.Assistant,
                 Content = content,
             },
             TokenUsage = new MessageTokenUsage
@@ -115,7 +115,6 @@ public class OpenAIMessageGenerator : IMessageGenerator
                 InputTokens = response.Usage?.InputTokenCount ?? 0,
                 OutputTokens = response.Usage?.OutputTokenCount ?? 0
             },
-            Timestamp = response.CreatedAt.UtcDateTime
         };
     }
 
@@ -131,12 +130,9 @@ public class OpenAIMessageGenerator : IMessageGenerator
         var reason = MessageDoneReason.EndTurn;
         await foreach (var update in _client.CreateResponseStreamingAsync(options, cancellationToken))
         {
-            if (update is StreamingResponseCreatedUpdate created)
+            if (update is StreamingResponseCreatedUpdate)
             {
-                yield return new StreamingMessageBeginResponse
-                {
-                    Id = created.Response.Id,
-                };
+                yield return new StreamingMessageBeginResponse();
             }
             else if (update is StreamingResponseFailedUpdate failed)
             {
@@ -254,21 +250,6 @@ public class OpenAIMessageGenerator : IMessageGenerator
                     Index = outputDone.OutputIndex
                 };
             }
-            else if (update is StreamingResponseCompletedUpdate completed)
-            {
-                yield return new StreamingMessageDoneResponse
-                {
-                    DoneReason = reason,
-                    Id = completed.Response.Id,
-                    Model = completed.Response.Model,
-                    TokenUsage = new MessageTokenUsage
-                    {
-                        InputTokens = completed.Response.Usage?.InputTokenCount ?? 0,
-                        OutputTokens = completed.Response.Usage?.OutputTokenCount ?? 0
-                    },
-                    Timestamp = completed.Response.CreatedAt.UtcDateTime
-                };
-            }
             else if (update is StreamingResponseIncompleteUpdate incomplete)
             {
                 reason = incomplete.Response.IncompleteStatusDetails?.Reason?.ToString() switch
@@ -279,8 +260,8 @@ public class OpenAIMessageGenerator : IMessageGenerator
                 };
                 yield return new StreamingMessageDoneResponse
                 {
+                    ResponseId = incomplete.Response.Id != null ? $"openai_{incomplete.Response.Id}" : null,
                     DoneReason = reason,
-                    Id = incomplete.Response.Id,
                     Model = incomplete.Response.Model,
                     TokenUsage = new MessageTokenUsage
                     {
@@ -288,6 +269,19 @@ public class OpenAIMessageGenerator : IMessageGenerator
                         OutputTokens = incomplete.Response.Usage?.OutputTokenCount ?? 0
                     },
                     Timestamp = incomplete.Response.CreatedAt.UtcDateTime
+                };
+            }
+            else if (update is StreamingResponseCompletedUpdate completed)
+            {
+                yield return new StreamingMessageDoneResponse
+                {
+                    ResponseId = completed.Response.Id,
+                    DoneReason = reason,
+                    TokenUsage = new MessageTokenUsage
+                    {
+                        InputTokens = completed.Response.Usage?.InputTokenCount ?? 0,
+                        OutputTokens = completed.Response.Usage?.OutputTokenCount ?? 0
+                    },
                 };
             }
         }
@@ -356,7 +350,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
 
         foreach (var msg in request.Messages)
         {
-            if (msg is UserMessage user)
+            if (msg is { Role: IronHiveMessageRole.User } user)
             {
                 var parts = new List<ResponseContentPart>();
                 foreach (var item in user.Content)
@@ -380,7 +374,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
                 options.InputItems.Add(
                     ResponseItem.CreateUserMessageItem(parts));
             }
-            else if (msg is AssistantMessage assistant)
+            else if (msg is { Role: IronHiveMessageRole.Assistant } assistant)
             {
                 foreach (var group in assistant.GroupContentByToolBoundary())
                 {

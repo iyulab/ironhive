@@ -2,7 +2,6 @@ using FluentAssertions;
 using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Core.Agent;
 using NSubstitute;
 
@@ -23,10 +22,8 @@ public class CachingMiddlewareTests
     {
         return new MessageResponse
         {
-            Id = Guid.NewGuid().ToString(),
             DoneReason = reason,
-            Message = new AssistantMessage
-            {
+            Message = new Message { Role = MessageRole.Assistant,
                 Content = [new TextMessageContent { Value = text }]
             }
         };
@@ -34,8 +31,7 @@ public class CachingMiddlewareTests
 
     private static List<Message> CreateUserMessages(params string[] texts)
     {
-        return texts.Select(t => (Message)new UserMessage
-        {
+        return texts.Select(t => (Message)new Message { Role = MessageRole.User,
             Content = [new TextMessageContent { Value = t }]
         }).ToList();
     }
@@ -198,7 +194,7 @@ public class CachingMiddlewareTests
         });
 
         callCount.Should().Be(2);
-        result.Message.Content.OfType<TextMessageContent>().First().Value.Should().Be("second");
+        result.Message!.Content.OfType<TextMessageContent>().First().Value.Should().Be("second");
     }
 
     [Fact]

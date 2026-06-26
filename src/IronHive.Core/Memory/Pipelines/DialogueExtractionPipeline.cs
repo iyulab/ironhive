@@ -1,7 +1,6 @@
-﻿using IronHive.Abstractions.Memory;
+using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Workflow;
 using System.Text.RegularExpressions;
 
@@ -46,10 +45,7 @@ public partial class DialogueExtractionPipeline : IMemoryPipeline<DialogueExtrac
                 Provider = options.Provider,
                 Model = options.Model,
                 System = GetInstructions(),
-                Messages = [new UserMessage
-                {
-                    Id = Guid.NewGuid().ToShort(),
-                    Content = [ new TextMessageContent { Value = $"generate QnA pairs in this information:\n\n{chunk}" } ]
+                Messages = [new Message { Role = MessageRole.User,                    Content = [ new TextMessageContent { Value = $"generate QnA pairs in this information:\n\n{chunk}" } ]
                 }],
                 Temperature = 0.0f,
                 TopP = 0.5f

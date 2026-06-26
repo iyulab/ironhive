@@ -4,9 +4,10 @@ using System.Runtime.CompilerServices;
 using Anthropic;
 using Anthropic.Helpers;
 using Anthropic.Models.Messages;
+using IronHiveMessage = IronHive.Abstractions.Messages.Message;
+using IronHiveMessageRole = IronHive.Abstractions.Messages.MessageRole;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using MessageContent = IronHive.Abstractions.Messages.MessageContent;
 using TextMessageContent = IronHive.Abstractions.Messages.Content.TextMessageContent;
 using ImageMessageContent = IronHive.Abstractions.Messages.Content.ImageMessageContent;
@@ -88,7 +89,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
 
         return new MessageResponse
         {
-            Id = res.ID,
+            ResponseId = res.ID,
             DoneReason = res.StopReason?.Value() switch
             {
                 StopReason.ToolUse => MessageDoneReason.ToolCall,
@@ -97,10 +98,9 @@ public class AnthropicMessageGenerator : IMessageGenerator
                 StopReason.StopSequence or StopReason.Refusal => MessageDoneReason.StopSequence,
                 _ => null
             },
-            Message = new AssistantMessage
-            {
-                Id = res.ID,
-                Model = res.Model,
+            Message = new IronHiveMessage 
+            { 
+                Role = IronHiveMessageRole.Assistant,
                 Content = content,
             },
             TokenUsage = new MessageTokenUsage
@@ -118,8 +118,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
     {
         var req = ToMessageCreateParams(request);
 
-        var id = string.Empty;
-        var model = string.Empty;
+        string? id = null;
         int index = 0;
         var usage = new MessageTokenUsage();
 
@@ -129,12 +128,8 @@ public class AnthropicMessageGenerator : IMessageGenerator
             if (evt.TryPickStart(out var mse))
             {
                 id = mse.Message.ID;
-                model = mse.Message.Model;
                 usage.InputTokens = (int)mse.Message.Usage.InputTokens;
-                yield return new StreamingMessageBeginResponse
-                {
-                    Id = id
-                };
+                yield return new StreamingMessageBeginResponse();
             }
             // 2. 컨텐츠 생성 시작 이벤트
             else if (evt.TryPickContentBlockStart(out var cse))
@@ -261,8 +256,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
 
                 yield return new StreamingMessageDoneResponse
                 {
-                    Id = id,
-                    Model = model,
+                    ResponseId = id,
                     DoneReason = mde.Delta.StopReason?.Value() switch
                     {
                         StopReason.ToolUse => MessageDoneReason.ToolCall,
@@ -271,8 +265,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
                         StopReason.StopSequence or StopReason.Refusal => MessageDoneReason.StopSequence,
                         _ => null
                     },
-                    TokenUsage = usage,
-                    Timestamp = DateTime.UtcNow
+                    TokenUsage = usage
                 };
             }
         }
@@ -287,7 +280,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
         foreach (var message in request.Messages)
         {
             // 사용자 메시지
-            if (message is UserMessage user)
+            if (message is { Role: IronHiveMessageRole.User } user)
             {
                 var blocks = new List<ContentBlockParam>();
                 foreach (var item in user.Content)
@@ -332,7 +325,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
                 });
             }
             // AI 메시지
-            else if (message is AssistantMessage assistant)
+            else if (message is { Role: IronHiveMessageRole.Assistant } assistant)
             {
                 var groups = assistant.GroupContentByToolBoundary();
                 foreach (var group in groups)

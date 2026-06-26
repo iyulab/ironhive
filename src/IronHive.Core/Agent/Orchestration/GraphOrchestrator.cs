@@ -7,7 +7,6 @@ using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Core.Telemetry;
 
 namespace IronHive.Core.Agent.Orchestration;
@@ -426,17 +425,17 @@ public class GraphOrchestrator : OrchestratorBase
 
                     agentStopwatch.Stop();
 
-                    var responseMessage = new AssistantMessage
-                    {
+                    var responseMessage = new Message { Role = MessageRole.Assistant,
                         Content = [new TextMessageContent { Value = textBuilder.ToString() }]
                     };
 
                     var response = new MessageResponse
                     {
-                        Id = doneResponse?.Id ?? Guid.NewGuid().ToString(),
+                        ResponseId = doneResponse?.ResponseId,
                         DoneReason = doneResponse?.DoneReason,
                         Message = responseMessage,
                         TokenUsage = doneResponse?.TokenUsage,
+                        Model = doneResponse?.Model ?? string.Empty,
                         Timestamp = doneResponse?.Timestamp ?? DateTime.UtcNow
                     };
 

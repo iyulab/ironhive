@@ -4,7 +4,6 @@ using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Agent.Orchestration;
 
@@ -81,9 +80,9 @@ public class ContextScopeTests
         var scope = new TaskOnlyScope();
         var messages = new List<Message>
         {
-            new UserMessage { Content = [new TextMessageContent { Value = "first task" }] },
-            new AssistantMessage { Content = [new TextMessageContent { Value = "response" }] },
-            new UserMessage { Content = [new TextMessageContent { Value = "second task" }] }
+            Message.User("first task"),
+            Message.Assistant("response"),
+            Message.User("second task")
         };
 
         var result = scope.ScopeMessages(messages, "agent1");
@@ -98,7 +97,7 @@ public class ContextScopeTests
         var scope = new TaskOnlyScope();
         var messages = new List<Message>
         {
-            new AssistantMessage { Content = [new TextMessageContent { Value = "response" }] }
+            Message.Assistant("response")
         };
 
         var result = scope.ScopeMessages(messages, "agent1");
@@ -112,7 +111,7 @@ public class ContextScopeTests
         var scope = new TaskOnlyScope();
         var messages = new List<Message>
         {
-            new UserMessage { Content = [new TextMessageContent { Value = "only task" }] }
+            Message.User("only task")
         };
 
         var result = scope.ScopeMessages(messages, "agent1");
@@ -158,9 +157,9 @@ public class ContextScopeTests
         // Send multiple messages, but agents should only see the last user message
         var messages = new List<Message>
         {
-            new UserMessage { Content = [new TextMessageContent { Value = "previous context" }] },
-            new AssistantMessage { Content = [new TextMessageContent { Value = "some response" }] },
-            new UserMessage { Content = [new TextMessageContent { Value = "current task" }] }
+            Message.User("previous context"),
+            Message.Assistant("some response"),
+            Message.User("current task")
         };
 
         var result = await orch.ExecuteAsync(messages);
@@ -278,18 +277,13 @@ public class ContextScopeTests
     private static List<Message> MakeMessages(params string[] texts)
     {
         return texts.Select(t =>
-            (Message)new UserMessage { Content = [new TextMessageContent { Value = t }] }
+            (Message)new Message { Role = MessageRole.User, Content = [new TextMessageContent { Value = t }] }
         ).ToList();
     }
 
     private static string GetText(Message message)
     {
-        return message switch
-        {
-            UserMessage u => u.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "",
-            AssistantMessage a => a.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "",
-            _ => ""
-        };
+        return (message?.Content ?? []).OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "";
     }
 
     private sealed class MockAgent : IAgent
@@ -310,11 +304,8 @@ public class ContextScopeTests
             var text = ResponseFunc != null ? ResponseFunc(messages) : $"MockAgent '{Name}'";
             return Task.FromResult(new MessageResponse
             {
-                Id = Guid.NewGuid().ToString("N"),
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new AssistantMessage
-                {
-                    Name = Name,
+                Message = new Message { Role = MessageRole.Assistant,
                     Content = [new TextMessageContent { Value = text }]
                 },
                 TokenUsage = new MessageTokenUsage { InputTokens = 10, OutputTokens = text.Length }

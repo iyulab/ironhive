@@ -1,8 +1,8 @@
-﻿using System.Runtime.CompilerServices;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Registries;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Tools;
@@ -27,6 +27,17 @@ public class MessageService : IMessageService
         _resultFilter = services.GetService<IToolResultFilter>();
     }
 
+    private static string BuildResponseModel(string provider, string model)
+        => $"{provider}/{model}";
+    private static string? BuildResponseId(string provider, string? responseId) 
+        => !string.IsNullOrWhiteSpace(responseId)
+            ? $"{provider}_{responseId}" : null;
+    private static string? ExtractResponseId(string provider, string? responseId)
+        => !string.IsNullOrWhiteSpace(responseId) 
+            ? responseId.StartsWith($"{provider}_", StringComparison.Ordinal) 
+            ? responseId[(provider.Length + 1)..] : responseId 
+            : null;
+
     /// <inheritdoc />
     public async Task<MessageResponse> GenerateMessageAsync(
         MessageRequest request,
@@ -34,32 +45,32 @@ public class MessageService : IMessageService
     {
         var generator = ResolveGenerator(request.Provider);
 
-        // 요청 준비
+        string? responseId = null;
         MessageDoneReason? reason;
         MessageTokenUsage? usage;
-        AssistantMessage? message;
+        Message? message;
 
-        // 루프 시작
         var counter = new LimitedCounter(request.MaxLoopCount);
         var req = new MessageGenerationRequest
         {
+            PreviousId = ExtractResponseId(request.Provider, request.PreviousId),
             Model = request.Model,
+            ThinkingEffort = request.ThinkingEffort,
             Messages = request.Messages,
             System = request.System,
             Tools = _tools.FilterBy(request.Tools.Select(t => t.Name)),
-            ThinkingEffort = request.ThinkingEffort,
             Output = request.Output,
+            MaxTokens = request.MaxTokens,
             TopK = request.TopK,
             TopP = request.TopP,
             Temperature = request.Temperature,
             StopSequences = request.StopSequences,
-            MaxTokens = request.MaxTokens,
         };
 
+        var timer = Stopwatch.StartNew();
         do
         {
-            // 마지막 메시지가 어시스턴트 메시지인 경우, 툴 사용을 확인하고, 메시지를 이어갑니다.
-            if (req.Messages.LastOrDefault() is AssistantMessage last)
+            if (req.Messages.LastOrDefault() is { Role: MessageRole.Assistant } last)
             {
                 message = last;
                 await foreach (var _ in ProcessToolContentAsync(message, request.Tools, cancellationToken).ConfigureAwait(false))
@@ -67,34 +78,35 @@ public class MessageService : IMessageService
             }
             else
             {
-                message = new AssistantMessage { Id = Guid.NewGuid().ToString() };
+                message = new Message { Role = MessageRole.Assistant };
             }
 
             var res = await generator.GenerateMessageAsync(req, cancellationToken).ConfigureAwait(false);
+            responseId = res.ResponseId; // 마지막 루프의 ResponseId 채택
 
-            // 컨텐츠 추가
             foreach (var content in res.Message?.Content ?? [])
             {
                 message.Content.Add(content);
             }
-            // 요청 메시지의 마지막이 어시스턴트가 아닌 경우, 메시지를 추가합니다.
-            if (req.Messages.LastOrDefault() is not AssistantMessage)
+            if (req.Messages.LastOrDefault() is not { Role: MessageRole.Assistant })
             {
                 req.Messages.Add(message);
             }
-            reason = res.DoneReason; // 생성 종료 이유 업데이트
-            usage = res.TokenUsage; // 토큰 사용량 업데이트
-
+            reason = res.DoneReason;
+            usage = res.TokenUsage;
         }
         while (counter.TryIncrement() && ShouldContinue(reason, message, cancellationToken));
+        timer.Stop();
 
         return new MessageResponse
         {
-            Id = message.Id,
+            ResponseId = BuildResponseId(request.Provider, responseId),
             DoneReason = reason,
             Message = message,
             TokenUsage = usage,
-            Timestamp = message.Timestamp
+            Model = BuildResponseModel(request.Provider, request.Model),
+            Duration = timer.Elapsed,
+            Timestamp = DateTime.UtcNow,
         };
     }
 
@@ -105,41 +117,33 @@ public class MessageService : IMessageService
     {
         var generator = ResolveGenerator(request.Provider);
 
-        string messageId = request.Messages.LastOrDefault() is AssistantMessage lastMessage
-            ? lastMessage.Id
-            : Guid.NewGuid().ToString();
-        string model = request.Model;
+        string? responseId = null;
         MessageDoneReason? reason = null;
         MessageTokenUsage? usage = null;
-        AssistantMessage? message = null;
+        Message? message = null;
 
-        // 메시지 생성 시작
-        yield return new StreamingMessageBeginResponse
-        {
-            Id = messageId,
-        };
-
-        // 루프 시작
+        bool beginSent = false;
         var counter = new LimitedCounter(request.MaxLoopCount);
         var req = new MessageGenerationRequest
         {
+            PreviousId = request.PreviousId,
             Model = request.Model,
+            ThinkingEffort = request.ThinkingEffort,
             Messages = request.Messages,
             System = request.System,
             Tools = _tools.FilterBy(request.Tools.Select(t => t.Name)),
-            ThinkingEffort = request.ThinkingEffort,
             Output = request.Output,
+            MaxTokens = request.MaxTokens,
             TopK = request.TopK,
             TopP = request.TopP,
             Temperature = request.Temperature,
             StopSequences = request.StopSequences,
-            MaxTokens = request.MaxTokens,
         };
 
+        var timer = Stopwatch.StartNew();
         do
         {
-            // 마지막 메시지가 어시스턴트 메시지인 경우, 툴 사용을 확인하고, 메시지를 이어갑니다.
-            if (req.Messages.LastOrDefault() is AssistantMessage last)
+            if (req.Messages.LastOrDefault() is { Role: MessageRole.Assistant } last)
             {
                 message = last;
                 await foreach (var res in ProcessToolContentAsync(message, request.Tools, cancellationToken).ConfigureAwait(false))
@@ -147,19 +151,28 @@ public class MessageService : IMessageService
                     yield return res;
                 }
             }
-            // 마지막 메시지가 어시스턴트 메시지가 아닌 경우, 새로운 메시지를 생성합니다.
             else
             {
-                message = new AssistantMessage { Id = messageId };
+                message = new Message { Role = MessageRole.Assistant };
             }
 
-            // 현재 루프에서 생성된 컨텐츠를 저장할 메시지 컨텐츠 스택 객체
             var stack = new List<MessageContent>();
             await foreach (var res in generator.GenerateStreamingMessageAsync(req, cancellationToken).ConfigureAwait(false))
             {
-                if (res is StreamingMessageBeginResponse mbr)
+                // 에러가 아닌 첫 이벤트 수신 시 begin emit (제너레이터 정상 진입 확인)
+                if (!beginSent && res is not StreamingMessageErrorResponse)
                 {
-                    continue;
+                    yield return new StreamingMessageBeginResponse();
+                    beginSent = true;
+                }
+
+                if (res is StreamingMessageBeginResponse)
+                {
+                    continue; // 제너레이터의 begin은 suppress
+                }
+                else if (res is StreamingMessageErrorResponse mer)
+                {
+                    yield return mer;
                 }
                 else if (res is StreamingContentAddedResponse car)
                 {
@@ -183,19 +196,23 @@ public class MessageService : IMessageService
                 }
                 else if (res is StreamingContentCompletedResponse ccr)
                 {
-                    ccr.Index = message.Content.Count + ccr.Index;
-                    yield return ccr;
+                    var stackItem = stack.ElementAt(ccr.Index);
+
+                    // 툴은 suppress → ProcessToolContentAsync에서 inprogress/updated/completed 순서로 emit
+                    if (stackItem is ToolMessageContent)
+                        continue;
+
+                    yield return new StreamingContentCompletedResponse
+                    {
+                        Index = message.Content.Count + ccr.Index,
+                        Content = stackItem
+                    };
                 }
                 else if (res is StreamingMessageDoneResponse mdr)
                 {
-                    // 스트리밍 메시지 종료 응답인 경우, 종료 이유와 토큰 사용량을 업데이트합니다.
                     reason = mdr.DoneReason;
                     usage = mdr.TokenUsage;
-                    model = mdr.Model;
-                }
-                else if (res is StreamingMessageErrorResponse mer)
-                {
-                    yield return mer;
+                    responseId = mdr.ResponseId; // 마지막 루프의 ResponseId 채택
                 }
                 else
                 {
@@ -203,34 +220,30 @@ public class MessageService : IMessageService
                 }
             }
 
-            // 스택에 있는 컨텐츠를 메시지에 추가합니다.
             foreach (var content in stack)
             {
                 message.Content.Add(content);
             }
-            // 요청 메시지의 마지막이 어시스턴트가 아닌 경우, 메시지를 추가합니다.
-            if (req.Messages.LastOrDefault() is not AssistantMessage)
+            if (req.Messages.LastOrDefault() is not { Role: MessageRole.Assistant })
             {
                 req.Messages.Add(message);
             }
         }
         while (counter.TryIncrement() && ShouldContinue(reason, message, cancellationToken));
+        timer.Stop();
 
-        // 마지막 메시지를 전달 합니다.
         yield return new StreamingMessageDoneResponse
         {
+            ResponseId = BuildResponseId(request.Provider, responseId),
             DoneReason = reason,
+            Message = message,
             TokenUsage = usage,
-            Id = messageId,
-            Model = model,
-            Timestamp = DateTime.UtcNow
+            Model = BuildResponseModel(request.Provider, request.Model),
+            Duration = timer.Elapsed,
+            Timestamp = DateTime.UtcNow,
         };
     }
 
-    /// <summary>
-    /// Resolves the <see cref="IMessageGenerator"/> for the given provider key.
-    /// When <paramref name="provider"/> is null or empty, auto-selects if exactly one generator is registered.
-    /// </summary>
     private IMessageGenerator ResolveGenerator(string? provider)
     {
         if (string.IsNullOrWhiteSpace(provider))
@@ -255,31 +268,27 @@ public class MessageService : IMessageService
     /// 도구 컨텐츠를 처리합니다.
     /// </summary>
     private async IAsyncEnumerable<StreamingMessageResponse> ProcessToolContentAsync(
-        AssistantMessage message,
+        Message message,
         IEnumerable<ToolItem> toolItems,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        const int maxConcurrent = 3; // 동시 실행할 최대 도구 호출 수
+        const int maxConcurrent = 3;
         var semaphore = new SemaphoreSlim(maxConcurrent, maxConcurrent);
         var channel = Channel.CreateBounded<StreamingMessageResponse>(new BoundedChannelOptions(maxConcurrent * 4)
         {
             FullMode = BoundedChannelFullMode.Wait
         });
 
-        // 1) 각 ToolMessageContent별로 별도의 Task를 생성
         var tasks = new List<Task>();
         foreach (var (item, idx) in message.Content.Select((x, i) => (x, i)))
         {
-            // 툴이 아닌 아이템 건너뛰기
             if (item is not ToolMessageContent tmc)
                 continue;
-            // 이미 완료된 툴 건너뛰기
             if (tmc.IsCompleted)
                 continue;
-            // 승인되지 않은 툴 건너뛰기
             if (!tmc.IsApproved)
                 continue;
-            
+
             var task = Task.Run(async () =>
             {
                 await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -297,19 +306,15 @@ public class MessageService : IMessageService
                         ? await tool.InvokeAsync(input, cancellationToken).ConfigureAwait(false)
                         : ToolOutput.Failure($"Could not find tool '{tmc.Name}', invocation failed.");
 
-                    // Apply result filter if configured
                     if (_resultFilter is not null && tmc.Output is { Result: not null })
                     {
                         tmc.Output = _resultFilter.Filter(tmc.Name, tmc.Output);
                     }
 
-                    await channel.Writer.WriteAsync(new StreamingContentUpdatedResponse
+                    await channel.Writer.WriteAsync(new StreamingContentCompletedResponse
                     {
                         Index = idx,
-                        Updated = new ToolUpdatedContent
-                        {
-                            Output = tmc.Output
-                        }
+                        Content = tmc
                     }, cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception ex)
@@ -318,14 +323,12 @@ public class MessageService : IMessageService
                 }
                 finally
                 {
-                    // 항상 Semaphore를 릴리즈
                     semaphore.Release();
                 }
             }, cancellationToken);
             tasks.Add(task);
         }
 
-        // 2) 태스크들을 동시 실행
         _ = Task.Run(async () =>
         {
             try
@@ -334,32 +337,24 @@ public class MessageService : IMessageService
             }
             finally
             {
-                channel.Writer.Complete(); // 모든 태스크가 끝나면 완료 표시
+                channel.Writer.Complete();
             }
         }, CancellationToken.None);
 
-        // 3) 채널에서 남은 출력 읽어서 yield, Complete()가 호출될 때까지 계속 읽기
         await foreach (var res in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
         {
             yield return res;
         }
     }
 
-    /// <summary>
-    /// 루프를 계속 진행할지 여부를 결정합니다.
-    /// </summary>
-    private static bool ShouldContinue(MessageDoneReason? endReason, AssistantMessage? message, CancellationToken token)
+    private static bool ShouldContinue(MessageDoneReason? endReason, Message? message, CancellationToken token)
     {
-        // 취소 요청 시 종료
         token.ThrowIfCancellationRequested();
 
-        // 정상 종료일 경우 종료
         if (endReason == MessageDoneReason.EndTurn)
             return false;
-        // 정지 시퀀스 생성시 종료
         if (endReason == MessageDoneReason.StopSequence)
             return false;
-        // 도구 승인 요청이 있는 경우 종료
         if (message != null && message.Content.OfType<ToolMessageContent>().Any(t => !t.IsApproved))
             return false;
 

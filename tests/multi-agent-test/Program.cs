@@ -13,7 +13,6 @@ using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Tools;
 using Microsoft.Extensions.DependencyInjection;
 using IronHive.Core;
@@ -1514,7 +1513,7 @@ async Task<List<(string, TestResult)>> RunMiddlewareTests()
         var wrapped = IronHive.Core.Agent.AgentExtensions.WithMiddleware(agent, middleware);
         var response = await wrapped.InvokeAsync(MakeUserMessages("go"));
 
-        var text = response.Message.Content.OfType<TextMessageContent>().First().Value;
+        var text = response.Message!.Content.OfType<TextMessageContent>().First().Value;
         var ok = !agentCalled && text == "intercepted";
 
         results.Add(("short-circuit", ok
@@ -1609,7 +1608,7 @@ async Task<List<(string, TestResult)>> RunMiddlewareTests()
         var wrapped = IronHive.Core.Agent.AgentExtensions.WithMiddleware(agent, middleware, failingMiddleware);
         var response = await wrapped.InvokeAsync(MakeUserMessages("go"));
 
-        var text = response.Message.Content.OfType<TextMessageContent>().First().Value;
+        var text = response.Message!.Content.OfType<TextMessageContent>().First().Value;
         var ok = text == "success" && failCount == 2 && retries.Count == 2;
 
         results.Add(("retry-on-failure", ok
@@ -1705,7 +1704,7 @@ async Task<List<(string, TestResult)>> RunMiddlewareTests()
             agent, loggingMiddleware, retryMiddleware, failingMiddleware);
 
         var response = await wrapped.InvokeAsync(MakeUserMessages("go"));
-        var text = response.Message.Content.OfType<TextMessageContent>().First().Value;
+        var text = response.Message!.Content.OfType<TextMessageContent>().First().Value;
 
         // Logging should see 1 start and 1 complete (from its perspective, retry is internal)
         var ok = text == "success" && logs.Count == 2;
@@ -1791,7 +1790,7 @@ async Task<List<(string, TestResult)>> RunMiddlewareTests()
         var wrapped = IronHive.Core.Agent.AgentExtensions.WithMiddleware(agent, middleware);
 
         var response = await wrapped.InvokeAsync(MakeUserMessages("go"));
-        var text = response.Message.Content.OfType<TextMessageContent>().First().Value;
+        var text = response.Message!.Content.OfType<TextMessageContent>().First().Value;
 
         results.Add(("timeout-success", text == "fast"
             ? TestResult.Pass("Completed before timeout")
@@ -2008,7 +2007,7 @@ async Task<List<(string, TestResult)>> RunMiddlewareTests()
             MakeUserMessages("test"),
             _ => throw new InvalidOperationException("primary failed"));
 
-        var text = response.Message.Content.OfType<TextMessageContent>().First().Value;
+        var text = response.Message!.Content.OfType<TextMessageContent>().First().Value;
 
         results.Add(("fallback-on-failure", fallbackCalled && text == "fallback-result"
             ? TestResult.Pass("Fallback executed successfully")
@@ -2035,7 +2034,7 @@ async Task<List<(string, TestResult)>> RunMiddlewareTests()
             MakeUserMessages("test"),
             msgs => primaryAgent.InvokeAsync(msgs));
 
-        var text = response.Message.Content.OfType<TextMessageContent>().First().Value;
+        var text = response.Message!.Content.OfType<TextMessageContent>().First().Value;
 
         results.Add(("fallback-no-call", !fallbackCalled && text == "primary-result"
             ? TestResult.Pass("Fallback not called on success")
@@ -2100,7 +2099,7 @@ IEnumerable<Message> MakeUserMessages(string text)
 {
     return new List<Message>
     {
-        new UserMessage { Content = [new TextMessageContent { Value = text }] }
+        new Message { Role = MessageRole.User, Content = [new TextMessageContent { Value = text }] }
     };
 }
 
@@ -2108,11 +2107,8 @@ MessageResponse MakeMessageResponse(string text)
 {
     return new MessageResponse
     {
-        Id = Guid.NewGuid().ToString("N"),
         DoneReason = MessageDoneReason.EndTurn,
-        Message = new AssistantMessage
-        {
-            Name = "mock",
+        Message = new Message { Role = MessageRole.Assistant,
             Content = [new TextMessageContent { Value = text }]
         }
     };
@@ -2120,37 +2116,32 @@ MessageResponse MakeMessageResponse(string text)
 
 string GetLastUserText(IEnumerable<Message> messages)
 {
-    var last = messages.OfType<UserMessage>().LastOrDefault();
+    var last = messages.OfType<Message>().LastOrDefault();
     if (last == null) return "";
     return last.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "";
 }
 
 string GetLastAssistantText(IEnumerable<Message> messages)
 {
-    var last = messages.OfType<AssistantMessage>().LastOrDefault();
+    var last = messages.OfType<Message>().LastOrDefault();
     if (last == null) return "";
     return last.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "";
 }
 
 string GetTextFromMessage(Message? message)
 {
-    return message switch
-    {
-        AssistantMessage a => a.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "",
-        UserMessage u => u.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "",
-        _ => ""
-    };
+    return (message?.Content ?? []).OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "";
 }
 
 string GetTextFromResponse(MessageResponse response)
 {
-    return response.Message.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "";
+    return response.Message!.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "";
 }
 
 string GetTextFromStepResult(AgentStepResult step)
 {
     if (step.Response?.Message == null) return "";
-    return step.Response.Message.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "";
+    return step.Response!.Message!.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "";
 }
 
 // =============================================================================
@@ -2208,7 +2199,6 @@ async Task<List<(string, TestResult)>> RunLlmIntegrationTests()
         {
             Provider = primaryProvider!,
             Model = primaryModel!,
-            Name = name,
             Description = description,
             Instructions = instructions,
             Parameters = new MessageGenerationParameters { MaxTokens = 150 }
@@ -2514,11 +2504,8 @@ sealed class MockAgent : IAgent
 
         return new MessageResponse
         {
-            Id = Guid.NewGuid().ToString("N"),
             DoneReason = MessageDoneReason.EndTurn,
-            Message = new AssistantMessage
-            {
-                Name = Name,
+            Message = new Message { Role = MessageRole.Assistant,
                 Content = [new TextMessageContent { Value = responseText }]
             },
             TokenUsage = new MessageTokenUsage
@@ -2536,10 +2523,7 @@ sealed class MockAgent : IAgent
         // Simulate streaming: Begin → Delta chunks → Done
         var fullText = ResponseFunc != null ? ResponseFunc(messages) : $"MockAgent '{Name}' stream";
 
-        yield return new StreamingMessageBeginResponse
-        {
-            Id = Guid.NewGuid().ToString("N")
-        };
+        yield return new StreamingMessageBeginResponse();
 
         // Split into chunks
         var chunkSize = Math.Max(1, fullText.Length / 3);
@@ -2558,7 +2542,6 @@ sealed class MockAgent : IAgent
 
         yield return new StreamingMessageDoneResponse
         {
-            Id = Guid.NewGuid().ToString("N"),
             DoneReason = MessageDoneReason.EndTurn,
             TokenUsage = new MessageTokenUsage { InputTokens = 10, OutputTokens = fullText.Length },
             Model = "mock-model",
@@ -2639,10 +2622,8 @@ sealed class ShortCircuitMiddleware : IAgentMiddleware
     {
         return Task.FromResult(new MessageResponse
         {
-            Id = Guid.NewGuid().ToString("N"),
             DoneReason = MessageDoneReason.EndTurn,
-            Message = new AssistantMessage
-            {
+            Message = new Message { Role = MessageRole.Assistant,
                 Content = [new TextMessageContent { Value = _response }]
             }
         });

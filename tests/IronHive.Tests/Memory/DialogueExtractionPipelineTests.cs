@@ -2,7 +2,6 @@ using FluentAssertions;
 using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Core.Memory.Pipelines;
 using NSubstitute;
 
@@ -150,7 +149,7 @@ public class DialogueExtractionPipelineTests
         // Assert
         await _mockMessages.Received(1).GenerateMessageAsync(
             Arg.Is<MessageRequest>(r =>
-                r.Messages.OfType<UserMessage>().Any(m =>
+                r.Messages.OfType<Message>().Any(m =>
                     m.Content.OfType<TextMessageContent>().Any(c =>
                         c.Value.Contains("Special content about space.")))),
             Arg.Any<CancellationToken>());
@@ -212,7 +211,7 @@ public class DialogueExtractionPipelineTests
         var context = CreateContext(["Text."]);
         _mockMessages
             .GenerateMessageAsync(Arg.Any<MessageRequest>(), Arg.Any<CancellationToken>())
-            .Returns(new MessageResponse { Id = "r1", Message = null! });
+            .Returns(new MessageResponse { ResponseId = "r1", Message = null! });
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(
@@ -228,9 +227,12 @@ public class DialogueExtractionPipelineTests
             .GenerateMessageAsync(Arg.Any<MessageRequest>(), Arg.Any<CancellationToken>())
             .Returns(new MessageResponse
             {
-                Id = "r1",
-                Message = new AssistantMessage { Content = [] }
-            });
+                ResponseId = "r1",
+                Message = new Message { Role = MessageRole.Assistant, Content = [] }
+            ,
+            Model = string.Empty,
+            Timestamp = DateTime.UtcNow
+        });
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(
@@ -401,9 +403,7 @@ public class DialogueExtractionPipelineTests
     {
         return new MessageResponse
         {
-            Id = Guid.NewGuid().ToString(),
-            Message = new AssistantMessage
-            {
+            Message = new Message { Role = MessageRole.Assistant,
                 Content = [new TextMessageContent { Value = text }]
             }
         };

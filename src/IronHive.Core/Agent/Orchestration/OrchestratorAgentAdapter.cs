@@ -3,7 +3,6 @@ using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Tools;
 
 namespace IronHive.Core.Agent.Orchestration;
@@ -47,12 +46,12 @@ public class OrchestratorAgentAdapter : IAgent
         }
 
         // OrchestrationResult.FinalOutput → MessageResponse로 변환
-        var outputMessage = result.FinalOutput as AssistantMessage
+        var outputMessage = result.FinalOutput as Message
             ?? ConvertToAssistantMessage(result.FinalOutput);
 
         return new MessageResponse
         {
-            Id = Guid.NewGuid().ToString("N"),
+            ResponseId = null,
             DoneReason = MessageDoneReason.EndTurn,
             Message = outputMessage,
             TokenUsage = result.TokenUsage != null
@@ -61,7 +60,9 @@ public class OrchestratorAgentAdapter : IAgent
                     InputTokens = result.TokenUsage.TotalInputTokens,
                     OutputTokens = result.TokenUsage.TotalOutputTokens
                 }
-                : null
+                : null,
+            Model = string.Empty,
+            Timestamp = DateTime.UtcNow
         };
     }
 
@@ -80,30 +81,12 @@ public class OrchestratorAgentAdapter : IAgent
         }
     }
 
-    private AssistantMessage ConvertToAssistantMessage(Message? message)
+    private static Message ConvertToAssistantMessage(Message? message)
     {
-        if (message == null)
-        {
-            return new AssistantMessage
-            {
-                Name = Name,
-                Content = [new TextMessageContent { Value = string.Empty }]
-            };
-        }
+        if (message is { Role: MessageRole.User })
+            return new Message { Role = MessageRole.Assistant, Content = [.. message.Content] };
 
-        if (message is UserMessage userMsg)
-        {
-            return new AssistantMessage
-            {
-                Name = Name,
-                Content = [.. userMsg.Content]
-            };
-        }
-
-        // fallback
-        return new AssistantMessage
-        {
-            Name = Name,
+        return new Message { Role = MessageRole.Assistant,
             Content = [new TextMessageContent { Value = string.Empty }]
         };
     }

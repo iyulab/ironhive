@@ -8,9 +8,20 @@ namespace IronHive.Abstractions.Messages;
 public class MessageGenerationRequest : MessageGenerationParameters
 {
     /// <summary>
+    /// 이전 응답의 ResponseId. 프로바이더 측 저장된 컨텍스트를 재사용해 비용을 절감합니다.
+    /// </summary>
+    public string? PreviousId { get; set; }
+
+    /// <summary>
     /// 사용할 특정 모델의 식별자입니다.
     /// </summary>
     public required string Model { get; set; }
+
+    /// <summary>
+    /// 모델의 사고 노력 수준을 정의합니다.
+    /// 설정된 경우 모델의 추론 깊이를 조절할 수 있습니다.
+    /// </summary>
+    public MessageThinkingEffort? ThinkingEffort { get; set; }
 
     /// <summary>
     /// 대화의 컨텍스트와 동작을 정의하는 시스템 프롬프트입니다.
@@ -37,10 +48,4 @@ public class MessageGenerationRequest : MessageGenerationParameters
     /// MaxTools 제한을 초과했을 때의 동작을 정의합니다.
     /// </summary>
     public ToolLimitBehavior ToolLimitBehavior { get; set; } = ToolLimitBehavior.Warn;
-
-    /// <summary>
-    /// 모델의 사고 노력 수준을 정의합니다.
-    /// 설정된 경우 모델의 추론 깊이를 조절할 수 있습니다.
-    /// </summary>
-    public MessageThinkingEffort? ThinkingEffort { get; set; }
 }

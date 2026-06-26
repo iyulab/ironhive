@@ -2,7 +2,6 @@ using IronHive.Abstractions;
 using IronHive.Abstractions.Messages;
 using IronHive.Core.Extensions;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Tools;
 using IronHive.Core;
 using IronHive.Core.Tools;
@@ -39,8 +38,7 @@ public static class MessageSample
             ThinkingEffort = MessageThinkingEffort.Low,
             System = "you are a helpful assistant that can answer questions and solve problems.",
             Messages = [
-                new UserMessage
-                {
+                new Message { Role = MessageRole.User,
                     Content =
                     [
                         new TextMessageContent
@@ -88,11 +86,11 @@ public static class MessageSample
 
         // Anthropic 샘플
         // request.Provider = "anthropic";
-        // request.Model = "claude-fable-5";
+        // request.Model = "claude-sonnet-4-6";
 
         // Google AI 샘플
-        //request.Provider = "google";
-        //request.Model = "gemini-3.5-flash";
+        // request.Provider = "google";
+        // request.Model = "gemini-3.5-flash";
 
         var clone = request.Clone();
         clone.Output = typeof(OutputFormat);

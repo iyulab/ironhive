@@ -4,7 +4,6 @@ using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Tools;
 using System.Globalization;
 using IronHive.Core.Agent.Orchestration;
@@ -20,7 +19,7 @@ public class TypedPipelineTests
     {
         var act = () => new AgentExecutor<string, string>(
             null!,
-            _ => [new UserMessage { Content = [new TextMessageContent { Value = _ }] }],
+            _ => [new Message { Role = MessageRole.User, Content = [new TextMessageContent { Value = _ }] }],
             r => "ok");
 
         act.Should().Throw<ArgumentNullException>()
@@ -48,7 +47,7 @@ public class TypedPipelineTests
 
         var act = () => new AgentExecutor<string, string>(
             agent,
-            _ => [new UserMessage { Content = [new TextMessageContent { Value = _ }] }],
+            _ => [new Message { Role = MessageRole.User, Content = [new TextMessageContent { Value = _ }] }],
             null!);
 
         act.Should().Throw<ArgumentNullException>()
@@ -83,7 +82,7 @@ public class TypedPipelineTests
         {
             ResponseFunc = msgs =>
             {
-                var msg = msgs.OfType<UserMessage>().First();
+                var msg = msgs.OfType<Message>().First();
                 var text = msg.Content?.OfType<TextMessageContent>().First();
                 receivedInput = text?.Value;
                 return "ok";
@@ -210,10 +209,10 @@ public class TypedPipelineTests
     {
         return new AgentExecutor<string, string>(
             agent,
-            input => [new UserMessage { Content = [new TextMessageContent { Value = input }] }],
+            input => [new Message { Role = MessageRole.User, Content = [new TextMessageContent { Value = input }] }],
             response =>
             {
-                var msg = response.Message as AssistantMessage;
+                var msg = response.Message as Message;
                 var text = msg?.Content?.OfType<TextMessageContent>().FirstOrDefault();
                 return text?.Value ?? "";
             });
@@ -269,11 +268,8 @@ public class TypedPipelineTests
             var text = ResponseFunc != null ? ResponseFunc(messages) : $"MockAgent '{Name}'";
             return Task.FromResult(new MessageResponse
             {
-                Id = Guid.NewGuid().ToString("N"),
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new AssistantMessage
-                {
-                    Name = Name,
+                Message = new Message { Role = MessageRole.Assistant,
                     Content = [new TextMessageContent { Value = text }]
                 },
                 TokenUsage = new MessageTokenUsage { InputTokens = 10, OutputTokens = text.Length }
@@ -285,7 +281,7 @@ public class TypedPipelineTests
             [EnumeratorCancellation] CancellationToken ct = default)
         {
             await Task.Yield();
-            yield return new StreamingMessageBeginResponse { Id = Guid.NewGuid().ToString("N") };
+            yield return new StreamingMessageBeginResponse();
         }
     }
 

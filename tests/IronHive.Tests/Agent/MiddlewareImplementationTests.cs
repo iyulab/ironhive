@@ -3,7 +3,6 @@ using FluentAssertions;
 using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Messages.Roles;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Agent;
 using NSubstitute;
@@ -899,7 +898,7 @@ public class MiddlewareImplementationTests
 
     private static IEnumerable<Message> MakeMessages(string text)
     {
-        return [new UserMessage { Content = [new TextMessageContent { Value = text }] }];
+        return [new Message { Role = MessageRole.User, Content = [new TextMessageContent { Value = text }] }];
     }
 
     private static MockAgent MakeAgent(string name, string? defaultResponse = null)
@@ -916,10 +915,8 @@ public class MiddlewareImplementationTests
     {
         return new MessageResponse
         {
-            Id = Guid.NewGuid().ToString("N"),
             DoneReason = MessageDoneReason.EndTurn,
-            Message = new AssistantMessage
-            {
+            Message = new Message { Role = MessageRole.Assistant,
                 Content = [new TextMessageContent { Value = text }]
             },
             TokenUsage = new MessageTokenUsage { InputTokens = 10, OutputTokens = text.Length }
@@ -928,7 +925,7 @@ public class MiddlewareImplementationTests
 
     private static string GetText(MessageResponse response)
     {
-        return response.Message is AssistantMessage a
+        return response.Message is { Role: MessageRole.Assistant } a
             ? a.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? ""
             : "";
     }
@@ -965,7 +962,6 @@ public class MiddlewareImplementationTests
             await Task.Yield();
             yield return new StreamingMessageDoneResponse
             {
-                Id = Guid.NewGuid().ToString("N"),
                 DoneReason = MessageDoneReason.EndTurn,
                 TokenUsage = new MessageTokenUsage { InputTokens = 10, OutputTokens = text.Length },
                 Model = "mock-model",
