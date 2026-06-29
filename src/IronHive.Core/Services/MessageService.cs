@@ -244,6 +244,29 @@ public class MessageService : IMessageService
         };
     }
 
+    /// <inheritdoc />
+    public Task<int> CountTokensAsync(
+        MessageRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var generator = ResolveGenerator(request.Provider);
+        var req = new MessageGenerationRequest
+        {
+            Model = request.Model,
+            ThinkingEffort = request.ThinkingEffort,
+            Messages = request.Messages,
+            System = request.System,
+            Tools = _tools.FilterBy(request.Tools.Select(t => t.Name)),
+            Output = request.Output,
+            MaxTokens = request.MaxTokens,
+            TopK = request.TopK,
+            TopP = request.TopP,
+            Temperature = request.Temperature,
+            StopSequences = request.StopSequences,
+        };
+        return generator.CountTokensAsync(req, cancellationToken);
+    }
+
     private IMessageGenerator ResolveGenerator(string? provider)
     {
         if (string.IsNullOrWhiteSpace(provider))

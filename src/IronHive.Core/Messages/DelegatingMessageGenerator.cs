@@ -36,6 +36,12 @@ public abstract class DelegatingMessageGenerator : IMessageGenerator
         => InnerGenerator.GenerateStreamingMessageAsync(request, cancellationToken);
 
     /// <inheritdoc />
+    public virtual Task<int> CountTokensAsync(
+        MessageGenerationRequest request,
+        CancellationToken cancellationToken = default)
+        => InnerGenerator.CountTokensAsync(request, cancellationToken);
+
+    /// <inheritdoc />
     public virtual void Dispose()
     {
         InnerGenerator.Dispose();

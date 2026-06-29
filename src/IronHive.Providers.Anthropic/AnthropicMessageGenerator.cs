@@ -271,6 +271,29 @@ public class AnthropicMessageGenerator : IMessageGenerator
         }
     }
 
+    /// <inheritdoc />
+    public async Task<int> CountTokensAsync(
+        MessageGenerationRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var createParams = ToMessageCreateParams(request);
+        var countParams = new MessageCountTokensParams
+        {
+            Model = createParams.Model,
+            Messages = createParams.Messages,
+            System = new MessageCountTokensParamsSystem(request.System ?? string.Empty),
+            Tools = createParams.Tools?.Select(t =>
+            {
+                t.TryPickTool(out var tool);
+                return (MessageCountTokensTool)tool!;
+            }).ToList(),
+            Thinking = createParams.Thinking,
+            OutputConfig = createParams.OutputConfig,
+        };
+        var result = await _client.Messages.CountTokens(countParams, cancellationToken);
+        return (int)result.InputTokens;
+    }
+
     /// <summary>
     /// IronHive의 MessageGenerationRequest를 Anthropic SDK의 MessageCreateParams로 변환합니다.
     /// </summary>
@@ -484,6 +507,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
             OutputConfig = outputConfig,
         };
     }
+
 }
 
 public static class AnthropicModelNames

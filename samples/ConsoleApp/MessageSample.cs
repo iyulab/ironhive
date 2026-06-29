@@ -94,7 +94,10 @@ public static class MessageSample
 
         var clone = request.Clone();
         clone.Output = typeof(OutputFormat);
-        
+
+        var tokenCount = await generator.CountTokensAsync(request);
+        Console.WriteLine($"[CountTokens] Input tokens: {tokenCount}");
+
         var msg = await generator.GenerateMessageAsync(request);
         Console.WriteLine(JsonSerializer.Serialize(msg, JsonOptions));
         await foreach (var chunk in generator.GenerateStreamingMessageAsync(clone))

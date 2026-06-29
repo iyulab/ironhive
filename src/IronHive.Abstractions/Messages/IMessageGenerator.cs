@@ -27,4 +27,11 @@ public interface IMessageGenerator : IProviderItem
     IAsyncEnumerable<StreamingMessageResponse> GenerateStreamingMessageAsync(
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 주어진 요청이 소비할 입력 토큰 수를 계산합니다.
+    /// </summary>
+    Task<int> CountTokensAsync(
+        MessageGenerationRequest request,
+        CancellationToken cancellationToken = default);
 }

@@ -18,6 +18,7 @@ namespace IronHive.Providers.GoogleAI;
 public class GoogleAIMessageGenerator : IMessageGenerator
 {
     private readonly Client _client;
+    private readonly bool _isVertex;
 
     public GoogleAIMessageGenerator(string apiKey)
         : this(new GoogleAIConfig { ApiKey = apiKey })
@@ -26,11 +27,13 @@ public class GoogleAIMessageGenerator : IMessageGenerator
     public GoogleAIMessageGenerator(GoogleAIConfig config)
     {
         _client = GoogleAIClientFactory.Create(config);
+        _isVertex = false;
     }
 
     public GoogleAIMessageGenerator(VertexAIConfig config)
     {
         _client = GoogleAIClientFactory.Create(config);
+        _isVertex = true;
     }
 
     /// <inheritdoc />
@@ -45,9 +48,9 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var (model, contents, config) = ToGoogleAIParams(request);
+        var (contents, config) = ToGoogleAIParams(request);
         var response = await _client.Models.GenerateContentAsync(
-            model, contents, config, cancellationToken);
+            request.Model, contents, config, cancellationToken);
 
         MessageDoneReason? reason = null;
         var usage = new MessageTokenUsage();
@@ -127,7 +130,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var (model, contents, config) = ToGoogleAIParams(request);
+        var (contents, config) = ToGoogleAIParams(request);
 
         // 인덱스 추적 관리용
         (int, MessageContent)? current = null;
@@ -137,7 +140,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         MessageTokenUsage? usage = null;
 
         await foreach (var res in _client.Models.GenerateContentStreamAsync(
-            model, contents, config, cancellationToken))
+            request.Model, contents, config, cancellationToken))
         {
             // 메시지 시작
             if (current == null)
@@ -337,6 +340,21 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         };
     }
 
+    /// <inheritdoc />
+    public async Task<int> CountTokensAsync(
+        MessageGenerationRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var (contents, config) = ToGoogleAIParams(request);
+        // Developer API는 CountTokens에서 systemInstruction/tools를 지원하지 않아
+        // contents(메시지)만 카운팅 가능합니다. Vertex AI는 풀 카운팅을 지원합니다.
+        var countConfig = _isVertex
+            ? new CountTokensConfig { SystemInstruction = config.SystemInstruction, Tools = config.Tools }
+            : null;
+        var result = await _client.Models.CountTokensAsync(request.Model, contents, countConfig, cancellationToken);
+        return result.TotalTokens ?? 0;
+    }
+
     /// <summary> Google AI의 FinishReason을 MessageDoneReason으로 매핑합니다. </summary>
     private static MessageDoneReason ResolveReason(FinishReason? reason)
     {
@@ -367,7 +385,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
     /// <summary>
     /// IronHive의 MessageGenerationRequest를 Google GenAI SDK의 타입들로 변환합니다.
     /// </summary>
-    private static (string model, List<GoogleContent> contents, GoogleGenerateContentConfig config) ToGoogleAIParams(
+    private static (List<GoogleContent> contents, GoogleGenerateContentConfig config) ToGoogleAIParams(
         MessageGenerationRequest request)
     {
         var contents = new List<GoogleContent>();
@@ -551,7 +569,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                 : null,
         };
 
-        return (request.Model, contents, config);
+        return (contents, config);
     }
 
     /// <summary>

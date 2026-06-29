@@ -1,3 +1,5 @@
+using System.ClientModel;
+using System.ClientModel.Primitives;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -285,6 +287,26 @@ public class OpenAIMessageGenerator : IMessageGenerator
                 };
             }
         }
+    }
+
+    /// <inheritdoc />
+    public async Task<int> CountTokensAsync(
+        MessageGenerationRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var options = BuildOptions(request);
+        var serialized = ModelReaderWriter.Write(options);
+
+        // token count endpoint rejects fields like 'include', 'stream', 'store', 'background'
+        var body = JsonSerializer.Deserialize<JsonObject>(serialized)!;
+        body.Remove("include");
+        body.Remove("stream");
+        var content = BinaryContent.Create(BinaryData.FromString(body.ToJsonString()));
+        var result = await _client.GetInputTokenCountAsync(
+            content, "application/json",
+            new RequestOptions { CancellationToken = cancellationToken });
+        using var doc = JsonDocument.Parse(result.GetRawResponse().Content);
+        return doc.RootElement.GetProperty("input_tokens").GetInt32();
     }
 
     private static CreateResponseOptions BuildOptions(MessageGenerationRequest request)

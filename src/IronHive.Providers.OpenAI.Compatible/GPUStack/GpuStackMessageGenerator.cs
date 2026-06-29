@@ -64,4 +64,10 @@ public class GpuStackMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
         => GetOrUpdateInner().GenerateStreamingMessageAsync(request, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<int> CountTokensAsync(
+        MessageGenerationRequest request,
+        CancellationToken cancellationToken = default)
+        => GetOrUpdateInner().CountTokensAsync(request, cancellationToken);
 }

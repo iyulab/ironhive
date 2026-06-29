@@ -27,4 +27,11 @@ public interface IMessageService
     IAsyncEnumerable<StreamingMessageResponse> GenerateStreamingMessageAsync(
         MessageRequest request,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 주어진 요청이 소비할 입력 토큰 수를 계산합니다.
+    /// </summary>
+    Task<int> CountTokensAsync(
+        MessageRequest request,
+        CancellationToken cancellationToken = default);
 }
