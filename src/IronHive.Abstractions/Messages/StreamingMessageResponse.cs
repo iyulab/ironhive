@@ -92,6 +92,11 @@ public class StreamingMessageDoneResponse : StreamingMessageResponse
 
     public Message? Message { get; set; }
 
+    /// <summary>
+    /// 모델이 생성한 제안 목록입니다. MessageRequest.Suggestions가 설정된 경우에만 포함됩니다.
+    /// </summary>
+    public List<Suggestion>? Suggestions { get; set; }
+
     public MessageTokenUsage? TokenUsage { get; set; }
 
     public string? Model { get; set; }

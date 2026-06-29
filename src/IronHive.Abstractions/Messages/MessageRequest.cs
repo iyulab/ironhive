@@ -45,6 +45,12 @@ public class MessageRequest : MessageGenerationParameters
     public IEnumerable<ToolItem> Tools { get; set; } = [];
 
     /// <summary>
+    /// 제안 기능 옵션입니다. null이면 비활성화됩니다.
+    /// 활성화 시 모델이 응답 끝에 유저에게 역질문/선택지를 제안하도록 유도합니다.
+    /// </summary>
+    public SuggestionOptions? Suggestions { get; set; }
+
+    /// <summary>
     /// 도구 사용에 의한 반복 루프의 최대 반복 횟수를 제한합니다.
     /// 무한 루프를 방지하고 연산을 제어하는 안전장치입니다.
     /// </summary>

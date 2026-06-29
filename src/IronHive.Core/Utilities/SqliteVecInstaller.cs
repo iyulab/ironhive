@@ -11,7 +11,7 @@ namespace IronHive.Core.Utilities;
 /// </summary>
 public static class SqliteVecInstaller
 {
-    public const string DefaultVersion = "0.1.7-alpha.2";
+    public const string DefaultVersion = "0.1.7";
 
     private const string BaseUri = "https://github.com/asg017/sqlite-vec/releases/download";
     private const string MetaFileExtension = ".meta";

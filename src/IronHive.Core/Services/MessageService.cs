@@ -27,15 +27,35 @@ public class MessageService : IMessageService
         _resultFilter = services.GetService<IToolResultFilter>();
     }
 
+    private IMessageGenerator ResolveGenerator(string? provider)
+    {
+        if (string.IsNullOrWhiteSpace(provider))
+        {
+            var entries = _providers.Entries<IMessageGenerator>().ToList();
+            if (entries.Count == 0)
+                throw new InvalidOperationException(
+                    "No message generators are registered. Call AddMessageGenerator() during setup.");
+            if (entries.Count > 1)
+                throw new InvalidOperationException(
+                    $"Multiple message generators are registered ({string.Join(", ", entries.Select(e => e.Key))}). " +
+                    "Specify a provider via MessageRequest.Provider.");
+            return entries[0].Value;
+        }
+
+        if (!_providers.TryGet<IMessageGenerator>(provider, out var generator))
+            throw new KeyNotFoundException($"Message generator '{provider}' is not registered.");
+        return generator;
+    }
+
     private static string BuildResponseModel(string provider, string model)
         => $"{provider}/{model}";
-    private static string? BuildResponseId(string provider, string? responseId) 
+    private static string? BuildResponseId(string provider, string? responseId)
         => !string.IsNullOrWhiteSpace(responseId)
             ? $"{provider}_{responseId}" : null;
     private static string? ExtractResponseId(string provider, string? responseId)
-        => !string.IsNullOrWhiteSpace(responseId) 
-            ? responseId.StartsWith($"{provider}_", StringComparison.Ordinal) 
-            ? responseId[(provider.Length + 1)..] : responseId 
+        => !string.IsNullOrWhiteSpace(responseId)
+            ? responseId.StartsWith($"{provider}_", StringComparison.Ordinal)
+            ? responseId[(provider.Length + 1)..] : responseId
             : null;
 
     /// <inheritdoc />
@@ -57,7 +77,9 @@ public class MessageService : IMessageService
             Model = request.Model,
             ThinkingEffort = request.ThinkingEffort,
             Messages = request.Messages,
-            System = request.System,
+            System = request.Suggestions != null
+                ? SuggestionCollector.Prompt(request.System, request.Suggestions)
+                : request.System,
             Tools = _tools.FilterBy(request.Tools.Select(t => t.Name)),
             Output = request.Output,
             MaxTokens = request.MaxTokens,
@@ -98,6 +120,18 @@ public class MessageService : IMessageService
         while (counter.TryIncrement() && ShouldContinue(reason, message, cancellationToken));
         timer.Stop();
 
+        List<Suggestion>? suggestions = null;
+        if (request.Suggestions != null && message != null)
+        {
+            var collector = new SuggestionCollector();
+            foreach (var content in message.Content)
+            {
+                if (content is TextMessageContent tc)
+                    tc.Value = collector.Feed(tc.Value);
+            }
+            suggestions = collector.Drain();
+        }
+
         return new MessageResponse
         {
             ResponseId = BuildResponseId(request.Provider, responseId),
@@ -107,6 +141,7 @@ public class MessageService : IMessageService
             Model = BuildResponseModel(request.Provider, request.Model),
             Duration = timer.Elapsed,
             Timestamp = DateTime.UtcNow,
+            Suggestions = suggestions,
         };
     }
 
@@ -130,7 +165,9 @@ public class MessageService : IMessageService
             Model = request.Model,
             ThinkingEffort = request.ThinkingEffort,
             Messages = request.Messages,
-            System = request.System,
+            System = request.Suggestions != null
+                ? SuggestionCollector.Prompt(request.System, request.Suggestions)
+                : request.System,
             Tools = _tools.FilterBy(request.Tools.Select(t => t.Name)),
             Output = request.Output,
             MaxTokens = request.MaxTokens,
@@ -140,6 +177,7 @@ public class MessageService : IMessageService
             StopSequences = request.StopSequences,
         };
 
+        var parser = request.Suggestions != null ? new SuggestionCollector() : null;
         var timer = Stopwatch.StartNew();
         do
         {
@@ -157,6 +195,7 @@ public class MessageService : IMessageService
             }
 
             var stack = new List<MessageContent>();
+
             await foreach (var res in generator.GenerateStreamingMessageAsync(req, cancellationToken).ConfigureAwait(false))
             {
                 // 에러가 아닌 첫 이벤트 수신 시 begin emit (제너레이터 정상 진입 확인)
@@ -176,16 +215,51 @@ public class MessageService : IMessageService
                 }
                 else if (res is StreamingContentAddedResponse car)
                 {
-                    car.Index = message.Content.Count + car.Index;
-                    stack.Add(car.Content);
-                    yield return car;
+                    var absoluteIdx = message.Content.Count + car.Index;
+                    MessageContent tracked;
+
+                    if (parser != null && car.Content is TextMessageContent tmc)
+                    {
+                        tracked = new TextMessageContent
+                        {
+                            Signature = tmc.Signature,
+                            Value = parser.Feed(tmc.Value),
+                        };
+                    }
+                    else
+                    {
+                        tracked = car.Content;
+                    }
+
+                    stack.Add(tracked);
+                    yield return new StreamingContentAddedResponse 
+                    { 
+                        Index = absoluteIdx, 
+                        Content = tracked 
+                    };
                 }
                 else if (res is StreamingContentDeltaResponse cdr)
                 {
-                    var content = stack.ElementAt(cdr.Index);
-                    content.Merge(cdr.Delta);
-                    cdr.Index = message.Content.Count + cdr.Index;
-                    yield return cdr;
+                    if (parser != null && cdr.Delta is TextDeltaContent tdc)
+                    {
+                        var text = parser.Feed(tdc.Value);
+                        if (text.Length > 0)
+                        {
+                            stack.ElementAt(cdr.Index).Merge(new TextDeltaContent { Value = text });
+                            yield return new StreamingContentDeltaResponse
+                            {
+                                Index = message.Content.Count + cdr.Index,
+                                Delta = new TextDeltaContent { Value = text }
+                            };
+                        }
+                    }
+                    else
+                    {
+                        var content = stack.ElementAt(cdr.Index);
+                        content.Merge(cdr.Delta);
+                        cdr.Index = message.Content.Count + cdr.Index;
+                        yield return cdr;
+                    }
                 }
                 else if (res is StreamingContentUpdatedResponse cur)
                 {
@@ -241,6 +315,7 @@ public class MessageService : IMessageService
             Model = BuildResponseModel(request.Provider, request.Model),
             Duration = timer.Elapsed,
             Timestamp = DateTime.UtcNow,
+            Suggestions = parser?.Drain(),
         };
     }
 
@@ -265,26 +340,6 @@ public class MessageService : IMessageService
             StopSequences = request.StopSequences,
         };
         return generator.CountTokensAsync(req, cancellationToken);
-    }
-
-    private IMessageGenerator ResolveGenerator(string? provider)
-    {
-        if (string.IsNullOrWhiteSpace(provider))
-        {
-            var entries = _providers.Entries<IMessageGenerator>().ToList();
-            if (entries.Count == 0)
-                throw new InvalidOperationException(
-                    "No message generators are registered. Call AddMessageGenerator() during setup.");
-            if (entries.Count > 1)
-                throw new InvalidOperationException(
-                    $"Multiple message generators are registered ({string.Join(", ", entries.Select(e => e.Key))}). " +
-                    "Specify a provider via MessageRequest.Provider.");
-            return entries[0].Value;
-        }
-
-        if (!_providers.TryGet<IMessageGenerator>(provider, out var generator))
-            throw new KeyNotFoundException($"Message generator '{provider}' is not registered.");
-        return generator;
     }
 
     /// <summary>

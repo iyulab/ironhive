@@ -37,19 +37,29 @@ public static class MessageSample
             Model = string.Empty,
             ThinkingEffort = MessageThinkingEffort.Low,
             System = "you are a helpful assistant that can answer questions and solve problems.",
+            Suggestions = new SuggestionOptions
+            {
+                MinItems = 1,
+                MaxItems = 3,
+            },
             Messages = [
-                new Message { Role = MessageRole.User,
+                new Message { 
+                    Role = MessageRole.User,
                     Content =
                     [
                         new TextMessageContent
                         {
-                            Value = "Please calculate 3292 * 1234 - 2222, and Write a poem about with image in Korean.",
+                            Value = "I want to make a poem"
                         },
-                        new ImageMessageContent
-                        {
-                            Format = ImageFormat.Jpeg,
-                            Base64 = Convert.ToBase64String(File.ReadAllBytes("dragon.jpg"))
-                        }
+                        // new TextMessageContent
+                        // {
+                        //     Value = "Please calculate 3292 * 1234 - 2222, and Write a poem about with image in Korean.",
+                        // },
+                        // new ImageMessageContent
+                        // {
+                        //     Format = ImageFormat.Jpeg,
+                        //     Base64 = Convert.ToBase64String(File.ReadAllBytes("dragon.jpg"))
+                        // }
                     ]
                 }
             ],
@@ -93,7 +103,12 @@ public static class MessageSample
         // request.Model = "gemini-3.5-flash";
 
         var clone = request.Clone();
-        clone.Output = typeof(OutputFormat);
+        // clone.Output = typeof(OutputFormat);
+        clone.Suggestions = new SuggestionOptions
+        {
+            MinItems = 1,
+            MaxItems = 3,
+        };
 
         var tokenCount = await generator.CountTokensAsync(request);
         Console.WriteLine($"[CountTokens] Input tokens: {tokenCount}");
