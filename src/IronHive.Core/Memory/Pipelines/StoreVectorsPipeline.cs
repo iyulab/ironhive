@@ -1,5 +1,4 @@
 ﻿using IronHive.Abstractions.Memory;
-using IronHive.Abstractions.Registries;
 using IronHive.Abstractions.Vector;
 using IronHive.Abstractions.Workflow;
 
@@ -10,25 +9,25 @@ namespace IronHive.Core.Memory.Pipelines;
 /// </summary>
 public class StoreVectorsPipeline : IMemoryPipeline
 {
-    private readonly IStorageRegistry _storages;
+    private readonly IReadOnlyDictionary<string, IVectorStorage> _storages;
 
-    public StoreVectorsPipeline(IStorageRegistry storages)
+    public StoreVectorsPipeline(IReadOnlyDictionary<string, IVectorStorage> storages)
     {
         _storages = storages;
     }
 
     /// <inheritdoc />
     public async Task<TaskStepResult> ExecuteAsync(
-        MemoryContext context, 
+        MemoryContext context,
         CancellationToken cancellationToken = default)
     {
         if (context.Target is not VectorMemoryTarget target)
             throw new InvalidOperationException("target is not a MemoryVectorTarget");
-        if (!_storages.TryGet<IVectorStorage>(target.StorageName, out var storage))
+        if (!_storages.TryGetValue(target.StorageName, out var storage))
             throw new InvalidOperationException($"Vector storage '{target.StorageName}' is not registered.");
         if (!context.Payload.TryGetValue<IEnumerable<VectorRecord>>("vectors", out var vectors))
             throw new InvalidOperationException("vectors not found in context items");
-        
+
         await storage.UpsertVectorsAsync(target.CollectionName, vectors, cancellationToken);
         return TaskStepResult.Success();
     }

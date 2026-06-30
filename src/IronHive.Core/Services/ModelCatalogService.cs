@@ -1,24 +1,23 @@
 ﻿using System.Net;
 using IronHive.Abstractions.Catalog;
-using IronHive.Abstractions.Registries;
 
 namespace IronHive.Core.Services;
 
 /// <inheritdoc />
 public class ModelCatalogService : IModelCatalogService
 {
-    private readonly IProviderRegistry _providers;
+    private readonly IReadOnlyDictionary<string, IModelCatalog> _catalogs;
 
-    public ModelCatalogService(IProviderRegistry providers)
+    internal ModelCatalogService(IReadOnlyDictionary<string, IModelCatalog> catalogs)
     {
-        _providers = providers;
+        _catalogs = catalogs;
     }
 
     /// <inheritdoc />
     public async Task<IEnumerable<ModelSpecList>> ListModelsAsync(
         CancellationToken cancellationToken = default)
     {
-        return await Task.WhenAll(_providers.Entries<IModelCatalog>().Select(async (kvp) =>
+        return await Task.WhenAll(_catalogs.Select(async (kvp) =>
         {
             try
             {
@@ -46,7 +45,7 @@ public class ModelCatalogService : IModelCatalogService
         string provider,
         CancellationToken cancellationToken = default)
     {
-        if (_providers.TryGet<IModelCatalog>(provider, out var catalog))
+        if (_catalogs.TryGetValue(provider, out var catalog))
         {
             var models = await catalog.ListModelsAsync(cancellationToken);
             return new ModelSpecList
@@ -63,13 +62,13 @@ public class ModelCatalogService : IModelCatalogService
 
     /// <inheritdoc />
     public async Task<IModelSpec?> FindModelAsync(
-        string provider, 
-        string modelId, 
+        string provider,
+        string modelId,
         CancellationToken cancellationToken = default)
     {
-        if (!_providers.TryGet<IModelCatalog>(provider, out var catalog))
+        if (!_catalogs.TryGetValue(provider, out var catalog))
             return null;
-        
+
         return await catalog.FindModelAsync(modelId, cancellationToken);
     }
 

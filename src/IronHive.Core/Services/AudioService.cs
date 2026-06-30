@@ -1,16 +1,15 @@
 using IronHive.Abstractions.Audio;
-using IronHive.Abstractions.Registries;
 
 namespace IronHive.Core.Services;
 
 /// <inheritdoc />
 public class AudioService : IAudioService
 {
-    private readonly IProviderRegistry _providers;
+    private readonly IReadOnlyDictionary<string, IAudioProcessor> _processors;
 
-    public AudioService(IProviderRegistry providers)
+    internal AudioService(IReadOnlyDictionary<string, IAudioProcessor> processors)
     {
-        _providers = providers;
+        _processors = processors;
     }
 
     /// <inheritdoc />
@@ -19,7 +18,7 @@ public class AudioService : IAudioService
         TextToSpeechRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (!_providers.TryGet<IAudioProcessor>(provider, out var processor))
+        if (!_processors.TryGetValue(provider, out var processor))
             throw new KeyNotFoundException($"Audio processor '{provider}' not found.");
 
         var result = await processor.GenerateSpeechAsync(request, cancellationToken).ConfigureAwait(false);
@@ -32,7 +31,7 @@ public class AudioService : IAudioService
         SpeechToTextRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (!_providers.TryGet<IAudioProcessor>(provider, out var processor))
+        if (!_processors.TryGetValue(provider, out var processor))
             throw new KeyNotFoundException($"Audio processor '{provider}' not found.");
 
         var result = await processor.TranscribeAsync(request, cancellationToken).ConfigureAwait(false);

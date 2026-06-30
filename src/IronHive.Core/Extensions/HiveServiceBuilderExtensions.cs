@@ -14,7 +14,7 @@ public static class HiveServiceBuilderExtensions
     /// <summary>
     /// 내장 함수 도구를 <typeparamref name="T"/> 타입에서 모두 찾아 등록합니다.
     /// </summary>
-    public static IHiveServiceBuilder AddFunctionTool<T>(this IHiveServiceBuilder builder) 
+    public static IHiveServiceBuilder AddFunctionTool<T>(this IHiveServiceBuilder builder)
         where T : class
     {
         var tools = FunctionToolFactory.CreateFrom<T>();
@@ -29,7 +29,7 @@ public static class HiveServiceBuilderExtensions
     /// 로컬 디스크 파일 스토리지를 등록합니다.
     /// </summary>
     public static IHiveServiceBuilder AddLocalFileStorage(
-        this IHiveServiceBuilder builder, 
+        this IHiveServiceBuilder builder,
         string storageName)
     {
         builder.AddFileStorage(storageName, new LocalFileStorage());
@@ -40,7 +40,7 @@ public static class HiveServiceBuilderExtensions
     /// 로컬 벡터 스토리지를 등록합니다.
     /// </summary>
     public static IHiveServiceBuilder AddLocalVectorStorage(
-        this IHiveServiceBuilder builder, 
+        this IHiveServiceBuilder builder,
         string storageName,
         LocalVectorConfig config)
     {
@@ -59,19 +59,22 @@ public static class HiveServiceBuilderExtensions
         builder.AddQueueStorage(storageName, new LocalQueueStorage(config));
         return builder;
     }
+}
 
+public static class ServiceCollectionFileExtensions
+{
     /// <summary>
     /// "text", "word", "pdf", "ppt", "image" 등 기본 파일 디코더를 등록합니다.
     /// </summary>
-    public static IHiveServiceBuilder AddBasicFileExtractor(this IHiveServiceBuilder builder)
+    public static IServiceCollection AddBasicFileExtractor(this IServiceCollection services)
     {
-        builder.Services.AddSingleton<IFileDecoder<string>, TextDecoder>();
-        builder.Services.AddSingleton<IFileDecoder<string>, WordDecoder>();
-        builder.Services.AddSingleton<IFileDecoder<string>, PDFDecoder>();
-        builder.Services.AddSingleton<IFileDecoder<string>, PPTDecoder>();
-        builder.Services.AddSingleton<IFileDecoder<string>, ImageDecoder>();
-        builder.Services.AddSingleton<IFileMediaTypeDetector, BasicFileMediaTypeDetector>();
-        builder.Services.AddSingleton<IFileExtractionService<string>, FileExtractionService<string>>();
-        return builder;
+        services.AddSingleton<IFileDecoder<string>, TextDecoder>();
+        services.AddSingleton<IFileDecoder<string>, WordDecoder>();
+        services.AddSingleton<IFileDecoder<string>, PDFDecoder>();
+        services.AddSingleton<IFileDecoder<string>, PPTDecoder>();
+        services.AddSingleton<IFileDecoder<string>, ImageDecoder>();
+        services.AddSingleton<IFileMediaTypeDetector, BasicFileMediaTypeDetector>();
+        services.AddSingleton<IFileExtractionService<string>, FileExtractionService<string>>();
+        return services;
     }
 }

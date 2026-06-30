@@ -2190,7 +2190,7 @@ async Task<List<(string, TestResult)>> RunLlmIntegrationTests()
     }
 
     var hive = builder.Build();
-    var messageService = hive.Services.GetRequiredService<IMessageService>();
+    var messageService = hive.Messages;
 
     // Helper to create real LLM agent
     IAgent CreateLlmAgent(string name, string description, string? instructions = null)

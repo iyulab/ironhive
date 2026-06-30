@@ -1,4 +1,3 @@
-using IronHive.Abstractions.Registries;
 using IronHive.Abstractions.Videos;
 
 namespace IronHive.Core.Services;
@@ -6,11 +5,11 @@ namespace IronHive.Core.Services;
 /// <inheritdoc />
 public class VideoService : IVideoService
 {
-    private readonly IProviderRegistry _providers;
+    private readonly IReadOnlyDictionary<string, IVideoGenerator> _generators;
 
-    public VideoService(IProviderRegistry providers)
+    internal VideoService(IReadOnlyDictionary<string, IVideoGenerator> generators)
     {
-        _providers = providers;
+        _generators = generators;
     }
 
     /// <inheritdoc />
@@ -20,7 +19,7 @@ public class VideoService : IVideoService
         IProgress<VideoGenerationProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        if (!_providers.TryGet<IVideoGenerator>(provider, out var generator))
+        if (!_generators.TryGetValue(provider, out var generator))
             throw new KeyNotFoundException($"Video generator '{provider}' not found.");
 
         var result = await generator.GenerateVideoAsync(request, progress, cancellationToken).ConfigureAwait(false);

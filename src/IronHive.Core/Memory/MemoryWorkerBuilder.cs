@@ -1,9 +1,8 @@
 ﻿using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Queue;
-using IronHive.Abstractions.Registries;
+using IronHive.Abstractions.Vector;
 using IronHive.Abstractions.Workflow;
 using IronHive.Core.Workflow;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace IronHive.Core.Memory;
 
@@ -12,11 +11,18 @@ namespace IronHive.Core.Memory;
 /// </summary>
 public class MemoryWorkerBuilder
 {
-    private readonly IServiceProvider _services;
+    private readonly IReadOnlyDictionary<string, IVectorStorage> _vectorStorages;
+    private readonly IReadOnlyDictionary<string, IQueueStorage> _queueStorages;
+    private readonly IServiceProvider _internalSp;
 
-    public MemoryWorkerBuilder(IServiceProvider services)
+    public MemoryWorkerBuilder(
+        IReadOnlyDictionary<string, IVectorStorage> vectorStorages,
+        IReadOnlyDictionary<string, IQueueStorage> queueStorages,
+        IServiceProvider internalSp)
     {
-        _services = services;
+        _vectorStorages = vectorStorages;
+        _queueStorages = queueStorages;
+        _internalSp = internalSp;
     }
 
     /// <summary>
@@ -24,10 +30,9 @@ public class MemoryWorkerBuilder
     /// </summary>
     public MemoryPipelineBuilder UseQueue(string storageName)
     {
-        var storages = _services.GetRequiredService<IStorageRegistry>();
-        if (!storages.TryGet<IQueueStorage>(storageName, out var queue))
+        if (!_queueStorages.TryGetValue(storageName, out var queue))
             throw new InvalidOperationException($"큐 스토리지 '{storageName}'(이)가 등록되어 있지 않습니다.");
-        var builder = new WorkflowFactory(_services).CreateBuilder().StartWith<MemoryContext>();
+        var builder = new WorkflowFactory(_internalSp).CreateBuilder().StartWith<MemoryContext>();
 
         return new MemoryPipelineBuilder(queue, builder);
     }

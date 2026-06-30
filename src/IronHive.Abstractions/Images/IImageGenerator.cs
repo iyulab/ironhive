@@ -1,5 +1,3 @@
-using IronHive.Abstractions.Registries;
-
 namespace IronHive.Abstractions.Images;
 
 /// <summary>
@@ -12,7 +10,7 @@ namespace IronHive.Abstractions.Images;
 /// 애플리케이션 코드에서는 <see cref="IImageService"/>를 사용하세요.
 /// </para>
 /// </summary>
-public interface IImageGenerator : IProviderItem
+public interface IImageGenerator : IDisposable
 {
     /// <summary>
     /// 텍스트 프롬프트로부터 이미지를 생성합니다.

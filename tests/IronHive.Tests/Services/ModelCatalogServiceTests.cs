@@ -1,7 +1,6 @@
 using System.Net;
 using FluentAssertions;
 using IronHive.Abstractions.Catalog;
-using IronHive.Abstractions.Registries;
 using IronHive.Core.Services;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
@@ -10,9 +9,9 @@ namespace IronHive.Tests.Services;
 
 public class ModelCatalogServiceTests
 {
-    private readonly IProviderRegistry _registry = Substitute.For<IProviderRegistry>();
+    private readonly Dictionary<string, IModelCatalog> _catalogs = new();
 
-    private ModelCatalogService CreateService() => new(_registry);
+    private ModelCatalogService CreateService() => new(_catalogs);
 
     // Test implementation of IModelSpec
     private sealed class TestModelSpec : IModelSpec
@@ -41,9 +40,6 @@ public class ModelCatalogServiceTests
     [Fact]
     public async Task ListModelsAsync_NoProviders_ReturnsEmpty()
     {
-        _registry.Entries<IModelCatalog>()
-            .Returns(Enumerable.Empty<KeyValuePair<string, IModelCatalog>>());
-
         var service = CreateService();
         var result = await service.ListModelsAsync();
 
@@ -56,9 +52,7 @@ public class ModelCatalogServiceTests
         var catalog = Substitute.For<IModelCatalog>();
         catalog.ListModelsAsync(Arg.Any<CancellationToken>())
             .Returns([new TestModelSpec { ModelId = "gpt-4" }]);
-
-        _registry.Entries<IModelCatalog>()
-            .Returns([new KeyValuePair<string, IModelCatalog>("openai", catalog)]);
+        _catalogs["openai"] = catalog;
 
         var service = CreateService();
         var result = (await service.ListModelsAsync()).ToList();
@@ -79,11 +73,8 @@ public class ModelCatalogServiceTests
         catalog2.ListModelsAsync(Arg.Any<CancellationToken>())
             .Returns([new TestModelSpec { ModelId = "claude-3" }]);
 
-        _registry.Entries<IModelCatalog>()
-            .Returns([
-                new KeyValuePair<string, IModelCatalog>("openai", catalog1),
-                new KeyValuePair<string, IModelCatalog>("anthropic", catalog2)
-            ]);
+        _catalogs["openai"] = catalog1;
+        _catalogs["anthropic"] = catalog2;
 
         var service = CreateService();
         var result = (await service.ListModelsAsync()).ToList();
@@ -98,9 +89,7 @@ public class ModelCatalogServiceTests
         var catalog = Substitute.For<IModelCatalog>();
         catalog.ListModelsAsync(Arg.Any<CancellationToken>())
             .Throws(new HttpRequestException("Unauthorized", null, HttpStatusCode.Unauthorized));
-
-        _registry.Entries<IModelCatalog>()
-            .Returns([new KeyValuePair<string, IModelCatalog>("bad-provider", catalog)]);
+        _catalogs["bad-provider"] = catalog;
 
         var service = CreateService();
         var result = (await service.ListModelsAsync()).ToList();
@@ -118,13 +107,7 @@ public class ModelCatalogServiceTests
         var catalog = Substitute.For<IModelCatalog>();
         catalog.ListModelsAsync(Arg.Any<CancellationToken>())
             .Returns([new TestModelSpec { ModelId = "model-1" }]);
-
-        _registry.TryGet("openai", out Arg.Any<IModelCatalog>()!)
-            .Returns(x =>
-            {
-                x[1] = catalog;
-                return true;
-            });
+        _catalogs["openai"] = catalog;
 
         var service = CreateService();
         var result = await service.ListModelsAsync("openai");
@@ -137,9 +120,6 @@ public class ModelCatalogServiceTests
     [Fact]
     public async Task ListModelsAsync_ByProvider_UnknownProvider_ReturnsNull()
     {
-        _registry.TryGet("unknown", out Arg.Any<IModelCatalog>()!)
-            .Returns(false);
-
         var service = CreateService();
         var result = await service.ListModelsAsync("unknown");
 
@@ -154,13 +134,7 @@ public class ModelCatalogServiceTests
         var catalog = Substitute.For<IModelCatalog>();
         catalog.FindModelAsync("gpt-4", Arg.Any<CancellationToken>())
             .Returns(new TestModelSpec { ModelId = "gpt-4", DisplayName = "GPT-4" });
-
-        _registry.TryGet("openai", out Arg.Any<IModelCatalog>()!)
-            .Returns(x =>
-            {
-                x[1] = catalog;
-                return true;
-            });
+        _catalogs["openai"] = catalog;
 
         var service = CreateService();
         var result = await service.FindModelAsync("openai", "gpt-4");
@@ -172,9 +146,6 @@ public class ModelCatalogServiceTests
     [Fact]
     public async Task FindModelAsync_UnknownProvider_ReturnsNull()
     {
-        _registry.TryGet("missing", out Arg.Any<IModelCatalog>()!)
-            .Returns(false);
-
         var service = CreateService();
         var result = await service.FindModelAsync("missing", "any-model");
 
@@ -187,13 +158,7 @@ public class ModelCatalogServiceTests
         var catalog = Substitute.For<IModelCatalog>();
         catalog.FindModelAsync("nonexistent", Arg.Any<CancellationToken>())
             .Returns((IModelSpec?)null);
-
-        _registry.TryGet("openai", out Arg.Any<IModelCatalog>()!)
-            .Returns(x =>
-            {
-                x[1] = catalog;
-                return true;
-            });
+        _catalogs["openai"] = catalog;
 
         var service = CreateService();
         var result = await service.FindModelAsync("openai", "nonexistent");
@@ -210,13 +175,7 @@ public class ModelCatalogServiceTests
         var catalog = Substitute.For<IModelCatalog>();
         catalog.FindModelAsync("special", Arg.Any<CancellationToken>())
             .Returns(model);
-
-        _registry.TryGet("openai", out Arg.Any<IModelCatalog>()!)
-            .Returns(x =>
-            {
-                x[1] = catalog;
-                return true;
-            });
+        _catalogs["openai"] = catalog;
 
         var service = CreateService();
         var result = await service.FindModelAsync<SpecialModelSpec>("openai", "special");
@@ -232,13 +191,7 @@ public class ModelCatalogServiceTests
         var catalog = Substitute.For<IModelCatalog>();
         catalog.FindModelAsync("basic", Arg.Any<CancellationToken>())
             .Returns(model);
-
-        _registry.TryGet("openai", out Arg.Any<IModelCatalog>()!)
-            .Returns(x =>
-            {
-                x[1] = catalog;
-                return true;
-            });
+        _catalogs["openai"] = catalog;
 
         var service = CreateService();
         var result = await service.FindModelAsync<SpecialModelSpec>("openai", "basic");

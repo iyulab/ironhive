@@ -1,5 +1,3 @@
-using IronHive.Abstractions.Registries;
-
 namespace IronHive.Abstractions.Audio;
 
 /// <summary>
@@ -12,7 +10,7 @@ namespace IronHive.Abstractions.Audio;
 /// 애플리케이션 코드에서는 <see cref="IAudioService"/>를 사용하세요.
 /// </para>
 /// </summary>
-public interface IAudioProcessor : IProviderItem
+public interface IAudioProcessor : IDisposable
 {
     /// <summary>
     /// 텍스트를 음성으로 변환합니다. (TTS)

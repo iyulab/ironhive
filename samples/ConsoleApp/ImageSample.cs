@@ -34,7 +34,7 @@ public static class ImageSample
 
         var hive = builder.Build();
 
-        var imageService = hive.Services.GetRequiredService<IImageService>();
+        var imageService = hive.Images;
         var folderPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
 
         Console.WriteLine("=== 이미지 생성 테스트 ===\n");

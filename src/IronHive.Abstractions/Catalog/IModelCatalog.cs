@@ -1,11 +1,9 @@
-﻿using IronHive.Abstractions.Registries;
-
-namespace IronHive.Abstractions.Catalog;
+﻿namespace IronHive.Abstractions.Catalog;
 
 /// <summary>
 /// 모델 메타데이터(스펙)를 조회하는 서비스입니다.
 /// </summary>
-public interface IModelCatalog : IProviderItem
+public interface IModelCatalog : IDisposable
 {
     /// <summary>
     /// 현재 사용 가능한 모든 모델 스펙을 비동기적으로 가져옵니다.

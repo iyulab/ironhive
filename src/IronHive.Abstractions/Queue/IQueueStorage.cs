@@ -1,11 +1,9 @@
-﻿using IronHive.Abstractions.Registries;
-
-namespace IronHive.Abstractions.Queue;
+﻿namespace IronHive.Abstractions.Queue;
 
 /// <summary>
 /// 큐를 저장/조회/소비하는 스토리지 서비스입니다.
 /// </summary>
-public interface IQueueStorage : IStorageItem
+public interface IQueueStorage : IDisposable
 {
     /// <summary>
     /// 큐에서 메시지를 지속적으로 가져와 처리하는 소비자(Consumer)를 생성합니다.

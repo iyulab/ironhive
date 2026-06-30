@@ -38,13 +38,13 @@ public static class Extensions
             ApiKey = Environment.GetEnvironmentVariable("GPUSTACK_KEY") ?? string.Empty
         };
 
-        var core = services.AddHiveServiceCore()
+        services.AddHiveService((builder, sp) => builder
             .AddOpenAIProviders("openai", o_config)
             .AddAnthropicProviders("anthropic", a_config)
             .AddGoogleAIProviders("google", g_config)
             .AddAnthropicProviders("xai", x_config)
             .AddOpenAIProviders("iyulab", l_config)
             .AddFunctionTool<TestTool>()
-            .Build();
+            .Build(sp));
     }
 }

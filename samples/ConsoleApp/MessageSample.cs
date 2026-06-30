@@ -88,7 +88,7 @@ public static class MessageSample
             })
             .AddFunctionTool<Calculator>()
             .Build();
-        var generator = hive.Services.GetRequiredService<IMessageService>();
+        var generator = hive.Messages;
 
         // OpenAI 샘플
         request.Provider = "openai";

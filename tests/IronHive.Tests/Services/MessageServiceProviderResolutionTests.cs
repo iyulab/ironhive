@@ -2,7 +2,6 @@ using FluentAssertions;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Tools;
-using IronHive.Core.Registries;
 using IronHive.Core.Services;
 using NSubstitute;
 
@@ -33,14 +32,15 @@ public class MessageServiceProviderResolutionTests
         generator.GenerateMessageAsync(Arg.Any<MessageGenerationRequest>(), Arg.Any<CancellationToken>())
             .Returns(MakeResponse());
 
-        var providerRegistry = new ProviderRegistry();
-        providerRegistry.TryAdd<IMessageGenerator>("openai", generator);
+        var generators = new Dictionary<string, IMessageGenerator>
+        {
+            ["openai"] = generator
+        };
 
         var tools = Substitute.For<IToolCollection>();
         tools.FilterBy(Arg.Any<IEnumerable<string>>()).Returns(tools);
 
-        var services = Substitute.For<IServiceProvider>();
-        var svc = new MessageService(services, providerRegistry, tools);
+        var svc = new MessageService(generators, tools, Substitute.For<IServiceProvider>());
 
         var result = await svc.GenerateMessageAsync(MakeRequest(provider: ""));
 
@@ -51,12 +51,11 @@ public class MessageServiceProviderResolutionTests
     [Fact]
     public async Task GenerateMessageAsync_EmptyProvider_NoGenerator_Throws()
     {
-        var providerRegistry = new ProviderRegistry();
+        var generators = new Dictionary<string, IMessageGenerator>();
         var tools = Substitute.For<IToolCollection>();
         tools.FilterBy(Arg.Any<IEnumerable<string>>()).Returns(tools);
 
-        var services = Substitute.For<IServiceProvider>();
-        var svc = new MessageService(services, providerRegistry, tools);
+        var svc = new MessageService(generators, tools, Substitute.For<IServiceProvider>());
 
         var act = async () => await svc.GenerateMessageAsync(MakeRequest(provider: ""));
 
@@ -67,15 +66,16 @@ public class MessageServiceProviderResolutionTests
     [Fact]
     public async Task GenerateMessageAsync_EmptyProvider_MultipleGenerators_Throws()
     {
-        var providerRegistry = new ProviderRegistry();
-        providerRegistry.TryAdd<IMessageGenerator>("openai", Substitute.For<IMessageGenerator>());
-        providerRegistry.TryAdd<IMessageGenerator>("anthropic", Substitute.For<IMessageGenerator>());
+        var generators = new Dictionary<string, IMessageGenerator>
+        {
+            ["openai"] = Substitute.For<IMessageGenerator>(),
+            ["anthropic"] = Substitute.For<IMessageGenerator>()
+        };
 
         var tools = Substitute.For<IToolCollection>();
         tools.FilterBy(Arg.Any<IEnumerable<string>>()).Returns(tools);
 
-        var services = Substitute.For<IServiceProvider>();
-        var svc = new MessageService(services, providerRegistry, tools);
+        var svc = new MessageService(generators, tools, Substitute.For<IServiceProvider>());
 
         var act = async () => await svc.GenerateMessageAsync(MakeRequest(provider: ""));
 
@@ -90,16 +90,16 @@ public class MessageServiceProviderResolutionTests
         generator.GenerateStreamingMessageAsync(Arg.Any<MessageGenerationRequest>(), Arg.Any<CancellationToken>())
             .Returns(AsyncEnumerable.Empty<StreamingMessageResponse>());
 
-        var providerRegistry = new ProviderRegistry();
-        providerRegistry.TryAdd<IMessageGenerator>("openai", generator);
+        var generators = new Dictionary<string, IMessageGenerator>
+        {
+            ["openai"] = generator
+        };
 
         var tools = Substitute.For<IToolCollection>();
         tools.FilterBy(Arg.Any<IEnumerable<string>>()).Returns(tools);
 
-        var svc = new MessageService(Substitute.For<IServiceProvider>(), providerRegistry, tools);
+        var svc = new MessageService(generators, tools, Substitute.For<IServiceProvider>());
 
-        // await foreach로 열거를 시작해야 예외/정상 동작 확인 가능
-        // 예외가 발생하지 않으면 auto-select 성공
         var act = async () =>
         {
             await foreach (var _ in svc.GenerateStreamingMessageAsync(MakeRequest(provider: ""))) { }
@@ -110,10 +110,10 @@ public class MessageServiceProviderResolutionTests
     [Fact]
     public async Task GenerateStreamingMessageAsync_EmptyProvider_NoGenerator_Throws()
     {
-        var providerRegistry = new ProviderRegistry();
+        var generators = new Dictionary<string, IMessageGenerator>();
         var tools = Substitute.For<IToolCollection>();
         tools.FilterBy(Arg.Any<IEnumerable<string>>()).Returns(tools);
-        var svc = new MessageService(Substitute.For<IServiceProvider>(), providerRegistry, tools);
+        var svc = new MessageService(generators, tools, Substitute.For<IServiceProvider>());
 
         var act = async () =>
         {
@@ -127,13 +127,15 @@ public class MessageServiceProviderResolutionTests
     [Fact]
     public async Task GenerateStreamingMessageAsync_EmptyProvider_MultipleGenerators_Throws()
     {
-        var providerRegistry = new ProviderRegistry();
-        providerRegistry.TryAdd<IMessageGenerator>("openai", Substitute.For<IMessageGenerator>());
-        providerRegistry.TryAdd<IMessageGenerator>("anthropic", Substitute.For<IMessageGenerator>());
+        var generators = new Dictionary<string, IMessageGenerator>
+        {
+            ["openai"] = Substitute.For<IMessageGenerator>(),
+            ["anthropic"] = Substitute.For<IMessageGenerator>()
+        };
 
         var tools = Substitute.For<IToolCollection>();
         tools.FilterBy(Arg.Any<IEnumerable<string>>()).Returns(tools);
-        var svc = new MessageService(Substitute.For<IServiceProvider>(), providerRegistry, tools);
+        var svc = new MessageService(generators, tools, Substitute.For<IServiceProvider>());
 
         var act = async () =>
         {

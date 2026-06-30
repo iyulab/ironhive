@@ -1,7 +1,5 @@
-﻿using IronHive.Abstractions.Tools;
-using IronHive.Plugins.MCP;
+﻿using IronHive.Plugins.MCP;
 using IronHive.Plugins.MCP.Configurations;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace IronHive.Abstractions;
 
@@ -13,7 +11,10 @@ public static class HiveServiceBuilderExtensions
     public static IHiveServiceBuilder AddMcpClient(
         this IHiveServiceBuilder builder)
     {
-        builder.Services.AddSingleton<McpClientManager>();
+        builder.AddToolInitializer((tools, sp) =>
+        {
+            _ = new McpClientManager(tools);
+        });
         return builder;
     }
 
@@ -22,18 +23,14 @@ public static class HiveServiceBuilderExtensions
     /// 주어진 설정을 기반으로 여러 개의 MCP 연결 클라이언트들이 자동으로 추가됩니다.
     /// </summary>
     public static IHiveServiceBuilder AddMcpClient(
-        this IHiveServiceBuilder builder, 
+        this IHiveServiceBuilder builder,
         IEnumerable<IMcpClientConfig> configs)
     {
-        builder.Services.AddSingleton(sp =>
+        builder.AddToolInitializer((tools, sp) =>
         {
-            var tools = sp.GetRequiredService<IToolCollection>();
             var manager = new McpClientManager(tools);
             foreach (var config in configs)
-            {
                 manager.AddOrUpdate(config);
-            }
-            return manager;
         });
         return builder;
     }

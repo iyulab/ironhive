@@ -1,16 +1,15 @@
 ﻿using IronHive.Abstractions.Embedding;
-using IronHive.Abstractions.Registries;
 
 namespace IronHive.Core.Services;
 
 /// <inheritdoc />
 public class EmbeddingService : IEmbeddingService
 {
-    private readonly IProviderRegistry _providers;
+    private readonly IReadOnlyDictionary<string, IEmbeddingGenerator> _generators;
 
-    public EmbeddingService(IProviderRegistry providers)
+    internal EmbeddingService(IReadOnlyDictionary<string, IEmbeddingGenerator> generators)
     {
-        _providers = providers;
+        _generators = generators;
     }
 
     /// <inheritdoc />
@@ -20,7 +19,7 @@ public class EmbeddingService : IEmbeddingService
         string input,
         CancellationToken cancellationToken = default)
     {
-        if (!_providers.TryGet<IEmbeddingGenerator>(provider, out var service))
+        if (!_generators.TryGetValue(provider, out var service))
             throw new KeyNotFoundException($"Service key '{provider}' not found.");
 
         var result = await service.EmbedAsync(modelId, input, cancellationToken).ConfigureAwait(false);
@@ -34,7 +33,7 @@ public class EmbeddingService : IEmbeddingService
         IEnumerable<string> inputs,
         CancellationToken cancellationToken = default)
     {
-        if (!_providers.TryGet<IEmbeddingGenerator>(provider, out var service))
+        if (!_generators.TryGetValue(provider, out var service))
             throw new KeyNotFoundException($"Service key '{provider}' not found.");
 
         var result = await service.EmbedBatchAsync(modelId, inputs, cancellationToken).ConfigureAwait(false);
@@ -48,7 +47,7 @@ public class EmbeddingService : IEmbeddingService
         string input,
         CancellationToken cancellationToken = default)
     {
-        if (!_providers.TryGet<IEmbeddingGenerator>(provider, out var service))
+        if (!_generators.TryGetValue(provider, out var service))
             throw new KeyNotFoundException($"Service key '{provider}' not found.");
 
         var result = await service.CountTokensAsync(modelId, input, cancellationToken).ConfigureAwait(false);
@@ -57,12 +56,12 @@ public class EmbeddingService : IEmbeddingService
 
     /// <inheritdoc />
     public Task<IEnumerable<EmbeddingTokens>> CountTokensBatchAsync(
-        string provider, 
-        string modelId, 
-        IEnumerable<string> inputs, 
+        string provider,
+        string modelId,
+        IEnumerable<string> inputs,
         CancellationToken cancellationToken = default)
     {
-        if (!_providers.TryGet<IEmbeddingGenerator>(provider, out var service))
+        if (!_generators.TryGetValue(provider, out var service))
             throw new KeyNotFoundException($"Service key '{provider}' not found.");
 
         var result = service.CountTokensBatchAsync(modelId, inputs, cancellationToken);

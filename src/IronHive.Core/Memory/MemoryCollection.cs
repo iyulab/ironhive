@@ -1,7 +1,6 @@
 ﻿using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Queue;
-using IronHive.Abstractions.Registries;
 using IronHive.Abstractions.Vector;
 
 namespace IronHive.Core.Memory;
@@ -11,12 +10,17 @@ namespace IronHive.Core.Memory;
 public class MemoryCollection : IMemoryCollection
 #pragma warning restore CA1711
 {
-    private readonly IStorageRegistry _storages;
+    private readonly IReadOnlyDictionary<string, IVectorStorage> _vectorStorages;
+    private readonly IReadOnlyDictionary<string, IQueueStorage> _queueStorages;
     private readonly IEmbeddingService _embedder;
 
-    public MemoryCollection(IStorageRegistry storages, IEmbeddingService embedder)
+    internal MemoryCollection(
+        IReadOnlyDictionary<string, IVectorStorage> vectorStorages,
+        IReadOnlyDictionary<string, IQueueStorage> queueStorages,
+        IEmbeddingService embedder)
     {
-        _storages = storages;
+        _vectorStorages = vectorStorages;
+        _queueStorages = queueStorages;
         _embedder = embedder;
     }
 
@@ -50,7 +54,7 @@ public class MemoryCollection : IMemoryCollection
             },
         };
 
-        if (!_storages.TryGet<IQueueStorage>(queueName, out var queue))
+        if (!_queueStorages.TryGetValue(queueName, out var queue))
             throw new InvalidOperationException($"queue storage '{queueName}' is not registered.");
         await queue.EnqueueAsync(ctx, cancellationToken);
     }
@@ -60,7 +64,7 @@ public class MemoryCollection : IMemoryCollection
         string sourceId,
         CancellationToken cancellationToken = default)
     {
-        if (!_storages.TryGet<IVectorStorage>(StorageName, out var storage))
+        if (!_vectorStorages.TryGetValue(StorageName, out var storage))
             throw new InvalidOperationException($"Vector storage '{StorageName}' is not registered.");
 
         var filter = new VectorRecordFilter();
@@ -74,7 +78,7 @@ public class MemoryCollection : IMemoryCollection
         SearchOptions? options = null,
         CancellationToken cancellationToken = default)
     {
-        if (!_storages.TryGet<IVectorStorage>(StorageName, out var storage))
+        if (!_vectorStorages.TryGetValue(StorageName, out var storage))
             throw new InvalidOperationException($"Vector storage '{StorageName}' is not registered.");
 
         options ??= new SearchOptions();

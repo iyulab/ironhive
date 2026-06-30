@@ -2,7 +2,6 @@ using FluentAssertions;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Queue;
-using IronHive.Abstractions.Registries;
 using IronHive.Abstractions.Vector;
 using IronHive.Core.Memory;
 using NSubstitute;
@@ -18,64 +17,24 @@ public class MemoryCollectionTests
 
     private static readonly float[] s_testEmbeddings = [0.1f, 0.2f, 0.3f];
 
-    private readonly IStorageRegistry _storages;
+    private readonly Dictionary<string, IVectorStorage> _vectorStorages = new();
+    private readonly Dictionary<string, IQueueStorage> _queueStorages = new();
     private readonly IEmbeddingService _embedder;
 
     public MemoryCollectionTests()
     {
-        _storages = Substitute.For<IStorageRegistry>();
         _embedder = Substitute.For<IEmbeddingService>();
     }
 
     private MemoryCollection CreateSut()
     {
-        return new MemoryCollection(_storages, _embedder)
+        return new MemoryCollection(_vectorStorages, _queueStorages, _embedder)
         {
             StorageName = StorageName,
             CollectionName = CollectionName,
             EmbeddingProvider = EmbeddingProvider,
             EmbeddingModel = EmbeddingModel,
         };
-    }
-
-    private void SetupQueueStorage(string queueName, IQueueStorage queue)
-    {
-        IQueueStorage outQueue = null!;
-        _storages.TryGet(Arg.Is(queueName), out outQueue).Returns(callInfo =>
-        {
-            callInfo[1] = queue;
-            return true;
-        });
-    }
-
-    private void SetupQueueStorageNotFound()
-    {
-        IQueueStorage outQueue = null!;
-        _storages.TryGet(Arg.Any<string>(), out outQueue).Returns(callInfo =>
-        {
-            callInfo[1] = null;
-            return false;
-        });
-    }
-
-    private void SetupVectorStorage(IVectorStorage vectorStorage)
-    {
-        IVectorStorage outStorage = null!;
-        _storages.TryGet(Arg.Is(StorageName), out outStorage).Returns(callInfo =>
-        {
-            callInfo[1] = vectorStorage;
-            return true;
-        });
-    }
-
-    private void SetupVectorStorageNotFound()
-    {
-        IVectorStorage outStorage = null!;
-        _storages.TryGet(Arg.Any<string>(), out outStorage).Returns(callInfo =>
-        {
-            callInfo[1] = null;
-            return false;
-        });
     }
 
     #region IndexSourceAsync
@@ -85,7 +44,7 @@ public class MemoryCollectionTests
     {
         // Arrange
         var queue = Substitute.For<IQueueStorage>();
-        SetupQueueStorage("my-queue", queue);
+        _queueStorages["my-queue"] = queue;
 
         var source = Substitute.For<IMemorySource>();
         source.Id.Returns("src-1");
@@ -108,7 +67,7 @@ public class MemoryCollectionTests
         MemoryContext? captured = null;
         queue.When(q => q.EnqueueAsync(Arg.Any<MemoryContext>(), Arg.Any<CancellationToken>()))
             .Do(ci => captured = ci.Arg<MemoryContext>());
-        SetupQueueStorage("q1", queue);
+        _queueStorages["q1"] = queue;
 
         var source = Substitute.For<IMemorySource>();
         var sut = CreateSut();
@@ -129,8 +88,7 @@ public class MemoryCollectionTests
     [Fact]
     public async Task IndexSourceAsync_QueueNotRegistered_ThrowsInvalidOperationException()
     {
-        // Arrange
-        SetupQueueStorageNotFound();
+        // Arrange — _queueStorages is empty
         var source = Substitute.For<IMemorySource>();
         var sut = CreateSut();
 
@@ -151,7 +109,7 @@ public class MemoryCollectionTests
     {
         // Arrange
         var vectorStorage = Substitute.For<IVectorStorage>();
-        SetupVectorStorage(vectorStorage);
+        _vectorStorages[StorageName] = vectorStorage;
         var sut = CreateSut();
 
         // Act
@@ -167,8 +125,7 @@ public class MemoryCollectionTests
     [Fact]
     public async Task DeindexSourceAsync_StorageNotRegistered_ThrowsInvalidOperationException()
     {
-        // Arrange
-        SetupVectorStorageNotFound();
+        // Arrange — _vectorStorages is empty
         var sut = CreateSut();
 
         // Act
@@ -188,7 +145,7 @@ public class MemoryCollectionTests
     {
         // Arrange
         var vectorStorage = Substitute.For<IVectorStorage>();
-        SetupVectorStorage(vectorStorage);
+        _vectorStorages[StorageName] = vectorStorage;
 
         _embedder.EmbedAsync(EmbeddingProvider, EmbeddingModel, "test query", Arg.Any<CancellationToken>())
             .Returns(s_testEmbeddings);
@@ -213,7 +170,7 @@ public class MemoryCollectionTests
     {
         // Arrange
         var vectorStorage = Substitute.For<IVectorStorage>();
-        SetupVectorStorage(vectorStorage);
+        _vectorStorages[StorageName] = vectorStorage;
 
         _embedder.EmbedAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(s_testEmbeddings);
@@ -244,7 +201,7 @@ public class MemoryCollectionTests
     {
         // Arrange
         var vectorStorage = Substitute.For<IVectorStorage>();
-        SetupVectorStorage(vectorStorage);
+        _vectorStorages[StorageName] = vectorStorage;
 
         _embedder.EmbedAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(s_testEmbeddings);
@@ -275,7 +232,7 @@ public class MemoryCollectionTests
     {
         // Arrange
         var vectorStorage = Substitute.For<IVectorStorage>();
-        SetupVectorStorage(vectorStorage);
+        _vectorStorages[StorageName] = vectorStorage;
 
         _embedder.EmbedAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(s_testEmbeddings);
@@ -303,8 +260,7 @@ public class MemoryCollectionTests
     [Fact]
     public async Task SemanticSearchAsync_StorageNotRegistered_ThrowsInvalidOperationException()
     {
-        // Arrange
-        SetupVectorStorageNotFound();
+        // Arrange — _vectorStorages is empty
         var sut = CreateSut();
 
         // Act

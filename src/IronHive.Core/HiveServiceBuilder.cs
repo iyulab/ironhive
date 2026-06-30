@@ -1,295 +1,140 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using IronHive.Abstractions.Embedding;
-using IronHive.Abstractions.Tools;
-using IronHive.Abstractions;
+﻿using IronHive.Abstractions;
 using IronHive.Abstractions.Audio;
-using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Catalog;
+using IronHive.Abstractions.Embedding;
+using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Images;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Queue;
+using IronHive.Abstractions.Tools;
 using IronHive.Abstractions.Vector;
 using IronHive.Abstractions.Videos;
-using IronHive.Core.Services;
-using IronHive.Core.Files;
-using IronHive.Core.Tools;
-using IronHive.Core.Registries;
-using IronHive.Core.Agent;
-using IronHive.Abstractions.Registries;
 using IronHive.Abstractions.Workflow;
-using IronHive.Abstractions.Agent;
+using IronHive.Core.Agent;
+using IronHive.Core.Files;
 using IronHive.Core.Memory;
-using IronHive.Abstractions.Memory;
+using IronHive.Core.Services;
+using IronHive.Core.Tools;
+using IronHive.Core.Workflow;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace IronHive.Core;
 
-/// <inheritdoc />
-public class HiveServiceBuilder : IHiveServiceBuilder, IAsyncDisposable
+public class HiveServiceBuilder : IHiveServiceBuilder
 {
-    private readonly ProviderRegistry _providers = new();
-    private readonly StorageRegistry _storages = new();
-    private readonly ToolCollection _tools = new();
+    private readonly Dictionary<string, IModelCatalog> _catalogs = new();
+    private readonly Dictionary<string, IMessageGenerator> _messageGenerators = new();
+    private readonly Dictionary<string, IEmbeddingGenerator> _embeddingGenerators = new();
+    private readonly Dictionary<string, IImageGenerator> _imageGenerators = new();
+    private readonly Dictionary<string, IVideoGenerator> _videoGenerators = new();
+    private readonly Dictionary<string, IAudioProcessor> _audioProcessors = new();
+    private readonly Dictionary<string, IFileStorage> _fileStorages = new();
+    private readonly Dictionary<string, IVectorStorage> _vectorStorages = new();
+    private readonly Dictionary<string, IQueueStorage> _queueStorages = new();
+    private readonly List<ITool> _tools = [];
+    private readonly List<Action<IServiceCollection>> _stepRegistrations = [];
+    private readonly List<Action<IToolCollection, IServiceProvider?>> _toolInitializers = [];
 
-    public HiveServiceBuilder(IServiceCollection? services = null)
-    {
-        Services = services ?? new ServiceCollection();
+    public IHiveServiceBuilder AddModelCatalog(string name, IModelCatalog catalog)
+    { _catalogs[name] = catalog; return this; }
 
-        // 레지스트리 등록 확인 및 등록
-        ThrowIfExists<IProviderRegistry>();
-        ThrowIfExists<IStorageRegistry>();
-        ThrowIfExists<IToolCollection>();
-        Services.AddSingleton<IProviderRegistry>(_providers);
-        Services.AddSingleton<IStorageRegistry>(_storages);
-        Services.AddSingleton<IToolCollection>(sp => new ToolCollection(_tools, null, sp));
+    public IHiveServiceBuilder AddMessageGenerator(string name, IMessageGenerator generator)
+    { _messageGenerators[name] = generator; return this; }
 
-        // 기본 서비스 등록
-        Services.TryAddSingleton<IModelCatalogService, ModelCatalogService>();
-        Services.TryAddSingleton<IMessageService, MessageService>();
-        Services.TryAddSingleton<IEmbeddingService, EmbeddingService>();
-        Services.TryAddSingleton<IImageService, ImageService>();
-        Services.TryAddSingleton<IVideoService, VideoService>();
-        Services.TryAddSingleton<IAudioService, AudioService>();
-        Services.TryAddSingleton<IFileStorageService, FileStorageService>();
-        Services.TryAddSingleton<IMemoryService, MemoryService>();
-        Services.TryAddSingleton<IAgentService, AgentService>();
-    }
+    public IHiveServiceBuilder AddEmbeddingGenerator(string name, IEmbeddingGenerator generator)
+    { _embeddingGenerators[name] = generator; return this; }
 
-    /// <inheritdoc />
-    public IServiceCollection Services { get; }
+    public IHiveServiceBuilder AddImageGenerator(string name, IImageGenerator generator)
+    { _imageGenerators[name] = generator; return this; }
 
-    /// <inheritdoc />
-    public IHiveServiceBuilder AddModelCatalog(string providerName, IModelCatalog catalog)
-    {
-        ThrowIfProviderExists<IModelCatalog>(providerName, nameof(SetModelCatalog));
-        _providers.TryAdd<IModelCatalog>(providerName, catalog);
-        return this;
-    }
+    public IHiveServiceBuilder AddVideoGenerator(string name, IVideoGenerator generator)
+    { _videoGenerators[name] = generator; return this; }
 
-    /// <inheritdoc />
-    public IHiveServiceBuilder SetModelCatalog(string providerName, IModelCatalog catalog)
-    {
-        _providers.Set<IModelCatalog>(providerName, catalog);
-        return this;
-    }
+    public IHiveServiceBuilder AddAudioProcessor(string name, IAudioProcessor processor)
+    { _audioProcessors[name] = processor; return this; }
 
-    /// <inheritdoc />
-    public IHiveServiceBuilder AddEmbeddingGenerator(string providerName, IEmbeddingGenerator generator)
-    {
-        ThrowIfProviderExists<IEmbeddingGenerator>(providerName, nameof(SetEmbeddingGenerator));
-        _providers.TryAdd<IEmbeddingGenerator>(providerName, generator);
-        return this;
-    }
+    public IHiveServiceBuilder AddFileStorage(string name, IFileStorage storage)
+    { _fileStorages[name] = storage; return this; }
 
-    /// <inheritdoc />
-    public IHiveServiceBuilder SetEmbeddingGenerator(string providerName, IEmbeddingGenerator generator)
-    {
-        _providers.Set<IEmbeddingGenerator>(providerName, generator);
-        return this;
-    }
+    public IHiveServiceBuilder AddVectorStorage(string name, IVectorStorage storage)
+    { _vectorStorages[name] = storage; return this; }
 
-    /// <inheritdoc />
-    public IHiveServiceBuilder AddMessageGenerator(string providerName, IMessageGenerator generator)
-    {
-        ThrowIfProviderExists<IMessageGenerator>(providerName, nameof(SetMessageGenerator));
-        _providers.TryAdd<IMessageGenerator>(providerName, generator);
-        return this;
-    }
+    public IHiveServiceBuilder AddQueueStorage(string name, IQueueStorage storage)
+    { _queueStorages[name] = storage; return this; }
 
-    /// <inheritdoc />
-    public IHiveServiceBuilder SetMessageGenerator(string providerName, IMessageGenerator generator)
-    {
-        _providers.Set<IMessageGenerator>(providerName, generator);
-        return this;
-    }
-
-    /// <inheritdoc />
-    public IHiveServiceBuilder AddImageGenerator(string providerName, IImageGenerator generator)
-    {
-        ThrowIfProviderExists<IImageGenerator>(providerName, nameof(SetImageGenerator));
-        _providers.TryAdd<IImageGenerator>(providerName, generator);
-        return this;
-    }
-
-    /// <inheritdoc />
-    public IHiveServiceBuilder SetImageGenerator(string providerName, IImageGenerator generator)
-    {
-        _providers.Set<IImageGenerator>(providerName, generator);
-        return this;
-    }
-
-    /// <inheritdoc />
-    public IHiveServiceBuilder AddVideoGenerator(string providerName, IVideoGenerator generator)
-    {
-        ThrowIfProviderExists<IVideoGenerator>(providerName, nameof(SetVideoGenerator));
-        _providers.TryAdd<IVideoGenerator>(providerName, generator);
-        return this;
-    }
-
-    /// <inheritdoc />
-    public IHiveServiceBuilder SetVideoGenerator(string providerName, IVideoGenerator generator)
-    {
-        _providers.Set<IVideoGenerator>(providerName, generator);
-        return this;
-    }
-
-    /// <inheritdoc />
-    public IHiveServiceBuilder AddAudioProcessor(string providerName, IAudioProcessor processor)
-    {
-        ThrowIfProviderExists<IAudioProcessor>(providerName, nameof(SetAudioProcessor));
-        _providers.TryAdd<IAudioProcessor>(providerName, processor);
-        return this;
-    }
-
-    /// <inheritdoc />
-    public IHiveServiceBuilder SetAudioProcessor(string providerName, IAudioProcessor processor)
-    {
-        _providers.Set<IAudioProcessor>(providerName, processor);
-        return this;
-    }
-
-    /// <inheritdoc />
-    public IHiveServiceBuilder AddFileStorage(string storageName, IFileStorage storage)
-    {
-        ThrowIfStorageExists<IFileStorage>(storageName, nameof(SetFileStorage));
-        _storages.TryAdd<IFileStorage>(storageName, storage);
-        return this;
-    }
-
-    /// <inheritdoc />
-    public IHiveServiceBuilder SetFileStorage(string storageName, IFileStorage storage)
-    {
-        _storages.Set<IFileStorage>(storageName, storage);
-        return this;
-    }
-
-    /// <inheritdoc />
-    public IHiveServiceBuilder AddQueueStorage(string storageName, IQueueStorage storage)
-    {
-        ThrowIfStorageExists<IQueueStorage>(storageName, nameof(SetQueueStorage));
-        _storages.TryAdd<IQueueStorage>(storageName, storage);
-        return this;
-    }
-
-    /// <inheritdoc />
-    public IHiveServiceBuilder SetQueueStorage(string storageName, IQueueStorage storage)
-    {
-        _storages.Set<IQueueStorage>(storageName, storage);
-        return this;
-    }
-
-    /// <inheritdoc />
-    public IHiveServiceBuilder AddVectorStorage(string storageName, IVectorStorage storage)
-    {
-        ThrowIfStorageExists<IVectorStorage>(storageName, nameof(SetVectorStorage));
-        _storages.TryAdd<IVectorStorage>(storageName, storage);
-        return this;
-    }
-
-    /// <inheritdoc />
-    public IHiveServiceBuilder SetVectorStorage(string storageName, IVectorStorage storage)
-    {
-        _storages.Set<IVectorStorage>(storageName, storage);
-        return this;
-    }
-
-    /// <inheritdoc />
     public IHiveServiceBuilder AddTool(ITool tool)
-    {
-        _tools.Add(tool);
-        return this;
-    }
+    { _tools.Add(tool); return this; }
 
-    /// <inheritdoc />
-    public IHiveServiceBuilder AddWorkflowStep<T>(string stepName, T? step = null)
+    public IHiveServiceBuilder AddWorkflowStep<T>(string name, T? instance = null)
         where T : class, IWorkflowStep
     {
-        if (Services.Any(d => d.ServiceKey is string k
-                           && k == stepName
-                           && d.ServiceType == typeof(IWorkflowStep)))
-            throw new InvalidOperationException(
-                $"A workflow step named '{stepName}' is already registered. Use SetWorkflowStep() to replace it.");
-
-        if (step is not null)
-            Services.AddKeyedSingleton<IWorkflowStep>(stepName, step);
+        if (instance is not null)
+            _stepRegistrations.Add(sc => sc.AddKeyedSingleton<IWorkflowStep>(name, instance));
         else
-            Services.AddKeyedTransient<IWorkflowStep, T>(stepName);
+            _stepRegistrations.Add(sc => sc.AddKeyedTransient<IWorkflowStep, T>(name));
         return this;
     }
 
-    /// <inheritdoc />
-    public IHiveServiceBuilder SetWorkflowStep<T>(string stepName, T? step = null)
-        where T : class, IWorkflowStep
-    {
-        var existing = Services.FirstOrDefault(d => d.ServiceKey is string k
-                                                 && k == stepName
-                                                 && d.ServiceType == typeof(IWorkflowStep));
-        if (existing is not null)
-            Services.Remove(existing);
+    public IHiveServiceBuilder AddToolInitializer(Action<IToolCollection, IServiceProvider?> initializer)
+    { _toolInitializers.Add(initializer); return this; }
 
-        if (step is not null)
-            Services.AddKeyedSingleton<IWorkflowStep>(stepName, step);
-        else
-            Services.AddKeyedTransient<IWorkflowStep, T>(stepName);
-        return this;
-    }
-
-    /// <inheritdoc />
-    /// <remarks>
-    /// <para>
-    /// 이 메서드는 내부 <see cref="IServiceCollection"/>에서 새로운 <see cref="IServiceProvider"/>를 생성합니다.
-    /// <c>new HiveServiceBuilder()</c>로 생성한 경우, 호스트 DI 컨테이너와 격리된 별도 컨테이너가 만들어집니다.
-    /// </para>
-    /// <para>
-    /// <c>AddHiveServiceCore()</c> 확장 메서드를 통해 생성한 빌더와 혼용하지 마세요.
-    /// 두 경로를 동시에 사용하면 독립된 <see cref="IHiveService"/> 인스턴스가 생겨 레지스트리 불일치가 발생합니다.
-    /// </para>
-    /// </remarks>
-    public IHiveService Build()
+    public IHiveService Build(IServiceProvider? sp = null)
     {
-        var provider = Services.BuildServiceProvider();
-        return new HiveService(provider);
-    }
+        // 내부 ServiceCollection — 워크플로우 스텝 및 메모리 파이프라인용
+        var internalSc = new ServiceCollection();
 
-    /// <summary>
-    /// 지정타입의 서비스가 하나라도 존재하는지 확인하고, 존재하면 예외를 발생시킵니다.
-    /// </summary>
-    private void ThrowIfExists<T>()
-        where T : class
-    {
-        if (Services.Any(d => d.ServiceType == typeof(T)))
-            throw new InvalidOperationException($"{typeof(T).Name} is already registered, the registration must be done only once.");
-    }
+        // 딕셔너리를 내부 DI에 등록 (파이프라인 등에서 주입받을 수 있도록)
+        internalSc.AddSingleton<IReadOnlyDictionary<string, IModelCatalog>>(_catalogs);
+        internalSc.AddSingleton<IReadOnlyDictionary<string, IMessageGenerator>>(_messageGenerators);
+        internalSc.AddSingleton<IReadOnlyDictionary<string, IEmbeddingGenerator>>(_embeddingGenerators);
+        internalSc.AddSingleton<IReadOnlyDictionary<string, IImageGenerator>>(_imageGenerators);
+        internalSc.AddSingleton<IReadOnlyDictionary<string, IVideoGenerator>>(_videoGenerators);
+        internalSc.AddSingleton<IReadOnlyDictionary<string, IAudioProcessor>>(_audioProcessors);
+        internalSc.AddSingleton<IReadOnlyDictionary<string, IFileStorage>>(_fileStorages);
+        internalSc.AddSingleton<IReadOnlyDictionary<string, IVectorStorage>>(_vectorStorages);
+        internalSc.AddSingleton<IReadOnlyDictionary<string, IQueueStorage>>(_queueStorages);
 
-    /// <summary>
-    /// Provider 레지스트리에 지정 이름/타입이 이미 등록되어 있으면 <see cref="InvalidOperationException"/>을 발생시킵니다.
-    /// </summary>
-    private void ThrowIfProviderExists<TDerived>(string name, string setMethodName)
-        where TDerived : class, IProviderItem
-    {
-        if (_providers.Contains<TDerived>(name))
-            throw new InvalidOperationException(
-                $"A {typeof(TDerived).Name} named '{name}' is already registered. Use {setMethodName}() to replace it.");
-    }
+        // 워크플로우 스텝 등록
+        foreach (var reg in _stepRegistrations)
+            reg(internalSc);
 
-    /// <summary>
-    /// Storage 레지스트리에 지정 이름/타입이 이미 등록되어 있으면 <see cref="InvalidOperationException"/>을 발생시킵니다.
-    /// </summary>
-    private void ThrowIfStorageExists<TDerived>(string name, string setMethodName)
-        where TDerived : class, IStorageItem
-    {
-        if (_storages.Contains<TDerived>(name))
-            throw new InvalidOperationException(
-                $"A {typeof(TDerived).Name} named '{name}' is already registered. Use {setMethodName}() to replace it.");
-    }
+        var internalSp = internalSc.BuildServiceProvider();
 
-    /// <summary>
-    /// Disposes provider and storage registries if not yet transferred to a built service.
-    /// </summary>
-    public async ValueTask DisposeAsync()
-    {
-        await _providers.DisposeAsync().ConfigureAwait(false);
-        await _storages.DisposeAsync().ConfigureAwait(false);
-        GC.SuppressFinalize(this);
+        // 외부 SP와 내부 SP를 합성: 외부 우선, 내부 폴백
+        IServiceProvider effectiveSp = sp != null
+            ? new CompositeServiceProvider(sp, internalSp)
+            : internalSp;
+
+        // 툴 컬렉션 생성 및 초기화
+        var toolCollection = new ToolCollection(_tools, null, effectiveSp);
+        foreach (var init in _toolInitializers)
+            init(toolCollection, sp);
+
+        // 서비스 생성
+        var catalogService = new ModelCatalogService(_catalogs);
+        var embeddingService = new EmbeddingService(_embeddingGenerators);
+        var messageService = new MessageService(_messageGenerators, toolCollection, sp);
+        var imageService = new ImageService(_imageGenerators);
+        var videoService = new VideoService(_videoGenerators);
+        var audioService = new AudioService(_audioProcessors);
+        var fileService = new FileStorageService(_fileStorages);
+        var memoryService = new MemoryService(_vectorStorages, _queueStorages, embeddingService);
+        var workflowFactory = new WorkflowFactory(effectiveSp);
+        var agentService = new AgentService(messageService);
+
+        return new HiveService(
+            catalog: catalogService,
+            messages: messageService,
+            embeddings: embeddingService,
+            images: imageService,
+            videos: videoService,
+            audio: audioService,
+            files: fileService,
+            memory: memoryService,
+            workflows: workflowFactory,
+            agents: agentService,
+            internalSp: internalSp,
+            vectorStorages: _vectorStorages,
+            queueStorages: _queueStorages);
     }
 }

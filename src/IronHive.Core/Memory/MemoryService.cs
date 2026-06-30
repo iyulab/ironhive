@@ -1,6 +1,6 @@
 ﻿using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Memory;
-using IronHive.Abstractions.Registries;
+using IronHive.Abstractions.Queue;
 using IronHive.Abstractions.Vector;
 
 namespace IronHive.Core.Memory;
@@ -8,27 +8,32 @@ namespace IronHive.Core.Memory;
 /// <inheritdoc />
 public class MemoryService : IMemoryService
 {
-    private readonly IStorageRegistry _storages;
+    private readonly IReadOnlyDictionary<string, IVectorStorage> _vectorStorages;
+    private readonly IReadOnlyDictionary<string, IQueueStorage> _queueStorages;
     private readonly IEmbeddingService _embedder;
 
-    public MemoryService(IStorageRegistry storages, IEmbeddingService embedder)
+    internal MemoryService(
+        IReadOnlyDictionary<string, IVectorStorage> vectorStorages,
+        IReadOnlyDictionary<string, IQueueStorage> queueStorages,
+        IEmbeddingService embedder)
     {
-        _storages = storages;
+        _vectorStorages = vectorStorages;
+        _queueStorages = queueStorages;
         _embedder = embedder;
     }
 
     /// <inheritdoc />
     public async Task<IMemoryCollection> GetCollectionAsync(
-        string storageName, 
-        string collectionName, 
+        string storageName,
+        string collectionName,
         CancellationToken cancellationToken = default)
     {
-        if (!_storages.TryGet<IVectorStorage>(storageName, out var storage))
+        if (!_vectorStorages.TryGetValue(storageName, out var storage))
             throw new InvalidOperationException($"Storage '{storageName}' is not registered.");
         var collectionInfo = await storage.GetCollectionInfoAsync(collectionName, cancellationToken)
             ?? throw new InvalidOperationException($"Collection '{collectionName}' does not exist in storage '{storageName}'.");
 
-        return new MemoryCollection(_storages, _embedder)
+        return new MemoryCollection(_vectorStorages, _queueStorages, _embedder)
         {
             StorageName = storageName,
             CollectionName = collectionName,
@@ -40,26 +45,26 @@ public class MemoryService : IMemoryService
     /// <inheritdoc />
     public async Task<IEnumerable<VectorCollectionInfo>> ListCollectionsAsync(
         string storageName,
-        string? prefix = null, 
+        string? prefix = null,
         CancellationToken cancellationToken = default)
     {
-        if (!_storages.TryGet<IVectorStorage>(storageName, out var storage))
+        if (!_vectorStorages.TryGetValue(storageName, out var storage))
             throw new InvalidOperationException($"Storage '{storageName}' is not registered.");
 
         return await storage.ListCollectionsAsync(cancellationToken)
-            .ContinueWith(t => string.IsNullOrWhiteSpace(prefix) 
-                    ? t.Result 
-                    : t.Result.Where(c => c.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)), 
+            .ContinueWith(t => string.IsNullOrWhiteSpace(prefix)
+                    ? t.Result
+                    : t.Result.Where(c => c.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)),
                 cancellationToken);
     }
 
     /// <inheritdoc />
     public async Task<bool> CollectionExistsAsync(
         string storageName,
-        string collectionName, 
+        string collectionName,
         CancellationToken cancellationToken = default)
     {
-        if (!_storages.TryGet<IVectorStorage>(storageName, out var storage))
+        if (!_vectorStorages.TryGetValue(storageName, out var storage))
             throw new InvalidOperationException($"Storage '{storageName}' is not registered.");
 
         return await storage.CollectionExistsAsync(collectionName, cancellationToken);
@@ -68,12 +73,12 @@ public class MemoryService : IMemoryService
     /// <inheritdoc />
     public async Task CreateCollectionAsync(
         string storageName,
-        string collectionName, 
-        string embeddingProvider, 
-        string embeddingModel, 
+        string collectionName,
+        string embeddingProvider,
+        string embeddingModel,
         CancellationToken cancellationToken = default)
     {
-        if (!_storages.TryGet<IVectorStorage>(storageName, out var storage))
+        if (!_vectorStorages.TryGetValue(storageName, out var storage))
             throw new InvalidOperationException($"Storage '{storageName}' is not registered.");
 
         if (await storage.CollectionExistsAsync(collectionName, cancellationToken))
@@ -95,10 +100,10 @@ public class MemoryService : IMemoryService
     /// <inheritdoc />
     public async Task DeleteCollectionAsync(
         string storageName,
-        string collectionName, 
+        string collectionName,
         CancellationToken cancellationToken = default)
     {
-        if (!_storages.TryGet<IVectorStorage>(storageName, out var storage))
+        if (!_vectorStorages.TryGetValue(storageName, out var storage))
             throw new InvalidOperationException($"Storage '{storageName}' is not registered.");
 
         await storage.DeleteCollectionAsync(collectionName, cancellationToken);

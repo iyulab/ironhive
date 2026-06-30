@@ -39,7 +39,7 @@ public static class AudioSample
             }, GoogleAIServiceType.Audio);
 
         var hive = builder.Build();
-        var audioService = hive.Services.GetRequiredService<IAudioService>();
+        var audioService = hive.Audio;
         var folderPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
 
         Console.WriteLine("=== 오디오 처리 테스트 ===\n");

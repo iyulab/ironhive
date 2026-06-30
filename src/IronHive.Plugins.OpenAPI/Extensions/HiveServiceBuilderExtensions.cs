@@ -1,6 +1,4 @@
-﻿using IronHive.Abstractions.Tools;
-using IronHive.Plugins.OpenAPI;
-using Microsoft.Extensions.DependencyInjection;
+﻿using IronHive.Plugins.OpenAPI;
 
 namespace IronHive.Abstractions;
 
@@ -12,26 +10,25 @@ public static class HiveServiceBuilderExtensions
     public static IHiveServiceBuilder AddOpenApiClient(
         this IHiveServiceBuilder builder)
     {
-        builder.Services.AddSingleton<OpenApiClientManager>();
+        builder.AddToolInitializer((tools, sp) =>
+        {
+            _ = new OpenApiClientManager(tools);
+        });
         return builder;
     }
 
     /// <summary>
     /// Hive 서비스에 여러 OpenAPI 클라이언트와 매니저를 등록합니다.
     /// </summary>
-    public static IHiveServiceBuilder AddMcpClient(
-        this IHiveServiceBuilder builder, 
+    public static IHiveServiceBuilder AddOpenApiClient(
+        this IHiveServiceBuilder builder,
         IEnumerable<OpenApiClient> clients)
     {
-        builder.Services.AddSingleton(sp =>
+        builder.AddToolInitializer((tools, sp) =>
         {
-            var tools = sp.GetRequiredService<IToolCollection>();
             var manager = new OpenApiClientManager(tools);
             foreach (var c in clients)
-            {
                 manager.AddOrUpdate(c);
-            }
-            return manager;
         });
         return builder;
     }

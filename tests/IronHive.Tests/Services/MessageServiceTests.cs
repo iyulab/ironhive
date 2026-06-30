@@ -1,7 +1,6 @@
 using FluentAssertions;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Registries;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Services;
 using NSubstitute;
@@ -10,46 +9,37 @@ namespace IronHive.Tests.Services;
 
 /// <summary>
 /// Tests for MessageService.
-/// P0-1.3: Message generation service tests with mocked dependencies.
 /// </summary>
 public class MessageServiceTests
 {
     private readonly IServiceProvider _mockServiceProvider;
-    private readonly IProviderRegistry _mockProviderRegistry;
+    private readonly Dictionary<string, IMessageGenerator> _generators;
     private readonly IToolCollection _mockToolCollection;
     private readonly MessageService _service;
 
     public MessageServiceTests()
     {
         _mockServiceProvider = Substitute.For<IServiceProvider>();
-        _mockProviderRegistry = Substitute.For<IProviderRegistry>();
+        _generators = new Dictionary<string, IMessageGenerator>();
         _mockToolCollection = Substitute.For<IToolCollection>();
 
         _mockToolCollection
             .FilterBy(Arg.Any<IEnumerable<string>>())
             .Returns(_mockToolCollection);
 
-        _service = new MessageService(
-            _mockServiceProvider,
-            _mockProviderRegistry,
-            _mockToolCollection);
+        _service = new MessageService(_generators, _mockToolCollection, _mockServiceProvider);
     }
 
     [Fact]
     public async Task GenerateMessageAsync_ShouldThrow_WhenProviderNotFound()
     {
-        // Arrange
+        // Arrange — generators dict is empty
         var request = new MessageRequest
         {
             Provider = "nonexistent-provider",
             Model = "test-model",
             Messages = [Message.User("Hello")]
         };
-
-        IMessageGenerator generator = null!;
-        _mockProviderRegistry
-            .TryGet("nonexistent-provider", out generator)
-            .Returns(false);
 
         // Act
         var act = async () => await _service.GenerateMessageAsync(request);
@@ -70,19 +60,10 @@ public class MessageServiceTests
             DoneReason = MessageDoneReason.EndTurn,
             Message = Message.Assistant("Hello back!")
         };
-
         mockGenerator
             .GenerateMessageAsync(Arg.Any<MessageGenerationRequest>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
-
-        IMessageGenerator generator = null!;
-        _mockProviderRegistry
-            .TryGet("openai", out generator)
-            .Returns(callInfo =>
-            {
-                callInfo[1] = mockGenerator;
-                return true;
-            });
+        _generators["openai"] = mockGenerator;
 
         var request = new MessageRequest
         {
@@ -108,27 +89,17 @@ public class MessageServiceTests
         // Arrange
         var mockGenerator = Substitute.For<IMessageGenerator>();
         MessageGenerationRequest? capturedRequest = null;
-
         mockGenerator
             .GenerateMessageAsync(Arg.Do<MessageGenerationRequest>(req => capturedRequest = req), Arg.Any<CancellationToken>())
             .Returns(new MessageResponse
             {
                 ResponseId = "msg-gen",
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new Message { Role = MessageRole.Assistant }
-            ,
-            Model = string.Empty,
-            Timestamp = DateTime.UtcNow
-        });
-
-        IMessageGenerator generator = null!;
-        _mockProviderRegistry
-            .TryGet("openai", out generator)
-            .Returns(callInfo =>
-            {
-                callInfo[1] = mockGenerator;
-                return true;
+                Message = new Message { Role = MessageRole.Assistant },
+                Model = string.Empty,
+                Timestamp = DateTime.UtcNow
             });
+        _generators["openai"] = mockGenerator;
 
         var request = new MessageRequest
         {
@@ -151,27 +122,17 @@ public class MessageServiceTests
         // Arrange
         var mockGenerator = Substitute.For<IMessageGenerator>();
         MessageGenerationRequest? capturedRequest = null;
-
         mockGenerator
             .GenerateMessageAsync(Arg.Do<MessageGenerationRequest>(req => capturedRequest = req), Arg.Any<CancellationToken>())
             .Returns(new MessageResponse
             {
                 ResponseId = "msg-gen",
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new Message { Role = MessageRole.Assistant }
-            ,
-            Model = string.Empty,
-            Timestamp = DateTime.UtcNow
-        });
-
-        IMessageGenerator generator = null!;
-        _mockProviderRegistry
-            .TryGet("openai", out generator)
-            .Returns(callInfo =>
-            {
-                callInfo[1] = mockGenerator;
-                return true;
+                Message = new Message { Role = MessageRole.Assistant },
+                Model = string.Empty,
+                Timestamp = DateTime.UtcNow
             });
+        _generators["openai"] = mockGenerator;
 
         var request = new MessageRequest
         {
@@ -195,7 +156,6 @@ public class MessageServiceTests
         // Arrange
         var mockGenerator = Substitute.For<IMessageGenerator>();
         MessageGenerationRequest? capturedRequest = null;
-
         mockGenerator
             .GenerateMessageAsync(Arg.Do<MessageGenerationRequest>(req => capturedRequest = req), Arg.Any<CancellationToken>())
             .Returns(new MessageResponse
@@ -206,15 +166,7 @@ public class MessageServiceTests
                 Model = string.Empty,
                 Timestamp = DateTime.UtcNow
             });
-
-        IMessageGenerator generator = null!;
-        _mockProviderRegistry
-            .TryGet("openai", out generator)
-            .Returns(callInfo =>
-            {
-                callInfo[1] = mockGenerator;
-                return true;
-            });
+        _generators["openai"] = mockGenerator;
 
         var request = new MessageRequest
         {
@@ -235,18 +187,13 @@ public class MessageServiceTests
     [Fact]
     public async Task GenerateStreamingMessageAsync_ShouldThrow_WhenProviderNotFound()
     {
-        // Arrange
+        // Arrange — generators dict is empty
         var request = new MessageRequest
         {
             Provider = "nonexistent-provider",
             Model = "test-model",
             Messages = [Message.User("Hello")]
         };
-
-        IMessageGenerator generator = null!;
-        _mockProviderRegistry
-            .TryGet("nonexistent-provider", out generator)
-            .Returns(false);
 
         // Act
         var act = async () =>
@@ -267,7 +214,6 @@ public class MessageServiceTests
     {
         // Arrange
         var mockGenerator = Substitute.For<IMessageGenerator>();
-
         var streamingResponses = new List<StreamingMessageResponse>
         {
             new StreamingMessageBeginResponse(),
@@ -279,19 +225,10 @@ public class MessageServiceTests
                 Timestamp = DateTime.UtcNow
             }
         };
-
         mockGenerator
             .GenerateStreamingMessageAsync(Arg.Any<MessageGenerationRequest>(), Arg.Any<CancellationToken>())
             .Returns(streamingResponses.ToAsyncEnumerable());
-
-        IMessageGenerator generator = null!;
-        _mockProviderRegistry
-            .TryGet("openai", out generator)
-            .Returns(callInfo =>
-            {
-                callInfo[1] = mockGenerator;
-                return true;
-            });
+        _generators["openai"] = mockGenerator;
 
         var request = new MessageRequest
         {
@@ -317,7 +254,6 @@ public class MessageServiceTests
     {
         // Arrange
         var mockGenerator = Substitute.For<IMessageGenerator>();
-
         var streamingResponses = new List<StreamingMessageResponse>
         {
             new StreamingMessageBeginResponse(),
@@ -329,19 +265,10 @@ public class MessageServiceTests
                 Timestamp = DateTime.UtcNow
             }
         };
-
         mockGenerator
             .GenerateStreamingMessageAsync(Arg.Any<MessageGenerationRequest>(), Arg.Any<CancellationToken>())
             .Returns(streamingResponses.ToAsyncEnumerable());
-
-        IMessageGenerator generator = null!;
-        _mockProviderRegistry
-            .TryGet("openai", out generator)
-            .Returns(callInfo =>
-            {
-                callInfo[1] = mockGenerator;
-                return true;
-            });
+        _generators["openai"] = mockGenerator;
 
         var request = new MessageRequest
         {
@@ -368,9 +295,9 @@ public class MessageServiceTests
     {
         // Act
         var act = () => new MessageService(
-            _mockServiceProvider,
-            _mockProviderRegistry,
-            _mockToolCollection);
+            new Dictionary<string, IMessageGenerator>(),
+            _mockToolCollection,
+            _mockServiceProvider);
 
         // Assert
         act.Should().NotThrow();

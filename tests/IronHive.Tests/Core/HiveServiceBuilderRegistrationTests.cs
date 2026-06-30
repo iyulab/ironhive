@@ -2,6 +2,7 @@ using FluentAssertions;
 using IronHive.Abstractions;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Messages;
+using IronHive.Abstractions.Vector;
 using IronHive.Abstractions.Workflow;
 using IronHive.Core;
 using NSubstitute;
@@ -9,26 +10,28 @@ using NSubstitute;
 namespace IronHive.Tests.Core;
 
 /// <summary>
-/// Tests for HiveServiceBuilder AddX fail-fast and SetX upsert behavior.
+/// Tests for HiveServiceBuilder registration behavior.
+/// In the new design, AddX methods use dictionary assignment (last write wins),
+/// so there is no fail-fast on duplicate names.
 /// </summary>
 public class HiveServiceBuilderRegistrationTests
 {
-    // --- AddMessageGenerator fail-fast ---
+    // --- AddMessageGenerator (dict-based, last-write-wins) ---
 
     [Fact]
-    public void AddMessageGenerator_DuplicateName_ThrowsInvalidOperationException()
+    public void AddMessageGenerator_DuplicateName_OverwritesPrevious()
     {
+        // In the new design AddMessageGenerator overwrites on duplicate name
         var builder = new HiveServiceBuilder();
         var gen1 = Substitute.For<IMessageGenerator>();
         var gen2 = Substitute.For<IMessageGenerator>();
 
         builder.AddMessageGenerator("openai", gen1);
 
+        // No throw — dictionary assignment
         var act = () => builder.AddMessageGenerator("openai", gen2);
 
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*openai*")
-            .WithMessage("*SetMessageGenerator*");
+        act.Should().NotThrow();
     }
 
     [Fact]
@@ -47,40 +50,10 @@ public class HiveServiceBuilderRegistrationTests
         act.Should().NotThrow();
     }
 
-    // --- SetMessageGenerator upsert ---
+    // --- AddEmbeddingGenerator (dict-based, last-write-wins) ---
 
     [Fact]
-    public void SetMessageGenerator_DuplicateName_Replaces()
-    {
-        var builder = new HiveServiceBuilder();
-        var gen1 = Substitute.For<IMessageGenerator>();
-        var gen2 = Substitute.For<IMessageGenerator>();
-
-        builder.AddMessageGenerator("openai", gen1);
-        builder.SetMessageGenerator("openai", gen2);
-
-        var service = builder.Build();
-        service.Providers.TryGet<IMessageGenerator>("openai", out var resolved).Should().BeTrue();
-        resolved.Should().BeSameAs(gen2);
-    }
-
-    [Fact]
-    public void SetMessageGenerator_NewName_AddsEntry()
-    {
-        var builder = new HiveServiceBuilder();
-        var gen = Substitute.For<IMessageGenerator>();
-
-        builder.SetMessageGenerator("openai", gen);
-
-        var service = builder.Build();
-        service.Providers.TryGet<IMessageGenerator>("openai", out var resolved).Should().BeTrue();
-        resolved.Should().BeSameAs(gen);
-    }
-
-    // --- AddEmbeddingGenerator fail-fast ---
-
-    [Fact]
-    public void AddEmbeddingGenerator_DuplicateName_ThrowsInvalidOperationException()
+    public void AddEmbeddingGenerator_DuplicateName_OverwritesPrevious()
     {
         var builder = new HiveServiceBuilder();
         var gen1 = Substitute.For<IEmbeddingGenerator>();
@@ -90,118 +63,39 @@ public class HiveServiceBuilderRegistrationTests
 
         var act = () => builder.AddEmbeddingGenerator("openai", gen2);
 
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*openai*")
-            .WithMessage("*SetEmbeddingGenerator*");
+        act.Should().NotThrow();
     }
 
-    // --- SetEmbeddingGenerator upsert ---
+    // --- AddVectorStorage (dict-based, last-write-wins) ---
 
     [Fact]
-    public void SetEmbeddingGenerator_DuplicateName_Replaces()
+    public void AddVectorStorage_DuplicateName_OverwritesPrevious()
     {
         var builder = new HiveServiceBuilder();
-        var gen1 = Substitute.For<IEmbeddingGenerator>();
-        var gen2 = Substitute.For<IEmbeddingGenerator>();
-
-        builder.AddEmbeddingGenerator("openai", gen1);
-        builder.SetEmbeddingGenerator("openai", gen2);
-
-        var service = builder.Build();
-        service.Providers.TryGet<IEmbeddingGenerator>("openai", out var resolved).Should().BeTrue();
-        resolved.Should().BeSameAs(gen2);
-    }
-
-    // --- AddVectorStorage fail-fast ---
-
-    [Fact]
-    public void AddVectorStorage_DuplicateName_ThrowsInvalidOperationException()
-    {
-        var builder = new HiveServiceBuilder();
-        var storage1 = Substitute.For<IronHive.Abstractions.Vector.IVectorStorage>();
-        var storage2 = Substitute.For<IronHive.Abstractions.Vector.IVectorStorage>();
+        var storage1 = Substitute.For<IVectorStorage>();
+        var storage2 = Substitute.For<IVectorStorage>();
 
         builder.AddVectorStorage("main", storage1);
 
         var act = () => builder.AddVectorStorage("main", storage2);
 
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*main*")
-            .WithMessage("*SetVectorStorage*");
+        act.Should().NotThrow();
     }
 
-    // --- SetVectorStorage upsert ---
-
-    [Fact]
-    public void SetVectorStorage_DuplicateName_Replaces()
-    {
-        var builder = new HiveServiceBuilder();
-        var storage1 = Substitute.For<IronHive.Abstractions.Vector.IVectorStorage>();
-        var storage2 = Substitute.For<IronHive.Abstractions.Vector.IVectorStorage>();
-
-        builder.AddVectorStorage("main", storage1);
-        builder.SetVectorStorage("main", storage2);
-
-        var service = builder.Build();
-        service.Storages.TryGet<IronHive.Abstractions.Vector.IVectorStorage>("main", out var resolved).Should().BeTrue();
-        resolved.Should().BeSameAs(storage2);
-    }
-
-    // --- AddWorkflowStep fail-fast ---
-
-    [Fact]
-    public void AddWorkflowStep_DuplicateName_ThrowsInvalidOperationException()
-    {
-        var builder = new HiveServiceBuilder();
-        var step = Substitute.For<IWorkflowTask<object>>();
-        builder.AddWorkflowStep<IWorkflowTask<object>>("step1", (IWorkflowTask<object>)step);
-
-        var act = () => builder.AddWorkflowStep<IWorkflowTask<object>>("step1", (IWorkflowTask<object>)step);
-
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*step1*already registered*SetWorkflowStep*");
-    }
+    // --- AddWorkflowStep ---
 
     [Fact]
     public void AddWorkflowStep_DifferentNames_BothSucceed()
     {
         var builder = new HiveServiceBuilder();
-        var step1 = Substitute.For<IWorkflowTask<object>>();
-        var step2 = Substitute.For<IWorkflowTask<object>>();
+        var step1 = Substitute.For<IWorkflowStep>();
+        var step2 = Substitute.For<IWorkflowStep>();
 
         var act = () =>
         {
-            builder.AddWorkflowStep<IWorkflowTask<object>>("step1", (IWorkflowTask<object>)step1);
-            builder.AddWorkflowStep<IWorkflowTask<object>>("step2", (IWorkflowTask<object>)step2);
+            builder.AddWorkflowStep<IWorkflowStep>("step1", step1);
+            builder.AddWorkflowStep<IWorkflowStep>("step2", step2);
         };
-
-        act.Should().NotThrow();
-    }
-
-    // --- SetWorkflowStep upsert ---
-
-    [Fact]
-    public void SetWorkflowStep_DuplicateName_Replaces()
-    {
-        var builder = new HiveServiceBuilder();
-        var step1 = Substitute.For<IWorkflowTask<object>>();
-        var step2 = Substitute.For<IWorkflowTask<object>>();
-        builder.AddWorkflowStep<IWorkflowTask<object>>("step1", (IWorkflowTask<object>)step1);
-
-        // SetWorkflowStep should not throw when replacing
-        var act = () => builder.SetWorkflowStep<IWorkflowTask<object>>("step1", (IWorkflowTask<object>)step2);
-
-        act.Should().NotThrow();
-    }
-
-    [Fact]
-    public void SetWorkflowStep_NewName_AddsEntry()
-    {
-        var builder = new HiveServiceBuilder();
-        var step = Substitute.For<IWorkflowTask<object>>();
-
-        // SetWorkflowStep on a name that does not exist yet should also succeed
-        var act = () => builder.SetWorkflowStep<IWorkflowTask<object>>("step1", (IWorkflowTask<object>)step);
 
         act.Should().NotThrow();
     }
@@ -222,8 +116,8 @@ public class HiveServiceBuilderRegistrationTests
     public void Workflows_CreateFrom_WithRegisteredStep_ReturnsWorkflow()
     {
         var builder = new HiveServiceBuilder();
-        var step = Substitute.For<IWorkflowTask<object>>();
-        builder.AddWorkflowStep<IWorkflowTask<object>>("my-step", (IWorkflowTask<object>)step);
+        var step = Substitute.For<IWorkflowStep>();
+        builder.AddWorkflowStep<IWorkflowStep>("my-step", step);
         var service = builder.Build();
 
         var definition = new WorkflowDefinition
@@ -237,31 +131,7 @@ public class HiveServiceBuilderRegistrationTests
         workflow.Name.Should().Be("test-workflow");
     }
 
-    // --- KeyedServiceRegistry IAsyncDisposable teardown ---
-
-    [Fact]
-    public async Task KeyedServiceRegistry_DisposeAsync_DisposesAsyncDisposableItems()
-    {
-        var registry = new KeyedServiceRegistry<string, TestRegistryBase>();
-        var asyncItem = new AsyncDisposableItem();
-        registry.TryAdd<AsyncDisposableItem>("key1", asyncItem);
-
-        await registry.DisposeAsync();
-
-        asyncItem.Disposed.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task KeyedServiceRegistry_DisposeAsync_DisposesDisposableItems()
-    {
-        var registry = new KeyedServiceRegistry<string, TestRegistryBase>();
-        var syncItem = new SyncDisposableItem();
-        registry.TryAdd<SyncDisposableItem>("key1", syncItem);
-
-        await registry.DisposeAsync();
-
-        syncItem.Disposed.Should().BeTrue();
-    }
+    // --- HiveService DisposeAsync ---
 
     [Fact]
     public async Task HiveService_DisposeAsync_DoesNotThrow()
@@ -272,37 +142,5 @@ public class HiveServiceBuilderRegistrationTests
         var act = async () => await ((IAsyncDisposable)service).DisposeAsync();
 
         await act.Should().NotThrowAsync();
-    }
-}
-
-// --- Test helpers ---
-
-public abstract class TestRegistryBase : IDisposable
-{
-    public bool Disposed { get; protected set; }
-
-    public virtual void Dispose()
-    {
-        Disposed = true;
-        GC.SuppressFinalize(this);
-    }
-}
-
-public sealed class AsyncDisposableItem : TestRegistryBase, IAsyncDisposable
-{
-    public ValueTask DisposeAsync()
-    {
-        Disposed = true;
-        GC.SuppressFinalize(this);
-        return ValueTask.CompletedTask;
-    }
-}
-
-public sealed class SyncDisposableItem : TestRegistryBase
-{
-    public override void Dispose()
-    {
-        base.Dispose();
-        GC.SuppressFinalize(this);
     }
 }

@@ -1,6 +1,5 @@
 using FluentAssertions;
 using IronHive.Abstractions.Memory;
-using IronHive.Abstractions.Registries;
 using IronHive.Abstractions.Vector;
 using IronHive.Core.Memory.Pipelines;
 using NSubstitute;
@@ -9,15 +8,14 @@ namespace IronHive.Tests.Memory;
 
 public class StoreVectorsPipelineTests
 {
-    private readonly IStorageRegistry _mockStorages;
+    private readonly Dictionary<string, IVectorStorage> _storages = new();
     private readonly IVectorStorage _mockVectorStorage;
     private readonly StoreVectorsPipeline _pipeline;
 
     public StoreVectorsPipelineTests()
     {
-        _mockStorages = Substitute.For<IStorageRegistry>();
         _mockVectorStorage = Substitute.For<IVectorStorage>();
-        _pipeline = new StoreVectorsPipeline(_mockStorages);
+        _pipeline = new StoreVectorsPipeline(_storages);
     }
 
     #region Success Path
@@ -26,7 +24,7 @@ public class StoreVectorsPipelineTests
     public async Task ExecuteAsync_ValidContext_ReturnsSuccess()
     {
         var context = CreateContext();
-        SetupStorageLookup();
+        _storages["test-storage"] = _mockVectorStorage;
 
         var result = await _pipeline.ExecuteAsync(context);
 
@@ -37,7 +35,7 @@ public class StoreVectorsPipelineTests
     public async Task ExecuteAsync_UpsertsCalled_WithCorrectCollectionName()
     {
         var context = CreateContext();
-        SetupStorageLookup();
+        _storages["test-storage"] = _mockVectorStorage;
 
         await _pipeline.ExecuteAsync(context);
 
@@ -56,7 +54,7 @@ public class StoreVectorsPipelineTests
             new() { VectorId = "v2", SourceId = "s1", Vectors = [0.3f, 0.4f], Payload = new Dictionary<string, object?>() }
         };
         var context = CreateContext(vectors);
-        SetupStorageLookup();
+        _storages["test-storage"] = _mockVectorStorage;
 
         await _pipeline.ExecuteAsync(context);
 
@@ -70,7 +68,7 @@ public class StoreVectorsPipelineTests
     public async Task ExecuteAsync_PassesCancellationToken()
     {
         var context = CreateContext();
-        SetupStorageLookup();
+        _storages["test-storage"] = _mockVectorStorage;
         using var cts = new CancellationTokenSource();
 
         await _pipeline.ExecuteAsync(context, cts.Token);
@@ -85,12 +83,15 @@ public class StoreVectorsPipelineTests
     public async Task ExecuteAsync_LooksUpStorageByName()
     {
         var context = CreateContext();
-        SetupStorageLookup();
+        _storages["test-storage"] = _mockVectorStorage;
 
         await _pipeline.ExecuteAsync(context);
 
-        _mockStorages.Received(1).TryGet<IVectorStorage>(
-            "test-storage", out Arg.Any<IVectorStorage?>());
+        // Verify the mock vector storage was used (meaning the lookup succeeded)
+        await _mockVectorStorage.Received(1).UpsertVectorsAsync(
+            Arg.Any<string>(),
+            Arg.Any<IEnumerable<VectorRecord>>(),
+            Arg.Any<CancellationToken>());
     }
 
     #endregion
@@ -116,7 +117,7 @@ public class StoreVectorsPipelineTests
     public async Task ExecuteAsync_UnregisteredStorage_Throws()
     {
         var context = CreateContext();
-        // Don't setup storage lookup → TryGet returns false
+        // _storages is empty — TryGetValue returns false
 
         var act = () => _pipeline.ExecuteAsync(context);
 
@@ -139,7 +140,7 @@ public class StoreVectorsPipelineTests
             }
         };
         // No "vectors" key in payload
-        SetupStorageLookup();
+        _storages["test-storage"] = _mockVectorStorage;
 
         var act = () => _pipeline.ExecuteAsync(context);
 
@@ -170,16 +171,6 @@ public class StoreVectorsPipelineTests
         };
         context.Payload["vectors"] = vectors;
         return context;
-    }
-
-    private void SetupStorageLookup()
-    {
-        _mockStorages.TryGet<IVectorStorage>("test-storage", out Arg.Any<IVectorStorage?>())
-            .Returns(x =>
-            {
-                x[1] = _mockVectorStorage;
-                return true;
-            });
     }
 
     #endregion

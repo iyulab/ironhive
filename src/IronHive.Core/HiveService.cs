@@ -1,79 +1,94 @@
 ﻿using IronHive.Abstractions;
 using IronHive.Abstractions.Agent;
+using IronHive.Abstractions.Catalog;
+using IronHive.Abstractions.Embedding;
+using IronHive.Abstractions.Files;
+using IronHive.Abstractions.Images;
 using IronHive.Abstractions.Memory;
-using IronHive.Abstractions.Registries;
-using IronHive.Abstractions.Tools;
+using IronHive.Abstractions.Messages;
+using IronHive.Abstractions.Videos;
+using IronHive.Abstractions.Audio;
+using IronHive.Abstractions.Vector;
+using IronHive.Abstractions.Queue;
 using IronHive.Abstractions.Workflow;
 using IronHive.Core.Memory;
 using IronHive.Core.Workflow;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace IronHive.Core;
 
-/// <inheritdoc />
-public class HiveService : IHiveService, IAsyncDisposable
+public class HiveService : IHiveService
 {
-    public HiveService(IServiceProvider services)
-    {
-        Services = services;
+    private readonly IAgentService _agents;
+    private readonly IServiceProvider _internalSp;
+    private readonly IReadOnlyDictionary<string, IVectorStorage> _vectorStorages;
+    private readonly IReadOnlyDictionary<string, IQueueStorage> _queueStorages;
 
-        Providers = services.GetRequiredService<IProviderRegistry>();
-        Storages = services.GetRequiredService<IStorageRegistry>();
-        Tools = services.GetRequiredService<IToolCollection>();
-        Memory = services.GetRequiredService<IMemoryService>();
-        Agents = services.GetRequiredService<IAgentService>();
-        Workflows = new WorkflowFactory(services);
+    internal HiveService(
+        IModelCatalogService catalog,
+        IMessageService messages,
+        IEmbeddingService embeddings,
+        IImageService images,
+        IVideoService videos,
+        IAudioService audio,
+        IFileStorageService files,
+        IMemoryService memory,
+        IWorkflowFactory workflows,
+        IAgentService agents,
+        IServiceProvider internalSp,
+        IReadOnlyDictionary<string, IVectorStorage> vectorStorages,
+        IReadOnlyDictionary<string, IQueueStorage> queueStorages)
+    {
+        Catalog = catalog;
+        Messages = messages;
+        Embeddings = embeddings;
+        Images = images;
+        Videos = videos;
+        Audio = audio;
+        Files = files;
+        Memory = memory;
+        Workflows = workflows;
+        _agents = agents;
+        _internalSp = internalSp;
+        _vectorStorages = vectorStorages;
+        _queueStorages = queueStorages;
     }
 
-    /// <inheritdoc />
-    public IServiceProvider Services { get; }
-
-    /// <inheritDoc />
-    public IProviderRegistry Providers { get; }
-
-    /// <inheritDoc />
-    public IStorageRegistry Storages { get; }
-
-    /// <inheritdoc />
-    public IToolCollection Tools { get; }
-
-    /// <inheritdoc />
+    public IModelCatalogService Catalog { get; }
+    public IMessageService Messages { get; }
+    public IEmbeddingService Embeddings { get; }
+    public IImageService Images { get; }
+    public IVideoService Videos { get; }
+    public IAudioService Audio { get; }
+    public IFileStorageService Files { get; }
     public IMemoryService Memory { get; }
-
-    /// <inheritdoc />
     public IWorkflowFactory Workflows { get; }
 
-    private IAgentService Agents { get; }
-
-    /// <inheritdoc />
     public IAgent CreateAgent(Action<AgentConfig> configure)
-    {
-        return Agents.CreateAgent(configure);
-    }
+        => _agents.CreateAgent(configure);
 
-    /// <inheritdoc />
     public IAgent CreateAgentFrom(AgentCard card)
     {
         ArgumentNullException.ThrowIfNull(card);
         if (string.IsNullOrWhiteSpace(card.Workflow))
             throw new ArgumentException("AgentCard.Workflow is required.", nameof(card));
-        return Agents.CreateAgentFromYaml(card.Workflow);
+        return _agents.CreateAgentFromYaml(card.Workflow);
     }
 
-    /// <inheritdoc />
     public IAgent CreateAgentFromYaml(string yaml)
+        => _agents.CreateAgentFromYaml(yaml);
+
+    public IMemoryWorker CreateMemoryWorker(
+        Func<MemoryWorkerBuilder, MemoryPipelineBuilder> configure)
     {
-        return Agents.CreateAgentFromYaml(yaml);
+        var builder = new MemoryWorkerBuilder(_vectorStorages, _queueStorages, _internalSp);
+        return configure(builder).Build();
     }
 
-    /// <summary>
-    /// Disposes the service provider if it implements <see cref="IAsyncDisposable"/> or <see cref="IDisposable"/>.
-    /// </summary>
     public async ValueTask DisposeAsync()
     {
-        if (Services is IAsyncDisposable asyncDisposable)
+        if (_internalSp is IAsyncDisposable asyncDisposable)
             await asyncDisposable.DisposeAsync().ConfigureAwait(false);
-        else if (Services is IDisposable disposable)
+        else if (_internalSp is IDisposable disposable)
             disposable.Dispose();
 
         GC.SuppressFinalize(this);
@@ -82,15 +97,12 @@ public class HiveService : IHiveService, IAsyncDisposable
 
 public static class HiveServiceExtensions
 {
-    /// <summary>
-    /// 메모리 작업자를 생성합니다.
-    /// </summary>
     public static IMemoryWorker CreateMemoryWorkerFrom(
         this IHiveService service,
         Func<MemoryWorkerBuilder, MemoryPipelineBuilder> configure)
     {
-        var builder = new MemoryWorkerBuilder(service.Services);
-        var pipelineBuilder = configure(builder);
-        return pipelineBuilder.Build();
+        if (service is HiveService hs)
+            return hs.CreateMemoryWorker(configure);
+        throw new NotSupportedException($"CreateMemoryWorkerFrom is not supported by {service.GetType().Name}");
     }
 }

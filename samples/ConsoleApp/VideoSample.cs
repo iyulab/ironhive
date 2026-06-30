@@ -26,7 +26,7 @@ public static class VideoSample
             }, GoogleAIServiceType.Videos)
             .Build();
 
-        var videoService = hive.Services.GetRequiredService<IVideoService>();
+        var videoService = hive.Videos;
         var folderPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
 
         Console.WriteLine("=== 비디오 생성 테스트 ===\n");

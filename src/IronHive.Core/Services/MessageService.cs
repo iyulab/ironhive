@@ -4,7 +4,6 @@ using System.Threading.Channels;
 using Microsoft.Extensions.DependencyInjection;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Registries;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Utilities;
 
@@ -13,24 +12,24 @@ namespace IronHive.Core.Services;
 /// <inheritdoc />
 public class MessageService : IMessageService
 {
-    private readonly IServiceProvider _services;
-    private readonly IProviderRegistry _providers;
+    private readonly IServiceProvider? _services;
+    private readonly IReadOnlyDictionary<string, IMessageGenerator> _generators;
     private readonly IToolCollection _tools;
     private readonly IToolOutputFilter? _toolFilter;
 
-    public MessageService(IServiceProvider services, IProviderRegistry providers, IToolCollection tools)
+    internal MessageService(IReadOnlyDictionary<string, IMessageGenerator> generators, IToolCollection tools, IServiceProvider? services)
     {
-        _services = services;
-        _providers = providers;
+        _generators = generators;
         _tools = tools;
-        _toolFilter = services.GetService<IToolOutputFilter>();
+        _services = services;
+        _toolFilter = services?.GetService<IToolOutputFilter>();
     }
 
     private IMessageGenerator ResolveGenerator(string? provider)
     {
         if (string.IsNullOrWhiteSpace(provider))
         {
-            var entries = _providers.Entries<IMessageGenerator>().ToList();
+            var entries = _generators.ToList();
             if (entries.Count == 0)
                 throw new InvalidOperationException(
                     "No message generators are registered. Call AddMessageGenerator() during setup.");
@@ -41,7 +40,7 @@ public class MessageService : IMessageService
             return entries[0].Value;
         }
 
-        if (!_providers.TryGet<IMessageGenerator>(provider, out var generator))
+        if (!_generators.TryGetValue(provider, out var generator))
             throw new KeyNotFoundException($"Message generator '{provider}' is not registered.");
         return generator;
     }
