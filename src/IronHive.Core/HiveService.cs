@@ -1,6 +1,6 @@
-﻿using IronHive.Abstractions;
+using IronHive.Abstractions;
 using IronHive.Abstractions.Agent;
-using IronHive.Abstractions.Catalog;
+using IronHive.Abstractions.Models;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Images;
@@ -24,7 +24,7 @@ public class HiveService : IHiveService
     private readonly IReadOnlyDictionary<string, IQueueStorage> _queueStorages;
 
     internal HiveService(
-        IModelCatalogService catalog,
+        IModelService models,
         IMessageService messages,
         IEmbeddingService embeddings,
         IImageService images,
@@ -38,7 +38,7 @@ public class HiveService : IHiveService
         IReadOnlyDictionary<string, IVectorStorage> vectorStorages,
         IReadOnlyDictionary<string, IQueueStorage> queueStorages)
     {
-        Catalog = catalog;
+        Models = models;
         Messages = messages;
         Embeddings = embeddings;
         Images = images;
@@ -53,7 +53,7 @@ public class HiveService : IHiveService
         _queueStorages = queueStorages;
     }
 
-    public IModelCatalogService Catalog { get; }
+    public IModelService Models { get; }
     public IMessageService Messages { get; }
     public IEmbeddingService Embeddings { get; }
     public IImageService Images { get; }

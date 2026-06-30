@@ -7,7 +7,7 @@
 // =============================================================================
 
 using System.Text;
-using IronHive.Abstractions.Catalog;
+using IronHive.Abstractions.Models;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Tools;
@@ -113,7 +113,7 @@ return failed > 0 ? 1 : 0;
 // =============================================================================
 
 async Task<List<(string, TestResult)>> RunScenarios(
-    IModelCatalog? catalog,
+    IModelFinder? catalog,
     IMessageGenerator generator,
     string model)
 {
@@ -1505,7 +1505,7 @@ async Task<List<(string, TestResult)>> TestOpenAI()
         Project = GetEnv("OPENAI_PROJECT") ?? ""
     };
 
-    var catalog = new OpenAIModelCatalog(config);
+    var catalog = new OpenAIModelFinder(config);
     var generator = new OpenAIMessageGenerator(config);
     var model = GetEnv("OPENAI_MODEL") ?? "gpt-4o-mini";
 
@@ -1548,7 +1548,7 @@ async Task<List<(string, TestResult)>> TestAnthropic()
         ApiKey = apiKey
     };
 
-    var catalog = new AnthropicModelCatalog(config);
+    var catalog = new AnthropicModelFinder(config);
     var generator = new AnthropicMessageGenerator(config);
     var model = GetEnv("ANTHROPIC_MODEL") ?? "claude-3-5-haiku-latest";
 
@@ -1566,7 +1566,7 @@ async Task<List<(string, TestResult)>> TestGoogleAI()
         ApiKey = apiKey
     };
 
-    var catalog = new GoogleAIModelCatalog(config);
+    var catalog = new GoogleAIModelFinder(config);
     var generator = new GoogleAIMessageGenerator(config);
     var model = GetEnv("GOOGLE_MODEL") ?? "gemini-2.0-flash";
 
@@ -1580,7 +1580,7 @@ async Task<List<(string, TestResult)>> TestLMStudio()
     var envModel = GetEnv("LMSTUDIO_MODEL");
 
     var config = new OpenAIConfig { BaseUrl = baseUrl, ApiKey = apiKey };
-    var catalog = new OpenAIModelCatalog(config);
+    var catalog = new OpenAIModelFinder(config);
     var generator = new OpenAIMessageGenerator(config);
 
     try
@@ -1608,7 +1608,7 @@ async Task<List<(string, TestResult)>> TestGPUStack()
         return [("skip", TestResult.Skip("GPUSTACK_API_KEY not configured"))];
 
     var config = new OpenAIConfig { BaseUrl = baseUrl, ApiKey = apiKey };
-    var catalog = new OpenAIModelCatalog(config);
+    var catalog = new OpenAIModelFinder(config);
     var generator = new OpenAIMessageGenerator(config);
 
     try

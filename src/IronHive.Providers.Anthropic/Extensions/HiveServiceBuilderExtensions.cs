@@ -1,4 +1,4 @@
-﻿using IronHive.Providers.Anthropic;
+using IronHive.Providers.Anthropic;
 
 namespace IronHive.Abstractions;
 
@@ -14,7 +14,7 @@ public static class HiveServiceBuilderExtensions
         AnthropicServiceType serviceType = AnthropicServiceType.All)
     {
         if (serviceType.HasFlag(AnthropicServiceType.Models))
-            builder.AddModelCatalog(providerName, new AnthropicModelCatalog(config));
+            builder.AddModelFinder(providerName, new AnthropicModelFinder(config));
 
         if (serviceType.HasFlag(AnthropicServiceType.Messages))
             builder.AddMessageGenerator(providerName, new AnthropicMessageGenerator(config));

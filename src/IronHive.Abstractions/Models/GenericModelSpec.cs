@@ -1,4 +1,4 @@
-﻿namespace IronHive.Abstractions.Catalog;
+namespace IronHive.Abstractions.Models;
 
 /// <summary>
 /// 모든 모델이 공유하는 공통 스펙입니다.

@@ -1,8 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using System.Text;
 using System.Text.Json;
-using IronHive.Abstractions.Catalog;
+using IronHive.Abstractions.Models;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Tools;
 
@@ -12,13 +12,13 @@ namespace WebServer.Controllers;
 [Route("/api")]
 public class ServiceController : ControllerBase
 {
-    private readonly IModelCatalogService _model;
+    private readonly IModelService _model;
     private readonly IMessageService _message;
     private readonly IToolCollection _tools;
     private readonly JsonSerializerOptions _jsonOptions;
     
     public ServiceController(
-        IModelCatalogService model,
+        IModelService model,
         IMessageService message,
         IToolCollection tools,
         IOptions<JsonOptions> jsonOptions)

@@ -1,6 +1,6 @@
-﻿using IronHive.Abstractions;
+using IronHive.Abstractions;
 using IronHive.Abstractions.Audio;
-using IronHive.Abstractions.Catalog;
+using IronHive.Abstractions.Models;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Images;
@@ -22,7 +22,7 @@ namespace IronHive.Core;
 
 public class HiveServiceBuilder : IHiveServiceBuilder
 {
-    private readonly Dictionary<string, IModelCatalog> _catalogs = new();
+    private readonly Dictionary<string, IModelFinder> _catalogs = new();
     private readonly Dictionary<string, IMessageGenerator> _messageGenerators = new();
     private readonly Dictionary<string, IEmbeddingGenerator> _embeddingGenerators = new();
     private readonly Dictionary<string, IImageGenerator> _imageGenerators = new();
@@ -35,7 +35,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     private readonly List<Action<IServiceCollection>> _stepRegistrations = [];
     private readonly List<Action<IToolCollection, IServiceProvider?>> _toolInitializers = [];
 
-    public IHiveServiceBuilder AddModelCatalog(string name, IModelCatalog catalog)
+    public IHiveServiceBuilder AddModelFinder(string name, IModelFinder catalog)
     { _catalogs[name] = catalog; return this; }
 
     public IHiveServiceBuilder AddMessageGenerator(string name, IMessageGenerator generator)
@@ -84,7 +84,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         var internalSc = new ServiceCollection();
 
         // 딕셔너리를 내부 DI에 등록 (파이프라인 등에서 주입받을 수 있도록)
-        internalSc.AddSingleton<IReadOnlyDictionary<string, IModelCatalog>>(_catalogs);
+        internalSc.AddSingleton<IReadOnlyDictionary<string, IModelFinder>>(_catalogs);
         internalSc.AddSingleton<IReadOnlyDictionary<string, IMessageGenerator>>(_messageGenerators);
         internalSc.AddSingleton<IReadOnlyDictionary<string, IEmbeddingGenerator>>(_embeddingGenerators);
         internalSc.AddSingleton<IReadOnlyDictionary<string, IImageGenerator>>(_imageGenerators);
@@ -111,7 +111,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
             init(toolCollection, sp);
 
         // 서비스 생성
-        var catalogService = new ModelCatalogService(_catalogs);
+        var catalogService = new ModelService(_catalogs);
         var embeddingService = new EmbeddingService(_embeddingGenerators);
         var messageService = new MessageService(_messageGenerators, toolCollection, sp);
         var imageService = new ImageService(_imageGenerators);
@@ -123,7 +123,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         var agentService = new AgentService(messageService);
 
         return new HiveService(
-            catalog: catalogService,
+            models: catalogService,
             messages: messageService,
             embeddings: embeddingService,
             images: imageService,

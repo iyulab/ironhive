@@ -14,7 +14,7 @@ public static class HiveServiceBuilderExtensions
         OpenAIServiceType serviceType = OpenAIServiceType.All)
     {
         if (serviceType.HasFlag(OpenAIServiceType.Models))
-            builder.AddModelCatalog(providerName, new OpenAIModelCatalog(config));
+            builder.AddModelFinder(providerName, new OpenAIModelFinder(config));
 
         if (serviceType.HasFlag(OpenAIServiceType.Messages))
             builder.AddMessageGenerator(providerName, new OpenAIMessageGenerator(config));

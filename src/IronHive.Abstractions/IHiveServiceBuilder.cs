@@ -1,5 +1,5 @@
-﻿using IronHive.Abstractions.Audio;
-using IronHive.Abstractions.Catalog;
+using IronHive.Abstractions.Audio;
+using IronHive.Abstractions.Models;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Images;
@@ -14,7 +14,7 @@ namespace IronHive.Abstractions;
 
 public interface IHiveServiceBuilder
 {
-    IHiveServiceBuilder AddModelCatalog(string name, IModelCatalog catalog);
+    IHiveServiceBuilder AddModelFinder(string name, IModelFinder catalog);
     IHiveServiceBuilder AddMessageGenerator(string name, IMessageGenerator generator);
     IHiveServiceBuilder AddEmbeddingGenerator(string name, IEmbeddingGenerator generator);
     IHiveServiceBuilder AddImageGenerator(string name, IImageGenerator generator);

@@ -1,14 +1,14 @@
-﻿using System.Net;
-using IronHive.Abstractions.Catalog;
+using System.Net;
+using IronHive.Abstractions.Models;
 
 namespace IronHive.Core.Services;
 
 /// <inheritdoc />
-public class ModelCatalogService : IModelCatalogService
+public class ModelService : IModelService
 {
-    private readonly IReadOnlyDictionary<string, IModelCatalog> _catalogs;
+    private readonly IReadOnlyDictionary<string, IModelFinder> _catalogs;
 
-    internal ModelCatalogService(IReadOnlyDictionary<string, IModelCatalog> catalogs)
+    internal ModelService(IReadOnlyDictionary<string, IModelFinder> catalogs)
     {
         _catalogs = catalogs;
     }

@@ -1,19 +1,19 @@
 using Anthropic;
 using Anthropic.Models.Models;
-using IronHive.Abstractions.Catalog;
+using IronHive.Abstractions.Models;
 
 namespace IronHive.Providers.Anthropic;
 
 /// <inheritdoc />
-public class AnthropicModelCatalog : IModelCatalog
+public class AnthropicModelFinder : IModelFinder
 {
     private readonly IAnthropicClient _client;
 
-    public AnthropicModelCatalog(string apiKey)
+    public AnthropicModelFinder(string apiKey)
         : this(new AnthropicConfig { ApiKey = apiKey })
     { }
 
-    public AnthropicModelCatalog(AnthropicConfig config)
+    public AnthropicModelFinder(AnthropicConfig config)
     {
         _client = AnthropicClientFactory.Create(config);
     }

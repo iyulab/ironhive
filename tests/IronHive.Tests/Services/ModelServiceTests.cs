@@ -1,17 +1,17 @@
 using System.Net;
 using FluentAssertions;
-using IronHive.Abstractions.Catalog;
+using IronHive.Abstractions.Models;
 using IronHive.Core.Services;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
 namespace IronHive.Tests.Services;
 
-public class ModelCatalogServiceTests
+public class ModelServiceTests
 {
-    private readonly Dictionary<string, IModelCatalog> _catalogs = new();
+    private readonly Dictionary<string, IModelFinder> _catalogs = new();
 
-    private ModelCatalogService CreateService() => new(_catalogs);
+    private ModelService CreateService() => new(_catalogs);
 
     // Test implementation of IModelSpec
     private sealed class TestModelSpec : IModelSpec
@@ -49,7 +49,7 @@ public class ModelCatalogServiceTests
     [Fact]
     public async Task ListModelsAsync_SingleProvider_ReturnsModels()
     {
-        var catalog = Substitute.For<IModelCatalog>();
+        var catalog = Substitute.For<IModelFinder>();
         catalog.ListModelsAsync(Arg.Any<CancellationToken>())
             .Returns([new TestModelSpec { ModelId = "gpt-4" }]);
         _catalogs["openai"] = catalog;
@@ -65,11 +65,11 @@ public class ModelCatalogServiceTests
     [Fact]
     public async Task ListModelsAsync_MultipleProviders_ReturnsAll()
     {
-        var catalog1 = Substitute.For<IModelCatalog>();
+        var catalog1 = Substitute.For<IModelFinder>();
         catalog1.ListModelsAsync(Arg.Any<CancellationToken>())
             .Returns([new TestModelSpec { ModelId = "gpt-4" }]);
 
-        var catalog2 = Substitute.For<IModelCatalog>();
+        var catalog2 = Substitute.For<IModelFinder>();
         catalog2.ListModelsAsync(Arg.Any<CancellationToken>())
             .Returns([new TestModelSpec { ModelId = "claude-3" }]);
 
@@ -86,7 +86,7 @@ public class ModelCatalogServiceTests
     [Fact]
     public async Task ListModelsAsync_UnauthorizedProvider_ReturnsEmptyModelsForThatProvider()
     {
-        var catalog = Substitute.For<IModelCatalog>();
+        var catalog = Substitute.For<IModelFinder>();
         catalog.ListModelsAsync(Arg.Any<CancellationToken>())
             .Throws(new HttpRequestException("Unauthorized", null, HttpStatusCode.Unauthorized));
         _catalogs["bad-provider"] = catalog;
@@ -104,7 +104,7 @@ public class ModelCatalogServiceTests
     [Fact]
     public async Task ListModelsAsync_ByProvider_ExistingProvider_ReturnsModels()
     {
-        var catalog = Substitute.For<IModelCatalog>();
+        var catalog = Substitute.For<IModelFinder>();
         catalog.ListModelsAsync(Arg.Any<CancellationToken>())
             .Returns([new TestModelSpec { ModelId = "model-1" }]);
         _catalogs["openai"] = catalog;
@@ -131,7 +131,7 @@ public class ModelCatalogServiceTests
     [Fact]
     public async Task FindModelAsync_ExistingModel_ReturnsSpec()
     {
-        var catalog = Substitute.For<IModelCatalog>();
+        var catalog = Substitute.For<IModelFinder>();
         catalog.FindModelAsync("gpt-4", Arg.Any<CancellationToken>())
             .Returns(new TestModelSpec { ModelId = "gpt-4", DisplayName = "GPT-4" });
         _catalogs["openai"] = catalog;
@@ -155,7 +155,7 @@ public class ModelCatalogServiceTests
     [Fact]
     public async Task FindModelAsync_UnknownModel_ReturnsNull()
     {
-        var catalog = Substitute.For<IModelCatalog>();
+        var catalog = Substitute.For<IModelFinder>();
         catalog.FindModelAsync("nonexistent", Arg.Any<CancellationToken>())
             .Returns((IModelSpec?)null);
         _catalogs["openai"] = catalog;
@@ -172,7 +172,7 @@ public class ModelCatalogServiceTests
     public async Task FindModelAsync_Typed_MatchingType_ReturnsTyped()
     {
         var model = new SpecialModelSpec { ModelId = "special", ContextWindow = 128000 };
-        var catalog = Substitute.For<IModelCatalog>();
+        var catalog = Substitute.For<IModelFinder>();
         catalog.FindModelAsync("special", Arg.Any<CancellationToken>())
             .Returns(model);
         _catalogs["openai"] = catalog;
@@ -188,7 +188,7 @@ public class ModelCatalogServiceTests
     public async Task FindModelAsync_Typed_WrongType_ReturnsNull()
     {
         var model = new TestModelSpec { ModelId = "basic" };
-        var catalog = Substitute.For<IModelCatalog>();
+        var catalog = Substitute.For<IModelFinder>();
         catalog.FindModelAsync("basic", Arg.Any<CancellationToken>())
             .Returns(model);
         _catalogs["openai"] = catalog;

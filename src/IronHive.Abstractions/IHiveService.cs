@@ -1,5 +1,5 @@
-﻿using IronHive.Abstractions.Agent;
-using IronHive.Abstractions.Catalog;
+using IronHive.Abstractions.Agent;
+using IronHive.Abstractions.Models;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Images;
@@ -13,7 +13,7 @@ namespace IronHive.Abstractions;
 
 public interface IHiveService : IAsyncDisposable
 {
-    IModelCatalogService Catalog { get; }
+    IModelService Models { get; }
     IMessageService Messages { get; }
     IEmbeddingService Embeddings { get; }
     IImageService Images { get; }

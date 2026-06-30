@@ -1,6 +1,6 @@
 using FluentAssertions;
 using IronHive.Abstractions;
-using IronHive.Abstractions.Catalog;
+using IronHive.Abstractions.Models;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Messages;
@@ -38,8 +38,8 @@ public class HiveServiceTests
         var service = builder.Build();
 
         // Assert
-        service.Catalog.Should().NotBeNull();
-        service.Catalog.Should().BeAssignableTo<IModelCatalogService>();
+        service.Models.Should().NotBeNull();
+        service.Models.Should().BeAssignableTo<IModelService>();
     }
 
     [Fact]

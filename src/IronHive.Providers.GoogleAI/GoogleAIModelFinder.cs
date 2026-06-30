@@ -1,23 +1,23 @@
 using Google.GenAI;
-using IronHive.Abstractions.Catalog;
+using IronHive.Abstractions.Models;
 
 namespace IronHive.Providers.GoogleAI;
 
 /// <inheritdoc />
-public class GoogleAIModelCatalog : IModelCatalog
+public class GoogleAIModelFinder : IModelFinder
 {
     private readonly Client _client;
 
-    public GoogleAIModelCatalog(string apiKey)
+    public GoogleAIModelFinder(string apiKey)
         : this(new GoogleAIConfig { ApiKey = apiKey })
     { }
 
-    public GoogleAIModelCatalog(GoogleAIConfig config)
+    public GoogleAIModelFinder(GoogleAIConfig config)
     {
         _client = GoogleAIClientFactory.Create(config);
     }
 
-    public GoogleAIModelCatalog(VertexAIConfig config)
+    public GoogleAIModelFinder(VertexAIConfig config)
     {
         _client = GoogleAIClientFactory.Create(config);
     }

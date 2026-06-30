@@ -1,17 +1,17 @@
-using IronHive.Abstractions.Catalog;
+using IronHive.Abstractions.Models;
 using OpenAI.Models;
 
 namespace IronHive.Providers.OpenAI;
 
-public class OpenAIModelCatalog : IModelCatalog
+public class OpenAIModelFinder : IModelFinder
 {
     private readonly OpenAIModelClient _client;
 
-    public OpenAIModelCatalog(string apiKey)
+    public OpenAIModelFinder(string apiKey)
         : this(new OpenAIConfig { ApiKey = apiKey })
     { }
 
-    public OpenAIModelCatalog(OpenAIConfig config)
+    public OpenAIModelFinder(OpenAIConfig config)
     {
         _client = OpenAIClientFactory.Create(config).GetOpenAIModelClient();
     }

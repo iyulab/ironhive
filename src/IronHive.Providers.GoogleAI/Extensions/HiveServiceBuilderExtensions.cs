@@ -1,4 +1,4 @@
-﻿using IronHive.Providers.GoogleAI;
+using IronHive.Providers.GoogleAI;
 
 namespace IronHive.Abstractions;
 
@@ -14,7 +14,7 @@ public static class HiveServiceBuilderExtensions
         GoogleAIServiceType serviceType = GoogleAIServiceType.All)
     {
         if (serviceType.HasFlag(GoogleAIServiceType.Models))
-            builder.AddModelCatalog(providerName, new GoogleAIModelCatalog(config));
+            builder.AddModelFinder(providerName, new GoogleAIModelFinder(config));
 
         if (serviceType.HasFlag(GoogleAIServiceType.Messages))
             builder.AddMessageGenerator(providerName, new GoogleAIMessageGenerator(config));
@@ -44,7 +44,7 @@ public static class HiveServiceBuilderExtensions
         GoogleAIServiceType serviceType = GoogleAIServiceType.All)
     {
         if (serviceType.HasFlag(GoogleAIServiceType.Models))
-            builder.AddModelCatalog(providerName, new GoogleAIModelCatalog(config));
+            builder.AddModelFinder(providerName, new GoogleAIModelFinder(config));
 
         if (serviceType.HasFlag(GoogleAIServiceType.Messages))
             builder.AddMessageGenerator(providerName, new GoogleAIMessageGenerator(config));

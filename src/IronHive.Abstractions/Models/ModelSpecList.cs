@@ -1,4 +1,4 @@
-﻿namespace IronHive.Abstractions.Catalog;
+namespace IronHive.Abstractions.Models;
 
 /// <summary>
 /// 공급자와 모든 모델의 사양 정보를 함께 담는 레코드입니다.

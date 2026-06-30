@@ -1,6 +1,6 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
-namespace IronHive.Abstractions.Catalog;
+namespace IronHive.Abstractions.Models;
 
 /// <summary>
 /// 다형 직렬화를 위한 모델 사양의 기본 인터페이스입니다.

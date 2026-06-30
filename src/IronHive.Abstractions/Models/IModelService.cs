@@ -1,9 +1,9 @@
-﻿namespace IronHive.Abstractions.Catalog;
+namespace IronHive.Abstractions.Models;
 
 /// <summary>
 /// 전체 모델 정보를 제공하는 서비스 입니다.
 /// </summary>
-public interface IModelCatalogService
+public interface IModelService
 {
     /// <summary>
     /// 사용 가능한 모든 모델 목록을 비동기적으로 가져옵니다.

@@ -1,4 +1,4 @@
-﻿namespace IronHive.Abstractions.Catalog;
+namespace IronHive.Abstractions.Models;
 
 /// <summary>
 /// 임베딩 모델 전용 스펙입니다.
