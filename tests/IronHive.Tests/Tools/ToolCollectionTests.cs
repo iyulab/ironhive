@@ -180,5 +180,52 @@ public class ToolCollectionTests
         collection.Remove("missing").Should().BeFalse();
     }
 
+    [Fact]
+    public void RemoveAll_NoPredicate_RemovesAll()
+    {
+        var collection = new ToolCollection([CreateMockTool("a"), CreateMockTool("b"), CreateMockTool("c")]);
+
+        collection.RemoveAll().Should().Be(3);
+        collection.Count.Should().Be(0);
+    }
+
+    [Fact]
+    public void RemoveAll_WithPredicate_RemovesMatching()
+    {
+        var collection = new ToolCollection([CreateMockTool("keep"), CreateMockTool("remove1"), CreateMockTool("remove2")]);
+
+        collection.RemoveAll(t => t.UniqueName.StartsWith("remove", StringComparison.Ordinal)).Should().Be(2);
+        collection.Count.Should().Be(1);
+        collection.ContainsKey("keep").Should().BeTrue();
+    }
+
+    [Fact]
+    public void AddRange_AddsAllItems()
+    {
+        var collection = new ToolCollection();
+
+        collection.AddRange([CreateMockTool("a"), CreateMockTool("b")]);
+
+        collection.Count.Should().Be(2);
+    }
+
+    [Fact]
+    public void Keys_ReturnsAllKeys()
+    {
+        var collection = new ToolCollection([CreateMockTool("x"), CreateMockTool("y")]);
+
+        collection.Keys.Should().Contain("x").And.Contain("y");
+    }
+
+    [Fact]
+    public void Clear_RemovesAll()
+    {
+        var collection = new ToolCollection([CreateMockTool("a"), CreateMockTool("b")]);
+
+        collection.Clear();
+
+        collection.Count.Should().Be(0);
+    }
+
     #endregion
 }
