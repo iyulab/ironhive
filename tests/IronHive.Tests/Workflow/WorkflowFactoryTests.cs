@@ -41,6 +41,7 @@ public class WorkflowFactoryTests
         var factory = new WorkflowFactory(services);
         var def = new WorkflowDefinition
         {
+            Name = "test-workflow",
             Version = new Version(1, 0, 0),
             Steps = [new TaskNode { Id = "n1", Step = "step1" }]
         };
@@ -156,6 +157,7 @@ public class WorkflowFactoryTests
         var factory = new WorkflowFactory();
         var def = new WorkflowDefinition
         {
+            Name = "my-flow",
             Version = new Version(2, 3, 4),
             Steps = []
         };

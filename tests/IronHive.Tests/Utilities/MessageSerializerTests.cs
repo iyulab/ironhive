@@ -93,6 +93,7 @@ public class MessageSerializerTests
     {
         var original = new SerializerTestPayload
         {
+            Name = "test",
             Value = 123,
             Tags = ["a", "b", "c"]
         };
@@ -117,6 +118,7 @@ public class MessageSerializerTests
             Id = "container-1",
             Payload = new SerializerTestPayload
             {
+                Name = "nested",
                 Value = 999,
                 Tags = ["x"]
             }

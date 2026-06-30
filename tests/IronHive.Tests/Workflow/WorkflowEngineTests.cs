@@ -498,6 +498,7 @@ public class WorkflowEngineTests
     {
         var engine = new WorkflowEngine<TestContext>(new Dictionary<string, IWorkflowStep>())
         {
+            Name = "TestWorkflow",
             Nodes = [],
             Version = new Version(1, 2, 3)
         };

@@ -458,7 +458,7 @@ public class ChatClientAdapterTests : IDisposable
         }
 
         updates.Should().HaveCount(2);
-        updates[0].ResponseId.Should().Be("stream-1");
+        updates[0].ResponseId.Should().BeNull();
         updates[0].Contents.OfType<TextContent>().Single().Text.Should().Be("Hello ");
         updates[1].Contents.OfType<TextContent>().Single().Text.Should().Be("World");
     }

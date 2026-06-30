@@ -228,6 +228,7 @@ public class HiveServiceBuilderRegistrationTests
 
         var definition = new WorkflowDefinition
         {
+            Name = "test-workflow",
             Steps = [new TaskNode { Id = "n1", Step = "my-step" }]
         };
 
