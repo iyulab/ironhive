@@ -3,14 +3,14 @@ using IronHive.Core.Tools;
 
 namespace IronHive.Tests.Tools;
 
-public class ToolResultFilterTests
+public class ToolOutputFilterTests
 {
     #region Basic Behavior
 
     [Fact]
     public void Filter_NullResult_ReturnsOriginal()
     {
-        var filter = new ToolResultFilter();
+        var filter = new ToolOutputFilter();
         var output = new ToolOutput(true, null);
 
         var result = filter.Filter("test_tool", output);
@@ -21,7 +21,7 @@ public class ToolResultFilterTests
     [Fact]
     public void Filter_EmptyResult_ReturnsOriginal()
     {
-        var filter = new ToolResultFilter();
+        var filter = new ToolOutputFilter();
         var output = new ToolOutput(true, "");
 
         var result = filter.Filter("test_tool", output);
@@ -32,7 +32,7 @@ public class ToolResultFilterTests
     [Fact]
     public void Filter_ShortResult_NoChange()
     {
-        var filter = new ToolResultFilter();
+        var filter = new ToolOutputFilter();
         var output = ToolOutput.Success("hello world");
 
         var result = filter.Filter("test_tool", output);
@@ -43,7 +43,7 @@ public class ToolResultFilterTests
     [Fact]
     public void Filter_PreservesIsSuccess()
     {
-        var filter = new ToolResultFilter(new ToolResultFilterOptions
+        var filter = new ToolOutputFilter(new ToolOutputFilterOptions
         {
             EnableWhitespaceNormalization = true
         });
@@ -69,7 +69,7 @@ public class ToolResultFilterTests
             ]
             """;
 
-        var result = ToolResultFilter.TryConvertJsonArrayToCsv(json);
+        var result = ToolOutputFilter.TryConvertJsonArrayToCsv(json);
 
         Assert.Contains("name,size,active", result);
         Assert.Contains("foo,123,true", result);
@@ -84,7 +84,7 @@ public class ToolResultFilterTests
     {
         var json = """{"name": "foo", "size": 123}""";
 
-        var result = ToolResultFilter.TryConvertJsonArrayToCsv(json);
+        var result = ToolOutputFilter.TryConvertJsonArrayToCsv(json);
 
         Assert.Equal(json, result);
     }
@@ -100,7 +100,7 @@ public class ToolResultFilterTests
             ]
             """;
 
-        var result = ToolResultFilter.TryConvertJsonArrayToCsv(json);
+        var result = ToolOutputFilter.TryConvertJsonArrayToCsv(json);
 
         Assert.Equal(json, result);
     }
@@ -110,7 +110,7 @@ public class ToolResultFilterTests
     {
         var json = """[{"name": "foo"}, {"name": "bar"}]""";
 
-        var result = ToolResultFilter.TryConvertJsonArrayToCsv(json, minElements: 3);
+        var result = ToolOutputFilter.TryConvertJsonArrayToCsv(json, minElements: 3);
 
         Assert.Equal(json, result);
     }
@@ -120,7 +120,7 @@ public class ToolResultFilterTests
     {
         var text = "This is not JSON at all";
 
-        var result = ToolResultFilter.TryConvertJsonArrayToCsv(text);
+        var result = ToolOutputFilter.TryConvertJsonArrayToCsv(text);
 
         Assert.Equal(text, result);
     }
@@ -130,7 +130,7 @@ public class ToolResultFilterTests
     {
         var json = """[1, 2, 3, 4, 5]""";
 
-        var result = ToolResultFilter.TryConvertJsonArrayToCsv(json);
+        var result = ToolOutputFilter.TryConvertJsonArrayToCsv(json);
 
         Assert.Equal(json, result);
     }
@@ -146,7 +146,7 @@ public class ToolResultFilterTests
             ]
             """;
 
-        var result = ToolResultFilter.TryConvertJsonArrayToCsv(json);
+        var result = ToolOutputFilter.TryConvertJsonArrayToCsv(json);
 
         Assert.Contains("\"foo, bar\"", result);
     }
@@ -162,7 +162,7 @@ public class ToolResultFilterTests
             ]
             """;
 
-        var result = ToolResultFilter.TryConvertJsonArrayToCsv(json);
+        var result = ToolOutputFilter.TryConvertJsonArrayToCsv(json);
 
         Assert.Contains("name,value", result);
         Assert.Contains("foo,", result);
@@ -180,9 +180,34 @@ public class ToolResultFilterTests
             ]
             """;
 
-        var result = ToolResultFilter.TryConvertJsonArrayToCsv(json);
+        var result = ToolOutputFilter.TryConvertJsonArrayToCsv(json);
 
         Assert.Equal(json, result);
+    }
+
+    [Fact]
+    public void JsonToCsv_RespectsMinElementsOption()
+    {
+        var filter = new ToolOutputFilter(new ToolOutputFilterOptions
+        {
+            EnableJsonToCsv = true,
+            JsonToCsvMinElements = 5,
+            EnableWhitespaceNormalization = false
+        });
+
+        // 3 elements — below custom threshold of 5, should NOT convert
+        var json = """
+            [
+                {"name": "foo", "value": 1},
+                {"name": "bar", "value": 2},
+                {"name": "baz", "value": 3}
+            ]
+            """;
+
+        var output = ToolOutput.Success(json);
+        var result = filter.Filter("test_tool", output);
+
+        Assert.Same(output, result);
     }
 
     #endregion
@@ -194,7 +219,7 @@ public class ToolResultFilterTests
     {
         var input = "line1\n\n\n\n\nline2";
 
-        var result = ToolResultFilter.NormalizeWhitespace(input);
+        var result = ToolOutputFilter.NormalizeWhitespace(input);
 
         Assert.Equal("line1\n\nline2", result);
     }
@@ -204,7 +229,7 @@ public class ToolResultFilterTests
     {
         var input = "line1\n\nline2";
 
-        var result = ToolResultFilter.NormalizeWhitespace(input);
+        var result = ToolOutputFilter.NormalizeWhitespace(input);
 
         Assert.Equal("line1\n\nline2", result);
     }
@@ -214,7 +239,7 @@ public class ToolResultFilterTests
     {
         var input = "line1   \nline2\t\t\nline3";
 
-        var result = ToolResultFilter.NormalizeWhitespace(input);
+        var result = ToolOutputFilter.NormalizeWhitespace(input);
 
         Assert.Equal("line1\nline2\nline3", result);
     }
@@ -224,7 +249,7 @@ public class ToolResultFilterTests
     {
         var input = "  \n\nhello world\n\n  ";
 
-        var result = ToolResultFilter.NormalizeWhitespace(input);
+        var result = ToolOutputFilter.NormalizeWhitespace(input);
 
         Assert.Equal("hello world", result);
     }
@@ -236,7 +261,7 @@ public class ToolResultFilterTests
     [Fact]
     public void Filter_OversizedResult_Truncates()
     {
-        var filter = new ToolResultFilter(new ToolResultFilterOptions
+        var filter = new ToolOutputFilter(new ToolOutputFilterOptions
         {
             MaxResultChars = 100,
             KeepHeadLines = 3,
@@ -262,7 +287,7 @@ public class ToolResultFilterTests
     [Fact]
     public void Filter_OversizedSingleLine_CharacterTruncation()
     {
-        var filter = new ToolResultFilter(new ToolResultFilterOptions
+        var filter = new ToolOutputFilter(new ToolOutputFilterOptions
         {
             MaxResultChars = 100,
             KeepHeadLines = 5,
@@ -283,7 +308,7 @@ public class ToolResultFilterTests
     [Fact]
     public void Filter_UnderMaxChars_NoTruncation()
     {
-        var filter = new ToolResultFilter(new ToolResultFilterOptions
+        var filter = new ToolOutputFilter(new ToolOutputFilterOptions
         {
             MaxResultChars = 1000,
             EnableJsonToCsv = false,
@@ -304,7 +329,7 @@ public class ToolResultFilterTests
     [Fact]
     public void Filter_AllStrategiesApplied()
     {
-        var filter = new ToolResultFilter(new ToolResultFilterOptions
+        var filter = new ToolOutputFilter(new ToolOutputFilterOptions
         {
             EnableJsonToCsv = true,
             EnableWhitespaceNormalization = true,
@@ -332,7 +357,7 @@ public class ToolResultFilterTests
     [Fact]
     public void Filter_DisabledStrategies_NoChange()
     {
-        var filter = new ToolResultFilter(new ToolResultFilterOptions
+        var filter = new ToolOutputFilter(new ToolOutputFilterOptions
         {
             EnableJsonToCsv = false,
             EnableWhitespaceNormalization = false,
@@ -360,25 +385,25 @@ public class ToolResultFilterTests
     [Fact]
     public void EscapeCsvField_NoSpecialChars_Unchanged()
     {
-        Assert.Equal("hello", ToolResultFilter.EscapeCsvField("hello"));
+        Assert.Equal("hello", ToolOutputFilter.EscapeCsvField("hello"));
     }
 
     [Fact]
     public void EscapeCsvField_Comma_Quoted()
     {
-        Assert.Equal("\"hello, world\"", ToolResultFilter.EscapeCsvField("hello, world"));
+        Assert.Equal("\"hello, world\"", ToolOutputFilter.EscapeCsvField("hello, world"));
     }
 
     [Fact]
     public void EscapeCsvField_DoubleQuote_Escaped()
     {
-        Assert.Equal("\"say \"\"hi\"\"\"", ToolResultFilter.EscapeCsvField("say \"hi\""));
+        Assert.Equal("\"say \"\"hi\"\"\"", ToolOutputFilter.EscapeCsvField("say \"hi\""));
     }
 
     [Fact]
     public void EscapeCsvField_Newline_Quoted()
     {
-        Assert.Equal("\"line1\nline2\"", ToolResultFilter.EscapeCsvField("line1\nline2"));
+        Assert.Equal("\"line1\nline2\"", ToolOutputFilter.EscapeCsvField("line1\nline2"));
     }
 
     #endregion
@@ -388,7 +413,7 @@ public class ToolResultFilterTests
     [Fact]
     public void Options_DefaultValues()
     {
-        var options = new ToolResultFilterOptions();
+        var options = new ToolOutputFilterOptions();
 
         Assert.True(options.EnableJsonToCsv);
         Assert.Equal(3, options.JsonToCsvMinElements);

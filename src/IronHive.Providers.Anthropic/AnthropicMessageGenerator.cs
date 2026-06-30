@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Runtime.CompilerServices;
@@ -459,20 +461,21 @@ public class AnthropicMessageGenerator : IMessageGenerator
 
         // 출력 구성 지원
         OutputConfig? outputConfig = null;
-        if (request.Output != null)
+        if (request.Output?.Type is { } outputType)
         {
-            var createJsonFormat = typeof(StructuredOutput)
-                .GetMethod(nameof(StructuredOutput.CreateJsonFormat))!
-                .MakeGenericMethod(request.Output);
-            var format = (JsonOutputFormat)createJsonFormat.Invoke(null, null)!;
-            outputConfig = new OutputConfig { Format = format };
+            outputConfig = new OutputConfig { Format = AnthropicHelper.CreateJsonFormat(outputType) };
+        }
+        else if (request.Output?.Schema is { } outputSchema)
+        {
+            var schemaDict = JsonSerializer.Deserialize<IReadOnlyDictionary<string, JsonElement>>(outputSchema)!;
+            outputConfig = new OutputConfig { Format = JsonOutputFormat.FromRawUnchecked(schemaDict) };
         }
 
         // 추론 구성 지원
         ThinkingConfigParam? thinking = null;
         if (request.ThinkingEffort is not null and not MessageThinkingEffort.None)
         {
-            if (AnthropicModelNames.Old.Any(m => request.Model.Equals(m, StringComparison.Ordinal)))
+            if (AnthropicHelper.LegacyModels.Any(m => request.Model.Equals(m, StringComparison.Ordinal)))
             {
                 // 구버전 모델들은 ThinkingConfigEnabled 방식으로 추론을 설정합니다.
                 // 토큰은 OpenAI o-series, Gemini thinking_budget 커뮤니티 기준을 참고.
@@ -501,7 +504,6 @@ public class AnthropicMessageGenerator : IMessageGenerator
             Messages = messages,
             // 필수요청사항으로 64K로 기본값을 설정합니다.
             MaxTokens = request.MaxTokens ?? 64000,
-            StopSequences = request.StopSequences?.ToList(),
             Tools = tools?.Count > 0 ? tools : null,
             Thinking = thinking,
             OutputConfig = outputConfig,
@@ -510,9 +512,9 @@ public class AnthropicMessageGenerator : IMessageGenerator
 
 }
 
-public static class AnthropicModelNames
+public static class AnthropicHelper
 {
-    public static readonly string[] Old = 
+    public static readonly string[] LegacyModels =
     [
         "claude-haiku-4-5",
         "claude-haiku-4-5-20251001",
@@ -527,4 +529,13 @@ public static class AnthropicModelNames
         "claude-opus-4-5",
         "claude-opus-4-5-20251101",
     ];
+
+    private static readonly MethodInfo _createJsonFormatMethod =
+        typeof(StructuredOutput).GetMethod(nameof(StructuredOutput.CreateJsonFormat))!;
+
+    private static readonly ConcurrentDictionary<System.Type, JsonOutputFormat> _jsonFormatCache = new();
+
+    public static JsonOutputFormat CreateJsonFormat(System.Type type)
+        => _jsonFormatCache.GetOrAdd(type, static t =>
+            (JsonOutputFormat)_createJsonFormatMethod.MakeGenericMethod(t).Invoke(null, null)!);
 }

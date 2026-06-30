@@ -1,13 +1,12 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
+using Microsoft.Extensions.DependencyInjection;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Registries;
 using IronHive.Abstractions.Tools;
-using IronHive.Core.Tools;
 using IronHive.Core.Utilities;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace IronHive.Core.Services;
 
@@ -17,14 +16,14 @@ public class MessageService : IMessageService
     private readonly IServiceProvider _services;
     private readonly IProviderRegistry _providers;
     private readonly IToolCollection _tools;
-    private readonly IToolResultFilter? _resultFilter;
+    private readonly IToolOutputFilter? _toolFilter;
 
     public MessageService(IServiceProvider services, IProviderRegistry providers, IToolCollection tools)
     {
         _services = services;
         _providers = providers;
         _tools = tools;
-        _resultFilter = services.GetService<IToolResultFilter>();
+        _toolFilter = services.GetService<IToolOutputFilter>();
     }
 
     private IMessageGenerator ResolveGenerator(string? provider)
@@ -80,13 +79,11 @@ public class MessageService : IMessageService
             System = request.Suggestions != null
                 ? SuggestionCollector.Prompt(request.System, request.Suggestions)
                 : request.System,
-            Tools = _tools.FilterBy(request.Tools.Select(t => t.Name)),
+            Tools = request.Tools != null
+                ? _tools.FilterBy(request.Tools.Select(t => t.Name))
+                : null,
             Output = request.Output,
             MaxTokens = request.MaxTokens,
-            TopK = request.TopK,
-            TopP = request.TopP,
-            Temperature = request.Temperature,
-            StopSequences = request.StopSequences,
         };
 
         var timer = Stopwatch.StartNew();
@@ -95,7 +92,7 @@ public class MessageService : IMessageService
             if (req.Messages.LastOrDefault() is { Role: MessageRole.Assistant } last)
             {
                 message = last;
-                await foreach (var _ in ProcessToolContentAsync(message, request.Tools, cancellationToken).ConfigureAwait(false))
+                await foreach (var _ in ProcessToolContentAsync(message, request.Tools ?? [], request.ToolOptions, cancellationToken).ConfigureAwait(false))
                 { }
             }
             else
@@ -161,20 +158,18 @@ public class MessageService : IMessageService
         var counter = new LimitedCounter(request.MaxLoopCount);
         var req = new MessageGenerationRequest
         {
-            PreviousId = request.PreviousId,
+            PreviousId = ExtractResponseId(request.Provider, request.PreviousId),
             Model = request.Model,
             ThinkingEffort = request.ThinkingEffort,
             Messages = request.Messages,
             System = request.Suggestions != null
                 ? SuggestionCollector.Prompt(request.System, request.Suggestions)
                 : request.System,
-            Tools = _tools.FilterBy(request.Tools.Select(t => t.Name)),
+            Tools = request.Tools != null
+                ? _tools.FilterBy(request.Tools.Select(t => t.Name))
+                : null,
             Output = request.Output,
             MaxTokens = request.MaxTokens,
-            TopK = request.TopK,
-            TopP = request.TopP,
-            Temperature = request.Temperature,
-            StopSequences = request.StopSequences,
         };
 
         var parser = request.Suggestions != null ? new SuggestionCollector() : null;
@@ -184,7 +179,7 @@ public class MessageService : IMessageService
             if (req.Messages.LastOrDefault() is { Role: MessageRole.Assistant } last)
             {
                 message = last;
-                await foreach (var res in ProcessToolContentAsync(message, request.Tools, cancellationToken).ConfigureAwait(false))
+                await foreach (var res in ProcessToolContentAsync(message, request.Tools ?? [], request.ToolOptions, cancellationToken).ConfigureAwait(false))
                 {
                     yield return res;
                 }
@@ -232,10 +227,10 @@ public class MessageService : IMessageService
                     }
 
                     stack.Add(tracked);
-                    yield return new StreamingContentAddedResponse 
-                    { 
-                        Index = absoluteIdx, 
-                        Content = tracked 
+                    yield return new StreamingContentAddedResponse
+                    {
+                        Index = absoluteIdx,
+                        Content = tracked
                     };
                 }
                 else if (res is StreamingContentDeltaResponse cdr)
@@ -331,13 +326,11 @@ public class MessageService : IMessageService
             ThinkingEffort = request.ThinkingEffort,
             Messages = request.Messages,
             System = request.System,
-            Tools = _tools.FilterBy(request.Tools.Select(t => t.Name)),
+            Tools = request.Tools != null
+                ? _tools.FilterBy(request.Tools.Select(t => t.Name))
+                : null,
             Output = request.Output,
             MaxTokens = request.MaxTokens,
-            TopK = request.TopK,
-            TopP = request.TopP,
-            Temperature = request.Temperature,
-            StopSequences = request.StopSequences,
         };
         return generator.CountTokensAsync(req, cancellationToken);
     }
@@ -348,11 +341,14 @@ public class MessageService : IMessageService
     private async IAsyncEnumerable<StreamingMessageResponse> ProcessToolContentAsync(
         Message message,
         IEnumerable<ToolItem> toolItems,
+        ToolOptions? toolOptions,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        const int maxConcurrent = 3;
-        var semaphore = new SemaphoreSlim(maxConcurrent, maxConcurrent);
-        var channel = Channel.CreateBounded<StreamingMessageResponse>(new BoundedChannelOptions(maxConcurrent * 4)
+        var concurrent = toolOptions?.MaxParallel ?? 3;
+        var timeout = toolOptions?.Timeout;
+
+        var semaphore = new SemaphoreSlim(concurrent, concurrent);
+        var channel = Channel.CreateBounded<StreamingMessageResponse>(new BoundedChannelOptions(concurrent * 4)
         {
             FullMode = BoundedChannelFullMode.Wait
         });
@@ -380,13 +376,32 @@ public class MessageService : IMessageService
 
                     var options = toolItems.FirstOrDefault(t => string.Equals(t.Name, tmc.Name, StringComparison.Ordinal))?.Options;
                     var input = new ToolInput(tmc.Input, options, _services);
-                    tmc.Output = _tools.TryGet(tmc.Name, out var tool)
-                        ? await tool.InvokeAsync(input, cancellationToken).ConfigureAwait(false)
-                        : ToolOutput.Failure($"Could not find tool '{tmc.Name}', invocation failed.");
 
-                    if (_resultFilter is not null && tmc.Output is { Result: not null })
+                    if (_tools.TryGet(tmc.Name, out var tool))
                     {
-                        tmc.Output = _resultFilter.Filter(tmc.Name, tmc.Output);
+                        using var timeoutCts = timeout.HasValue
+                            ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
+                            : null;
+                        timeoutCts?.CancelAfter(timeout.GetValueOrDefault());
+                        var ct = timeoutCts?.Token ?? cancellationToken;
+                        try
+                        {
+                            tmc.Output = await tool.InvokeAsync(input, ct).ConfigureAwait(false);
+                        }
+                        catch (OperationCanceledException) when (timeoutCts?.IsCancellationRequested == true
+                                                                 && !cancellationToken.IsCancellationRequested)
+                        {
+                            tmc.Output = ToolOutput.Failure($"Tool '{tmc.Name}' timed out after {timeout!.Value.TotalSeconds:0.#}s.");
+                        }
+                    }
+                    else
+                    {
+                        tmc.Output = ToolOutput.Failure($"Could not find tool '{tmc.Name}', invocation failed.");
+                    }
+
+                    if (_toolFilter is not null && tmc.Output is { Result: not null })
+                    {
+                        tmc.Output = _toolFilter.Filter(tmc.Name, tmc.Output);
                     }
 
                     await channel.Writer.WriteAsync(new StreamingContentCompletedResponse

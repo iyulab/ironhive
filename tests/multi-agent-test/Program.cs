@@ -2201,8 +2201,7 @@ async Task<List<(string, TestResult)>> RunLlmIntegrationTests()
             Model = primaryModel!,
             Description = description,
             Instructions = instructions,
-            Parameters = new MessageGenerationParameters { MaxTokens = 150 }
-        };
+            };
 
         // LLM API 일시적 오류에 대한 재시도 로직 적용
         return agent.WithMiddleware(new RetryMiddleware(new RetryMiddlewareOptions
@@ -2463,7 +2462,7 @@ sealed class MockAgent : IAgent
     public string? Instructions { get; set; }
 
     public IEnumerable<ToolItem>? Tools { get; set; }
-    public MessageGenerationParameters? Parameters { get; set; }
+    public int? MaxTokens { get; set; }
 
     /// <summary>
     /// Synchronous response function — return text directly.

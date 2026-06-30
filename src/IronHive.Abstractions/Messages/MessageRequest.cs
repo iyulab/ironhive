@@ -1,12 +1,11 @@
-﻿using IronHive.Abstractions.Tools;
-using System.Text.Json.Serialization;
+using IronHive.Abstractions.Tools;
 
 namespace IronHive.Abstractions.Messages;
 
 /// <summary>
-/// 메시지 생성 요청을 위한 상세 매개변수를 포함하는 클래스입니다.
+/// 메시지 생성 서비스에 전달되는 요청입니다.
 /// </summary>
-public class MessageRequest : MessageGenerationParameters
+public class MessageRequest
 {
     /// <summary>
     /// 이전 응답의 ResponseId. 프로바이더 측 저장된 컨텍스트를 재사용해 비용을 절감합니다.
@@ -25,9 +24,13 @@ public class MessageRequest : MessageGenerationParameters
 
     /// <summary>
     /// 모델의 사고 노력 수준을 정의합니다.
-    /// 설정된 경우 모델의 추론 깊이를 조절할 수 있습니다.
     /// </summary>
     public MessageThinkingEffort? ThinkingEffort { get; set; }
+
+    /// <summary>
+    /// 생성할 최대 토큰 수입니다.
+    /// </summary>
+    public int? MaxTokens { get; set; }
 
     /// <summary>
     /// 대화의 컨텍스트와 동작을 정의하는 시스템 프롬프트입니다.
@@ -40,20 +43,27 @@ public class MessageRequest : MessageGenerationParameters
     public ICollection<Message> Messages { get; set; } = [];
 
     /// <summary>
-    /// 모델이 사용 가능한 도구들의 목록입니다.
+    /// 모델이 사용 가능한 도구 목록입니다. null이면 도구를 사용하지 않습니다.
     /// </summary>
-    public IEnumerable<ToolItem> Tools { get; set; } = [];
+    public IEnumerable<ToolItem>? Tools { get; set; }
+
+    /// <summary>
+    /// 도구 실행 동작 설정입니다. null이면 기본값이 사용됩니다.
+    /// </summary>
+    public ToolOptions? ToolOptions { get; set; }
+
+    /// <summary>
+    /// 구조화 출력 설정입니다. null이면 기본 텍스트 출력입니다.
+    /// </summary>
+    public OutputOptions? Output { get; set; }
 
     /// <summary>
     /// 제안 기능 옵션입니다. null이면 비활성화됩니다.
-    /// 활성화 시 모델이 응답 끝에 유저에게 역질문/선택지를 제안하도록 유도합니다.
     /// </summary>
     public SuggestionOptions? Suggestions { get; set; }
 
     /// <summary>
-    /// 도구 사용에 의한 반복 루프의 최대 반복 횟수를 제한합니다.
-    /// 무한 루프를 방지하고 연산을 제어하는 안전장치입니다.
+    /// 툴 사용에서 무한 루프에 빠질 수 있는 상황을 방지하기 위한 최대 반복 횟수입니다. 기본값은 50입니다.
     /// </summary>
-    [JsonIgnore]
     public int MaxLoopCount { get; set; } = 50;
 }

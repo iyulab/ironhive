@@ -78,22 +78,14 @@ public class BasicAgentTests
     }
 
     [Fact]
-    public void Agent_ShouldHave_OptionalParameters()
+    public void Agent_ShouldHave_OptionalMaxTokens()
     {
         // Arrange
         var agent = CreateAgent();
-        agent.Parameters = new MessageGenerationParameters
-        {
-            MaxTokens = 1000,
-            Temperature = 0.7f,
-            TopP = 0.9f
-        };
+        agent.MaxTokens = 1000;
 
         // Assert
-        agent.Parameters.Should().NotBeNull();
-        agent.Parameters!.MaxTokens.Should().Be(1000);
-        agent.Parameters.Temperature.Should().Be(0.7f);
-        agent.Parameters.TopP.Should().Be(0.9f);
+        agent.MaxTokens.Should().Be(1000);
     }
 
     #endregion
@@ -197,15 +189,11 @@ public class BasicAgentTests
     }
 
     [Fact]
-    public async Task InvokeAsync_ShouldPassParameters()
+    public async Task InvokeAsync_ShouldPassMaxTokens()
     {
         // Arrange
         var agent = CreateAgent();
-        agent.Parameters = new MessageGenerationParameters
-        {
-            MaxTokens = 500,
-            Temperature = 0.5f
-        };
+        agent.MaxTokens = 500;
 
         var messages = new List<Message>
         {
@@ -219,11 +207,10 @@ public class BasicAgentTests
             {
                 ResponseId = "msg-gen",
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new Message { Role = MessageRole.Assistant }
-            ,
-            Model = string.Empty,
-            Timestamp = DateTime.UtcNow
-        });
+                Message = new Message { Role = MessageRole.Assistant },
+                Model = string.Empty,
+                Timestamp = DateTime.UtcNow
+            });
 
         // Act
         await agent.InvokeAsync(messages);
@@ -231,7 +218,6 @@ public class BasicAgentTests
         // Assert
         capturedRequest.Should().NotBeNull();
         capturedRequest!.MaxTokens.Should().Be(500);
-        capturedRequest.Temperature.Should().Be(0.5f);
     }
 
     [Fact]

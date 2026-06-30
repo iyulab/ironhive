@@ -1,4 +1,4 @@
-﻿using IronHive.Abstractions.Messages;
+using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Tools;
 
 namespace IronHive.Abstractions.Agent;
@@ -39,9 +39,9 @@ public interface IAgent
     IEnumerable<ToolItem>? Tools { get; set; }
 
     /// <summary>
-    /// 텍스트 생성(추론) 매개변수입니다. (예: 온도, 최대 토큰 수 등)
+    /// 생성할 최대 토큰 수입니다.
     /// </summary>
-    MessageGenerationParameters? Parameters { get; set; }
+    int? MaxTokens { get; set; }
 
     /// <summary>
     /// 메시지를 처리합니다.

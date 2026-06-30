@@ -1,4 +1,4 @@
-﻿using IronHive.Abstractions.Agent;
+using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Tools;
 
@@ -30,7 +30,7 @@ public class BasicAgent : IAgent
     public IEnumerable<ToolItem>? Tools { get; set; }
 
     /// <inheritdoc />
-    public MessageGenerationParameters? Parameters { get; set; }
+    public int? MaxTokens { get; set; }
 
     public BasicAgent(IMessageService service)
     {
@@ -39,7 +39,7 @@ public class BasicAgent : IAgent
 
     /// <inheritdoc />
     public Task<MessageResponse> InvokeAsync(
-        IEnumerable<Message> messages, 
+        IEnumerable<Message> messages,
         CancellationToken cancellationToken = default)
     {
         var request = CreateRequest(messages);
@@ -48,7 +48,7 @@ public class BasicAgent : IAgent
 
     /// <inheritdoc />
     public IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingAsync(
-        IEnumerable<Message> messages, 
+        IEnumerable<Message> messages,
         CancellationToken cancellationToken = default)
     {
         var request = CreateRequest(messages);
@@ -61,11 +61,7 @@ public class BasicAgent : IAgent
         Provider = Provider,
         Model = Model,
         System = Instructions,
-        Tools = Tools ?? [],
-        MaxTokens = Parameters?.MaxTokens,
-        StopSequences = Parameters?.StopSequences,
-        Temperature = Parameters?.Temperature,
-        TopP = Parameters?.TopP,
-        TopK = Parameters?.TopK,
+        Tools = Tools,
+        MaxTokens = MaxTokens,
     };
 }

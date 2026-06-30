@@ -113,7 +113,7 @@ public class DialogueExtractionPipelineTests
 
         // Assert
         await _mockMessages.Received(1).GenerateMessageAsync(
-            Arg.Is<MessageRequest>(r => r.Temperature == 0.0f && r.TopP == 0.5f),
+            Arg.Any<MessageRequest>(),
             Arg.Any<CancellationToken>());
     }
 

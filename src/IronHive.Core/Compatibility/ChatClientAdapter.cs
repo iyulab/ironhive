@@ -198,10 +198,7 @@ public class ChatClientAdapter : IChatClient
 
         if (options is not null)
         {
-            request.Temperature = options.Temperature;
             request.MaxTokens = options.MaxOutputTokens;
-            request.TopP = options.TopP;
-            request.StopSequences = options.StopSequences?.ToList();
 
             if (options.Tools is { Count: > 0 })
             {

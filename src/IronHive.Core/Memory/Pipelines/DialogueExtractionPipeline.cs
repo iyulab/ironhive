@@ -47,8 +47,6 @@ public partial class DialogueExtractionPipeline : IMemoryPipeline<DialogueExtrac
                 System = GetInstructions(),
                 Messages = [new Message { Role = MessageRole.User,                    Content = [ new TextMessageContent { Value = $"generate QnA pairs in this information:\n\n{chunk}" } ]
                 }],
-                Temperature = 0.0f,
-                TopP = 0.5f
             };
             var result = await _messages.GenerateMessageAsync(request, cancellationToken);
             var text = result.Message?.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value

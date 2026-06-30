@@ -495,7 +495,7 @@ public class HandoffOrchestratorTests
         public string Description { get; set; } = "Mock";
         public string? Instructions { get; set; }
         public IEnumerable<ToolItem>? Tools { get; set; }
-        public MessageGenerationParameters? Parameters { get; set; }
+        public int? MaxTokens { get; set; }
         public Func<IEnumerable<Message>, string>? ResponseFunc { get; set; }
         public Func<IEnumerable<Message>, Task<string>>? ResponseFuncAsync { get; set; }
 

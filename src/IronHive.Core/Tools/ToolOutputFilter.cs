@@ -7,19 +7,19 @@ using IronHive.Abstractions.Tools;
 namespace IronHive.Core.Tools;
 
 /// <summary>
-/// Filters tool execution results to reduce token consumption.
-/// Strategies: JSON→CSV conversion, whitespace normalization, large result truncation.
+/// Filters tool execution outputs to reduce token consumption.
+/// Strategies: JSON→CSV conversion, whitespace normalization, large output truncation.
 /// </summary>
-public partial class ToolResultFilter : IToolResultFilter
+public partial class ToolOutputFilter : IToolOutputFilter
 {
-    private readonly ToolResultFilterOptions _options;
+    private readonly ToolOutputFilterOptions _options;
 
     /// <summary>
-    /// Creates a new tool result filter with the specified options.
+    /// Creates a new tool output filter with the specified options.
     /// </summary>
-    public ToolResultFilter(ToolResultFilterOptions? options = null)
+    public ToolOutputFilter(ToolOutputFilterOptions? options = null)
     {
-        _options = options ?? new ToolResultFilterOptions();
+        _options = options ?? new ToolOutputFilterOptions();
     }
 
     /// <inheritdoc />
@@ -35,7 +35,7 @@ public partial class ToolResultFilter : IToolResultFilter
         // 1. JSON array → CSV conversion
         if (_options.EnableJsonToCsv)
         {
-            result = TryConvertJsonArrayToCsv(result);
+            result = TryConvertJsonArrayToCsv(result, _options.JsonToCsvMinElements);
         }
 
         // 2. Whitespace normalization
@@ -44,7 +44,7 @@ public partial class ToolResultFilter : IToolResultFilter
             result = NormalizeWhitespace(result);
         }
 
-        // 3. Truncation for oversized results
+        // 3. Truncation for oversized outputs
         if (result.Length > _options.MaxResultChars)
         {
             result = Truncate(result);

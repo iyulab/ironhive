@@ -1,5 +1,4 @@
 using IronHive.Abstractions.Agent;
-using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Tools;
 
 namespace IronHive.Core.Agent;
@@ -33,23 +32,5 @@ public static class AgentConfigExtensions
             Name = toolName,
             Options = config.ToolOptions?.GetValueOrDefault(toolName)
         });
-    }
-
-    /// <summary>
-    /// MessageGenerationParameters로 변환합니다.
-    /// </summary>
-    public static MessageGenerationParameters? ToParameters(this AgentConfig config)
-    {
-        if (config.Parameters == null)
-            return null;
-
-        return new MessageGenerationParameters
-        {
-            MaxTokens = config.Parameters.MaxTokens,
-            Temperature = config.Parameters.Temperature,
-            TopP = config.Parameters.TopP,
-            TopK = config.Parameters.TopK,
-            StopSequences = config.Parameters.StopSequences
-        };
     }
 }

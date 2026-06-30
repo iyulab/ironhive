@@ -20,7 +20,7 @@ public class OrchestratorAgentAdapter : IAgent
     public string Description { get; set; }
     public string? Instructions { get; set; }
     public IEnumerable<ToolItem>? Tools { get; set; }
-    public MessageGenerationParameters? Parameters { get; set; }
+    public int? MaxTokens { get; set; }
 
     public OrchestratorAgentAdapter(IAgentOrchestrator orchestrator, string? name = null, string? description = null)
     {

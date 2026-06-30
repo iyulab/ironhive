@@ -1,12 +1,12 @@
 namespace IronHive.Core.Tools;
 
 /// <summary>
-/// Configuration options for <see cref="ToolResultFilter"/>.
+/// Configuration options for <see cref="ToolOutputFilter"/>.
 /// </summary>
-public class ToolResultFilterOptions
+public class ToolOutputFilterOptions
 {
     /// <summary>
-    /// Whether to convert JSON array results to CSV format.
+    /// Whether to convert JSON array outputs to CSV format.
     /// JSON arrays of flat objects are converted to CSV for ~40-50% token savings.
     /// Default: true.
     /// </summary>
@@ -20,15 +20,15 @@ public class ToolResultFilterOptions
     public int JsonToCsvMinElements { get; set; } = 3;
 
     /// <summary>
-    /// Whether to normalize excessive whitespace in results.
+    /// Whether to normalize excessive whitespace in outputs.
     /// Collapses 3+ consecutive blank lines to 2, trims trailing whitespace.
     /// Default: true.
     /// </summary>
     public bool EnableWhitespaceNormalization { get; set; } = true;
 
     /// <summary>
-    /// Maximum result character count before truncation.
-    /// Results exceeding this limit are truncated with head+tail preservation.
+    /// Maximum output character count before truncation.
+    /// Outputs exceeding this limit are truncated with head+tail preservation.
     /// Default: 50,000.
     /// </summary>
     public int MaxResultChars { get; set; } = 50_000;

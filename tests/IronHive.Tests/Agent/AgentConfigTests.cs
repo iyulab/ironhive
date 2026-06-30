@@ -103,54 +103,24 @@ public class AgentConfigTests
     }
 
     [Fact]
-    public void ToParameters_NullParameters_ShouldReturnNull()
+    public void Parameters_MaxTokens_NullConfig_ShouldBeNull()
     {
         var config = new AgentConfig { Parameters = null };
 
-        config.ToParameters().Should().BeNull();
+        config.Parameters?.MaxTokens.Should().BeNull();
     }
 
     [Fact]
-    public void ToParameters_WithParameters_ShouldConvert()
+    public void Parameters_MaxTokens_ShouldConvert()
     {
         var config = new AgentConfig
         {
             Parameters = new AgentParametersConfig
             {
                 MaxTokens = 1000,
-                Temperature = 0.7f,
-                TopP = 0.9f,
-                TopK = 50,
-                StopSequences = ["END", "STOP"]
             }
         };
 
-        var result = config.ToParameters()!;
-
-        result.MaxTokens.Should().Be(1000);
-        result.Temperature.Should().Be(0.7f);
-        result.TopP.Should().Be(0.9f);
-        result.TopK.Should().Be(50);
-        result.StopSequences.Should().HaveCount(2);
-    }
-
-    [Fact]
-    public void ToParameters_WithPartialParameters_ShouldHaveNulls()
-    {
-        var config = new AgentConfig
-        {
-            Parameters = new AgentParametersConfig
-            {
-                MaxTokens = 500
-            }
-        };
-
-        var result = config.ToParameters()!;
-
-        result.MaxTokens.Should().Be(500);
-        result.Temperature.Should().BeNull();
-        result.TopP.Should().BeNull();
-        result.TopK.Should().BeNull();
-        result.StopSequences.Should().BeNull();
+        config.Parameters!.MaxTokens.Should().Be(1000);
     }
 }

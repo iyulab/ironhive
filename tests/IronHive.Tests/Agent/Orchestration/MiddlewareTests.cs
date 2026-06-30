@@ -667,7 +667,7 @@ public class MiddlewareTests
         public string Description { get; set; } = "Mock";
         public string? Instructions { get; set; }
         public IEnumerable<ToolItem>? Tools { get; set; }
-        public MessageGenerationParameters? Parameters { get; set; }
+        public int? MaxTokens { get; set; }
         public Func<IEnumerable<Message>, string>? ResponseFunc { get; set; }
 
         public MockAgent(string name) { Name = name; }

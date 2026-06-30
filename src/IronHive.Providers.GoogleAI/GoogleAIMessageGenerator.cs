@@ -5,12 +5,7 @@ using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
-using GoogleContent = Google.GenAI.Types.Content;
-using GooglePart = Google.GenAI.Types.Part;
-using GoogleTool = Google.GenAI.Types.Tool;
-using GoogleFunctionDeclaration = Google.GenAI.Types.FunctionDeclaration;
-using GoogleThinkingConfig = Google.GenAI.Types.ThinkingConfig;
-using GoogleGenerateContentConfig = Google.GenAI.Types.GenerateContentConfig;
+using System.Text.Json.Nodes;
 
 namespace IronHive.Providers.GoogleAI;
 
@@ -385,22 +380,22 @@ public class GoogleAIMessageGenerator : IMessageGenerator
     /// <summary>
     /// IronHive의 MessageGenerationRequest를 Google GenAI SDK의 타입들로 변환합니다.
     /// </summary>
-    private static (List<GoogleContent> contents, GoogleGenerateContentConfig config) ToGoogleAIParams(
+    private static (List<Content> contents, GenerateContentConfig config) ToGoogleAIParams(
         MessageGenerationRequest request)
     {
-        var contents = new List<GoogleContent>();
+        var contents = new List<Content>();
         foreach (var msg in request.Messages)
         {
             // 사용자 메시지
             if (msg is { Role: MessageRole.User } user)
             {
-                var parts = new List<GooglePart>();
+                var parts = new List<Part>();
                 foreach (var item in user.Content)
                 {
                     // 텍스트 메시지
                     if (item is TextMessageContent text)
                     {
-                        parts.Add(new GooglePart
+                        parts.Add(new Part
                         {
                             Text = text.Value ?? string.Empty
                         });
@@ -408,9 +403,9 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                     // 이미지 메시지
                     else if (item is ImageMessageContent image)
                     {
-                        parts.Add(new GooglePart
+                        parts.Add(new Part
                         {
-                            InlineData = new Google.GenAI.Types.Blob
+                            InlineData = new Blob
                             {
                                 MimeType = image.Format switch
                                 {
@@ -428,7 +423,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                         throw new NotImplementedException("not supported yet");
                     }
                 }
-                contents.Add(new GoogleContent
+                contents.Add(new Content
                 {
                     Role = "user",
                     Parts = parts
@@ -437,15 +432,15 @@ public class GoogleAIMessageGenerator : IMessageGenerator
             // AI 메시지
             else if (msg is { Role: MessageRole.Assistant } assistant)
             {
-                var modelParts = new List<GooglePart>();
-                var userParts = new List<GooglePart>();
+                var modelParts = new List<Part>();
+                var userParts = new List<Part>();
 
                 foreach (var item in assistant.Content)
                 {
                     // 사고 메시지
                     if (item is ThinkingMessageContent thinking)
                     {
-                        modelParts.Add(new GooglePart
+                        modelParts.Add(new Part
                         {
                             Thought = true,
                             Text = thinking.Value ?? string.Empty,
@@ -454,7 +449,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                     // 텍스트 메시지
                     else if (item is TextMessageContent text)
                     {
-                        modelParts.Add(new GooglePart
+                        modelParts.Add(new Part
                         {
                             Text = text.Value ?? string.Empty,
                         });
@@ -463,9 +458,9 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                     else if (item is ToolMessageContent tool)
                     {
                         // 도구 호출 메시지
-                        var part = new GooglePart
+                        var part = new Part
                         {
-                            FunctionCall = new Google.GenAI.Types.FunctionCall
+                            FunctionCall = new FunctionCall
                             {
                                 Id = tool.Id,
                                 Name = tool.Name,
@@ -478,9 +473,9 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                         modelParts.Add(part);
 
                         // 도구 결과 메시지
-                        userParts.Add(new GooglePart
+                        userParts.Add(new Part
                         {
-                            FunctionResponse = new Google.GenAI.Types.FunctionResponse
+                            FunctionResponse = new FunctionResponse
                             {
                                 Id = tool.Id,
                                 Name = tool.Name,
@@ -497,14 +492,14 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                     }
                 }
 
-                contents.Add(new GoogleContent
+                contents.Add(new Content
                 {
                     Role = "model",
                     Parts = modelParts
                 });
                 if (userParts.Count > 0)
                 {
-                    contents.Add(new GoogleContent
+                    contents.Add(new Content
                     {
                         Role = "user",
                         Parts = userParts
@@ -518,14 +513,14 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         }
 
         // 도구 변환
-        List<GoogleTool>? tools = null;
+        List<Tool>? tools = null;
         if (request.Tools?.Any() == true)
         {
             tools =
             [
-                new GoogleTool
+                new Tool
                 {
-                    FunctionDeclarations = request.Tools.Select(t => new GoogleFunctionDeclaration
+                    FunctionDeclarations = request.Tools.Select(t => new FunctionDeclaration
                     {
                         Name = t.UniqueName,
                         Description = t.Description ?? string.Empty,
@@ -538,102 +533,45 @@ public class GoogleAIMessageGenerator : IMessageGenerator
             ];
         }
 
-        // Thinking 설정
-        GoogleThinkingConfig? thinkingConfig = null;
+        // Thinking 설정, Gemini 3 이전 모델은 ThinkingLevel을 지원하지 않습니다.
+        // https://ai.google.dev/api/generate-content?hl=ko#ThinkingConfig
+        ThinkingConfig? thinkingConfig = null;
         if (request.ThinkingEffort is not null and not MessageThinkingEffort.None)
         {
-            thinkingConfig = new GoogleThinkingConfig
+            thinkingConfig = new ThinkingConfig
             {
                 IncludeThoughts = true,
-                ThinkingBudget = CalculateThinkingTokens(request)
+                ThinkingLevel = request.ThinkingEffort switch
+                {
+                    MessageThinkingEffort.Minimal => ThinkingLevel.Minimal,
+                    MessageThinkingEffort.Low => ThinkingLevel.Low,
+                    MessageThinkingEffort.Medium => ThinkingLevel.Medium,
+                    MessageThinkingEffort.High => ThinkingLevel.High,
+                    MessageThinkingEffort.XHigh => ThinkingLevel.High,
+                    _ => ThinkingLevel.ThinkingLevelUnspecified
+                }
             };
         }
 
-        var config = new GoogleGenerateContentConfig
+        var config = new GenerateContentConfig
         {
-            SystemInstruction = string.IsNullOrWhiteSpace(request.System) ? null : new GoogleContent
+            SystemInstruction = string.IsNullOrWhiteSpace(request.System) ? null : new Content
             {
-                Parts = [new GooglePart { Text = request.System }]
+                Parts = [new Part { Text = request.System }]
             },
             Tools = tools,
             CandidateCount = 1,
             MaxOutputTokens = request.MaxTokens,
-            StopSequences = request.StopSequences?.ToList(),
-            TopP = request.TopP,
-            TopK = request.TopK,
-            Temperature = request.Temperature,
             ThinkingConfig = thinkingConfig,
             ResponseMimeType = request.Output != null ? "application/json" : null,
-            ResponseJsonSchema = request.Output != null
-                ? JsonSchemaFactory.Build(request.Output)
-                : null,
+            ResponseJsonSchema = request.Output switch
+            {
+                { Type: { } t } => JsonSchemaFactory.Build(t),
+                { Schema: { } s } => JsonNode.Parse(s),
+                _ => null
+            },
         };
 
         return (contents, config);
-    }
-
-    /// <summary>
-    /// 추론(Thinking) 사용 시 토큰 예산을 계산합니다.
-    /// <see href="https://ai.google.dev/gemini-api/docs/thinking#set-budget">모델별 토큰 범위</see>
-    /// </summary>
-    private static int CalculateThinkingTokens(MessageGenerationRequest request)
-    {
-        string model = request.Model.ToLowerInvariant();
-
-        // Gemini 2.5 Pro (128 ~ 32768)
-        if (model.Contains("gemini-2.5-pro"))
-        {
-            return request.ThinkingEffort switch
-            {
-                MessageThinkingEffort.Low => 1024,
-                MessageThinkingEffort.Medium => 8192,
-                MessageThinkingEffort.High => 32768,
-                _ => -1 // dynamic
-            };
-        }
-        // Gemini 2.5 Flash (0 ~ 24576)
-        else if (model.Contains("gemini-2.5-flash"))
-        {
-            return request.ThinkingEffort switch
-            {
-                MessageThinkingEffort.Low => 1024,
-                MessageThinkingEffort.Medium => 8192,
-                MessageThinkingEffort.High => 24576,
-                _ => -1 // dynamic
-            };
-        }
-        // Gemini 2.5 Flash Lite(512 ~ 24576)
-        else if (model.Contains("gemini-2.5-flash-lite"))
-        {
-            return request.ThinkingEffort switch
-            {
-                MessageThinkingEffort.Low => 512,
-                MessageThinkingEffort.Medium => 8192,
-                MessageThinkingEffort.High => 24576,
-                _ => 0
-            };
-        }
-        // Robotics-ER 1.5 Preview(512 ~ 24576)
-        else if (model.Contains("robotics-er-1.5"))
-        {
-            return request.ThinkingEffort switch
-            {
-                MessageThinkingEffort.Low => 512,
-                MessageThinkingEffort.Medium => 8192,
-                MessageThinkingEffort.High => 24576,
-                _ => 0
-            };
-        }
-        // 이외 모델(512 ~ 8192)
-        else
-        {
-            return request.ThinkingEffort switch
-            {
-                MessageThinkingEffort.Low => 512,
-                MessageThinkingEffort.Medium => 2048,
-                MessageThinkingEffort.High => 8192,
-                _ => 0
-            };
-        }
     }
 }

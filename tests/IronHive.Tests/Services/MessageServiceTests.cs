@@ -190,7 +190,7 @@ public class MessageServiceTests
     }
 
     [Fact]
-    public async Task GenerateMessageAsync_ShouldPassTemperatureToGenerator()
+    public async Task GenerateMessageAsync_ShouldPassMaxTokensToGenerator()
     {
         // Arrange
         var mockGenerator = Substitute.For<IMessageGenerator>();
@@ -202,11 +202,10 @@ public class MessageServiceTests
             {
                 ResponseId = "msg-gen",
                 DoneReason = MessageDoneReason.EndTurn,
-                Message = new Message { Role = MessageRole.Assistant }
-            ,
-            Model = string.Empty,
-            Timestamp = DateTime.UtcNow
-        });
+                Message = new Message { Role = MessageRole.Assistant },
+                Model = string.Empty,
+                Timestamp = DateTime.UtcNow
+            });
 
         IMessageGenerator generator = null!;
         _mockProviderRegistry
@@ -221,7 +220,7 @@ public class MessageServiceTests
         {
             Provider = "openai",
             Model = "gpt-4o",
-            Temperature = 0.7f,
+            MaxTokens = 500,
             Messages = [Message.User("Test")]
         };
 
@@ -230,7 +229,7 @@ public class MessageServiceTests
 
         // Assert
         capturedRequest.Should().NotBeNull();
-        capturedRequest!.Temperature.Should().Be(0.7f);
+        capturedRequest!.MaxTokens.Should().Be(500);
     }
 
     [Fact]

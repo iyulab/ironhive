@@ -146,7 +146,7 @@ public class ChatClientAdapterTests : IDisposable
     }
 
     [Fact]
-    public async Task GetResponseAsync_MapsTemperatureAndTopP()
+    public async Task GetResponseAsync_MapsMaxOutputTokens()
     {
         var capturedRequest = SetupGeneratorReturns();
         var messages = new List<ChatMessage>
@@ -155,35 +155,12 @@ public class ChatClientAdapterTests : IDisposable
         };
         var options = new ChatOptions
         {
-            Temperature = 0.7f,
-            TopP = 0.9f,
             MaxOutputTokens = 1024
         };
 
         await _adapter.GetResponseAsync(messages, options);
 
-        var req = capturedRequest();
-        req.Temperature.Should().Be(0.7f);
-        req.TopP.Should().Be(0.9f);
-        req.MaxTokens.Should().Be(1024);
-    }
-
-    [Fact]
-    public async Task GetResponseAsync_MapsStopSequences()
-    {
-        var capturedRequest = SetupGeneratorReturns();
-        var messages = new List<ChatMessage>
-        {
-            new(ChatRole.User, "Hello")
-        };
-        var options = new ChatOptions
-        {
-            StopSequences = ["stop1", "stop2"]
-        };
-
-        await _adapter.GetResponseAsync(messages, options);
-
-        capturedRequest().StopSequences.Should().BeEquivalentTo(["stop1", "stop2"]);
+        capturedRequest().MaxTokens.Should().Be(1024);
     }
 
     #endregion
@@ -821,7 +798,6 @@ public class ChatClientAdapterTests : IDisposable
         var tool = AIFunctionFactory.Create(() => "result", "my_tool", "My tool");
         var options = new ChatOptions
         {
-            Temperature = 0.5f,
             MaxOutputTokens = 512,
             Tools = [tool]
         };
@@ -829,7 +805,6 @@ public class ChatClientAdapterTests : IDisposable
         await _adapter.GetResponseAsync(messages, options);
 
         var req = capturedRequest();
-        req.Temperature.Should().Be(0.5f);
         req.MaxTokens.Should().Be(512);
         req.System.Should().Be("You are helpful");
         req.Tools.Should().HaveCount(1);

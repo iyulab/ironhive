@@ -342,13 +342,23 @@ public class OpenAIMessageGenerator : IMessageGenerator
             };
         }
 
-        if (request.Output != null)
+        if (request.Output?.Type is { } outputType)
         {
             options.TextOptions = new ResponseTextOptions
             {
                 TextFormat = ResponseTextFormat.CreateJsonSchemaFormat(
-                    request.Output.Name,
-                    BinaryData.FromObjectAsJson(JsonSchemaFactory.Build(request.Output)),
+                    outputType.Name,
+                    BinaryData.FromObjectAsJson(JsonSchemaFactory.Build(outputType)),
+                    jsonSchemaIsStrict: false)
+            };
+        }
+        else if (request.Output?.Schema is { } outputSchema)
+        {
+            options.TextOptions = new ResponseTextOptions
+            {
+                TextFormat = ResponseTextFormat.CreateJsonSchemaFormat(
+                    "output",
+                    BinaryData.FromString(outputSchema),
                     jsonSchemaIsStrict: false)
             };
         }

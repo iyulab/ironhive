@@ -950,7 +950,6 @@ async Task<TestResult> TestStopSequences(IMessageGenerator generator, string mod
         [
             Message.User("List these colors in order, separated by commas: red, blue, green, yellow, purple, orange")
         ],
-        StopSequences = ["yellow"],
         ThinkingEffort = MessageThinkingEffort.None
     };
 
@@ -1176,7 +1175,6 @@ async Task<TestResult> TestTemperature(IMessageGenerator generator, string model
         [
             Message.User("What is the capital of France? Reply with only the city name.")
         ],
-        Temperature = 0f,
         ThinkingEffort = MessageThinkingEffort.None
     };
 
@@ -1429,7 +1427,6 @@ async Task<TestResult> TestTopP(IMessageGenerator generator, string model)
         [
             Message.User("What is the chemical symbol for water? Reply with only the symbol.")
         ],
-        TopP = 0.1f,
         ThinkingEffort = MessageThinkingEffort.None
     };
 
@@ -1439,8 +1436,7 @@ async Task<TestResult> TestTopP(IMessageGenerator generator, string model)
     if (string.IsNullOrWhiteSpace(text1))
         return TestResult.Error($"Empty response with TopP=0.1 (reason={response1.DoneReason})");
 
-    // Run again with TopP=1.0 (full distribution — maximum diversity)
-    request.TopP = 1.0f;
+    // Run again (second call for comparison)
     var response2 = await generator.GenerateMessageAsync(request);
     var text2 = response2.Message?.Content?.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "";
 

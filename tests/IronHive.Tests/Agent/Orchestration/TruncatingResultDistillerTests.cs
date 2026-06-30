@@ -407,7 +407,7 @@ public class TruncatingResultDistillerTests
         public string Description { get; set; } = "Mock";
         public string? Instructions { get; set; }
         public IEnumerable<IronHive.Abstractions.Tools.ToolItem>? Tools { get; set; }
-        public MessageGenerationParameters? Parameters { get; set; }
+        public int? MaxTokens { get; set; }
         public Func<IEnumerable<Message>, string>? ResponseFunc { get; set; }
 
         public ContextScopeTests_MockAgent(string name) { Name = name; }

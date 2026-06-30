@@ -385,7 +385,7 @@ public class SummaryContextScopeTests
         public string Description { get; set; } = "Mock";
         public string? Instructions { get; set; }
         public IEnumerable<IronHive.Abstractions.Tools.ToolItem>? Tools { get; set; }
-        public IronHive.Abstractions.Messages.MessageGenerationParameters? Parameters { get; set; }
+        public int? MaxTokens { get; set; }
         public Func<IEnumerable<Message>, string>? ResponseFunc { get; set; }
 
         public MockAgent(string name) { Name = name; }
