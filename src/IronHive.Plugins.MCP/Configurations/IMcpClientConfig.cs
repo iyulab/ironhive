@@ -9,7 +9,7 @@ namespace IronHive.Plugins.MCP.Configurations;
 /// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(McpStdioClientConfig), "stdio")]
-[JsonDerivedType(typeof(McpSseClientConfig), "sse")]
+[JsonDerivedType(typeof(McpHttpClientConfig), "http")]
 public interface IMcpClientConfig
 {
     /// <summary>

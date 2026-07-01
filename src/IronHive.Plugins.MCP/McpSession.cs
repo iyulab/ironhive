@@ -1,6 +1,7 @@
 ﻿using System.Data;
-using ModelContextProtocol.Client;
 using IronHive.Plugins.MCP.Configurations;
+using ModelContextProtocol.Client;
+using ModelContextProtocol.Authentication;
 
 namespace IronHive.Plugins.MCP;
 
@@ -227,17 +228,23 @@ public class McpSession : IAsyncDisposable
                 ShutdownTimeout = stdio.ShutdownTimeout,
                 WorkingDirectory = stdio.WorkingDirectory,
             }),
-            McpSseClientConfig sse => new HttpClientTransport(new HttpClientTransportOptions
+            McpHttpClientConfig http => new HttpClientTransport(new HttpClientTransportOptions
             {
                 TransportMode = HttpTransportMode.AutoDetect,
-                Name = sse.ServerName,
-                Endpoint = sse.Endpoint,
-                AdditionalHeaders = sse.AdditionalHeaders,
-                ConnectionTimeout = sse.ConnectionTimeout,
-                OAuth = new ModelContextProtocol.Authentication.ClientOAuthOptions
-                {
-                    RedirectUri = new Uri(""),   
-                }
+                Name = http.ServerName,
+                Endpoint = http.Endpoint,
+                AdditionalHeaders = http.AdditionalHeaders,
+                ConnectionTimeout = http.ConnectionTimeout,
+                OAuth = http.OAuth is { } oauth
+                    ? new ClientOAuthOptions
+                    {
+                        RedirectUri = oauth.RedirectUri,
+                        ClientId = oauth.ClientId,
+                        ClientSecret = oauth.ClientSecret,
+                        Scopes = oauth.Scopes,
+                        AdditionalAuthorizationParameters = oauth.AdditionalParameters ?? [],
+                    }
+                    : null,
             }),
             _ => throw new NotSupportedException($"서버 타입 {config.GetType().Name}은(는) 지원되지 않습니다.")
         };
