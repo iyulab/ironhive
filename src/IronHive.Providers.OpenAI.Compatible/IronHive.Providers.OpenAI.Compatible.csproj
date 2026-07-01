@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>IronHive OpenAI compatible providers (GPUStack)</Description>
+    <Description>IronHive OpenAI compatible providers (generic /v1 — Ollama/LM Studio/vLLM — and GPUStack)</Description>
   </PropertyGroup>
 
   <ItemGroup>

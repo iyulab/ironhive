@@ -5,10 +5,15 @@ on:
     branches: [main]
     paths:
       - 'src/**'
+      - 'tests/**'
+      - '.github/workflows/ci.yml'
   pull_request:
     branches: [main]
     paths:
       - 'src/**'
+      - 'tests/**'
+      - '.github/workflows/ci.yml'
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
