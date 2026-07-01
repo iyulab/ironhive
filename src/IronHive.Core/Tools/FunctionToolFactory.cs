@@ -26,25 +26,25 @@ public static class FunctionToolFactory
     /// <summary>
     /// public/non-public 인스턴스/정적 메서드 중 FunctionToolAttribute가 붙은 메서드를 찾아 툴 모음으로 만듭니다.
     /// </summary>
-    public static IEnumerable<ITool> CreateFrom<T>()
+    public static IEnumerable<ITool> CreateFrom<T>(IServiceProvider? services = null)
         where T : class
     {
-        return CreateFromObject(typeof(T), instance: null);
+        return CreateFromObject(typeof(T), instance: null, services);
     }
 
     /// <summary>
     /// 인스턴스의 FunctionToolAttribute가 붙은 메서드를 찾아 툴 모음으로 만듭니다.
     /// 인스턴스가 직접 바인딩되므로 DI 없이 호출됩니다.
     /// </summary>
-    public static IEnumerable<ITool> CreateFrom(object instance)
+    public static IEnumerable<ITool> CreateFrom(object instance, IServiceProvider? services = null)
     {
-        return CreateFromObject(instance.GetType(), instance);
+        return CreateFromObject(instance.GetType(), instance, services);
     }
 
     /// <summary>
     /// 단일 Delegate에서 툴을 생성합니다.
     /// </summary>
-    public static ITool CreateFrom(Delegate function, DelegateDescriptor descriptor)
+    public static ITool CreateFrom(Delegate function, DelegateDescriptor descriptor, IServiceProvider? services = null)
     {
         if (string.IsNullOrWhiteSpace(descriptor.Name))
             throw new ArgumentException("툴 이름은 비어있을 수 없습니다.", nameof(descriptor));
@@ -52,7 +52,7 @@ public static class FunctionToolFactory
         var method = function.Method;
         var parameters = BuildJsonSchemaParameters(method);
 
-        return new FunctionTool(function)
+        return new FunctionTool(function, services)
         {
             Name = descriptor.Name,
             Description = descriptor.Description,
@@ -62,7 +62,7 @@ public static class FunctionToolFactory
         };
     }
 
-    private static List<ITool> CreateFromObject(Type type, object? instance)
+    private static List<ITool> CreateFromObject(Type type, object? instance, IServiceProvider? services = null)
     {
         var tools = new List<ITool>();
         var methods = type.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
@@ -80,7 +80,7 @@ public static class FunctionToolFactory
             FunctionTool tool;
             if (instance is not null && !method.IsStatic)
             {
-                tool = new FunctionTool(method, instance)
+                tool = new FunctionTool(method, instance, services)
                 {
                     Name = name,
                     Description = desc,
@@ -91,7 +91,7 @@ public static class FunctionToolFactory
             }
             else
             {
-                tool = new FunctionTool(method)
+                tool = new FunctionTool(method, services)
                 {
                     Name = name,
                     Description = desc,

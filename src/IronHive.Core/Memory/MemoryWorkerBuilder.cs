@@ -13,16 +13,16 @@ public class MemoryWorkerBuilder
 {
     private readonly IReadOnlyDictionary<string, IVectorStorage> _vectorStorages;
     private readonly IReadOnlyDictionary<string, IQueueStorage> _queueStorages;
-    private readonly IServiceProvider _internalSp;
+    private readonly IServiceProvider? _sp;
 
     public MemoryWorkerBuilder(
         IReadOnlyDictionary<string, IVectorStorage> vectorStorages,
         IReadOnlyDictionary<string, IQueueStorage> queueStorages,
-        IServiceProvider internalSp)
+        IServiceProvider? sp)
     {
         _vectorStorages = vectorStorages;
         _queueStorages = queueStorages;
-        _internalSp = internalSp;
+        _sp = sp;
     }
 
     /// <summary>
@@ -32,7 +32,7 @@ public class MemoryWorkerBuilder
     {
         if (!_queueStorages.TryGetValue(storageName, out var queue))
             throw new InvalidOperationException($"큐 스토리지 '{storageName}'(이)가 등록되어 있지 않습니다.");
-        var builder = new WorkflowFactory(_internalSp).CreateBuilder().StartWith<MemoryContext>();
+        var builder = new WorkflowFactory(_sp).CreateBuilder().StartWith<MemoryContext>();
 
         return new MemoryPipelineBuilder(queue, builder);
     }

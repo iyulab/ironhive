@@ -10,7 +10,7 @@ namespace IronHive.Core.Tools;
 /// Filters tool execution outputs to reduce token consumption.
 /// Strategies: JSON→CSV conversion, whitespace normalization, large output truncation.
 /// </summary>
-public partial class ToolOutputFilter : IToolOutputFilter
+public partial class ToolOutputFilter
 {
     private readonly ToolOutputFilterOptions _options;
 

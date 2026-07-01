@@ -82,35 +82,6 @@ public class HiveServiceBuilderRegistrationTests
         act.Should().NotThrow();
     }
 
-    // --- Workflow surface ---
-
-    [Fact]
-    public void Build_ShouldExpose_WorkflowFactory()
-    {
-        var builder = new HiveServiceBuilder();
-        var service = builder.Build();
-
-        service.Workflows.Should().NotBeNull();
-        service.Workflows.Should().BeAssignableTo<IWorkflowFactory>();
-    }
-
-    [Fact]
-    public void Workflows_CreateFrom_WithRegisteredStep_ReturnsWorkflow()
-    {
-        var builder = new HiveServiceBuilder();
-        var service = builder.Build();
-
-        var definition = new WorkflowDefinition
-        {
-            Name = "test-workflow",
-            Steps = [new TaskNode { Id = "n1", Step = "my-step" }]
-        };
-
-        var workflow = service.Workflows.CreateFrom<object>(definition);
-        workflow.Should().NotBeNull();
-        workflow.Name.Should().Be("test-workflow");
-    }
-
     // --- HiveService DisposeAsync ---
 
     [Fact]

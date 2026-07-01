@@ -1,7 +1,6 @@
 using FluentAssertions;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Tools;
 using IronHive.Core.Services;
 using NSubstitute;
 
@@ -12,15 +11,13 @@ namespace IronHive.Tests.Services;
 /// </summary>
 public class MessageServiceTests
 {
-    private readonly IServiceProvider _mockServiceProvider;
     private readonly Dictionary<string, IMessageGenerator> _generators;
     private readonly MessageService _service;
 
     public MessageServiceTests()
     {
-        _mockServiceProvider = Substitute.For<IServiceProvider>();
         _generators = new Dictionary<string, IMessageGenerator>();
-        _service = new MessageService(_generators, _mockServiceProvider);
+        _service = new MessageService(_generators);
     }
 
     [Fact]
@@ -287,9 +284,7 @@ public class MessageServiceTests
     public void Constructor_ShouldNotThrow_WithValidDependencies()
     {
         // Act
-        var act = () => new MessageService(
-            new Dictionary<string, IMessageGenerator>(),
-            _mockServiceProvider);
+        var act = () => new MessageService(new Dictionary<string, IMessageGenerator>());
 
         // Assert
         act.Should().NotThrow();

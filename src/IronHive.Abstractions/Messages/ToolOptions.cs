@@ -1,3 +1,5 @@
+using IronHive.Abstractions.Tools;
+
 namespace IronHive.Abstractions.Messages;
 
 /// <summary>
@@ -16,4 +18,10 @@ public class ToolOptions
     /// null이면 제한 없음입니다.
     /// </summary>
     public TimeSpan? Timeout { get; set; }
+
+    /// <summary>
+    /// 툴 실행 결과를 LLM에 전달하기 전에 변환하는 델리게이트입니다.
+    /// (toolName, output) => transformedOutput
+    /// </summary>
+    public Func<string, ToolOutput, ToolOutput>? OutputTransform { get; set; }
 }

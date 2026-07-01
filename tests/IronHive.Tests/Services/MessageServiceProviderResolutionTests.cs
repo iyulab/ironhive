@@ -31,7 +31,7 @@ public class MessageServiceProviderResolutionTests
             .Returns(MakeResponse());
 
         var generators = new Dictionary<string, IMessageGenerator> { ["openai"] = generator };
-        var svc = new MessageService(generators, Substitute.For<IServiceProvider>());
+        var svc = new MessageService(generators);
 
         var result = await svc.GenerateMessageAsync(MakeRequest(provider: ""));
 
@@ -42,7 +42,7 @@ public class MessageServiceProviderResolutionTests
     [Fact]
     public async Task GenerateMessageAsync_EmptyProvider_NoGenerator_Throws()
     {
-        var svc = new MessageService(new Dictionary<string, IMessageGenerator>(), Substitute.For<IServiceProvider>());
+        var svc = new MessageService(new Dictionary<string, IMessageGenerator>());
 
         var act = async () => await svc.GenerateMessageAsync(MakeRequest(provider: ""));
 
@@ -58,7 +58,7 @@ public class MessageServiceProviderResolutionTests
             ["openai"] = Substitute.For<IMessageGenerator>(),
             ["anthropic"] = Substitute.For<IMessageGenerator>()
         };
-        var svc = new MessageService(generators, Substitute.For<IServiceProvider>());
+        var svc = new MessageService(generators);
 
         var act = async () => await svc.GenerateMessageAsync(MakeRequest(provider: ""));
 
@@ -74,7 +74,7 @@ public class MessageServiceProviderResolutionTests
             .Returns(AsyncEnumerable.Empty<StreamingMessageResponse>());
 
         var generators = new Dictionary<string, IMessageGenerator> { ["openai"] = generator };
-        var svc = new MessageService(generators, Substitute.For<IServiceProvider>());
+        var svc = new MessageService(generators);
 
         var act = async () =>
         {
@@ -86,7 +86,7 @@ public class MessageServiceProviderResolutionTests
     [Fact]
     public async Task GenerateStreamingMessageAsync_EmptyProvider_NoGenerator_Throws()
     {
-        var svc = new MessageService(new Dictionary<string, IMessageGenerator>(), Substitute.For<IServiceProvider>());
+        var svc = new MessageService(new Dictionary<string, IMessageGenerator>());
 
         var act = async () =>
         {
@@ -105,7 +105,7 @@ public class MessageServiceProviderResolutionTests
             ["openai"] = Substitute.For<IMessageGenerator>(),
             ["anthropic"] = Substitute.For<IMessageGenerator>()
         };
-        var svc = new MessageService(generators, Substitute.For<IServiceProvider>());
+        var svc = new MessageService(generators);
 
         var act = async () =>
         {

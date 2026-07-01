@@ -50,7 +50,7 @@ agent:
         agent.Provider.Should().Be("openai");
         agent.Model.Should().Be("gpt-4o-mini");
         agent.Instructions.Should().Be("You are a helpful assistant.");
-        agent.Tools.Should().HaveCount(2);
+        agent.Tools.Should().BeNull();
         agent.MaxTokens.Should().Be(512);
     }
 
@@ -135,7 +135,7 @@ agent:
         agent.Name.Should().Be("JsonBot");
         agent.Provider.Should().Be("openai");
         agent.Model.Should().Be("gpt-4o-mini");
-        agent.Tools.Should().HaveCount(1);
+        agent.Tools.Should().BeNull();
         agent.MaxTokens.Should().Be(1000);
     }
 
@@ -205,7 +205,7 @@ temperature = 0.3
         agent.Provider.Should().Be("openai");
         agent.Model.Should().Be("gpt-4o-mini");
         agent.Instructions.Should().Be("Be concise.");
-        agent.Tools.Should().HaveCount(1);
+        agent.Tools.Should().BeNull();
         agent.MaxTokens.Should().Be(256);
     }
 

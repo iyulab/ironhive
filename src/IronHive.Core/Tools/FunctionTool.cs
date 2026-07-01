@@ -14,32 +14,36 @@ public sealed class FunctionTool : ITool
 {
     private readonly MethodInfo _method;
     private readonly object? _target; // 인스턴스에 바인딩된 경우
+    private readonly IServiceProvider? _services;
 
     /// <summary>
     /// 델리게이트를 받아 대상 메서드/인스턴스를 설정합니다.
     /// </summary>
-    public FunctionTool(Delegate function)
+    public FunctionTool(Delegate function, IServiceProvider? services = null)
     {
         _method = function.Method;
         _target = function.Target;
+        _services = services;
     }
 
     /// <summary>
     /// <see cref="MethodInfo"/>를 받아
     /// 순수 실행기로 동작합니다. 인스턴스가 필요하면 DI를 통해 생성합니다.
     /// </summary>
-    public FunctionTool(MethodInfo method)
+    public FunctionTool(MethodInfo method, IServiceProvider? services = null)
     {
         _method = method;
+        _services = services;
     }
 
     /// <summary>
     /// <see cref="MethodInfo"/>와 대상 인스턴스를 받아 바인딩합니다.
     /// </summary>
-    public FunctionTool(MethodInfo method, object target)
+    public FunctionTool(MethodInfo method, object target, IServiceProvider? services = null)
     {
         _method = method;
         _target = target;
+        _services = services;
     }
 
     /// <inheritdoc />
@@ -76,7 +80,7 @@ public sealed class FunctionTool : ITool
         try
         {
             // 대상 인스턴스 준비
-            var target = _target ?? GetOrCreateInstance(_method.DeclaringType, input.Services);
+            var target = _target ?? GetOrCreateInstance(_method.DeclaringType, _services);
 
             // 인자 바인딩
             var parameters = _method.GetParameters();
@@ -143,7 +147,7 @@ public sealed class FunctionTool : ITool
     /// <summary>
     /// 도구 입력을 메서드 파라미터로 바인딩해 인수 배열을 구성합니다.
     /// </summary>
-    private static object?[]? BuildArguments(
+    private object?[]? BuildArguments(
         ParameterInfo[] parameters,
         ToolInput input,
         CancellationToken cancellationToken)
@@ -159,13 +163,13 @@ public sealed class FunctionTool : ITool
             // 1) 특정 키 서비스 주입
             if (param.GetCustomAttribute<FromKeyedServicesAttribute>() is { } keyedAttr)
             {
-                var services = input.Services?.GetKeyedServices(param.ParameterType, keyedAttr.Key);
+                var services = _services?.GetKeyedServices(param.ParameterType, keyedAttr.Key);
                 args[i] = param.ParameterType.IsArray ? services : services?.FirstOrDefault();
             }
             // 2) 특정 서비스 주입
             else if (param.IsDefined(typeof(FromServicesAttribute)))
             {
-                var services = input.Services?.GetServices(param.ParameterType);
+                var services = _services?.GetServices(param.ParameterType);
                 args[i] = param.ParameterType.IsArray ? services : services?.FirstOrDefault();
             }
             // 3) 취소 토큰인 경우

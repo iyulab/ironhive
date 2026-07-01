@@ -85,20 +85,6 @@ public class HiveServiceTests
     }
 
     [Fact]
-    public void Build_ShouldResolve_WorkflowFactory()
-    {
-        // Arrange
-        var builder = new HiveServiceBuilder();
-
-        // Act
-        var service = builder.Build();
-
-        // Assert
-        service.Workflows.Should().NotBeNull();
-        service.Workflows.Should().BeAssignableTo<IWorkflowFactory>();
-    }
-
-    [Fact]
     public void Build_MultipleTimes_ShouldCreateSeparateInstances()
     {
         // Arrange

@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
-using Microsoft.Extensions.DependencyInjection;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Tools;
@@ -12,15 +11,11 @@ namespace IronHive.Core.Services;
 /// <inheritdoc />
 public class MessageService : IMessageService
 {
-    private readonly IServiceProvider? _services;
     private readonly IReadOnlyDictionary<string, IMessageGenerator> _generators;
-    private readonly IToolOutputFilter? _toolFilter;
 
-    internal MessageService(IReadOnlyDictionary<string, IMessageGenerator> generators, IServiceProvider? services)
+    internal MessageService(IReadOnlyDictionary<string, IMessageGenerator> generators)
     {
         _generators = generators;
-        _services = services;
-        _toolFilter = services?.GetService<IToolOutputFilter>();
     }
 
     private IMessageGenerator ResolveGenerator(string? provider)
@@ -329,7 +324,7 @@ public class MessageService : IMessageService
     /// <summary>
     /// 도구 컨텐츠를 처리합니다.
     /// </summary>
-    private async IAsyncEnumerable<StreamingMessageResponse> ProcessToolContentAsync(
+    private static async IAsyncEnumerable<StreamingMessageResponse> ProcessToolContentAsync(
         Message message,
         IToolCollection? tools,
         ToolOptions? toolOptions,
@@ -365,7 +360,7 @@ public class MessageService : IMessageService
                         Index = idx,
                     }, cancellationToken).ConfigureAwait(false);
 
-                    var input = new ToolInput(tmc.Input, _services);
+                    var input = new ToolInput(tmc.Input);
 
                     if (tools?.TryGet(tmc.Name, out var tool) == true)
                     {
@@ -389,9 +384,9 @@ public class MessageService : IMessageService
                         tmc.Output = ToolOutput.Failure($"Could not find tool '{tmc.Name}', invocation failed.");
                     }
 
-                    if (_toolFilter is not null && tmc.Output is { Result: not null })
+                    if (toolOptions?.OutputTransform is not null && tmc.Output is { Result: not null })
                     {
-                        tmc.Output = _toolFilter.Filter(tmc.Name, tmc.Output);
+                        tmc.Output = toolOptions.OutputTransform(tmc.Name, tmc.Output);
                     }
 
                     await channel.Writer.WriteAsync(new StreamingContentCompletedResponse

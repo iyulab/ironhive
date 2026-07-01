@@ -81,14 +81,6 @@ public class ToolInputTests
     }
 
     [Fact]
-    public void Services_ShouldBeSettable()
-    {
-        var input = new ToolInput(null, services: null);
-
-        input.Services.Should().BeNull();
-    }
-
-    [Fact]
     public void ToString_ShouldReturnJson()
     {
         var input = new ToolInput(null);

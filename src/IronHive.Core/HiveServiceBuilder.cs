@@ -12,8 +12,6 @@ using IronHive.Core.Agent;
 using IronHive.Core.Files;
 using IronHive.Core.Memory;
 using IronHive.Core.Services;
-using IronHive.Core.Workflow;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace IronHive.Core;
 
@@ -58,33 +56,14 @@ public class HiveServiceBuilder : IHiveServiceBuilder
 
     public IHiveService Build(IServiceProvider? sp = null)
     {
-        var internalSc = new ServiceCollection();
-
-        internalSc.AddSingleton<IReadOnlyDictionary<string, IModelFinder>>(_modelFinders);
-        internalSc.AddSingleton<IReadOnlyDictionary<string, IMessageGenerator>>(_messageGenerators);
-        internalSc.AddSingleton<IReadOnlyDictionary<string, IEmbeddingGenerator>>(_embeddingGenerators);
-        internalSc.AddSingleton<IReadOnlyDictionary<string, IImageGenerator>>(_imageGenerators);
-        internalSc.AddSingleton<IReadOnlyDictionary<string, IVideoGenerator>>(_videoGenerators);
-        internalSc.AddSingleton<IReadOnlyDictionary<string, IAudioProcessor>>(_audioProcessors);
-        internalSc.AddSingleton<IReadOnlyDictionary<string, IFileStorage>>(_fileStorages);
-        internalSc.AddSingleton<IReadOnlyDictionary<string, IVectorStorage>>(_vectorStorages);
-        internalSc.AddSingleton<IReadOnlyDictionary<string, IQueueStorage>>(_queueStorages);
-
-        var internalSp = internalSc.BuildServiceProvider();
-
-        IServiceProvider effectiveSp = sp != null
-            ? new CompositeServiceProvider(sp, internalSp)
-            : internalSp;
-
         var modelService = new ModelService(_modelFinders);
         var embeddingService = new EmbeddingService(_embeddingGenerators);
-        var messageService = new MessageService(_messageGenerators, sp);
+        var messageService = new MessageService(_messageGenerators);
         var imageService = new ImageService(_imageGenerators);
         var videoService = new VideoService(_videoGenerators);
         var audioService = new AudioService(_audioProcessors);
         var fileService = new FileStorageService(_fileStorages);
         var memoryService = new MemoryService(_vectorStorages, _queueStorages, embeddingService);
-        var workflowFactory = new WorkflowFactory(effectiveSp);
         var agentService = new AgentService(messageService);
 
         return new HiveService(
@@ -96,9 +75,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
             audio: audioService,
             files: fileService,
             memory: memoryService,
-            workflows: workflowFactory,
             agents: agentService,
-            internalSp: internalSp,
             vectorStorages: _vectorStorages,
             queueStorages: _queueStorages);
     }

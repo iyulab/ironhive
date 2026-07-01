@@ -7,7 +7,6 @@ using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Videos;
 using IronHive.Abstractions.Audio;
-using IronHive.Abstractions.Workflow;
 
 namespace IronHive.Abstractions;
 
@@ -21,7 +20,6 @@ public interface IHiveService : IAsyncDisposable
     IAudioService Audio { get; }
     IFileStorageService Files { get; }
     IMemoryService Memory { get; }
-    IWorkflowFactory Workflows { get; }
 
     IAgent CreateAgent(Action<AgentConfig> configure);
     IAgent CreateAgentFrom(AgentCard card);
