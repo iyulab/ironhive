@@ -6,15 +6,12 @@ using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Images;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Queue;
-using IronHive.Abstractions.Tools;
 using IronHive.Abstractions.Vector;
 using IronHive.Abstractions.Videos;
-using IronHive.Abstractions.Workflow;
 using IronHive.Core.Agent;
 using IronHive.Core.Files;
 using IronHive.Core.Memory;
 using IronHive.Core.Services;
-using IronHive.Core.Tools;
 using IronHive.Core.Workflow;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -22,7 +19,7 @@ namespace IronHive.Core;
 
 public class HiveServiceBuilder : IHiveServiceBuilder
 {
-    private readonly Dictionary<string, IModelFinder> _catalogs = new();
+    private readonly Dictionary<string, IModelFinder> _modelFinders = new();
     private readonly Dictionary<string, IMessageGenerator> _messageGenerators = new();
     private readonly Dictionary<string, IEmbeddingGenerator> _embeddingGenerators = new();
     private readonly Dictionary<string, IImageGenerator> _imageGenerators = new();
@@ -31,12 +28,9 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     private readonly Dictionary<string, IFileStorage> _fileStorages = new();
     private readonly Dictionary<string, IVectorStorage> _vectorStorages = new();
     private readonly Dictionary<string, IQueueStorage> _queueStorages = new();
-    private readonly List<ITool> _tools = [];
-    private readonly List<Action<IServiceCollection>> _stepRegistrations = [];
-    private readonly List<Action<IToolCollection, IServiceProvider?>> _toolInitializers = [];
 
-    public IHiveServiceBuilder AddModelFinder(string name, IModelFinder catalog)
-    { _catalogs[name] = catalog; return this; }
+    public IHiveServiceBuilder AddModelFinder(string name, IModelFinder finder)
+    { _modelFinders[name] = finder; return this; }
 
     public IHiveServiceBuilder AddMessageGenerator(string name, IMessageGenerator generator)
     { _messageGenerators[name] = generator; return this; }
@@ -62,29 +56,11 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     public IHiveServiceBuilder AddQueueStorage(string name, IQueueStorage storage)
     { _queueStorages[name] = storage; return this; }
 
-    public IHiveServiceBuilder AddTool(ITool tool)
-    { _tools.Add(tool); return this; }
-
-    public IHiveServiceBuilder AddWorkflowStep<T>(string name, T? instance = null)
-        where T : class, IWorkflowStep
-    {
-        if (instance is not null)
-            _stepRegistrations.Add(sc => sc.AddKeyedSingleton<IWorkflowStep>(name, instance));
-        else
-            _stepRegistrations.Add(sc => sc.AddKeyedTransient<IWorkflowStep, T>(name));
-        return this;
-    }
-
-    public IHiveServiceBuilder AddToolInitializer(Action<IToolCollection, IServiceProvider?> initializer)
-    { _toolInitializers.Add(initializer); return this; }
-
     public IHiveService Build(IServiceProvider? sp = null)
     {
-        // 내부 ServiceCollection — 워크플로우 스텝 및 메모리 파이프라인용
         var internalSc = new ServiceCollection();
 
-        // 딕셔너리를 내부 DI에 등록 (파이프라인 등에서 주입받을 수 있도록)
-        internalSc.AddSingleton<IReadOnlyDictionary<string, IModelFinder>>(_catalogs);
+        internalSc.AddSingleton<IReadOnlyDictionary<string, IModelFinder>>(_modelFinders);
         internalSc.AddSingleton<IReadOnlyDictionary<string, IMessageGenerator>>(_messageGenerators);
         internalSc.AddSingleton<IReadOnlyDictionary<string, IEmbeddingGenerator>>(_embeddingGenerators);
         internalSc.AddSingleton<IReadOnlyDictionary<string, IImageGenerator>>(_imageGenerators);
@@ -94,26 +70,15 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         internalSc.AddSingleton<IReadOnlyDictionary<string, IVectorStorage>>(_vectorStorages);
         internalSc.AddSingleton<IReadOnlyDictionary<string, IQueueStorage>>(_queueStorages);
 
-        // 워크플로우 스텝 등록
-        foreach (var reg in _stepRegistrations)
-            reg(internalSc);
-
         var internalSp = internalSc.BuildServiceProvider();
 
-        // 외부 SP와 내부 SP를 합성: 외부 우선, 내부 폴백
         IServiceProvider effectiveSp = sp != null
             ? new CompositeServiceProvider(sp, internalSp)
             : internalSp;
 
-        // 툴 컬렉션 생성 및 초기화
-        var toolCollection = new ToolCollection(_tools, null, effectiveSp);
-        foreach (var init in _toolInitializers)
-            init(toolCollection, sp);
-
-        // 서비스 생성
-        var catalogService = new ModelService(_catalogs);
+        var modelService = new ModelService(_modelFinders);
         var embeddingService = new EmbeddingService(_embeddingGenerators);
-        var messageService = new MessageService(_messageGenerators, toolCollection, sp);
+        var messageService = new MessageService(_messageGenerators, sp);
         var imageService = new ImageService(_imageGenerators);
         var videoService = new VideoService(_videoGenerators);
         var audioService = new AudioService(_audioProcessors);
@@ -123,7 +88,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         var agentService = new AgentService(messageService);
 
         return new HiveService(
-            models: catalogService,
+            models: modelService,
             messages: messageService,
             embeddings: embeddingService,
             images: imageService,

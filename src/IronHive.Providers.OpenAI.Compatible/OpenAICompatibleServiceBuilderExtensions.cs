@@ -17,7 +17,7 @@ public static partial class CompatibleHiveServiceBuilderExtensions
         OpenAICompatibleServiceType serviceType = OpenAICompatibleServiceType.All)
     {
         if (serviceType.HasFlag(OpenAICompatibleServiceType.Models))
-            builder.AddModelCatalog(providerName, new OpenAIModelCatalog(config.ToOpenAI()));
+            builder.AddModelFinder(providerName, new OpenAIModelFinder(config.ToOpenAI()));
 
         if (serviceType.HasFlag(OpenAICompatibleServiceType.Language))
             builder.AddMessageGenerator(providerName, new OpenAICompatibleMessageGenerator(config));

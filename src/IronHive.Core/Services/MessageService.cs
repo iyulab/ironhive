@@ -14,13 +14,11 @@ public class MessageService : IMessageService
 {
     private readonly IServiceProvider? _services;
     private readonly IReadOnlyDictionary<string, IMessageGenerator> _generators;
-    private readonly IToolCollection _tools;
     private readonly IToolOutputFilter? _toolFilter;
 
-    internal MessageService(IReadOnlyDictionary<string, IMessageGenerator> generators, IToolCollection tools, IServiceProvider? services)
+    internal MessageService(IReadOnlyDictionary<string, IMessageGenerator> generators, IServiceProvider? services)
     {
         _generators = generators;
-        _tools = tools;
         _services = services;
         _toolFilter = services?.GetService<IToolOutputFilter>();
     }
@@ -78,9 +76,7 @@ public class MessageService : IMessageService
             System = request.Suggestions != null
                 ? SuggestionCollector.Prompt(request.System, request.Suggestions)
                 : request.System,
-            Tools = request.Tools != null
-                ? _tools.FilterBy(request.Tools.Select(t => t.Name))
-                : null,
+            Tools = request.Tools,
             Output = request.Output,
             MaxTokens = request.MaxTokens,
         };
@@ -91,7 +87,7 @@ public class MessageService : IMessageService
             if (req.Messages.LastOrDefault() is { Role: MessageRole.Assistant } last)
             {
                 message = last;
-                await foreach (var _ in ProcessToolContentAsync(message, request.Tools ?? [], request.ToolOptions, cancellationToken).ConfigureAwait(false))
+                await foreach (var _ in ProcessToolContentAsync(message, request.Tools, request.ToolOptions, cancellationToken).ConfigureAwait(false))
                 { }
             }
             else
@@ -164,9 +160,7 @@ public class MessageService : IMessageService
             System = request.Suggestions != null
                 ? SuggestionCollector.Prompt(request.System, request.Suggestions)
                 : request.System,
-            Tools = request.Tools != null
-                ? _tools.FilterBy(request.Tools.Select(t => t.Name))
-                : null,
+            Tools = request.Tools,
             Output = request.Output,
             MaxTokens = request.MaxTokens,
         };
@@ -178,7 +172,7 @@ public class MessageService : IMessageService
             if (req.Messages.LastOrDefault() is { Role: MessageRole.Assistant } last)
             {
                 message = last;
-                await foreach (var res in ProcessToolContentAsync(message, request.Tools ?? [], request.ToolOptions, cancellationToken).ConfigureAwait(false))
+                await foreach (var res in ProcessToolContentAsync(message, request.Tools, request.ToolOptions, cancellationToken).ConfigureAwait(false))
                 {
                     yield return res;
                 }
@@ -325,9 +319,7 @@ public class MessageService : IMessageService
             ThinkingEffort = request.ThinkingEffort,
             Messages = request.Messages,
             System = request.System,
-            Tools = request.Tools != null
-                ? _tools.FilterBy(request.Tools.Select(t => t.Name))
-                : null,
+            Tools = request.Tools,
             Output = request.Output,
             MaxTokens = request.MaxTokens,
         };
@@ -339,7 +331,7 @@ public class MessageService : IMessageService
     /// </summary>
     private async IAsyncEnumerable<StreamingMessageResponse> ProcessToolContentAsync(
         Message message,
-        IEnumerable<ToolItem> toolItems,
+        IToolCollection? tools,
         ToolOptions? toolOptions,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
@@ -373,10 +365,9 @@ public class MessageService : IMessageService
                         Index = idx,
                     }, cancellationToken).ConfigureAwait(false);
 
-                    var options = toolItems.FirstOrDefault(t => string.Equals(t.Name, tmc.Name, StringComparison.Ordinal))?.Options;
-                    var input = new ToolInput(tmc.Input, options, _services);
+                    var input = new ToolInput(tmc.Input, _services);
 
-                    if (_tools.TryGet(tmc.Name, out var tool))
+                    if (tools?.TryGet(tmc.Name, out var tool) == true)
                     {
                         using var timeoutCts = timeout.HasValue
                             ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)

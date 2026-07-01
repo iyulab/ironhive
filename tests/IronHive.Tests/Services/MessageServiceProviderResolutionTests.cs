@@ -1,7 +1,6 @@
 using FluentAssertions;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Tools;
 using IronHive.Core.Services;
 using NSubstitute;
 
@@ -15,7 +14,6 @@ public class MessageServiceProviderResolutionTests
             Provider = provider,
             Model = model,
             Messages = [Message.User("hi")],
-            Tools = []
         };
 
     private static MessageResponse MakeResponse() => new()
@@ -32,15 +30,8 @@ public class MessageServiceProviderResolutionTests
         generator.GenerateMessageAsync(Arg.Any<MessageGenerationRequest>(), Arg.Any<CancellationToken>())
             .Returns(MakeResponse());
 
-        var generators = new Dictionary<string, IMessageGenerator>
-        {
-            ["openai"] = generator
-        };
-
-        var tools = Substitute.For<IToolCollection>();
-        tools.FilterBy(Arg.Any<IEnumerable<string>>()).Returns(tools);
-
-        var svc = new MessageService(generators, tools, Substitute.For<IServiceProvider>());
+        var generators = new Dictionary<string, IMessageGenerator> { ["openai"] = generator };
+        var svc = new MessageService(generators, Substitute.For<IServiceProvider>());
 
         var result = await svc.GenerateMessageAsync(MakeRequest(provider: ""));
 
@@ -51,11 +42,7 @@ public class MessageServiceProviderResolutionTests
     [Fact]
     public async Task GenerateMessageAsync_EmptyProvider_NoGenerator_Throws()
     {
-        var generators = new Dictionary<string, IMessageGenerator>();
-        var tools = Substitute.For<IToolCollection>();
-        tools.FilterBy(Arg.Any<IEnumerable<string>>()).Returns(tools);
-
-        var svc = new MessageService(generators, tools, Substitute.For<IServiceProvider>());
+        var svc = new MessageService(new Dictionary<string, IMessageGenerator>(), Substitute.For<IServiceProvider>());
 
         var act = async () => await svc.GenerateMessageAsync(MakeRequest(provider: ""));
 
@@ -71,11 +58,7 @@ public class MessageServiceProviderResolutionTests
             ["openai"] = Substitute.For<IMessageGenerator>(),
             ["anthropic"] = Substitute.For<IMessageGenerator>()
         };
-
-        var tools = Substitute.For<IToolCollection>();
-        tools.FilterBy(Arg.Any<IEnumerable<string>>()).Returns(tools);
-
-        var svc = new MessageService(generators, tools, Substitute.For<IServiceProvider>());
+        var svc = new MessageService(generators, Substitute.For<IServiceProvider>());
 
         var act = async () => await svc.GenerateMessageAsync(MakeRequest(provider: ""));
 
@@ -90,15 +73,8 @@ public class MessageServiceProviderResolutionTests
         generator.GenerateStreamingMessageAsync(Arg.Any<MessageGenerationRequest>(), Arg.Any<CancellationToken>())
             .Returns(AsyncEnumerable.Empty<StreamingMessageResponse>());
 
-        var generators = new Dictionary<string, IMessageGenerator>
-        {
-            ["openai"] = generator
-        };
-
-        var tools = Substitute.For<IToolCollection>();
-        tools.FilterBy(Arg.Any<IEnumerable<string>>()).Returns(tools);
-
-        var svc = new MessageService(generators, tools, Substitute.For<IServiceProvider>());
+        var generators = new Dictionary<string, IMessageGenerator> { ["openai"] = generator };
+        var svc = new MessageService(generators, Substitute.For<IServiceProvider>());
 
         var act = async () =>
         {
@@ -110,10 +86,7 @@ public class MessageServiceProviderResolutionTests
     [Fact]
     public async Task GenerateStreamingMessageAsync_EmptyProvider_NoGenerator_Throws()
     {
-        var generators = new Dictionary<string, IMessageGenerator>();
-        var tools = Substitute.For<IToolCollection>();
-        tools.FilterBy(Arg.Any<IEnumerable<string>>()).Returns(tools);
-        var svc = new MessageService(generators, tools, Substitute.For<IServiceProvider>());
+        var svc = new MessageService(new Dictionary<string, IMessageGenerator>(), Substitute.For<IServiceProvider>());
 
         var act = async () =>
         {
@@ -132,10 +105,7 @@ public class MessageServiceProviderResolutionTests
             ["openai"] = Substitute.For<IMessageGenerator>(),
             ["anthropic"] = Substitute.For<IMessageGenerator>()
         };
-
-        var tools = Substitute.For<IToolCollection>();
-        tools.FilterBy(Arg.Any<IEnumerable<string>>()).Returns(tools);
-        var svc = new MessageService(generators, tools, Substitute.For<IServiceProvider>());
+        var svc = new MessageService(generators, Substitute.For<IServiceProvider>());
 
         var act = async () =>
         {

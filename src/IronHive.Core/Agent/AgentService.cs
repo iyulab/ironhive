@@ -136,7 +136,6 @@ public class AgentService : IAgentService
             Provider = config.Provider,
             Model = config.Model,
             Instructions = config.Instructions,
-            Tools = config.ToToolItems(),
             MaxTokens = config.Parameters?.MaxTokens
         };
     }

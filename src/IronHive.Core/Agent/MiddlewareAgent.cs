@@ -18,7 +18,7 @@ public class MiddlewareAgent : IAgent
     public string Name { get => _inner.Name; set => _inner.Name = value; }
     public string Description { get => _inner.Description; set => _inner.Description = value; }
     public string? Instructions { get => _inner.Instructions; set => _inner.Instructions = value; }
-    public IEnumerable<ToolItem>? Tools { get => _inner.Tools; set => _inner.Tools = value; }
+    public IToolCollection? Tools { get => _inner.Tools; set => _inner.Tools = value; }
     public int? MaxTokens { get => _inner.MaxTokens; set => _inner.MaxTokens = value; }
 
     public MiddlewareAgent(IAgent inner, IReadOnlyList<IAgentMiddleware> middlewares)

@@ -27,7 +27,7 @@ public class BasicAgent : IAgent
     public string? Instructions { get; set; }
 
     /// <inheritdoc />
-    public IEnumerable<ToolItem>? Tools { get; set; }
+    public IToolCollection? Tools { get; set; }
 
     /// <inheritdoc />
     public int? MaxTokens { get; set; }

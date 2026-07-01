@@ -43,9 +43,9 @@ public class MessageRequest
     public ICollection<Message> Messages { get; set; } = [];
 
     /// <summary>
-    /// 모델이 사용 가능한 도구 목록입니다. null이면 도구를 사용하지 않습니다.
+    /// 모델이 사용 가능한 도구 컬렉션입니다. null이면 도구를 사용하지 않습니다.
     /// </summary>
-    public IEnumerable<ToolItem>? Tools { get; set; }
+    public IToolCollection? Tools { get; set; }
 
     /// <summary>
     /// 도구 실행 동작 설정입니다. null이면 기본값이 사용됩니다.

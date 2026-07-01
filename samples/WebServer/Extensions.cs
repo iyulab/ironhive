@@ -44,7 +44,6 @@ public static class Extensions
             .AddGoogleAIProviders("google", g_config)
             .AddAnthropicProviders("xai", x_config)
             .AddOpenAIProviders("iyulab", l_config)
-            .AddFunctionTool<TestTool>()
             .Build(sp));
     }
 }

@@ -34,9 +34,9 @@ public interface IAgent
     string? Instructions { get; set; }
 
     /// <summary>
-    /// 에이전트가 사용할 수 있는 도구의 서비스 키 목록입니다.
+    /// 에이전트가 사용할 수 있는 도구 컬렉션입니다.
     /// </summary>
-    IEnumerable<ToolItem>? Tools { get; set; }
+    IToolCollection? Tools { get; set; }
 
     /// <summary>
     /// 생성할 최대 토큰 수입니다.

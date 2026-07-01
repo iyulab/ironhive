@@ -63,16 +63,12 @@ public static class MessageSample
                     ]
                 }
             ],
-            Tools =
-            [
-                new ToolItem { Name = "func_Add", Options = new { } },
-                new ToolItem { Name = "func_Subtract", Options = new { } },
-                new ToolItem { Name = "func_Multiply", Options = new { } },
-                new ToolItem { Name = "func_Divide", Options = new { } }
-            ],
             // Output = typeof(OutputFormat)
         };
-        
+
+        var tools = new ToolCollection(FunctionToolFactory.CreateFrom<Calculator>());
+        request.Tools = tools;
+
         var hive = new HiveServiceBuilder()
             .AddOpenAIProviders("openai", new OpenAIConfig
             {
@@ -86,7 +82,6 @@ public static class MessageSample
             {
                 ApiKey = Environment.GetEnvironmentVariable("GOOGLE") ?? string.Empty
             })
-            .AddFunctionTool<Calculator>()
             .Build();
         var generator = hive.Messages;
 

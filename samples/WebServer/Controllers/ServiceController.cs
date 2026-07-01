@@ -77,7 +77,7 @@ public class ServiceController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         request.System = $"Current UTC Time: {DateTime.UtcNow}\n" + request.System;
-        request.Tools = _tools.Select(t => new ToolItem { Name = t.UniqueName });
+        request.Tools = _tools;
 
         try
         {

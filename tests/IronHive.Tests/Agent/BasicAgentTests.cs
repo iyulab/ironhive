@@ -3,6 +3,7 @@ using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Agent;
+using IronHive.Core.Tools;
 using NSubstitute;
 
 namespace IronHive.Tests.Agent;
@@ -18,6 +19,13 @@ public class BasicAgentTests
     public BasicAgentTests()
     {
         _mockMessageService = Substitute.For<IMessageService>();
+    }
+
+    private static ITool CreateMockTool(string name)
+    {
+        var tool = Substitute.For<ITool>();
+        tool.UniqueName.Returns(name);
+        return tool;
     }
 
     private BasicAgent CreateAgent(
@@ -66,11 +74,10 @@ public class BasicAgentTests
     {
         // Arrange
         var agent = CreateAgent();
-        var tools = new List<ToolItem>
-        {
-            new() { Name = "calculator" },
-            new() { Name = "web-search" }
-        };
+        var tools = new ToolCollection([
+            CreateMockTool("calculator"),
+            CreateMockTool("web-search")
+        ]);
         agent.Tools = tools;
 
         // Assert
@@ -225,7 +232,7 @@ public class BasicAgentTests
     {
         // Arrange
         var agent = CreateAgent();
-        agent.Tools = [new ToolItem { Name = "calculator" }];
+        agent.Tools = new ToolCollection([CreateMockTool("calculator")]);
 
         var messages = new List<Message>
         {
@@ -251,7 +258,7 @@ public class BasicAgentTests
         // Assert
         capturedRequest.Should().NotBeNull();
         capturedRequest!.Tools.Should().HaveCount(1);
-        capturedRequest.Tools.First().Name.Should().Be("calculator");
+        capturedRequest.Tools!.First().UniqueName.Should().Be("calculator");
     }
 
     #endregion

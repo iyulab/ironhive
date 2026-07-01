@@ -81,14 +81,6 @@ public class ToolInputTests
     }
 
     [Fact]
-    public void Options_ShouldBeSettable()
-    {
-        var input = new ToolInput(null, options: "my-options");
-
-        input.Options.Should().Be("my-options");
-    }
-
-    [Fact]
     public void Services_ShouldBeSettable()
     {
         var input = new ToolInput(null, services: null);

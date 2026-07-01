@@ -17,7 +17,7 @@ public class ToolInput : IReadOnlyDictionary<string, object?>
     /// <summary>
     /// 주어진 입력 객체를 딕셔너리 형태로 변환하여 래핑합니다.
     /// </summary>
-    public ToolInput(object? input = null, object? options = null, IServiceProvider? services = null)
+    public ToolInput(object? input = null, IServiceProvider? services = null)
     {
         _items = input is null || (input is string str && string.IsNullOrWhiteSpace(str))
                  ? new Dictionary<string, object?>(StringComparer.Ordinal)
@@ -25,13 +25,7 @@ public class ToolInput : IReadOnlyDictionary<string, object?>
                  ?? throw new ArgumentException("입력 객체는 Dictionary<string, object?> 형식이어야 합니다.", nameof(input));
 
         Services = services;
-        Options = options;
     }
-
-    /// <summary>
-    /// 툴에 전달되는 추가 옵션입니다.
-    /// </summary>
-    public object? Options { get; set; }
 
     /// <summary>
     /// 툴 실행에 필요한 서비스 제공자입니다.

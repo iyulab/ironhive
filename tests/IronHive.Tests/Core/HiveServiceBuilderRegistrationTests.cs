@@ -82,24 +82,6 @@ public class HiveServiceBuilderRegistrationTests
         act.Should().NotThrow();
     }
 
-    // --- AddWorkflowStep ---
-
-    [Fact]
-    public void AddWorkflowStep_DifferentNames_BothSucceed()
-    {
-        var builder = new HiveServiceBuilder();
-        var step1 = Substitute.For<IWorkflowStep>();
-        var step2 = Substitute.For<IWorkflowStep>();
-
-        var act = () =>
-        {
-            builder.AddWorkflowStep<IWorkflowStep>("step1", step1);
-            builder.AddWorkflowStep<IWorkflowStep>("step2", step2);
-        };
-
-        act.Should().NotThrow();
-    }
-
     // --- Workflow surface ---
 
     [Fact]
@@ -116,8 +98,6 @@ public class HiveServiceBuilderRegistrationTests
     public void Workflows_CreateFrom_WithRegisteredStep_ReturnsWorkflow()
     {
         var builder = new HiveServiceBuilder();
-        var step = Substitute.For<IWorkflowStep>();
-        builder.AddWorkflowStep<IWorkflowStep>("my-step", step);
         var service = builder.Build();
 
         var definition = new WorkflowDefinition

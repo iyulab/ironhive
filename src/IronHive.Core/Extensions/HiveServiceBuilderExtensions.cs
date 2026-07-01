@@ -4,27 +4,12 @@ using IronHive.Core.Files;
 using IronHive.Core.Files.Decoders;
 using IronHive.Core.Files.Detectors;
 using IronHive.Core.Storages;
-using IronHive.Core.Tools;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace IronHive.Core.Extensions;
 
 public static class HiveServiceBuilderExtensions
 {
-    /// <summary>
-    /// 내장 함수 도구를 <typeparamref name="T"/> 타입에서 모두 찾아 등록합니다.
-    /// </summary>
-    public static IHiveServiceBuilder AddFunctionTool<T>(this IHiveServiceBuilder builder)
-        where T : class
-    {
-        var tools = FunctionToolFactory.CreateFrom<T>();
-        foreach (var tool in tools)
-        {
-            builder.AddTool(tool);
-        }
-        return builder;
-    }
-
     /// <summary>
     /// 로컬 디스크 파일 스토리지를 등록합니다.
     /// </summary>

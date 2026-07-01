@@ -131,8 +131,7 @@ public static class FunctionToolFactory
             if (param.ParameterType == typeof(CancellationToken))
                 continue;
             // 특정 서비스의 경우 무시
-            if (param.GetCustomAttributes().Any(a => a is FromOptionsAttribute ||
-                    a is FromServicesAttribute || a is FromKeyedServicesAttribute))
+            if (param.GetCustomAttributes().Any(a => a is FromServicesAttribute || a is FromKeyedServicesAttribute))
                 continue;
 
             // JSON 스키마 생성 (파라미터는 nullable 허용 + 프로퍼티 description 반영)

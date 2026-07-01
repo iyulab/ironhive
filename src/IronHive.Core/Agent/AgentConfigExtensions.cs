@@ -1,5 +1,4 @@
 using IronHive.Abstractions.Agent;
-using IronHive.Abstractions.Tools;
 
 namespace IronHive.Core.Agent;
 
@@ -8,29 +7,11 @@ namespace IronHive.Core.Agent;
 /// </summary>
 public static class AgentConfigExtensions
 {
-    /// <summary>
-    /// 설정 유효성을 검증합니다.
-    /// </summary>
-#pragma warning disable CA2208 // paramName is intentionally the property name being validated
+#pragma warning disable CA2208
     public static void Validate(this AgentConfig config)
     {
         if (string.IsNullOrWhiteSpace(config.Model))
             throw new ArgumentException("Agent model is required.", nameof(AgentConfig.Model));
     }
 #pragma warning restore CA2208
-
-    /// <summary>
-    /// ToolItem 목록으로 변환합니다.
-    /// </summary>
-    public static IEnumerable<ToolItem>? ToToolItems(this AgentConfig config)
-    {
-        if (config.Tools == null || config.Tools.Count == 0)
-            return null;
-
-        return config.Tools.Select(toolName => new ToolItem
-        {
-            Name = toolName,
-            Options = config.ToolOptions?.GetValueOrDefault(toolName)
-        });
-    }
 }

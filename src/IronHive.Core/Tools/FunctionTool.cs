@@ -168,12 +168,7 @@ public sealed class FunctionTool : ITool
                 var services = input.Services?.GetServices(param.ParameterType);
                 args[i] = param.ParameterType.IsArray ? services : services?.FirstOrDefault();
             }
-            // 3) 툴 옵션 주입
-            else if (param.GetCustomAttribute<FromOptionsAttribute>() is not null && input.Options is not null)
-            {
-                args[i] = input.Options.ConvertTo(param.ParameterType);
-            }
-            // 4) 취소 토큰인 경우
+            // 3) 취소 토큰인 경우
             else if (param.ParameterType == typeof(CancellationToken))
             {
                 args[i] = cancellationToken;

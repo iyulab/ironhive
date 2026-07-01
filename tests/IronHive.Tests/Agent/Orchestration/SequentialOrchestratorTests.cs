@@ -567,7 +567,7 @@ public class SequentialOrchestratorTests
         public string Name { get; set; }
         public string Description { get; set; } = "Mock";
         public string? Instructions { get; set; }
-        public IEnumerable<ToolItem>? Tools { get; set; }
+        public IToolCollection? Tools { get; set; }
         public int? MaxTokens { get; set; }
         public Func<IEnumerable<Message>, string>? ResponseFunc { get; set; }
 

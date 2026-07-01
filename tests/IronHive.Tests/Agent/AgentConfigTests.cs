@@ -54,55 +54,6 @@ public class AgentConfigTests
     }
 
     [Fact]
-    public void ToToolItems_NullTools_ShouldReturnNull()
-    {
-        var config = new AgentConfig { Tools = null };
-
-        config.ToToolItems().Should().BeNull();
-    }
-
-    [Fact]
-    public void ToToolItems_EmptyTools_ShouldReturnNull()
-    {
-        var config = new AgentConfig { Tools = [] };
-
-        config.ToToolItems().Should().BeNull();
-    }
-
-    [Fact]
-    public void ToToolItems_WithTools_ShouldConvert()
-    {
-        var config = new AgentConfig
-        {
-            Tools = ["tool1", "tool2"]
-        };
-
-        var items = config.ToToolItems()!.ToList();
-
-        items.Should().HaveCount(2);
-        items[0].Name.Should().Be("tool1");
-        items[1].Name.Should().Be("tool2");
-    }
-
-    [Fact]
-    public void ToToolItems_WithToolOptions_ShouldMapOptions()
-    {
-        var config = new AgentConfig
-        {
-            Tools = ["tool1", "tool2"],
-            ToolOptions = new Dictionary<string, object?>
-            {
-                ["tool1"] = "opt-value"
-            }
-        };
-
-        var items = config.ToToolItems()!.ToList();
-
-        items[0].Options.Should().Be("opt-value");
-        items[1].Options.Should().BeNull();
-    }
-
-    [Fact]
     public void Parameters_MaxTokens_NullConfig_ShouldBeNull()
     {
         var config = new AgentConfig { Parameters = null };

@@ -226,14 +226,18 @@ public class McpSession : IAsyncDisposable
                 EnvironmentVariables = stdio.EnvironmentVariables,
                 ShutdownTimeout = stdio.ShutdownTimeout,
                 WorkingDirectory = stdio.WorkingDirectory,
-                //StandardErrorLines = (str) => Console.Error.WriteLine(str),
             }),
             McpSseClientConfig sse => new HttpClientTransport(new HttpClientTransportOptions
             {
+                TransportMode = HttpTransportMode.AutoDetect,
                 Name = sse.ServerName,
                 Endpoint = sse.Endpoint,
                 AdditionalHeaders = sse.AdditionalHeaders,
                 ConnectionTimeout = sse.ConnectionTimeout,
+                OAuth = new ModelContextProtocol.Authentication.ClientOAuthOptions
+                {
+                    RedirectUri = new Uri(""),   
+                }
             }),
             _ => throw new NotSupportedException($"서버 타입 {config.GetType().Name}은(는) 지원되지 않습니다.")
         };

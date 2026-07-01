@@ -14,20 +14,13 @@ public class MessageServiceTests
 {
     private readonly IServiceProvider _mockServiceProvider;
     private readonly Dictionary<string, IMessageGenerator> _generators;
-    private readonly IToolCollection _mockToolCollection;
     private readonly MessageService _service;
 
     public MessageServiceTests()
     {
         _mockServiceProvider = Substitute.For<IServiceProvider>();
         _generators = new Dictionary<string, IMessageGenerator>();
-        _mockToolCollection = Substitute.For<IToolCollection>();
-
-        _mockToolCollection
-            .FilterBy(Arg.Any<IEnumerable<string>>())
-            .Returns(_mockToolCollection);
-
-        _service = new MessageService(_generators, _mockToolCollection, _mockServiceProvider);
+        _service = new MessageService(_generators, _mockServiceProvider);
     }
 
     [Fact]
@@ -296,7 +289,6 @@ public class MessageServiceTests
         // Act
         var act = () => new MessageService(
             new Dictionary<string, IMessageGenerator>(),
-            _mockToolCollection,
             _mockServiceProvider);
 
         // Assert

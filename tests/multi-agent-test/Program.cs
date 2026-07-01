@@ -2461,7 +2461,7 @@ sealed class MockAgent : IAgent
     public string Description { get; set; }
     public string? Instructions { get; set; }
 
-    public IEnumerable<ToolItem>? Tools { get; set; }
+    public IToolCollection? Tools { get; set; }
     public int? MaxTokens { get; set; }
 
     /// <summary>
