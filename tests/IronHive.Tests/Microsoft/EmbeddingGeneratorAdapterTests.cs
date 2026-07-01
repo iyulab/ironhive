@@ -1,10 +1,10 @@
 using FluentAssertions;
-using IronHive.Core.Compatibility;
+using IronHive.Core.Microsoft;
 using Microsoft.Extensions.AI;
 using NSubstitute;
 using IronHiveEmbedding = IronHive.Abstractions.Embedding;
 
-namespace IronHive.Tests.Compatibility;
+namespace IronHive.Tests.Microsoft;
 
 public class EmbeddingGeneratorAdapterTests : IDisposable
 {

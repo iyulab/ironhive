@@ -25,7 +25,7 @@ public class AnthropicModelFinder : IModelFinder
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<IModelSpec>> ListModelsAsync(
+    public async Task<IEnumerable<IModelCard>> ListModelsAsync(
         CancellationToken cancellationToken = default)
     {
         var page = await _client.Models.List(new ModelListParams
@@ -33,10 +33,10 @@ public class AnthropicModelFinder : IModelFinder
             Limit = 1000,
         }, cancellationToken);
 
-        var models = new List<IModelSpec>();
+        var models = new List<IModelCard>();
         await foreach (var model in page.Paginate(cancellationToken))
         {
-            models.Add(new GenericModelSpec
+            models.Add(new ModelCard
             {
                 ModelId = model.ID,
                 DisplayName = model.DisplayName,
@@ -48,7 +48,7 @@ public class AnthropicModelFinder : IModelFinder
     }
 
     /// <inheritdoc />
-    public async Task<IModelSpec?> FindModelAsync(
+    public async Task<IModelCard?> FindModelAsync(
         string modelId,
         CancellationToken cancellationToken = default)
     {
@@ -59,7 +59,7 @@ public class AnthropicModelFinder : IModelFinder
                 ModelID = modelId
             }, cancellationToken);
             
-            return new GenericModelSpec
+            return new ModelCard
             {
                 ModelId = model.ID,
                 DisplayName = model.DisplayName,

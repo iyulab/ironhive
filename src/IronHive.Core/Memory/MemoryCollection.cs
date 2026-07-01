@@ -10,17 +10,17 @@ namespace IronHive.Core.Memory;
 public class MemoryCollection : IMemoryCollection
 #pragma warning restore CA1711
 {
-    private readonly IReadOnlyDictionary<string, IVectorStorage> _vectorStorages;
-    private readonly IReadOnlyDictionary<string, IQueueStorage> _queueStorages;
+    private readonly IReadOnlyDictionary<string, IVectorStorage> _vectors;
+    private readonly IReadOnlyDictionary<string, IQueueStorage> _queues;
     private readonly IEmbeddingService _embedder;
 
     internal MemoryCollection(
-        IReadOnlyDictionary<string, IVectorStorage> vectorStorages,
-        IReadOnlyDictionary<string, IQueueStorage> queueStorages,
+        IReadOnlyDictionary<string, IVectorStorage> vectors,
+        IReadOnlyDictionary<string, IQueueStorage> queues,
         IEmbeddingService embedder)
     {
-        _vectorStorages = vectorStorages;
-        _queueStorages = queueStorages;
+        _vectors = vectors;
+        _queues = queues;
         _embedder = embedder;
     }
 
@@ -54,7 +54,7 @@ public class MemoryCollection : IMemoryCollection
             },
         };
 
-        if (!_queueStorages.TryGetValue(queueName, out var queue))
+        if (!_queues.TryGetValue(queueName, out var queue))
             throw new InvalidOperationException($"queue storage '{queueName}' is not registered.");
         await queue.EnqueueAsync(ctx, cancellationToken);
     }
@@ -64,7 +64,7 @@ public class MemoryCollection : IMemoryCollection
         string sourceId,
         CancellationToken cancellationToken = default)
     {
-        if (!_vectorStorages.TryGetValue(StorageName, out var storage))
+        if (!_vectors.TryGetValue(StorageName, out var storage))
             throw new InvalidOperationException($"Vector storage '{StorageName}' is not registered.");
 
         var filter = new VectorRecordFilter();
@@ -78,7 +78,7 @@ public class MemoryCollection : IMemoryCollection
         SearchOptions? options = null,
         CancellationToken cancellationToken = default)
     {
-        if (!_vectorStorages.TryGetValue(StorageName, out var storage))
+        if (!_vectors.TryGetValue(StorageName, out var storage))
             throw new InvalidOperationException($"Vector storage '{StorageName}' is not registered.");
 
         options ??= new SearchOptions();

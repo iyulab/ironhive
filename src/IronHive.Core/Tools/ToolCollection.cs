@@ -11,23 +11,16 @@ public class ToolCollection : IToolCollection
 {
     private readonly ConcurrentDictionary<string, ITool> _items;
     private readonly IEqualityComparer<string> _comparer;
-    private readonly IServiceProvider? _services;
 
-    public ToolCollection(IServiceProvider? services = null)
-        : this([], null, services)
+    public ToolCollection(StringComparer? comparer = null)
+        : this([], comparer)
     { }
 
-    public ToolCollection(StringComparer comparer, IServiceProvider? services = null)
-        : this([], comparer, services)
-    { }
-
-    public ToolCollection(IEnumerable<ITool> tools, StringComparer? comparer = null, IServiceProvider? services = null)
+    public ToolCollection(IEnumerable<ITool> tools, StringComparer? comparer = null)
     {
         _comparer = comparer ?? StringComparer.OrdinalIgnoreCase;
         _items = new ConcurrentDictionary<string, ITool>(_comparer);
-        _services = services;
-        foreach (var tool in tools)
-            Add(tool);
+        AddRange(tools);
     }
 
     /// <inheritdoc />

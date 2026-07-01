@@ -1,7 +1,7 @@
 using Microsoft.Extensions.AI;
 using IronHiveEmbedding = IronHive.Abstractions.Embedding;
 
-namespace IronHive.Core.Compatibility;
+namespace IronHive.Core.Microsoft;
 
 /// <summary>
 /// IronHive IEmbeddingGenerator를 Microsoft.Extensions.AI IEmbeddingGenerator로 래핑하는 어댑터입니다.

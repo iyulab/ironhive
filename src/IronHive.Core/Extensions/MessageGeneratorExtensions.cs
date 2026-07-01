@@ -1,5 +1,5 @@
 ﻿using IronHive.Abstractions.Messages;
-using IronHive.Core.Compatibility;
+using IronHive.Core.Microsoft;
 using Microsoft.Extensions.AI;
 
 namespace IronHive.Core.Extensions;

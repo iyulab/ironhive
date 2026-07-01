@@ -21,7 +21,7 @@ public class HiveServiceAgentCreationTests
     public void CreateAgentFrom_ShouldThrow_WhenCardIsNull()
     {
         // Act
-        var act = () => _service.CreateAgentFrom(null!);
+        var act = () => _service.CreateAgentFrom((AgentCard)null!);
 
         // Assert
         act.Should().Throw<ArgumentNullException>()

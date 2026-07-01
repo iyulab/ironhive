@@ -20,7 +20,10 @@ public class WorkflowFactory : IWorkflowFactory
     private static readonly JsonSerializerOptions s_jsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
-        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower) }
+        Converters = 
+        { 
+            new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower) 
+        }
     };
 
     private readonly IServiceProvider? _services;

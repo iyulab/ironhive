@@ -3,13 +3,13 @@ using System.Text.Json.Serialization;
 namespace IronHive.Abstractions.Models;
 
 /// <summary>
-/// 다형 직렬화를 위한 모델 사양의 기본 인터페이스입니다.
+/// 다형 직렬화를 위한 모델 카드의 기본 인터페이스입니다.
 /// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
-[JsonDerivedType(typeof(GenericModelSpec), "generic")]
-[JsonDerivedType(typeof(ChatModelSpec), "chat")]
-[JsonDerivedType(typeof(EmbeddingModelSpec), "embedding")]
-public interface IModelSpec
+[JsonDerivedType(typeof(ModelCard), "model")]
+[JsonDerivedType(typeof(LanguageModelCard), "language")]
+[JsonDerivedType(typeof(EmbeddingModelCard), "embedding")]
+public interface IModelCard
 {
     /// <summary>
     /// 모델 식별자(고유 값).

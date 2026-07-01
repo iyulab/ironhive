@@ -13,8 +13,8 @@ public class ModelServiceTests
 
     private ModelService CreateService() => new(_catalogs);
 
-    // Test implementation of IModelSpec
-    private sealed class TestModelSpec : IModelSpec
+    // Test implementation of IModelCard
+    private sealed class TestModelCard : IModelCard
     {
         public required string ModelId { get; init; }
         public string? DisplayName { get; init; }
@@ -24,7 +24,7 @@ public class ModelServiceTests
         public DateTime? UpdatedAt { get; init; }
     }
 
-    private sealed class SpecialModelSpec : IModelSpec
+    private sealed class SpecialModelCard : IModelCard
     {
         public required string ModelId { get; init; }
         public string? DisplayName { get; init; }
@@ -51,7 +51,7 @@ public class ModelServiceTests
     {
         var catalog = Substitute.For<IModelFinder>();
         catalog.ListModelsAsync(Arg.Any<CancellationToken>())
-            .Returns([new TestModelSpec { ModelId = "gpt-4" }]);
+            .Returns([new TestModelCard { ModelId = "gpt-4" }]);
         _catalogs["openai"] = catalog;
 
         var service = CreateService();
@@ -67,11 +67,11 @@ public class ModelServiceTests
     {
         var catalog1 = Substitute.For<IModelFinder>();
         catalog1.ListModelsAsync(Arg.Any<CancellationToken>())
-            .Returns([new TestModelSpec { ModelId = "gpt-4" }]);
+            .Returns([new TestModelCard { ModelId = "gpt-4" }]);
 
         var catalog2 = Substitute.For<IModelFinder>();
         catalog2.ListModelsAsync(Arg.Any<CancellationToken>())
-            .Returns([new TestModelSpec { ModelId = "claude-3" }]);
+            .Returns([new TestModelCard { ModelId = "claude-3" }]);
 
         _catalogs["openai"] = catalog1;
         _catalogs["anthropic"] = catalog2;
@@ -106,7 +106,7 @@ public class ModelServiceTests
     {
         var catalog = Substitute.For<IModelFinder>();
         catalog.ListModelsAsync(Arg.Any<CancellationToken>())
-            .Returns([new TestModelSpec { ModelId = "model-1" }]);
+            .Returns([new TestModelCard { ModelId = "model-1" }]);
         _catalogs["openai"] = catalog;
 
         var service = CreateService();
@@ -133,7 +133,7 @@ public class ModelServiceTests
     {
         var catalog = Substitute.For<IModelFinder>();
         catalog.FindModelAsync("gpt-4", Arg.Any<CancellationToken>())
-            .Returns(new TestModelSpec { ModelId = "gpt-4", DisplayName = "GPT-4" });
+            .Returns(new TestModelCard { ModelId = "gpt-4", DisplayName = "GPT-4" });
         _catalogs["openai"] = catalog;
 
         var service = CreateService();
@@ -157,7 +157,7 @@ public class ModelServiceTests
     {
         var catalog = Substitute.For<IModelFinder>();
         catalog.FindModelAsync("nonexistent", Arg.Any<CancellationToken>())
-            .Returns((IModelSpec?)null);
+            .Returns((IModelCard?)null);
         _catalogs["openai"] = catalog;
 
         var service = CreateService();
@@ -171,14 +171,14 @@ public class ModelServiceTests
     [Fact]
     public async Task FindModelAsync_Typed_MatchingType_ReturnsTyped()
     {
-        var model = new SpecialModelSpec { ModelId = "special", ContextWindow = 128000 };
+        var model = new SpecialModelCard { ModelId = "special", ContextWindow = 128000 };
         var catalog = Substitute.For<IModelFinder>();
         catalog.FindModelAsync("special", Arg.Any<CancellationToken>())
             .Returns(model);
         _catalogs["openai"] = catalog;
 
         var service = CreateService();
-        var result = await service.FindModelAsync<SpecialModelSpec>("openai", "special");
+        var result = await service.FindModelAsync<SpecialModelCard>("openai", "special");
 
         result.Should().NotBeNull();
         result!.ContextWindow.Should().Be(128000);
@@ -187,14 +187,14 @@ public class ModelServiceTests
     [Fact]
     public async Task FindModelAsync_Typed_WrongType_ReturnsNull()
     {
-        var model = new TestModelSpec { ModelId = "basic" };
+        var model = new TestModelCard { ModelId = "basic" };
         var catalog = Substitute.For<IModelFinder>();
         catalog.FindModelAsync("basic", Arg.Any<CancellationToken>())
             .Returns(model);
         _catalogs["openai"] = catalog;
 
         var service = CreateService();
-        var result = await service.FindModelAsync<SpecialModelSpec>("openai", "basic");
+        var result = await service.FindModelAsync<SpecialModelCard>("openai", "basic");
 
         result.Should().BeNull();
     }

@@ -30,31 +30,31 @@ public class GoogleAIModelFinder : IModelFinder
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<IModelSpec>> ListModelsAsync(
+    public async Task<IEnumerable<IModelCard>> ListModelsAsync(
         CancellationToken cancellationToken = default)
     {
-        var list = new List<IModelSpec>();
+        var list = new List<IModelCard>();
         var pager = await _client.Models.ListAsync(
             new Google.GenAI.Types.ListModelsConfig { PageSize = 1000 },
             cancellationToken);
 
         await foreach (var model in pager)
         {
-            list.Add(ConvertToModelSpec(model));
+            list.Add(ConvertToModelCard(model));
         }
 
         return list;
     }
 
     /// <inheritdoc />
-    public async Task<IModelSpec?> FindModelAsync(
+    public async Task<IModelCard?> FindModelAsync(
         string modelId,
         CancellationToken cancellationToken = default)
     {
         try
         {
             var model = await _client.Models.GetAsync(modelId, cancellationToken: cancellationToken);
-            return ConvertToModelSpec(model);
+            return ConvertToModelCard(model);
         }
         catch
         {
@@ -65,7 +65,7 @@ public class GoogleAIModelFinder : IModelFinder
     /// <summary>
     /// 모델을 규격에 맞게 변환합니다.
     /// </summary>
-    private static IModelSpec ConvertToModelSpec(Google.GenAI.Types.Model model)
+    private static IModelCard ConvertToModelCard(Google.GenAI.Types.Model model)
     {
         // 모델 ID를 정규화합니다.
         static string NormalizeName(string modelId) =>
@@ -77,7 +77,7 @@ public class GoogleAIModelFinder : IModelFinder
         if (actions.Contains("generateContent") &&
             actions.Contains("countTokens"))
         {
-            return new ChatModelSpec
+            return new LanguageModelCard
             {
                 ModelId = NormalizeName(model.Name ?? string.Empty),
                 DisplayName = model.DisplayName,
@@ -90,7 +90,7 @@ public class GoogleAIModelFinder : IModelFinder
         else if (actions.Contains("embedContent") ||
                  actions.Contains("embedText"))
         {
-            return new EmbeddingModelSpec
+            return new EmbeddingModelCard
             {
                 ModelId = NormalizeName(model.Name ?? string.Empty),
                 DisplayName = model.DisplayName,
@@ -101,7 +101,7 @@ public class GoogleAIModelFinder : IModelFinder
         // 그 외의 모델은 일반 모델로 처리합니다.
         else
         {
-            return new GenericModelSpec
+            return new ModelCard
             {
                 ModelId = NormalizeName(model.Name ?? string.Empty),
                 DisplayName = model.DisplayName,

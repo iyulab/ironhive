@@ -90,7 +90,7 @@ public class HiveServiceBuilderRegistrationTests
         var builder = new HiveServiceBuilder();
         var service = builder.Build();
 
-        var act = async () => await ((IAsyncDisposable)service).DisposeAsync();
+        var act = async () => service.Dispose();
 
         await act.Should().NotThrowAsync();
     }

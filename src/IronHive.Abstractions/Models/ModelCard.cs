@@ -1,9 +1,9 @@
 namespace IronHive.Abstractions.Models;
 
 /// <summary>
-/// 모든 모델이 공유하는 공통 스펙입니다.
+/// 모든 모델이 공유하는 공통 모델 카드입니다.
 /// </summary>
-public record GenericModelSpec : IModelSpec
+public record ModelCard : IModelCard
 {
     /// <inheritdoc />
     public required string ModelId { get; init; }

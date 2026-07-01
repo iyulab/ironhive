@@ -1,9 +1,9 @@
 namespace IronHive.Abstractions.Models;
 
 /// <summary>
-/// 임베딩 모델 전용 스펙입니다.
+/// 임베딩 모델 전용 카드입니다.
 /// </summary>
-public sealed record EmbeddingModelSpec : GenericModelSpec
+public sealed record EmbeddingModelCard : ModelCard
 {
     /// <summary>
     /// 단일 요청에서 허용되는 최대 입력 토큰 수.

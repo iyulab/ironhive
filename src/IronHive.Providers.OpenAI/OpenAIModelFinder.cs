@@ -23,13 +23,13 @@ public class OpenAIModelFinder : IModelFinder
     }
 
     /// <inheritdoc />
-    public virtual async Task<IEnumerable<IModelSpec>> ListModelsAsync(
+    public virtual async Task<IEnumerable<IModelCard>> ListModelsAsync(
         CancellationToken cancellationToken = default)
     {
         var result = await _client.GetModelsAsync(cancellationToken);
         return result.Value
             .OrderByDescending(m => m.CreatedAt)
-            .Select(m => new GenericModelSpec
+            .Select(m => new ModelCard
             {
                 ModelId = m.Id,
                 DisplayName = m.Id,
@@ -39,7 +39,7 @@ public class OpenAIModelFinder : IModelFinder
     }
 
     /// <inheritdoc />
-    public virtual async Task<IModelSpec?> FindModelAsync(
+    public virtual async Task<IModelCard?> FindModelAsync(
         string modelId,
         CancellationToken cancellationToken)
     {
@@ -47,7 +47,7 @@ public class OpenAIModelFinder : IModelFinder
         {
             var result = await _client.GetModelAsync(modelId, cancellationToken);
             var model = result.Value;
-            return new GenericModelSpec
+            return new ModelCard
             {
                 ModelId = model.Id,
                 DisplayName = model.Id,

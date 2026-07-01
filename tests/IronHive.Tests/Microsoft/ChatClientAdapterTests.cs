@@ -2,11 +2,11 @@ using FluentAssertions;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Tools;
-using IronHive.Core.Compatibility;
+using IronHive.Core.Microsoft;
 using Microsoft.Extensions.AI;
 using NSubstitute;
 
-namespace IronHive.Tests.Compatibility;
+namespace IronHive.Tests.Microsoft;
 
 public class ChatClientAdapterTests : IDisposable
 {

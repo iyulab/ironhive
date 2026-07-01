@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
-using IronHive.Core.Telemetry;
+using IronHive.Core.Utilities;
 
 namespace IronHive.Core.Agent.Orchestration;
 
@@ -153,7 +153,7 @@ public abstract class OrchestratorBase : IAgentOrchestrator
             inputMessages = scoped is List<Message> list ? list : [.. scoped];
         }
 
-        using var activity = IronHiveTelemetry.StartAgentActivity(agent.Name, agent.Description);
+        using var activity = HiveTelemetry.StartAgentActivity(agent.Name, agent.Description);
 
         try
         {
@@ -170,10 +170,10 @@ public abstract class OrchestratorBase : IAgentOrchestrator
                 inputTokens: response.TokenUsage?.InputTokens,
                 outputTokens: response.TokenUsage?.OutputTokens);
 
-            IronHiveTelemetry.RecordOperationDuration(
+            HiveTelemetry.RecordOperationDuration(
                 system: agent.Provider,
                 model: agent.Model,
-                operationName: IronHiveTelemetry.Operations.AgentInvoke,
+                operationName: HiveTelemetry.Operations.AgentInvoke,
                 durationSeconds: stopwatch.Elapsed.TotalSeconds,
                 success: true);
 
@@ -198,10 +198,10 @@ public abstract class OrchestratorBase : IAgentOrchestrator
         {
             stopwatch.Stop();
 
-            IronHiveTelemetry.RecordOperationDuration(
+            HiveTelemetry.RecordOperationDuration(
                 system: agent.Provider,
                 model: agent.Model,
-                operationName: IronHiveTelemetry.Operations.AgentInvoke,
+                operationName: HiveTelemetry.Operations.AgentInvoke,
                 durationSeconds: stopwatch.Elapsed.TotalSeconds,
                 success: false);
 
@@ -222,10 +222,10 @@ public abstract class OrchestratorBase : IAgentOrchestrator
             stopwatch.Stop();
 
             activity.SetError(ex);
-            IronHiveTelemetry.RecordOperationDuration(
+            HiveTelemetry.RecordOperationDuration(
                 system: agent.Provider,
                 model: agent.Model,
-                operationName: IronHiveTelemetry.Operations.AgentInvoke,
+                operationName: HiveTelemetry.Operations.AgentInvoke,
                 durationSeconds: stopwatch.Elapsed.TotalSeconds,
                 success: false);
 
@@ -248,7 +248,7 @@ public abstract class OrchestratorBase : IAgentOrchestrator
         IEnumerable<Message> messages,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        using var activity = IronHiveTelemetry.StartAgentActivity(agent.Name, agent.Description);
+        using var activity = HiveTelemetry.StartAgentActivity(agent.Name, agent.Description);
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(Options.AgentTimeout);
@@ -258,10 +258,10 @@ public abstract class OrchestratorBase : IAgentOrchestrator
             yield return chunk;
         }
 
-        IronHiveTelemetry.RecordOperationDuration(
+        HiveTelemetry.RecordOperationDuration(
             system: agent.Provider,
             model: agent.Model,
-            operationName: IronHiveTelemetry.Operations.AgentInvoke,
+            operationName: HiveTelemetry.Operations.AgentInvoke,
             durationSeconds: 0, // 스트리밍은 정확한 시간 측정이 어려움
             success: true);
     }

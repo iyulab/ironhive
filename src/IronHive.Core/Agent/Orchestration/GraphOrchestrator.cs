@@ -7,7 +7,7 @@ using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Core.Telemetry;
+using IronHive.Core.Utilities;
 
 namespace IronHive.Core.Agent.Orchestration;
 
@@ -69,7 +69,7 @@ public class GraphOrchestrator : OrchestratorBase
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(Options.Timeout);
 
-        using var activity = IronHiveTelemetry.StartOrchestrationActivity(
+        using var activity = HiveTelemetry.StartOrchestrationActivity(
             Name, "graph", Options.OrchestrationId);
 
         try

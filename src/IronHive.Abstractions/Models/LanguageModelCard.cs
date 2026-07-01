@@ -1,9 +1,9 @@
 namespace IronHive.Abstractions.Models;
 
 /// <summary>
-/// 대화형(챗) 모델 전용 스펙입니다.
+/// 언어 모델(LLM) 전용 카드입니다.
 /// </summary>
-public sealed record ChatModelSpec : GenericModelSpec
+public sealed record LanguageModelCard : ModelCard
 {
     /// <summary>
     /// 문맥 창 크기(토큰). 한 번의 대화 턴에서 모델이 고려할 수 있는 총 토큰 수(입력+출력).

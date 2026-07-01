@@ -1,4 +1,4 @@
-﻿using IronHive.Core.Compatibility;
+﻿using IronHive.Core.Microsoft;
 using Microsoft.Extensions.AI;
 using IHiveEmbeddingGenerator = IronHive.Abstractions.Embedding.IEmbeddingGenerator;
 

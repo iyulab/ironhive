@@ -1,7 +1,7 @@
 using IronHive.Abstractions.Tools;
 using Microsoft.Extensions.AI;
 
-namespace IronHive.Core.Compatibility;
+namespace IronHive.Core.Microsoft;
 
 /// <summary>
 /// M.E.AI의 AITool을 IronHive의 ITool로 변환하는 어댑터입니다.

@@ -108,6 +108,6 @@ public class HiveServiceTests
         var service = builder.Build();
 
         // Assert
-        service.Should().BeAssignableTo<IAsyncDisposable>();
+        service.Should().BeAssignableTo<IDisposable>();
     }
 }

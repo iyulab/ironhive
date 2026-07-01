@@ -10,7 +10,7 @@ using IronHive.Abstractions.Audio;
 
 namespace IronHive.Abstractions;
 
-public interface IHiveService : IAsyncDisposable
+public interface IHiveService : IDisposable
 {
     IModelService Models { get; }
     IMessageService Messages { get; }
@@ -21,7 +21,7 @@ public interface IHiveService : IAsyncDisposable
     IFileStorageService Files { get; }
     IMemoryService Memory { get; }
 
-    IAgent CreateAgent(Action<AgentConfig> configure);
+    IAgent CreateAgentFrom(Action<AgentConfig> configure);
     IAgent CreateAgentFrom(AgentCard card);
     IAgent CreateAgentFromYaml(string yaml);
 }

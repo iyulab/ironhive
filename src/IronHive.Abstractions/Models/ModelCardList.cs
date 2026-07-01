@@ -3,7 +3,7 @@ namespace IronHive.Abstractions.Models;
 /// <summary>
 /// 공급자와 모든 모델의 사양 정보를 함께 담는 레코드입니다.
 /// </summary>
-public sealed class ModelSpecList
+public sealed class ModelCardList
 {
     /// <summary>
     /// 모델 공급자 이름입니다.
@@ -13,13 +13,13 @@ public sealed class ModelSpecList
     /// <summary>
     /// 공급자에 속한 모든 모델의 구체적인 사양 정보입니다.
     /// </summary>
-    public required IEnumerable<IModelSpec> Models { get; init; }
+    public required IEnumerable<IModelCard> Models { get; init; }
 }
 
 /// <summary>
 /// 공급자와 지정된 타입의 모든 모델의 사양 정보를 함께 담는 레코드입니다.
 /// </summary>
-public sealed class ModelSpecList<T> where T : class, IModelSpec
+public sealed class ModelCardList<T> where T : class, IModelCard
 {
     /// <summary>
     /// 모델 공급자 이름입니다.

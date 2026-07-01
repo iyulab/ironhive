@@ -11,14 +11,15 @@ using IronHive.Abstractions.Audio;
 using IronHive.Abstractions.Vector;
 using IronHive.Abstractions.Queue;
 using IronHive.Core.Memory;
+using IronHive.Core.Agent;
 
 namespace IronHive.Core;
 
 public class HiveService : IHiveService
 {
-    private readonly IAgentService _agents;
-    private readonly IReadOnlyDictionary<string, IVectorStorage> _vectorStorages;
-    private readonly IReadOnlyDictionary<string, IQueueStorage> _queueStorages;
+    private readonly AgentService _agents;
+    private readonly IReadOnlyDictionary<string, IVectorStorage> _vectors;
+    private readonly IReadOnlyDictionary<string, IQueueStorage> _queues;
 
     internal HiveService(
         IModelService models,
@@ -28,10 +29,8 @@ public class HiveService : IHiveService
         IVideoService videos,
         IAudioService audio,
         IFileStorageService files,
-        IMemoryService memory,
-        IAgentService agents,
-        IReadOnlyDictionary<string, IVectorStorage> vectorStorages,
-        IReadOnlyDictionary<string, IQueueStorage> queueStorages)
+        IReadOnlyDictionary<string, IVectorStorage> vectors,
+        IReadOnlyDictionary<string, IQueueStorage> queues)
     {
         Models = models;
         Messages = messages;
@@ -40,10 +39,10 @@ public class HiveService : IHiveService
         Videos = videos;
         Audio = audio;
         Files = files;
-        Memory = memory;
-        _agents = agents;
-        _vectorStorages = vectorStorages;
-        _queueStorages = queueStorages;
+        Memory = new MemoryService(vectors, queues, embeddings);
+        _agents = new AgentService(messages);
+        _vectors = vectors;
+        _queues = queues;
     }
 
     public IModelService Models { get; }
@@ -55,7 +54,7 @@ public class HiveService : IHiveService
     public IFileStorageService Files { get; }
     public IMemoryService Memory { get; }
 
-    public IAgent CreateAgent(Action<AgentConfig> configure)
+    public IAgent CreateAgentFrom(Action<AgentConfig> configure)
         => _agents.CreateAgent(configure);
 
     public IAgent CreateAgentFrom(AgentCard card)
@@ -73,14 +72,13 @@ public class HiveService : IHiveService
         Func<MemoryWorkerBuilder, MemoryPipelineBuilder> configure,
         IServiceProvider? sp = null)
     {
-        var builder = new MemoryWorkerBuilder(_vectorStorages, _queueStorages, sp);
+        var builder = new MemoryWorkerBuilder(_vectors, _queues, sp);
         return configure(builder).Build();
     }
 
-    public ValueTask DisposeAsync()
+    public void Dispose()
     {
         GC.SuppressFinalize(this);
-        return ValueTask.CompletedTask;
     }
 }
 

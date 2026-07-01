@@ -14,7 +14,7 @@ public class ModelService : IModelService
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<ModelSpecList>> ListModelsAsync(
+    public async Task<IEnumerable<ModelCardList>> ListModelsAsync(
         CancellationToken cancellationToken = default)
     {
         return await Task.WhenAll(_catalogs.Select(async (kvp) =>
@@ -22,7 +22,7 @@ public class ModelService : IModelService
             try
             {
                 var models = await kvp.Value.ListModelsAsync(cancellationToken);
-                return new ModelSpecList
+                return new ModelCardList
                 {
                     Provider = kvp.Key,
                     Models = models
@@ -31,24 +31,24 @@ public class ModelService : IModelService
             catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
             {
                 // 401 Unauthorized는 무시
-                return new ModelSpecList
+                return new ModelCardList
                 {
                     Provider = kvp.Key,
-                    Models = Enumerable.Empty<IModelSpec>()
+                    Models = Enumerable.Empty<IModelCard>()
                 };
             }
         }));
     }
 
     /// <inheritdoc />
-    public async Task<ModelSpecList?> ListModelsAsync(
+    public async Task<ModelCardList?> ListModelsAsync(
         string provider,
         CancellationToken cancellationToken = default)
     {
         if (_catalogs.TryGetValue(provider, out var catalog))
         {
             var models = await catalog.ListModelsAsync(cancellationToken);
-            return new ModelSpecList
+            return new ModelCardList
             {
                 Provider = provider,
                 Models = models
@@ -61,7 +61,7 @@ public class ModelService : IModelService
     }
 
     /// <inheritdoc />
-    public async Task<IModelSpec?> FindModelAsync(
+    public async Task<IModelCard?> FindModelAsync(
         string provider,
         string modelId,
         CancellationToken cancellationToken = default)
@@ -73,12 +73,12 @@ public class ModelService : IModelService
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<ModelSpecList<T>>> ListModelsAsync<T>(
+    public async Task<IEnumerable<ModelCardList<T>>> ListModelsAsync<T>(
         CancellationToken cancellationToken = default)
-        where T : class, IModelSpec
+        where T : class, IModelCard
     {
         var list = await ListModelsAsync(cancellationToken);
-        return list.Select(msl => new ModelSpecList<T>
+        return list.Select(msl => new ModelCardList<T>
         {
             Provider = msl.Provider,
             Models = msl.Models.OfType<T>()
@@ -86,13 +86,13 @@ public class ModelService : IModelService
     }
 
     /// <inheritdoc />
-    public async Task<ModelSpecList<T>?> ListModelsAsync<T>(
+    public async Task<ModelCardList<T>?> ListModelsAsync<T>(
         string provider, 
         CancellationToken cancellationToken = default) 
-        where T : class, IModelSpec
+        where T : class, IModelCard
     {
         var models = await ListModelsAsync(provider, cancellationToken);
-        return models == null ? null : new ModelSpecList<T>
+        return models == null ? null : new ModelCardList<T>
         {
             Provider = models.Provider,
             Models = models.Models.OfType<T>()
@@ -104,7 +104,7 @@ public class ModelService : IModelService
         string provider, 
         string modelId, 
         CancellationToken cancellationToken = default)
-        where T : class, IModelSpec
+        where T : class, IModelCard
     {
         var model = await FindModelAsync(provider, modelId, cancellationToken);
         return model is T typedModel ? typedModel : null;

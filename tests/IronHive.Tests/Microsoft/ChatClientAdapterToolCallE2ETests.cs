@@ -1,10 +1,10 @@
 using System.Globalization;
 using FluentAssertions;
-using IronHive.Core.Compatibility;
+using IronHive.Core.Microsoft;
 using IronHive.Providers.OpenAI;
 using Microsoft.Extensions.AI;
 
-namespace IronHive.Tests.Compatibility;
+namespace IronHive.Tests.Microsoft;
 
 /// <summary>
 /// ChatClientAdapter를 통한 tool-call roundtrip E2E 테스트.

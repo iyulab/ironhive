@@ -1,13 +1,13 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 
-namespace IronHive.Core.Telemetry;
+namespace IronHive.Core.Utilities;
 
 /// <summary>
 /// IronHive 프레임워크의 OpenTelemetry 계측을 제공합니다.
 /// GenAI Semantic Conventions을 따릅니다.
 /// </summary>
-public static class IronHiveTelemetry
+public static class HiveTelemetry
 {
     /// <summary>
     /// 계측 소스 이름

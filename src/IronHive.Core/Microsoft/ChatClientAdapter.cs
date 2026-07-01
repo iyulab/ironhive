@@ -7,7 +7,7 @@ using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Tools;
 
-namespace IronHive.Core.Compatibility;
+namespace IronHive.Core.Microsoft;
 
 /// <summary>
 /// IronHive IMessageGenerator를 Microsoft.Extensions.AI IChatClient로 래핑하는 어댑터입니다.

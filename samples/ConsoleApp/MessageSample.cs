@@ -2,13 +2,11 @@ using IronHive.Abstractions;
 using IronHive.Abstractions.Messages;
 using IronHive.Core.Extensions;
 using IronHive.Abstractions.Messages.Content;
-using IronHive.Abstractions.Tools;
 using IronHive.Core;
 using IronHive.Core.Tools;
 using IronHive.Providers.Anthropic;
 using IronHive.Providers.GoogleAI;
 using IronHive.Providers.OpenAI;
-using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -66,7 +64,8 @@ public static class MessageSample
             // Output = typeof(OutputFormat)
         };
 
-        var tools = new ToolCollection(FunctionToolFactory.CreateFrom<Calculator>());
+        var tools = new ToolCollection();
+        tools.AddFunctionTool<Calculator>();
         request.Tools = tools;
 
         var hive = new HiveServiceBuilder()
@@ -91,7 +90,7 @@ public static class MessageSample
 
         // Anthropic 샘플
         // request.Provider = "anthropic";
-        // request.Model = "claude-sonnet-4-6";
+        // request.Model = "claude-sonnet-5";
 
         // Google AI 샘플
         // request.Provider = "google";

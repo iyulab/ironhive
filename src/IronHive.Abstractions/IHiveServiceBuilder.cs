@@ -21,5 +21,5 @@ public interface IHiveServiceBuilder
     IHiveServiceBuilder AddFileStorage(string name, IFileStorage storage);
     IHiveServiceBuilder AddVectorStorage(string name, IVectorStorage storage);
     IHiveServiceBuilder AddQueueStorage(string name, IQueueStorage storage);
-    IHiveService Build(IServiceProvider? sp = null);
+    IHiveService Build();
 }
