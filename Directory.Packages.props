@@ -3,7 +3,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup Label="Microsoft">
-    <PackageVersion Include="Anthropic" Version="12.32.0" />
+    <PackageVersion Include="Anthropic" Version="12.34.0" />
     <PackageVersion Include="Google.GenAI" Version="1.12.0" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.7.0" />

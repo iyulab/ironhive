@@ -1,27 +1,23 @@
-﻿using HtmlAgilityPack;
+using HtmlAgilityPack;
 using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Workflow;
 
 namespace IronHive.Core.Memory.Pipelines;
 
-/// <summary>
-/// TextExtractionHandler는 주어진 메모리 소스에서 텍스트를 추출하는 메모리 파이프라인 핸들러입니다.
-/// </summary>
 public class TextExtractionPipeline : IMemoryPipeline
 {
     private readonly IFileStorageService _storages;
-    private readonly IFileExtractionService<string> _extractor;
+    private readonly IFileParserService _parser;
 
-    public TextExtractionPipeline(IFileStorageService storages, IFileExtractionService<string> extractor)
+    public TextExtractionPipeline(IFileStorageService storages, IFileParserService parser)
     {
         _storages = storages;
-        _extractor = extractor;
+        _parser = parser;
     }
 
-    /// <inheritdoc />
     public async Task<TaskStepResult> ExecuteAsync(
-        MemoryContext context, 
+        MemoryContext context,
         CancellationToken cancellationToken = default)
     {
         string text;
@@ -35,10 +31,15 @@ public class TextExtractionPipeline : IMemoryPipeline
                 storageName: fileSource.StorageName,
                 filePath: fileSource.FilePath,
                 cancellationToken: cancellationToken);
-            text = await _extractor.DecodeAsync(
+
+            var blocks = await _parser.ParseAsync(
                 fileName: fileSource.FilePath,
                 data: stream,
                 cancellationToken: cancellationToken);
+
+            text = string.Join(Environment.NewLine, blocks
+                .OfType<TextBlock>()
+                .Select(b => b.Text));
         }
         else if (context.Source is WebMemorySource webSource)
         {

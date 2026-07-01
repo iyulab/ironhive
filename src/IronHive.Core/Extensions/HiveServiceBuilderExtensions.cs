@@ -1,10 +1,5 @@
 ﻿using IronHive.Abstractions;
-using IronHive.Abstractions.Files;
-using IronHive.Core.Files;
-using IronHive.Core.Files.Decoders;
-using IronHive.Core.Files.Detectors;
 using IronHive.Core.Storages;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace IronHive.Core.Extensions;
 
@@ -44,22 +39,5 @@ public static class HiveServiceBuilderExtensions
         builder.AddQueueStorage(storageName, new LocalQueueStorage(config));
         return builder;
     }
-}
 
-public static class ServiceCollectionFileExtensions
-{
-    /// <summary>
-    /// "text", "word", "pdf", "ppt", "image" 등 기본 파일 디코더를 등록합니다.
-    /// </summary>
-    public static IServiceCollection AddBasicFileExtractor(this IServiceCollection services)
-    {
-        services.AddSingleton<IFileDecoder<string>, TextDecoder>();
-        services.AddSingleton<IFileDecoder<string>, WordDecoder>();
-        services.AddSingleton<IFileDecoder<string>, PDFDecoder>();
-        services.AddSingleton<IFileDecoder<string>, PPTDecoder>();
-        services.AddSingleton<IFileDecoder<string>, ImageDecoder>();
-        services.AddSingleton<IFileMediaTypeDetector, BasicFileMediaTypeDetector>();
-        services.AddSingleton<IFileExtractionService<string>, FileExtractionService<string>>();
-        return services;
-    }
 }

@@ -1,5 +1,8 @@
 ﻿using IronHive.Abstractions;
+using IronHive.Abstractions.Files;
 using IronHive.Core;
+using IronHive.Core.Files;
+using IronHive.Core.Files.Parsers;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -31,6 +34,22 @@ public static class ServiceCollectionExtensions
             var builder = new HiveServiceBuilder();
             return configure(builder, sp);
         }, lifetime));
+        return services;
+    }
+
+    /// <summary>
+    /// PDF, Word, Excel, PowerPoint, Image 파서를 등록합니다.
+    /// 미지원 파일은 null byte 휴리스틱으로 텍스트/바이너리 자동 판별합니다.
+    /// </summary>
+    public static IServiceCollection AddFileParser(
+        this IServiceCollection services)
+    {
+        services.AddSingleton<IFileParser, PdfParser>();
+        services.AddSingleton<IFileParser, WordParser>();
+        services.AddSingleton<IFileParser, ExcelParser>();
+        services.AddSingleton<IFileParser, PowerPointParser>();
+        services.AddSingleton<IFileParser, ImageParser>();
+        services.AddSingleton<IFileParserService, FileParserService>();
         return services;
     }
 }
