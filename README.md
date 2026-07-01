@@ -16,47 +16,28 @@
   </a>
 </p>
 
-**IronHive**는 기업용 AI 애플리케이션을 위한 .NET 파이프라인 프레임워크입니다. 멀티 Provider LLM 통합, 벡터 기반 RAG 파이프라인, 멀티에이전트 오케스트레이션, 파일 처리를 Fluent Builder API로 제공합니다.
-
-범용 프레임워크가 필요하다면 [Semantic Kernel](https://github.com/microsoft/semantic-kernel) 또는 [Agent Framework](https://github.com/microsoft/agent-framework)를 권장합니다.
+**IronHive**는 기업용 AI 애플리케이션을 위한 .NET 10 파이프라인 프레임워크입니다. 이름 기반 레지스트리 패턴으로 멀티 Provider LLM 통합, 멀티에이전트 오케스트레이션, RAG 파이프라인, 파일 처리를 제공합니다.
 
 ## 주요 기능
 
-- **멀티 Provider LLM** — OpenAI, Anthropic, Google AI, Ollama
-- **멀티에이전트 오케스트레이션** — Sequential, Parallel, Hub-Spoke, Graph (DAG)
+- **멀티 Provider LLM** — OpenAI, Anthropic, Google AI (Gemini/Vertex AI), OpenAI Compatible (Ollama, LM Studio, GPUStack 등)
+- **멀티에이전트 오케스트레이션** — Sequential, Parallel, Handoff, GroupChat, HubSpoke, Graph (DAG)
 - **RAG 파이프라인** — 텍스트 추출, 청킹, 임베딩, 벡터 검색
-- **파일 처리** — PDF, Word, PowerPoint, 이미지
-- **플러그인** — MCP, OpenAPI 통합
+- **다중 모달리티** — 이미지 생성, 음성 TTS/STT, 비디오 생성
+- **플러그인** — MCP (HTTP/Stdio/OAuth), OpenAPI 자동 도구 생성
 - **M.E.AI 호환** — `ChatClientAdapter` / `EmbeddingGeneratorAdapter`
-- **워크플로우** — `IHiveService.Workflows`를 통해 YAML/JSON/정의 기반 워크플로우 빌드 (`IWorkflowFactory`)
+- **워크플로우** — 코드 기반 타입 안전 워크플로우 엔진
 
 ## 설치
 
 ```bash
 dotnet add package IronHive.Core
-dotnet add package IronHive.Providers.OpenAI    # 또는 Anthropic, GoogleAI, Ollama
-```
-
-## 빌더 API 규칙
-
-`HiveServiceBuilder`의 등록 메서드는 두 가지 동사를 구분합니다:
-
-| 동사 | 의미 |
-|------|------|
-| `AddX(name, item)` | 신규 등록. 동일 이름이 이미 존재하면 `InvalidOperationException` |
-| `SetX(name, item)` | Upsert. 동일 이름이 있으면 교체, 없으면 추가 |
-
-```csharp
-builder
-    .AddMessageGenerator("openai", gen1)   // 첫 등록 — OK
-    .SetMessageGenerator("openai", gen2)   // 교체 — OK
-    // .AddMessageGenerator("openai", gen3) // 두 번 Add — throws InvalidOperationException
-    ;
+dotnet add package IronHive.Providers.OpenAI    # 또는 Anthropic, GoogleAI 등
 ```
 
 ## 빠른 시작
 
-### Standalone (콘솔, 단순 스크립트)
+### Standalone (콘솔)
 
 ```csharp
 using IronHive.Core;
@@ -64,23 +45,18 @@ using IronHive.Providers.OpenAI;
 using IronHive.Abstractions.Messages.Content;
 
 var hive = new HiveServiceBuilder()
-    .AddMessageGenerator("openai", new OpenAIMessageGenerator(new OpenAIConfig
-    {
-        ApiKey = "your-api-key"
-    }))
+    .AddOpenAIProviders("openai", new OpenAIConfig { ApiKey = "your-api-key" })
     .Build();
 
-// Provider가 하나면 자동 선택 — Provider 생략 가능
-var agent = hive.CreateAgent(config =>
+var agent = hive.CreateAgentFrom(cfg =>
 {
-    config.Model = "gpt-4o";
-    config.Instructions = "You are a helpful assistant.";
+    cfg.Provider = "openai";
+    cfg.Model = "gpt-4o-mini";
+    cfg.Instructions = "당신은 친절한 도우미입니다.";
 });
 
-// string 오버로드로 단순 호출
+// 단순 텍스트 호출
 var response = await agent.InvokeAsync("안녕하세요");
-var text = response.Message?.Content
-    .OfType<TextMessageContent>().FirstOrDefault()?.Value;
 
 // 스트리밍
 await foreach (var chunk in agent.InvokeStreamingAsync("안녕하세요"))
@@ -93,62 +69,72 @@ await foreach (var chunk in agent.InvokeStreamingAsync("안녕하세요"))
 
 ```csharp
 // Program.cs
-builder.Services.AddHiveServiceCore()
-    .AddMessageGenerator("openai", new OpenAIMessageGenerator(new OpenAIConfig
-    {
-        ApiKey = builder.Configuration["OpenAI:ApiKey"]!
-    }));
+builder.Services.AddHiveService((hiveBuilder, sp) =>
+    hiveBuilder
+        .AddOpenAIProviders("openai", new OpenAIConfig
+        {
+            ApiKey = builder.Configuration["OpenAI:ApiKey"]!
+        })
+        .Build());
 
 // 서비스에서 IHiveService 주입
 public class ChatService(IHiveService hive)
 {
     public async Task<string> ChatAsync(string text)
     {
-        var agent = hive.CreateAgent(config =>
+        var agent = hive.CreateAgentFrom(cfg =>
         {
-            config.Model = "gpt-4o";
+            cfg.Provider = "openai";
+            cfg.Model = "gpt-4o-mini";
         });
         var response = await agent.InvokeAsync(text);
         return response.Message?.Content
-            .OfType<TextMessageContent>().FirstOrDefault()?.Value ?? string.Empty;
+            .OfType<TextMessageContent>()
+            .FirstOrDefault()?.Value ?? string.Empty;
     }
 }
 ```
 
-## Skills Usage
+## 패키지
+
+| 패키지 | 설명 |
+|--------|------|
+| `IronHive.Abstractions` | 인터페이스 및 계약 (외부 의존 없음) |
+| `IronHive.Core` | 핵심 구현 (에이전트, 오케스트레이터, 워크플로우) |
+| `IronHive.Providers.OpenAI` | OpenAI (Chat, Embeddings, DALL-E, TTS/STT) |
+| `IronHive.Providers.Anthropic` | Anthropic Claude |
+| `IronHive.Providers.GoogleAI` | Google Gemini + Vertex AI (이미지, 비디오, 오디오 포함) |
+| `IronHive.Providers.OpenAI.Compatible` | Ollama, LM Studio, vLLM, GPUStack 등 |
+| `IronHive.Storages.Qdrant` | Qdrant 벡터 데이터베이스 |
+| `IronHive.Storages.Amazon` | Amazon S3 파일 저장소 |
+| `IronHive.Storages.Azure` | Azure Blob / File Share |
+| `IronHive.Storages.RabbitMQ` | RabbitMQ 큐 |
+| `IronHive.Plugins.MCP` | Model Context Protocol (HTTP/Stdio/OAuth) |
+| `IronHive.Plugins.OpenAPI` | OpenAPI 도구 자동 생성 |
+
+## 문서
+
+| 문서 | 설명 |
+|------|------|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 시스템 아키텍처 및 설계 원칙 |
+| [docs/SETUP.md](docs/SETUP.md) | HiveServiceBuilder 구성 및 DI 통합 |
+| [docs/AGENTS.md](docs/AGENTS.md) | 에이전트 생성 및 호출 |
+| [docs/MIDDLEWARE.md](docs/MIDDLEWARE.md) | 미들웨어 시스템 (Retry, Timeout, CircuitBreaker 등) |
+| [docs/ORCHESTRATION.md](docs/ORCHESTRATION.md) | 멀티에이전트 오케스트레이션 패턴 |
+| [docs/TOOLS.md](docs/TOOLS.md) | FunctionTool 및 커스텀 도구 |
+| [docs/MEMORY.md](docs/MEMORY.md) | RAG 파이프라인 및 MemoryWorker |
+| [docs/PROVIDERS.md](docs/PROVIDERS.md) | AI 프로바이더 설정 |
+| [docs/STORAGES.md](docs/STORAGES.md) | 스토리지 백엔드 설정 |
+| [docs/PLUGINS.md](docs/PLUGINS.md) | MCP / OpenAPI 플러그인 |
+| [docs/SERVICES.md](docs/SERVICES.md) | IHiveService 서비스 상세 |
+
+## Skills (AI 코딩 에이전트용)
 
 AI 코딩 에이전트(GitHub Copilot, Claude Code, Cursor 등)에서 IronHive Skills를 사용하려면:
 
 ```bash
 npx skills add iyulab/ironhive
 ```
-
-설치 후 에이전트가 IronHive API 패턴, 오케스트레이션, RAG 파이프라인, 툴 사용법을 자동으로 인식합니다.
-
-## 패키지
-
-| 패키지 | 설명 |
-|--------|------|
-| `IronHive.Abstractions` | 인터페이스 및 계약 |
-| `IronHive.Core` | 핵심 구현 |
-| `IronHive.Providers.OpenAI` | OpenAI / Azure OpenAI / xAI / GPUStack |
-| `IronHive.Providers.Anthropic` | Claude 모델 |
-| `IronHive.Providers.GoogleAI` | Gemini 모델 |
-| `IronHive.Providers.Ollama` | 로컬 LLM (Ollama, LM Studio) |
-| `IronHive.Storages.Qdrant` | Qdrant 벡터 데이터베이스 |
-| `IronHive.Storages.Amazon` | Amazon S3 파일 저장소 |
-| `IronHive.Storages.Azure` | Azure Blob / Service Bus |
-| `IronHive.Storages.RabbitMQ` | RabbitMQ 큐 |
-| `IronHive.Plugins.MCP` | Model Context Protocol |
-| `IronHive.Plugins.OpenAPI` | OpenAPI 도구 통합 |
-
-## 문서
-
-- [아키텍처](docs/ARCHITECTURE.md) — 시스템 설계, 의존성 그래프, 확장 패턴
-- [핵심 컴포넌트](docs/CORE-COMPONENTS.md) — 핵심 서비스 및 클래스 상세
-- [에이전트 & 오케스트레이션](docs/AGENTS.md) — 멀티에이전트 패턴
-- [프로바이더](docs/PROVIDERS.md) — AI 프로바이더 설정
-- [플러그인](docs/PLUGINS.md) — MCP / OpenAPI 통합
 
 ## 요구 사항
 

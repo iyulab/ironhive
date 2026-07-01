@@ -1,37 +1,39 @@
 # 에이전트 시스템
 
-IronHive의 에이전트 시스템은 LLM 기반의 자율적 대화 및 작업 수행을 위한 프레임워크입니다.
+IronHive의 에이전트는 LLM 기반 대화 및 작업 수행의 핵심 단위입니다.
 
 ## 개요
 
 ```
 IAgent (인터페이스)
     │
-    ├── BasicAgent          # 기본 에이전트
-    ├── MiddlewareAgent     # 미들웨어 래핑 에이전트
-    └── Orchestrator        # 멀티에이전트 오케스트레이터
-         ├── SequentialOrchestrator
-         ├── ParallelOrchestrator
-         ├── GraphOrchestrator
-         ├── HandoffOrchestrator
-         ├── GroupChatOrchestrator
-         └── HubSpokeOrchestrator
+    ├── BasicAgent           # 기본 에이전트 구현체
+    └── MiddlewareAgent      # 미들웨어 래핑 에이전트 (WithMiddleware 사용 시 자동 생성)
+
+IAgentOrchestrator (인터페이스)
+    │
+    ├── SequentialOrchestrator   # 순차 실행
+    ├── ParallelOrchestrator     # 병렬 실행
+    ├── HandoffOrchestrator      # 에이전트 간 전달
+    ├── GroupChatOrchestrator    # 그룹 토론
+    ├── HubSpokeOrchestrator     # 허브 중심 분배
+    └── GraphOrchestrator        # DAG 기반 실행
 ```
 
-## IAgent 인터페이스
+---
 
-모든 에이전트의 기본 인터페이스입니다.
+## IAgent 인터페이스
 
 ```csharp
 public interface IAgent
 {
-    string Provider { get; }           // 프로바이더 이름 (예: "openai")
-    string Model { get; }              // 모델 ID (예: "gpt-4o-mini")
-    string Name { get; }               // 에이전트 이름
-    string Description { get; }        // 에이전트 설명
-    string? Instructions { get; }      // 시스템 프롬프트
-    IEnumerable<ToolItem>? Tools { get; }              // 사용 가능한 도구
-    MessageGenerationParameters? Parameters { get; }   // 생성 파라미터
+    string Provider { get; set; }        // 프로바이더 이름 (예: "openai")
+    string Model { get; set; }           // 모델 ID (예: "gpt-4o-mini")
+    string Name { get; set; }            // 에이전트 이름
+    string Description { get; set; }     // 에이전트 설명
+    string? Instructions { get; set; }   // 시스템 프롬프트
+    IToolCollection? Tools { get; set; } // 사용 가능한 도구 컬렉션
+    int? MaxTokens { get; set; }         // 최대 생성 토큰 수
 
     Task<MessageResponse> InvokeAsync(
         IEnumerable<Message> messages,
@@ -43,65 +45,166 @@ public interface IAgent
 }
 ```
 
-## BasicAgent
+---
 
-가장 기본적인 에이전트 구현체입니다.
+## 에이전트 생성
 
-### 생성
+### IHiveService를 통한 생성
 
 ```csharp
-// IMessageService 주입
-var agent = new BasicAgent(messageService)
+// 프로그래밍 방식
+var agent = hive.CreateAgentFrom(config =>
 {
-    Provider = "openai",
-    Model = "gpt-4o-mini",
-    Name = "Assistant",
-    Description = "일반 도우미 에이전트",
-    Instructions = "당신은 친절한 도우미입니다.",
-    Parameters = new MessageGenerationParameters
+    config.Provider = "openai";
+    config.Model = "gpt-4o-mini";
+    config.Name = "Assistant";
+    config.Description = "일반 도우미 에이전트";
+    config.Instructions = "당신은 친절한 도우미입니다.";
+    config.Parameters = new AgentParametersConfig
     {
         MaxTokens = 4096,
         Temperature = 0.7f
-    }
-};
+    };
+});
+
+// YAML 문자열에서 생성
+var agent = hive.CreateAgentFromYaml(yamlString);
 ```
+
+### AgentConfig 직접 사용
+
+```csharp
+public class AgentConfig
+{
+    public string Name { get; set; }
+    public string Description { get; set; }
+    public string Provider { get; set; }                      // 프로바이더 이름
+    public string Model { get; set; }                          // 모델 ID
+    public string? Instructions { get; set; }
+    public List<string>? Tools { get; set; }                  // 도구 이름 목록 (등록된 도구 참조)
+    public Dictionary<string, object?>? ToolOptions { get; set; } // 도구별 설정 옵션
+    public AgentParametersConfig? Parameters { get; set; }
+}
+
+public class AgentParametersConfig
+{
+    public int? MaxTokens { get; set; }
+    public float? Temperature { get; set; }
+    public float? TopP { get; set; }
+    public int? TopK { get; set; }
+    public List<string>? StopSequences { get; set; }
+}
+```
+
+### YAML / TOML / JSON 설정 파일
+
+```yaml
+# agent.yaml (root 또는 agent: 하위 모두 지원)
+name: "Research Assistant"
+provider: "anthropic"
+model: "claude-3-5-sonnet-20241022"
+instructions: |
+  You are a research assistant.
+  Always cite your sources.
+tools:
+  - web_search
+  - calculator
+parameters:
+  maxTokens: 8192
+  temperature: 0.3
+```
+
+```csharp
+var agent = hive.CreateAgentFromYaml(File.ReadAllText("agent.yaml"));
+```
+
+TOML / JSON 형식도 동일 구조로 지원:
+
+```csharp
+// JSON
+var agent = hive.CreateAgentFrom(JsonSerializer.Deserialize<AgentConfig>(json)!);
+
+// TOML — AgentService 사용
+var agentService = new AgentService(hive.Messages);
+var agent = agentService.CreateAgentFromToml(tomlString);
+```
+
+---
+
+## 에이전트 호출
 
 ### 동기 호출
 
 ```csharp
-var response = await agent.InvokeAsync(new[]
+// Message 목록으로 호출
+var messages = new List<Message>
 {
-    new UserMessage { Content = [new TextMessageContent { Value = "안녕하세요" }] }
-});
+    new Message
+    {
+        Role = MessageRole.User,
+        Content = [new TextMessageContent { Value = "안녕하세요" }]
+    }
+};
 
-Console.WriteLine(response.Message?.Content?.FirstOrDefault());
+var response = await agent.InvokeAsync(messages);
+
+var text = response.Message?.Content
+    .OfType<TextMessageContent>()
+    .FirstOrDefault()?.Value;
+```
+
+### 문자열 오버로드 (AgentExtensions)
+
+```csharp
+// 단순 텍스트로 호출 — AgentExtensions 확장 메서드
+var response = await agent.InvokeAsync("안녕하세요");
 ```
 
 ### 스트리밍 호출
 
 ```csharp
-await foreach (var chunk in agent.InvokeStreamingAsync(messages))
+await foreach (var chunk in agent.InvokeStreamingAsync("안녕하세요"))
 {
     switch (chunk)
     {
-        case StreamingMessageBeginResponse begin:
-            Console.WriteLine($"시작: {begin.Id}");
+        case StreamingContentDeltaResponse delta:
+            if (delta.Delta is TextDeltaContent text)
+                Console.Write(text.Value);
             break;
-        case StreamingMessageDeltaResponse delta:
-            Console.Write(delta.Delta);
-            break;
-        case StreamingMessageEndResponse end:
-            Console.WriteLine($"\n완료: {end.DoneReason}");
+        case StreamingMessageDoneResponse done:
+            Console.WriteLine($"\n완료: {done.DoneReason}");
             break;
     }
 }
 ```
 
-## 미들웨어 시스템
+---
 
-에이전트 호출을 가로채어 추가 로직을 적용합니다.
+## MessageResponse
 
-### 미들웨어 적용
+```csharp
+public class MessageResponse
+{
+    public string? ResponseId { get; init; }           // 응답 ID
+    public MessageDoneReason? DoneReason { get; init; } // 완료 이유
+    public Message? Message { get; init; }             // 생성된 메시지
+    public MessageTokenUsage? TokenUsage { get; init; } // 토큰 사용량
+    public string Model { get; init; }                 // 사용된 모델
+    public DateTime Timestamp { get; init; }           // 응답 시각
+}
+
+public enum MessageDoneReason
+{
+    Stop,      // 정상 완료
+    ToolCall,  // 도구 호출 요청
+    Length,    // 최대 토큰 도달
+    Error      // 오류
+}
+```
+
+---
+
+## 미들웨어 적용
 
 ```csharp
 // 단일 미들웨어
@@ -109,182 +212,63 @@ var wrapped = agent.WithMiddleware(new RetryMiddleware(maxRetries: 3));
 
 // 다중 미들웨어 (실행 순서: 왼쪽 → 오른쪽)
 var wrapped = agent.WithMiddleware(
-    new LoggingMiddleware(),
+    new LoggingMiddleware(Console.WriteLine),
     new RetryMiddleware(maxRetries: 3),
     new TimeoutMiddleware(TimeSpan.FromSeconds(30))
 );
 ```
 
-### 미들웨어 종류
-
-| 미들웨어 | 설명 |
-|----------|------|
-| `RetryMiddleware` | 실패 시 자동 재시도 (지수 백오프 지원) |
-| `TimeoutMiddleware` | 호출 타임아웃 적용 |
-| `RateLimitMiddleware` | 슬라이딩 윈도우 방식 호출 빈도 제한 |
-| `CircuitBreakerMiddleware` | 연속 실패 시 회로 차단 |
-| `BulkheadMiddleware` | 동시 실행 수 제한 |
-| `CachingMiddleware` | 응답 캐싱 |
-| `LoggingMiddleware` | 호출 로깅 |
-| `FallbackMiddleware` | 실패 시 대체 에이전트로 폴백 |
-| `CompositeMiddleware` | 여러 미들웨어를 하나로 조합 |
-
 자세한 내용은 [MIDDLEWARE.md](MIDDLEWARE.md)를 참조하세요.
 
-## 멀티에이전트 오케스트레이션
+---
 
-여러 에이전트를 조합하여 복잡한 워크플로우를 구성합니다.
+## 오케스트레이터를 에이전트로 사용
 
-### 오케스트레이터 종류
-
-| 오케스트레이터 | 패턴 | 설명 |
-|---------------|------|------|
-| `SequentialOrchestrator` | 순차 | 에이전트를 순서대로 실행 |
-| `ParallelOrchestrator` | 병렬 | 에이전트를 동시에 실행 |
-| `GraphOrchestrator` | DAG | 조건부 분기가 있는 그래프 실행 |
-| `HandoffOrchestrator` | 핸드오프 | 에이전트 간 대화 전달 |
-| `GroupChatOrchestrator` | 그룹챗 | 여러 에이전트가 토론 |
-| `HubSpokeOrchestrator` | 허브스포크 | 중앙 허브가 작업 분배 |
-
-### 빠른 예제
+오케스트레이터를 `IAgent`처럼 다른 오케스트레이터에 중첩할 수 있습니다:
 
 ```csharp
-// 순차 오케스트레이터
-var orch = new SequentialOrchestratorBuilder()
-    .AddAgent(agent1)
-    .AddAgent(agent2)
-    .Build();
+var parallelReview = new ParallelOrchestrator();
+parallelReview.AddAgent(reviewer1);
+parallelReview.AddAgent(reviewer2);
 
-var result = await orch.ExecuteAsync(messages);
+// 오케스트레이터를 IAgent로 래핑
+var reviewAgent = parallelReview.AsAgent(name: "ParallelReviewer");
 
-// 핸드오프 오케스트레이터
-var orch = new HandoffOrchestratorBuilder()
-    .AddAgent(triageAgent,
-        new HandoffTarget { AgentName = "billing", Description = "결제 문의" },
-        new HandoffTarget { AgentName = "support", Description = "기술 지원" })
-    .AddAgent(billingAgent)
-    .AddAgent(supportAgent)
-    .SetInitialAgent("triage")
-    .Build();
+var pipeline = new SequentialOrchestrator();
+pipeline.AddAgent(writer);
+pipeline.AddAgent(reviewAgent);  // 오케스트레이터를 에이전트로 중첩
+pipeline.AddAgent(finalizer);
 ```
 
-자세한 내용은 [ORCHESTRATION.md](ORCHESTRATION.md)를 참조하세요.
+---
 
-## 체크포인트
+## AgentCard
 
-오케스트레이션 중간 상태를 저장하고 복구합니다.
-
-### ICheckpointStore
+외부 시스템에서 에이전트 정의를 전달할 때 사용합니다:
 
 ```csharp
-public interface ICheckpointStore
+public class AgentCard
 {
-    Task SaveAsync(string sessionId, OrchestrationCheckpoint checkpoint, CancellationToken ct);
-    Task<OrchestrationCheckpoint?> LoadAsync(string sessionId, CancellationToken ct);
-    Task DeleteAsync(string sessionId, CancellationToken ct);
+    public required string Name { get; init; }
+    public string? Description { get; init; }
+    public required string Workflow { get; init; }  // YAML 형식 에이전트 설정
+    public string? PromptTemplate { get; init; }
+    public object? InitialContext { get; init; }
 }
-```
 
-### 사용법
-
-```csharp
-var store = new InMemoryCheckpointStore();
-
-var orch = new SequentialOrchestratorBuilder()
-    .AddAgent(agent1)
-    .AddAgent(agent2)
-    .WithCheckpointStore(store)
-    .Build();
-
-// 체크포인트 저장 활성화된 실행
-var result = await orch.ExecuteAsync(messages, new ExecuteOptions
+// 사용
+var card = new AgentCard
 {
-    SessionId = "session-123"
-});
+    Name = "SupportBot",
+    Workflow = yamlConfig
+};
+var agent = hive.CreateAgentFrom(card);
 ```
 
-## Human-in-the-Loop (HITL)
-
-사람의 승인을 받아 에이전트 실행을 제어합니다.
-
-### IApprovalHandler
-
-```csharp
-public interface IApprovalHandler
-{
-    Task<bool> RequestApprovalAsync(IAgent agent, IEnumerable<Message> messages, CancellationToken ct);
-}
-```
-
-### 사용법
-
-```csharp
-var approvalHandler = new CustomApprovalHandler();
-
-var orch = new SequentialOrchestratorBuilder()
-    .AddAgent(safeAgent)
-    .AddAgent(riskyAgent, requiresApproval: true)
-    .WithApprovalHandler(approvalHandler)
-    .Build();
-```
-
-## 스트리밍
-
-오케스트레이션 이벤트를 실시간으로 수신합니다.
-
-### 이벤트 타입
-
-| 이벤트 | 설명 |
-|--------|------|
-| `OrchestrationStarted` | 오케스트레이션 시작 |
-| `AgentStarted` | 에이전트 실행 시작 |
-| `AgentStreaming` | 에이전트 스트리밍 청크 |
-| `AgentCompleted` | 에이전트 실행 완료 |
-| `Handoff` | 핸드오프 발생 |
-| `SpeakerSelected` | 그룹챗 발화자 선택 |
-| `OrchestrationCompleted` | 오케스트레이션 완료 |
-
-### 사용법
-
-```csharp
-await foreach (var evt in orch.ExecuteStreamingAsync(messages))
-{
-    switch (evt.EventType)
-    {
-        case OrchestrationEventType.AgentStreaming:
-            Console.Write(evt.StreamingResponse?.Delta);
-            break;
-        case OrchestrationEventType.Handoff:
-            Console.WriteLine($"핸드오프: {evt.FromAgent} → {evt.ToAgent}");
-            break;
-    }
-}
-```
-
-## 에러 처리
-
-### ErrorHandlingMode
-
-```csharp
-public enum ErrorHandlingMode
-{
-    StopOnFailure,    // 실패 시 중단 (기본값)
-    ContinueOnFailure // 실패해도 계속 진행
-}
-```
-
-### 사용법
-
-```csharp
-var orch = new SequentialOrchestratorBuilder()
-    .AddAgent(agent1)
-    .AddAgent(agent2)
-    .WithErrorHandling(ErrorHandlingMode.ContinueOnFailure)
-    .Build();
-```
+---
 
 ## 관련 문서
 
-- [ORCHESTRATION.md](ORCHESTRATION.md) - 오케스트레이션 패턴 상세
-- [MIDDLEWARE.md](MIDDLEWARE.md) - 미들웨어 시스템 상세
-- [CORE-COMPONENTS.md](CORE-COMPONENTS.md) - 핵심 컴포넌트
+- [MIDDLEWARE.md](MIDDLEWARE.md) — 미들웨어 시스템 상세
+- [ORCHESTRATION.md](ORCHESTRATION.md) — 멀티에이전트 오케스트레이션
+- [TOOLS.md](TOOLS.md) — 도구 시스템
