@@ -4,6 +4,45 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.8.2 — 2026-07-03
+
+Fixes a silent runtime break introduced in 0.7.9 where the entire OpenAI provider
+family routed chat through the OpenAI-proprietary **Responses API**
+(`POST /v1/responses`), returning `404 Not Found` on every Chat-Completions-only
+endpoint (self-hosted / OpenAI-compatible servers). Reported by Filer while
+consuming iron-prow 0.1.1. The switch was intended for first-party OpenAI only;
+`OpenAICompatible`/GPUStack delegating to the Responses generator was the defect.
+Still present in 0.8.0/0.8.1 — the structural refactor in those releases did not
+touch the OpenAI provider files.
+
+### Added
+
+- **`OpenAIApiSurface` enum** and **`OpenAIConfig.Api`** selector — choose between
+  `ChatCompletions` (`/v1/chat/completions`) and `Responses` (`/v1/responses`).
+- **`OpenAIChatMessageGenerator`** — Chat Completions implementation over the
+  official OpenAI SDK (`GetChatClient`). Covers text, tools, images, streaming,
+  and local token estimation.
+- **`OpenAIResponseMessageGenerator`** — the prior Responses implementation,
+  extracted from `OpenAIMessageGenerator` (unchanged behavior).
+
+### Changed
+
+- **`OpenAIMessageGenerator` is now a dispatcher** that routes to the surface
+  selected by `OpenAIConfig.Api`. Constructors are unchanged, so existing
+  registrations keep working: first-party OpenAI defaults to `Responses`.
+- **`AddOpenAICompatibleProviders` and the GPUStack provider now default to Chat
+  Completions.** Their `ToOpenAI()` sets `Api = ChatCompletions`, so they target
+  `/v1/chat/completions` — the surface Ollama, LM Studio, vLLM, llama.cpp server,
+  and GPUStack implement. This is the fix for the 404 regression.
+
+### Notes
+
+- The Chat Completions surface has no reasoning-input block: prior assistant
+  `thinking` content is not replayed, and `ThinkingEffort` is not mapped there
+  (compatible servers generally reject `reasoning_effort`). Use the `Responses`
+  surface for reasoning.
+- Per-provider API surfaces are documented in `docs/PROVIDERS.md` and `README.md`.
+
 ## 0.8.1 — 2026-07-02
 
 Follow-up hardening to the `Files` parsers introduced in 0.8.0.

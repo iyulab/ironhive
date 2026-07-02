@@ -101,10 +101,10 @@ public class ChatService(IHiveService hive)
 |--------|------|
 | `IronHive.Abstractions` | 인터페이스 및 계약 (외부 의존 없음) |
 | `IronHive.Core` | 핵심 구현 (에이전트, 오케스트레이터, 워크플로우) |
-| `IronHive.Providers.OpenAI` | OpenAI (Chat, Embeddings, DALL-E, TTS/STT) |
+| `IronHive.Providers.OpenAI` | OpenAI / Azure OpenAI / xAI (Chat, Embeddings, DALL-E, TTS/STT). 표면 선택(`OpenAIConfig.Api`): Responses(기본) 또는 Chat Completions |
 | `IronHive.Providers.Anthropic` | Anthropic Claude |
 | `IronHive.Providers.GoogleAI` | Google Gemini + Vertex AI (이미지, 비디오, 오디오 포함) |
-| `IronHive.Providers.OpenAI.Compatible` | Ollama, LM Studio, vLLM, GPUStack 등 |
+| `IronHive.Providers.OpenAI.Compatible` | Ollama, LM Studio, vLLM, llama.cpp, GPUStack 등 — Chat Completions 표면 |
 | `IronHive.Storages.Qdrant` | Qdrant 벡터 데이터베이스 |
 | `IronHive.Storages.Amazon` | Amazon S3 파일 저장소 |
 | `IronHive.Storages.Azure` | Azure Blob / File Share |
@@ -135,6 +135,8 @@ AI 코딩 에이전트(GitHub Copilot, Claude Code, Cursor 등)에서 IronHive S
 ```bash
 npx skills add iyulab/ironhive
 ```
+
+설치 후 에이전트가 IronHive API 패턴, 오케스트레이션, RAG 파이프라인, 툴 사용법을 자동으로 인식합니다.
 
 ## 요구 사항
 
