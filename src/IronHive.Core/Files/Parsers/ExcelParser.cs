@@ -11,9 +11,8 @@ namespace IronHive.Core.Files.Parsers;
 public class ExcelParser : IFileParser
 {
     /// <inheritdoc />
-    public bool CanParse(string fileName, string? mimeType = null)
-        => fileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase)
-        || mimeType?.Equals("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", StringComparison.OrdinalIgnoreCase) == true;
+    public bool CanParse(string fileName)
+        => fileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase);
 
     /// <inheritdoc />
     public Task<IReadOnlyList<FileBlock>> ParseAsync(
@@ -22,44 +21,36 @@ public class ExcelParser : IFileParser
         CancellationToken cancellationToken = default)
     {
         var blocks = new List<FileBlock>();
-        try
+
+        using var doc = SpreadsheetDocument.Open(data, false);
+        var workbookPart = doc.WorkbookPart
+            ?? throw new InvalidOperationException($"'{fileName}' has no workbook part.");
+
+        var sharedStrings = workbookPart.SharedStringTablePart?.SharedStringTable;
+        // WorkbookPart.WorksheetParts는 순서가 보장되지 않으므로 Workbook.Sheets를 통해 순서대로 접근합니다.
+        var sheets = workbookPart.Workbook?.Sheets?.Elements<Sheet>().ToList() ?? [];
+
+        foreach (var sheet in sheets)
         {
-            using var doc = SpreadsheetDocument.Open(data, false);
-            var workbookPart = doc.WorkbookPart;
-            if (workbookPart is null)
-                return Task.FromResult<IReadOnlyList<FileBlock>>(blocks);
+            cancellationToken.ThrowIfCancellationRequested();
 
-            var sharedStrings = workbookPart.SharedStringTablePart?.SharedStringTable;
-            // WorkbookPart.WorksheetParts는 순서가 보장되지 않으므로 Workbook.Sheets를 통해 순서대로 접근합니다.
-            var sheets = workbookPart.Workbook?.Sheets?.Elements<Sheet>().ToList() ?? [];
+            if (sheet.Id?.Value is not { } relationshipId) continue;
+            if (workbookPart.GetPartById(relationshipId) is not WorksheetPart worksheetPart) continue;
 
-            foreach (var sheet in sheets)
+            var sheetData = worksheetPart.Worksheet?.Elements<SheetData>().FirstOrDefault();
+            if (sheetData is null) continue;
+
+            var sb = new System.Text.StringBuilder();
+            foreach (var row in sheetData.Elements<Row>())
             {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                if (sheet.Id?.Value is not { } relationshipId) continue;
-                if (workbookPart.GetPartById(relationshipId) is not WorksheetPart worksheetPart) continue;
-
-                var sheetData = worksheetPart.Worksheet?.Elements<SheetData>().FirstOrDefault();
-                if (sheetData is null) continue;
-
-                var sb = new System.Text.StringBuilder();
-                foreach (var row in sheetData.Elements<Row>())
-                {
-                    var cells = row.Elements<Cell>().Select(c => GetCellValue(c, sharedStrings));
-                    sb.AppendLine(string.Join('\t', cells));
-                }
-
-                var text = sb.ToString().Trim();
-                if (!string.IsNullOrWhiteSpace(text))
-                    blocks.Add(new TextBlock { Label = $"{fileName} - {sheet.Name?.Value ?? "Sheet"}", Text = text });
+                var cells = row.Elements<Cell>().Select(c => GetCellValue(c, sharedStrings));
+                sb.AppendLine(string.Join('\t', cells));
             }
+
+            var text = sb.ToString().Trim();
+            if (!string.IsNullOrWhiteSpace(text))
+                blocks.Add(new TextBlock { Label = $"{fileName} - {sheet.Name?.Value ?? "Sheet"}", Text = text });
         }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch { }
 
         return Task.FromResult<IReadOnlyList<FileBlock>>(blocks);
     }

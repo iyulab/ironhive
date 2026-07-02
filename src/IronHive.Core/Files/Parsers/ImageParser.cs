@@ -16,12 +16,9 @@ public class ImageParser : IFileParser
         [".webp"] = "image/webp",
     };
 
-    private static readonly HashSet<string> SupportedMimeTypes = new(ExtensionMimeTypes.Values, StringComparer.OrdinalIgnoreCase);
-
     /// <inheritdoc />
-    public bool CanParse(string fileName, string? mimeType = null)
-        => ExtensionMimeTypes.ContainsKey(Path.GetExtension(fileName))
-        || (mimeType is not null && SupportedMimeTypes.Contains(mimeType));
+    public bool CanParse(string fileName)
+        => ExtensionMimeTypes.ContainsKey(Path.GetExtension(fileName));
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<FileBlock>> ParseAsync(
@@ -30,7 +27,7 @@ public class ImageParser : IFileParser
         CancellationToken cancellationToken = default)
     {
         var ext = Path.GetExtension(fileName);
-        // 확장자로 MIME을 결정하며, 확장자가 없는 경우(mimeType만 있는 경우)에는 기본값 image/png를 사용합니다.
+        // 확장자로 MIME을 결정하며, 알 수 없는 확장자인 경우 기본값 image/png를 사용합니다.
         var mimeType = ExtensionMimeTypes.GetValueOrDefault(ext, "image/png");
 
         using var ms = new MemoryStream();

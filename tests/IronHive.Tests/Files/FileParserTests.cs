@@ -10,20 +10,17 @@ public class ImageParserTests
     private readonly ImageParser _parser = new();
 
     [Theory]
-    [InlineData("photo.png",  null,         true)]
-    [InlineData("photo.jpg",  null,         true)]
-    [InlineData("photo.jpeg", null,         true)]
-    [InlineData("photo.gif",  null,         true)]
-    [InlineData("photo.webp", null,         true)]
-    [InlineData("photo.PNG",  null,         true)]
-    [InlineData("file",       "image/png",  true)]
-    [InlineData("file",       "image/webp", true)]
-    [InlineData("photo.svg",  null,         false)]
-    [InlineData("doc.pdf",    null,         false)]
-    [InlineData("file",       "text/plain", false)]
-    public void CanParse_ReturnsExpected(string fileName, string? mimeType, bool expected)
+    [InlineData("photo.png",  true)]
+    [InlineData("photo.jpg",  true)]
+    [InlineData("photo.jpeg", true)]
+    [InlineData("photo.gif",  true)]
+    [InlineData("photo.webp", true)]
+    [InlineData("photo.PNG",  true)]
+    [InlineData("photo.svg",  false)]
+    [InlineData("doc.pdf",    false)]
+    public void CanParse_ReturnsExpected(string fileName, bool expected)
     {
-        _parser.CanParse(fileName, mimeType).Should().Be(expected);
+        _parser.CanParse(fileName).Should().Be(expected);
     }
 
     [Theory]
@@ -50,14 +47,12 @@ public class PdfParserCanParseTests
     private readonly PdfParser _parser = new();
 
     [Theory]
-    [InlineData("report.pdf",  null,              true)]
-    [InlineData("REPORT.PDF",  null,              true)]
-    [InlineData("file",        "application/pdf", true)]
-    [InlineData("report.docx", null,              false)]
-    [InlineData("file",        "text/plain",      false)]
-    public void CanParse_ReturnsExpected(string fileName, string? mimeType, bool expected)
+    [InlineData("report.pdf",  true)]
+    [InlineData("REPORT.PDF",  true)]
+    [InlineData("report.docx", false)]
+    public void CanParse_ReturnsExpected(string fileName, bool expected)
     {
-        _parser.CanParse(fileName, mimeType).Should().Be(expected);
+        _parser.CanParse(fileName).Should().Be(expected);
     }
 }
 
@@ -66,14 +61,12 @@ public class WordParserCanParseTests
     private readonly WordParser _parser = new();
 
     [Theory]
-    [InlineData("doc.docx", null,                                                                                              true)]
-    [InlineData("DOC.DOCX", null,                                                                                              true)]
-    [InlineData("file",     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",                        true)]
-    [InlineData("doc.doc",  null,                                                                                              false)]
-    [InlineData("file",     "application/msword",                                                                              false)]
-    public void CanParse_ReturnsExpected(string fileName, string? mimeType, bool expected)
+    [InlineData("doc.docx", true)]
+    [InlineData("DOC.DOCX", true)]
+    [InlineData("doc.doc",  false)]
+    public void CanParse_ReturnsExpected(string fileName, bool expected)
     {
-        _parser.CanParse(fileName, mimeType).Should().Be(expected);
+        _parser.CanParse(fileName).Should().Be(expected);
     }
 }
 
@@ -82,14 +75,13 @@ public class ExcelParserCanParseTests
     private readonly ExcelParser _parser = new();
 
     [Theory]
-    [InlineData("data.xlsx", null,                                                                                 true)]
-    [InlineData("DATA.XLSX", null,                                                                                 true)]
-    [InlineData("file",      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",                 true)]
-    [InlineData("data.xls",  null,                                                                                 false)]
-    [InlineData("data.csv",  null,                                                                                 false)]
-    public void CanParse_ReturnsExpected(string fileName, string? mimeType, bool expected)
+    [InlineData("data.xlsx", true)]
+    [InlineData("DATA.XLSX", true)]
+    [InlineData("data.xls",  false)]
+    [InlineData("data.csv",  false)]
+    public void CanParse_ReturnsExpected(string fileName, bool expected)
     {
-        _parser.CanParse(fileName, mimeType).Should().Be(expected);
+        _parser.CanParse(fileName).Should().Be(expected);
     }
 }
 
@@ -98,13 +90,11 @@ public class PowerPointParserCanParseTests
     private readonly PowerPointParser _parser = new();
 
     [Theory]
-    [InlineData("slides.pptx", null,                                                                                              true)]
-    [InlineData("SLIDES.PPTX", null,                                                                                              true)]
-    [InlineData("file",        "application/vnd.openxmlformats-officedocument.presentationml.presentation",                      true)]
-    [InlineData("slides.ppt",  null,                                                                                              false)]
-    [InlineData("file",        "application/vnd.ms-powerpoint",                                                                   false)]
-    public void CanParse_ReturnsExpected(string fileName, string? mimeType, bool expected)
+    [InlineData("slides.pptx", true)]
+    [InlineData("SLIDES.PPTX", true)]
+    [InlineData("slides.ppt",  false)]
+    public void CanParse_ReturnsExpected(string fileName, bool expected)
     {
-        _parser.CanParse(fileName, mimeType).Should().Be(expected);
+        _parser.CanParse(fileName).Should().Be(expected);
     }
 }

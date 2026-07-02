@@ -4,6 +4,26 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.8.1 — 2026-07-02
+
+Follow-up hardening to the `Files` parsers introduced in 0.8.0.
+
+### Breaking
+
+- **`IFileParser.CanParse` drops the unused `mimeType` parameter** —
+  `CanParse(fileName)`. `FileParserService` never passed it.
+- **`ExcelParser`/`WordParser`/`PowerPointParser` now throw
+  `InvalidOperationException`** on missing required parts (workbook, document
+  body, slide list) instead of silently returning an empty block list.
+- **Parsers no longer swallow exceptions.** The blanket try/catch around each
+  `ParseAsync` is removed; malformed documents now propagate exceptions
+  instead of failing silently. Per-image extraction still fails individually.
+
+### Added
+
+- **`WordParser`/`PowerPointParser` extract embedded images** as `ImageBlock`,
+  matching `PdfParser`.
+
 ## 0.8.0 — 2026-07-01
 
 This release is a sweeping structural refactoring across tools, services, models,

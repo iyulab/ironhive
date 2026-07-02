@@ -38,7 +38,7 @@ public class FileParserServiceTests
     {
         var expected = new[] { new TextBlock { Text = "hello" } };
         var parser = Substitute.For<IFileParser>();
-        parser.CanParse("doc.pdf", null).Returns(true);
+        parser.CanParse("doc.pdf").Returns(true);
         parser.ParseAsync("doc.pdf", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<FileBlock>>(expected));
 
@@ -83,7 +83,7 @@ public class FileParserServiceTests
     public async Task ParseAsync_SeekableStream_ResetsPositionBeforeParsing()
     {
         var parser = Substitute.For<IFileParser>();
-        parser.CanParse("file.txt", null).Returns(true);
+        parser.CanParse("file.txt").Returns(true);
 
         long positionOnParse = -1;
         parser.ParseAsync("file.txt", Arg.Any<Stream>(), Arg.Any<CancellationToken>())

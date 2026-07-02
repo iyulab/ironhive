@@ -12,9 +12,8 @@ namespace IronHive.Core.Files.Parsers;
 public class PdfParser : IFileParser
 {
     /// <inheritdoc />
-    public bool CanParse(string fileName, string? mimeType = null)
-        => fileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)
-        || mimeType?.Equals("application/pdf", StringComparison.OrdinalIgnoreCase) == true;
+    public bool CanParse(string fileName)
+        => fileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase);
 
     /// <inheritdoc />
     public Task<IReadOnlyList<FileBlock>> ParseAsync(
@@ -23,33 +22,26 @@ public class PdfParser : IFileParser
         CancellationToken cancellationToken = default)
     {
         var blocks = new List<FileBlock>();
-        try
+
+        using var pdf = PdfDocument.Open(data);
+        foreach (var page in pdf.GetPages())
         {
-            using var pdf = PdfDocument.Open(data);
-            foreach (var page in pdf.GetPages())
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var text = TextCleaner.Clean(ContentOrderTextExtractor.GetText(page));
+            if (!string.IsNullOrWhiteSpace(text))
+                blocks.Add(new TextBlock { Label = $"{fileName} - Page {page.Number}", Text = text });
+
+            foreach (var image in page.GetImages())
             {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                var text = TextCleaner.Clean(ContentOrderTextExtractor.GetText(page));
-                if (!string.IsNullOrWhiteSpace(text))
-                    blocks.Add(new TextBlock { Label = $"{fileName} - Page {page.Number}", Text = text });
-
-                foreach (var image in page.GetImages())
+                try
                 {
-                    try
-                    {
-                        if (image.TryGetPng(out var pngBytes))
-                            blocks.Add(new ImageBlock { MimeType = "image/png", Data = pngBytes });
-                    }
-                    catch { }
+                    if (image.TryGetPng(out var pngBytes))
+                        blocks.Add(new ImageBlock { MimeType = "image/png", Data = pngBytes });
                 }
+                catch { }
             }
         }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch { }
 
         return Task.FromResult<IReadOnlyList<FileBlock>>(blocks);
     }

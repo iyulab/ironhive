@@ -6,15 +6,14 @@ using IronHive.Core.Utilities;
 namespace IronHive.Core.Files.Parsers;
 
 /// <summary>
-/// .docx 파일을 파싱합니다. 단락은 텍스트로, 표는 탭 구분 텍스트로 추출하며
-/// 문서 내 요소 순서를 유지합니다.
+/// .docx 파일을 파싱합니다. 단락은 텍스트로, 표는 탭 구분 텍스트로, 인라인 이미지는
+/// <see cref="ImageBlock"/>으로 추출하며 문서 내 요소 순서를 유지합니다.
 /// </summary>
 public class WordParser : IFileParser
 {
     /// <inheritdoc />
-    public bool CanParse(string fileName, string? mimeType = null)
-        => fileName.EndsWith(".docx", StringComparison.OrdinalIgnoreCase)
-        || mimeType?.Equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document", StringComparison.OrdinalIgnoreCase) == true;
+    public bool CanParse(string fileName)
+        => fileName.EndsWith(".docx", StringComparison.OrdinalIgnoreCase);
 
     /// <inheritdoc />
     public Task<IReadOnlyList<FileBlock>> ParseAsync(
@@ -23,38 +22,40 @@ public class WordParser : IFileParser
         CancellationToken cancellationToken = default)
     {
         var blocks = new List<FileBlock>();
-        try
+
+        using var doc = WordprocessingDocument.Open(data, false);
+        var mainPart = doc.MainDocumentPart
+            ?? throw new InvalidOperationException($"'{fileName}' has no main document part.");
+        var body = mainPart.Document?.Body
+            ?? throw new InvalidOperationException($"'{fileName}' has no document body.");
+
+        var textBuffer = new System.Text.StringBuilder();
+        foreach (var element in body.ChildElements)
         {
-            using var doc = WordprocessingDocument.Open(data, false);
-            var body = doc.MainDocumentPart?.Document?.Body;
-            if (body is null)
-                return Task.FromResult<IReadOnlyList<FileBlock>>(blocks);
+            cancellationToken.ThrowIfCancellationRequested();
 
-            var textBuffer = new System.Text.StringBuilder();
-            foreach (var element in body.ChildElements)
+            if (element is Paragraph para)
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                textBuffer.AppendLine(para.InnerText);
 
-                if (element is Paragraph para)
+                // 단락 안에 이미지가 있으면, 여기까지 누적된 텍스트를 먼저 flush해서
+                // 문서 내 텍스트/이미지 순서를 유지합니다.
+                var images = ExtractInlineImages(para, mainPart);
+                if (images.Count > 0)
                 {
-                    textBuffer.AppendLine(para.InnerText);
-                }
-                else if (element is Table table)
-                {
-                    // 표 앞에 누적된 단락을 먼저 flush해서 순서를 보존합니다.
                     FlushText(blocks, textBuffer, fileName);
-                    var tableText = ExtractTableText(table);
-                    if (!string.IsNullOrWhiteSpace(tableText))
-                        blocks.Add(new TextBlock { Label = $"{fileName} - Table", Text = tableText });
+                    blocks.AddRange(images);
                 }
             }
-            FlushText(blocks, textBuffer, fileName);
+            else if (element is Table table)
+            {
+                FlushText(blocks, textBuffer, fileName);
+                var tableText = ExtractTableText(table);
+                if (!string.IsNullOrWhiteSpace(tableText))
+                    blocks.Add(new TextBlock { Label = $"{fileName} - Table", Text = tableText });
+            }
         }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch { }
+        FlushText(blocks, textBuffer, fileName);
 
         return Task.FromResult<IReadOnlyList<FileBlock>>(blocks);
     }
@@ -76,5 +77,26 @@ public class WordParser : IFileParser
             sb.AppendLine(string.Join('\t', cells));
         }
         return sb.ToString().Trim();
+    }
+
+    private static List<ImageBlock> ExtractInlineImages(Paragraph para, MainDocumentPart mainPart)
+    {
+        var images = new List<ImageBlock>();
+        foreach (var blip in para.Descendants<DocumentFormat.OpenXml.Drawing.Blip>())
+        {
+            var embedId = blip.Embed?.Value;
+            if (string.IsNullOrEmpty(embedId)) continue;
+            if (mainPart.GetPartById(embedId) is not ImagePart imagePart) continue;
+
+            try
+            {
+                using var ps = imagePart.GetStream();
+                using var ms = new MemoryStream();
+                ps.CopyTo(ms);
+                images.Add(new ImageBlock { MimeType = imagePart.ContentType, Data = ms.ToArray() });
+            }
+            catch { }
+        }
+        return images;
     }
 }
