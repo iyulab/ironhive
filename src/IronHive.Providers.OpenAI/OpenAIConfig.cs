@@ -31,13 +31,6 @@ public class OpenAIConfig
     public TimeSpan TimeOut { get; set; } = TimeSpan.FromMinutes(10);
 
     /// <summary>
-    /// Which OpenAI HTTP API surface the message generator targets. Default: <see cref="OpenAIApiSurface.Responses"/>
-    /// (first-party OpenAI). Set to <see cref="OpenAIApiSurface.ChatCompletions"/> for OpenAI-compatible /
-    /// self-hosted endpoints that do not implement the Responses API. See <see cref="OpenAIApiSurface"/>.
-    /// </summary>
-    public OpenAIApiSurface Api { get; set; } = OpenAIApiSurface.Responses;
-
-    /// <summary>
     /// SDK가 사용할 HttpClient를 외부에서 주입합니다.
     /// <para>
     /// connect timeout, proxy, retry 등 HTTP 레벨 동작을 직접 제어할 때 사용합니다.

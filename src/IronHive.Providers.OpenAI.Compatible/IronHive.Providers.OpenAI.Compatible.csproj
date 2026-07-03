@@ -5,6 +5,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="OpenAI" />
+    <PackageReference Include="Tiktoken" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="IronHive.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\IronHive.Providers.OpenAI\IronHive.Providers.OpenAI.csproj" />
   </ItemGroup>
 

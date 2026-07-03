@@ -67,7 +67,7 @@ inner generator를 재생성하므로, 키만 회전해도 새 키가 정확히 
 
 ## 제한사항
 
-GPUStack은 Chat Completions API 기반(`OpenAIChatMessageGenerator`)으로 동작합니다.
+GPUStack은 Chat Completions API 기반(`ChatCompletionMessageGenerator`)으로 동작합니다.
 배포된 모델에 따라 지원 기능이 다를 수 있습니다.
 
 ---

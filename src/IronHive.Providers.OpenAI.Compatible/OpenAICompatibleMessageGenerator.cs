@@ -4,8 +4,8 @@ namespace IronHive.Providers.OpenAI.Compatible;
 
 /// <summary>
 /// Message generator for a generic OpenAI-compatible endpoint. Delegates to
-/// <see cref="OpenAIMessageGenerator"/> over the resolved <c>/v1</c> base URL. When
-/// <see cref="OpenAICompatibleConfig.BaseUrlResolver"/> or <see cref="OpenAICompatibleConfig.ApiKeyResolver"/>
+/// <see cref="ChatCompletionMessageGenerator"/> (Chat Completions surface) over the resolved <c>/v1</c> base URL.
+/// When <see cref="OpenAICompatibleConfig.BaseUrlResolver"/> or <see cref="OpenAICompatibleConfig.ApiKeyResolver"/>
 /// is set, the endpoint/key is re-resolved per request and the inner generator is swapped on change.
 /// </summary>
 public class OpenAICompatibleMessageGenerator : IMessageGenerator
@@ -13,7 +13,7 @@ public class OpenAICompatibleMessageGenerator : IMessageGenerator
     private readonly OpenAICompatibleConfig _config;
 
     private string _lastResolvedSignature;
-    private OpenAIMessageGenerator _inner;
+    private ChatCompletionMessageGenerator _inner;
     private readonly Lock _lock = new();
 
     private static string BuildSignature(string baseUrl, string apiKey) => baseUrl + '\0' + apiKey;
@@ -21,11 +21,11 @@ public class OpenAICompatibleMessageGenerator : IMessageGenerator
     public OpenAICompatibleMessageGenerator(OpenAICompatibleConfig config)
     {
         _config = config ?? throw new ArgumentNullException(nameof(config));
-        _inner = new OpenAIMessageGenerator(config.ToOpenAI());
+        _inner = new ChatCompletionMessageGenerator(config.ToOpenAI());
         _lastResolvedSignature = BuildSignature(config.ResolveBaseUrl(), config.ResolveApiKey());
     }
 
-    private OpenAIMessageGenerator GetOrUpdateInner()
+    private ChatCompletionMessageGenerator GetOrUpdateInner()
     {
         if (_config.BaseUrlResolver == null && _config.ApiKeyResolver == null)
             return _inner;
@@ -40,7 +40,7 @@ public class OpenAICompatibleMessageGenerator : IMessageGenerator
             if (current == _lastResolvedSignature)
                 return _inner;
 
-            _inner = new OpenAIMessageGenerator(_config.ToOpenAI());
+            _inner = new ChatCompletionMessageGenerator(_config.ToOpenAI());
             _lastResolvedSignature = current;
         }
 

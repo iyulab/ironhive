@@ -10,10 +10,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="IronHive.Tests" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\IronHive.Abstractions\IronHive.Abstractions.csproj" />
   </ItemGroup>
 

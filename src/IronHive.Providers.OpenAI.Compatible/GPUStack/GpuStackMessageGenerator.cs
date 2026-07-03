@@ -1,9 +1,11 @@
 using IronHive.Abstractions.Messages;
+using IronHive.Providers.OpenAI.Compatible;
 
 namespace IronHive.Providers.OpenAI.Compatible.GpuStack;
 
 /// <summary>
-/// GPUStack 서비스를 위한 메시지 생성기입니다.
+/// GPUStack 서비스를 위한 메시지 생성기입니다. GPUStack은 Chat Completions 표면을 서빙하므로
+/// <see cref="ChatCompletionMessageGenerator"/>에 위임합니다.
 /// <see cref="GpuStackConfig.BaseUrlResolver"/> 또는 <see cref="GpuStackConfig.ApiKeyResolver"/>가
 /// 설정된 경우 매 요청 시 동적으로 엔드포인트·키를 조회하고, 변경 시 내부 generator를 교체합니다.
 /// </summary>
@@ -12,7 +14,7 @@ public class GpuStackMessageGenerator : IMessageGenerator
     private readonly GpuStackConfig _config;
 
     private string _lastResolvedSignature = string.Empty;
-    private OpenAIMessageGenerator _inner;
+    private ChatCompletionMessageGenerator _inner;
     private readonly Lock _lock = new();
 
     private static string BuildSignature(string baseUrl, string apiKey) => baseUrl + '\0' + apiKey;
@@ -20,11 +22,11 @@ public class GpuStackMessageGenerator : IMessageGenerator
     public GpuStackMessageGenerator(GpuStackConfig config)
     {
         _config = config;
-        _inner = new OpenAIMessageGenerator(config.ToOpenAI());
+        _inner = new ChatCompletionMessageGenerator(config.ToOpenAI());
         _lastResolvedSignature = BuildSignature(config.ResolveBaseUrl(), config.ResolveApiKey());
     }
 
-    private OpenAIMessageGenerator GetOrUpdateInner()
+    private ChatCompletionMessageGenerator GetOrUpdateInner()
     {
         if (_config.BaseUrlResolver == null && _config.ApiKeyResolver == null)
             return _inner;
@@ -39,7 +41,7 @@ public class GpuStackMessageGenerator : IMessageGenerator
             if (current == _lastResolvedSignature)
                 return _inner;
 
-            _inner = new OpenAIMessageGenerator(_config.ToOpenAI());
+            _inner = new ChatCompletionMessageGenerator(_config.ToOpenAI());
             _lastResolvedSignature = current;
         }
 

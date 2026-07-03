@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
+using IronHive.Providers.OpenAI;
 using OpenAI;
 using OpenAI.Chat;
 using Tiktoken;
@@ -13,20 +14,21 @@ using TextMessageContent = IronHive.Abstractions.Messages.Content.TextMessageCon
 using ImageMessageContent = IronHive.Abstractions.Messages.Content.ImageMessageContent;
 using ChatMessage = OpenAI.Chat.ChatMessage;
 
-namespace IronHive.Providers.OpenAI;
+namespace IronHive.Providers.OpenAI.Compatible;
 
 /// <summary>
-/// Message generator targeting the OpenAI <b>Chat Completions</b> API (<c>POST /v1/chat/completions</c>).
-/// Selected when <see cref="OpenAIConfig.Api"/> is <see cref="OpenAIApiSurface.ChatCompletions"/> — the default
-/// for OpenAI-compatible / self-hosted endpoints (Ollama, LM Studio, vLLM, llama.cpp server, GPUStack) that do
-/// not implement the Responses API. For first-party OpenAI reasoning use <see cref="OpenAIResponseMessageGenerator"/>.
+/// Message generator targeting the OpenAI <b>Chat Completions</b> API (<c>POST /v1/chat/completions</c>) — the
+/// de-facto standard OpenAI-compatible / self-hosted servers (Ollama, LM Studio, vLLM, llama.cpp server, GPUStack)
+/// implement. Used exclusively by this package (<see cref="OpenAICompatibleMessageGenerator"/>,
+/// <see cref="GpuStack.GpuStackMessageGenerator"/>); first-party OpenAI always uses the Responses API
+/// (<see cref="IronHive.Providers.OpenAI.OpenAIMessageGenerator"/>) instead.
 /// <para>
 /// The Chat Completions surface has no reasoning-input block, so assistant <c>thinking</c> content from prior
 /// turns is not replayed. <see cref="MessageGenerationRequest.ThinkingEffort"/> is not mapped here (compatible
-/// servers generally reject <c>reasoning_effort</c>); use the Responses surface for reasoning.
+/// servers generally reject <c>reasoning_effort</c>).
 /// </para>
 /// </summary>
-public class OpenAIChatMessageGenerator : IMessageGenerator
+public class ChatCompletionMessageGenerator : IMessageGenerator
 {
     private readonly OpenAIClient _client;
 
@@ -34,11 +36,11 @@ public class OpenAIChatMessageGenerator : IMessageGenerator
     // whose exact tokenizer the Chat Completions surface does not expose. See CountTokensAsync.
     private readonly Encoder _tokenizer = new(new Cl100KBase());
 
-    public OpenAIChatMessageGenerator(string apiKey)
+    public ChatCompletionMessageGenerator(string apiKey)
         : this(new OpenAIConfig { ApiKey = apiKey })
     { }
 
-    public OpenAIChatMessageGenerator(OpenAIConfig config)
+    public ChatCompletionMessageGenerator(OpenAIConfig config)
     {
         _client = OpenAIClientFactory.Create(config);
     }

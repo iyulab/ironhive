@@ -78,8 +78,6 @@ public class GpuStackConfig
     {
         BaseUrl = ResolveBaseUrl().TrimEnd('/') + ApiPath,
         ApiKey = ResolveApiKey(),
-        // GPUStack serves the OpenAI-compatible Chat Completions surface, not the Responses API.
-        Api = OpenAIApiSurface.ChatCompletions,
         HttpClient = new HttpClient(new SocketsHttpHandler
         {
             ConnectTimeout = ConnectTimeout

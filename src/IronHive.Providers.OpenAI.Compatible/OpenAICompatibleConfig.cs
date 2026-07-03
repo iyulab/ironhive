@@ -103,9 +103,6 @@ public class OpenAICompatibleConfig
         {
             BaseUrl = full,
             ApiKey = ResolveApiKey(),
-            // OpenAI-compatible servers (Ollama, LM Studio, vLLM, llama.cpp) implement Chat Completions,
-            // not the OpenAI-proprietary Responses API — select the Chat Completions surface.
-            Api = OpenAIApiSurface.ChatCompletions,
             HttpClient = new HttpClient(new SocketsHttpHandler
             {
                 ConnectTimeout = ConnectTimeout
