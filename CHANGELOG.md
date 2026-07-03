@@ -4,6 +4,55 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.8.3 — 2026-07-03
+
+Reverts the 0.8.2 split-surface design in favor of dedicated generators per
+package, then moves the Chat Completions generator off the OpenAI SDK onto a
+raw HTTP/JSON client so vendor reasoning fields are actually reachable.
+
+### Breaking
+
+- **`OpenAIApiSurface` enum and `OpenAIConfig.Api` removed.** No more surface
+  selection: `IronHive.Providers.OpenAI` implements the Responses API only
+  (`OpenAIMessageGenerator`); `IronHive.Providers.OpenAI.Compatible`
+  (including GPUStack) owns Chat Completions outright via
+  `ChatCompletionMessageGenerator`, since each package is now scoped to a
+  single wire protocol.
+- **`OpenAIResponseMessageGenerator`/`OpenAIChatMessageGenerator` removed.**
+  `OpenAIMessageGenerator` is a direct Responses API implementation again
+  (not a dispatcher), and the Chat Completions implementation lives at
+  `IronHive.Providers.OpenAI.Compatible/ChatCompletion/ChatCompletionMessageGenerator`.
+
+### Changed
+
+- **`ChatCompletionMessageGenerator` moved off the OpenAI SDK onto a raw
+  HTTP/JSON client** (`ChatCompletion/ChatCompletionHttpClient.cs`). The
+  SDK's typed models have no slot for `reasoning_content` (emitted by
+  Ollama/vLLM-style reasoning models) and expose no raw-JSON escape hatch
+  during streaming ([openai-dotnet#813](https://github.com/openai/openai-dotnet/issues/813)),
+  so those vendor fields were unreachable.
+  - **`ExtraBodyJsonConverter`/`ExtraBodyJsonConverterFactory`** deep-merge
+    vendor request extensions (`thinking_token_budget`,
+    `chat_template_kwargs`) and recover unknown response fields such as
+    `reasoning_content`.
+  - **`ThinkingEffort`** maps to `reasoning_effort` plus vendor-specific
+    overrides for Qwen/DeepSeek/Granite-style hybrid reasoning models.
+  - **GPUStack's bare `error: <message>` SSE line** (not an HTTP error) is
+    now handled during streaming.
+- **`MessageService`** copies `request.Messages` into a new `List<Message>`
+  before mutating it in the send/stream loops, instead of mutating the
+  caller's list in place.
+- Bumped `Anthropic` 12.34.0 → 12.35.1, `OpenAI` 2.11.0 → 2.12.0, `AWSSDK.S3`
+  4.0.100 → 4.0.100.2, `Tomlyn` 2.9.0 → 2.10.1.
+
+### Notes
+
+- `README.md`/`docs/PROVIDERS.md` updated: `IronHive.Providers.OpenAI` is
+  documented as Responses-API-only; Chat Completions coverage moved to
+  `IronHive.Providers.OpenAI.Compatible`.
+- ConsoleApp sample updated to exercise the compatible provider alongside
+  OpenAI/Anthropic/GoogleAI.
+
 ## 0.8.2 — 2026-07-03
 
 Fixes a silent runtime break introduced in 0.7.9 where the entire OpenAI provider
