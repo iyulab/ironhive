@@ -56,7 +56,7 @@ public class MessageService : IMessageService
     {
         var generator = ResolveGenerator(request.Provider);
 
-        string? responseId = null;
+        string? responseId;
         MessageDoneReason? reason;
         MessageTokenUsage? usage;
         Message? message;
@@ -67,7 +67,7 @@ public class MessageService : IMessageService
             PreviousId = ExtractResponseId(request.Provider, request.PreviousId),
             Model = request.Model,
             ThinkingEffort = request.ThinkingEffort,
-            Messages = request.Messages,
+            Messages = new List<Message>(request.Messages),
             System = request.Suggestions != null
                 ? SuggestionCollector.Prompt(request.System, request.Suggestions)
                 : request.System,
@@ -142,7 +142,7 @@ public class MessageService : IMessageService
         string? responseId = null;
         MessageDoneReason? reason = null;
         MessageTokenUsage? usage = null;
-        Message? message = null;
+        Message? message;
 
         bool beginSent = false;
         var counter = new LimitedCounter(request.MaxLoopCount);
@@ -151,7 +151,7 @@ public class MessageService : IMessageService
             PreviousId = ExtractResponseId(request.Provider, request.PreviousId),
             Model = request.Model,
             ThinkingEffort = request.ThinkingEffort,
-            Messages = request.Messages,
+            Messages = new List<Message>(request.Messages),
             System = request.Suggestions != null
                 ? SuggestionCollector.Prompt(request.System, request.Suggestions)
                 : request.System,

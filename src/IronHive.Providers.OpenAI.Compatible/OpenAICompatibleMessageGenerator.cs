@@ -1,4 +1,5 @@
 using IronHive.Abstractions.Messages;
+using IronHive.Providers.OpenAI.Compatible.ChatCompletion;
 
 namespace IronHive.Providers.OpenAI.Compatible;
 

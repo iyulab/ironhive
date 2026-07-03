@@ -1,5 +1,6 @@
 using FluentAssertions;
 using IronHive.Providers.OpenAI.Compatible;
+using IronHive.Providers.OpenAI.Compatible.ChatCompletion;
 using IronHive.Providers.OpenAI.Compatible.GpuStack;
 
 namespace IronHive.Tests.Providers;

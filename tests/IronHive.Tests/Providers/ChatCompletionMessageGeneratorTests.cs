@@ -2,8 +2,7 @@ using FluentAssertions;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Tools;
-using IronHive.Providers.OpenAI.Compatible;
-using OpenAI.Chat;
+using IronHive.Providers.OpenAI.Compatible.ChatCompletion;
 
 namespace IronHive.Tests.Providers;
 
@@ -27,8 +26,8 @@ public class ChatCompletionMessageGeneratorTests
             Request("you are helpful", Message.User("hi")));
 
         messages.Should().HaveCount(2);
-        messages[0].Should().BeOfType<SystemChatMessage>();
-        messages[0].Content[0].Text.Should().Be("you are helpful");
+        var system = messages[0].Should().BeOfType<SystemChatMessage>().Subject;
+        system.Content.Should().Be("you are helpful");
         messages[1].Should().BeOfType<UserChatMessage>();
     }
 
@@ -52,8 +51,10 @@ public class ChatCompletionMessageGeneratorTests
 
         var user = messages.Single().Should().BeOfType<UserChatMessage>().Subject;
         user.Content.Should().HaveCount(2);
-        user.Content[0].Text.Should().Be("look");
-        user.Content[1].Kind.Should().Be(ChatMessageContentPartKind.Image);
+        user.Content.First().Should().BeOfType<TextChatMessageContent>()
+            .Which.Text.Should().Be("look");
+        user.Content.Last().Should().BeOfType<ImageChatMessageContent>()
+            .Which.ImageUrl.Url.Should().StartWith("data:image/png;base64,");
     }
 
     [Fact]
@@ -64,7 +65,7 @@ public class ChatCompletionMessageGeneratorTests
 
         messages.Should().HaveCount(2);
         var assistant = messages[1].Should().BeOfType<AssistantChatMessage>().Subject;
-        assistant.Content[0].Text.Should().Be("a");
+        assistant.Content.Should().Be("a");
     }
 
     [Fact]
@@ -85,12 +86,12 @@ public class ChatCompletionMessageGeneratorTests
         messages.Should().HaveCount(3);
         var assistant = messages[1].Should().BeOfType<AssistantChatMessage>().Subject;
         assistant.ToolCalls.Should().ContainSingle();
-        assistant.ToolCalls[0].Id.Should().Be("call_1");
-        assistant.ToolCalls[0].FunctionName.Should().Be("get_weather");
+        assistant.ToolCalls!.First().Id.Should().Be("call_1");
+        assistant.ToolCalls!.First().Function!.Name.Should().Be("get_weather");
 
         var tool = messages[2].Should().BeOfType<ToolChatMessage>().Subject;
         tool.ToolCallId.Should().Be("call_1");
-        tool.Content[0].Text.Should().Be("sunny");
+        tool.Content.Should().Be("sunny");
     }
 
     [Fact]
@@ -105,19 +106,18 @@ public class ChatCompletionMessageGeneratorTests
     }
 
     [Fact]
-    public void BuildOptions_MaxTokens_IsMapped()
+    public void BuildRequest_MaxTokens_IsMapped()
     {
         var request = Request(null, Message.User("hi"));
         request.MaxTokens = 128;
 
-        var options = ChatCompletionMessageGenerator.BuildOptions(request);
+        var chatRequest = ChatCompletionMessageGenerator.BuildRequest(request);
 
-        options.MaxOutputTokenCount.Should().Be(128);
+        chatRequest.MaxCompletionTokens.Should().Be(128);
     }
 
     [Theory]
     [InlineData(ChatFinishReason.ToolCalls, MessageDoneReason.ToolCall)]
-    [InlineData(ChatFinishReason.FunctionCall, MessageDoneReason.ToolCall)]
     [InlineData(ChatFinishReason.Stop, MessageDoneReason.EndTurn)]
     [InlineData(ChatFinishReason.Length, MessageDoneReason.MaxTokens)]
     [InlineData(ChatFinishReason.ContentFilter, MessageDoneReason.ContentFilter)]

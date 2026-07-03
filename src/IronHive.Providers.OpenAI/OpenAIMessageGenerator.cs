@@ -325,7 +325,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
         if (request.MaxTokens.HasValue)
             options.MaxOutputTokenCount = request.MaxTokens.Value;
 
-        if (request.ThinkingEffort.HasValue)
+        if (request.ThinkingEffort is not null and not MessageThinkingEffort.None)
         {
             options.IncludedProperties.Add(
                 new IncludedResponseProperty("reasoning.encrypted_content"));
@@ -333,7 +333,6 @@ public class OpenAIMessageGenerator : IMessageGenerator
             {
                 ReasoningEffortLevel = request.ThinkingEffort switch
                 {
-                    MessageThinkingEffort.None => ResponseReasoningEffortLevel.None,
                     MessageThinkingEffort.Minimal => ResponseReasoningEffortLevel.Minimal,
                     MessageThinkingEffort.Low => ResponseReasoningEffortLevel.Low,
                     MessageThinkingEffort.Medium => ResponseReasoningEffortLevel.Medium,
@@ -341,9 +340,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
                     MessageThinkingEffort.XHigh => new ResponseReasoningEffortLevel("xhigh"),
                     _ => ResponseReasoningEffortLevel.None
                 },
-                ReasoningSummaryVerbosity = request.ThinkingEffort != MessageThinkingEffort.None
-                    ? ResponseReasoningSummaryVerbosity.Auto
-                    : null
+                ReasoningSummaryVerbosity = ResponseReasoningSummaryVerbosity.Auto
             };
         }
 

@@ -7,17 +7,12 @@ using IronHive.Core.Tools;
 using IronHive.Providers.Anthropic;
 using IronHive.Providers.GoogleAI;
 using IronHive.Providers.OpenAI;
+using IronHive.Providers.OpenAI.Compatible;
 using System.ComponentModel;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 
 namespace ConsoleApp;
-
-public class OutputFormat
-{
-    public string CalculateResult { get; set; } = string.Empty;
-    public string PoemContent { get; set; } = string.Empty;
-}
 
 public static class MessageSample
 {
@@ -33,13 +28,8 @@ public static class MessageSample
         {
             Provider = string.Empty,
             Model = string.Empty,
-            ThinkingEffort = MessageThinkingEffort.Low,
+            ThinkingEffort = MessageThinkingEffort.Minimal,
             System = "you are a helpful assistant that can answer questions and solve problems.",
-            Suggestions = new SuggestionOptions
-            {
-                MinItems = 1,
-                MaxItems = 3,
-            },
             Messages = [
                 new Message { 
                     Role = MessageRole.User,
@@ -47,32 +37,28 @@ public static class MessageSample
                     [
                         new TextMessageContent
                         {
-                            Value = "I want to make a poem"
+                            Value = "Please calculate 3292 * 1234 - 2222 using tools, and Write a poem about with image in Korean.",
                         },
-                        // new TextMessageContent
-                        // {
-                        //     Value = "Please calculate 3292 * 1234 - 2222, and Write a poem about with image in Korean.",
-                        // },
-                        // new ImageMessageContent
-                        // {
-                        //     Format = ImageFormat.Jpeg,
-                        //     Base64 = Convert.ToBase64String(File.ReadAllBytes("dragon.jpg"))
-                        // }
+                        new ImageMessageContent
+                        {
+                            Format = ImageFormat.Jpeg,
+                            Base64 = Convert.ToBase64String(File.ReadAllBytes("dragon.jpg"))
+                        }
                     ]
                 }
             ],
-            // Output = typeof(OutputFormat)
+            Tools = new ToolCollection([
+                ..FunctionToolFactory.CreateFrom<Calculator>()
+            ]),
+            Suggestions = new SuggestionOptions(),
+            // Output = OutputOptions.For<OutputFormat>()
         };
-
-        var tools = new ToolCollection();
-        tools.AddFunctionTool<Calculator>();
-        request.Tools = tools;
 
         var hive = new HiveServiceBuilder()
             .AddOpenAIProviders("openai", new OpenAIConfig
             {
                 ApiKey = Environment.GetEnvironmentVariable("OPENAI") ?? string.Empty
-            }, OpenAIServiceType.Messages)
+            })
             .AddAnthropicProviders("anthropic", new AnthropicConfig
             {
                 ApiKey = Environment.GetEnvironmentVariable("ANTHROPIC") ?? string.Empty
@@ -81,12 +67,16 @@ public static class MessageSample
             {
                 ApiKey = Environment.GetEnvironmentVariable("GOOGLE") ?? string.Empty
             })
+            .AddOpenAICompatibleProviders("openai-compatible", new OpenAICompatibleConfig
+            {
+                BaseUrl = "http://labs.iyulab.com:10150/v1",
+                ApiKey = Environment.GetEnvironmentVariable("LOCAL") ?? string.Empty
+            })
             .Build();
-        var generator = hive.Messages;
 
         // OpenAI 샘플
-        request.Provider = "openai";
-        request.Model = "gpt-5.5";
+        // request.Provider = "openai";
+        // request.Model = "gpt-5.5";
 
         // Anthropic 샘플
         // request.Provider = "anthropic";
@@ -96,26 +86,31 @@ public static class MessageSample
         // request.Provider = "google";
         // request.Model = "gemini-3.5-flash";
 
-        var clone = request.Clone();
-        // clone.Output = typeof(OutputFormat);
-        clone.Suggestions = new SuggestionOptions
+        // OpenAI-compatible 샘플 (Chat Completions API — GPUStack/llama.cpp 서버용)
+        request.Provider = "openai-compatible";
+        request.Model = "qwen3.6-35b-a3b";
+
+        if (request.Provider != "openai-compatible")
         {
-            MinItems = 1,
-            MaxItems = 3,
-        };
+            var tokenCount = await hive.Messages.CountTokensAsync(request);
+            Console.WriteLine($"[CountTokens] Input tokens: {tokenCount}");
+        }
 
-        var tokenCount = await generator.CountTokensAsync(request);
-        Console.WriteLine($"[CountTokens] Input tokens: {tokenCount}");
-
-        var msg = await generator.GenerateMessageAsync(request);
+        var msg = await hive.Messages.GenerateMessageAsync(request);
         Console.WriteLine(JsonSerializer.Serialize(msg, JsonOptions));
-        await foreach (var chunk in generator.GenerateStreamingMessageAsync(clone))
+        await foreach (var chunk in hive.Messages.GenerateStreamingMessageAsync(request))
         {
             Console.WriteLine(JsonSerializer.Serialize(chunk, JsonOptions));
         }
 
         await Task.CompletedTask;
     }
+}
+
+public class OutputFormat
+{
+    public string CalculateResult { get; set; } = string.Empty;
+    public string PoemContent { get; set; } = string.Empty;
 }
 
 public class Calculator
