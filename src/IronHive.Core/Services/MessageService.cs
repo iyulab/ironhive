@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
+using IronHive.Abstractions.Exceptions;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Tools;
@@ -90,6 +91,8 @@ public class MessageService : IMessageService
                 message = new Message { Role = MessageRole.Assistant };
             }
 
+            await EnforceContextPolicyAsync(request.ContextPolicy, generator, req, cancellationToken).ConfigureAwait(false);
+
             var res = await generator.GenerateMessageAsync(req, cancellationToken).ConfigureAwait(false);
             responseId = res.ResponseId; // 마지막 루프의 ResponseId 채택
 
@@ -178,6 +181,8 @@ public class MessageService : IMessageService
             }
 
             var stack = new List<MessageContent>();
+
+            await EnforceContextPolicyAsync(request.ContextPolicy, generator, req, cancellationToken).ConfigureAwait(false);
 
             await foreach (var res in generator.GenerateStreamingMessageAsync(req, cancellationToken).ConfigureAwait(false))
             {
@@ -319,6 +324,71 @@ public class MessageService : IMessageService
             MaxTokens = request.MaxTokens,
         };
         return generator.CountTokensAsync(req, cancellationToken);
+    }
+
+    /// <summary>
+    /// 컨텍스트 예산 정책을 집행합니다. 송신 직전(툴 루프 매 반복 포함)에 호출됩니다.
+    /// </summary>
+    private static async Task EnforceContextPolicyAsync(
+        ContextPolicy? policy,
+        IMessageGenerator generator,
+        MessageGenerationRequest req,
+        CancellationToken cancellationToken)
+    {
+        if (policy is null)
+            return;
+
+        var estimated = await EstimateInputTokensAsync(policy, generator, req, cancellationToken).ConfigureAwait(false);
+        if (estimated <= policy.MaxInputTokens)
+            return;
+
+        if (policy.OnOverflow == ContextOverflowBehavior.Compact && policy.Compactor is not null)
+        {
+            var compacted = await policy.Compactor.CompactAsync(new MessageCompactionContext
+            {
+                Messages = req.Messages.ToList(),
+                EstimatedTokens = estimated,
+                BudgetTokens = policy.MaxInputTokens,
+                Model = req.Model,
+                System = req.System,
+            }, cancellationToken).ConfigureAwait(false);
+
+            req.Messages = new List<Message>(compacted);
+
+            estimated = await EstimateInputTokensAsync(policy, generator, req, cancellationToken).ConfigureAwait(false);
+            if (estimated <= policy.MaxInputTokens)
+                return;
+        }
+
+        throw new ContextWindowExceededException(
+            $"Estimated input tokens ({estimated}) exceed the configured budget ({policy.MaxInputTokens}) for model '{req.Model}'.")
+        {
+            PromptTokens = estimated,
+            IsPreflightRejection = true,
+        };
+    }
+
+    private static async Task<int> EstimateInputTokensAsync(
+        ContextPolicy policy,
+        IMessageGenerator generator,
+        MessageGenerationRequest req,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await generator.CountTokensAsync(req, cancellationToken).ConfigureAwait(false);
+        }
+        catch (NotSupportedException) when (policy.FallbackEstimator is not null)
+        {
+            return policy.FallbackEstimator(req);
+        }
+        catch (NotSupportedException ex)
+        {
+            throw new InvalidOperationException(
+                "ContextPolicy is active but the provider does not support token counting and no " +
+                "FallbackEstimator was provided. Set ContextPolicy.FallbackEstimator to enable budget " +
+                "enforcement for this provider.", ex);
+        }
     }
 
     /// <summary>

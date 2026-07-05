@@ -29,6 +29,20 @@ consumers had no way to detect the overflow without string parsing).
 - **`ExceptionMappingExtensions`** (`IronHive.Abstractions.Extensions`) —
   provider-neutral `Task<T>.MapExceptions(...)` / `IAsyncEnumerable<T>.MapExceptions(...)`
   helpers that providers use to translate SDK exceptions at the call boundary.
+- **`MessageRequest.ContextPolicy`** (opt-in) — proactive input-token budget
+  enforcement before every provider call, including each tool-loop iteration.
+  `MaxInputTokens` is consumer-supplied (model metadata lookup stays an app-layer
+  concern, e.g. TokenMeter); estimation uses the provider's `CountTokensAsync`
+  first and an opt-in `FallbackEstimator` for providers that don't support
+  counting (an active policy with no estimation path is an explicit
+  configuration error, never a silent no-op). `OnOverflow`:
+  - `Fail` (default) — throws `ContextWindowExceededException`
+    (`IsPreflightRejection = true`) before any network call.
+  - `Compact` — delegates to a consumer-supplied `IMessageCompactor`
+    (summarize/persist strategy is app domain; no default implementation),
+    re-checks, and fails if still over budget.
+  Message truncation is deliberately not provided: naive oldest-first dropping
+  can break tool_use/tool_result pairing invariants and no consumer demands it.
 
 ### Breaking
 

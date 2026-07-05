@@ -28,6 +28,7 @@
 - **M.E.AI 호환** — `ChatClientAdapter` / `EmbeddingGeneratorAdapter`
 - **워크플로우** — 코드 기반 타입 안전 워크플로우 엔진
 - **도메인 예외** — 컨텍스트 윈도우 초과 시 프로바이더별 오류를 `ContextWindowExceededException`(`PromptTokens`/`ContextWindow` 포함)으로 정규화 — 문자열 파싱 없이 `catch`로 압축·복구 로직 작성 가능
+- **컨텍스트 예산 정책** — `MessageRequest.ContextPolicy`(옵트인)로 송신 전·툴 루프 매 반복에 입력 토큰 예산을 선제 검사 (`OnOverflow: Fail | Compact` + 소비자 주입 `IMessageCompactor`). 추정은 프로바이더 `CountTokensAsync` 1차, 미지원 시 `FallbackEstimator`
 
 ## 설치
 
