@@ -8,6 +8,7 @@ using Anthropic.Helpers;
 using Anthropic.Models.Messages;
 using IronHiveMessage = IronHive.Abstractions.Messages.Message;
 using IronHiveMessageRole = IronHive.Abstractions.Messages.MessageRole;
+using IronHive.Abstractions.Extensions;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using MessageContent = IronHive.Abstractions.Messages.MessageContent;
@@ -43,7 +44,8 @@ public class AnthropicMessageGenerator : IMessageGenerator
         CancellationToken cancellationToken = default)
     {
         var req = ToMessageCreateParams(request);
-        var res = await _client.Messages.Create(req, cancellationToken);
+        var res = await _client.Messages.Create(req, cancellationToken)
+            .MapExceptions(ContextWindowErrorMapper.TryMap);
 
         var content = new List<MessageContent>();
         foreach (var block in res.Content)
@@ -124,7 +126,8 @@ public class AnthropicMessageGenerator : IMessageGenerator
         int index = 0;
         var usage = new MessageTokenUsage();
 
-        await foreach (var evt in _client.Messages.CreateStreaming(req, cancellationToken))
+        await foreach (var evt in _client.Messages.CreateStreaming(req, cancellationToken)
+            .MapExceptions(ContextWindowErrorMapper.TryMap, cancellationToken))
         {
             // 1. 메시지 시작 이벤트
             if (evt.TryPickStart(out var mse))

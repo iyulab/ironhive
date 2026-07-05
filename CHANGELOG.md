@@ -4,6 +4,40 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.9.0 — 2026-07-05
+
+First slice of the domain exception taxonomy: context-window overflow errors are
+now typed instead of leaking as raw provider strings (vault-ai dogfooding — a 32k
+local model receiving a 42k-token request permanently wedged the session because
+consumers had no way to detect the overflow without string parsing).
+
+### Added
+
+- **`IronHive.Abstractions.Exceptions`** — new `HiveException` base type and
+  `ContextWindowExceededException` (`PromptTokens`, `ContextWindow`,
+  `IsPreflightRejection`). Providers normalize their vendor-specific overflow
+  errors to this type; consumers can `catch` it and compact/truncate/re-route.
+- **Provider mapping** across all three built-in surfaces, non-streaming and
+  streaming (including GPUStack mid-stream `error:` lines):
+  - `IronHive.Providers.OpenAI.Compatible` — llama.cpp/GPUStack
+    `exceed_context_size_error` (with `n_prompt_tokens`/`n_ctx` extraction) and
+    vLLM/OpenAI-compatible `context_length_exceeded`.
+  - `IronHive.Providers.OpenAI` — SDK `ClientResultException` with
+    `context_length_exceeded` / "maximum context length".
+  - `IronHive.Providers.Anthropic` — SDK errors with
+    "prompt is too long: X tokens > Y maximum".
+- **`ExceptionMappingExtensions`** (`IronHive.Abstractions.Extensions`) —
+  provider-neutral `Task<T>.MapExceptions(...)` / `IAsyncEnumerable<T>.MapExceptions(...)`
+  helpers that providers use to translate SDK exceptions at the call boundary.
+
+### Breaking
+
+- For the overflow case only, `IronHive.Providers.OpenAI.Compatible` now throws
+  `ContextWindowExceededException` where it previously threw
+  `HttpRequestException`; other errors are unchanged. Consumers catching
+  `HttpRequestException` specifically to detect overflow should catch the new
+  type instead.
+
 ## 0.8.3 — 2026-07-03
 
 Reverts the 0.8.2 split-surface design in favor of dedicated generators per

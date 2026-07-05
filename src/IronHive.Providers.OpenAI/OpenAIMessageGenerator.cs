@@ -3,6 +3,7 @@ using System.ClientModel.Primitives;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using IronHive.Abstractions.Extensions;
 using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
@@ -46,7 +47,8 @@ public class OpenAIMessageGenerator : IMessageGenerator
         CancellationToken cancellationToken = default)
     {
         var options = BuildOptions(request);
-        var result = await _client.CreateResponseAsync(options, cancellationToken);
+        var result = await _client.CreateResponseAsync(options, cancellationToken)
+            .MapExceptions(ContextWindowErrorMapper.TryMap);
         var response = result.Value;
         if (response.Error != null)
         {
@@ -135,7 +137,8 @@ public class OpenAIMessageGenerator : IMessageGenerator
 
         int pIndex = 0;
         var reason = MessageDoneReason.EndTurn;
-        await foreach (var update in _client.CreateResponseStreamingAsync(options, cancellationToken))
+        await foreach (var update in _client.CreateResponseStreamingAsync(options, cancellationToken)
+            .MapExceptions(ContextWindowErrorMapper.TryMap, cancellationToken))
         {
             if (update is StreamingResponseCreatedUpdate)
             {
