@@ -199,6 +199,178 @@ public class MessageServiceContextPolicyTests
     }
 
     [Fact]
+    public async Task First_Compaction_Context_Has_Original_Count_And_Null_Previous()
+    {
+        _generator.CountTokensAsync(Arg.Any<MessageGenerationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(45_010, 10_000);
+
+        MessageCompactionContext? captured = null;
+        var compactor = Substitute.For<IMessageCompactor>();
+        compactor.CompactAsync(Arg.Any<MessageCompactionContext>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                captured = ci.Arg<MessageCompactionContext>();
+                return Task.FromResult<IList<Message>>([Message.User("summarized")]);
+            });
+
+        await _service.GenerateMessageAsync(NewRequest(new ContextPolicy
+        {
+            MaxInputTokens = 32_768,
+            OnOverflow = ContextOverflowBehavior.Compact,
+            Compactor = compactor,
+        }));
+
+        captured.Should().NotBeNull();
+        captured!.OriginalMessageCount.Should().Be(1, "the request started with a single user message");
+        captured.PreviousCompactedMessages.Should().BeNull("no compaction preceded this one in the request");
+    }
+
+    [Fact]
+    public async Task Tool_Loop_Compaction_Distinguishes_Original_From_Loop_Added_Messages()
+    {
+        // Iteration 1 under budget; the tool loop appends an assistant message, and
+        // iteration 2 exceeds the budget — the compactor must still see the original count.
+        _generator.CountTokensAsync(Arg.Any<MessageGenerationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(1_000, 45_010, 10_000);
+
+        var toolContent = new IronHive.Abstractions.Messages.Content.ToolMessageContent
+        {
+            Id = "call-1",
+            Name = "missing-tool",
+            IsApproved = true,
+        };
+        _generator
+            .GenerateMessageAsync(Arg.Any<MessageGenerationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(
+                new MessageResponse
+                {
+                    DoneReason = MessageDoneReason.ToolCall,
+                    Message = new Message { Role = MessageRole.Assistant, Content = [toolContent] },
+                },
+                new MessageResponse
+                {
+                    DoneReason = MessageDoneReason.EndTurn,
+                    Message = Message.Assistant("done"),
+                });
+
+        MessageCompactionContext? captured = null;
+        var compactor = Substitute.For<IMessageCompactor>();
+        compactor.CompactAsync(Arg.Any<MessageCompactionContext>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                captured = ci.Arg<MessageCompactionContext>();
+                return Task.FromResult<IList<Message>>([Message.User("summarized")]);
+            });
+
+        await _service.GenerateMessageAsync(NewRequest(new ContextPolicy
+        {
+            MaxInputTokens = 32_768,
+            OnOverflow = ContextOverflowBehavior.Compact,
+            Compactor = compactor,
+        }));
+
+        captured.Should().NotBeNull();
+        captured!.Messages.Count.Should().Be(2, "the tool loop appended one assistant message");
+        captured.OriginalMessageCount.Should().Be(1, "only one message existed at request start");
+    }
+
+    [Fact]
+    public async Task Second_Compaction_In_Same_Request_Receives_Previous_Result()
+    {
+        // Both iterations exceed the budget: compaction fires twice in one request,
+        // and the second invocation must see the first invocation's returned messages.
+        _generator.CountTokensAsync(Arg.Any<MessageGenerationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(45_010, 10_000, 45_010, 10_000);
+
+        var toolContent = new IronHive.Abstractions.Messages.Content.ToolMessageContent
+        {
+            Id = "call-1",
+            Name = "missing-tool",
+            IsApproved = true,
+        };
+        _generator
+            .GenerateMessageAsync(Arg.Any<MessageGenerationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(
+                new MessageResponse
+                {
+                    DoneReason = MessageDoneReason.ToolCall,
+                    Message = new Message { Role = MessageRole.Assistant, Content = [toolContent] },
+                },
+                new MessageResponse
+                {
+                    DoneReason = MessageDoneReason.EndTurn,
+                    Message = Message.Assistant("done"),
+                });
+
+        var firstSummary = Message.User("summary-1");
+        var contexts = new List<MessageCompactionContext>();
+        var compactor = Substitute.For<IMessageCompactor>();
+        compactor.CompactAsync(Arg.Any<MessageCompactionContext>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                contexts.Add(ci.Arg<MessageCompactionContext>());
+                return Task.FromResult<IList<Message>>(contexts.Count == 1
+                    ? [firstSummary]
+                    : [Message.User("summary-2")]);
+            });
+
+        await _service.GenerateMessageAsync(NewRequest(new ContextPolicy
+        {
+            MaxInputTokens = 32_768,
+            OnOverflow = ContextOverflowBehavior.Compact,
+            Compactor = compactor,
+        }));
+
+        contexts.Should().HaveCount(2, "the budget was exceeded on both loop iterations");
+        contexts[0].PreviousCompactedMessages.Should().BeNull();
+        contexts[1].PreviousCompactedMessages.Should().NotBeNull();
+        contexts[1].PreviousCompactedMessages.Should().ContainSingle()
+            .Which.Should().BeSameAs(firstSummary, "the second compaction must see the first compaction's returned messages");
+        contexts[1].OriginalMessageCount.Should().Be(1, "the original count is a request-start fact, unaffected by compaction");
+    }
+
+    [Fact]
+    public async Task Streaming_Compaction_Context_Carries_Pipeline_State()
+    {
+        _generator.CountTokensAsync(Arg.Any<MessageGenerationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(45_010, 10_000);
+        _generator
+            .GenerateStreamingMessageAsync(Arg.Any<MessageGenerationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(ToAsyncEnumerable<StreamingMessageResponse>(
+                new StreamingMessageDoneResponse { DoneReason = MessageDoneReason.EndTurn }));
+
+        MessageCompactionContext? captured = null;
+        var compactor = Substitute.For<IMessageCompactor>();
+        compactor.CompactAsync(Arg.Any<MessageCompactionContext>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                captured = ci.Arg<MessageCompactionContext>();
+                return Task.FromResult<IList<Message>>([Message.User("summarized")]);
+            });
+
+        await foreach (var _ in _service.GenerateStreamingMessageAsync(NewRequest(new ContextPolicy
+        {
+            MaxInputTokens = 32_768,
+            OnOverflow = ContextOverflowBehavior.Compact,
+            Compactor = compactor,
+        })))
+        { }
+
+        captured.Should().NotBeNull();
+        captured!.OriginalMessageCount.Should().Be(1);
+        captured.PreviousCompactedMessages.Should().BeNull();
+    }
+
+    private static async IAsyncEnumerable<T> ToAsyncEnumerable<T>(params T[] items)
+    {
+        foreach (var item in items)
+        {
+            yield return item;
+        }
+        await Task.CompletedTask;
+    }
+
+    [Fact]
     public async Task Streaming_Fail_Policy_Throws_Preflight()
     {
         _generator.CountTokensAsync(Arg.Any<MessageGenerationRequest>(), Arg.Any<CancellationToken>())

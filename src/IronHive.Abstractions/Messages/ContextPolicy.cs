@@ -19,6 +19,9 @@ public class ContextPolicy
 
     /// <summary>
     /// <see cref="ContextOverflowBehavior.Compact"/>일 때 호출되는 압축기. 미지정 시 Fail로 폴백합니다.
+    /// 같은 요청 안에서 여러 번 발동할 수 있으며(툴 루프 재검사), 요청별 상태는
+    /// <see cref="MessageCompactionContext"/>(OriginalMessageCount/PreviousCompactedMessages)로
+    /// 전달됩니다 — 압축기 인스턴스 필드에 요청 상태를 두지 마십시오.
     /// </summary>
     public IMessageCompactor? Compactor { get; init; }
 

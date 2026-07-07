@@ -76,6 +76,8 @@ public class MessageService : IMessageService
             Output = request.Output,
             MaxTokens = request.MaxTokens,
         };
+        var originalMessageCount = request.Messages.Count;
+        IReadOnlyList<Message>? previousCompacted = null;
 
         var timer = Stopwatch.StartNew();
         do
@@ -91,7 +93,8 @@ public class MessageService : IMessageService
                 message = new Message { Role = MessageRole.Assistant };
             }
 
-            await EnforceContextPolicyAsync(request.ContextPolicy, generator, req, cancellationToken).ConfigureAwait(false);
+            previousCompacted = await EnforceContextPolicyAsync(
+                request.ContextPolicy, generator, req, originalMessageCount, previousCompacted, cancellationToken).ConfigureAwait(false);
 
             var res = await generator.GenerateMessageAsync(req, cancellationToken).ConfigureAwait(false);
             responseId = res.ResponseId; // 마지막 루프의 ResponseId 채택
@@ -163,6 +166,9 @@ public class MessageService : IMessageService
             MaxTokens = request.MaxTokens,
         };
 
+        var originalMessageCount = request.Messages.Count;
+        IReadOnlyList<Message>? previousCompacted = null;
+
         var parser = request.Suggestions != null ? new SuggestionCollector() : null;
         var timer = Stopwatch.StartNew();
         do
@@ -182,7 +188,8 @@ public class MessageService : IMessageService
 
             var stack = new List<MessageContent>();
 
-            await EnforceContextPolicyAsync(request.ContextPolicy, generator, req, cancellationToken).ConfigureAwait(false);
+            previousCompacted = await EnforceContextPolicyAsync(
+                request.ContextPolicy, generator, req, originalMessageCount, previousCompacted, cancellationToken).ConfigureAwait(false);
 
             await foreach (var res in generator.GenerateStreamingMessageAsync(req, cancellationToken).ConfigureAwait(false))
             {
@@ -328,19 +335,23 @@ public class MessageService : IMessageService
 
     /// <summary>
     /// 컨텍스트 예산 정책을 집행합니다. 송신 직전(툴 루프 매 반복 포함)에 호출됩니다.
+    /// 압축이 발동하면 그 결과를, 아니면 <paramref name="previousCompacted"/>를 그대로 반환합니다 —
+    /// 호출자가 루프 로컬로 스레딩하여 동일 요청 내 다음 압축에 직전 결과를 전달합니다.
     /// </summary>
-    private static async Task EnforceContextPolicyAsync(
+    private static async Task<IReadOnlyList<Message>?> EnforceContextPolicyAsync(
         ContextPolicy? policy,
         IMessageGenerator generator,
         MessageGenerationRequest req,
+        int originalMessageCount,
+        IReadOnlyList<Message>? previousCompacted,
         CancellationToken cancellationToken)
     {
         if (policy is null)
-            return;
+            return previousCompacted;
 
         var estimated = await EstimateInputTokensAsync(policy, generator, req, cancellationToken).ConfigureAwait(false);
         if (estimated <= policy.MaxInputTokens)
-            return;
+            return previousCompacted;
 
         if (policy.OnOverflow == ContextOverflowBehavior.Compact && policy.Compactor is not null)
         {
@@ -351,13 +362,15 @@ public class MessageService : IMessageService
                 BudgetTokens = policy.MaxInputTokens,
                 Model = req.Model,
                 System = req.System,
+                OriginalMessageCount = originalMessageCount,
+                PreviousCompactedMessages = previousCompacted,
             }, cancellationToken).ConfigureAwait(false);
 
             req.Messages = new List<Message>(compacted);
 
             estimated = await EstimateInputTokensAsync(policy, generator, req, cancellationToken).ConfigureAwait(false);
             if (estimated <= policy.MaxInputTokens)
-                return;
+                return compacted.ToList();
         }
 
         throw new ContextWindowExceededException(

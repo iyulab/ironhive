@@ -4,6 +4,38 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.10.0 — 2026-07-07
+
+Pipeline-state completion of the 0.9.0 `ContextPolicy` surface (vault-ai
+dogfooding — a persistence-aware `IMessageCompactor` cannot compute its
+store-relative summary boundary without knowing which messages the pipeline
+added mid-loop, nor merge correctly when compaction fires twice in one request).
+
+### Added
+
+- **`MessageCompactionContext.OriginalMessageCount`** (required) — the number of
+  messages present at request start. On the first compaction, everything past
+  this index in `Messages` was appended by the tool loop and is not yet in the
+  consumer's store.
+- **`MessageCompactionContext.PreviousCompactedMessages`** — the message list
+  returned by the immediately preceding `CompactAsync` in the same request
+  (null on first compaction), so a second compaction can build on the first
+  instead of re-summarizing its own output or merging against a stale baseline.
+- **Documented pipeline invariant** — the pipeline only appends after the
+  baseline list (original or previously compacted messages); it never reorders,
+  clones, or mutates existing messages. Both new properties derive their
+  boundary semantics from this now-explicit contract. Also documented: the
+  compactor may fire multiple times per request (sequentially), so per-request
+  state must come from the context, not compactor instance fields.
+
+### Breaking
+
+- Constructing `MessageCompactionContext` now requires `OriginalMessageCount`.
+  Only affects code that builds the context manually (e.g. compactor unit
+  tests); the pipeline always supplies it. A defaultable property was rejected
+  because a silent `0` reproduces the exact wrong-boundary defect class this
+  release removes.
+
 ## 0.9.0 — 2026-07-05
 
 First slice of the domain exception taxonomy: context-window overflow errors are
