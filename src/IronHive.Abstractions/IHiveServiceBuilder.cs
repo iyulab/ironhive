@@ -14,6 +14,7 @@ public interface IHiveServiceBuilder
 {
     IHiveServiceBuilder AddModelFinder(string name, IModelFinder finder);
     IHiveServiceBuilder AddMessageGenerator(string name, IMessageGenerator generator);
+    IHiveServiceBuilder AddMessageMiddleware(IMessageMiddleware middleware);
     IHiveServiceBuilder AddEmbeddingGenerator(string name, IEmbeddingGenerator generator);
     IHiveServiceBuilder AddImageGenerator(string name, IImageGenerator generator);
     IHiveServiceBuilder AddVideoGenerator(string name, IVideoGenerator generator);

@@ -2,66 +2,49 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using IronHive.Abstractions.Tools;
 
-namespace IronHive.Core.Tools;
+namespace IronHive.Core.Utilities;
 
 /// <summary>
-/// Filters tool execution outputs to reduce token consumption.
-/// Strategies: JSON→CSV conversion, whitespace normalization, large output truncation.
+/// 긴 텍스트(툴 출력, 로그 등)를 토큰/문자 절감을 위해 압축하는 범용 유틸리티입니다.
+/// 전략: JSON→CSV 변환, 공백 정규화, 대용량 잘라내기.
+/// 특정 도메인 타입에 묶이지 않은 순수 string 유틸리티이므로,
+/// 필요한 위치(예: ToolOptions.OnInvokeAfter)에서 호출자가 직접 연결해 사용합니다.
 /// </summary>
-public partial class ToolOutputFilter
+public static partial class TextCompactor
 {
-    private readonly ToolOutputFilterOptions _options;
-
     /// <summary>
-    /// Creates a new tool output filter with the specified options.
+    /// 옵션에 활성화된 전략들을 순서대로 적용해 텍스트를 압축합니다.
     /// </summary>
-    public ToolOutputFilter(ToolOutputFilterOptions? options = null)
+    public static string Compact(string text, TextCompactorOptions? options = null)
     {
-        _options = options ?? new ToolOutputFilterOptions();
-    }
+        if (string.IsNullOrEmpty(text))
+            return text;
 
-    /// <inheritdoc />
-    public ToolOutput Filter(string toolName, ToolOutput output)
-    {
-        if (output.Result is not { Length: > 0 })
+        options ??= new TextCompactorOptions();
+        var result = text;
+
+        if (options.EnableJsonToCsv)
         {
-            return output;
+            result = TryConvertJsonArrayToCsv(result, options.JsonToCsvMinElements);
         }
 
-        var result = output.Result;
-
-        // 1. JSON array → CSV conversion
-        if (_options.EnableJsonToCsv)
-        {
-            result = TryConvertJsonArrayToCsv(result, _options.JsonToCsvMinElements);
-        }
-
-        // 2. Whitespace normalization
-        if (_options.EnableWhitespaceNormalization)
+        if (options.EnableWhitespaceNormalization)
         {
             result = NormalizeWhitespace(result);
         }
 
-        // 3. Truncation for oversized outputs
-        if (result.Length > _options.MaxResultChars)
+        if (result.Length > options.MaxResultChars)
         {
-            result = Truncate(result);
+            result = Truncate(result, options.MaxResultChars, options.KeepHeadLines, options.KeepTailLines);
         }
 
-        // Return original if unchanged
-        if (string.Equals(result, output.Result, StringComparison.Ordinal))
-        {
-            return output;
-        }
-
-        return new ToolOutput(output.IsSuccess, result);
+        return result;
     }
 
     /// <summary>
-    /// Converts a JSON array of flat objects to CSV format.
-    /// Only converts when all elements share consistent keys and have no nested values.
+    /// 평탄한 객체로 이루어진 JSON 배열을 CSV 형식으로 변환합니다.
+    /// 모든 요소가 동일한 키를 가지고 중첩 값이 없을 때만 변환합니다.
     /// </summary>
     public static string TryConvertJsonArrayToCsv(string result, int minElements = 3)
     {
@@ -175,15 +158,19 @@ public partial class ToolOutputFilter
         return normalized.Trim();
     }
 
-    internal string Truncate(string result)
+    /// <summary>
+    /// 텍스트가 <paramref name="maxResultChars"/>를 초과하면 앞/뒤 일부 줄만 남기고 잘라냅니다.
+    /// 줄바꿈이 없는 텍스트는 문자 단위로 잘라냅니다.
+    /// </summary>
+    public static string Truncate(string result, int maxResultChars, int keepHeadLines, int keepTailLines)
     {
         var lines = result.Split('\n');
-        var totalKeep = _options.KeepHeadLines + _options.KeepTailLines;
+        var totalKeep = keepHeadLines + keepTailLines;
 
         if (lines.Length > totalKeep && totalKeep > 0)
         {
-            var head = lines.AsSpan(0, _options.KeepHeadLines);
-            var tail = lines.AsSpan(lines.Length - _options.KeepTailLines);
+            var head = lines.AsSpan(0, keepHeadLines);
+            var tail = lines.AsSpan(lines.Length - keepTailLines);
             var omitted = lines.Length - totalKeep;
 
             return string.Concat(
@@ -195,7 +182,7 @@ public partial class ToolOutputFilter
 
         // Fallback: character-based truncation
         return string.Concat(
-            result.AsSpan(0, _options.MaxResultChars),
+            result.AsSpan(0, maxResultChars),
             string.Create(CultureInfo.InvariantCulture,
                 $"\n[... truncated ({result.Length:N0} chars total) ...]"));
     }

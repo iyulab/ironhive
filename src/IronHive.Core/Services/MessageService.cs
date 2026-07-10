@@ -12,10 +12,50 @@ namespace IronHive.Core.Services;
 public class MessageService : IMessageService
 {
     private readonly IReadOnlyDictionary<string, IMessageGenerator> _generators;
+    private readonly IReadOnlyList<IMessageMiddleware> _middlewares;
 
-    internal MessageService(IReadOnlyDictionary<string, IMessageGenerator> generators)
+    internal MessageService(
+        IReadOnlyDictionary<string, IMessageGenerator> generators,
+        IReadOnlyList<IMessageMiddleware>? middlewares = null)
     {
         _generators = generators;
+        _middlewares = middlewares ?? [];
+    }
+
+    private static Func<MessageGenerationRequest, Task<MessageResponse>> BuildPipeline(
+        IMessageGenerator generator,
+        IReadOnlyList<IMessageMiddleware> middlewares,
+        CancellationToken cancellationToken)
+    {
+        Func<MessageGenerationRequest, Task<MessageResponse>> pipeline =
+            req => generator.GenerateMessageAsync(req, cancellationToken);
+
+        for (var i = middlewares.Count - 1; i >= 0; i--)
+        {
+            var middleware = middlewares[i];
+            var next = pipeline;
+            pipeline = req => middleware.GenerateAsync(req, next, cancellationToken);
+        }
+
+        return pipeline;
+    }
+
+    private static Func<MessageGenerationRequest, IAsyncEnumerable<StreamingMessageResponse>> BuildStreamingPipeline(
+        IMessageGenerator generator,
+        IReadOnlyList<IMessageMiddleware> middlewares,
+        CancellationToken cancellationToken)
+    {
+        Func<MessageGenerationRequest, IAsyncEnumerable<StreamingMessageResponse>> pipeline =
+            req => generator.GenerateStreamingMessageAsync(req, cancellationToken);
+
+        for (var i = middlewares.Count - 1; i >= 0; i--)
+        {
+            var middleware = middlewares[i];
+            var next = pipeline;
+            pipeline = req => middleware.GenerateStreamingAsync(req, next, cancellationToken);
+        }
+
+        return pipeline;
     }
 
     private IMessageGenerator ResolveGenerator(string? provider)
@@ -55,6 +95,7 @@ public class MessageService : IMessageService
         CancellationToken cancellationToken = default)
     {
         var generator = ResolveGenerator(request.Provider);
+        var pipeline = BuildPipeline(generator, _middlewares, cancellationToken);
 
         string? responseId;
         MessageDoneReason? reason;
@@ -90,7 +131,7 @@ public class MessageService : IMessageService
                 message = new Message { Role = MessageRole.Assistant };
             }
 
-            var res = await generator.GenerateMessageAsync(req, cancellationToken).ConfigureAwait(false);
+            var res = await pipeline(req).ConfigureAwait(false);
             responseId = res.ResponseId; // 마지막 루프의 ResponseId 채택
 
             foreach (var content in res.Message?.Content ?? [])
@@ -138,6 +179,7 @@ public class MessageService : IMessageService
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var generator = ResolveGenerator(request.Provider);
+        var pipeline = BuildStreamingPipeline(generator, _middlewares, cancellationToken);
 
         string? responseId = null;
         MessageDoneReason? reason = null;
@@ -179,7 +221,7 @@ public class MessageService : IMessageService
 
             var stack = new List<MessageContent>();
 
-            await foreach (var res in generator.GenerateStreamingMessageAsync(req, cancellationToken).ConfigureAwait(false))
+            await foreach (var res in pipeline(req).ConfigureAwait(false))
             {
                 // 에러가 아닌 첫 이벤트 수신 시 begin emit (제너레이터 정상 진입 확인)
                 if (!beginSent && res is not StreamingMessageErrorResponse)
@@ -360,33 +402,42 @@ public class MessageService : IMessageService
                         Index = idx,
                     }, cancellationToken).ConfigureAwait(false);
 
-                    var input = new ToolInput(tmc.Input);
-
-                    if (tools?.TryGet(tmc.Name, out var tool) == true)
+                    if (toolOptions?.OnInvokeBefore is not null)
                     {
-                        using var timeoutCts = timeout.HasValue
-                            ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
-                            : null;
-                        timeoutCts?.CancelAfter(timeout.GetValueOrDefault());
-                        var ct = timeoutCts?.Token ?? cancellationToken;
-                        try
-                        {
-                            tmc.Output = await tool.InvokeAsync(input, ct).ConfigureAwait(false);
-                        }
-                        catch (OperationCanceledException) when (timeoutCts?.IsCancellationRequested == true
-                                                                 && !cancellationToken.IsCancellationRequested)
-                        {
-                            tmc.Output = ToolOutput.Failure($"Tool '{tmc.Name}' timed out after {timeout!.Value.TotalSeconds:0.#}s.");
-                        }
-                    }
-                    else
-                    {
-                        tmc.Output = ToolOutput.Failure($"Could not find tool '{tmc.Name}', invocation failed.");
+                        await toolOptions.OnInvokeBefore(tmc, cancellationToken).ConfigureAwait(false);
                     }
 
-                    if (toolOptions?.OutputTransform is not null && tmc.Output is { Result: not null })
+                    // OnInvokeBefore에서 이미 Output을 채웠다면 실제 도구 실행을 스킵합니다.
+                    if (tmc.Output is null)
                     {
-                        tmc.Output = toolOptions.OutputTransform(tmc.Name, tmc.Output);
+                        var input = new ToolInput(tmc.Input);
+
+                        if (tools?.TryGet(tmc.Name, out var tool) == true)
+                        {
+                            using var timeoutCts = timeout.HasValue
+                                ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
+                                : null;
+                            timeoutCts?.CancelAfter(timeout.GetValueOrDefault());
+                            var ct = timeoutCts?.Token ?? cancellationToken;
+                            try
+                            {
+                                tmc.Output = await tool.InvokeAsync(input, ct).ConfigureAwait(false);
+                            }
+                            catch (OperationCanceledException) when (timeoutCts?.IsCancellationRequested == true
+                                                                     && !cancellationToken.IsCancellationRequested)
+                            {
+                                tmc.Output = ToolOutput.Failure($"Tool '{tmc.Name}' timed out after {timeout!.Value.TotalSeconds:0.#}s.");
+                            }
+                        }
+                        else
+                        {
+                            tmc.Output = ToolOutput.Failure($"Could not find tool '{tmc.Name}', invocation failed.");
+                        }
+                    }
+
+                    if (toolOptions?.OnInvokeAfter is not null)
+                    {
+                        await toolOptions.OnInvokeAfter(tmc, cancellationToken).ConfigureAwait(false);
                     }
 
                     await channel.Writer.WriteAsync(new StreamingContentCompletedResponse

@@ -225,13 +225,15 @@ return ToolOutput.Error("오류가 발생했습니다");
 
 ---
 
-## ToolOutputFilter
+## TextCompactor로 도구 출력 압축하기
 
-도구 출력을 LLM에 전달하기 전에 변환·축약하여 토큰 소비를 줄입니다.  
-**`MessageRequest.ToolOptions.OutputTransform`에 주입**하여 활성화합니다.
+`IronHive.Core.Utilities.TextCompactor`는 긴 텍스트(도구 출력, 로그 등)를 압축하는 범용
+유틸리티입니다. 도구 전용 타입에 묶여 있지 않은 순수 `string → string` 함수라 필요한 곳
+어디서든 호출할 수 있습니다. 도구 출력에 적용하려면 **`MessageRequest.ToolOptions.OnInvokeAfter`
+에서 직접 연결**합니다.
 
 ```csharp
-var filter = new ToolOutputFilter(new ToolOutputFilterOptions
+var options = new TextCompactorOptions
 {
     EnableJsonToCsv            = true,    // JSON 배열 → CSV 변환 (약 40-50% 토큰 절감)
     JsonToCsvMinElements       = 3,       // CSV 변환 최소 배열 요소 수
@@ -239,7 +241,7 @@ var filter = new ToolOutputFilter(new ToolOutputFilterOptions
     MaxResultChars             = 50_000,  // 최대 출력 문자 수 (초과 시 잘라냄)
     KeepHeadLines              = 100,     // 잘라낼 때 앞에서 유지할 줄 수
     KeepTailLines              = 30       // 잘라낼 때 뒤에서 유지할 줄 수
-});
+};
 
 // MessageRequest에 주입
 var request = new MessageRequest
@@ -250,9 +252,16 @@ var request = new MessageRequest
     Tools    = toolCollection,
     ToolOptions = new ToolOptions
     {
-        MaxParallel     = 3,
-        Timeout         = TimeSpan.FromSeconds(30),
-        OutputTransform = filter.Filter   // (toolName, output) => filteredOutput
+        MaxParallel   = 3,
+        Timeout       = TimeSpan.FromSeconds(30),
+        OnInvokeAfter = (content, ct) =>
+        {
+            if (content.Output is { Result: not null } output)
+            {
+                content.Output = new ToolOutput(output.IsSuccess, TextCompactor.Compact(output.Result, options));
+            }
+            return Task.CompletedTask;
+        }
     }
 };
 ```
@@ -264,7 +273,12 @@ public class ToolOptions
 {
     public int MaxParallel { get; set; } = 3;       // 병렬 실행 최대 도구 수
     public TimeSpan? Timeout { get; set; }           // 도구 실행 타임아웃 (null = 무제한)
-    public Func<string, ToolOutput, ToolOutput>? OutputTransform { get; set; }  // 출력 변환 델리게이트
+
+    // 도구 실행 직전 호출. content.Output을 채우면 실제 실행을 스킵(short-circuit)합니다.
+    public Func<ToolMessageContent, CancellationToken, Task>? OnInvokeBefore { get; set; }
+
+    // 도구 실행 직후 호출. content.Output을 직접 수정할 수 있습니다.
+    public Func<ToolMessageContent, CancellationToken, Task>? OnInvokeAfter { get; set; }
 }
 ```
 

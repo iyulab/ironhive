@@ -17,6 +17,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
 {
     private readonly Dictionary<string, IModelFinder> _models = new();
     private readonly Dictionary<string, IMessageGenerator> _messages = new();
+    private readonly List<IMessageMiddleware> _messageMiddlewares = new();
     private readonly Dictionary<string, IEmbeddingGenerator> _embeddings = new();
     private readonly Dictionary<string, IImageGenerator> _images = new();
     private readonly Dictionary<string, IVideoGenerator> _videos = new();
@@ -35,6 +36,12 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     { 
         _messages[name] = generator; 
         return this; 
+    }
+
+    public IHiveServiceBuilder AddMessageMiddleware(IMessageMiddleware middleware)
+    {
+        _messageMiddlewares.Add(middleware);
+        return this;
     }
 
     public IHiveServiceBuilder AddEmbeddingGenerator(string name, IEmbeddingGenerator generator)
@@ -82,7 +89,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     public IHiveService Build()
     {
         var modelService = new ModelService(_models);
-        var messageService = new MessageService(_messages);
+        var messageService = new MessageService(_messages, _messageMiddlewares);
         var embeddingService = new EmbeddingService(_embeddings);
         var imageService = new ImageService(_images);
         var videoService = new VideoService(_videos);
