@@ -27,6 +27,8 @@
 - **플러그인** — MCP (HTTP/Stdio/OAuth), OpenAPI 자동 도구 생성
 - **M.E.AI 호환** — `ChatClientAdapter` / `EmbeddingGeneratorAdapter`
 - **워크플로우** — 코드 기반 타입 안전 워크플로우 엔진
+- **도메인 예외** — 컨텍스트 윈도우 초과 시 프로바이더별 오류를 `ContextWindowExceededException`(`PromptTokens`/`ContextWindow` 포함)으로 정규화 — 문자열 파싱 없이 `catch`로 압축·복구 로직 작성 가능
+- **컨텍스트 예산 정책** — `MessageRequest.ContextPolicy`(옵트인)로 송신 전·툴 루프 매 반복에 입력 토큰 예산을 선제 검사 (`OnOverflow: Fail | Compact` + 소비자 주입 `IMessageCompactor`). 추정은 프로바이더 `CountTokensAsync` 1차, 미지원 시 `FallbackEstimator`. 압축기에는 파이프라인 상태(`MessageCompactionContext.OriginalMessageCount` — 요청 시작 시점 메시지 수, `PreviousCompactedMessages` — 동일 요청 내 직전 압축 결과)가 전달되어 영속형 압축기가 원본/루프-추가 경계와 다중 압축을 정확히 처리 가능
 
 ## 설치
 

@@ -60,7 +60,7 @@ internal sealed class ChatCompletionHttpClient : IDisposable
         using var content = JsonContent.Create(request, options: JsonOptions);
         using var response = await _http.PostAsync(ChatCompletionsPath, content, cancellationToken).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
-            throw new HttpRequestException(await ExtractErrorAsync(response, cancellationToken).ConfigureAwait(false));
+            throw await CreateErrorAsync(response, cancellationToken).ConfigureAwait(false);
 
         return await response.Content.ReadFromJsonAsync<ChatCompletionResponse>(JsonOptions, cancellationToken).ConfigureAwait(false)
             ?? throw new InvalidOperationException("Failed to deserialize the chat completion response.");
@@ -77,7 +77,7 @@ internal sealed class ChatCompletionHttpClient : IDisposable
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, ChatCompletionsPath) { Content = content };
         using var response = await _http.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
-            throw new HttpRequestException(await ExtractErrorAsync(response, cancellationToken).ConfigureAwait(false));
+            throw await CreateErrorAsync(response, cancellationToken).ConfigureAwait(false);
 
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         using var reader = new StreamReader(stream);
@@ -87,7 +87,11 @@ internal sealed class ChatCompletionHttpClient : IDisposable
         {
             // GPUStack emits mid-stream errors as a bare "error: <message>" line instead of an HTTP error.
             if (line.StartsWith("error:", StringComparison.Ordinal))
-                throw new HttpRequestException(line["error:".Length..].Trim());
+            {
+                var errorMessage = line["error:".Length..].Trim();
+                throw ContextOverflowDetector.Detect(errorMessage) as Exception
+                    ?? new HttpRequestException(errorMessage);
+            }
 
             if (!line.StartsWith("data:", StringComparison.Ordinal))
                 continue;
@@ -102,20 +106,27 @@ internal sealed class ChatCompletionHttpClient : IDisposable
         }
     }
 
-    /// <summary>Recursively searches the error body for a "message" property, falling back to the raw
-    /// status line when the body isn't the expected <c>{"error": {"message": "..."}}</c> shape.</summary>
-    private static async Task<string> ExtractErrorAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    /// <summary>Builds the exception for a failed response: recursively searches the error body for a
+    /// "message" property (falling back to the raw status line when the body isn't the expected
+    /// <c>{"error": {"message": "..."}}</c> shape), then normalizes context-window overflow errors
+    /// to <see cref="IronHive.Abstractions.Exceptions.ContextWindowExceededException"/>.</summary>
+    private static async Task<Exception> CreateErrorAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
+        JsonNode? json = null;
         try
         {
             var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            if (JsonNode.Parse(body) is { } json && FindMessage(json) is { Length: > 0 } message)
-                return message;
+            json = JsonNode.Parse(body);
         }
         catch (JsonException)
         { }
 
-        return $"Chat completion request failed with status {(int)response.StatusCode} ({response.ReasonPhrase}).";
+        var message = (json != null ? FindMessage(json) : null) is { Length: > 0 } found
+            ? found
+            : $"Chat completion request failed with status {(int)response.StatusCode} ({response.ReasonPhrase}).";
+
+        return ContextOverflowDetector.Detect(message, json) as Exception
+            ?? new HttpRequestException(message);
     }
 
     private static string? FindMessage(JsonNode? node)

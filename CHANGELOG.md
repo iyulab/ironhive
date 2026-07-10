@@ -4,6 +4,86 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.10.0 — 2026-07-07
+
+Pipeline-state completion of the 0.9.0 `ContextPolicy` surface (vault-ai
+dogfooding — a persistence-aware `IMessageCompactor` cannot compute its
+store-relative summary boundary without knowing which messages the pipeline
+added mid-loop, nor merge correctly when compaction fires twice in one request).
+
+### Added
+
+- **`MessageCompactionContext.OriginalMessageCount`** (required) — the number of
+  messages present at request start. On the first compaction, everything past
+  this index in `Messages` was appended by the tool loop and is not yet in the
+  consumer's store.
+- **`MessageCompactionContext.PreviousCompactedMessages`** — the message list
+  returned by the immediately preceding `CompactAsync` in the same request
+  (null on first compaction), so a second compaction can build on the first
+  instead of re-summarizing its own output or merging against a stale baseline.
+- **Documented pipeline invariant** — the pipeline only appends after the
+  baseline list (original or previously compacted messages); it never reorders,
+  clones, or mutates existing messages. Both new properties derive their
+  boundary semantics from this now-explicit contract. Also documented: the
+  compactor may fire multiple times per request (sequentially), so per-request
+  state must come from the context, not compactor instance fields.
+
+### Breaking
+
+- Constructing `MessageCompactionContext` now requires `OriginalMessageCount`.
+  Only affects code that builds the context manually (e.g. compactor unit
+  tests); the pipeline always supplies it. A defaultable property was rejected
+  because a silent `0` reproduces the exact wrong-boundary defect class this
+  release removes.
+
+## 0.9.0 — 2026-07-05
+
+First slice of the domain exception taxonomy: context-window overflow errors are
+now typed instead of leaking as raw provider strings (vault-ai dogfooding — a 32k
+local model receiving a 42k-token request permanently wedged the session because
+consumers had no way to detect the overflow without string parsing).
+
+### Added
+
+- **`IronHive.Abstractions.Exceptions`** — new `HiveException` base type and
+  `ContextWindowExceededException` (`PromptTokens`, `ContextWindow`,
+  `IsPreflightRejection`). Providers normalize their vendor-specific overflow
+  errors to this type; consumers can `catch` it and compact/truncate/re-route.
+- **Provider mapping** across all three built-in surfaces, non-streaming and
+  streaming (including GPUStack mid-stream `error:` lines):
+  - `IronHive.Providers.OpenAI.Compatible` — llama.cpp/GPUStack
+    `exceed_context_size_error` (with `n_prompt_tokens`/`n_ctx` extraction) and
+    vLLM/OpenAI-compatible `context_length_exceeded`.
+  - `IronHive.Providers.OpenAI` — SDK `ClientResultException` with
+    `context_length_exceeded` / "maximum context length".
+  - `IronHive.Providers.Anthropic` — SDK errors with
+    "prompt is too long: X tokens > Y maximum".
+- **`ExceptionMappingExtensions`** (`IronHive.Abstractions.Extensions`) —
+  provider-neutral `Task<T>.MapExceptions(...)` / `IAsyncEnumerable<T>.MapExceptions(...)`
+  helpers that providers use to translate SDK exceptions at the call boundary.
+- **`MessageRequest.ContextPolicy`** (opt-in) — proactive input-token budget
+  enforcement before every provider call, including each tool-loop iteration.
+  `MaxInputTokens` is consumer-supplied (model metadata lookup stays an app-layer
+  concern, e.g. TokenMeter); estimation uses the provider's `CountTokensAsync`
+  first and an opt-in `FallbackEstimator` for providers that don't support
+  counting (an active policy with no estimation path is an explicit
+  configuration error, never a silent no-op). `OnOverflow`:
+  - `Fail` (default) — throws `ContextWindowExceededException`
+    (`IsPreflightRejection = true`) before any network call.
+  - `Compact` — delegates to a consumer-supplied `IMessageCompactor`
+    (summarize/persist strategy is app domain; no default implementation),
+    re-checks, and fails if still over budget.
+  Message truncation is deliberately not provided: naive oldest-first dropping
+  can break tool_use/tool_result pairing invariants and no consumer demands it.
+
+### Breaking
+
+- For the overflow case only, `IronHive.Providers.OpenAI.Compatible` now throws
+  `ContextWindowExceededException` where it previously threw
+  `HttpRequestException`; other errors are unchanged. Consumers catching
+  `HttpRequestException` specifically to detect overflow should catch the new
+  type instead.
+
 ## 0.8.3 — 2026-07-03
 
 Reverts the 0.8.2 split-surface design in favor of dedicated generators per
