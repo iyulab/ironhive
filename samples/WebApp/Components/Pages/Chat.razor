@@ -1,0 +1,85 @@
+@page "/"
+
+<div class="chat">
+    <div class="chat-header">
+        <select @bind="_selectedKey" disabled="@_isStreaming">
+            @foreach (var group in _providers)
+            {
+                <optgroup label="@group.Provider">
+                    @foreach (var model in group.Models)
+                    {
+                        <option value="@($"{group.Provider}|{model.ModelId}")">@(model.DisplayName ?? model.ModelId)</option>
+                    }
+                </optgroup>
+            }
+        </select>
+
+        <select @bind="_thinking" disabled="@_isStreaming">
+            @foreach (var effort in Enum.GetValues<MessageThinkingEffort>())
+            {
+                <option value="@effort">@effort</option>
+            }
+        </select>
+    </div>
+
+    <div class="chat-history">
+        @foreach (var msg in _history)
+        {
+            <div class="msg @msg.Role.ToString().ToLowerInvariant()">
+                @foreach (var content in msg.Content)
+                {
+                    @switch (content)
+                    {
+                        case TextMessageContent text:
+                            <div class="content text">@RenderMarkdown(text.Value)</div>
+                            break;
+                        case ThinkingMessageContent thinking:
+                            <details class="content thinking">
+                                <summary>Thinking</summary>
+                                <pre>@thinking.Value</pre>
+                            </details>
+                            break;
+                    }
+                }
+            </div>
+        }
+
+        @if (_isStreaming && _streamingContent is not null)
+        {
+            <div class="msg assistant streaming">
+                @foreach (var content in _streamingContent)
+                {
+                    @switch (content)
+                    {
+                        case TextMessageContent text:
+                            <div class="content text">@RenderMarkdown(text.Value)</div>
+                            break;
+                        case ThinkingMessageContent thinking:
+                            <details class="content thinking" open>
+                                <summary>Thinking</summary>
+                                <pre>@thinking.Value</pre>
+                            </details>
+                            break;
+                    }
+                }
+            </div>
+        }
+    </div>
+
+    @if (_errorMessage is not null)
+    {
+        <div class="chat-error">@_errorMessage</div>
+    }
+
+    <div class="chat-input">
+        <textarea @bind="_input" @bind:event="oninput" disabled="@_isStreaming" placeholder="메시지를 입력하세요..."></textarea>
+        @if (_isStreaming)
+        {
+            <button @onclick="Cancel">Stop</button>
+        }
+        else
+        {
+            <button @onclick="SendAsync" disabled="@(!CanSend)">Send</button>
+        }
+    </div>
+</div>
