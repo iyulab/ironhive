@@ -4,6 +4,94 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.11.0 — 2026-07-10
+
+Two threads: a generic interception point for the message-generation loop
+(requested to control tool-invoke input/output and wrap generator calls for
+retry/compaction/error-handling), and a correctness pass on the 0.9.0
+context-overflow exception mapping after verifying each provider's actual
+SDK/error shape via reflection instead of assumption.
+
+### Added
+
+- **`IMessageMiddleware`** (`IronHive.Abstractions.Messages`) — a next-chain
+  middleware wrapping `MessageService`'s generator calls, both streaming and
+  non-streaming (default-interface pass-through, so a middleware can opt into
+  just one). Register globally via `HiveServiceBuilder.AddMessageMiddleware()`;
+  `MessageService` composes the chain once per call and drives every
+  loop iteration through it, so a middleware can inspect/mutate the request
+  before each round (e.g. compact history) or wrap `next()` in try/catch for
+  retry/error-handling.
+- **`ToolOptions.OnBeforeInvoke` / `OnAfterInvoke`** — delegates receiving the
+  full `ToolMessageContent` (not just name/output) around each tool
+  invocation. `OnBeforeInvoke` can short-circuit the real tool call by
+  pre-filling `Output`. Replaces `OutputTransform`.
+- **`GoogleAIExceptionMapper`** — Gemini API context-window overflow
+  (`ClientError { StatusCode: 400, Status: "INVALID_ARGUMENT" }`, message
+  "input token count (X) exceeds the maximum number of tokens allowed (Y)")
+  was previously undetected entirely; now maps to `ContextOverflowException`
+  like the other three providers.
+
+### Changed
+
+- **Provider exception mappers hardened to real SDK types**, found via
+  reflecting the pinned `Anthropic`/`OpenAI`/`Google.GenAI` package
+  assemblies rather than assuming `.Message` shape:
+  - Anthropic now gates on `AnthropicApiException { ErrorType:
+    ErrorType.InvalidRequestError }` (was the base `AnthropicException`
+    catch-all) and reads `ResponseBody` instead of `.Message` (which the SDK
+    prefixes with `"Status Code: {code}"`).
+  - OpenAI detects via `ClientResultException.Message`, which the SDK embeds
+    `error.code`/`error.message` into for the Responses API. The Responses
+    API's real overflow text carries no token counts, so
+    `ContextOverflowException.ContextWindow` is expected to be null there;
+    the legacy Chat-Completions-style numeric regex is kept only as a
+    best-effort fallback.
+- **Renames**, all under `IronHive.Abstractions`/provider assemblies:
+  - `ContextWindowExceededException` → `ContextOverflowException`.
+  - `ExceptionMappingExtensions` → `ExceptionExtensions`;
+    `MapExceptions` → `MapException` (singular — it maps the one exception a
+    call threw).
+  - Each provider's `ContextWindowErrorMapper` → `{Provider}ExceptionMapper`
+    with a single `Map(Exception)` entry point (collapsed the previous
+    `Map`/`Detect`/`ExtractErrorCode` split), structured so a matched error
+    returns from inside an `if` and the method always falls through to
+    `return null` — meant to make adding another error category later just
+    another sibling `if` block.
+  - `IronHive.Providers.OpenAI.Compatible`'s `ContextOverflowDetector` →
+    `ChatCompletionExceptionDetector`, now returns the `HiveException` base
+    type (not `ContextOverflowException` specifically) for the same
+    future-extensibility reason.
+- **`ToolOutputFilter`** moved out of `IronHive.Core.Tools` into
+  `IronHive.Core.Utilities.TextCompactor` — it was designed to attach to
+  `ToolOptions.OutputTransform` specifically; now that hook is gone, its
+  JSON→CSV/whitespace/truncation algorithms are exposed as plain
+  `string`-in/`string`-out utility functions decoupled from `ToolOutput`, for
+  callers to wire into `OnAfterInvoke` (or anywhere else) themselves.
+
+### Breaking
+
+- **`ContextPolicy` / `IMessageCompactor` / `MessageRequest.ContextPolicy`
+  removed** (shipped 0.9.0–0.10.0). The merge that landed 0.10.0 had a
+  conflict in `MessageService.cs` that was resolved in favor of
+  `IMessageMiddleware`, silently dropping `ContextPolicy`'s actual
+  enforcement code — the `Abstractions` types and `MessageRequest` property
+  survived the merge unused. Rather than re-wire a parallel hook mechanism,
+  proactive budget/compaction is now just another `IMessageMiddleware`:
+  inspect `MessageGenerationRequest`/token usage before calling `next()`.
+- **`ContextOverflowException.PromptTokens` and `IsPreflightRejection`
+  removed.** `PromptTokens` is dropped entirely — `ContextWindow` is the only
+  field now (OpenAI's Responses API never reports prompt token counts on
+  overflow, so the field was unreliable across providers anyway).
+  `IsPreflightRejection` was only ever set by `ContextPolicy`'s preflight
+  check, above.
+- **`ContextOverflowException.ContextWindow`** is a plain settable property
+  (was `init`-only).
+- **`ToolOptions.OutputTransform` removed**, replaced by
+  `OnBeforeInvoke`/`OnAfterInvoke` above. Callers wiring `ToolOutputFilter`
+  should call `TextCompactor.Compact(...)` from within `OnAfterInvoke` instead
+  (see `docs/TOOLS.md`).
+
 ## 0.10.0 — 2026-07-07
 
 Pipeline-state completion of the 0.9.0 `ContextPolicy` surface (vault-ai

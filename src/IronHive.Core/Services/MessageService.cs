@@ -22,79 +22,12 @@ public class MessageService : IMessageService
         _middlewares = middlewares ?? [];
     }
 
-    private static Func<MessageGenerationRequest, Task<MessageResponse>> BuildPipeline(
-        IMessageGenerator generator,
-        IReadOnlyList<IMessageMiddleware> middlewares,
-        CancellationToken cancellationToken)
-    {
-        Func<MessageGenerationRequest, Task<MessageResponse>> pipeline =
-            req => generator.GenerateMessageAsync(req, cancellationToken);
-
-        for (var i = middlewares.Count - 1; i >= 0; i--)
-        {
-            var middleware = middlewares[i];
-            var next = pipeline;
-            pipeline = req => middleware.GenerateAsync(req, next, cancellationToken);
-        }
-
-        return pipeline;
-    }
-
-    private static Func<MessageGenerationRequest, IAsyncEnumerable<StreamingMessageResponse>> BuildStreamingPipeline(
-        IMessageGenerator generator,
-        IReadOnlyList<IMessageMiddleware> middlewares,
-        CancellationToken cancellationToken)
-    {
-        Func<MessageGenerationRequest, IAsyncEnumerable<StreamingMessageResponse>> pipeline =
-            req => generator.GenerateStreamingMessageAsync(req, cancellationToken);
-
-        for (var i = middlewares.Count - 1; i >= 0; i--)
-        {
-            var middleware = middlewares[i];
-            var next = pipeline;
-            pipeline = req => middleware.GenerateStreamingAsync(req, next, cancellationToken);
-        }
-
-        return pipeline;
-    }
-
-    private IMessageGenerator ResolveGenerator(string? provider)
-    {
-        if (string.IsNullOrWhiteSpace(provider))
-        {
-            var entries = _generators.ToList();
-            if (entries.Count == 0)
-                throw new InvalidOperationException(
-                    "No message generators are registered. Call AddMessageGenerator() during setup.");
-            if (entries.Count > 1)
-                throw new InvalidOperationException(
-                    $"Multiple message generators are registered ({string.Join(", ", entries.Select(e => e.Key))}). " +
-                    "Specify a provider via MessageRequest.Provider.");
-            return entries[0].Value;
-        }
-
-        if (!_generators.TryGetValue(provider, out var generator))
-            throw new KeyNotFoundException($"Message generator '{provider}' is not registered.");
-        return generator;
-    }
-
-    private static string BuildResponseModel(string provider, string model)
-        => $"{provider}/{model}";
-    private static string? BuildResponseId(string provider, string? responseId)
-        => !string.IsNullOrWhiteSpace(responseId)
-            ? $"{provider}_{responseId}" : null;
-    private static string? ExtractResponseId(string provider, string? responseId)
-        => !string.IsNullOrWhiteSpace(responseId)
-            ? responseId.StartsWith($"{provider}_", StringComparison.Ordinal)
-            ? responseId[(provider.Length + 1)..] : responseId
-            : null;
-
     /// <inheritdoc />
     public async Task<MessageResponse> GenerateMessageAsync(
         MessageRequest request,
         CancellationToken cancellationToken = default)
     {
-        var generator = ResolveGenerator(request.Provider);
+        var generator = GetRequiredGenerator(request.Provider);
         var pipeline = BuildPipeline(generator, _middlewares, cancellationToken);
 
         string? responseId;
@@ -178,7 +111,7 @@ public class MessageService : IMessageService
         MessageRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var generator = ResolveGenerator(request.Provider);
+        var generator = GetRequiredGenerator(request.Provider);
         var pipeline = BuildStreamingPipeline(generator, _middlewares, cancellationToken);
 
         string? responseId = null;
@@ -349,7 +282,7 @@ public class MessageService : IMessageService
         MessageRequest request,
         CancellationToken cancellationToken = default)
     {
-        var generator = ResolveGenerator(request.Provider);
+        var generator = GetRequiredGenerator(request.Provider);
         var req = new MessageGenerationRequest
         {
             Model = request.Model,
@@ -362,6 +295,83 @@ public class MessageService : IMessageService
         };
         return generator.CountTokensAsync(req, cancellationToken);
     }
+
+    // ---- 제너레이터 조회 ----
+
+    private IMessageGenerator GetRequiredGenerator(string? provider)
+    {
+        if (string.IsNullOrWhiteSpace(provider))
+        {
+            var entries = _generators.ToList();
+            if (entries.Count == 0)
+                throw new InvalidOperationException(
+                    "No message generators are registered. Call AddMessageGenerator() during setup.");
+            if (entries.Count > 1)
+                throw new InvalidOperationException(
+                    $"Multiple message generators are registered ({string.Join(", ", entries.Select(e => e.Key))}). " +
+                    "Specify a provider via MessageRequest.Provider.");
+            return entries[0].Value;
+        }
+
+        if (!_generators.TryGetValue(provider, out var generator))
+            throw new KeyNotFoundException($"Message generator '{provider}' is not registered.");
+        return generator;
+    }
+
+    // ---- 미들웨어 파이프라인 구성 ----
+
+    private static Func<MessageGenerationRequest, Task<MessageResponse>> BuildPipeline(
+        IMessageGenerator generator,
+        IReadOnlyList<IMessageMiddleware> middlewares,
+        CancellationToken cancellationToken)
+    {
+        Func<MessageGenerationRequest, Task<MessageResponse>> pipeline =
+            req => generator.GenerateMessageAsync(req, cancellationToken);
+
+        for (var i = middlewares.Count - 1; i >= 0; i--)
+        {
+            var middleware = middlewares[i];
+            var next = pipeline;
+            pipeline = req => middleware.GenerateAsync(req, next, cancellationToken);
+        }
+
+        return pipeline;
+    }
+
+    private static Func<MessageGenerationRequest, IAsyncEnumerable<StreamingMessageResponse>> BuildStreamingPipeline(
+        IMessageGenerator generator,
+        IReadOnlyList<IMessageMiddleware> middlewares,
+        CancellationToken cancellationToken)
+    {
+        Func<MessageGenerationRequest, IAsyncEnumerable<StreamingMessageResponse>> pipeline =
+            req => generator.GenerateStreamingMessageAsync(req, cancellationToken);
+
+        for (var i = middlewares.Count - 1; i >= 0; i--)
+        {
+            var middleware = middlewares[i];
+            var next = pipeline;
+            pipeline = req => middleware.GenerateStreamingAsync(req, next, cancellationToken);
+        }
+
+        return pipeline;
+    }
+
+    // ---- 응답 id/model 포맷팅 ----
+
+    private static string BuildResponseModel(string provider, string model)
+        => $"{provider}/{model}";
+
+    private static string? BuildResponseId(string provider, string? responseId)
+        => !string.IsNullOrWhiteSpace(responseId)
+            ? $"{provider}_{responseId}" : null;
+
+    private static string? ExtractResponseId(string provider, string? responseId)
+        => !string.IsNullOrWhiteSpace(responseId)
+            ? responseId.StartsWith($"{provider}_", StringComparison.Ordinal)
+            ? responseId[(provider.Length + 1)..] : responseId
+            : null;
+
+    // ---- 도구 실행 루프 ----
 
     /// <summary>
     /// 도구 컨텐츠를 처리합니다.
@@ -402,12 +412,12 @@ public class MessageService : IMessageService
                         Index = idx,
                     }, cancellationToken).ConfigureAwait(false);
 
-                    if (toolOptions?.OnInvokeBefore is not null)
+                    if (toolOptions?.OnBeforeInvoke is not null)
                     {
-                        await toolOptions.OnInvokeBefore(tmc, cancellationToken).ConfigureAwait(false);
+                        await toolOptions.OnBeforeInvoke(tmc, cancellationToken).ConfigureAwait(false);
                     }
 
-                    // OnInvokeBefore에서 이미 Output을 채웠다면 실제 도구 실행을 스킵합니다.
+                    // OnBeforeInvoke에서 이미 Output을 채웠다면 실제 도구 실행을 스킵합니다.
                     if (tmc.Output is null)
                     {
                         var input = new ToolInput(tmc.Input);
@@ -435,9 +445,9 @@ public class MessageService : IMessageService
                         }
                     }
 
-                    if (toolOptions?.OnInvokeAfter is not null)
+                    if (toolOptions?.OnAfterInvoke is not null)
                     {
-                        await toolOptions.OnInvokeAfter(tmc, cancellationToken).ConfigureAwait(false);
+                        await toolOptions.OnAfterInvoke(tmc, cancellationToken).ConfigureAwait(false);
                     }
 
                     await channel.Writer.WriteAsync(new StreamingContentCompletedResponse

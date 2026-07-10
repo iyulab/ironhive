@@ -2,6 +2,10 @@
 
 Middleware wraps an `IAgent` and intercepts `InvokeAsync` / `InvokeStreamingAsync`. Applied via `AgentExtensions.WithMiddleware()`.
 
+> **Note**: This is `IAgentMiddleware` — agent-level (one whole turn). For middleware around
+> each generator call inside `MessageService`'s tool loop, see `IMessageMiddleware` in
+> [SERVICES.md](SERVICES.md#imessagemiddleware) — a separate concept at a lower layer.
+
 ## Usage Pattern
 
 ```csharp

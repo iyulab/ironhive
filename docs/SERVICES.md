@@ -70,6 +70,70 @@ var request = new MessageRequest
 4. LLM에 재전송
 5. `stop` 응답까지 반복
 
+도구 실행 자체를 가로채고 싶다면(입력 조정, 결과 변환, mock 등) `MessageRequest.ToolOptions.OnBeforeInvoke`/`OnAfterInvoke`를 사용하세요 — [TOOLS.md](TOOLS.md) 참조.
+
+### 메시지 생성 미들웨어 (IMessageMiddleware)
+
+`generator` 호출(각 루프 반복의 실제 LLM 호출) 전후를 감싸는 next-체인 미들웨어입니다. compaction, 재시도, 에러 핸들링처럼 "루프를 도는 동안 매 라운드 개입해야 하는" 관심사에 씁니다.
+
+```csharp
+public interface IMessageMiddleware
+{
+    Task<MessageResponse> GenerateAsync(
+        MessageGenerationRequest request,
+        Func<MessageGenerationRequest, Task<MessageResponse>> next,
+        CancellationToken cancellationToken = default);
+
+    IAsyncEnumerable<StreamingMessageResponse> GenerateStreamingAsync(
+        MessageGenerationRequest request,
+        Func<MessageGenerationRequest, IAsyncEnumerable<StreamingMessageResponse>> next,
+        CancellationToken cancellationToken = default);
+}
+```
+
+둘 다 기본 구현(pass-through)이 있어 원하는 쪽만 override하면 됩니다. `HiveServiceBuilder.AddMessageMiddleware()`로 전역 등록하며, 등록 순서대로 바깥쪽부터 감쌉니다.
+
+```csharp
+public class CompactingMiddleware : IMessageMiddleware
+{
+    public async Task<MessageResponse> GenerateAsync(
+        MessageGenerationRequest request,
+        Func<MessageGenerationRequest, Task<MessageResponse>> next,
+        CancellationToken cancellationToken = default)
+    {
+        if (request.Messages.Count > 50)
+        {
+            // request.Messages를 요약본으로 교체하는 등 next() 호출 전에 손볼 수 있습니다.
+        }
+
+        return await next(request);
+    }
+}
+
+var hive = new HiveServiceBuilder()
+    .AddOpenAIProviders("openai", config)
+    .AddMessageMiddleware(new CompactingMiddleware())
+    .Build();
+```
+
+`next()`를 try/catch로 감싸면 재시도·에러 대체 응답도 표현할 수 있습니다(`IAgentMiddleware`와 동일한 관용구, 한 레이어 아래인 `MessageService`에 적용된다는 차이만 있습니다 — [MIDDLEWARE.md](MIDDLEWARE.md) 참조).
+
+### 컨텍스트 윈도우 초과 예외
+
+프로바이더(OpenAI, Anthropic, GoogleAI, OpenAI Compatible)별로 다른 컨텍스트 윈도우 초과 오류 형식을 `ContextOverflowException`(`IronHive.Abstractions.Exceptions`)으로 정규화합니다. 문자열 파싱 없이 `catch`로 압축/재시도 로직을 작성할 수 있습니다.
+
+```csharp
+try
+{
+    var response = await hive.Messages.GenerateMessageAsync(request);
+}
+catch (ContextOverflowException ex)
+{
+    // ex.ContextWindow — 모델 컨텍스트 윈도우 크기 (프로바이더가 보고하지 않으면 null)
+    // 오래된 메시지를 요약해 request.Messages를 줄이고 재시도하는 등의 복구 로직
+}
+```
+
 ---
 
 ## IEmbeddingService

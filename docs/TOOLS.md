@@ -229,7 +229,7 @@ return ToolOutput.Error("오류가 발생했습니다");
 
 `IronHive.Core.Utilities.TextCompactor`는 긴 텍스트(도구 출력, 로그 등)를 압축하는 범용
 유틸리티입니다. 도구 전용 타입에 묶여 있지 않은 순수 `string → string` 함수라 필요한 곳
-어디서든 호출할 수 있습니다. 도구 출력에 적용하려면 **`MessageRequest.ToolOptions.OnInvokeAfter`
+어디서든 호출할 수 있습니다. 도구 출력에 적용하려면 **`MessageRequest.ToolOptions.OnAfterInvoke`
 에서 직접 연결**합니다.
 
 ```csharp
@@ -254,7 +254,7 @@ var request = new MessageRequest
     {
         MaxParallel   = 3,
         Timeout       = TimeSpan.FromSeconds(30),
-        OnInvokeAfter = (content, ct) =>
+        OnAfterInvoke = (content, ct) =>
         {
             if (content.Output is { Result: not null } output)
             {
@@ -275,10 +275,10 @@ public class ToolOptions
     public TimeSpan? Timeout { get; set; }           // 도구 실행 타임아웃 (null = 무제한)
 
     // 도구 실행 직전 호출. content.Output을 채우면 실제 실행을 스킵(short-circuit)합니다.
-    public Func<ToolMessageContent, CancellationToken, Task>? OnInvokeBefore { get; set; }
+    public Func<ToolMessageContent, CancellationToken, Task>? OnBeforeInvoke { get; set; }
 
     // 도구 실행 직후 호출. content.Output을 직접 수정할 수 있습니다.
-    public Func<ToolMessageContent, CancellationToken, Task>? OnInvokeAfter { get; set; }
+    public Func<ToolMessageContent, CancellationToken, Task>? OnAfterInvoke { get; set; }
 }
 ```
 

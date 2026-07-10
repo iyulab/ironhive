@@ -175,6 +175,45 @@ agent.Tools.SetRange(tools);
 
 OpenAPI tool `UniqueName` format: `"openapi_{ClientName}_{OperationId}"`, `RequiresApproval = true`
 
+## ToolOptions — Intercepting Invocation
+
+```csharp
+public class ToolOptions
+{
+    public int MaxParallel { get; set; } = 3;         // max concurrent tool executions
+    public TimeSpan? Timeout { get; set; }             // per-tool timeout (null = unlimited)
+
+    // Called right before invocation. Pre-filling content.Output short-circuits the real call.
+    public Func<ToolMessageContent, CancellationToken, Task>? OnBeforeInvoke { get; set; }
+
+    // Called right after invocation (success or failure). Mutate content.Output directly.
+    public Func<ToolMessageContent, CancellationToken, Task>? OnAfterInvoke { get; set; }
+}
+
+var request = new MessageRequest
+{
+    Provider = "openai",
+    Model    = "gpt-4o",
+    Messages = messages,
+    Tools    = toolCollection,
+    ToolOptions = new ToolOptions
+    {
+        MaxParallel   = 3,
+        Timeout       = TimeSpan.FromSeconds(30),
+        OnAfterInvoke = (content, ct) =>
+        {
+            if (content.Output is { Result: not null } output)
+                content.Output = new ToolOutput(output.IsSuccess, TextCompactor.Compact(output.Result));
+            return Task.CompletedTask;
+        }
+    }
+};
+```
+
+`IronHive.Core.Utilities.TextCompactor` is a plain `string → string` utility (JSON→CSV,
+whitespace normalization, truncation) for shrinking large tool outputs — not bound to
+`ToolOutput`, so it can be called from anywhere, `OnAfterInvoke` being the typical spot.
+
 ## Approval Handler
 
 Tools with `RequiresApproval = true` pause execution for human confirmation:

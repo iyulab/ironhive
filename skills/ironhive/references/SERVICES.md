@@ -59,6 +59,50 @@ var response = await hive.Messages.GenerateMessageAsync(request);
 2. Append results as `ToolMessage` → re-send
 3. Repeat until `stop` response
 
+To intercept individual tool invocations (adjust input, transform output, mock), use `MessageRequest.ToolOptions.OnBeforeInvoke`/`OnAfterInvoke` — see [TOOLS.md](TOOLS.md).
+
+### IMessageMiddleware
+
+Next-chain middleware wrapping the generator call in each loop iteration (not the whole multi-round `IMessageService` call, unlike `IAgentMiddleware` — see [MIDDLEWARE.md](MIDDLEWARE.md)). Use for per-round concerns: compaction, retry, error handling.
+
+```csharp
+public interface IMessageMiddleware
+{
+    Task<MessageResponse> GenerateAsync(
+        MessageGenerationRequest request,
+        Func<MessageGenerationRequest, Task<MessageResponse>> next,
+        CancellationToken cancellationToken = default);   // default: pass-through
+
+    IAsyncEnumerable<StreamingMessageResponse> GenerateStreamingAsync(
+        MessageGenerationRequest request,
+        Func<MessageGenerationRequest, IAsyncEnumerable<StreamingMessageResponse>> next,
+        CancellationToken cancellationToken = default);   // default: pass-through
+}
+
+// Registration — global, applied outer-to-inner in registration order
+var hive = new HiveServiceBuilder()
+    .AddOpenAIProviders("openai", config)
+    .AddMessageMiddleware(new CompactingMiddleware())
+    .Build();
+```
+
+Wrapping `next()` in try/catch gives retry/fallback; inspecting `request` before calling `next()` gives pre-round compaction/mutation.
+
+### ContextOverflowException
+
+Provider-specific context-window overflow errors (OpenAI, Anthropic, GoogleAI, OpenAI Compatible) are normalized to `ContextOverflowException` (`IronHive.Abstractions.Exceptions`) — `ContextWindow` (nullable `int`) when the provider reports it.
+
+```csharp
+try
+{
+    var response = await hive.Messages.GenerateMessageAsync(request);
+}
+catch (ContextOverflowException ex)
+{
+    // summarize/trim request.Messages and retry
+}
+```
+
 ## IEmbeddingService — Embeddings
 
 ```csharp

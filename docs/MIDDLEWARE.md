@@ -2,6 +2,10 @@
 
 에이전트 호출을 가로채어 재시도, 타임아웃, 로깅 등 횡단 관심사를 적용합니다.
 
+> **참고**: 이 문서의 `IAgentMiddleware`는 `IAgent`(에이전트의 한 턴 전체) 레벨입니다.
+> `MessageService`의 루프 반복(각 LLM 호출)을 감싸는 `IMessageMiddleware`는 별개 개념으로
+> [SERVICES.md](SERVICES.md#메시지-생성-미들웨어-imessagemiddleware)에서 다룹니다.
+
 ## 개요
 
 ```

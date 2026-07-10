@@ -24,11 +24,11 @@ public class ToolOptions
     /// 이 델리게이트 안에서 content.Output을 채우면 실제 도구 실행을 스킵합니다.
     /// 병렬로 여러 도구에 대해 동시에 호출될 수 있으므로 상태를 공유하지 않아야 합니다.
     /// </summary>
-    public Func<ToolMessageContent, CancellationToken, Task>? OnInvokeBefore { get; set; }
+    public Func<ToolMessageContent, CancellationToken, Task>? OnBeforeInvoke { get; set; }
 
     /// <summary>
     /// 도구 실행 직후(성공/실패 모두)에 호출됩니다. content.Output을 직접 수정할 수 있습니다.
     /// 병렬로 여러 도구에 대해 동시에 호출될 수 있으므로 상태를 공유하지 않아야 합니다.
     /// </summary>
-    public Func<ToolMessageContent, CancellationToken, Task>? OnInvokeAfter { get; set; }
+    public Func<ToolMessageContent, CancellationToken, Task>? OnAfterInvoke { get; set; }
 }
