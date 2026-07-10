@@ -66,10 +66,4 @@ public class MessageRequest
     /// 툴 사용에서 무한 루프에 빠질 수 있는 상황을 방지하기 위한 최대 반복 횟수입니다. 기본값은 50입니다.
     /// </summary>
     public int MaxLoopCount { get; set; } = 50;
-
-    /// <summary>
-    /// 컨텍스트 예산 정책입니다. null이면 예산 검사를 하지 않습니다 (기존 동작과 동일).
-    /// 송신 직전과 툴 실행 루프의 매 반복에서 집행됩니다.
-    /// </summary>
-    public ContextPolicy? ContextPolicy { get; set; }
 }
