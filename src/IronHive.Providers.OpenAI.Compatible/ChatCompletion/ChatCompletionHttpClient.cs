@@ -89,7 +89,7 @@ internal sealed class ChatCompletionHttpClient : IDisposable
             if (line.StartsWith("error:", StringComparison.Ordinal))
             {
                 var errorMessage = line["error:".Length..].Trim();
-                throw ContextOverflowDetector.Detect(errorMessage) as Exception
+                throw ChatCompletionExceptionDetector.Detect(errorMessage) as Exception
                     ?? new HttpRequestException(errorMessage);
             }
 
@@ -109,7 +109,7 @@ internal sealed class ChatCompletionHttpClient : IDisposable
     /// <summary>Builds the exception for a failed response: recursively searches the error body for a
     /// "message" property (falling back to the raw status line when the body isn't the expected
     /// <c>{"error": {"message": "..."}}</c> shape), then normalizes context-window overflow errors
-    /// to <see cref="IronHive.Abstractions.Exceptions.ContextWindowExceededException"/>.</summary>
+    /// to <see cref="IronHive.Abstractions.Exceptions.ContextOverflowException"/>.</summary>
     private static async Task<Exception> CreateErrorAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         JsonNode? json = null;
@@ -125,7 +125,7 @@ internal sealed class ChatCompletionHttpClient : IDisposable
             ? found
             : $"Chat completion request failed with status {(int)response.StatusCode} ({response.ReasonPhrase}).";
 
-        return ContextOverflowDetector.Detect(message, json) as Exception
+        return ChatCompletionExceptionDetector.Detect(message, json) as Exception
             ?? new HttpRequestException(message);
     }
 

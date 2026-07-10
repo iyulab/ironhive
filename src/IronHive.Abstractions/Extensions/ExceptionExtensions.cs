@@ -7,13 +7,13 @@ namespace IronHive.Abstractions.Extensions;
 /// IronHive domain exceptions at the call boundary. The mapping rules themselves
 /// live in each provider assembly; these helpers only own the wrapping mechanics.
 /// </summary>
-public static class ExceptionMappingExtensions
+public static class ExceptionExtensions
 {
     /// <summary>
     /// Awaits <paramref name="task"/>, rethrowing as the mapped exception when
     /// <paramref name="mapper"/> returns non-null for a thrown exception.
     /// </summary>
-    public static async Task<T> MapExceptions<T>(this Task<T> task, Func<Exception, Exception?> mapper)
+    public static async Task<T> MapException<T>(this Task<T> task, Func<Exception, Exception?> mapper)
     {
         try
         {
@@ -30,7 +30,7 @@ public static class ExceptionMappingExtensions
     /// <paramref name="mapper"/> returns non-null for an exception thrown by enumeration
     /// (including the initial request of a streaming call).
     /// </summary>
-    public static async IAsyncEnumerable<T> MapExceptions<T>(
+    public static async IAsyncEnumerable<T> MapException<T>(
         this IAsyncEnumerable<T> source,
         Func<Exception, Exception?> mapper,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)

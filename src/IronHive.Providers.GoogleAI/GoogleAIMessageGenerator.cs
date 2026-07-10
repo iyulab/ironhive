@@ -1,5 +1,6 @@
 using Google.GenAI;
 using Google.GenAI.Types;
+using IronHive.Abstractions.Extensions;
 using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
@@ -45,7 +46,8 @@ public class GoogleAIMessageGenerator : IMessageGenerator
     {
         var (contents, config) = ToGoogleAIParams(request);
         var response = await _client.Models.GenerateContentAsync(
-            request.Model, contents, config, cancellationToken);
+            request.Model, contents, config, cancellationToken)
+            .MapException(GoogleAIExceptionMapper.Map);
 
         MessageDoneReason? reason = null;
         var usage = new MessageTokenUsage();
@@ -135,7 +137,8 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         MessageTokenUsage? usage = null;
 
         await foreach (var res in _client.Models.GenerateContentStreamAsync(
-            request.Model, contents, config, cancellationToken))
+            request.Model, contents, config, cancellationToken)
+            .MapException(GoogleAIExceptionMapper.Map, cancellationToken))
         {
             // 메시지 시작
             if (current == null)

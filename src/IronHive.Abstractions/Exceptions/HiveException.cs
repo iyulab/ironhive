@@ -14,7 +14,7 @@ public class HiveException : Exception
         : base(message)
     { }
 
-    public HiveException(string message, Exception? innerException)
-        : base(message, innerException)
+    public HiveException(string message, Exception? inner)
+        : base(message, inner)
     { }
 }

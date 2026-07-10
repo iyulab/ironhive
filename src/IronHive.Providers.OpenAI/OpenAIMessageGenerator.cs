@@ -48,7 +48,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
     {
         var options = BuildOptions(request);
         var result = await _client.CreateResponseAsync(options, cancellationToken)
-            .MapExceptions(ContextWindowErrorMapper.TryMap);
+            .MapException(OpenAIExceptionMapper.Map);
         var response = result.Value;
         if (response.Error != null)
         {
@@ -138,7 +138,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
         int pIndex = 0;
         var reason = MessageDoneReason.EndTurn;
         await foreach (var update in _client.CreateResponseStreamingAsync(options, cancellationToken)
-            .MapExceptions(ContextWindowErrorMapper.TryMap, cancellationToken))
+            .MapException(OpenAIExceptionMapper.Map, cancellationToken))
         {
             if (update is StreamingResponseCreatedUpdate)
             {
