@@ -9,7 +9,6 @@ namespace IronHive.Core.Tools;
 /// <summary>
 /// ITool을 구현하는 .NET 메서드 기반 툴 구현체입니다.
 /// </summary>
-[JsonPolymorphicValue("function")]
 public sealed class FunctionTool : ITool
 {
     private readonly MethodInfo _method;

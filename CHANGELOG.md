@@ -4,6 +4,42 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.12.0 — 2026-07-13
+
+Follow-up to 0.11.0's `IMessageMiddleware`: a real consumer (vault-ai's
+context-compaction middleware) needed to signal its own out-of-band events
+mid-stream, which `MessageService` couldn't carry. Also dropped an `ITool`
+JSON-polymorphism mechanism that turned out to have no actual caller.
+
+### Changed
+
+- **`MessageService.GenerateStreamingMessageAsync` now passes through
+  unrecognized `StreamingMessageResponse` types instead of throwing.**
+  Previously any `IMessageMiddleware` that yielded a response type outside
+  the fixed set (`Begin`/`Error`/`ContentAdded`/`ContentDelta`/
+  `ContentUpdated`/`ContentCompleted`/`Done`) crashed the pipeline with
+  `InvalidOperationException("Unexpected response type.")`. `StreamingMessageResponse`
+  is a plain (non-sealed) `abstract class`, so a middleware can now define
+  its own subtype and `yield return` it directly as a real-time signal to
+  the caller — e.g. a compaction middleware emitting "compacting
+  started"/"compacted" events at the moment they happen, rather than
+  smuggling them through an out-of-band callback that the caller has to
+  poll for on every subsequent chunk. All previously-known types are
+  handled exactly as before; this only changes behavior for types that used
+  to throw.
+
+### Removed
+
+- **`PolymorphicJsonConverter<T>`, `JsonPolymorphicNameAttribute`,
+  `JsonPolymorphicValueAttribute`** (`IronHive.Abstractions.Json`) — a
+  hand-rolled polymorphic-JSON mechanism used only by `ITool` (via
+  `FunctionTool`/`McpTool`). No call site anywhere in IronHive or its
+  consumers ever actually serializes an `ITool`-typed value through
+  `JsonSerializer`; the attributes were a declared-but-unexercised
+  contract. `ITool`, `FunctionTool`, `McpTool` no longer carry the
+  `[JsonConverter]`/`[JsonPolymorphicName]`/`[JsonPolymorphicValue]`
+  attributes.
+
 ## 0.11.0 — 2026-07-10
 
 Two threads: a generic interception point for the message-generation loop

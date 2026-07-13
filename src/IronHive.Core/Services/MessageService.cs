@@ -248,7 +248,9 @@ public class MessageService : IMessageService
                 }
                 else
                 {
-                    throw new InvalidOperationException("Unexpected response type.");
+                    // 알려지지 않은 타입은 미들웨어가 정의한 커스텀 시그널로 간주하고 그대로 투과시킨다.
+                    // (인덱스 리베이싱 등 content 관련 가공 대상이 아니므로 별도 처리 없이 pass-through)
+                    yield return res;
                 }
             }
 

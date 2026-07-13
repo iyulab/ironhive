@@ -1,13 +1,8 @@
-﻿using IronHive.Abstractions.Json;
-using System.Text.Json.Serialization;
-
-namespace IronHive.Abstractions.Tools;
+﻿namespace IronHive.Abstractions.Tools;
 
 /// <summary>
 /// LLM 도구(툴)를 정의하는 인터페이스입니다.
 /// </summary>
-[JsonConverter(typeof(PolymorphicJsonConverter<ITool>))]
-[JsonPolymorphicName("type")]
 public interface ITool
 {
     /// <summary>
