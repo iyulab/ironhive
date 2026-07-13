@@ -60,7 +60,7 @@ public class StoreVectorsPipelineTests
 
         await _mockVectorStorage.Received(1).UpsertVectorsAsync(
             "test-collection",
-            Arg.Is<IEnumerable<VectorRecord>>(v => v.Count() == 2),
+            Arg.Is<IEnumerable<VectorRecord>>(v => v != null && v.Count() == 2),
             Arg.Any<CancellationToken>());
     }
 

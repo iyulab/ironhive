@@ -176,7 +176,7 @@ public class CreateVectorsPipelineTests
 
         await _mockEmbedder.Received(1).EmbedBatchAsync(
             "test-provider", "test-model",
-            Arg.Is<IEnumerable<string>>(x => x.Contains("Q1?") && x.Contains("Q2?")),
+            Arg.Is<IEnumerable<string>>(x => x != null && x.Contains("Q1?") && x.Contains("Q2?")),
             Arg.Any<CancellationToken>());
     }
 

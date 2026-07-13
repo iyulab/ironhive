@@ -80,7 +80,7 @@ public class EmbeddingGeneratorAdapterTests : IDisposable
 
         await _mockGenerator.Received(1).EmbedBatchAsync(
             "test-model",
-            Arg.Is<IEnumerable<string>>(x => x.Count() == 2),
+            Arg.Is<IEnumerable<string>>(x => x != null && x.Count() == 2),
             Arg.Any<CancellationToken>());
     }
 

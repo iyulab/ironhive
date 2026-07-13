@@ -97,7 +97,7 @@ public class DialogueExtractionPipelineTests
 
         // Assert
         await _mockMessages.Received(1).GenerateMessageAsync(
-            Arg.Is<MessageRequest>(r => r.Provider == "my-provider" && r.Model == "my-model"),
+            Arg.Is<MessageRequest>(r => r != null && r.Provider == "my-provider" && r.Model == "my-model"),
             Arg.Any<CancellationToken>());
     }
 
@@ -130,6 +130,7 @@ public class DialogueExtractionPipelineTests
         // Assert
         await _mockMessages.Received(1).GenerateMessageAsync(
             Arg.Is<MessageRequest>(r =>
+                r != null &&
                 r.System != null &&
                 r.System.Contains("<qa>") &&
                 r.System.Contains("QA")),
@@ -149,6 +150,7 @@ public class DialogueExtractionPipelineTests
         // Assert
         await _mockMessages.Received(1).GenerateMessageAsync(
             Arg.Is<MessageRequest>(r =>
+                r != null &&
                 r.Messages.OfType<Message>().Any(m =>
                     m.Content.OfType<TextMessageContent>().Any(c =>
                         c.Value.Contains("Special content about space.")))),

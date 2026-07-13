@@ -89,7 +89,7 @@ public class FileParserServiceTests
         parser.ParseAsync("file.txt", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
             {
-                positionOnParse = callInfo.Arg<Stream>().Position;
+                positionOnParse = callInfo.Arg<Stream>()!.Position;
                 return Task.FromResult<IReadOnlyList<FileBlock>>([]);
             });
 
