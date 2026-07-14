@@ -1,5 +1,4 @@
 using System.Net;
-using System.Text.Json.Nodes;
 using Anthropic.Exceptions;
 using FluentAssertions;
 using Google.GenAI;
@@ -18,46 +17,41 @@ namespace IronHive.Tests.Providers;
 public class ContextOverflowMappingTests
 {
     // ---- OpenAI.Compatible (llama.cpp / GPUStack / vLLM) ----
+    // DetectAsync reads the error body directly off the HttpResponseMessage, so these build a
+    // real response rather than a hand-rolled JsonNode.
 
     [Fact]
-    public void Compatible_LlamaCpp_ExceedContextSize_Maps_With_ContextWindow()
+    public async Task Compatible_LlamaCpp_ExceedContextSize_Maps_With_ContextWindow()
     {
         // GPUStack/llama.cpp: vault-ai live-reproduced error (32k model, 42k request)
-        var message = "request (42259 tokens) exceeds the available context size (32768 tokens), try increasing it";
-        var body = JsonNode.Parse(
+        using var response = JsonResponse(HttpStatusCode.BadRequest,
             """{"error":{"code":400,"message":"request (42259 tokens) exceeds the available context size (32768 tokens), try increasing it","type":"exceed_context_size_error"}}""");
 
-        var ex = ChatCompletionExceptionDetector.Detect(message, body);
+        var ex = await ChatCompletionExceptionDetector.DetectAsync(response);
 
         ex.Should().BeOfType<ContextOverflowException>().Which.ContextWindow.Should().Be(32768);
     }
 
     [Fact]
-    public void Compatible_LlamaCpp_NumericFields_Preferred_Over_Message()
+    public async Task Compatible_LlamaCpp_NumericFields_Preferred_Over_Message()
     {
-        var body = JsonNode.Parse(
+        using var response = JsonResponse(HttpStatusCode.BadRequest,
             """{"error":{"type":"exceed_context_size_error","message":"context overflow","n_ctx":32768}}""");
 
-        var ex = ChatCompletionExceptionDetector.Detect("context overflow", body);
+        var ex = await ChatCompletionExceptionDetector.DetectAsync(response);
 
         ex.Should().BeOfType<ContextOverflowException>().Which.ContextWindow.Should().Be(32768);
     }
 
     [Fact]
-    public void Compatible_Vllm_ContextLengthExceeded_Maps()
+    public async Task Compatible_Vllm_ContextLengthExceeded_Maps()
     {
         var message = "This model's maximum context length is 32768 tokens. However, you requested 45010 tokens (44000 in the messages, 1010 in the completion). Please reduce the length of the messages or completion.";
-        var body = new JsonObject
-        {
-            ["error"] = new JsonObject
-            {
-                ["message"] = message,
-                ["type"] = "BadRequestError",
-                ["code"] = "context_length_exceeded",
-            },
-        };
+        var json = """{"error":{"message":"__MESSAGE__","type":"BadRequestError","code":"context_length_exceeded"}}"""
+            .Replace("__MESSAGE__", message);
+        using var response = JsonResponse(HttpStatusCode.BadRequest, json);
 
-        var ex = ChatCompletionExceptionDetector.Detect(message, body);
+        var ex = await ChatCompletionExceptionDetector.DetectAsync(response);
 
         ex.Should().BeOfType<ContextOverflowException>().Which.ContextWindow.Should().Be(32768);
     }
@@ -72,13 +66,18 @@ public class ContextOverflowMappingTests
     }
 
     [Fact]
-    public void Compatible_Unrelated_Error_Returns_Null()
+    public async Task Compatible_Unrelated_Error_Falls_Back_To_HttpRequestException()
     {
-        var body = JsonNode.Parse(
+        using var response = JsonResponse(HttpStatusCode.BadRequest,
             """{"error":{"message":"Invalid API key provided","type":"invalid_request_error","code":"invalid_api_key"}}""");
 
-        ChatCompletionExceptionDetector.Detect("Invalid API key provided", body).Should().BeNull();
+        var ex = await ChatCompletionExceptionDetector.DetectAsync(response);
+
+        ex.Should().BeOfType<HttpRequestException>().Which.Message.Should().Be("Invalid API key provided");
     }
+
+    private static HttpResponseMessage JsonResponse(HttpStatusCode statusCode, string json)
+        => new(statusCode) { Content = new StringContent(json) };
 
     // ---- OpenAI (Responses API, SDK ClientResultException) ----
     // ClientResultException has no public constructor that doesn't require a PipelineResponse
@@ -120,11 +119,11 @@ public class ContextOverflowMappingTests
     public void Anthropic_Map_Ignores_Other_ErrorTypes()
     {
         // A rate_limit_error should never be reinterpreted as a context overflow, even if it
-        // happened to contain overflow-shaped text.
+        // happened to contain overflow-shaped text — it maps to RateLimitException instead.
         var body = """{"type":"error","error":{"type":"rate_limit_error","message":"prompt is too long: 1 tokens > 1 maximum"}}""";
         var sdkException = AnthropicExceptionFactory.CreateApiException(HttpStatusCode.TooManyRequests, body);
 
-        AnthropicMapper.Map(sdkException).Should().BeNull();
+        AnthropicMapper.Map(sdkException).Should().BeOfType<RateLimitException>();
     }
 
     // ---- Google GenAI (Gemini) ----

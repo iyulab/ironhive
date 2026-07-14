@@ -3,7 +3,6 @@ using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
 namespace IronHive.Providers.OpenAI.Compatible.ChatCompletion;
@@ -60,7 +59,7 @@ internal sealed class ChatCompletionHttpClient : IDisposable
         using var content = JsonContent.Create(request, options: JsonOptions);
         using var response = await _http.PostAsync(ChatCompletionsPath, content, cancellationToken).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
-            throw await CreateErrorAsync(response, cancellationToken).ConfigureAwait(false);
+            throw await ChatCompletionExceptionDetector.DetectAsync(response, cancellationToken).ConfigureAwait(false);
 
         return await response.Content.ReadFromJsonAsync<ChatCompletionResponse>(JsonOptions, cancellationToken).ConfigureAwait(false)
             ?? throw new InvalidOperationException("Failed to deserialize the chat completion response.");
@@ -77,7 +76,7 @@ internal sealed class ChatCompletionHttpClient : IDisposable
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, ChatCompletionsPath) { Content = content };
         using var response = await _http.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
-            throw await CreateErrorAsync(response, cancellationToken).ConfigureAwait(false);
+            throw await ChatCompletionExceptionDetector.DetectAsync(response, cancellationToken).ConfigureAwait(false);
 
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         using var reader = new StreamReader(stream);
@@ -89,8 +88,7 @@ internal sealed class ChatCompletionHttpClient : IDisposable
             if (line.StartsWith("error:", StringComparison.Ordinal))
             {
                 var errorMessage = line["error:".Length..].Trim();
-                throw ChatCompletionExceptionDetector.Detect(errorMessage) as Exception
-                    ?? new HttpRequestException(errorMessage);
+                throw ChatCompletionExceptionDetector.Detect(errorMessage);
             }
 
             if (!line.StartsWith("data:", StringComparison.Ordinal))
@@ -104,51 +102,5 @@ internal sealed class ChatCompletionHttpClient : IDisposable
             if (chunk != null)
                 yield return chunk;
         }
-    }
-
-    /// <summary>Builds the exception for a failed response: recursively searches the error body for a
-    /// "message" property (falling back to the raw status line when the body isn't the expected
-    /// <c>{"error": {"message": "..."}}</c> shape), then normalizes context-window overflow errors
-    /// to <see cref="IronHive.Abstractions.Exceptions.ContextOverflowException"/>.</summary>
-    private static async Task<Exception> CreateErrorAsync(HttpResponseMessage response, CancellationToken cancellationToken)
-    {
-        JsonNode? json = null;
-        try
-        {
-            var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            json = JsonNode.Parse(body);
-        }
-        catch (JsonException)
-        { }
-
-        var message = (json != null ? FindMessage(json) : null) is { Length: > 0 } found
-            ? found
-            : $"Chat completion request failed with status {(int)response.StatusCode} ({response.ReasonPhrase}).";
-
-        return ChatCompletionExceptionDetector.Detect(message, json) as Exception
-            ?? new HttpRequestException(message);
-    }
-
-    private static string? FindMessage(JsonNode? node)
-    {
-        if (node is JsonObject obj)
-        {
-            foreach (var kvp in obj)
-            {
-                if (kvp.Key.Equals("message", StringComparison.OrdinalIgnoreCase) && kvp.Value != null)
-                    return kvp.Value.ToString();
-                if (FindMessage(kvp.Value) is { } found)
-                    return found;
-            }
-        }
-        else if (node is JsonArray array)
-        {
-            foreach (var item in array)
-            {
-                if (FindMessage(item) is { } found)
-                    return found;
-            }
-        }
-        return null;
     }
 }
