@@ -63,19 +63,19 @@ To intercept individual tool invocations (adjust input, transform output, mock),
 
 ### IMessageMiddleware
 
-Next-chain middleware wrapping the generator call in each loop iteration (not the whole multi-round `IMessageService` call, unlike `IAgentMiddleware` — see [MIDDLEWARE.md](MIDDLEWARE.md)). Use for per-round concerns: compaction, retry, error handling.
+Next-chain middleware wrapping the generator call in each turn (not the whole multi-turn `IMessageService` call, unlike `IAgentMiddleware` — see [MIDDLEWARE.md](MIDDLEWARE.md)). Use for per-turn concerns: compaction, retry, error handling.
 
 ```csharp
 public interface IMessageMiddleware
 {
     Task<MessageResponse> GenerateAsync(
-        MessageGenerationRequest request,
-        Func<MessageGenerationRequest, Task<MessageResponse>> next,
+        MessageContext context,
+        Func<MessageContext, Task<MessageResponse>> next,
         CancellationToken cancellationToken = default);   // default: pass-through
 
     IAsyncEnumerable<StreamingMessageResponse> GenerateStreamingAsync(
-        MessageGenerationRequest request,
-        Func<MessageGenerationRequest, IAsyncEnumerable<StreamingMessageResponse>> next,
+        MessageContext context,
+        Func<MessageContext, IAsyncEnumerable<StreamingMessageResponse>> next,
         CancellationToken cancellationToken = default);   // default: pass-through
 }
 
@@ -86,7 +86,17 @@ var hive = new HiveServiceBuilder()
     .Build();
 ```
 
-Wrapping `next()` in try/catch gives retry/fallback; inspecting `request` before calling `next()` gives pre-round compaction/mutation.
+`MessageContext` lives for the whole `MessageService` call (all turns):
+
+| Member | Description |
+|--------|-------------|
+| `Request` | Outgoing `MessageGenerationRequest` for this turn; `Messages` accumulates across turns. |
+| `CurrentTurn` / `MaxTurn` | Current turn index (0-based) and the max turns allowed this call. |
+| `CurrentMessage` | Assistant message accumulated across turns; null until the first content arrives. |
+| `TrackedId` / `TurnReason` / `TokenUsage` | Most recent turn's raw (unprefixed) response ID / stop reason / token usage. |
+| `Items` | Shared data across pipeline stages. Seeded from `MessageRequest.Items`, flows out via `MessageResponse.Items` (or `StreamingMessageDoneResponse.Items` when streaming). |
+
+Wrapping `next()` in try/catch gives retry/fallback; inspecting/mutating `context.Request` before calling `next()` gives pre-turn compaction/mutation.
 
 ### ContextOverflowException
 

@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using IronHive.Abstractions.Messages;
@@ -29,63 +28,36 @@ public class MessageService : IMessageService
     {
         var generator = GetRequiredGenerator(request.Provider);
         var pipeline = BuildPipeline(generator, _middlewares, cancellationToken);
+        var context = new MessageContext(request, req => ConfigureGeneration(request, req));
 
-        string? responseId;
-        MessageDoneReason? reason;
-        MessageTokenUsage? usage;
-        Message? message;
-
-        var counter = new LimitedCounter(request.MaxLoopCount);
-        var req = new MessageGenerationRequest
+        for (var turn = 0; turn < context.MaxTurns; turn++)
         {
-            PreviousId = ExtractResponseId(request.Provider, request.PreviousId),
-            Model = request.Model,
-            ThinkingEffort = request.ThinkingEffort,
-            Messages = new List<Message>(request.Messages),
-            System = request.Suggestions != null
-                ? SuggestionCollector.Prompt(request.System, request.Suggestions)
-                : request.System,
-            Tools = request.Tools,
-            Output = request.Output,
-            MaxTokens = request.MaxTokens,
-        };
+            cancellationToken.ThrowIfCancellationRequested();
+            context.CurrentTurn = turn;
+            context.BeginTurn();
 
-        var timer = Stopwatch.StartNew();
-        do
-        {
-            if (req.Messages.LastOrDefault() is { Role: MessageRole.Assistant } last)
-            {
-                message = last;
-                await foreach (var _ in ProcessToolContentAsync(message, request.Tools, request.ToolOptions, cancellationToken).ConfigureAwait(false))
-                { }
-            }
-            else
-            {
-                message = new Message { Role = MessageRole.Assistant };
-            }
+            await ExecuteToolsAsync(context.CurrentMessage, request.Tools, request.ToolOptions, cancellationToken).ConfigureAwait(false);
 
-            var res = await pipeline(req).ConfigureAwait(false);
-            responseId = res.ResponseId; // 마지막 루프의 ResponseId 채택
+            var res = await pipeline(context).ConfigureAwait(false);
+            context.TrackedId = res.ResponseId;
+            context.TurnReason = res.DoneReason;
+            context.TokenUsage = res.TokenUsage;
 
+            context.CurrentMessage ??= new Message { Role = MessageRole.Assistant };
             foreach (var content in res.Message?.Content ?? [])
             {
-                message.Content.Add(content);
+                context.CurrentMessage.Content.Add(content);
             }
-            if (req.Messages.LastOrDefault() is not { Role: MessageRole.Assistant })
-            {
-                req.Messages.Add(message);
-            }
-            reason = res.DoneReason;
-            usage = res.TokenUsage;
+
+            if (!context.ShouldContinue())
+                break;
         }
-        while (counter.TryIncrement() && ShouldContinue(reason, message, cancellationToken));
-        timer.Stop();
 
         List<Suggestion>? suggestions = null;
-        if (request.Suggestions != null && message != null)
+        if (request.Suggestions != null && context.CurrentMessage != null)
         {
             var collector = new SuggestionCollector();
-            foreach (var content in message.Content)
+            foreach (var content in context.CurrentMessage.Content)
             {
                 if (content is TextMessageContent tc)
                     tc.Value = collector.Feed(tc.Value);
@@ -95,14 +67,15 @@ public class MessageService : IMessageService
 
         return new MessageResponse
         {
-            ResponseId = BuildResponseId(request.Provider, responseId),
-            DoneReason = reason,
-            Message = message,
-            TokenUsage = usage,
-            Model = BuildResponseModel(request.Provider, request.Model),
-            Duration = timer.Elapsed,
+            ResponseId = BuildResponseId(request.Provider, context.TrackedId),
+            DoneReason = context.TurnReason,
+            Message = context.CurrentMessage,
+            TokenUsage = context.TokenUsage,
+            Model = request.Model,
+            Duration = context.Elapsed,
             Timestamp = DateTime.UtcNow,
             Suggestions = suggestions,
+            Items = context.Items,
         };
     }
 
@@ -113,48 +86,27 @@ public class MessageService : IMessageService
     {
         var generator = GetRequiredGenerator(request.Provider);
         var pipeline = BuildStreamingPipeline(generator, _middlewares, cancellationToken);
+        var context = new MessageContext(request, req => ConfigureGeneration(request, req));
 
-        string? responseId = null;
-        MessageDoneReason? reason = null;
-        MessageTokenUsage? usage = null;
-        Message? message;
-
-        bool beginSent = false;
-        var counter = new LimitedCounter(request.MaxLoopCount);
-        var req = new MessageGenerationRequest
-        {
-            PreviousId = ExtractResponseId(request.Provider, request.PreviousId),
-            Model = request.Model,
-            ThinkingEffort = request.ThinkingEffort,
-            Messages = new List<Message>(request.Messages),
-            System = request.Suggestions != null
-                ? SuggestionCollector.Prompt(request.System, request.Suggestions)
-                : request.System,
-            Tools = request.Tools,
-            Output = request.Output,
-            MaxTokens = request.MaxTokens,
-        };
-
+        var beginSent = false;
         var parser = request.Suggestions != null ? new SuggestionCollector() : null;
-        var timer = Stopwatch.StartNew();
-        do
+
+        for (var turn = 0; turn < context.MaxTurns; turn++)
         {
-            if (req.Messages.LastOrDefault() is { Role: MessageRole.Assistant } last)
+            cancellationToken.ThrowIfCancellationRequested();
+            context.CurrentTurn = turn;
+            context.BeginTurn();
+
+            await foreach (var res in ExecuteStreamingToolsAsync(context.CurrentMessage, request.Tools, request.ToolOptions, cancellationToken).ConfigureAwait(false))
             {
-                message = last;
-                await foreach (var res in ProcessToolContentAsync(message, request.Tools, request.ToolOptions, cancellationToken).ConfigureAwait(false))
-                {
-                    yield return res;
-                }
-            }
-            else
-            {
-                message = new Message { Role = MessageRole.Assistant };
+                yield return res;
             }
 
+            // 이번 턴의 상대 인덱스를 절대 인덱스로 바꾸기 위한 기준값. 턴 도중에는 CurrentMessage가 바뀌지 않으므로 한 번만 계산합니다.
+            var baseIndex = context.CurrentMessage?.Content.Count ?? 0;
             var stack = new List<MessageContent>();
 
-            await foreach (var res in pipeline(req).ConfigureAwait(false))
+            await foreach (var res in pipeline(context).ConfigureAwait(false))
             {
                 // 에러가 아닌 첫 이벤트 수신 시 begin emit (제너레이터 정상 진입 확인)
                 if (!beginSent && res is not StreamingMessageErrorResponse)
@@ -173,7 +125,7 @@ public class MessageService : IMessageService
                 }
                 else if (res is StreamingContentAddedResponse car)
                 {
-                    var absoluteIdx = message.Content.Count + car.Index;
+                    var absoluteIdx = baseIndex + car.Index;
                     MessageContent tracked;
 
                     if (parser != null && car.Content is TextMessageContent tmc)
@@ -206,7 +158,7 @@ public class MessageService : IMessageService
                             stack.ElementAt(cdr.Index).Merge(new TextDeltaContent { Value = text });
                             yield return new StreamingContentDeltaResponse
                             {
-                                Index = message.Content.Count + cdr.Index,
+                                Index = baseIndex + cdr.Index,
                                 Delta = new TextDeltaContent { Value = text }
                             };
                         }
@@ -215,7 +167,7 @@ public class MessageService : IMessageService
                     {
                         var content = stack.ElementAt(cdr.Index);
                         content.Merge(cdr.Delta);
-                        cdr.Index = message.Content.Count + cdr.Index;
+                        cdr.Index = baseIndex + cdr.Index;
                         yield return cdr;
                     }
                 }
@@ -223,28 +175,28 @@ public class MessageService : IMessageService
                 {
                     var content = stack.ElementAt(cur.Index);
                     content.Update(cur.Updated);
-                    cur.Index = message.Content.Count + cur.Index;
+                    cur.Index = baseIndex + cur.Index;
                     yield return cur;
                 }
                 else if (res is StreamingContentCompletedResponse ccr)
                 {
                     var stackItem = stack.ElementAt(ccr.Index);
 
-                    // 툴은 suppress → ProcessToolContentAsync에서 inprogress/updated/completed 순서로 emit
+                    // 툴은 suppress → ExecuteStreamingToolsAsync에서 inprogress/updated/completed 순서로 emit
                     if (stackItem is ToolMessageContent)
                         continue;
 
                     yield return new StreamingContentCompletedResponse
                     {
-                        Index = message.Content.Count + ccr.Index,
+                        Index = baseIndex + ccr.Index,
                         Content = stackItem
                     };
                 }
                 else if (res is StreamingMessageDoneResponse mdr)
                 {
-                    reason = mdr.DoneReason;
-                    usage = mdr.TokenUsage;
-                    responseId = mdr.ResponseId; // 마지막 루프의 ResponseId 채택
+                    context.TurnReason = mdr.DoneReason;
+                    context.TokenUsage = mdr.TokenUsage;
+                    context.TrackedId = mdr.ResponseId;
                 }
                 else
                 {
@@ -254,28 +206,27 @@ public class MessageService : IMessageService
                 }
             }
 
+            context.CurrentMessage ??= new Message { Role = MessageRole.Assistant };
             foreach (var content in stack)
             {
-                message.Content.Add(content);
+                context.CurrentMessage.Content.Add(content);
             }
-            if (req.Messages.LastOrDefault() is not { Role: MessageRole.Assistant })
-            {
-                req.Messages.Add(message);
-            }
+
+            if (!context.ShouldContinue())
+                break;
         }
-        while (counter.TryIncrement() && ShouldContinue(reason, message, cancellationToken));
-        timer.Stop();
 
         yield return new StreamingMessageDoneResponse
         {
-            ResponseId = BuildResponseId(request.Provider, responseId),
-            DoneReason = reason,
-            Message = message,
-            TokenUsage = usage,
-            Model = BuildResponseModel(request.Provider, request.Model),
-            Duration = timer.Elapsed,
+            ResponseId = BuildResponseId(request.Provider, context.TrackedId),
+            DoneReason = context.TurnReason,
+            Message = context.CurrentMessage,
+            TokenUsage = context.TokenUsage,
+            Model = request.Model,
+            Duration = context.Elapsed,
             Timestamp = DateTime.UtcNow,
             Suggestions = parser?.Drain(),
+            Items = context.Items,
         };
     }
 
@@ -320,48 +271,59 @@ public class MessageService : IMessageService
         return generator;
     }
 
+    // ---- MessageContext 구성 ----
+
+    /// <summary>
+    /// MessageContext 생성 시 Provider 종속적인 보정(PreviousId 추출, 제안 프롬프트 병합)을 적용합니다.
+    /// MessageContext(Abstractions)는 Provider 문자열이나 SuggestionCollector(Core 내부)를 알 필요가 없도록
+    /// 이 보정을 MessageService(Core)에서 처리합니다.
+    /// </summary>
+    private static void ConfigureGeneration(MessageRequest request, MessageGenerationRequest generation)
+    {
+        generation.PreviousId = ExtractResponseId(request.Provider, request.PreviousId);
+        if (request.Suggestions != null)
+            generation.System = SuggestionCollector.Prompt(request.System, request.Suggestions);
+    }
+
     // ---- 미들웨어 파이프라인 구성 ----
 
-    private static Func<MessageGenerationRequest, Task<MessageResponse>> BuildPipeline(
+    private static Func<MessageContext, Task<MessageResponse>> BuildPipeline(
         IMessageGenerator generator,
         IReadOnlyList<IMessageMiddleware> middlewares,
         CancellationToken cancellationToken)
     {
-        Func<MessageGenerationRequest, Task<MessageResponse>> pipeline =
-            req => generator.GenerateMessageAsync(req, cancellationToken);
+        Func<MessageContext, Task<MessageResponse>> pipeline =
+            ctx => generator.GenerateMessageAsync(ctx.Request, cancellationToken);
 
         for (var i = middlewares.Count - 1; i >= 0; i--)
         {
             var middleware = middlewares[i];
             var next = pipeline;
-            pipeline = req => middleware.GenerateAsync(req, next, cancellationToken);
+            pipeline = ctx => middleware.GenerateAsync(ctx, next, cancellationToken);
         }
 
         return pipeline;
     }
 
-    private static Func<MessageGenerationRequest, IAsyncEnumerable<StreamingMessageResponse>> BuildStreamingPipeline(
+    private static Func<MessageContext, IAsyncEnumerable<StreamingMessageResponse>> BuildStreamingPipeline(
         IMessageGenerator generator,
         IReadOnlyList<IMessageMiddleware> middlewares,
         CancellationToken cancellationToken)
     {
-        Func<MessageGenerationRequest, IAsyncEnumerable<StreamingMessageResponse>> pipeline =
-            req => generator.GenerateStreamingMessageAsync(req, cancellationToken);
+        Func<MessageContext, IAsyncEnumerable<StreamingMessageResponse>> pipeline =
+            ctx => generator.GenerateStreamingMessageAsync(ctx.Request, cancellationToken);
 
         for (var i = middlewares.Count - 1; i >= 0; i--)
         {
             var middleware = middlewares[i];
             var next = pipeline;
-            pipeline = req => middleware.GenerateStreamingAsync(req, next, cancellationToken);
+            pipeline = ctx => middleware.GenerateStreamingAsync(ctx, next, cancellationToken);
         }
 
         return pipeline;
     }
 
-    // ---- 응답 id/model 포맷팅 ----
-
-    private static string BuildResponseModel(string provider, string model)
-        => $"{provider}/{model}";
+    // ---- 응답 id 포맷팅 ----
 
     private static string? BuildResponseId(string provider, string? responseId)
         => !string.IsNullOrWhiteSpace(responseId)
@@ -376,17 +338,99 @@ public class MessageService : IMessageService
     // ---- 도구 실행 루프 ----
 
     /// <summary>
-    /// 도구 컨텐츠를 처리합니다.
+    /// 도구 하나를 실행하고 Output을 채웁니다. OnBeforeInvoke/OnAfterInvoke 훅과 타임아웃 처리를 포함합니다.
     /// </summary>
-    private static async IAsyncEnumerable<StreamingMessageResponse> ProcessToolContentAsync(
-        Message message,
+    private static async Task ExecuteToolAsync(
+        ToolMessageContent tmc,
+        IToolCollection? tools,
+        ToolOptions? toolOptions,
+        CancellationToken cancellationToken)
+    {
+        if (toolOptions?.OnBeforeInvoke is not null)
+        {
+            await toolOptions.OnBeforeInvoke(tmc, cancellationToken).ConfigureAwait(false);
+        }
+
+        // OnBeforeInvoke에서 이미 Output을 채웠다면 실제 도구 실행을 스킵합니다.
+        if (tmc.Output is null)
+        {
+            var input = new ToolInput(tmc.Input);
+
+            if (tools?.TryGet(tmc.Name, out var tool) == true)
+            {
+                var timeout = toolOptions?.Timeout;
+                using var timeoutCts = timeout.HasValue
+                    ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
+                    : null;
+                timeoutCts?.CancelAfter(timeout.GetValueOrDefault());
+                var ct = timeoutCts?.Token ?? cancellationToken;
+                try
+                {
+                    tmc.Output = await tool.InvokeAsync(input, ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (timeoutCts?.IsCancellationRequested == true
+                                                         && !cancellationToken.IsCancellationRequested)
+                {
+                    tmc.Output = ToolOutput.Failure($"Tool '{tmc.Name}' timed out after {timeout!.Value.TotalSeconds:0.#}s.");
+                }
+            }
+            else
+            {
+                tmc.Output = ToolOutput.Failure($"Could not find tool '{tmc.Name}', invocation failed.");
+            }
+        }
+
+        if (toolOptions?.OnAfterInvoke is not null)
+        {
+            await toolOptions.OnAfterInvoke(tmc, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// 논스트리밍 경로용 도구 실행입니다. 진행 상황을 보고할 필요가 없으므로 채널 없이 바로 완료를 기다립니다.
+    /// </summary>
+    private static async Task ExecuteToolsAsync(
+        Message? message,
+        IToolCollection? tools,
+        ToolOptions? toolOptions,
+        CancellationToken cancellationToken)
+    {
+        var concurrent = toolOptions?.MaxParallel ?? 3;
+        var semaphore = new SemaphoreSlim(concurrent, concurrent);
+
+        var tasks = message?.Content
+            .OfType<ToolMessageContent>()
+            .Where(tmc => !tmc.IsCompleted && tmc.IsApproved)
+            .Select(tmc => Task.Run(async () =>
+            {
+                await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    await ExecuteToolAsync(tmc, tools, toolOptions, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException($"Error processing tool content for {tmc.Name}.", ex);
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            }, cancellationToken)) ?? [];
+
+        await Task.WhenAll(tasks).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 스트리밍 경로용 도구 실행입니다. 진행 상황(in_progress/completed)을 이벤트로 보고합니다.
+    /// </summary>
+    private static async IAsyncEnumerable<StreamingMessageResponse> ExecuteStreamingToolsAsync(
+        Message? message,
         IToolCollection? tools,
         ToolOptions? toolOptions,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var concurrent = toolOptions?.MaxParallel ?? 3;
-        var timeout = toolOptions?.Timeout;
-
         var semaphore = new SemaphoreSlim(concurrent, concurrent);
         var channel = Channel.CreateBounded<StreamingMessageResponse>(new BoundedChannelOptions(concurrent * 4)
         {
@@ -394,13 +438,9 @@ public class MessageService : IMessageService
         });
 
         var tasks = new List<Task>();
-        foreach (var (item, idx) in message.Content.Select((x, i) => (x, i)))
+        foreach (var (tmc, idx) in message?.Content.Select((x, i) => (x, i)) ?? [])
         {
-            if (item is not ToolMessageContent tmc)
-                continue;
-            if (tmc.IsCompleted)
-                continue;
-            if (!tmc.IsApproved)
+            if (tmc is not ToolMessageContent tool || tool.IsCompleted || !tool.IsApproved)
                 continue;
 
             var task = Task.Run(async () =>
@@ -414,53 +454,17 @@ public class MessageService : IMessageService
                         Index = idx,
                     }, cancellationToken).ConfigureAwait(false);
 
-                    if (toolOptions?.OnBeforeInvoke is not null)
-                    {
-                        await toolOptions.OnBeforeInvoke(tmc, cancellationToken).ConfigureAwait(false);
-                    }
-
-                    // OnBeforeInvoke에서 이미 Output을 채웠다면 실제 도구 실행을 스킵합니다.
-                    if (tmc.Output is null)
-                    {
-                        var input = new ToolInput(tmc.Input);
-
-                        if (tools?.TryGet(tmc.Name, out var tool) == true)
-                        {
-                            using var timeoutCts = timeout.HasValue
-                                ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
-                                : null;
-                            timeoutCts?.CancelAfter(timeout.GetValueOrDefault());
-                            var ct = timeoutCts?.Token ?? cancellationToken;
-                            try
-                            {
-                                tmc.Output = await tool.InvokeAsync(input, ct).ConfigureAwait(false);
-                            }
-                            catch (OperationCanceledException) when (timeoutCts?.IsCancellationRequested == true
-                                                                     && !cancellationToken.IsCancellationRequested)
-                            {
-                                tmc.Output = ToolOutput.Failure($"Tool '{tmc.Name}' timed out after {timeout!.Value.TotalSeconds:0.#}s.");
-                            }
-                        }
-                        else
-                        {
-                            tmc.Output = ToolOutput.Failure($"Could not find tool '{tmc.Name}', invocation failed.");
-                        }
-                    }
-
-                    if (toolOptions?.OnAfterInvoke is not null)
-                    {
-                        await toolOptions.OnAfterInvoke(tmc, cancellationToken).ConfigureAwait(false);
-                    }
+                    await ExecuteToolAsync(tool, tools, toolOptions, cancellationToken).ConfigureAwait(false);
 
                     await channel.Writer.WriteAsync(new StreamingContentCompletedResponse
                     {
                         Index = idx,
-                        Content = tmc
+                        Content = tool
                     }, cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
-                    throw new InvalidOperationException($"Error processing tool content for {tmc.Name} at index {idx}.", ex);
+                    throw new InvalidOperationException($"Error processing tool content for {tool.Name} at index {idx}.", ex);
                 }
                 finally
                 {
@@ -486,19 +490,5 @@ public class MessageService : IMessageService
         {
             yield return res;
         }
-    }
-
-    private static bool ShouldContinue(MessageDoneReason? endReason, Message? message, CancellationToken token)
-    {
-        token.ThrowIfCancellationRequested();
-
-        if (endReason == MessageDoneReason.EndTurn)
-            return false;
-        if (endReason == MessageDoneReason.StopSequence)
-            return false;
-        if (message != null && message.Content.OfType<ToolMessageContent>().Any(t => !t.IsApproved))
-            return false;
-
-        return true;
     }
 }

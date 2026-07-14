@@ -24,4 +24,9 @@ public class MessageResponse
     public TimeSpan? Duration { get; set; }
 
     public DateTime? Timestamp { get; set; }
+
+    /// <summary>
+    /// 파이프라인(MessageContext)이 처리 과정에서 누적한 공유 데이터입니다.
+    /// </summary>
+    public MessageContextItems Items { get; set; } = new();
 }

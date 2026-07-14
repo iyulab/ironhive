@@ -63,7 +63,12 @@ public class MessageRequest
     public SuggestionOptions? Suggestions { get; set; }
 
     /// <summary>
-    /// 툴 사용에서 무한 루프에 빠질 수 있는 상황을 방지하기 위한 최대 반복 횟수입니다. 기본값은 50입니다.
+    /// 툴 사용에서 무한 루프에 빠질 수 있는 상황을 방지하기 위한 최대 턴 수입니다. 기본값은 50입니다.
     /// </summary>
-    public int MaxLoopCount { get; set; } = 50;
+    public int MaxTurns { get; set; } = 50;
+
+    /// <summary>
+    /// 파이프라인(MessageContext)에 초기값으로 전달되는 공유 데이터입니다.
+    /// </summary>
+    public MessageContextItems Items { get; set; } = new();
 }

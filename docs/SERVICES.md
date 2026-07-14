@@ -74,39 +74,49 @@ var request = new MessageRequest
 
 ### 메시지 생성 미들웨어 (IMessageMiddleware)
 
-`generator` 호출(각 루프 반복의 실제 LLM 호출) 전후를 감싸는 next-체인 미들웨어입니다. compaction, 재시도, 에러 핸들링처럼 "루프를 도는 동안 매 라운드 개입해야 하는" 관심사에 씁니다.
+`generator` 호출(각 턴의 실제 LLM 호출) 전후를 감싸는 next-체인 미들웨어입니다. compaction, 재시도, 에러 핸들링처럼 "루프를 도는 동안 매 턴 개입해야 하는" 관심사에 씁니다.
 
 ```csharp
 public interface IMessageMiddleware
 {
     Task<MessageResponse> GenerateAsync(
-        MessageGenerationRequest request,
-        Func<MessageGenerationRequest, Task<MessageResponse>> next,
+        MessageContext context,
+        Func<MessageContext, Task<MessageResponse>> next,
         CancellationToken cancellationToken = default);
 
     IAsyncEnumerable<StreamingMessageResponse> GenerateStreamingAsync(
-        MessageGenerationRequest request,
-        Func<MessageGenerationRequest, IAsyncEnumerable<StreamingMessageResponse>> next,
+        MessageContext context,
+        Func<MessageContext, IAsyncEnumerable<StreamingMessageResponse>> next,
         CancellationToken cancellationToken = default);
 }
 ```
 
 둘 다 기본 구현(pass-through)이 있어 원하는 쪽만 override하면 됩니다. `HiveServiceBuilder.AddMessageMiddleware()`로 전역 등록하며, 등록 순서대로 바깥쪽부터 감쌉니다.
 
+`MessageContext`는 `MessageService`의 한 호출(모든 턴) 동안 유지되는 실행 컨텍스트입니다.
+
+| 멤버 | 설명 |
+|------|------|
+| `Request` | 이번 턴에 generator로 나가는 요청(`MessageGenerationRequest`). 턴을 거치며 `Messages`가 누적됩니다. |
+| `CurrentTurn` / `MaxTurn` | 현재 턴 번호(0부터)와 이번 호출의 최대 턴 수. |
+| `CurrentMessage` | 턴을 거치며 계속 채워지는 assistant 메시지. 아직 아무 컨텐츠도 안 나왔다면 null. |
+| `TrackedId` / `TurnReason` / `TokenUsage` | 가장 최근 턴의 응답 ID(prefix 없음) / 종료 사유 / 토큰 사용량. |
+| `Items` | 파이프라인 단계 간 공유 데이터. `MessageRequest.Items`로 시작해 `MessageResponse.Items`(스트리밍은 `StreamingMessageDoneResponse.Items`)로 흘러나갑니다. |
+
 ```csharp
 public class CompactingMiddleware : IMessageMiddleware
 {
     public async Task<MessageResponse> GenerateAsync(
-        MessageGenerationRequest request,
-        Func<MessageGenerationRequest, Task<MessageResponse>> next,
+        MessageContext context,
+        Func<MessageContext, Task<MessageResponse>> next,
         CancellationToken cancellationToken = default)
     {
-        if (request.Messages.Count > 50)
+        if (context.Request.Messages.Count > 50)
         {
-            // request.Messages를 요약본으로 교체하는 등 next() 호출 전에 손볼 수 있습니다.
+            // context.Request.Messages를 요약본으로 교체하는 등 next() 호출 전에 손볼 수 있습니다.
         }
 
-        return await next(request);
+        return await next(context);
     }
 }
 

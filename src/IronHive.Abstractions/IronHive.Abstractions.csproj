@@ -8,4 +8,9 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="IronHive.Core" />
+    <InternalsVisibleTo Include="IronHive.Tests" />
+  </ItemGroup>
+
 </Project>
