@@ -4,6 +4,69 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.13.0 — 2026-07-14
+
+`MessageService`'s ad-hoc turn state (four scattered locals threaded through a
+do-while loop) became the blocker for giving `IMessageMiddleware` real turn
+visibility, so it's now a proper `MessageContext`. Alongside: a naming
+collision fix on structured-output config, and rate-limit errors join
+context-overflow in the normalized exception taxonomy.
+
+### Added
+
+- **`RateLimitException`** (`IronHive.Abstractions.Exceptions`) — HTTP 429 /
+  rate-limit errors from OpenAI, Anthropic, Google AI, and OpenAI-compatible
+  backends (vLLM/GPUStack/llama.cpp) now normalize to this type instead of
+  leaking as raw provider exceptions, mirroring `ContextOverflowException`'s
+  per-provider mapping. Carries an optional `RetryAfter` when the provider
+  exposes one (`retry-after` header, Gemini `RetryInfo.retryDelay`).
+  `IronHive.Providers.OpenAI.Compatible`'s `ContextOverflowDetector` is
+  renamed `ChatCompletionExceptionDetector` and split into a response-driven
+  `DetectAsync` and a message-only `Detect`, since rate-limit detection needs
+  the HTTP status code, not just the error body.
+- **`MessageContext`** (`IronHive.Abstractions.Messages`) — the per-call state
+  `MessageService`'s turn loop and `IMessageMiddleware` chain now share:
+  `Request`, `MaxTurns`, `CurrentTurn`, `TrackedId`, `TurnReason`,
+  `TokenUsage`, `CurrentMessage`, `Elapsed`, and `Items`. Construction and turn
+  bookkeeping (`BeginTurn`/turn-state setters) stay internal to `MessageService`
+  so middleware can read turn state but can't forge it to bypass loop control.
+- **`MessageContextItems`** (`IronHive.Abstractions.Messages`) — a
+  `Dictionary<string, object?>`-backed data bag flowing
+  `MessageRequest.Items` → `MessageContext.Items` →
+  `MessageResponse.Items`/`StreamingMessageDoneResponse.Items`, for middleware
+  to pass data across turns or back out to the caller.
+
+### Changed
+
+- **`IMessageMiddleware.GenerateAsync`/`GenerateStreamingAsync` now take
+  `MessageContext` instead of `MessageGenerationRequest`.** Existing
+  middleware needs no request-shape changes (`context.Request` is the same
+  `MessageGenerationRequest` as before) but gains access to turn state
+  (`CurrentTurn`, `TokenUsage`, etc.) without a `MessageRequest` reference.
+- **`MessageRequest.MaxLoopCount` renamed to `MaxTurns`.**
+- **`OutputOptions` renamed to `OutputFormat`**, collapsing its mutually
+  exclusive `Type`/`Schema(string)` fields into a single `JsonNode Schema`
+  computed once via `For<T>()`/`For(string)`/`For(JsonNode)`/`For(JsonElement)`.
+  `OutputOptions` collided in name/meaning with
+  `ToolOutput`/`ToolMessageContent.Output` elsewhere in the codebase. This
+  removes duplicated Type-vs-Schema branching from all four provider
+  generators; Anthropic no longer delegates to the Anthropic SDK's
+  reflection-based `StructuredOutput.CreateJsonFormat<T>()` and instead
+  applies `AnthropicHelper.ToAnthropicCompatibleSchema`'s compatibility
+  transform (`additionalProperties: false`, nullable-union flattening)
+  directly to the shared `JsonNode` schema.
+- **`MessageResponse.Model`** no longer gets `{provider}/{model}` formatting —
+  it's now just `request.Model` as supplied by the caller.
+- **Tool execution split** in `MessageService` into `ExecuteToolAsync` (shared
+  per-tool logic), `ExecuteToolsAsync` (non-streaming), and
+  `ExecuteStreamingToolsAsync` (streaming, progress events) — was one method
+  handling both paths.
+
+### Removed
+
+- **`LimitedCounter`** (`IronHive.Core.Utilities`) — unused after the turn
+  loop moved to `MessageContext.CurrentTurn`/`MaxTurns`.
+
 ## 0.12.0 — 2026-07-13
 
 Follow-up to 0.11.0's `IMessageMiddleware`: a real consumer (vault-ai's
