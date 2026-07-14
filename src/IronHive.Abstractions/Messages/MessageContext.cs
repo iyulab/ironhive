@@ -70,7 +70,7 @@ public class MessageContext
             Messages = new List<Message>(request.Messages),
             System = request.System,
             Tools = request.Tools,
-            Output = request.Output,
+            OutputFormat = request.OutputFormat,
             MaxTokens = request.MaxTokens,
         };
         configure?.Invoke(Request);

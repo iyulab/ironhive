@@ -1,10 +1,7 @@
-using System.Collections.Concurrent;
-using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Runtime.CompilerServices;
 using Anthropic;
-using Anthropic.Helpers;
 using Anthropic.Models.Messages;
 using IronHiveMessage = IronHive.Abstractions.Messages.Message;
 using IronHiveMessageRole = IronHive.Abstractions.Messages.MessageRole;
@@ -464,13 +461,10 @@ public class AnthropicMessageGenerator : IMessageGenerator
 
         // 출력 구성 지원
         OutputConfig? outputConfig = null;
-        if (request.Output?.Type is { } outputType)
+        if (request.OutputFormat is { } outputFormat)
         {
-            outputConfig = new OutputConfig { Format = AnthropicHelper.CreateJsonFormat(outputType) };
-        }
-        else if (request.Output?.Schema is { } outputSchema)
-        {
-            var schemaDict = JsonSerializer.Deserialize<IReadOnlyDictionary<string, JsonElement>>(outputSchema)!;
+            var schemaDict = AnthropicHelper.ToAnthropicCompatibleSchema(outputFormat.Schema)
+                .Deserialize<IReadOnlyDictionary<string, JsonElement>>()!;
             outputConfig = new OutputConfig { Format = JsonOutputFormat.FromRawUnchecked(schemaDict) };
         }
 
@@ -533,12 +527,78 @@ public static class AnthropicHelper
         "claude-opus-4-5-20251101",
     ];
 
-    private static readonly MethodInfo _createJsonFormatMethod =
-        typeof(StructuredOutput).GetMethod(nameof(StructuredOutput.CreateJsonFormat))!;
+    /// <summary>
+    /// Anthropic 구조화 출력이 지원하지 않는 스키마 구성을 Anthropic 호환 형태로 변환합니다.
+    /// Anthropic은 nullable 유니온 타입(`type: [X, "null"]`)을 지원하지 않아 단일 타입으로 평탄화하고,
+    /// 모든 object 스키마에 `additionalProperties: false`를 강제합니다. 원본은 변경하지 않습니다.
+    /// </summary>
+    public static JsonNode ToAnthropicCompatibleSchema(JsonNode schema)
+    {
+        var clone = schema.DeepClone();
+        FlattenNullableAndRestrictProperties(clone);
+        return clone;
+    }
 
-    private static readonly ConcurrentDictionary<System.Type, JsonOutputFormat> _jsonFormatCache = new();
+    // ToAnthropicCompatibleSchema가 최초 1회 호출하고, 아래에서 각 object/array 자식으로
+    // 재귀 호출됩니다(중첩 object의 properties, array의 items 등). 이 재귀 특성 때문에
+    // 하나의 지역 함수로 접었을 때 진입점(1회성 clone)과 순회 로직(재귀)이 뒤섞여 읽기 어려워
+    // 별도 private 메서드로 분리했습니다.
+    private static void FlattenNullableAndRestrictProperties(JsonNode? node)
+    {
+        switch (node)
+        {
+            case JsonObject obj:
+                if (obj["properties"] is JsonObject properties)
+                {
+                    var required = new HashSet<string>();
+                    if (obj["required"] is JsonArray requiredArray)
+                    {
+                        foreach (var item in requiredArray)
+                        {
+                            if (item?.GetValue<string>() is { } name)
+                                required.Add(name);
+                        }
+                    }
 
-    public static JsonOutputFormat CreateJsonFormat(System.Type type)
-        => _jsonFormatCache.GetOrAdd(type, static t =>
-            (JsonOutputFormat)_createJsonFormatMethod.MakeGenericMethod(t).Invoke(null, null)!);
+                    var newRequired = new JsonArray();
+                    foreach (var (key, value) in properties.ToList())
+                    {
+                        var isNullable = false;
+                        if (value is JsonObject propertySchema && propertySchema["type"] is JsonArray typeArray)
+                        {
+                            string? keepType = null;
+                            foreach (var typeEntry in typeArray)
+                            {
+                                var typeName = typeEntry?.GetValue<string>();
+                                if (typeName == "null")
+                                    isNullable = true;
+                                else if (typeName != null && keepType is null)
+                                    keepType = typeName;
+                            }
+                            if (keepType != null)
+                                propertySchema["type"] = keepType;
+                        }
+
+                        if (!isNullable || required.Contains(key))
+                            newRequired.Add(JsonValue.Create(key));
+                    }
+
+                    if (newRequired.Count > 0)
+                        obj["required"] = newRequired;
+                    else
+                        obj.Remove("required");
+
+                    obj["additionalProperties"] = false;
+                }
+
+                foreach (var (_, value) in obj.ToList())
+                    FlattenNullableAndRestrictProperties(value);
+                break;
+
+            case JsonArray arr:
+                foreach (var item in arr.ToList())
+                    FlattenNullableAndRestrictProperties(item);
+                break;
+        }
+    }
 }

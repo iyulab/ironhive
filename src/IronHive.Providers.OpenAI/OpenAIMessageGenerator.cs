@@ -4,7 +4,6 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using IronHive.Abstractions.Extensions;
-using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using OpenAI.Responses;
@@ -347,23 +346,13 @@ public class OpenAIMessageGenerator : IMessageGenerator
             };
         }
 
-        if (request.Output?.Type is { } outputType)
-        {
-            options.TextOptions = new ResponseTextOptions
-            {
-                TextFormat = ResponseTextFormat.CreateJsonSchemaFormat(
-                    outputType.Name,
-                    BinaryData.FromObjectAsJson(JsonSchemaFactory.Build(outputType)),
-                    jsonSchemaIsStrict: false)
-            };
-        }
-        else if (request.Output?.Schema is { } outputSchema)
+        if (request.OutputFormat is { } outputFormat)
         {
             options.TextOptions = new ResponseTextOptions
             {
                 TextFormat = ResponseTextFormat.CreateJsonSchemaFormat(
                     "output",
-                    BinaryData.FromString(outputSchema),
+                    BinaryData.FromObjectAsJson(outputFormat.Schema),
                     jsonSchemaIsStrict: false)
             };
         }

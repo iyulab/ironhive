@@ -1,7 +1,6 @@
 using Google.GenAI;
 using Google.GenAI.Types;
 using IronHive.Abstractions.Extensions;
-using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using System.Runtime.CompilerServices;
@@ -566,13 +565,8 @@ public class GoogleAIMessageGenerator : IMessageGenerator
             CandidateCount = 1,
             MaxOutputTokens = request.MaxTokens,
             ThinkingConfig = thinkingConfig,
-            ResponseMimeType = request.Output != null ? "application/json" : null,
-            ResponseJsonSchema = request.Output switch
-            {
-                { Type: { } t } => JsonSchemaFactory.Build(t),
-                { Schema: { } s } => JsonNode.Parse(s),
-                _ => null
-            },
+            ResponseMimeType = request.OutputFormat != null ? "application/json" : null,
+            ResponseJsonSchema = request.OutputFormat?.Schema,
         };
 
         return (contents, config);

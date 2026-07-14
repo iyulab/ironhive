@@ -243,7 +243,7 @@ public class MessageService : IMessageService
             Messages = request.Messages,
             System = request.System,
             Tools = request.Tools,
-            Output = request.Output,
+            OutputFormat = request.OutputFormat,
             MaxTokens = request.MaxTokens,
         };
         return generator.CountTokensAsync(req, cancellationToken);

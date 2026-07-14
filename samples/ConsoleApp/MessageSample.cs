@@ -51,7 +51,7 @@ public static class MessageSample
                 ..FunctionToolFactory.CreateFrom<Calculator>()
             ]),
             Suggestions = new SuggestionOptions(),
-            // Output = OutputOptions.For<OutputFormat>()
+            // OutputFormat = OutputFormat.For<AnswerShape>()
         };
 
         var hive = new HiveServiceBuilder()
@@ -107,7 +107,7 @@ public static class MessageSample
     }
 }
 
-public class OutputFormat
+public class AnswerShape
 {
     public string CalculateResult { get; set; } = string.Empty;
     public string PoemContent { get; set; } = string.Empty;

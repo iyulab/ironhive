@@ -55,7 +55,7 @@ public class MessageRequest
     /// <summary>
     /// 구조화 출력 설정입니다. null이면 기본 텍스트 출력입니다.
     /// </summary>
-    public OutputOptions? Output { get; set; }
+    public OutputFormat? OutputFormat { get; set; }
 
     /// <summary>
     /// 제안 기능 옵션입니다. null이면 비활성화됩니다.

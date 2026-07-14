@@ -1,6 +1,5 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json.Nodes;
-using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHiveMessage = IronHive.Abstractions.Messages.Message;
@@ -329,31 +328,18 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
 
     private static ChatResponseFormat? BuildResponseFormat(MessageGenerationRequest request)
     {
-        if (request.Output?.Type is { } outputType)
+        if (request.OutputFormat is not { } outputFormat)
+            return null;
+
+        return new ChatResponseFormat
         {
-            return new ChatResponseFormat
+            JsonSchema = new ChatResponseFormat.JsonSchemaFormat
             {
-                JsonSchema = new ChatResponseFormat.JsonSchemaFormat
-                {
-                    Name = outputType.Name,
-                    Schema = JsonSchemaFactory.Build(outputType),
-                    Strict = false,
-                }
-            };
-        }
-        if (request.Output?.Schema is { } outputSchema)
-        {
-            return new ChatResponseFormat
-            {
-                JsonSchema = new ChatResponseFormat.JsonSchemaFormat
-                {
-                    Name = "output",
-                    Schema = JsonNode.Parse(outputSchema),
-                    Strict = false,
-                }
-            };
-        }
-        return null;
+                Name = "output",
+                Schema = outputFormat.Schema,
+                Strict = false,
+            }
+        };
     }
 
     internal static List<ChatMessage> BuildMessages(MessageGenerationRequest request)
