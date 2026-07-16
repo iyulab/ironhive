@@ -209,7 +209,7 @@ public class McpSession : IAsyncDisposable
             {
                 ServerName = ServerName
             };
-        });
+        }).ToList();
     }
 
     /// <summary>
