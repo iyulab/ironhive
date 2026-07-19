@@ -6,6 +6,11 @@
     <PackageVersion Include="Anthropic" Version="12.35.1" />
     <PackageVersion Include="Google.GenAI" Version="1.13.0" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.9" />
+    <!-- Explicit lift: Microsoft.Data.Sqlite 10.0.9 pulls SQLitePCLRaw 2.1.11
+         (NU1903 high, GHSA-2m69-gcr7-jv3q); upstream 2.1.12 stable landed 2026-07-09.
+         Direct reference in IronHive.Core so the >= 2.1.12 floor propagates to package consumers.
+         Remove once Microsoft.Data.Sqlite's transitive floor reaches 2.1.12. -->
+    <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
     <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.7.0" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />

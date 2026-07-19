@@ -8,15 +8,10 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <NoWarn>$(NoWarn);OPENAI001;OPENAI002</NoWarn>
-    <Version>0.13.0</Version>
+    <Version>0.13.1</Version>
     <!-- 기본적으로 NuGet 패키지 생성 비활성화 -->
     <IsPackable>false</IsPackable>
   </PropertyGroup>
-
-  <!-- SQLitePCLRaw 2.1.11 has no patched release yet; suppress until upstream ships a fix -->
-  <ItemGroup>
-    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-2m69-gcr7-jv3q" />
-  </ItemGroup>
 
   <!-- 라이브러리 프로젝트 공통 설정 -->
   <PropertyGroup Condition="$(MSBuildProjectName.StartsWith('IronHive.'))">

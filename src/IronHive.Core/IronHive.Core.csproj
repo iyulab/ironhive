@@ -19,6 +19,8 @@
     <PackageReference Include="OpenTelemetry.Api" />
     <PackageReference Include="PdfPig" />
     <PackageReference Include="Scriban" />
+    <!-- Lifts the vulnerable SQLitePCLRaw 2.1.11 that Microsoft.Data.Sqlite drags in (GHSA-2m69-gcr7-jv3q). -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" />
     <PackageReference Include="Tomlyn" />
     <PackageReference Include="YamlDotNet" />
   </ItemGroup>
