@@ -39,4 +39,10 @@ jobs:
         run: dotnet build IronHive.slnx --no-restore -c Release
 
       - name: Test
-        run: dotnet test tests/IronHive.Tests --no-build -c Release --verbosity normal
+        # Ecosystem CI convention: exclude externally-dependent test categories (the previous
+        # unfiltered run included Integration tests — see the 2026-07-20 timeout-cancel,
+        # run 29693293883). --blame-hang turns a silent 20-minute timeout-cancel into a 5-minute
+        # dump naming the hung test, so the next occurrence is diagnosable from the run log alone.
+        # NOTE: the filter is convention alignment, not a verdict on the hang's root cause —
+        # that stays under investigation (umbrella issue 20260720-ci-test-hang-unfiltered-run).
+        run: dotnet test tests/IronHive.Tests --no-build -c Release --verbosity normal --filter "Category!=Integration&Category!=RequiresApiKey&Category!=Performance" --blame-hang --blame-hang-timeout 5m
