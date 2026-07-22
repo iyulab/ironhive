@@ -49,7 +49,7 @@ public class CachingMiddleware : IAgentMiddleware
         CancellationToken cancellationToken = default)
     {
         var messageList = messages.ToList();
-        var cacheKey = ComputeCacheKey(agent, messageList);
+        var cacheKey = ComputeCacheKey(agent, messageList, options);
 
         // 캐시 히트 확인
         if (_cache.TryGetValue(cacheKey, out var entry))
@@ -86,7 +86,7 @@ public class CachingMiddleware : IAgentMiddleware
         return response;
     }
 
-    private string ComputeCacheKey(IAgent agent, IReadOnlyList<Message> messages)
+    private string ComputeCacheKey(IAgent agent, IReadOnlyList<Message> messages, AgentInvokeOptions? options)
     {
         var keyBuilder = new StringBuilder();
 
@@ -97,6 +97,12 @@ public class CachingMiddleware : IAgentMiddleware
         if (_options.IncludeInstructionsInKey && !string.IsNullOrEmpty(agent.Instructions))
         {
             keyBuilder.Append(CultureInfo.InvariantCulture, $"instructions:{agent.Instructions}:");
+        }
+
+        // per-request 옵션 — 같은 입력이라도 옵션이 다르면 응답이 달라지므로 키에 포함
+        if (options is not null)
+        {
+            keyBuilder.Append(CultureInfo.InvariantCulture, $"options:{JsonSerializer.Serialize(options)}:");
         }
 
         // 메시지 내용

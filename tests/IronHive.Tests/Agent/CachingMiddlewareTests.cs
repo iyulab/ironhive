@@ -120,6 +120,66 @@ public class CachingMiddlewareTests
     }
 
     [Fact]
+    public async Task InvokeAsync_Should_Not_CacheHit_When_Options_Differ()
+    {
+        var middleware = new CachingMiddleware();
+        var agent = CreateMockAgent();
+        var messages = CreateUserMessages("same input");
+        var callCount = 0;
+
+        Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next = (_, _) =>
+        {
+            callCount++;
+            return Task.FromResult(CreateResponse());
+        };
+
+        await middleware.InvokeAsync(agent, messages, new AgentInvokeOptions { MaxTurns = 1 }, next);
+        await middleware.InvokeAsync(agent, messages, new AgentInvokeOptions { MaxTurns = 2 }, next);
+
+        callCount.Should().Be(2, "same messages with different options must not share a cache entry");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_Should_CacheHit_When_Options_Equal()
+    {
+        var middleware = new CachingMiddleware();
+        var agent = CreateMockAgent();
+        var messages = CreateUserMessages("same input");
+        var callCount = 0;
+
+        Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next = (_, _) =>
+        {
+            callCount++;
+            return Task.FromResult(CreateResponse());
+        };
+
+        await middleware.InvokeAsync(agent, messages, new AgentInvokeOptions { MaxTurns = 3 }, next);
+        await middleware.InvokeAsync(agent, messages, new AgentInvokeOptions { MaxTurns = 3 }, next);
+
+        callCount.Should().Be(1, "identical messages and options should hit the cache");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_Should_Not_CacheHit_Between_Null_And_NonNull_Options()
+    {
+        var middleware = new CachingMiddleware();
+        var agent = CreateMockAgent();
+        var messages = CreateUserMessages("same input");
+        var callCount = 0;
+
+        Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next = (_, _) =>
+        {
+            callCount++;
+            return Task.FromResult(CreateResponse());
+        };
+
+        await middleware.InvokeAsync(agent, messages, null, next);
+        await middleware.InvokeAsync(agent, messages, new AgentInvokeOptions { MaxTokens = 100 }, next);
+
+        callCount.Should().Be(2, "null options and non-null options must not share a cache entry");
+    }
+
+    [Fact]
     public async Task InvokeAsync_DifferentInput_CallsNextAgain()
     {
         var middleware = new CachingMiddleware();
