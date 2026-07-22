@@ -180,6 +180,55 @@ public class CachingMiddlewareTests
     }
 
     [Fact]
+    public async Task InvokeAsync_Options_With_Delegates_And_Items_Should_Not_Throw()
+    {
+        // ToolOptions 콜백(델리게이트)·Items(임의 객체)는 JSON 직렬화 불가 —
+        // 캐시 키 계산이 이를 만나도 throw해서는 안 된다
+        var middleware = new CachingMiddleware();
+        var agent = CreateMockAgent();
+        var messages = CreateUserMessages("hello");
+
+        var options = new AgentInvokeOptions
+        {
+            ToolOptions = new ToolOptions
+            {
+                MaxParallel = 2,
+                OnBeforeInvoke = (_, _) => Task.CompletedTask,
+                OnAfterInvoke = (_, _) => Task.CompletedTask,
+            },
+            OutputFormat = OutputFormat.For("""{"type":"object"}"""),
+            Items = new MessageContextItems { ["opaque"] = new object() },
+        };
+
+        var act = () => middleware.InvokeAsync(agent, messages, options, (_, _) => Task.FromResult(CreateResponse()));
+
+        await act.Should().NotThrowAsync();
+        middleware.CacheCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_Should_Not_CacheHit_When_OutputFormat_Differs()
+    {
+        var middleware = new CachingMiddleware();
+        var agent = CreateMockAgent();
+        var messages = CreateUserMessages("same input");
+        var callCount = 0;
+
+        Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next = (_, _) =>
+        {
+            callCount++;
+            return Task.FromResult(CreateResponse());
+        };
+
+        await middleware.InvokeAsync(agent, messages,
+            new AgentInvokeOptions { OutputFormat = OutputFormat.For("""{"type":"object"}""") }, next);
+        await middleware.InvokeAsync(agent, messages,
+            new AgentInvokeOptions { OutputFormat = OutputFormat.For("""{"type":"array"}""") }, next);
+
+        callCount.Should().Be(2, "different output formats must not share a cache entry");
+    }
+
+    [Fact]
     public async Task InvokeAsync_DifferentInput_CallsNextAgain()
     {
         var middleware = new CachingMiddleware();

@@ -99,10 +99,38 @@ public class CachingMiddleware : IAgentMiddleware
             keyBuilder.Append(CultureInfo.InvariantCulture, $"instructions:{agent.Instructions}:");
         }
 
-        // per-request 옵션 — 같은 입력이라도 옵션이 다르면 응답이 달라지므로 키에 포함
+        // per-request 옵션 — 같은 입력이라도 옵션이 다르면 응답이 달라지므로 키에 포함.
+        // blanket JSON 직렬화는 델리게이트(ToolOptions 콜백)에서 throw하므로 명시 필드만 반영한다.
+        // 델리게이트·Items의 값은 키에 표현 불가 — 기존 키가 메시지의 텍스트 콘텐츠만 반영하는 것과
+        // 같은 근사 키 정책 (Items는 키 목록까지만 구분).
         if (options is not null)
         {
-            keyBuilder.Append(CultureInfo.InvariantCulture, $"options:{JsonSerializer.Serialize(options)}:");
+            keyBuilder.Append(CultureInfo.InvariantCulture,
+                $"options:{options.PreviousId}:{options.ThinkingEffort}:{options.MaxTokens}:{options.MaxTurns}:");
+
+            if (options.ToolOptions is { } toolOptions)
+            {
+                keyBuilder.Append(CultureInfo.InvariantCulture,
+                    $"tools:{toolOptions.MaxParallel}:{toolOptions.Timeout}:");
+            }
+
+            if (options.OutputFormat is { } outputFormat)
+            {
+                keyBuilder.Append(CultureInfo.InvariantCulture,
+                    $"format:{outputFormat.Schema.ToJsonString()}:");
+            }
+
+            if (options.Suggestions is { } suggestions)
+            {
+                keyBuilder.Append(CultureInfo.InvariantCulture,
+                    $"suggestions:{suggestions.Mode}:{suggestions.MaxCount}:{suggestions.MinItems}:{suggestions.MaxItems}:");
+            }
+
+            if (options.Items is { Count: > 0 } items)
+            {
+                keyBuilder.Append(CultureInfo.InvariantCulture,
+                    $"items:{string.Join(",", items.Keys.Order(StringComparer.Ordinal))}:");
+            }
         }
 
         // 메시지 내용
