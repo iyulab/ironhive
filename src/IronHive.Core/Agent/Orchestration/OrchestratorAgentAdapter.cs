@@ -10,6 +10,10 @@ namespace IronHive.Core.Agent.Orchestration;
 /// <summary>
 /// 오케스트레이터를 IAgent로 래핑하여 중첩 오케스트레이션을 가능하게 합니다.
 /// </summary>
+/// <remarks>
+/// per-request <see cref="AgentInvokeOptions"/>는 지원하지 않습니다 —
+/// 멤버 에이전트/오케스트레이터 옵션으로 구성하세요.
+/// </remarks>
 public class OrchestratorAgentAdapter : IAgent
 {
     private readonly IAgentOrchestrator _orchestrator;
@@ -38,6 +42,8 @@ public class OrchestratorAgentAdapter : IAgent
         AgentInvokeOptions? options = null,
         CancellationToken cancellationToken = default)
     {
+        ThrowIfOptionsProvided(options);
+
         var result = await _orchestrator.ExecuteAsync(messages, cancellationToken).ConfigureAwait(false);
 
         if (!result.IsSuccess)
@@ -68,9 +74,19 @@ public class OrchestratorAgentAdapter : IAgent
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingAsync(
+    public IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingAsync(
         IEnumerable<Message> messages,
         AgentInvokeOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        // iterator 밖에서 검사하여 열거 시작 전 즉시 throw (fail-loud)
+        ThrowIfOptionsProvided(options);
+
+        return InvokeStreamingCoreAsync(messages, cancellationToken);
+    }
+
+    private async IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingCoreAsync(
+        IEnumerable<Message> messages,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         await foreach (var evt in _orchestrator.ExecuteStreamingAsync(messages, cancellationToken).ConfigureAwait(false))
@@ -80,6 +96,16 @@ public class OrchestratorAgentAdapter : IAgent
             {
                 yield return evt.StreamingResponse;
             }
+        }
+    }
+
+    private static void ThrowIfOptionsProvided(AgentInvokeOptions? options)
+    {
+        if (options is not null)
+        {
+            throw new NotSupportedException(
+                "Orchestrator-wrapped agents do not support per-request AgentInvokeOptions. " +
+                "Configure member agents or orchestrator options instead.");
         }
     }
 

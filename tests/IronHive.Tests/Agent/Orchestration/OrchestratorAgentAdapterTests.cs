@@ -81,6 +81,38 @@ public class OrchestratorAgentAdapterTests
     }
 
     [Fact]
+    public async Task InvokeAsync_WithNonNullOptions_Should_Throw_NotSupported()
+    {
+        // Arrange
+        var agent = new MockAgent("a1") { ResponseFunc = _ => "ok" };
+        var orch = new SequentialOrchestrator();
+        orch.AddAgent(agent);
+        var adapter = orch.AsAgent();
+
+        // Act & Assert — silent no-op 방지: per-request 옵션은 명시적으로 미지원
+        var act = () => adapter.InvokeAsync(MakeUserMessages("go"), new AgentInvokeOptions());
+        await act.Should().ThrowAsync<NotSupportedException>()
+            .WithMessage("*per-request*");
+    }
+
+    [Fact]
+    public async Task InvokeStreamingAsync_WithNonNullOptions_Should_Throw_NotSupported()
+    {
+        // Arrange
+        var agent = new MockAgent("a1") { ResponseFunc = _ => "ok" };
+        var orch = new SequentialOrchestrator();
+        orch.AddAgent(agent);
+        var adapter = orch.AsAgent();
+
+        // Act & Assert
+        var act = async () =>
+        {
+            await foreach (var _ in adapter.InvokeStreamingAsync(MakeUserMessages("go"), new AgentInvokeOptions())) { }
+        };
+        await act.Should().ThrowAsync<NotSupportedException>();
+    }
+
+    [Fact]
     public async Task AsAgent_Streaming_ShouldForwardMessageDeltaEvents()
     {
         // Arrange
