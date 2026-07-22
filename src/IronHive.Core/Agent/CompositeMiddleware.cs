@@ -45,7 +45,8 @@ public class CompositeMiddleware : IAgentMiddleware, IStreamingAgentMiddleware
     public Task<MessageResponse> InvokeAsync(
         IAgent agent,
         IEnumerable<Message> messages,
-        Func<IEnumerable<Message>, Task<MessageResponse>> next,
+        AgentInvokeOptions? options,
+        Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next,
         CancellationToken cancellationToken = default)
     {
         // 미들웨어 체인 구성 (역순으로 감싸기)
@@ -55,16 +56,17 @@ public class CompositeMiddleware : IAgentMiddleware, IStreamingAgentMiddleware
         {
             var middleware = _middlewares[i];
             var currentPipeline = pipeline;
-            pipeline = msgs => middleware.InvokeAsync(agent, msgs, currentPipeline, cancellationToken);
+            pipeline = (msgs, opts) => middleware.InvokeAsync(agent, msgs, opts, currentPipeline, cancellationToken);
         }
 
-        return pipeline(messages);
+        return pipeline(messages, options);
     }
 
     public IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingAsync(
         IAgent agent,
         IEnumerable<Message> messages,
-        Func<IEnumerable<Message>, IAsyncEnumerable<StreamingMessageResponse>> next,
+        AgentInvokeOptions? options,
+        Func<IEnumerable<Message>, AgentInvokeOptions?, IAsyncEnumerable<StreamingMessageResponse>> next,
         CancellationToken cancellationToken = default)
     {
         // 스트리밍 지원 미들웨어만 필터링
@@ -75,7 +77,7 @@ public class CompositeMiddleware : IAgentMiddleware, IStreamingAgentMiddleware
         if (streamingMiddlewares.Count == 0)
         {
             // 스트리밍 미들웨어가 없으면 바로 next 호출
-            return next(messages);
+            return next(messages, options);
         }
 
         // 스트리밍 미들웨어 체인 구성
@@ -85,10 +87,10 @@ public class CompositeMiddleware : IAgentMiddleware, IStreamingAgentMiddleware
         {
             var middleware = streamingMiddlewares[i];
             var currentPipeline = pipeline;
-            pipeline = msgs => middleware.InvokeStreamingAsync(agent, msgs, currentPipeline, cancellationToken);
+            pipeline = (msgs, opts) => middleware.InvokeStreamingAsync(agent, msgs, opts, currentPipeline, cancellationToken);
         }
 
-        return pipeline(messages);
+        return pipeline(messages, options);
     }
 
     /// <summary>

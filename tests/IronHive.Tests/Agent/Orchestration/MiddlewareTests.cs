@@ -207,7 +207,7 @@ public class MiddlewareTests
         var agent = new MockAgent("test");
         var wrapped = agent.WithMiddleware(middleware);
 
-        var act = () => wrapped.InvokeAsync(MakeUserMessages("go"), cts.Token);
+        var act = () => wrapped.InvokeAsync(MakeUserMessages("go"), null, cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
@@ -542,11 +542,11 @@ public class MiddlewareTests
 
         public async Task<MessageResponse> InvokeAsync(
             IAgent agent, IEnumerable<Message> messages,
-            Func<IEnumerable<Message>, Task<MessageResponse>> next,
+            AgentInvokeOptions? options, Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next,
             CancellationToken ct = default)
         {
             _order.Add($"{_name}-before");
-            var result = await next(messages);
+            var result = await next(messages, options);
             _order.Add($"{_name}-after");
             return result;
         }
@@ -560,7 +560,7 @@ public class MiddlewareTests
 
         public Task<MessageResponse> InvokeAsync(
             IAgent agent, IEnumerable<Message> messages,
-            Func<IEnumerable<Message>, Task<MessageResponse>> next,
+            AgentInvokeOptions? options, Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next,
             CancellationToken ct = default)
         {
             var modified = messages.Select(m =>
@@ -577,7 +577,7 @@ public class MiddlewareTests
                 return m;
             });
 
-            return next(modified);
+            return next(modified, options);
         }
     }
 
@@ -589,7 +589,7 @@ public class MiddlewareTests
 
         public Task<MessageResponse> InvokeAsync(
             IAgent agent, IEnumerable<Message> messages,
-            Func<IEnumerable<Message>, Task<MessageResponse>> next,
+            AgentInvokeOptions? options, Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next,
             CancellationToken ct = default)
         {
             return Task.FromResult(new MessageResponse
@@ -616,7 +616,7 @@ public class MiddlewareTests
 
         public Task<MessageResponse> InvokeAsync(
             IAgent agent, IEnumerable<Message> messages,
-            Func<IEnumerable<Message>, Task<MessageResponse>> next,
+            AgentInvokeOptions? options, Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next,
             CancellationToken ct = default)
         {
             CallCount++;
@@ -625,7 +625,7 @@ public class MiddlewareTests
                 throw _exceptionFactory?.Invoke()
                     ?? new InvalidOperationException($"Simulated failure {CallCount}");
             }
-            return next(messages);
+            return next(messages, options);
         }
     }
 
@@ -637,11 +637,11 @@ public class MiddlewareTests
 
         public async Task<MessageResponse> InvokeAsync(
             IAgent agent, IEnumerable<Message> messages,
-            Func<IEnumerable<Message>, Task<MessageResponse>> next,
+            AgentInvokeOptions? options, Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next,
             CancellationToken ct = default)
         {
             await Task.Delay(_delay, ct);
-            return await next(messages);
+            return await next(messages, options);
         }
     }
 
@@ -672,7 +672,7 @@ public class MiddlewareTests
 
         public MockAgent(string name) { Name = name; }
 
-        public Task<MessageResponse> InvokeAsync(IEnumerable<Message> messages, CancellationToken ct = default)
+        public Task<MessageResponse> InvokeAsync(IEnumerable<Message> messages, AgentInvokeOptions? options = null, CancellationToken ct = default)
         {
             var text = ResponseFunc != null ? ResponseFunc(messages) : $"MockAgent '{Name}'";
             return Task.FromResult(new MessageResponse
@@ -687,7 +687,7 @@ public class MiddlewareTests
 
         public async IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingAsync(
             IEnumerable<Message> messages,
-            [EnumeratorCancellation] CancellationToken ct = default)
+            AgentInvokeOptions? options = null, [EnumeratorCancellation] CancellationToken ct = default)
         {
             await Task.Yield();
             yield return new StreamingMessageBeginResponse();
@@ -711,7 +711,7 @@ public class MiddlewareTests
         var response = await middleware.InvokeAsync(
             agent,
             MakeUserMessages("test"),
-            _ => Task.FromResult(new MessageResponse
+            null, (_, _) => Task.FromResult(new MessageResponse
             {
                 ResponseId = "1",
                 DoneReason = MessageDoneReason.EndTurn,
@@ -744,7 +744,7 @@ public class MiddlewareTests
                 await middleware.InvokeAsync(
                     agent,
                     MakeUserMessages("test"),
-                    _ => throw new InvalidOperationException($"fail-{++failCount}"));
+                    null, (_, _) => throw new InvalidOperationException($"fail-{++failCount}"));
             }
             catch (InvalidOperationException) { }
         }
@@ -759,7 +759,7 @@ public class MiddlewareTests
             await middleware.InvokeAsync(
                 agent,
                 MakeUserMessages("test"),
-                _ => Task.FromResult<MessageResponse>(null!)));
+                null, (_, _) => Task.FromResult<MessageResponse>(null!)));
     }
 
     [Fact]
@@ -781,7 +781,7 @@ public class MiddlewareTests
             await middleware.InvokeAsync(
                 agent,
                 MakeUserMessages("test"),
-                _ => throw new InvalidOperationException("fail"));
+                null, (_, _) => throw new InvalidOperationException("fail"));
         }
         catch (InvalidOperationException) { }
 
@@ -795,7 +795,7 @@ public class MiddlewareTests
         await middleware.InvokeAsync(
             agent,
             MakeUserMessages("test"),
-            _ => Task.FromResult(new MessageResponse
+            null, (_, _) => Task.FromResult(new MessageResponse
             {
                 ResponseId = "1",
                 DoneReason = MessageDoneReason.EndTurn,
@@ -818,7 +818,7 @@ public class MiddlewareTests
             await middleware.InvokeAsync(
                 agent,
                 MakeUserMessages("test"),
-                _ => throw new InvalidOperationException("fail"));
+                null, (_, _) => throw new InvalidOperationException("fail"));
         }
         catch { }
 
@@ -850,7 +850,7 @@ public class MiddlewareTests
             await middleware.InvokeAsync(
                 agent,
                 MakeUserMessages($"test-{i}"),
-                async _ =>
+                null, async (_, _) =>
                 {
                     var current = Interlocked.Increment(ref executing);
                     lock (middleware)
@@ -892,7 +892,7 @@ public class MiddlewareTests
         var task1 = middleware.InvokeAsync(
             agent,
             MakeUserMessages("test-1"),
-            async _ =>
+            null, async (_, _) =>
             {
                 await gate.Task;
                 return new MessageResponse
@@ -909,7 +909,7 @@ public class MiddlewareTests
         var task2 = middleware.InvokeAsync(
             agent,
             MakeUserMessages("test-2"),
-            async _ =>
+            null, async (_, _) =>
             {
                 await gate.Task;
                 return new MessageResponse
@@ -927,7 +927,7 @@ public class MiddlewareTests
             await middleware.InvokeAsync(
                 agent,
                 MakeUserMessages("test-3"),
-                _ => Task.FromResult<MessageResponse>(null!)));
+                null, (_, _) => Task.FromResult<MessageResponse>(null!)));
 
         Assert.True(rejected);
 
@@ -948,7 +948,7 @@ public class MiddlewareTests
         var task1 = middleware.InvokeAsync(
             agent,
             MakeUserMessages("test-1"),
-            async _ =>
+            null, async (_, _) =>
             {
                 await gate.Task;
                 return new MessageResponse
@@ -990,7 +990,7 @@ public class MiddlewareTests
         var response = await middleware.InvokeAsync(
             agent,
             MakeUserMessages("test"),
-            _ => throw new InvalidOperationException("primary failed"));
+            null, (_, _) => throw new InvalidOperationException("primary failed"));
 
         // Assert
         Assert.True(fallbackCalled);
@@ -1010,7 +1010,7 @@ public class MiddlewareTests
         var response = await middleware.InvokeAsync(
             agent,
             MakeUserMessages("test"),
-            _ => agent.InvokeAsync(MakeUserMessages("test")));
+            null, (_, _) => agent.InvokeAsync(MakeUserMessages("test")));
 
         // Assert
         Assert.False(fallbackCalled);
@@ -1034,13 +1034,13 @@ public class MiddlewareTests
             await middleware.InvokeAsync(
                 agent,
                 MakeUserMessages("test"),
-                _ => throw new InvalidOperationException("not a timeout")));
+                null, (_, _) => throw new InvalidOperationException("not a timeout")));
 
         // TimeoutException SHOULD trigger fallback
         var response = await middleware.InvokeAsync(
             agent,
             MakeUserMessages("test"),
-            _ => throw new TimeoutException("timed out"));
+            null, (_, _) => throw new TimeoutException("timed out"));
 
         Assert.Equal("fallback", GetText(response.Message!));
     }
@@ -1061,7 +1061,7 @@ public class MiddlewareTests
             await middleware.InvokeAsync(
                 agent,
                 MakeUserMessages("test"),
-                _ => throw new InvalidOperationException("primary failed")));
+                null, (_, _) => throw new InvalidOperationException("primary failed")));
 
         Assert.Contains("primary", ex.Message);
         Assert.Contains("fallback", ex.Message);
@@ -1089,7 +1089,7 @@ public class MiddlewareTests
         var response = await middleware.InvokeAsync(
             agent,
             MakeUserMessages("test"),
-            _ => throw new InvalidOperationException("fail"));
+            null, (_, _) => throw new InvalidOperationException("fail"));
 
         // Assert
         Assert.True(factoryCalled);
@@ -1115,7 +1115,7 @@ public class MiddlewareTests
         await composite.InvokeAsync(
             agent,
             MakeUserMessages("test"),
-            msgs => agent.InvokeAsync(msgs));
+            null, (msgs, _) => agent.InvokeAsync(msgs));
 
         // Assert
         order.Should().Equal("m1-before", "m2-before", "agent", "m2-after", "m1-after");

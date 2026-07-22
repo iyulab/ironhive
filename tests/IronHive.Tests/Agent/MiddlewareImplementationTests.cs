@@ -22,7 +22,7 @@ public class MiddlewareImplementationTests
         var result = await middleware.InvokeAsync(
             MakeAgent("a"),
             MakeMessages("input"),
-            _ => { callCount++; return Task.FromResult(MakeResponse("ok")); });
+            null, (_, _) => { callCount++; return Task.FromResult(MakeResponse("ok")); });
 
         callCount.Should().Be(1);
     }
@@ -41,7 +41,7 @@ public class MiddlewareImplementationTests
         var result = await middleware.InvokeAsync(
             MakeAgent("a"),
             MakeMessages("input"),
-            _ =>
+            null, (_, _) =>
             {
                 callCount++;
                 if (callCount < 3)
@@ -66,7 +66,7 @@ public class MiddlewareImplementationTests
         var act = () => middleware.InvokeAsync(
             MakeAgent("a"),
             MakeMessages("input"),
-            _ => { callCount++; throw new InvalidOperationException("fail"); });
+            null, (_, _) => { callCount++; throw new InvalidOperationException("fail"); });
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         callCount.Should().Be(3); // 1 initial + 2 retries
@@ -85,7 +85,7 @@ public class MiddlewareImplementationTests
         var act = () => middleware.InvokeAsync(
             MakeAgent("a"),
             MakeMessages("input"),
-            _ => { callCount++; throw new InvalidOperationException("fail"); });
+            null, (_, _) => { callCount++; throw new InvalidOperationException("fail"); });
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         callCount.Should().Be(1); // no retry
@@ -107,7 +107,7 @@ public class MiddlewareImplementationTests
         await middleware.InvokeAsync(
             MakeAgent("a"),
             MakeMessages("input"),
-            _ =>
+            null, (_, _) =>
             {
                 callCount++;
                 if (callCount <= 2)
@@ -129,7 +129,7 @@ public class MiddlewareImplementationTests
         var act = () => middleware.InvokeAsync(
             MakeAgent("a"),
             MakeMessages("input"),
-            _ => Task.FromResult(MakeResponse("ok")),
+            null, (_, _) => Task.FromResult(MakeResponse("ok")),
             cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
@@ -147,7 +147,7 @@ public class MiddlewareImplementationTests
         await cb.InvokeAsync(
             MakeAgent("a"),
             MakeMessages("input"),
-            _ => Task.FromResult(MakeResponse("ok")));
+            null, (_, _) => Task.FromResult(MakeResponse("ok")));
 
         cb.State.Should().Be(CircuitState.Closed);
     }
@@ -165,7 +165,7 @@ public class MiddlewareImplementationTests
                 await cb.InvokeAsync(
                     MakeAgent("a"),
                     MakeMessages("input"),
-                    _ => throw new InvalidOperationException("fail"));
+                    null, (_, _) => throw new InvalidOperationException("fail"));
             }
             catch (InvalidOperationException) { }
         }
@@ -185,7 +185,7 @@ public class MiddlewareImplementationTests
                 await cb.InvokeAsync(
                     MakeAgent("a"),
                     MakeMessages("input"),
-                    _ => throw new InvalidOperationException("fail"));
+                    null, (_, _) => throw new InvalidOperationException("fail"));
             }
             catch (InvalidOperationException) { }
         }
@@ -206,7 +206,7 @@ public class MiddlewareImplementationTests
                 await cb.InvokeAsync(
                     MakeAgent("a"),
                     MakeMessages("input"),
-                    _ => throw new InvalidOperationException("fail"));
+                    null, (_, _) => throw new InvalidOperationException("fail"));
             }
             catch (InvalidOperationException) { }
         }
@@ -215,7 +215,7 @@ public class MiddlewareImplementationTests
         var act = () => cb.InvokeAsync(
             MakeAgent("a"),
             MakeMessages("input"),
-            _ => Task.FromResult(MakeResponse("ok")));
+            null, (_, _) => Task.FromResult(MakeResponse("ok")));
 
         await act.Should().ThrowAsync<CircuitBreakerOpenException>();
     }
@@ -231,7 +231,7 @@ public class MiddlewareImplementationTests
             await cb.InvokeAsync(
                 MakeAgent("a"),
                 MakeMessages("input"),
-                _ => throw new InvalidOperationException("fail"));
+                null, (_, _) => throw new InvalidOperationException("fail"));
         }
         catch (InvalidOperationException) { }
 
@@ -257,7 +257,7 @@ public class MiddlewareImplementationTests
             await cb.InvokeAsync(
                 MakeAgent("a"),
                 MakeMessages("input"),
-                _ => throw new InvalidOperationException("fail"));
+                null, (_, _) => throw new InvalidOperationException("fail"));
         }
         catch (InvalidOperationException) { }
 
@@ -276,7 +276,7 @@ public class MiddlewareImplementationTests
         var result = await middleware.InvokeAsync(
             MakeAgent("a"),
             MakeMessages("input"),
-            _ => Task.FromResult(MakeResponse("ok")));
+            null, (_, _) => Task.FromResult(MakeResponse("ok")));
 
         GetText(result).Should().Be("ok");
     }
@@ -289,7 +289,7 @@ public class MiddlewareImplementationTests
         var act = () => middleware.InvokeAsync(
             MakeAgent("a"),
             MakeMessages("input"),
-            async _ =>
+            null, async (_, _) =>
             {
                 await Task.Delay(5000);
                 return MakeResponse("late");
@@ -313,7 +313,7 @@ public class MiddlewareImplementationTests
             await middleware.InvokeAsync(
                 MakeAgent("slow-agent"),
                 MakeMessages("input"),
-                async _ =>
+                null, async (_, _) =>
                 {
                     await Task.Delay(5000);
                     return MakeResponse("late");
@@ -337,7 +337,7 @@ public class MiddlewareImplementationTests
         var result = await middleware.InvokeAsync(
             MakeAgent("primary"),
             MakeMessages("input"),
-            _ => Task.FromResult(MakeResponse("primary-output")));
+            null, (_, _) => Task.FromResult(MakeResponse("primary-output")));
 
         GetText(result).Should().Be("primary-output");
     }
@@ -351,7 +351,7 @@ public class MiddlewareImplementationTests
         var result = await middleware.InvokeAsync(
             MakeAgent("primary"),
             MakeMessages("input"),
-            _ => throw new InvalidOperationException("primary failed"));
+            null, (_, _) => throw new InvalidOperationException("primary failed"));
 
         GetText(result).Should().Be("fallback-output");
     }
@@ -369,7 +369,7 @@ public class MiddlewareImplementationTests
         var result = await middleware.InvokeAsync(
             MakeAgent("primary"),
             MakeMessages("input"),
-            _ => Task.FromResult(MakeResponse("bad-response")));
+            null, (_, _) => Task.FromResult(MakeResponse("bad-response")));
 
         GetText(result).Should().Be("fallback-output");
     }
@@ -387,7 +387,7 @@ public class MiddlewareImplementationTests
         var act = () => middleware.InvokeAsync(
             MakeAgent("primary"),
             MakeMessages("input"),
-            _ => throw new InvalidOperationException("primary failed"));
+            null, (_, _) => throw new InvalidOperationException("primary failed"));
 
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
@@ -397,7 +397,7 @@ public class MiddlewareImplementationTests
     {
         var mock = Substitute.For<IAgent>();
         mock.Name.Returns("fallback");
-        mock.InvokeAsync(Arg.Any<IEnumerable<Message>>(), Arg.Any<CancellationToken>())
+        mock.InvokeAsync(Arg.Any<IEnumerable<Message>>(), Arg.Any<AgentInvokeOptions?>(), Arg.Any<CancellationToken>())
             .Returns<MessageResponse>(_ => throw new InvalidOperationException("fallback also failed"));
 
         var middleware = new FallbackMiddleware(mock);
@@ -405,7 +405,7 @@ public class MiddlewareImplementationTests
         var act = () => middleware.InvokeAsync(
             MakeAgent("primary"),
             MakeMessages("input"),
-            _ => throw new InvalidOperationException("primary failed"));
+            null, (_, _) => throw new InvalidOperationException("primary failed"));
 
         await act.Should().ThrowAsync<FallbackFailedException>();
     }
@@ -429,7 +429,7 @@ public class MiddlewareImplementationTests
         var result = await middleware.InvokeAsync(
             MakeAgent("primary"),
             MakeMessages("input"),
-            _ => throw new InvalidOperationException("fail"));
+            null, (_, _) => throw new InvalidOperationException("fail"));
 
         GetText(result).Should().Be("factory-output");
     }
@@ -446,7 +446,7 @@ public class MiddlewareImplementationTests
         var result = await bulkhead.InvokeAsync(
             MakeAgent("a"),
             MakeMessages("input"),
-            _ => Task.FromResult(MakeResponse("ok")));
+            null, (_, _) => Task.FromResult(MakeResponse("ok")));
 
         GetText(result).Should().Be("ok");
     }
@@ -473,19 +473,19 @@ public class MiddlewareImplementationTests
         // Request 1: takes the execution slot
         var task1 = Task.Run(() => bulkhead.InvokeAsync(
             MakeAgent("a"), MakeMessages("1"),
-            _ => { task1Entered.SetResult(); return blocker.Task; }));
+            null, (_, _) => { task1Entered.SetResult(); return blocker.Task; }));
         await task1Entered.Task;
 
         // Request 2: enters the queue
         var task2 = Task.Run(() => bulkhead.InvokeAsync(
             MakeAgent("a"), MakeMessages("2"),
-            _ => Task.FromResult(MakeResponse("ok"))));
+            null, (_, _) => Task.FromResult(MakeResponse("ok"))));
         await task2Queued.Task;
 
         // Request 3: queue full → rejected
         var act = () => bulkhead.InvokeAsync(
             MakeAgent("a"), MakeMessages("3"),
-            _ => Task.FromResult(MakeResponse("ok")));
+            null, (_, _) => Task.FromResult(MakeResponse("ok")));
 
         await act.Should().ThrowAsync<BulkheadRejectedException>();
 
@@ -508,13 +508,13 @@ public class MiddlewareImplementationTests
         // Take the execution slot
         var task1 = Task.Run(() => bulkhead.InvokeAsync(
             MakeAgent("a"), MakeMessages("1"),
-            _ => { task1Entered.SetResult(); return blocker.Task; }));
+            null, (_, _) => { task1Entered.SetResult(); return blocker.Task; }));
         await task1Entered.Task;
 
         // Next request times out waiting for slot
         var act = () => bulkhead.InvokeAsync(
             MakeAgent("a"), MakeMessages("2"),
-            _ => Task.FromResult(MakeResponse("ok")));
+            null, (_, _) => Task.FromResult(MakeResponse("ok")));
 
         await act.Should().ThrowAsync<BulkheadRejectedException>();
 
@@ -537,14 +537,14 @@ public class MiddlewareImplementationTests
         var blocker = new TaskCompletionSource<MessageResponse>();
         var task1 = Task.Run(() => bulkhead.InvokeAsync(
             MakeAgent("a"), MakeMessages("1"),
-            _ => { task1Entered.SetResult(); return blocker.Task; }));
+            null, (_, _) => { task1Entered.SetResult(); return blocker.Task; }));
         await task1Entered.Task;
 
         try
         {
             await bulkhead.InvokeAsync(
                 MakeAgent("test-agent"), MakeMessages("2"),
-                _ => Task.FromResult(MakeResponse("ok")));
+                null, (_, _) => Task.FromResult(MakeResponse("ok")));
         }
         catch (BulkheadRejectedException) { }
 
@@ -566,7 +566,7 @@ public class MiddlewareImplementationTests
         var result = await rateLimit.InvokeAsync(
             MakeAgent("a"),
             MakeMessages("input"),
-            _ => Task.FromResult(MakeResponse("ok")));
+            null, (_, _) => Task.FromResult(MakeResponse("ok")));
 
         GetText(result).Should().Be("ok");
     }
@@ -581,14 +581,14 @@ public class MiddlewareImplementationTests
         {
             await rateLimit.InvokeAsync(
                 MakeAgent("a"), MakeMessages("input"),
-                _ => Task.FromResult(MakeResponse("ok")));
+                null, (_, _) => Task.FromResult(MakeResponse("ok")));
         }
 
         // 3rd request should be rate limited and block until cancelled
         using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
         var act = () => rateLimit.InvokeAsync(
             MakeAgent("a"), MakeMessages("input"),
-            _ => Task.FromResult(MakeResponse("ok")),
+            null, (_, _) => Task.FromResult(MakeResponse("ok")),
             cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
@@ -608,7 +608,7 @@ public class MiddlewareImplementationTests
         // Fill the window
         await rateLimit.InvokeAsync(
             MakeAgent("a"), MakeMessages("input"),
-            _ => Task.FromResult(MakeResponse("ok")));
+            null, (_, _) => Task.FromResult(MakeResponse("ok")));
 
         // 2nd request triggers rate limiting
         using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
@@ -616,7 +616,7 @@ public class MiddlewareImplementationTests
         {
             await rateLimit.InvokeAsync(
                 MakeAgent("a"), MakeMessages("input"),
-                _ => Task.FromResult(MakeResponse("ok")),
+                null, (_, _) => Task.FromResult(MakeResponse("ok")),
                 cts.Token);
         }
         catch (OperationCanceledException) { }
@@ -644,7 +644,7 @@ public class MiddlewareImplementationTests
 
         await composite.InvokeAsync(
             MakeAgent("a"), MakeMessages("input"),
-            _ => Task.FromResult(MakeResponse("ok")));
+            null, (_, _) => Task.FromResult(MakeResponse("ok")));
 
         invoked.Should().BeTrue();
         composite.Name.Should().Be("test");
@@ -661,7 +661,7 @@ public class MiddlewareImplementationTests
 
         await composite.InvokeAsync(
             MakeAgent("a"), MakeMessages("input"),
-            _ => Task.FromResult(MakeResponse("ok")));
+            null, (_, _) => Task.FromResult(MakeResponse("ok")));
 
         order.Should().Equal("first", "second");
     }
@@ -677,7 +677,7 @@ public class MiddlewareImplementationTests
         composite.Count.Should().Be(2);
         await composite.InvokeAsync(
             MakeAgent("a"), MakeMessages("input"),
-            _ => Task.FromResult(MakeResponse("ok")));
+            null, (_, _) => Task.FromResult(MakeResponse("ok")));
 
         order.Should().Equal("first", "added");
     }
@@ -693,7 +693,7 @@ public class MiddlewareImplementationTests
         composite.Count.Should().Be(2);
         await composite.InvokeAsync(
             MakeAgent("a"), MakeMessages("input"),
-            _ => Task.FromResult(MakeResponse("ok")));
+            null, (_, _) => Task.FromResult(MakeResponse("ok")));
 
         order.Should().Equal("prepended", "original");
     }
@@ -734,12 +734,12 @@ public class MiddlewareImplementationTests
         // First call: cache miss
         await middleware.InvokeAsync(
             MakeAgent("a"), MakeMessages("hello"),
-            _ => { callCount++; return Task.FromResult(MakeResponse("response")); });
+            null, (_, _) => { callCount++; return Task.FromResult(MakeResponse("response")); });
 
         // Second call with same input: cache hit
         await middleware.InvokeAsync(
             MakeAgent("a"), MakeMessages("hello"),
-            _ => { callCount++; return Task.FromResult(MakeResponse("response")); });
+            null, (_, _) => { callCount++; return Task.FromResult(MakeResponse("response")); });
 
         callCount.Should().Be(1); // next only called once
         misses.Should().HaveCount(1);
@@ -755,11 +755,11 @@ public class MiddlewareImplementationTests
 
         await middleware.InvokeAsync(
             MakeAgent("a"), MakeMessages("hello"),
-            _ => { callCount++; return Task.FromResult(MakeResponse("r1")); });
+            null, (_, _) => { callCount++; return Task.FromResult(MakeResponse("r1")); });
 
         await middleware.InvokeAsync(
             MakeAgent("a"), MakeMessages("world"),
-            _ => { callCount++; return Task.FromResult(MakeResponse("r2")); });
+            null, (_, _) => { callCount++; return Task.FromResult(MakeResponse("r2")); });
 
         callCount.Should().Be(2);
         middleware.CacheCount.Should().Be(2);
@@ -772,7 +772,7 @@ public class MiddlewareImplementationTests
 
         await middleware.InvokeAsync(
             MakeAgent("a"), MakeMessages("hello"),
-            _ => Task.FromResult(MakeResponse("ok")));
+            null, (_, _) => Task.FromResult(MakeResponse("ok")));
 
         middleware.CacheCount.Should().Be(1);
         middleware.ClearCache();
@@ -792,7 +792,7 @@ public class MiddlewareImplementationTests
         {
             await middleware.InvokeAsync(
                 MakeAgent("a"), MakeMessages($"msg-{i}"),
-                _ => Task.FromResult(MakeResponse($"response-{i}")));
+                null, (_, _) => Task.FromResult(MakeResponse($"response-{i}")));
         }
 
         middleware.CacheCount.Should().BeLessThanOrEqualTo(2);
@@ -810,7 +810,7 @@ public class MiddlewareImplementationTests
 
         await middleware.InvokeAsync(
             MakeAgent("test-agent"), MakeMessages("hello"),
-            _ => Task.FromResult(MakeResponse("ok")));
+            null, (_, _) => Task.FromResult(MakeResponse("ok")));
 
         logs.Should().HaveCount(2);
         logs[0].Should().Contain("test-agent").And.Contain("starting");
@@ -827,7 +827,7 @@ public class MiddlewareImplementationTests
         {
             await middleware.InvokeAsync(
                 MakeAgent("test-agent"), MakeMessages("hello"),
-                _ => throw new InvalidOperationException("boom"));
+                null, (_, _) => throw new InvalidOperationException("boom"));
         }
         catch (InvalidOperationException) { }
 
@@ -844,7 +844,7 @@ public class MiddlewareImplementationTests
 
         await middleware.InvokeAsync(
             MakeAgent("a"), MakeMessages("hello"),
-            _ => Task.FromResult(MakeResponse("ok")));
+            null, (_, _) => Task.FromResult(MakeResponse("ok")));
 
         logs[1].Should().Contain("tokens:");
     }
@@ -943,7 +943,7 @@ public class MiddlewareImplementationTests
 
         public MockAgent(string name) { Name = name; }
 
-        public Task<MessageResponse> InvokeAsync(IEnumerable<Message> messages, CancellationToken ct = default)
+        public Task<MessageResponse> InvokeAsync(IEnumerable<Message> messages, AgentInvokeOptions? options = null, CancellationToken ct = default)
         {
             var text = ResponseFunc != null ? ResponseFunc(messages) : $"MockAgent '{Name}'";
             return Task.FromResult(MakeResponse(text));
@@ -951,7 +951,7 @@ public class MiddlewareImplementationTests
 
         public async IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingAsync(
             IEnumerable<Message> messages,
-            [EnumeratorCancellation] CancellationToken ct = default)
+            AgentInvokeOptions? options = null, [EnumeratorCancellation] CancellationToken ct = default)
         {
             var text = ResponseFunc != null ? ResponseFunc(messages) : $"MockAgent '{Name}'";
             yield return new StreamingContentDeltaResponse
@@ -979,11 +979,11 @@ public class MiddlewareImplementationTests
         public async Task<MessageResponse> InvokeAsync(
             IAgent agent,
             IEnumerable<Message> messages,
-            Func<IEnumerable<Message>, Task<MessageResponse>> next,
+            AgentInvokeOptions? options, Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next,
             CancellationToken cancellationToken = default)
         {
             _onInvoke();
-            return await next(messages);
+            return await next(messages, options);
         }
     }
 

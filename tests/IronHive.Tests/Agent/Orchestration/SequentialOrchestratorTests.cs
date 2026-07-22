@@ -573,7 +573,7 @@ public class SequentialOrchestratorTests
 
         public MockAgent(string name) { Name = name; }
 
-        public Task<MessageResponse> InvokeAsync(IEnumerable<Message> messages, CancellationToken ct = default)
+        public Task<MessageResponse> InvokeAsync(IEnumerable<Message> messages, AgentInvokeOptions? options = null, CancellationToken ct = default)
         {
             var text = ResponseFunc != null ? ResponseFunc(messages) : $"MockAgent '{Name}'";
 
@@ -589,7 +589,7 @@ public class SequentialOrchestratorTests
 
         public async IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingAsync(
             IEnumerable<Message> messages,
-            [EnumeratorCancellation] CancellationToken ct = default)
+            AgentInvokeOptions? options = null, [EnumeratorCancellation] CancellationToken ct = default)
         {
             var text = ResponseFunc != null ? ResponseFunc(messages) : $"MockAgent '{Name}'";
 

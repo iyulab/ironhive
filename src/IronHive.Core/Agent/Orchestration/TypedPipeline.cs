@@ -30,7 +30,7 @@ public class AgentExecutor<TInput, TOutput> : ITypedExecutor<TInput, TOutput>
     public async Task<TOutput> ExecuteAsync(TInput input, CancellationToken ct = default)
     {
         var messages = _inputConverter(input);
-        var response = await _agent.InvokeAsync(messages, ct).ConfigureAwait(false);
+        var response = await _agent.InvokeAsync(messages, options: null, cancellationToken: ct).ConfigureAwait(false);
         return _outputConverter(response);
     }
 }

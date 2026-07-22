@@ -40,28 +40,48 @@ public class BasicAgent : IAgent
     /// <inheritdoc />
     public Task<MessageResponse> InvokeAsync(
         IEnumerable<Message> messages,
+        AgentInvokeOptions? options = null,
         CancellationToken cancellationToken = default)
     {
-        var request = CreateRequest(messages);
+        var request = CreateRequest(messages, options);
         return _message.GenerateMessageAsync(request, cancellationToken);
     }
 
     /// <inheritdoc />
     public IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingAsync(
         IEnumerable<Message> messages,
+        AgentInvokeOptions? options = null,
         CancellationToken cancellationToken = default)
     {
-        var request = CreateRequest(messages);
+        var request = CreateRequest(messages, options);
         return _message.GenerateStreamingMessageAsync(request, cancellationToken);
     }
 
-    private MessageRequest CreateRequest(IEnumerable<Message> messages) => new()
+    private MessageRequest CreateRequest(IEnumerable<Message> messages, AgentInvokeOptions? options)
     {
-        Messages = messages.ToList(),
-        Provider = Provider,
-        Model = Model,
-        System = Instructions,
-        Tools = Tools,
-        MaxTokens = MaxTokens,
-    };
+        var request = new MessageRequest
+        {
+            Messages = messages.ToList(),
+            Provider = Provider,
+            Model = Model,
+            System = Instructions,
+            Tools = Tools,
+            MaxTokens = MaxTokens,
+        };
+
+        if (options is null)
+            return request;
+
+        // per-request overlay — null 필드는 에이전트/요청 기본값 유지
+        request.PreviousId = options.PreviousId;
+        if (options.ThinkingEffort is not null) request.ThinkingEffort = options.ThinkingEffort;
+        if (options.MaxTokens is not null) request.MaxTokens = options.MaxTokens;
+        if (options.ToolOptions is not null) request.ToolOptions = options.ToolOptions;
+        if (options.OutputFormat is not null) request.OutputFormat = options.OutputFormat;
+        if (options.Suggestions is not null) request.Suggestions = options.Suggestions;
+        if (options.MaxTurns is not null) request.MaxTurns = options.MaxTurns.Value;
+        if (options.Items is not null) request.Items = options.Items;
+
+        return request;
+    }
 }

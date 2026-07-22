@@ -35,6 +35,7 @@ public class OrchestratorAgentAdapter : IAgent
     /// <inheritdoc />
     public async Task<MessageResponse> InvokeAsync(
         IEnumerable<Message> messages,
+        AgentInvokeOptions? options = null,
         CancellationToken cancellationToken = default)
     {
         var result = await _orchestrator.ExecuteAsync(messages, cancellationToken).ConfigureAwait(false);
@@ -69,6 +70,7 @@ public class OrchestratorAgentAdapter : IAgent
     /// <inheritdoc />
     public async IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingAsync(
         IEnumerable<Message> messages,
+        AgentInvokeOptions? options = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         await foreach (var evt in _orchestrator.ExecuteStreamingAsync(messages, cancellationToken).ConfigureAwait(false))

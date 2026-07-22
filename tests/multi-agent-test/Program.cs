@@ -1862,8 +1862,8 @@ async Task<List<(string, TestResult)>> RunMiddlewareTests()
         {
             try
             {
-                await cbMiddleware.InvokeAsync(agent, MakeUserMessages("test"),
-                    _ => throw new InvalidOperationException($"fail-{++failCount}"));
+                await cbMiddleware.InvokeAsync(agent, MakeUserMessages("test"), null,
+                    (_, _) => throw new InvalidOperationException($"fail-{++failCount}"));
             }
             catch (InvalidOperationException) { }
         }
@@ -1874,8 +1874,8 @@ async Task<List<(string, TestResult)>> RunMiddlewareTests()
         var rejected = false;
         try
         {
-            await cbMiddleware.InvokeAsync(agent, MakeUserMessages("test"),
-                _ => Task.FromResult(MakeMessageResponse("should-not-reach")));
+            await cbMiddleware.InvokeAsync(agent, MakeUserMessages("test"), null,
+                (_, _) => Task.FromResult(MakeMessageResponse("should-not-reach")));
         }
         catch (CircuitBreakerOpenException) { rejected = true; }
 
@@ -1900,8 +1900,8 @@ async Task<List<(string, TestResult)>> RunMiddlewareTests()
         // 1번 실패로 Open
         try
         {
-            await cbMiddleware.InvokeAsync(agent, MakeUserMessages("test"),
-                _ => throw new InvalidOperationException("fail"));
+            await cbMiddleware.InvokeAsync(agent, MakeUserMessages("test"), null,
+                (_, _) => throw new InvalidOperationException("fail"));
         }
         catch (InvalidOperationException) { }
 
@@ -1910,8 +1910,8 @@ async Task<List<(string, TestResult)>> RunMiddlewareTests()
         var isHalfOpen = cbMiddleware.State == CircuitState.HalfOpen;
 
         // 성공하면 Closed
-        await cbMiddleware.InvokeAsync(agent, MakeUserMessages("test"),
-            _ => Task.FromResult(MakeMessageResponse("ok")));
+        await cbMiddleware.InvokeAsync(agent, MakeUserMessages("test"), null,
+            (_, _) => Task.FromResult(MakeMessageResponse("ok")));
 
         var isClosed = cbMiddleware.State == CircuitState.Closed;
 
@@ -1931,8 +1931,8 @@ async Task<List<(string, TestResult)>> RunMiddlewareTests()
 
         var tasks = Enumerable.Range(0, 5).Select(async i =>
         {
-            await bulkhead.InvokeAsync(agent, MakeUserMessages($"test-{i}"),
-                async _ =>
+            await bulkhead.InvokeAsync(agent, MakeUserMessages($"test-{i}"), null,
+                async (_, _) =>
                 {
                     var current = Interlocked.Increment(ref executing);
                     lock (bulkhead) { if (current > maxExecuting) maxExecuting = current; }
@@ -1964,21 +1964,21 @@ async Task<List<(string, TestResult)>> RunMiddlewareTests()
         var gate = new TaskCompletionSource<bool>();
 
         // 첫 번째: 실행 슬롯 점유
-        var task1 = bulkhead.InvokeAsync(agent, MakeUserMessages("test-1"),
-            async _ => { await gate.Task; return MakeMessageResponse("ok"); });
+        var task1 = bulkhead.InvokeAsync(agent, MakeUserMessages("test-1"), null,
+            async (_, _) => { await gate.Task; return MakeMessageResponse("ok"); });
         await Task.Delay(20);
 
         // 두 번째: 대기열 점유
-        var task2 = bulkhead.InvokeAsync(agent, MakeUserMessages("test-2"),
-            async _ => { await gate.Task; return MakeMessageResponse("ok"); });
+        var task2 = bulkhead.InvokeAsync(agent, MakeUserMessages("test-2"), null,
+            async (_, _) => { await gate.Task; return MakeMessageResponse("ok"); });
         await Task.Delay(20);
 
         // 세 번째: 거부되어야 함
         var wasRejected = false;
         try
         {
-            await bulkhead.InvokeAsync(agent, MakeUserMessages("test-3"),
-                _ => Task.FromResult(MakeMessageResponse("should-not-reach")));
+            await bulkhead.InvokeAsync(agent, MakeUserMessages("test-3"), null,
+                (_, _) => Task.FromResult(MakeMessageResponse("should-not-reach")));
         }
         catch (BulkheadRejectedException) { wasRejected = true; }
 
@@ -2004,8 +2004,8 @@ async Task<List<(string, TestResult)>> RunMiddlewareTests()
 
         var response = await middleware.InvokeAsync(
             primaryAgent,
-            MakeUserMessages("test"),
-            _ => throw new InvalidOperationException("primary failed"));
+            MakeUserMessages("test"), null,
+            (_, _) => throw new InvalidOperationException("primary failed"));
 
         var text = response.Message!.Content.OfType<TextMessageContent>().First().Value;
 
@@ -2031,8 +2031,8 @@ async Task<List<(string, TestResult)>> RunMiddlewareTests()
 
         var response = await middleware.InvokeAsync(
             primaryAgent,
-            MakeUserMessages("test"),
-            msgs => primaryAgent.InvokeAsync(msgs));
+            MakeUserMessages("test"), null,
+            (msgs, _) => primaryAgent.InvokeAsync(msgs));
 
         var text = response.Message!.Content.OfType<TextMessageContent>().First().Value;
 
@@ -2055,7 +2055,7 @@ async Task<List<(string, TestResult)>> RunMiddlewareTests()
             ResponseFunc = _ => { order.Add("agent"); return "result"; }
         };
 
-        await composite.InvokeAsync(agent, MakeUserMessages("test"), msgs => agent.InvokeAsync(msgs));
+        await composite.InvokeAsync(agent, MakeUserMessages("test"), null, (msgs, _) => agent.InvokeAsync(msgs));
 
         var expected = new[] { "m1-before", "m2-before", "agent", "m2-after", "m1-after" };
         var ok = order.SequenceEqual(expected);
@@ -2484,7 +2484,7 @@ sealed class MockAgent : IAgent
 
     public async Task<MessageResponse> InvokeAsync(
         IEnumerable<Message> messages,
-        CancellationToken cancellationToken = default)
+        AgentInvokeOptions? options = null, CancellationToken cancellationToken = default)
     {
         string responseText;
 
@@ -2517,7 +2517,7 @@ sealed class MockAgent : IAgent
 
     public async IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingAsync(
         IEnumerable<Message> messages,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        AgentInvokeOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         // Simulate streaming: Begin → Delta chunks → Done
         var fullText = ResponseFunc != null ? ResponseFunc(messages) : $"MockAgent '{Name}' stream";
@@ -2599,11 +2599,11 @@ sealed class TestOrderMiddleware : IAgentMiddleware
 
     public async Task<MessageResponse> InvokeAsync(
         IAgent agent, IEnumerable<Message> messages,
-        Func<IEnumerable<Message>, Task<MessageResponse>> next,
+        AgentInvokeOptions? options, Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next,
         CancellationToken ct = default)
     {
         _order.Add($"{_name}-before");
-        var result = await next(messages);
+        var result = await next(messages, options);
         _order.Add($"{_name}-after");
         return result;
     }
@@ -2616,7 +2616,7 @@ sealed class ShortCircuitMiddleware : IAgentMiddleware
 
     public Task<MessageResponse> InvokeAsync(
         IAgent agent, IEnumerable<Message> messages,
-        Func<IEnumerable<Message>, Task<MessageResponse>> next,
+        AgentInvokeOptions? options, Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next,
         CancellationToken ct = default)
     {
         return Task.FromResult(new MessageResponse
@@ -2636,11 +2636,11 @@ sealed class CountingMiddleware : IAgentMiddleware
 
     public async Task<MessageResponse> InvokeAsync(
         IAgent agent, IEnumerable<Message> messages,
-        Func<IEnumerable<Message>, Task<MessageResponse>> next,
+        AgentInvokeOptions? options, Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next,
         CancellationToken ct = default)
     {
         _onCall();
-        return await next(messages);
+        return await next(messages, options);
     }
 }
 
@@ -2661,7 +2661,7 @@ sealed class FailAfterMiddleware : IAgentMiddleware
 
     public Task<MessageResponse> InvokeAsync(
         IAgent agent, IEnumerable<Message> messages,
-        Func<IEnumerable<Message>, Task<MessageResponse>> next,
+        AgentInvokeOptions? options, Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next,
         CancellationToken ct = default)
     {
         _callCount++;
@@ -2670,7 +2670,7 @@ sealed class FailAfterMiddleware : IAgentMiddleware
             _onFail?.Invoke();
             throw new InvalidOperationException($"Simulated failure {_callCount}");
         }
-        return next(messages);
+        return next(messages, options);
     }
 }
 
@@ -2688,10 +2688,10 @@ sealed class SlowMiddleware : IAgentMiddleware
 
     public async Task<MessageResponse> InvokeAsync(
         IAgent agent, IEnumerable<Message> messages,
-        Func<IEnumerable<Message>, Task<MessageResponse>> next,
+        AgentInvokeOptions? options, Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next,
         CancellationToken ct = default)
     {
         await Task.Delay(_delay, ct);
-        return await next(messages);
+        return await next(messages, options);
     }
 }

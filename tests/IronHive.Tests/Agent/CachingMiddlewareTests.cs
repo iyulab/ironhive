@@ -64,7 +64,7 @@ public class CachingMiddlewareTests
         var messages = CreateUserMessages("hello");
         var response = CreateResponse();
 
-        await middleware.InvokeAsync(agent, messages, _ => Task.FromResult(response));
+        await middleware.InvokeAsync(agent, messages, null, (_, _) => Task.FromResult(response));
         middleware.CacheCount.Should().Be(1);
 
         middleware.ClearCache();
@@ -82,7 +82,7 @@ public class CachingMiddlewareTests
         var response = CreateResponse();
         var callCount = 0;
 
-        var result = await middleware.InvokeAsync(agent, messages, _ =>
+        var result = await middleware.InvokeAsync(agent, messages, null, (_, _) =>
         {
             callCount++;
             return Task.FromResult(response);
@@ -102,14 +102,14 @@ public class CachingMiddlewareTests
         var response = CreateResponse();
         var callCount = 0;
 
-        await middleware.InvokeAsync(agent, messages, _ =>
+        await middleware.InvokeAsync(agent, messages, null, (_, _) =>
         {
             callCount++;
             return Task.FromResult(response);
         });
 
         // Second call with same input
-        var result = await middleware.InvokeAsync(agent, messages, _ =>
+        var result = await middleware.InvokeAsync(agent, messages, null, (_, _) =>
         {
             callCount++;
             return Task.FromResult(CreateResponse(text: "different"));
@@ -126,13 +126,13 @@ public class CachingMiddlewareTests
         var agent = CreateMockAgent();
         var callCount = 0;
 
-        await middleware.InvokeAsync(agent, CreateUserMessages("hello"), _ =>
+        await middleware.InvokeAsync(agent, CreateUserMessages("hello"), null, (_, _) =>
         {
             callCount++;
             return Task.FromResult(CreateResponse(text: "first"));
         });
 
-        await middleware.InvokeAsync(agent, CreateUserMessages("world"), _ =>
+        await middleware.InvokeAsync(agent, CreateUserMessages("world"), null, (_, _) =>
         {
             callCount++;
             return Task.FromResult(CreateResponse(text: "second"));
@@ -149,13 +149,13 @@ public class CachingMiddlewareTests
         var messages = CreateUserMessages("hello");
         var callCount = 0;
 
-        await middleware.InvokeAsync(CreateMockAgent("agent-a"), messages, _ =>
+        await middleware.InvokeAsync(CreateMockAgent("agent-a"), messages, null, (_, _) =>
         {
             callCount++;
             return Task.FromResult(CreateResponse());
         });
 
-        await middleware.InvokeAsync(CreateMockAgent("agent-b"), messages, _ =>
+        await middleware.InvokeAsync(CreateMockAgent("agent-b"), messages, null, (_, _) =>
         {
             callCount++;
             return Task.FromResult(CreateResponse());
@@ -178,7 +178,7 @@ public class CachingMiddlewareTests
         var messages = CreateUserMessages("hello");
         var callCount = 0;
 
-        await middleware.InvokeAsync(agent, messages, _ =>
+        await middleware.InvokeAsync(agent, messages, null, (_, _) =>
         {
             callCount++;
             return Task.FromResult(CreateResponse(text: "first"));
@@ -187,7 +187,7 @@ public class CachingMiddlewareTests
         // Wait for expiration
         await Task.Delay(100);
 
-        var result = await middleware.InvokeAsync(agent, messages, _ =>
+        var result = await middleware.InvokeAsync(agent, messages, null, (_, _) =>
         {
             callCount++;
             return Task.FromResult(CreateResponse(text: "second"));
@@ -209,14 +209,14 @@ public class CachingMiddlewareTests
         var messages = CreateUserMessages("hello");
         var callCount = 0;
 
-        await middleware.InvokeAsync(agent, messages, _ =>
+        await middleware.InvokeAsync(agent, messages, null, (_, _) =>
         {
             callCount++;
             return Task.FromResult(CreateResponse());
         });
 
         // Second call should still be cached
-        await middleware.InvokeAsync(agent, messages, _ =>
+        await middleware.InvokeAsync(agent, messages, null, (_, _) =>
         {
             callCount++;
             return Task.FromResult(CreateResponse());
@@ -234,7 +234,7 @@ public class CachingMiddlewareTests
         var agent = CreateMockAgent();
         var messages = CreateUserMessages("hello");
 
-        await middleware.InvokeAsync(agent, messages, _ =>
+        await middleware.InvokeAsync(agent, messages, null, (_, _) =>
             Task.FromResult(CreateResponse(reason: MessageDoneReason.ToolCall)));
 
         middleware.CacheCount.Should().Be(0);
@@ -247,7 +247,7 @@ public class CachingMiddlewareTests
         var agent = CreateMockAgent();
         var messages = CreateUserMessages("hello");
 
-        await middleware.InvokeAsync(agent, messages, _ =>
+        await middleware.InvokeAsync(agent, messages, null, (_, _) =>
             Task.FromResult(CreateResponse(reason: MessageDoneReason.EndTurn)));
 
         middleware.CacheCount.Should().Be(1);
@@ -260,7 +260,7 @@ public class CachingMiddlewareTests
         var agent = CreateMockAgent();
         var messages = CreateUserMessages("hello");
 
-        await middleware.InvokeAsync(agent, messages, _ =>
+        await middleware.InvokeAsync(agent, messages, null, (_, _) =>
             Task.FromResult(CreateResponse(reason: MessageDoneReason.MaxTokens)));
 
         middleware.CacheCount.Should().Be(1);
@@ -277,7 +277,7 @@ public class CachingMiddlewareTests
 
         for (var i = 0; i < 5; i++)
         {
-            await middleware.InvokeAsync(agent, CreateUserMessages($"msg-{i}"), _ =>
+            await middleware.InvokeAsync(agent, CreateUserMessages($"msg-{i}"), null, (_, _) =>
                 Task.FromResult(CreateResponse()));
         }
 
@@ -298,11 +298,11 @@ public class CachingMiddlewareTests
         var agent = CreateMockAgent("my-agent");
         var messages = CreateUserMessages("hello");
 
-        await middleware.InvokeAsync(agent, messages, _ =>
+        await middleware.InvokeAsync(agent, messages, null, (_, _) =>
             Task.FromResult(CreateResponse()));
 
         // Second call triggers cache hit
-        await middleware.InvokeAsync(agent, messages, _ =>
+        await middleware.InvokeAsync(agent, messages, null, (_, _) =>
             Task.FromResult(CreateResponse()));
 
         hitAgent.Should().Be("my-agent");
@@ -320,7 +320,7 @@ public class CachingMiddlewareTests
         var agent = CreateMockAgent("my-agent");
         var messages = CreateUserMessages("hello");
 
-        await middleware.InvokeAsync(agent, messages, _ =>
+        await middleware.InvokeAsync(agent, messages, null, (_, _) =>
             Task.FromResult(CreateResponse()));
 
         missAgent.Should().Be("my-agent");
@@ -339,13 +339,13 @@ public class CachingMiddlewareTests
         var messages = CreateUserMessages("hello");
         var callCount = 0;
 
-        await middleware.InvokeAsync(CreateMockAgent(instructions: "Be helpful"), messages, _ =>
+        await middleware.InvokeAsync(CreateMockAgent(instructions: "Be helpful"), messages, null, (_, _) =>
         {
             callCount++;
             return Task.FromResult(CreateResponse());
         });
 
-        await middleware.InvokeAsync(CreateMockAgent(instructions: "Be concise"), messages, _ =>
+        await middleware.InvokeAsync(CreateMockAgent(instructions: "Be concise"), messages, null, (_, _) =>
         {
             callCount++;
             return Task.FromResult(CreateResponse());
@@ -366,13 +366,13 @@ public class CachingMiddlewareTests
         var messages = CreateUserMessages("hello");
         var callCount = 0;
 
-        await middleware.InvokeAsync(CreateMockAgent(instructions: "Be helpful"), messages, _ =>
+        await middleware.InvokeAsync(CreateMockAgent(instructions: "Be helpful"), messages, null, (_, _) =>
         {
             callCount++;
             return Task.FromResult(CreateResponse());
         });
 
-        await middleware.InvokeAsync(CreateMockAgent(instructions: "Be concise"), messages, _ =>
+        await middleware.InvokeAsync(CreateMockAgent(instructions: "Be concise"), messages, null, (_, _) =>
         {
             callCount++;
             return Task.FromResult(CreateResponse());

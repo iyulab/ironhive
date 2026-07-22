@@ -30,28 +30,30 @@ public class MiddlewareAgent : IAgent
     /// <inheritdoc />
     public Task<MessageResponse> InvokeAsync(
         IEnumerable<Message> messages,
+        AgentInvokeOptions? options = null,
         CancellationToken cancellationToken = default)
     {
         if (_middlewares.Count == 0)
-            return _inner.InvokeAsync(messages, cancellationToken);
+            return _inner.InvokeAsync(messages, options, cancellationToken);
 
         // 미들웨어 체인 구성: 마지막 미들웨어부터 역순으로 래핑
-        Func<IEnumerable<Message>, Task<MessageResponse>> pipeline =
-            msgs => _inner.InvokeAsync(msgs, cancellationToken);
+        Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> pipeline =
+            (msgs, opts) => _inner.InvokeAsync(msgs, opts, cancellationToken);
 
         for (var i = _middlewares.Count - 1; i >= 0; i--)
         {
             var middleware = _middlewares[i];
             var next = pipeline;
-            pipeline = msgs => middleware.InvokeAsync(_inner, msgs, next, cancellationToken);
+            pipeline = (msgs, opts) => middleware.InvokeAsync(_inner, msgs, opts, next, cancellationToken);
         }
 
-        return pipeline(messages);
+        return pipeline(messages, options);
     }
 
     /// <inheritdoc />
     public IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingAsync(
         IEnumerable<Message> messages,
+        AgentInvokeOptions? options = null,
         CancellationToken cancellationToken = default)
     {
         // IStreamingAgentMiddleware를 구현한 미들웨어만 필터링
@@ -60,19 +62,19 @@ public class MiddlewareAgent : IAgent
             .ToList();
 
         if (streamingMiddlewares.Count == 0)
-            return _inner.InvokeStreamingAsync(messages, cancellationToken);
+            return _inner.InvokeStreamingAsync(messages, options, cancellationToken);
 
         // 스트리밍 미들웨어 체인 구성
-        Func<IEnumerable<Message>, IAsyncEnumerable<StreamingMessageResponse>> pipeline =
-            msgs => _inner.InvokeStreamingAsync(msgs, cancellationToken);
+        Func<IEnumerable<Message>, AgentInvokeOptions?, IAsyncEnumerable<StreamingMessageResponse>> pipeline =
+            (msgs, opts) => _inner.InvokeStreamingAsync(msgs, opts, cancellationToken);
 
         for (var i = streamingMiddlewares.Count - 1; i >= 0; i--)
         {
             var middleware = streamingMiddlewares[i];
             var next = pipeline;
-            pipeline = msgs => middleware.InvokeStreamingAsync(_inner, msgs, next, cancellationToken);
+            pipeline = (msgs, opts) => middleware.InvokeStreamingAsync(_inner, msgs, opts, next, cancellationToken);
         }
 
-        return pipeline(messages);
+        return pipeline(messages, options);
     }
 }

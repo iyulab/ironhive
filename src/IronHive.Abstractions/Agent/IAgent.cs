@@ -46,14 +46,22 @@ public interface IAgent
     /// <summary>
     /// 메시지를 처리합니다.
     /// </summary>
+    /// <param name="messages">모델에 전달될 대화 메시지 컬렉션입니다.</param>
+    /// <param name="options">이 호출에만 적용되는 per-request 옵션입니다. null이면 에이전트 기본값이 사용됩니다.</param>
+    /// <param name="cancellationToken">취소 토큰입니다.</param>
     Task<MessageResponse> InvokeAsync(
         IEnumerable<Message> messages,
+        AgentInvokeOptions? options = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 메시지를 스트리밍 방식으로 처리합니다.
     /// </summary>
+    /// <param name="messages">모델에 전달될 대화 메시지 컬렉션입니다.</param>
+    /// <param name="options">이 호출에만 적용되는 per-request 옵션입니다. null이면 에이전트 기본값이 사용됩니다.</param>
+    /// <param name="cancellationToken">취소 토큰입니다.</param>
     IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingAsync(
         IEnumerable<Message> messages,
+        AgentInvokeOptions? options = null,
         CancellationToken cancellationToken = default);
 }

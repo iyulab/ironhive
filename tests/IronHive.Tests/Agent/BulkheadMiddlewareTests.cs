@@ -50,7 +50,7 @@ public class BulkheadMiddlewareTests : IDisposable
 
         var result = await sut.InvokeAsync(
             agent, [],
-            _ => Task.FromResult(s_okResponse));
+            null, (_, _) => Task.FromResult(s_okResponse));
 
         result.Should().BeSameAs(s_okResponse);
     }
@@ -83,7 +83,7 @@ public class BulkheadMiddlewareTests : IDisposable
         sut.CurrentExecuting.Should().Be(0);
 
         // Start a request that blocks
-        var task = sut.InvokeAsync(agent, [], _ => tcs.Task);
+        var task = sut.InvokeAsync(agent, [], null, (_, _) => tcs.Task);
         await Task.Delay(50); // let it start
 
         sut.CurrentExecuting.Should().Be(1);
@@ -121,8 +121,8 @@ public class BulkheadMiddlewareTests : IDisposable
         var tcs2 = new TaskCompletionSource<MessageResponse>();
 
         // Fill concurrency slots
-        var task1 = sut.InvokeAsync(agent, [], _ => tcs1.Task);
-        var task2 = sut.InvokeAsync(agent, [], _ => tcs2.Task);
+        var task1 = sut.InvokeAsync(agent, [], null, (_, _) => tcs1.Task);
+        var task2 = sut.InvokeAsync(agent, [], null, (_, _) => tcs2.Task);
         await Task.Delay(50);
 
         sut.CurrentExecuting.Should().Be(2);
@@ -156,17 +156,17 @@ public class BulkheadMiddlewareTests : IDisposable
         var tcs = new TaskCompletionSource<MessageResponse>();
 
         // Fill concurrency slot
-        var task1 = sut.InvokeAsync(agent, [], _ => tcs.Task);
+        var task1 = sut.InvokeAsync(agent, [], null, (_, _) => tcs.Task);
         await Task.Delay(50);
 
         // Fill queue slot (waiting for concurrency)
-        var task2 = Task.Run(() => sut.InvokeAsync(agent, [], _ => Task.FromResult(s_okResponse)));
+        var task2 = Task.Run(() => sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse)));
         await Task.Delay(50);
 
         // Third request exceeds queue — should be rejected
         var act = async () => await sut.InvokeAsync(
             agent, [],
-            _ => Task.FromResult(s_okResponse));
+            null, (_, _) => Task.FromResult(s_okResponse));
 
         await act.Should().ThrowAsync<BulkheadRejectedException>()
             .WithMessage("*rejected-agent*");
@@ -192,13 +192,13 @@ public class BulkheadMiddlewareTests : IDisposable
         var tcs = new TaskCompletionSource<MessageResponse>();
 
         // Fill concurrency slot
-        var task1 = sut.InvokeAsync(agent, [], _ => tcs.Task);
+        var task1 = sut.InvokeAsync(agent, [], null, (_, _) => tcs.Task);
         await Task.Delay(20);
 
         // Second request should timeout waiting for slot
         var act = async () => await sut.InvokeAsync(
             agent, [],
-            _ => Task.FromResult(s_okResponse));
+            null, (_, _) => Task.FromResult(s_okResponse));
 
         await act.Should().ThrowAsync<BulkheadRejectedException>()
             .WithMessage("*timeout-agent*");
@@ -222,7 +222,7 @@ public class BulkheadMiddlewareTests : IDisposable
         });
         var agent = CreateMockAgent("queued-agent");
 
-        await sut.InvokeAsync(agent, [], _ => Task.FromResult(s_okResponse));
+        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse));
 
         queuedAgent.Should().Be("queued-agent");
     }
@@ -242,15 +242,15 @@ public class BulkheadMiddlewareTests : IDisposable
         var tcs = new TaskCompletionSource<MessageResponse>();
 
         // Fill concurrency + queue
-        var task1 = sut.InvokeAsync(agent, [], _ => tcs.Task);
+        var task1 = sut.InvokeAsync(agent, [], null, (_, _) => tcs.Task);
         await Task.Delay(50);
-        var task2 = Task.Run(() => sut.InvokeAsync(agent, [], _ => Task.FromResult(s_okResponse)));
+        var task2 = Task.Run(() => sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse)));
         await Task.Delay(50);
 
         // Rejection
         try
         {
-            await sut.InvokeAsync(agent, [], _ => Task.FromResult(s_okResponse));
+            await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse));
         }
         catch (BulkheadRejectedException)
         {
@@ -280,14 +280,14 @@ public class BulkheadMiddlewareTests : IDisposable
         var tcs = new TaskCompletionSource<MessageResponse>();
 
         // Fill concurrency slot
-        var task1 = sut.InvokeAsync(agent, [], _ => tcs.Task);
+        var task1 = sut.InvokeAsync(agent, [], null, (_, _) => tcs.Task);
         await Task.Delay(20);
 
         // Cancel while waiting for slot
         using var cts = new CancellationTokenSource(50);
         var act = async () => await sut.InvokeAsync(
             agent, [],
-            _ => Task.FromResult(s_okResponse),
+            null, (_, _) => Task.FromResult(s_okResponse),
             cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();

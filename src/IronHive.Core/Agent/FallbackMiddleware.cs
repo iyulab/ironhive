@@ -33,18 +33,19 @@ public class FallbackMiddleware : IAgentMiddleware
     public async Task<MessageResponse> InvokeAsync(
         IAgent agent,
         IEnumerable<Message> messages,
-        Func<IEnumerable<Message>, Task<MessageResponse>> next,
+        AgentInvokeOptions? options,
+        Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next,
         CancellationToken cancellationToken = default)
     {
         try
         {
-            var response = await next(messages).ConfigureAwait(false);
+            var response = await next(messages, options).ConfigureAwait(false);
 
             // 응답 검증 (선택적)
             if (_options.ResponseValidator != null && !_options.ResponseValidator(response))
             {
                 _options.OnFallback?.Invoke(agent.Name, null, "Response validation failed");
-                return await ExecuteFallbackAsync(agent, messages, cancellationToken).ConfigureAwait(false);
+                return await ExecuteFallbackAsync(agent, messages, options, cancellationToken).ConfigureAwait(false);
             }
 
             return response;
@@ -58,13 +59,14 @@ public class FallbackMiddleware : IAgentMiddleware
             }
 
             _options.OnFallback?.Invoke(agent.Name, ex, ex.Message);
-            return await ExecuteFallbackAsync(agent, messages, cancellationToken).ConfigureAwait(false);
+            return await ExecuteFallbackAsync(agent, messages, options, cancellationToken).ConfigureAwait(false);
         }
     }
 
     private async Task<MessageResponse> ExecuteFallbackAsync(
         IAgent primaryAgent,
         IEnumerable<Message> messages,
+        AgentInvokeOptions? options,
         CancellationToken cancellationToken)
     {
         var fallbackAgent = _options.FallbackAgent
@@ -72,7 +74,7 @@ public class FallbackMiddleware : IAgentMiddleware
 
         try
         {
-            return await fallbackAgent.InvokeAsync(messages, cancellationToken).ConfigureAwait(false);
+            return await fallbackAgent.InvokeAsync(messages, options, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception fallbackEx)
         {

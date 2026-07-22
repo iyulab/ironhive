@@ -44,7 +44,8 @@ public class CachingMiddleware : IAgentMiddleware
     public async Task<MessageResponse> InvokeAsync(
         IAgent agent,
         IEnumerable<Message> messages,
-        Func<IEnumerable<Message>, Task<MessageResponse>> next,
+        AgentInvokeOptions? options,
+        Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next,
         CancellationToken cancellationToken = default)
     {
         var messageList = messages.ToList();
@@ -65,7 +66,7 @@ public class CachingMiddleware : IAgentMiddleware
 
         // 캐시 미스 - 실제 호출
         _options.OnCacheMiss?.Invoke(agent.Name, cacheKey);
-        var response = await next(messageList).ConfigureAwait(false);
+        var response = await next(messageList, options).ConfigureAwait(false);
 
         // 캐시 저장
         if (ShouldCache(response))

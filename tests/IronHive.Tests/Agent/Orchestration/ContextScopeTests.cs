@@ -299,7 +299,7 @@ public class ContextScopeTests
 
         public MockAgent(string name) { Name = name; }
 
-        public Task<MessageResponse> InvokeAsync(IEnumerable<Message> messages, CancellationToken ct = default)
+        public Task<MessageResponse> InvokeAsync(IEnumerable<Message> messages, AgentInvokeOptions? options = null, CancellationToken ct = default)
         {
             var text = ResponseFunc != null ? ResponseFunc(messages) : $"MockAgent '{Name}'";
             return Task.FromResult(new MessageResponse
@@ -314,7 +314,7 @@ public class ContextScopeTests
 
         public async IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingAsync(
             IEnumerable<Message> messages,
-            [EnumeratorCancellation] CancellationToken ct = default)
+            AgentInvokeOptions? options = null, [EnumeratorCancellation] CancellationToken ct = default)
         {
             var text = ResponseFunc != null ? ResponseFunc(messages) : $"MockAgent '{Name}'";
             yield return new StreamingContentDeltaResponse

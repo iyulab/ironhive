@@ -26,7 +26,8 @@ public class RetryMiddleware : IAgentMiddleware
     public async Task<MessageResponse> InvokeAsync(
         IAgent agent,
         IEnumerable<Message> messages,
-        Func<IEnumerable<Message>, Task<MessageResponse>> next,
+        AgentInvokeOptions? options,
+        Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next,
         CancellationToken cancellationToken = default)
     {
         var attempts = 0;
@@ -38,7 +39,7 @@ public class RetryMiddleware : IAgentMiddleware
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                return await next(messages).ConfigureAwait(false);
+                return await next(messages, options).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {

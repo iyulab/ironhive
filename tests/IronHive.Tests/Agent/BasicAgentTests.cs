@@ -1,4 +1,5 @@
 using FluentAssertions;
+using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Tools;
@@ -259,6 +260,111 @@ public class BasicAgentTests
         capturedRequest.Should().NotBeNull();
         capturedRequest!.Tools.Should().HaveCount(1);
         capturedRequest.Tools!.First().UniqueName.Should().Be("calculator");
+    }
+
+    #endregion
+
+    #region InvokeAsync Options Overlay Tests
+
+    [Fact]
+    public async Task InvokeAsync_WithOptions_Should_Overlay_PerRequest_Options_On_Request()
+    {
+        // Arrange
+        var agent = CreateAgent(provider: "test-provider", model: "test-model");
+        agent.Instructions = "sys";
+        agent.MaxTokens = 1000;
+
+        var options = new AgentInvokeOptions
+        {
+            PreviousId = "prev-1",
+            ThinkingEffort = MessageThinkingEffort.High,
+            MaxTokens = 2000,
+            Suggestions = new SuggestionOptions(),
+            MaxTurns = 7,
+        };
+
+        MessageRequest? capturedRequest = null;
+        _mockMessageService
+            .GenerateMessageAsync(Arg.Do<MessageRequest>(req => capturedRequest = req), Arg.Any<CancellationToken>())
+            .Returns(new MessageResponse
+            {
+                ResponseId = "msg-gen",
+                DoneReason = MessageDoneReason.EndTurn,
+                Message = new Message { Role = MessageRole.Assistant },
+                Model = string.Empty,
+                Timestamp = DateTime.UtcNow
+            });
+
+        // Act
+        await agent.InvokeAsync([Message.User("Hello")], options);
+
+        // Assert
+        capturedRequest.Should().NotBeNull();
+        capturedRequest!.Provider.Should().Be("test-provider");   // agent-fixed 유지
+        capturedRequest.Model.Should().Be("test-model");
+        capturedRequest.System.Should().Be("sys");
+        capturedRequest.PreviousId.Should().Be("prev-1");          // options 반영
+        capturedRequest.ThinkingEffort.Should().Be(MessageThinkingEffort.High);
+        capturedRequest.MaxTokens.Should().Be(2000);               // 에이전트 기본값 1000 override
+        capturedRequest.Suggestions.Should().BeSameAs(options.Suggestions);
+        capturedRequest.MaxTurns.Should().Be(7);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WithoutOptions_Should_Use_Agent_Defaults()
+    {
+        // Arrange
+        var agent = CreateAgent();
+        agent.MaxTokens = 1000;
+
+        MessageRequest? capturedRequest = null;
+        _mockMessageService
+            .GenerateMessageAsync(Arg.Do<MessageRequest>(req => capturedRequest = req), Arg.Any<CancellationToken>())
+            .Returns(new MessageResponse
+            {
+                ResponseId = "msg-gen",
+                DoneReason = MessageDoneReason.EndTurn,
+                Message = new Message { Role = MessageRole.Assistant },
+                Model = string.Empty,
+                Timestamp = DateTime.UtcNow
+            });
+
+        // Act — 기존 호출부 시그니처 그대로: 소스 호환 검증을 겸한다
+        await agent.InvokeAsync([Message.User("Hello")]);
+
+        // Assert
+        capturedRequest.Should().NotBeNull();
+        capturedRequest!.MaxTokens.Should().Be(1000);
+        capturedRequest.PreviousId.Should().BeNull();
+        capturedRequest.MaxTurns.Should().Be(50); // MessageRequest 기본값 유지
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WithEmptyOptions_Should_Not_Disturb_Agent_Defaults()
+    {
+        // Arrange
+        var agent = CreateAgent();
+        agent.MaxTokens = 1000;
+
+        MessageRequest? capturedRequest = null;
+        _mockMessageService
+            .GenerateMessageAsync(Arg.Do<MessageRequest>(req => capturedRequest = req), Arg.Any<CancellationToken>())
+            .Returns(new MessageResponse
+            {
+                ResponseId = "msg-gen",
+                DoneReason = MessageDoneReason.EndTurn,
+                Message = new Message { Role = MessageRole.Assistant },
+                Model = string.Empty,
+                Timestamp = DateTime.UtcNow
+            });
+
+        // Act
+        await agent.InvokeAsync([Message.User("Hello")], new AgentInvokeOptions());
+
+        // Assert — null 필드는 기본값 유지
+        capturedRequest.Should().NotBeNull();
+        capturedRequest!.MaxTokens.Should().Be(1000);
+        capturedRequest.MaxTurns.Should().Be(50);
     }
 
     #endregion

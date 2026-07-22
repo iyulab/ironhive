@@ -64,7 +64,8 @@ public class BulkheadMiddleware : IAgentMiddleware, IDisposable
     public async Task<MessageResponse> InvokeAsync(
         IAgent agent,
         IEnumerable<Message> messages,
-        Func<IEnumerable<Message>, Task<MessageResponse>> next,
+        AgentInvokeOptions? options,
+        Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next,
         CancellationToken cancellationToken = default)
     {
         // 대기열 제한이 있는 경우 먼저 대기열 슬롯 확보
@@ -104,7 +105,7 @@ public class BulkheadMiddleware : IAgentMiddleware, IDisposable
 
             try
             {
-                return await next(messages).ConfigureAwait(false);
+                return await next(messages, options).ConfigureAwait(false);
             }
             finally
             {

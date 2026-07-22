@@ -30,7 +30,8 @@ public class LoggingMiddleware : IAgentMiddleware, IStreamingAgentMiddleware
     public async Task<MessageResponse> InvokeAsync(
         IAgent agent,
         IEnumerable<Message> messages,
-        Func<IEnumerable<Message>, Task<MessageResponse>> next,
+        AgentInvokeOptions? options,
+        Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next,
         CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -41,7 +42,7 @@ public class LoggingMiddleware : IAgentMiddleware, IStreamingAgentMiddleware
 
         try
         {
-            var response = await next(messageList).ConfigureAwait(false);
+            var response = await next(messageList, options).ConfigureAwait(false);
             stopwatch.Stop();
 
             // 완료 로그
@@ -64,7 +65,8 @@ public class LoggingMiddleware : IAgentMiddleware, IStreamingAgentMiddleware
     public async IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingAsync(
         IAgent agent,
         IEnumerable<Message> messages,
-        Func<IEnumerable<Message>, IAsyncEnumerable<StreamingMessageResponse>> next,
+        AgentInvokeOptions? options,
+        Func<IEnumerable<Message>, AgentInvokeOptions?, IAsyncEnumerable<StreamingMessageResponse>> next,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -76,7 +78,7 @@ public class LoggingMiddleware : IAgentMiddleware, IStreamingAgentMiddleware
         var hasError = false;
         Exception? error = null;
 
-        await using var enumerator = next(messageList).GetAsyncEnumerator(cancellationToken);
+        await using var enumerator = next(messageList, options).GetAsyncEnumerator(cancellationToken);
 
         while (true)
         {

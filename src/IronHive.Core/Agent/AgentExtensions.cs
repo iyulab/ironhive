@@ -26,9 +26,11 @@ public static class AgentExtensions
     public static Task<MessageResponse> InvokeAsync(
         this IAgent agent,
         string userText,
+        AgentInvokeOptions? options = null,
         CancellationToken cancellationToken = default)
         => agent.InvokeAsync(
             [new Message { Role = MessageRole.User, Content = [new TextMessageContent { Value = userText }] }],
+            options,
             cancellationToken);
 
     /// <summary>
@@ -37,8 +39,10 @@ public static class AgentExtensions
     public static IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingAsync(
         this IAgent agent,
         string userText,
+        AgentInvokeOptions? options = null,
         CancellationToken cancellationToken = default)
         => agent.InvokeStreamingAsync(
             [new Message { Role = MessageRole.User, Content = [new TextMessageContent { Value = userText }] }],
+            options,
             cancellationToken);
 }

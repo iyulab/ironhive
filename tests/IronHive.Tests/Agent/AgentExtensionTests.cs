@@ -40,18 +40,19 @@ public class AgentExtensionTests
         middleware.InvokeAsync(
                 Arg.Any<IAgent>(),
                 Arg.Any<IEnumerable<Message>>(),
-                Arg.Any<Func<IEnumerable<Message>, Task<MessageResponse>>>(),
+                Arg.Any<AgentInvokeOptions?>(),
+                Arg.Any<Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>>>(),
                 Arg.Any<CancellationToken>())
             .Returns(callInfo =>
             {
                 middlewareInvoked = true;
-                var next = callInfo.ArgAt<Func<IEnumerable<Message>, Task<MessageResponse>>>(2);
-                return next(callInfo.ArgAt<IEnumerable<Message>>(1));
+                var next = callInfo.ArgAt<Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>>>(3);
+                return next(callInfo.ArgAt<IEnumerable<Message>>(1), callInfo.ArgAt<AgentInvokeOptions?>(2));
             });
 
         var innerAgent = Substitute.For<IAgent>();
         innerAgent.Name.Returns("inner");
-        innerAgent.InvokeAsync(Arg.Any<IEnumerable<Message>>(), Arg.Any<CancellationToken>())
+        innerAgent.InvokeAsync(Arg.Any<IEnumerable<Message>>(), Arg.Any<AgentInvokeOptions?>(), Arg.Any<CancellationToken>())
             .Returns(new MessageResponse
             {
                 ResponseId = "test",
@@ -76,7 +77,7 @@ public class AgentExtensionTests
         var innerAgent = Substitute.For<IAgent>();
         innerAgent.InvokeAsync(
                 Arg.Do<IEnumerable<Message>>(msgs => capturedMsgs = msgs),
-                Arg.Any<CancellationToken>())
+                Arg.Any<AgentInvokeOptions?>(), Arg.Any<CancellationToken>())
             .Returns(new MessageResponse
             {
                 ResponseId = "r1",
@@ -105,7 +106,7 @@ public class AgentExtensionTests
         var innerAgent = Substitute.For<IAgent>();
         innerAgent.InvokeStreamingAsync(
                 Arg.Do<IEnumerable<Message>>(msgs => capturedMsgs = msgs),
-                Arg.Any<CancellationToken>())
+                Arg.Any<AgentInvokeOptions?>(), Arg.Any<CancellationToken>())
             .Returns(AsyncEnumerable.Empty<StreamingMessageResponse>());
 
         await foreach (var _ in innerAgent.InvokeStreamingAsync("안녕")) { }

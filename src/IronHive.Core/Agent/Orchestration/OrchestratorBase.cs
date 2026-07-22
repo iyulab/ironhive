@@ -353,21 +353,21 @@ public abstract class OrchestratorBase : IAgentOrchestrator
         var middlewares = Options.AgentMiddlewares;
         if (middlewares == null || middlewares.Count == 0)
         {
-            return await agent.InvokeAsync(messages, cancellationToken).ConfigureAwait(false);
+            return await agent.InvokeAsync(messages, options: null, cancellationToken).ConfigureAwait(false);
         }
 
-        // 미들웨어 체인 구성
-        Func<IEnumerable<Message>, Task<MessageResponse>> pipeline =
-            msgs => agent.InvokeAsync(msgs, cancellationToken);
+        // 미들웨어 체인 구성 (오케스트레이터는 per-request 옵션을 사용하지 않음 — 멤버 에이전트 구성으로 대체)
+        Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> pipeline =
+            (msgs, opts) => agent.InvokeAsync(msgs, opts, cancellationToken);
 
         for (var i = middlewares.Count - 1; i >= 0; i--)
         {
             var middleware = middlewares[i];
             var next = pipeline;
-            pipeline = msgs => middleware.InvokeAsync(agent, msgs, next, cancellationToken);
+            pipeline = (msgs, opts) => middleware.InvokeAsync(agent, msgs, opts, next, cancellationToken);
         }
 
-        return await pipeline(messages).ConfigureAwait(false);
+        return await pipeline(messages, null).ConfigureAwait(false);
     }
 
     private IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingWithMiddlewaresAsync(
@@ -381,20 +381,20 @@ public abstract class OrchestratorBase : IAgentOrchestrator
 
         if (streamingMiddlewares == null || streamingMiddlewares.Count == 0)
         {
-            return agent.InvokeStreamingAsync(messages, cancellationToken);
+            return agent.InvokeStreamingAsync(messages, options: null, cancellationToken);
         }
 
         // 스트리밍 미들웨어 체인 구성: 마지막 미들웨어부터 역순으로 래핑
-        Func<IEnumerable<Message>, IAsyncEnumerable<StreamingMessageResponse>> pipeline =
-            msgs => agent.InvokeStreamingAsync(msgs, cancellationToken);
+        Func<IEnumerable<Message>, AgentInvokeOptions?, IAsyncEnumerable<StreamingMessageResponse>> pipeline =
+            (msgs, opts) => agent.InvokeStreamingAsync(msgs, opts, cancellationToken);
 
         for (var i = streamingMiddlewares.Count - 1; i >= 0; i--)
         {
             var middleware = streamingMiddlewares[i];
             var next = pipeline;
-            pipeline = msgs => middleware.InvokeStreamingAsync(agent, msgs, next, cancellationToken);
+            pipeline = (msgs, opts) => middleware.InvokeStreamingAsync(agent, msgs, opts, next, cancellationToken);
         }
 
-        return pipeline(messages);
+        return pipeline(messages, null);
     }
 }

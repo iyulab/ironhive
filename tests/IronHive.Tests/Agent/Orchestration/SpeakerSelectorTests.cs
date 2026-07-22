@@ -215,7 +215,7 @@ public class SpeakerSelectorTests
     private static IAgent CreateManagerAgent(string responseText)
     {
         var manager = Substitute.For<IAgent>();
-        manager.InvokeAsync(Arg.Any<IEnumerable<Message>>(), Arg.Any<CancellationToken>())
+        manager.InvokeAsync(Arg.Any<IEnumerable<Message>>(), Arg.Any<AgentInvokeOptions?>(), Arg.Any<CancellationToken>())
             .Returns(new MessageResponse
             {
                 DoneReason = MessageDoneReason.EndTurn,

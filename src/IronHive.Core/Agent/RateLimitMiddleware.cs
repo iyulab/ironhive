@@ -30,14 +30,15 @@ public class RateLimitMiddleware : IAgentMiddleware, IDisposable
     public async Task<MessageResponse> InvokeAsync(
         IAgent agent,
         IEnumerable<Message> messages,
-        Func<IEnumerable<Message>, Task<MessageResponse>> next,
+        AgentInvokeOptions? options,
+        Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next,
         CancellationToken cancellationToken = default)
     {
         await WaitForSlotAsync(agent.Name, cancellationToken).ConfigureAwait(false);
 
         try
         {
-            return await next(messages).ConfigureAwait(false);
+            return await next(messages, options).ConfigureAwait(false);
         }
         finally
         {

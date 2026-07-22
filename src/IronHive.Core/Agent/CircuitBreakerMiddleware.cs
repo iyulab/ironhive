@@ -51,7 +51,8 @@ public class CircuitBreakerMiddleware : IAgentMiddleware
     public async Task<MessageResponse> InvokeAsync(
         IAgent agent,
         IEnumerable<Message> messages,
-        Func<IEnumerable<Message>, Task<MessageResponse>> next,
+        AgentInvokeOptions? options,
+        Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next,
         CancellationToken cancellationToken = default)
     {
         lock (_lock)
@@ -69,7 +70,7 @@ public class CircuitBreakerMiddleware : IAgentMiddleware
 
         try
         {
-            var response = await next(messages).ConfigureAwait(false);
+            var response = await next(messages, options).ConfigureAwait(false);
 
             lock (_lock)
             {

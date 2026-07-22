@@ -61,7 +61,7 @@ public class RateLimitMiddlewareTests : IDisposable
 
         var result = await sut.InvokeAsync(
             agent, [],
-            _ => Task.FromResult(s_okResponse));
+            null, (_, _) => Task.FromResult(s_okResponse));
 
         result.Should().BeSameAs(s_okResponse);
     }
@@ -80,7 +80,7 @@ public class RateLimitMiddlewareTests : IDisposable
         {
             var result = await sut.InvokeAsync(
                 agent, [],
-                _ => Task.FromResult(s_okResponse));
+                null, (_, _) => Task.FromResult(s_okResponse));
             result.Should().BeSameAs(s_okResponse);
         }
     }
@@ -93,7 +93,7 @@ public class RateLimitMiddlewareTests : IDisposable
 
         var result = await sut.InvokeAsync(
             agent, [],
-            _ => Task.FromResult(s_okResponse));
+            null, (_, _) => Task.FromResult(s_okResponse));
 
         result.Should().BeSameAs(s_okResponse);
     }
@@ -114,10 +114,10 @@ public class RateLimitMiddlewareTests : IDisposable
 
         sut.CurrentRequestCount.Should().Be(0);
 
-        await sut.InvokeAsync(agent, [], _ => Task.FromResult(s_okResponse));
+        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse));
         sut.CurrentRequestCount.Should().Be(1);
 
-        await sut.InvokeAsync(agent, [], _ => Task.FromResult(s_okResponse));
+        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse));
         sut.CurrentRequestCount.Should().Be(2);
     }
 
@@ -131,7 +131,7 @@ public class RateLimitMiddlewareTests : IDisposable
         });
         var agent = CreateMockAgent();
 
-        await sut.InvokeAsync(agent, [], _ => Task.FromResult(s_okResponse));
+        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse));
         sut.CurrentRequestCount.Should().Be(1);
 
         await Task.Delay(100);
@@ -154,14 +154,14 @@ public class RateLimitMiddlewareTests : IDisposable
         var agent = CreateMockAgent();
 
         // Fill the limit
-        await sut.InvokeAsync(agent, [], _ => Task.FromResult(s_okResponse));
-        await sut.InvokeAsync(agent, [], _ => Task.FromResult(s_okResponse));
+        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse));
+        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse));
 
         // Third request should wait and then succeed
         var sw = System.Diagnostics.Stopwatch.StartNew();
         var result = await sut.InvokeAsync(
             agent, [],
-            _ => Task.FromResult(s_okResponse));
+            null, (_, _) => Task.FromResult(s_okResponse));
         sw.Stop();
 
         result.Should().BeSameAs(s_okResponse);
@@ -186,10 +186,10 @@ public class RateLimitMiddlewareTests : IDisposable
         var agent = CreateMockAgent("limited-agent");
 
         // Fill the limit
-        await sut.InvokeAsync(agent, [], _ => Task.FromResult(s_okResponse));
+        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse));
 
         // Second request triggers rate limiting
-        await sut.InvokeAsync(agent, [], _ => Task.FromResult(s_okResponse));
+        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse));
 
         rateLimitedAgent.Should().Be("limited-agent");
         waitDuration.Should().NotBeNull();
@@ -211,13 +211,13 @@ public class RateLimitMiddlewareTests : IDisposable
         var agent = CreateMockAgent();
 
         // Fill the limit
-        await sut.InvokeAsync(agent, [], _ => Task.FromResult(s_okResponse));
+        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse));
 
         // Cancel while waiting for slot
         using var cts = new CancellationTokenSource(50);
         var act = async () => await sut.InvokeAsync(
             agent, [],
-            _ => Task.FromResult(s_okResponse),
+            null, (_, _) => Task.FromResult(s_okResponse),
             cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();

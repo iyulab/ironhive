@@ -112,7 +112,7 @@ public class LlmSpeakerSelector : ISpeakerSelector
             }
         };
 
-        var response = await _manager.InvokeAsync(messages, cancellationToken).ConfigureAwait(false);
+        var response = await _manager.InvokeAsync(messages, options: null, cancellationToken).ConfigureAwait(false);
         var selectedName = response.Message?.Content
             .OfType<TextMessageContent>()
             .FirstOrDefault()?.Value?.Trim().Trim('"', '\'', ' ');

@@ -26,7 +26,8 @@ public class TimeoutMiddleware : IAgentMiddleware
     public async Task<MessageResponse> InvokeAsync(
         IAgent agent,
         IEnumerable<Message> messages,
-        Func<IEnumerable<Message>, Task<MessageResponse>> next,
+        AgentInvokeOptions? options,
+        Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next,
         CancellationToken cancellationToken = default)
     {
         using var timeoutCts = new CancellationTokenSource(_options.Timeout);
@@ -37,7 +38,7 @@ public class TimeoutMiddleware : IAgentMiddleware
         {
             // 타임아웃 CTS를 사용하여 실행
             // next는 원래 cancellationToken을 사용하므로, 래퍼로 타임아웃 적용
-            var task = next(messages);
+            var task = next(messages, options);
             var completedTask = await Task.WhenAny(task, Task.Delay(Timeout.Infinite, linkedCts.Token))
                 .ConfigureAwait(false);
 

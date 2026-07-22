@@ -1,4 +1,5 @@
 using FluentAssertions;
+using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
@@ -413,7 +414,7 @@ public class TruncatingResultDistillerTests
         public ContextScopeTests_MockAgent(string name) { Name = name; }
 
         public Task<MessageResponse> InvokeAsync(
-            IEnumerable<Message> messages, CancellationToken ct = default)
+            IEnumerable<Message> messages, AgentInvokeOptions? options = null, CancellationToken ct = default)
         {
             var text = ResponseFunc != null ? ResponseFunc(messages) : $"MockAgent '{Name}'";
             return Task.FromResult(new MessageResponse
@@ -428,7 +429,7 @@ public class TruncatingResultDistillerTests
 
         public async IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingAsync(
             IEnumerable<Message> messages,
-            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
+            AgentInvokeOptions? options = null, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
         {
             var text = ResponseFunc != null ? ResponseFunc(messages) : $"MockAgent '{Name}'";
             yield return new StreamingContentDeltaResponse

@@ -501,7 +501,7 @@ public class HandoffOrchestratorTests
 
         public MockAgent(string name) { Name = name; }
 
-        public async Task<MessageResponse> InvokeAsync(IEnumerable<Message> messages, CancellationToken ct = default)
+        public async Task<MessageResponse> InvokeAsync(IEnumerable<Message> messages, AgentInvokeOptions? options = null, CancellationToken ct = default)
         {
             string text;
             if (ResponseFuncAsync != null) text = await ResponseFuncAsync(messages);
@@ -520,7 +520,7 @@ public class HandoffOrchestratorTests
 
         public async IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingAsync(
             IEnumerable<Message> messages,
-            [EnumeratorCancellation] CancellationToken ct = default)
+            AgentInvokeOptions? options = null, [EnumeratorCancellation] CancellationToken ct = default)
         {
             yield return new StreamingMessageBeginResponse();
             await Task.Yield();

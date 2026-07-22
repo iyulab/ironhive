@@ -58,7 +58,7 @@ public class CircuitBreakerMiddlewareTests
         var result = await sut.InvokeAsync(
             agent,
             [],
-            _ => Task.FromResult(s_okResponse));
+            null, (_, _) => Task.FromResult(s_okResponse));
 
         result.Should().BeSameAs(s_okResponse);
         sut.State.Should().Be(CircuitState.Closed);
@@ -79,19 +79,19 @@ public class CircuitBreakerMiddlewareTests
         {
             var act = async () => await sut.InvokeAsync(
                 agent, [],
-                _ => throw new InvalidOperationException("fail"));
+                null, (_, _) => throw new InvalidOperationException("fail"));
             await act.Should().ThrowAsync<InvalidOperationException>();
         }
 
         // Success resets count
-        await sut.InvokeAsync(agent, [], _ => Task.FromResult(s_okResponse));
+        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse));
 
         // 2 more failures should not open (count was reset)
         for (var i = 0; i < 2; i++)
         {
             var act = async () => await sut.InvokeAsync(
                 agent, [],
-                _ => throw new InvalidOperationException("fail"));
+                null, (_, _) => throw new InvalidOperationException("fail"));
             await act.Should().ThrowAsync<InvalidOperationException>();
         }
 
@@ -117,7 +117,7 @@ public class CircuitBreakerMiddlewareTests
         {
             var act = async () => await sut.InvokeAsync(
                 agent, [],
-                _ => throw new InvalidOperationException("fail"));
+                null, (_, _) => throw new InvalidOperationException("fail"));
             await act.Should().ThrowAsync<InvalidOperationException>();
         }
 
@@ -138,7 +138,7 @@ public class CircuitBreakerMiddlewareTests
         {
             var act = async () => await sut.InvokeAsync(
                 agent, [],
-                _ => throw new InvalidOperationException("fail"));
+                null, (_, _) => throw new InvalidOperationException("fail"));
             await act.Should().ThrowAsync<InvalidOperationException>();
         }
 
@@ -162,13 +162,13 @@ public class CircuitBreakerMiddlewareTests
         // Open the circuit
         var act1 = async () => await sut.InvokeAsync(
             agent, [],
-            _ => throw new InvalidOperationException("fail"));
+            null, (_, _) => throw new InvalidOperationException("fail"));
         await act1.Should().ThrowAsync<InvalidOperationException>();
 
         // Subsequent request should be rejected
         var act2 = async () => await sut.InvokeAsync(
             agent, [],
-            _ => Task.FromResult(s_okResponse));
+            null, (_, _) => Task.FromResult(s_okResponse));
         await act2.Should().ThrowAsync<CircuitBreakerOpenException>()
             .WithMessage("*my-agent*");
     }
@@ -190,7 +190,7 @@ public class CircuitBreakerMiddlewareTests
         // Open the circuit
         var act = async () => await sut.InvokeAsync(
             agent, [],
-            _ => throw new InvalidOperationException("fail"));
+            null, (_, _) => throw new InvalidOperationException("fail"));
         await act.Should().ThrowAsync<InvalidOperationException>();
         sut.State.Should().Be(CircuitState.Open);
 
@@ -213,12 +213,12 @@ public class CircuitBreakerMiddlewareTests
         // Open → wait → HalfOpen
         var act = async () => await sut.InvokeAsync(
             agent, [],
-            _ => throw new InvalidOperationException("fail"));
+            null, (_, _) => throw new InvalidOperationException("fail"));
         await act.Should().ThrowAsync<InvalidOperationException>();
         await Task.Delay(100);
 
         // Success in HalfOpen → Closed
-        await sut.InvokeAsync(agent, [], _ => Task.FromResult(s_okResponse));
+        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse));
 
         sut.State.Should().Be(CircuitState.Closed);
     }
@@ -236,7 +236,7 @@ public class CircuitBreakerMiddlewareTests
         // Open → wait → HalfOpen
         var act1 = async () => await sut.InvokeAsync(
             agent, [],
-            _ => throw new InvalidOperationException("fail"));
+            null, (_, _) => throw new InvalidOperationException("fail"));
         await act1.Should().ThrowAsync<InvalidOperationException>();
         await Task.Delay(100);
         sut.State.Should().Be(CircuitState.HalfOpen);
@@ -244,7 +244,7 @@ public class CircuitBreakerMiddlewareTests
         // Failure in HalfOpen → Open again
         var act2 = async () => await sut.InvokeAsync(
             agent, [],
-            _ => throw new InvalidOperationException("fail again"));
+            null, (_, _) => throw new InvalidOperationException("fail again"));
         await act2.Should().ThrowAsync<InvalidOperationException>();
 
         sut.State.Should().Be(CircuitState.Open);
@@ -267,7 +267,7 @@ public class CircuitBreakerMiddlewareTests
         // Open the circuit
         var act = async () => await sut.InvokeAsync(
             agent, [],
-            _ => throw new InvalidOperationException("fail"));
+            null, (_, _) => throw new InvalidOperationException("fail"));
         await act.Should().ThrowAsync<InvalidOperationException>();
         sut.State.Should().Be(CircuitState.Open);
 
@@ -277,7 +277,7 @@ public class CircuitBreakerMiddlewareTests
         sut.State.Should().Be(CircuitState.Closed);
 
         // Should work again
-        var result = await sut.InvokeAsync(agent, [], _ => Task.FromResult(s_okResponse));
+        var result = await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse));
         result.Should().BeSameAs(s_okResponse);
     }
 
@@ -314,7 +314,7 @@ public class CircuitBreakerMiddlewareTests
         // Closed → Open
         var act = async () => await sut.InvokeAsync(
             agent, [],
-            _ => throw new InvalidOperationException("fail"));
+            null, (_, _) => throw new InvalidOperationException("fail"));
         await act.Should().ThrowAsync<InvalidOperationException>();
 
         // Open → HalfOpen (via timer)
@@ -322,7 +322,7 @@ public class CircuitBreakerMiddlewareTests
         _ = sut.State; // Trigger state update
 
         // HalfOpen → Closed (via success)
-        await sut.InvokeAsync(agent, [], _ => Task.FromResult(s_okResponse));
+        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse));
 
         stateChanges.Should().HaveCount(3);
         stateChanges[0].Should().Be((CircuitState.Closed, CircuitState.Open));
@@ -348,7 +348,7 @@ public class CircuitBreakerMiddlewareTests
 
         var act = async () => await sut.InvokeAsync(
             agent, [],
-            _ => throw new InvalidOperationException("boom"));
+            null, (_, _) => throw new InvalidOperationException("boom"));
         await act.Should().ThrowAsync<InvalidOperationException>();
 
         capturedAgent.Should().Be("breaker-agent");
@@ -376,13 +376,13 @@ public class CircuitBreakerMiddlewareTests
         // Open the circuit
         var act1 = async () => await sut.InvokeAsync(
             agent, [],
-            _ => throw new InvalidOperationException("fail"));
+            null, (_, _) => throw new InvalidOperationException("fail"));
         await act1.Should().ThrowAsync<InvalidOperationException>();
 
         // Trigger rejection
         var act2 = async () => await sut.InvokeAsync(
             agent, [],
-            _ => Task.FromResult(s_okResponse));
+            null, (_, _) => Task.FromResult(s_okResponse));
         await act2.Should().ThrowAsync<CircuitBreakerOpenException>();
 
         rejectedAgent.Should().Be("rejected-agent");
@@ -409,7 +409,7 @@ public class CircuitBreakerMiddlewareTests
         {
             var act = async () => await sut.InvokeAsync(
                 agent, [],
-                _ => throw new InvalidOperationException("fail"));
+                null, (_, _) => throw new InvalidOperationException("fail"));
             await act.Should().ThrowAsync<InvalidOperationException>();
         }
 
@@ -421,7 +421,7 @@ public class CircuitBreakerMiddlewareTests
         {
             var act = async () => await sut.InvokeAsync(
                 agent, [],
-                _ => throw new InvalidOperationException("fail"));
+                null, (_, _) => throw new InvalidOperationException("fail"));
             await act.Should().ThrowAsync<InvalidOperationException>();
         }
 
@@ -446,7 +446,7 @@ public class CircuitBreakerMiddlewareTests
 
         var act = async () => await sut.InvokeAsync(
             agent, [],
-            _ => throw new OperationCanceledException(),
+            null, (_, _) => throw new OperationCanceledException(),
             cts.Token);
         await act.Should().ThrowAsync<OperationCanceledException>();
 
