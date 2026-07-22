@@ -236,3 +236,7 @@ IAgent orchestratorAgent = orchestrator.AsAgent(
 // Can then be used in another orchestrator
 var outer = new SequentialOrchestrator(new[] { orchestratorAgent, reviewAgent });
 ```
+
+Orchestrator-wrapped agents do not support per-request `AgentInvokeOptions` —
+passing a non-null options throws `NotSupportedException`. Configure member
+agents or orchestrator options instead.

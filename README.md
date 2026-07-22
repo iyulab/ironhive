@@ -59,6 +59,14 @@ var agent = hive.CreateAgentFrom(cfg =>
 // 단순 텍스트 호출
 var response = await agent.InvokeAsync("안녕하세요");
 
+// per-request 옵션 (에이전트 기본값 위에 이 호출에만 overlay)
+var response2 = await agent.InvokeAsync("안녕하세요", new AgentInvokeOptions
+{
+    ThinkingEffort = MessageThinkingEffort.High,
+    Suggestions = new SuggestionOptions(),  // 후속 질의 제안 활성화
+    MaxTokens = 2048,
+});
+
 // 스트리밍
 await foreach (var chunk in agent.InvokeStreamingAsync("안녕하세요"))
 {

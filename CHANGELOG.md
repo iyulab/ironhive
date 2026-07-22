@@ -4,6 +4,39 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.14.0 — 2026-07-22
+
+`MessageRequest` kept growing per-request options (`Suggestions`,
+`ThinkingEffort`, `OutputFormat`, …) that agent-abstraction consumers could
+never reach — `IAgent.InvokeAsync` had no options parameter, so wrappers like
+Ironbees had nothing to pass through. This release opens that channel.
+
+### Added
+
+- **`AgentInvokeOptions`** (`IronHive.Abstractions.Agent`) — per-request
+  options for `IAgent.InvokeAsync/InvokeStreamingAsync`: `PreviousId`,
+  `ThinkingEffort`, `MaxTokens` (overrides the agent default), `ToolOptions`,
+  `OutputFormat`, `Suggestions`, `MaxTurns`, and `Items`. `BasicAgent`
+  overlays them on top of its agent-fixed defaults; null fields keep defaults.
+- **Field-symmetry regression test** — every writable `MessageRequest`
+  property must be classified as agent-fixed (`Provider`/`Model`/`System`/
+  `Messages`/`Tools`) or exposed on `AgentInvokeOptions`, so future
+  per-request options cannot silently become unreachable again.
+
+### Changed (breaking, 0.x)
+
+- **`IAgent` invoke methods** gain an optional `AgentInvokeOptions?` parameter
+  before the cancellation token. Source-compatible for callers using named or
+  omitted arguments; implementers must add the parameter. Positional
+  `InvokeAsync(msgs, ct)` call sites need `InvokeAsync(msgs, null, ct)`.
+- **`IAgentMiddleware`/`IStreamingAgentMiddleware`** receive `options` and a
+  two-argument `next(messages, options)` — middleware must forward options.
+- **`CachingMiddleware`** includes options in its cache key: identical
+  messages with different per-request options no longer share a cache entry.
+- **`OrchestratorAgentAdapter`** throws `NotSupportedException` when passed
+  non-null options (fail-loud instead of silently ignoring them) — configure
+  member agents or orchestrator options instead.
+
 ## 0.13.0 — 2026-07-14
 
 `MessageService`'s ad-hoc turn state (four scattered locals threaded through a

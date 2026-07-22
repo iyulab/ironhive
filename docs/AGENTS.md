@@ -37,13 +37,35 @@ public interface IAgent
 
     Task<MessageResponse> InvokeAsync(
         IEnumerable<Message> messages,
+        AgentInvokeOptions? options = null,
         CancellationToken cancellationToken = default);
 
     IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingAsync(
         IEnumerable<Message> messages,
+        AgentInvokeOptions? options = null,
         CancellationToken cancellationToken = default);
 }
 ```
+
+### Per-request 옵션 (`AgentInvokeOptions`)
+
+invoke 호출 단위로 `MessageRequest`의 per-request 옵션을 지정할 수 있습니다.
+에이전트 고정값 위에 overlay되며, null 필드는 에이전트 기본값을 유지합니다.
+
+```csharp
+var response = await agent.InvokeAsync(messages, new AgentInvokeOptions
+{
+    ThinkingEffort = MessageThinkingEffort.High,
+    Suggestions = new SuggestionOptions { Mode = SuggestionMode.Always },
+    OutputFormat = format,      // 구조화 출력
+    MaxTokens = 2048,           // 에이전트 MaxTokens override
+    MaxTurns = 10,
+    PreviousId = previousResponseId,
+});
+```
+
+> 오케스트레이터를 `AsAgent()`로 래핑한 에이전트는 per-request 옵션을 지원하지 않으며,
+> non-null 옵션 전달 시 `NotSupportedException`이 발생합니다.
 
 ---
 

@@ -336,11 +336,12 @@ public class MyMiddleware : IAgentMiddleware
     public async Task<MessageResponse> InvokeAsync(
         IAgent agent,
         IEnumerable<Message> messages,
-        Func<IEnumerable<Message>, Task<MessageResponse>> next,
+        AgentInvokeOptions? options,
+        Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next,
         CancellationToken cancellationToken = default)
     {
         // 전처리
-        var response = await next(messages);
+        var response = await next(messages, options);
         // 후처리
         return response;
     }
@@ -354,16 +355,21 @@ public class MyStreamingMiddleware : IAgentMiddleware, IStreamingAgentMiddleware
     public async IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingAsync(
         IAgent agent,
         IEnumerable<Message> messages,
-        Func<IEnumerable<Message>, IAsyncEnumerable<StreamingMessageResponse>> next,
+        AgentInvokeOptions? options,
+        Func<IEnumerable<Message>, AgentInvokeOptions?, IAsyncEnumerable<StreamingMessageResponse>> next,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        await foreach (var chunk in next(messages).WithCancellation(cancellationToken))
+        await foreach (var chunk in next(messages, options).WithCancellation(cancellationToken))
         {
             yield return chunk;
         }
     }
 }
 ```
+
+미들웨어는 per-request `AgentInvokeOptions`를 `next`로 전달해야 합니다.
+캐싱처럼 응답에 영향을 주는 미들웨어는 options를 키/판단에 반영해야 합니다
+(`CachingMiddleware`는 options를 캐시 키에 포함합니다 — 같은 메시지라도 옵션이 다르면 캐시를 공유하지 않습니다).
 
 ---
 

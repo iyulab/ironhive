@@ -443,6 +443,9 @@ pipeline.AddAgent(reviewAgent);
 pipeline.AddAgent(finalizer);
 ```
 
+> `AsAgent()`로 래핑한 에이전트는 per-request `AgentInvokeOptions`를 지원하지 않습니다 —
+> non-null 옵션 전달 시 `NotSupportedException`. 멤버 에이전트/오케스트레이터 옵션으로 구성하세요.
+
 ---
 
 ## TypedPipeline (타입 안전 파이프라인)

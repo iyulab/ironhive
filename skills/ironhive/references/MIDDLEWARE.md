@@ -125,13 +125,14 @@ public class MyMiddleware : IAgentMiddleware
     public async Task<MessageResponse> InvokeAsync(
         IAgent agent,
         IEnumerable<Message> messages,
-        AgentMiddlewareDelegate next,
-        CancellationToken ct = default)
+        AgentInvokeOptions? options,
+        Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next,
+        CancellationToken cancellationToken = default)
     {
         // pre-processing
         Console.WriteLine("Before invoke");
 
-        var response = await next(agent, messages, ct);
+        var response = await next(messages, options);
 
         // post-processing
         Console.WriteLine("After invoke");
@@ -139,3 +140,7 @@ public class MyMiddleware : IAgentMiddleware
     }
 }
 ```
+
+Middleware must forward the per-request `AgentInvokeOptions` to `next`. Middleware that
+affects responses (e.g. caching) must account for options — `CachingMiddleware` includes
+options in its cache key, so identical messages with different options never share an entry.
