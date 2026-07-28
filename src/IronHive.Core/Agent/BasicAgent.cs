@@ -32,6 +32,18 @@ public class BasicAgent : IAgent
     /// <inheritdoc />
     public int? MaxTokens { get; set; }
 
+    /// <inheritdoc cref="IronHive.Abstractions.Messages.MessageRequest.Temperature" />
+    public float? Temperature { get; set; }
+
+    /// <inheritdoc cref="IronHive.Abstractions.Messages.MessageRequest.TopP" />
+    public float? TopP { get; set; }
+
+    /// <inheritdoc cref="IronHive.Abstractions.Messages.MessageRequest.TopK" />
+    public int? TopK { get; set; }
+
+    /// <inheritdoc cref="IronHive.Abstractions.Messages.MessageRequest.StopSequences" />
+    public ICollection<string>? StopSequences { get; set; }
+
     public BasicAgent(IMessageService service)
     {
         _message = service;
@@ -67,6 +79,10 @@ public class BasicAgent : IAgent
             System = Instructions,
             Tools = Tools,
             MaxTokens = MaxTokens,
+            Temperature = Temperature,
+            TopP = TopP,
+            TopK = TopK,
+            StopSequences = StopSequences,
         };
 
         if (options is null)
@@ -76,6 +92,10 @@ public class BasicAgent : IAgent
         request.PreviousId = options.PreviousId;
         if (options.ThinkingEffort is not null) request.ThinkingEffort = options.ThinkingEffort;
         if (options.MaxTokens is not null) request.MaxTokens = options.MaxTokens;
+        if (options.Temperature is not null) request.Temperature = options.Temperature;
+        if (options.TopP is not null) request.TopP = options.TopP;
+        if (options.TopK is not null) request.TopK = options.TopK;
+        if (options.StopSequences is not null) request.StopSequences = options.StopSequences;
         if (options.ToolOptions is not null) request.ToolOptions = options.ToolOptions;
         if (options.OutputFormat is not null) request.OutputFormat = options.OutputFormat;
         if (options.Suggestions is not null) request.Suggestions = options.Suggestions;

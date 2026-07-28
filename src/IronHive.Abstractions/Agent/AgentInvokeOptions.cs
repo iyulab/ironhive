@@ -25,6 +25,27 @@ public class AgentInvokeOptions
     public int? MaxTokens { get; set; }
 
     /// <summary>
+    /// Sampling temperature. Higher values make output more random.
+    /// </summary>
+    public float? Temperature { get; set; }
+
+    /// <summary>
+    /// Nucleus sampling threshold.
+    /// </summary>
+    public float? TopP { get; set; }
+
+    /// <summary>
+    /// Top-K sampling cutoff. Ignored by providers that do not expose it.
+    /// </summary>
+    public int? TopK { get; set; }
+
+    /// <summary>
+    /// Sequences that stop generation when produced.
+    /// </summary>
+    public ICollection<string>? StopSequences { get; set; }
+
+
+    /// <summary>
     /// 도구 실행 동작 설정입니다. null이면 기본값이 사용됩니다.
     /// </summary>
     public ToolOptions? ToolOptions { get; set; }

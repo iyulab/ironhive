@@ -278,6 +278,10 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
             Model = request.Model,
             Messages = BuildMessages(request),
             MaxCompletionTokens = request.MaxTokens,
+            Temperature = request.Temperature,
+            TopP = request.TopP,
+            TopK = request.TopK,
+            Stop = request.StopSequences,
             ResponseFormat = BuildResponseFormat(request),
             Tools = request.Tools?.Select(t => new ChatTool
             {

@@ -4,6 +4,37 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.15.0 — 2026-07-28
+
+### Fixed — sampling parameters reach the provider again (regression from 0.11.0)
+
+`Temperature`, `TopP`, `TopK` and `StopSequences` are restored to `MessageRequest`,
+`MessageGenerationRequest` and `AgentInvokeOptions`, and are wired from `AgentConfig.Parameters`
+through `BasicAgent` to the providers.
+
+**What happened.** Commit `1b38998` ("refactor(messages): simplify request parameter model",
+2026-06-30) removed the `MessageGenerationParameters` base class and folded **only `MaxTokens`**
+onto the request types. The other four were dropped. `AgentParametersConfig` kept exposing all
+five and the TOML parser kept reading them, so an agent configured with `temperature = 0.2`
+silently sampled at the provider default — a no-op with no error and no warning. Separately,
+`IronHive.Flux`'s adapters stopped compiling against the removed properties, which is how the
+regression surfaced.
+
+**Provider coverage** — deliberately not uniform:
+
+| Provider | Temperature / TopP | TopK | StopSequences |
+|---|---|---|---|
+| OpenAI | ✅ | — (not in the Responses API) | — |
+| OpenAI.Compatible | ✅ | ✅ (`top_k`, ignored by servers that don't know it) | ✅ (`stop`) |
+| GoogleAI | ✅ | ✅ | ✅ |
+| Anthropic | **intentionally not forwarded** | **not forwarded** | ✅ |
+
+Anthropic deprecated `temperature`/`top_p`/`top_k`; models released after Claude Opus 4.6 reject
+any value with a 400. Forwarding them would convert a silent no-op into a hard request failure,
+so they are dropped at the Anthropic adapter with a comment explaining why.
+
+Regression guard: `tests/IronHive.Tests/Agent/SamplingParameterFlowTests.cs`.
+
 ## 0.14.0 — 2026-07-22
 
 `MessageRequest` kept growing per-request options (`Suggestions`,

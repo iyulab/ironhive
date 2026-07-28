@@ -327,6 +327,12 @@ public class OpenAIMessageGenerator : IMessageGenerator
         if (request.MaxTokens.HasValue)
             options.MaxOutputTokenCount = request.MaxTokens.Value;
 
+        if (request.Temperature.HasValue)
+            options.Temperature = request.Temperature.Value;
+
+        if (request.TopP.HasValue)
+            options.TopP = request.TopP.Value;
+
         if (request.ThinkingEffort is not null and not MessageThinkingEffort.None)
         {
             options.IncludedProperties.Add(

@@ -72,6 +72,10 @@ public class MessageContext
             Tools = request.Tools,
             OutputFormat = request.OutputFormat,
             MaxTokens = request.MaxTokens,
+            Temperature = request.Temperature,
+            TopP = request.TopP,
+            TopK = request.TopK,
+            StopSequences = request.StopSequences,
         };
         configure?.Invoke(Request);
 

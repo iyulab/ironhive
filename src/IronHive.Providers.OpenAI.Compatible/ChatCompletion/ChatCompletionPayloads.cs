@@ -272,6 +272,20 @@ public class ChatCompletionRequest : ChatCompletionPayloadBase
     [JsonPropertyName("max_completion_tokens")]
     public int? MaxCompletionTokens { get; set; }
 
+    [JsonPropertyName("temperature")]
+    public float? Temperature { get; set; }
+
+    [JsonPropertyName("top_p")]
+    public float? TopP { get; set; }
+
+    /// <summary>Not part of the OpenAI Chat Completions schema; llama.cpp/vLLM-style servers accept it.
+    /// Servers that do not recognize it ignore it.</summary>
+    [JsonPropertyName("top_k")]
+    public int? TopK { get; set; }
+
+    [JsonPropertyName("stop")]
+    public ICollection<string>? Stop { get; set; }
+
     [JsonPropertyName("response_format")]
     public ChatResponseFormat? ResponseFormat { get; set; }
 

@@ -136,7 +136,11 @@ public class AgentService : IAgentService
             Provider = config.Provider,
             Model = config.Model,
             Instructions = config.Instructions,
-            MaxTokens = config.Parameters?.MaxTokens
+            MaxTokens = config.Parameters?.MaxTokens,
+            Temperature = config.Parameters?.Temperature,
+            TopP = config.Parameters?.TopP,
+            TopK = config.Parameters?.TopK,
+            StopSequences = config.Parameters?.StopSequences
         };
     }
 

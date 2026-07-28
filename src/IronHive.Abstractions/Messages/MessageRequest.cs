@@ -33,6 +33,27 @@ public class MessageRequest
     public int? MaxTokens { get; set; }
 
     /// <summary>
+    /// Sampling temperature. Higher values make output more random.
+    /// </summary>
+    public float? Temperature { get; set; }
+
+    /// <summary>
+    /// Nucleus sampling threshold.
+    /// </summary>
+    public float? TopP { get; set; }
+
+    /// <summary>
+    /// Top-K sampling cutoff. Ignored by providers that do not expose it.
+    /// </summary>
+    public int? TopK { get; set; }
+
+    /// <summary>
+    /// Sequences that stop generation when produced.
+    /// </summary>
+    public ICollection<string>? StopSequences { get; set; }
+
+
+    /// <summary>
     /// 대화의 컨텍스트와 동작을 정의하는 시스템 프롬프트입니다.
     /// </summary>
     public string? System { get; set; }

@@ -501,6 +501,10 @@ public class AnthropicMessageGenerator : IMessageGenerator
             Messages = messages,
             // 필수요청사항으로 64K로 기본값을 설정합니다.
             MaxTokens = request.MaxTokens ?? 64000,
+            // Temperature/TopP/TopK are deliberately NOT forwarded: Anthropic deprecated them and
+            // models released after Claude Opus 4.6 reject any value with a 400. Mapping them would
+            // turn a silent no-op into a hard request failure, which is worse than ignoring them.
+            StopSequences = request.StopSequences?.ToList(),
             Tools = tools?.Count > 0 ? tools : null,
             Thinking = thinking,
             OutputConfig = outputConfig,
