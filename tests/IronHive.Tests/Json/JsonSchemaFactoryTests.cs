@@ -9,7 +9,6 @@ namespace IronHive.Tests.Json;
 // json_schema into a constrained grammar. Non-standard schema shapes (numeric
 // union+pattern, enum without type) break that conversion. These tests pin the
 // schema output to a clean, spec-compliant shape.
-// Ref: claudedocs/issues/ISSUE-ironhive-2026-06-07-jsonschema-llamacpp.md
 public class JsonSchemaFactoryTests
 {
     [JsonConverter(typeof(JsonStringEnumConverter<Verdict>))]
