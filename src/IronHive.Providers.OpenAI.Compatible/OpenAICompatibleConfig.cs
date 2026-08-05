@@ -52,6 +52,19 @@ public class OpenAICompatibleConfig
     public TimeSpan ConnectTimeout { get; set; } = TimeSpan.FromSeconds(2);
 
     /// <summary>
+    /// Which output-length parameter to send. (Default: <c>max_completion_tokens</c>, the previous
+    /// and only behaviour — existing configurations are unaffected.)
+    /// </summary>
+    /// <remarks>
+    /// Set this to <see cref="Compatible.TokenLimitParameter.MaxTokens"/> for a server that predates
+    /// OpenAI's rename. Such a server does not reject the newer name, it ignores it, so
+    /// <c>MaxTokens</c> is dropped in silence and the only symptom is a response longer than asked
+    /// for. There is no name that is accepted everywhere — current OpenAI models reject the old one —
+    /// which is why this is a setting rather than something the package infers.
+    /// </remarks>
+    public TokenLimitParameter TokenLimitParameter { get; set; } = TokenLimitParameter.MaxCompletionTokens;
+
+    /// <summary>
     /// True when a base URL is resolvable, i.e. the endpoint can be contacted. A key-optional LAN
     /// service is usable without a key (distinct from <see cref="IsConfigured"/>).
     /// </summary>

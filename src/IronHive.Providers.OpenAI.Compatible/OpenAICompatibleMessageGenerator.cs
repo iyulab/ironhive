@@ -22,9 +22,16 @@ public class OpenAICompatibleMessageGenerator : IMessageGenerator
     public OpenAICompatibleMessageGenerator(OpenAICompatibleConfig config)
     {
         _config = config ?? throw new ArgumentNullException(nameof(config));
-        _inner = new ChatCompletionMessageGenerator(config.ToOpenAI());
+        _inner = new ChatCompletionMessageGenerator(config.ToOpenAI()) { TokenLimitParameter = config.TokenLimitParameter };
         _lastResolvedSignature = BuildSignature(config.ResolveBaseUrl(), config.ResolveApiKey());
     }
+
+    /// <summary>
+    /// The output-length parameter the inner generator will actually send. Exposed so the hand-off
+    /// from configuration is observable: a setting that never reaches the wire is the same silent
+    /// no-op it was introduced to fix.
+    /// </summary>
+    public TokenLimitParameter EffectiveTokenLimitParameter => GetOrUpdateInner().TokenLimitParameter;
 
     private ChatCompletionMessageGenerator GetOrUpdateInner()
     {
@@ -41,7 +48,7 @@ public class OpenAICompatibleMessageGenerator : IMessageGenerator
             if (current == _lastResolvedSignature)
                 return _inner;
 
-            _inner = new ChatCompletionMessageGenerator(_config.ToOpenAI());
+            _inner = new ChatCompletionMessageGenerator(_config.ToOpenAI()) { TokenLimitParameter = _config.TokenLimitParameter };
             _lastResolvedSignature = current;
         }
 

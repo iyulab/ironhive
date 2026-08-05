@@ -272,6 +272,14 @@ public class ChatCompletionRequest : ChatCompletionPayloadBase
     [JsonPropertyName("max_completion_tokens")]
     public int? MaxCompletionTokens { get; set; }
 
+    /// <summary>
+    /// The pre-rename spelling of the output limit. Only populated when the caller selects it via
+    /// <see cref="TokenLimitParameter"/>; null is omitted from the payload, so a server never sees a
+    /// name it was not asked to receive.
+    /// </summary>
+    [JsonPropertyName("max_tokens")]
+    public int? MaxTokens { get; set; }
+
     [JsonPropertyName("temperature")]
     public float? Temperature { get; set; }
 

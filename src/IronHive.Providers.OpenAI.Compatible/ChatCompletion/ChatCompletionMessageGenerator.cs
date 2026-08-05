@@ -35,6 +35,17 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         _client = new ChatCompletionHttpClient(config);
     }
 
+    /// <summary>
+    /// Which output-length parameter goes on the wire. Defaults to <c>max_completion_tokens</c>,
+    /// which is what this generator has always sent — existing callers see no change.
+    /// </summary>
+    /// <remarks>
+    /// A server that does not recognise the name it receives ignores it silently, so the limit is
+    /// dropped without an error and the caller only sees an unexpectedly long response. See
+    /// <see cref="Compatible.TokenLimitParameter"/> for why there is no name that works everywhere.
+    /// </remarks>
+    public TokenLimitParameter TokenLimitParameter { get; set; } = TokenLimitParameter.MaxCompletionTokens;
+
     /// <inheritdoc />
     public void Dispose()
     {
@@ -47,7 +58,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var req = BuildRequest(request);
+        var req = BuildRequest(request, TokenLimitParameter);
         var res = await _client.PostAsync(req, cancellationToken);
         var choice = res.Choices?.FirstOrDefault();
         var content = new List<MessageContent>();
@@ -98,7 +109,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var req = BuildRequest(request);
+        var req = BuildRequest(request, TokenLimitParameter);
 
         var reason = MessageDoneReason.EndTurn;
         var usage = new MessageTokenUsage();
@@ -269,15 +280,23 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
             "a server-specific implementation (e.g. llama.cpp/vLLM's /tokenize endpoint) if you need one.");
     }
 
-    internal static ChatCompletionRequest BuildRequest(MessageGenerationRequest request)
+    internal static ChatCompletionRequest BuildRequest(
+        MessageGenerationRequest request,
+        TokenLimitParameter tokenLimitParameter = TokenLimitParameter.MaxCompletionTokens)
     {
         var enabledReasoning = request.ThinkingEffort is not null and not MessageThinkingEffort.None;
+
+        // Only the selected spelling is populated; the other stays null and the serializer omits it,
+        // so a server never receives a name the caller did not ask for.
+        var sendsNewName = tokenLimitParameter is TokenLimitParameter.MaxCompletionTokens or TokenLimitParameter.Both;
+        var sendsOldName = tokenLimitParameter is TokenLimitParameter.MaxTokens or TokenLimitParameter.Both;
 
         return new ChatCompletionRequest
         {
             Model = request.Model,
             Messages = BuildMessages(request),
-            MaxCompletionTokens = request.MaxTokens,
+            MaxCompletionTokens = sendsNewName ? request.MaxTokens : null,
+            MaxTokens = sendsOldName ? request.MaxTokens : null,
             Temperature = request.Temperature,
             TopP = request.TopP,
             TopK = request.TopK,

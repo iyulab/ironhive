@@ -2,6 +2,7 @@ using FluentAssertions;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Tools;
+using IronHive.Providers.OpenAI.Compatible;
 using IronHive.Providers.OpenAI.Compatible.ChatCompletion;
 
 namespace IronHive.Tests.Providers;
@@ -114,6 +115,101 @@ public class ChatCompletionMessageGeneratorTests
         var chatRequest = ChatCompletionMessageGenerator.BuildRequest(request);
 
         chatRequest.MaxCompletionTokens.Should().Be(128);
+    }
+
+    // === Output-length parameter name ===
+    //
+    // OpenAI renamed max_tokens to max_completion_tokens and the ecosystem split: current OpenAI
+    // models reject the old name, while many self-hosted servers only recognise it - and an
+    // unrecognised field is ignored rather than rejected, so the limit vanishes without an error and
+    // the caller just gets a longer response than they asked for. Since no single name works
+    // everywhere, these assert the payload that actually goes on the wire for each choice.
+
+    // Mirrors ChatCompletionHttpClient's own options: what the assertions read has to be what the
+    // client would actually put on the wire.
+    private static readonly System.Text.Json.JsonSerializerOptions PayloadOptions = new()
+    {
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+    };
+
+    private static string SerializePayload(ChatCompletionRequest request) =>
+        System.Text.Json.JsonSerializer.Serialize(request, PayloadOptions);
+
+    [Fact]
+    public void BuildRequest_DefaultsToTheCurrentSpelling_SoExistingCallersSeeNoChange()
+    {
+        var request = Request(null, Message.User("hi"));
+        request.MaxTokens = 300;
+
+        var payload = SerializePayload(ChatCompletionMessageGenerator.BuildRequest(request));
+
+        payload.Should().Contain("\"max_completion_tokens\":300");
+        payload.Should().NotContain("\"max_tokens\"");
+    }
+
+    [Fact]
+    public void BuildRequest_MaxTokensChoice_SendsOnlyTheDeprecatedSpelling()
+    {
+        var request = Request(null, Message.User("hi"));
+        request.MaxTokens = 300;
+
+        var payload = SerializePayload(
+            ChatCompletionMessageGenerator.BuildRequest(request, TokenLimitParameter.MaxTokens));
+
+        payload.Should().Contain("\"max_tokens\":300");
+        payload.Should().NotContain("max_completion_tokens");
+    }
+
+    [Fact]
+    public void BuildRequest_BothChoice_SendsBothSpellingsWithTheSameValue()
+    {
+        var request = Request(null, Message.User("hi"));
+        request.MaxTokens = 300;
+
+        var payload = SerializePayload(
+            ChatCompletionMessageGenerator.BuildRequest(request, TokenLimitParameter.Both));
+
+        payload.Should().Contain("\"max_completion_tokens\":300");
+        payload.Should().Contain("\"max_tokens\":300");
+    }
+
+    [Theory]
+    [InlineData(TokenLimitParameter.MaxCompletionTokens)]
+    [InlineData(TokenLimitParameter.MaxTokens)]
+    [InlineData(TokenLimitParameter.Both)]
+    public void BuildRequest_WithoutAMaxTokens_SendsNeitherSpelling(TokenLimitParameter choice)
+    {
+        // Selecting a name must not conjure a limit that the caller never set.
+        var payload = SerializePayload(
+            ChatCompletionMessageGenerator.BuildRequest(Request(null, Message.User("hi")), choice));
+
+        payload.Should().NotContain("max_tokens");
+        payload.Should().NotContain("max_completion_tokens");
+    }
+
+    /// <summary>
+    /// A setting the config exposes but never hands to the generator is the same silent no-op the
+    /// setting exists to fix, so the hand-off is pinned rather than assumed.
+    /// </summary>
+    [Fact]
+    public void Config_CarriesTheChoiceToTheGenerator()
+    {
+        var config = new OpenAICompatibleConfig
+        {
+            BaseUrl = "http://localhost:11434",
+            TokenLimitParameter = TokenLimitParameter.MaxTokens
+        };
+
+        using var generator = new OpenAICompatibleMessageGenerator(config);
+
+        generator.EffectiveTokenLimitParameter.Should().Be(TokenLimitParameter.MaxTokens);
+    }
+
+    [Fact]
+    public void Config_DefaultsToTheCurrentSpelling()
+    {
+        new OpenAICompatibleConfig().TokenLimitParameter
+            .Should().Be(TokenLimitParameter.MaxCompletionTokens);
     }
 
     [Theory]

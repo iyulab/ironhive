@@ -114,6 +114,23 @@ public class ChatService(IHiveService hive)
 | `IronHive.Providers.Anthropic` | Anthropic Claude |
 | `IronHive.Providers.GoogleAI` | Google Gemini + Vertex AI (이미지, 비디오, 오디오 포함) |
 | `IronHive.Providers.OpenAI.Compatible` | Ollama, LM Studio, vLLM, llama.cpp, GPUStack 등 — Chat Completions 표면 |
+
+> **출력 길이 파라미터 선택 (0.16.0~)** — OpenAI 가 `max_tokens` 를 `max_completion_tokens` 로
+> 개명하면서 생태계가 갈렸다. 최신 OpenAI 모델은 구 이름을 **거부**하고, 다수의 self-hosted 서버는
+> 새 이름을 **모른 채 무시**한다 — 모르는 필드는 오류가 아니라 침묵이므로, 상한이 조용히 사라지고
+> 증상은 "응답이 예상보다 길다" 뿐이다. 어디서나 통하는 이름이 없어 **선택지로 제공**한다:
+>
+> ```csharp
+> var config = new OpenAICompatibleConfig
+> {
+>     BaseUrl = "http://localhost:11434",
+>     TokenLimitParameter = TokenLimitParameter.MaxTokens   // 구 이름만 아는 서버
+> };
+> ```
+>
+> 기본값은 `MaxCompletionTokens` — 종전 동작 그대로라 기존 설정은 영향받지 않는다. `Both` 는 둘 다
+> 받아들이는 엔드포인트에서만 쓴다(구 이름을 거부하는 곳에서는 요청 전체가 실패한다).
+> `MaxTokens` 를 지정하지 않으면 어느 설정에서도 두 필드 모두 전송되지 않는다.
 | `IronHive.Storages.Qdrant` | Qdrant 벡터 데이터베이스 |
 | `IronHive.Storages.Amazon` | Amazon S3 파일 저장소 |
 | `IronHive.Storages.Azure` | Azure Blob / File Share |
