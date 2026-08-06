@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using FluentAssertions;
 using IronHive.Providers.OpenAI.Compatible;
 using IronHive.Providers.OpenAI.Compatible.GpuStack;
@@ -32,13 +33,29 @@ public class InjectedHttpClientTimeoutTests
     }
 
     [Fact]
-    public void OpenAICompatible_ConnectTimeout_IsStillHonoured()
+    public async Task OpenAICompatible_ConnectTimeout_StillBoundsAnUnreachableHost()
     {
-        // Disabling the request timeout must not disable the connect budget — an unreachable host
-        // still has to fail fast rather than hang for the whole completion window.
-        var config = new OpenAICompatibleConfig { ConnectTimeout = TimeSpan.FromSeconds(5) };
+        // Disabling the request timeout must not disable the connect budget. Without one, a client
+        // whose request timeout is infinite would wait indefinitely on a host that never answers.
+        // 203.0.113.0/24 is TEST-NET-3 (RFC 5737) — reserved for documentation, so nothing routes
+        // there and no external service is contacted.
+        var config = new OpenAICompatibleConfig
+        {
+            BaseUrl = "http://203.0.113.1:9",
+            ConnectTimeout = TimeSpan.FromSeconds(2),
+        };
+        var http = config.ToOpenAI().HttpClient!;
+        http.Timeout.Should().Be(Timeout.InfiniteTimeSpan);
 
-        config.ConnectTimeout.Should().Be(TimeSpan.FromSeconds(5));
-        config.ToOpenAI().HttpClient!.Timeout.Should().Be(Timeout.InfiniteTimeSpan);
+        var elapsed = Stopwatch.StartNew();
+        // The exception type depends on how the host is unreachable — a connect budget expiring
+        // surfaces as a cancellation wrapping TimeoutException, no route surfaces as
+        // HttpRequestException. The guarantee under test is that one of them arrives promptly
+        // rather than the call hanging on the now-infinite request timeout.
+        var act = async () => await http.GetAsync(new Uri("http://203.0.113.1:9/"));
+
+        await act.Should().ThrowAsync<Exception>();
+        elapsed.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(30),
+            "the connect budget, not the request timeout, is what bounds an unreachable host");
     }
 }

@@ -34,9 +34,11 @@ nor the configured timeout. Both factories now disable the client-level timeout,
 SDK's own default transport already does, which leaves `OpenAIConfig.TimeOut` as the single
 effective ceiling. The connect timeout is unaffected, so an unreachable host still fails fast.
 
-**Behaviour change.** A deployment that relied on the 100-second cutoff to bound a stalled endpoint
-will now wait for `OpenAIConfig.TimeOut` instead (ten minutes by default). Set `TimeOut` explicitly
-to restore a shorter bound.
+**Behaviour change, and only this one.** An endpoint that has not returned response headers within
+100 seconds is now waited on until `OpenAIConfig.TimeOut` (ten minutes by default) instead of being
+cancelled. Behaviour once headers have arrived is unchanged: the client-level timeout never bounded
+the response body, which remains governed by the SDK's per-read network budget. Set `TimeOut`
+explicitly to restore a shorter bound on time-to-first-byte.
 
 `OpenAIConfig.HttpClient` now documents the same hazard for callers who supply their own instance.
 
