@@ -31,6 +31,16 @@ adapter one at a time, and `NoRequestSink_IsLeftUnmapped` fails when `MessageGen
 gains a field `ChatOptions` already carries under the same name. `StopSequences` is copied rather
 than aliased, so a caller mutating its own list after the call cannot change the request.
 
+### Fixed — the embedding bridge reported the input count as a token count
+
+`EmbeddingGeneratorAdapter` filled `GeneratedEmbeddings.Usage` with `InputTokenCount` =
+`TotalTokenCount` = *the number of input strings*. Embedding two documents reported two tokens.
+`EmbeddingResult` carries no usage information, so `Usage` is now left unset: a consumer feeding it
+into cost or budget arithmetic is better served by "unknown" than by a confident wrong number.
+
+Callers reading `Usage` must now handle `null`. The previous value was not a coarse estimate of the
+right quantity — it was a different quantity.
+
 ## 0.16.0 — 2026-08-06
 
 ### Added — the compatible provider chooses its output-length parameter

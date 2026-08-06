@@ -142,15 +142,17 @@ public class EmbeddingGeneratorAdapterTests : IDisposable
     }
 
     [Fact]
-    public async Task GenerateAsync_SetsUsageDetails()
+    public async Task GenerateAsync_LeavesUsageUnset_WhenTheProviderReportsNoTokenCounts()
     {
+        // EmbeddingResult carries no usage, so there is nothing to report. This previously returned
+        // the input string count under InputTokenCount -- a different quantity presented as a token
+        // count, which silently corrupts any cost arithmetic downstream of it.
         SetupEmbeddings(s_vec1, s_vec2);
 
-        var result = await _adapter.GenerateAsync(["input1", "input2"]);
+        var result = await _adapter.GenerateAsync(["a much longer input than one token", "input2"]);
 
-        result.Usage.Should().NotBeNull();
-        result.Usage!.InputTokenCount.Should().Be(2);
-        result.Usage.TotalTokenCount.Should().Be(2);
+        result.Should().HaveCount(2);
+        result.Usage.Should().BeNull();
     }
 
     [Fact]

@@ -51,14 +51,11 @@ public class EmbeddingGeneratorAdapter : IEmbeddingGenerator<string, Embedding<f
             .Select(r => new Embedding<float>(r.Embedding!))
             .ToList();
 
-        return new GeneratedEmbeddings<Embedding<float>>(embeddings)
-        {
-            Usage = new UsageDetails
-            {
-                InputTokenCount = inputList.Count,
-                TotalTokenCount = inputList.Count
-            }
-        };
+        // Usage is deliberately left unset. EmbeddingResult carries no token counts, and the number
+        // of input strings is not an approximation of a token count -- it is a different quantity,
+        // wrong by whatever the average input length happens to be. A consumer feeding Usage into
+        // cost or budget arithmetic is better served by "unknown" than by a confident wrong number.
+        return new GeneratedEmbeddings<Embedding<float>>(embeddings);
     }
 
     /// <inheritdoc />
