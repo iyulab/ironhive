@@ -4,6 +4,31 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.18.0 — 2026-08-07
+
+### Added — `GoogleAIConfig.Timeout` and `VertexAIConfig.Timeout`, and an explicit adapter default
+
+Both configurations exposed the request timeout only through the vendor's `HttpOptions`, in
+milliseconds, so a caller reading either one reasonably concluded the setting did not exist. They now
+carry `TimeSpan? Timeout` alongside it, matching `AnthropicConfig`.
+
+More importantly, the adapter now always supplies a value. Given none, the vendor SDK constructs a
+bare `HttpClient` and keeps its 100-second default — which bounds the entire call for a non-streaming
+request, and the wait for the first byte of a streaming one. Neither limit is announced anywhere, and
+the resulting cancellation names no setting. `GoogleAIDefaults.Timeout` (ten minutes) is applied when
+the configuration specifies nothing, so that default is never inherited silently.
+
+Setting both `Timeout` and `HttpOptions.Timeout` throws rather than resolving by precedence. A
+configuration that specifies the same thing twice in two units has no obvious winner, and a setting
+that loses silently is the defect this change exists to remove. `HttpOptions` remains available for
+everything else it carries, and a caller already using it for the timeout alone is unaffected.
+
+**Behaviour change.** A Google AI or Vertex AI caller that configured no timeout previously had 100
+seconds and now has ten minutes. Set `Timeout` explicitly to choose otherwise.
+
+`docs/PROVIDERS.md` documents the new property; its Vertex example also had a `ProjectId` field that
+does not exist on `VertexAIConfig`, now corrected to `Project`.
+
 ## 0.17.1 — 2026-08-07
 
 ### Fixed — `AnthropicConfig.BaseUrl` was assigned to the client's API key

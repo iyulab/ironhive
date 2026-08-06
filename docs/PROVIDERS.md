@@ -158,17 +158,29 @@ public enum AnthropicServiceType
 // Google AI Studio
 builder.AddGoogleAIProviders("google", new GoogleAIConfig
 {
-    ApiKey = "AIza..."
+    ApiKey = "AIza...",
+    Timeout = TimeSpan.FromMinutes(10)   // 생략 시 GoogleAIDefaults.Timeout (10분)
 });
 
 // Vertex AI
 builder.AddVertexAIProviders("vertex", new VertexAIConfig
 {
-    ProjectId = "my-project",
+    Project = "my-project",
     Location = "us-central1"
     // 자격증명은 Application Default Credentials 사용
 });
 ```
+
+### 타임아웃
+
+`GoogleAIConfig.Timeout` / `VertexAIConfig.Timeout`이 요청 타임아웃을 정한다. 생략하면
+`GoogleAIDefaults.Timeout`(10분)이 적용된다 — 벤더 SDK는 타임아웃이 지정되지 않으면 `HttpClient`
+기본값 100초를 그대로 쓰는데, 그 값은 비스트리밍 호출에서 응답 전체를, 스트리밍 호출에서 첫 바이트까지의
+시간을 제한한다. 어댑터가 명시적 기본값을 두어 그것이 조용히 상속되지 않게 한다.
+
+`HttpOptions`로도 같은 값을 지정할 수 있으나(밀리초 단위) **둘을 동시에 설정하면
+`InvalidOperationException`을 던진다.** 어느 쪽이 이겼는지 알 수 없는 상태를 만들지 않기 위한 것이며,
+`HttpOptions`는 `BaseUrl` 등 나머지 설정에 계속 쓸 수 있다.
 
 ### 지원 기능
 

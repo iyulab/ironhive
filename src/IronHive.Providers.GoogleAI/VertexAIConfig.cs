@@ -27,9 +27,25 @@ public class VertexAIConfig
     public string? Location { get; set; }
 
     /// <summary>
-    /// HTTP 요청에 대한 추가 옵션을 가져오거나 설정합니다.
-    /// 타임아웃, 재시도 정책 등을 구성할 수 있습니다.
+    /// API 요청의 타임아웃 시간입니다. (Default: 10분)
     /// </summary>
+    /// <remarks>
+    /// 설정하지 않으면 <see cref="GoogleAIDefaults.Timeout"/>이 적용됩니다. 벤더 SDK는 타임아웃이
+    /// 지정되지 않으면 <see cref="System.Net.Http.HttpClient"/>의 기본값 100초를 그대로 쓴다.
+    /// <para>
+    /// <see cref="HttpOptions"/>의 타임아웃과 함께 설정할 수 없습니다 — 둘 다 지정하면
+    /// <see cref="InvalidOperationException"/>을 던집니다.
+    /// </para>
+    /// </remarks>
+    public TimeSpan? Timeout { get; set; }
+
+    /// <summary>
+    /// HTTP 요청에 대한 추가 옵션을 가져오거나 설정합니다.
+    /// BaseUrl 등 엔드포인트 관련 설정을 구성할 수 있습니다.
+    /// </summary>
+    /// <remarks>
+    /// 타임아웃만 조정하려면 <see cref="Timeout"/>을 쓰십시오 — 단위(밀리초)를 노출하지 않습니다.
+    /// </remarks>
     public HttpOptions? HttpOptions { get; set; }
 
     /// <summary>
