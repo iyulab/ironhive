@@ -4,6 +4,47 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.17.0 — 2026-08-06
+
+### Fixed — the `IChatClient` bridge dropped four of the five sampling parameters
+
+`ChatClientAdapter` now forwards `ChatOptions.Temperature`, `.TopP`, `.TopK` and `.StopSequences`
+to `MessageGenerationRequest`, on both the buffered and the streaming path. Previously only
+`MaxOutputTokens` was mapped.
+
+**What happened.** 0.15.0 restored the five sampling parameters to the request types and wired
+them along the *agent* path (`AgentConfig.Parameters` → `BasicAgent` → providers). The
+`Microsoft.Extensions.AI` bridge was not part of that change and kept mapping a single field, so
+callers reaching IronHive through `IChatClient` — the standard MEAI entry point — had their
+temperature silently ignored and sampled at the provider default. Same symptom as the 0.15.0
+regression, one layer up: no error, no warning, only a response that does not honour the request.
+
+**Behaviour change.** A caller that already sets `ChatOptions.Temperature` (or `TopP`/`TopK`/
+`StopSequences`) will now see it applied where it was previously discarded. Provider coverage is
+unchanged and still deliberately non-uniform — a provider that cannot accept one of these drops it
+at its own adapter (Anthropic rejects `temperature`/`top_p`/`top_k` on models after Claude Opus
+4.6), which is where that judgment belongs.
+
+**Regression teeth.** Two structural tests replace the single-knob coverage that let this through:
+`EveryDeclaredOptionKnob_ReachesItsRequestSink` drives every declared knob→sink pair through the
+adapter one at a time, and `NoRequestSink_IsLeftUnmapped` fails when `MessageGenerationRequest`
+gains a field `ChatOptions` already carries under the same name. `StopSequences` is copied rather
+than aliased, so a caller mutating its own list after the call cannot change the request.
+
+## 0.16.0 — 2026-08-06
+
+### Added — the compatible provider chooses its output-length parameter
+
+`OpenAICompatibleConfig.TokenLimitParameter` (and the same property on
+`ChatCompletionMessageGenerator`) selects whether the request carries `max_completion_tokens` or
+the pre-rename `max_tokens`. Default is `MaxCompletionTokens`, so existing behaviour is unchanged.
+
+A server that predates OpenAI's rename does not reject the newer name — it ignores it. The limit
+is therefore dropped in silence and the only symptom is a response longer than asked for. No
+single name works everywhere, and the package cannot infer which one an arbitrary endpoint wants,
+so this is a setting rather than a guess. `OpenAICompatibleMessageGenerator.EffectiveTokenLimitParameter`
+exposes what the generator will actually send.
+
 ## 0.15.0 — 2026-07-28
 
 ### Fixed — sampling parameters reach the provider again (regression from 0.11.0)

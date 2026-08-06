@@ -163,6 +163,148 @@ public class ChatClientAdapterTests : IDisposable
         capturedRequest().MaxTokens.Should().Be(1024);
     }
 
+    [Fact]
+    public async Task GetResponseAsync_MapsSamplingParameters()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+        var messages = new List<ChatMessage>
+        {
+            new(ChatRole.User, "Hello")
+        };
+        var options = new ChatOptions
+        {
+            Temperature = 0.2f,
+            TopP = 0.9f,
+            TopK = 40,
+            StopSequences = ["STOP", "END"]
+        };
+
+        await _adapter.GetResponseAsync(messages, options);
+
+        var request = capturedRequest();
+        request.Temperature.Should().Be(0.2f);
+        request.TopP.Should().Be(0.9f);
+        request.TopK.Should().Be(40);
+        request.StopSequences.Should().BeEquivalentTo(["STOP", "END"]);
+    }
+
+    [Fact]
+    public async Task GetResponseAsync_StopSequences_AreCopied_NotAliased()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+        var messages = new List<ChatMessage> { new(ChatRole.User, "Hello") };
+        var callerList = new List<string> { "STOP" };
+        var options = new ChatOptions { StopSequences = callerList };
+
+        await _adapter.GetResponseAsync(messages, options);
+        callerList.Add("MUTATED-AFTER-THE-CALL");
+
+        capturedRequest().StopSequences.Should().BeEquivalentTo(["STOP"]);
+    }
+
+    [Fact]
+    public async Task GetStreamingResponseAsync_MapsSamplingParameters()
+    {
+        var capturedRequest = SetupStreamingGeneratorCapturing(
+            [new StreamingMessageBeginResponse()]);
+        var messages = new List<ChatMessage> { new(ChatRole.User, "Hi") };
+        var options = new ChatOptions
+        {
+            MaxOutputTokens = 512,
+            Temperature = 0.2f,
+            TopP = 0.9f,
+            TopK = 40,
+            StopSequences = ["STOP"]
+        };
+
+        await foreach (var _ in _adapter.GetStreamingResponseAsync(messages, options)) { }
+
+        var request = capturedRequest();
+        request.MaxTokens.Should().Be(512);
+        request.Temperature.Should().Be(0.2f);
+        request.TopP.Should().Be(0.9f);
+        request.TopK.Should().Be(40);
+        request.StopSequences.Should().BeEquivalentTo(["STOP"]);
+    }
+
+    #endregion
+
+    #region Option reachability (teeth)
+
+    /// <summary>
+    /// The ChatOptions knob → MessageGenerationRequest sink pairs this bridge is expected to wire.
+    /// Both tests below are driven off this table: one proves every entry actually round-trips, the
+    /// other proves no same-named sink is missing from the table.
+    /// </summary>
+    /// <remarks>
+    /// ModelId → Model is covered by its own tests above and is not a pass-through knob (it falls
+    /// back to the adapter's default model), so it is deliberately absent here.
+    /// </remarks>
+    private static readonly Dictionary<string, string> OptionSinks = new()
+    {
+        ["MaxOutputTokens"] = "MaxTokens",
+        ["Temperature"] = "Temperature",
+        ["TopP"] = "TopP",
+        ["TopK"] = "TopK",
+        ["StopSequences"] = "StopSequences",
+        ["Tools"] = "Tools"
+    };
+
+    [Fact]
+    public async Task EveryDeclaredOptionKnob_ReachesItsRequestSink()
+    {
+        // Each knob is set on its own so a sink filled by the wrong source cannot pass by accident.
+        foreach (var (optionName, sinkName) in OptionSinks)
+        {
+            var capturedRequest = SetupGeneratorReturns();
+            var options = new ChatOptions();
+            var optionProperty = typeof(ChatOptions).GetProperty(optionName)!;
+            optionProperty.SetValue(options, SampleValueFor(optionProperty.PropertyType));
+
+            await _adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "Hi")], options);
+
+            var sink = typeof(MessageGenerationRequest).GetProperty(sinkName)!;
+            sink.GetValue(capturedRequest())
+                .Should().NotBeNull($"ChatOptions.{optionName} must reach MessageGenerationRequest.{sinkName} — " +
+                    "a dropped knob is silent: the caller sees no error, only provider-default behavior");
+        }
+    }
+
+    [Fact]
+    public void NoRequestSink_IsLeftUnmapped()
+    {
+        // A same-named pair is a sink the bridge can fill with no semantic judgment, so leaving one
+        // out is always a defect. Renamed pairs (MaxOutputTokens → MaxTokens) cannot be detected
+        // structurally and live in the table above by hand.
+        var optionKnobs = typeof(ChatOptions).GetProperties().Select(p => p.Name).ToHashSet(StringComparer.Ordinal);
+
+        var unmapped = typeof(MessageGenerationRequest).GetProperties()
+            .Select(p => p.Name)
+            .Where(optionKnobs.Contains)
+            .Where(sink => !OptionSinks.ContainsValue(sink))
+            .ToList();
+
+        unmapped.Should().BeEmpty(
+            "MessageGenerationRequest gained a field that ChatOptions already carries under the same " +
+            "name; wire it in ConvertToRequest and add it to OptionSinks");
+    }
+
+    private static object SampleValueFor(Type propertyType)
+    {
+        var type = Nullable.GetUnderlyingType(propertyType) ?? propertyType;
+        if (type == typeof(float)) return 0.5f;
+        if (type == typeof(int)) return 7;
+        if (type == typeof(long)) return 7L;
+        if (typeof(IEnumerable<string>).IsAssignableFrom(type)) return new List<string> { "STOP" };
+        if (typeof(IEnumerable<AITool>).IsAssignableFrom(type))
+        {
+            return new List<AITool> { AIFunctionFactory.Create(() => "result", "my_tool", "My tool") };
+        }
+
+        throw new NotSupportedException(
+            $"No sample value for {propertyType} — extend SampleValueFor when adding a knob of a new type");
+    }
+
     #endregion
 
     #region GetResponseAsync — Message conversion
@@ -926,6 +1068,20 @@ public class ChatClientAdapterTests : IDisposable
         _mockGenerator
             .GenerateStreamingMessageAsync(Arg.Any<MessageGenerationRequest>(), Arg.Any<CancellationToken>())
             .Returns(ToAsyncEnumerable(chunks));
+    }
+
+    private Func<MessageGenerationRequest> SetupStreamingGeneratorCapturing(
+        IEnumerable<StreamingMessageResponse> chunks)
+    {
+        MessageGenerationRequest? captured = null;
+
+        _mockGenerator
+            .GenerateStreamingMessageAsync(
+                Arg.Do<MessageGenerationRequest>(r => captured = r),
+                Arg.Any<CancellationToken>())
+            .Returns(ToAsyncEnumerable(chunks));
+
+        return () => captured!;
     }
 
     private static async IAsyncEnumerable<StreamingMessageResponse> ToAsyncEnumerable(

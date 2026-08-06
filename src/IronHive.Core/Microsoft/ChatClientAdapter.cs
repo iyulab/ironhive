@@ -198,7 +198,16 @@ public class ChatClientAdapter : IChatClient
 
         if (options is not null)
         {
+            // Every sampling knob the request type carries is forwarded. A knob dropped here is
+            // silent — the caller sees no error, only provider-default sampling — so the omission
+            // surfaces as "the model ignores my temperature" rather than as a failure. Providers
+            // that cannot accept one of these drop it at their own adapter (Anthropic rejects
+            // temperature/top_p/top_k on newer models), which is where that judgment belongs.
             request.MaxTokens = options.MaxOutputTokens;
+            request.Temperature = options.Temperature;
+            request.TopP = options.TopP;
+            request.TopK = options.TopK;
+            request.StopSequences = options.StopSequences?.ToList();
 
             if (options.Tools is { Count: > 0 })
             {
