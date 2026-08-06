@@ -38,6 +38,34 @@ than aliased, so a caller mutating its own list after the call cannot change the
 `EmbeddingResult` carries no usage information, so `Usage` is now left unset: a consumer feeding it
 into cost or budget arithmetic is better served by "unknown" than by a confident wrong number.
 
+### Fixed — a partial embedding batch was returned as if it were complete
+
+`EmbeddingGeneratorAdapter` dropped results whose vector was null and returned the survivors.
+`GeneratedEmbeddings` is positional — the caller matches `result[i]` to `input[i]` — so losing the
+second of three embeddings did not return two of three results, it returned the *third* text's
+vector under the second text's index, and every later pair shifted with it. A short list is still a
+valid list, so nothing reported the mismatch; the visible outcome was a store quietly populated with
+vectors attached to the wrong text.
+
+`GenerateAsync` now throws `InvalidOperationException` when the provider returns a different number
+of embeddings than there were inputs, naming both counts. A caller that needs per-input failure
+detail should batch at a granularity where a failure is attributable.
+
+### Fixed — `EmbeddingGenerationOptions.Dimensions` was accepted and never checked
+
+A caller could request 512 dimensions, receive the model's native 1536, and be told nothing — after
+which the vectors are silently incompatible with a store provisioned for the requested size.
+
+`Dimensions` is documented as honoured *if supported*, so it is deliberately **not** rejected up
+front: the request may well be satisfied by how the model or deployment is configured, and refusing
+it a priori would break callers whose configuration already matches. Instead the request is now
+compared against the vectors actually produced, and a mismatch throws `InvalidOperationException`
+naming the requested and the actual size. Leaving `Dimensions` unset accepts the model's native size
+exactly as before.
+
+**Behaviour change.** A caller that sets `Dimensions` to a value this provider never honoured now
+receives an error where it previously received differently-sized vectors in silence.
+
 Callers reading `Usage` must now handle `null`. The previous value was not a coarse estimate of the
 right quantity — it was a different quantity.
 

@@ -51,6 +51,36 @@ public class EmbeddingGeneratorAdapter : IEmbeddingGenerator<string, Embedding<f
             .Select(r => new Embedding<float>(r.Embedding!))
             .ToList();
 
+        // GeneratedEmbeddings is positional: the caller matches result[i] to input[i]. Dropping a
+        // failed embedding would therefore not lose one result, it would shift every later result
+        // onto the wrong input -- and silently, since a short list is still a valid list. Refuse
+        // to return a set the caller cannot align rather than let it associate vectors with the
+        // wrong text.
+        if (embeddings.Count != inputList.Count)
+        {
+            throw new InvalidOperationException(
+                $"The embedding provider returned {embeddings.Count} embedding(s) for {inputList.Count} " +
+                $"input(s) using model '{modelId}'. Results are positional, so a partial set cannot be " +
+                "matched to its inputs.");
+        }
+
+        // Dimensions is documented as honored "if supported", so rejecting it up front would be
+        // wrong -- the request may well be satisfied by how the model or deployment is configured.
+        // What must not happen is the caller asking for a size, receiving another, and being told
+        // nothing: the vectors would then be silently incompatible with a store provisioned for the
+        // requested size. So the request is checked against the result, not against a capability list.
+        if (options?.Dimensions is int requested && embeddings.Count > 0)
+        {
+            var actual = embeddings[0].Vector.Length;
+            if (actual != requested)
+            {
+                throw new InvalidOperationException(
+                    $"{requested} dimension(s) were requested, but model '{modelId}' produced vectors of " +
+                    $"{actual}. This provider cannot resize embeddings; request a model or deployment that " +
+                    "emits the required size, or leave Dimensions unset to accept the model's native size.");
+            }
+        }
+
         // Usage is deliberately left unset. EmbeddingResult carries no token counts, and the number
         // of input strings is not an approximation of a token count -- it is a different quantity,
         // wrong by whatever the average input length happens to be. A consumer feeding Usage into

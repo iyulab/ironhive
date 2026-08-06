@@ -124,8 +124,11 @@ public class EmbeddingGeneratorAdapterTests : IDisposable
     }
 
     [Fact]
-    public async Task GenerateAsync_FiltersNullEmbeddings()
+    public async Task GenerateAsync_RefusesAPartialSet_RatherThanMisalignItWithTheInputs()
     {
+        // This previously returned the surviving 2 of 3 as a valid result. Because the contract is
+        // positional, the caller would then have matched s_vec2 -- the embedding of "c" -- to input
+        // "b", with nothing anywhere reporting a problem.
         var results = new List<IronHiveEmbedding.EmbeddingResult>
         {
             new() { Index = 0, Embedding = s_vec1 },
@@ -136,9 +139,46 @@ public class EmbeddingGeneratorAdapterTests : IDisposable
             Arg.Any<string>(), Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
             .Returns(results);
 
-        var result = await _adapter.GenerateAsync(["a", "b", "c"]);
+        var act = async () => await _adapter.GenerateAsync(["a", "b", "c"]);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>())
+            .Which.Message.Should().Contain("2").And.Contain("3");
+    }
+
+    [Fact]
+    public async Task GenerateAsync_RequestedDimensions_AreCheckedAgainstWhatTheModelProduced()
+    {
+        SetupEmbeddings(s_vec1, s_vec2);   // 3-dimensional
+
+        var act = async () => await _adapter.GenerateAsync(
+            ["a", "b"], new EmbeddingGenerationOptions { Dimensions = 1536 });
+
+        (await act.Should().ThrowAsync<InvalidOperationException>())
+            .Which.Message.Should().Contain("1536").And.Contain("3");
+    }
+
+    [Fact]
+    public async Task GenerateAsync_RequestedDimensions_AreAcceptedWhenTheModelAlreadyMatches()
+    {
+        // Dimensions is honored "if supported", so a request the model happens to satisfy must pass
+        // through untouched -- the check is on the result, not on a capability list.
+        SetupEmbeddings(s_vec1, s_vec2);
+
+        var result = await _adapter.GenerateAsync(
+            ["a", "b"], new EmbeddingGenerationOptions { Dimensions = s_vec1.Length });
 
         result.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_UnsetDimensions_AcceptsTheModelsNativeSize()
+    {
+        SetupEmbeddings(s_vec1);
+
+        var result = await _adapter.GenerateAsync(["a"], new EmbeddingGenerationOptions());
+
+        result.Should().ContainSingle();
+        result[0].Vector.Length.Should().Be(s_vec1.Length);
     }
 
     [Fact]
