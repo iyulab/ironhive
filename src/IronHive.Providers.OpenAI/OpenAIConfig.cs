@@ -36,6 +36,13 @@ public class OpenAIConfig
     /// connect timeout, proxy, retry 등 HTTP 레벨 동작을 직접 제어할 때 사용합니다.
     /// <c>IHttpClientFactory</c>와 연동하여 DI 컨테이너에서 관리되는 HttpClient를 주입할 수도 있습니다.
     /// </para>
+    /// <para>
+    /// 주입하는 인스턴스의 <see cref="System.Net.Http.HttpClient.Timeout"/>은
+    /// <see cref="System.Threading.Timeout.InfiniteTimeSpan"/>으로 설정하십시오. 기본값 100초를 그대로 두면
+    /// 그 값이 <see cref="TimeOut"/>보다 먼저 적용되어 첫 바이트 수신까지의 시간을 100초로 제한하며,
+    /// <see cref="TimeOut"/> 설정은 무시된 것처럼 동작합니다. 주입하지 않으면 SDK 기본 전송 계층이
+    /// 같은 이유로 이미 무제한을 사용하므로 이 문제가 없습니다.
+    /// </para>
     /// </summary>
     public HttpClient? HttpClient { get; set; }
 

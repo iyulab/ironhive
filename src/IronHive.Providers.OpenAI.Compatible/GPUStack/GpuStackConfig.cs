@@ -81,6 +81,11 @@ public class GpuStackConfig
         HttpClient = new HttpClient(new SocketsHttpHandler
         {
             ConnectTimeout = ConnectTimeout
-        }),
+        })
+        {
+            // See OpenAICompatibleConfig.ToOpenAI: HttpClient's 100-second default would cap
+            // time-to-first-byte ahead of OpenAIConfig.TimeOut and silently win.
+            Timeout = System.Threading.Timeout.InfiniteTimeSpan
+        },
     };
 }

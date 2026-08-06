@@ -119,7 +119,17 @@ public class OpenAICompatibleConfig
             HttpClient = new HttpClient(new SocketsHttpHandler
             {
                 ConnectTimeout = ConnectTimeout
-            }),
+            })
+            {
+                // HttpClient's own 100-second default would cap time-to-first-byte regardless of
+                // OpenAIConfig.TimeOut, because it is applied before the SDK's per-read budget and
+                // wins. Locally hosted servers routinely need longer than that to load a model or
+                // prefill a long prompt, and the resulting cancellation names neither this handler
+                // nor the configured timeout. The SDK's own transport disables it for the same
+                // reason; an injected client must do so too, leaving OpenAIConfig.TimeOut as the
+                // single effective ceiling.
+                Timeout = System.Threading.Timeout.InfiniteTimeSpan
+            },
         };
     }
 }

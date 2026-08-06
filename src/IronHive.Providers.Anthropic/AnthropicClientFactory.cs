@@ -10,7 +10,7 @@ internal static class AnthropicClientFactory
         var options = new ClientOptions();
 
         if (!string.IsNullOrWhiteSpace(config.BaseUrl))
-            options.ApiKey = config.BaseUrl;
+            options.BaseUrl = config.BaseUrl;
         if (!string.IsNullOrWhiteSpace(config.ApiKey))
             options.ApiKey = config.ApiKey;
         if (!string.IsNullOrWhiteSpace(config.AuthToken))

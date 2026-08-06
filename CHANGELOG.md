@@ -4,6 +4,42 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.17.1 — 2026-08-07
+
+### Fixed — `AnthropicConfig.BaseUrl` was assigned to the client's API key
+
+`AnthropicClientFactory` wrote `BaseUrl` into `ClientOptions.ApiKey` and never assigned
+`ClientOptions.BaseUrl`. Two consequences followed from that single line. A configuration pointing
+at a proxy, gateway, or regional endpoint silently reached the vendor's default host, and the call
+succeeded there with nothing in the configuration or the response indicating the substitution. And
+because the key assignment is last-write-wins only when a key is present, a configuration that
+authenticates with a bearer token — or relies on the vendor SDK's environment-variable fallback —
+sent the base URL itself as the credential. The resulting authentication failure named neither
+`BaseUrl` nor the factory.
+
+**Regression teeth.** `AnthropicClientFactoryTests` asserts the config→client mapping directly
+rather than compiling against it: a `BaseUrl`-only configuration must reach `BaseUrl` and must not
+land in the credential slot. Nothing previously asserted that mapping, which is why a one-line
+misroute survived several releases.
+
+### Fixed — an injected `HttpClient` reintroduced a 100-second ceiling on time-to-first-byte
+
+`OpenAICompatibleConfig.ToOpenAI()` and `GpuStackConfig.ToOpenAI()` construct an `HttpClient` in
+order to set a connect timeout, and left `HttpClient.Timeout` at its 100-second default. That
+default is applied ahead of the SDK's per-read network budget and wins, so `OpenAIConfig.TimeOut`
+appeared to be ignored: a request whose first byte had not arrived within 100 seconds was cancelled
+regardless of the configured value. Locally hosted OpenAI-compatible servers routinely exceed that
+while loading a model or prefilling a long prompt, and the cancellation names neither the handler
+nor the configured timeout. Both factories now disable the client-level timeout, matching what the
+SDK's own default transport already does, which leaves `OpenAIConfig.TimeOut` as the single
+effective ceiling. The connect timeout is unaffected, so an unreachable host still fails fast.
+
+**Behaviour change.** A deployment that relied on the 100-second cutoff to bound a stalled endpoint
+will now wait for `OpenAIConfig.TimeOut` instead (ten minutes by default). Set `TimeOut` explicitly
+to restore a shorter bound.
+
+`OpenAIConfig.HttpClient` now documents the same hazard for callers who supply their own instance.
+
 ## 0.17.0 — 2026-08-06
 
 ### Fixed — the `IChatClient` bridge dropped four of the five sampling parameters
