@@ -27,6 +27,29 @@ used this factory.
 credential is present, not whether the configuration is usable. It is not a registration gate — a
 keyless local server and a gateway that supplies the credential upstream are both valid without one.
 
+### Documented — the service guide described a provider argument that lives elsewhere
+
+`docs/SERVICES.md` showed `Provider` being set on the image, video and audio request objects. No such
+property exists on any of them: the provider is a separate first argument to the service method. The
+documented interfaces had the wrong method names too — `GenerateAsync`/`EditAsync`,
+`TextToSpeechAsync`/`SpeechToTextAsync` instead of `GenerateImageAsync`/`EditImageAsync`,
+`GenerateSpeechAsync`/`TranscribeAsync` — and omitted that parameter, so the signatures and the calls
+were consistently wrong together and neither corrected the other.
+
+The response shapes were wrong in the same direction: generated images and videos carry bytes, not a
+`Url`, and a video response holds a single `Video` rather than a collection. Speech-to-text takes a
+`GeneratedAudio`, not raw bytes with a `Language`, and its response exposes optional per-segment
+transcription that was undocumented. The image message content example set `MediaType` and `Data`
+where the type has `Format` (an `ImageFormat`) and `Base64`, and the search example repeated the
+`TopK`/`Hits`/`Content` mistakes already corrected in the memory guide.
+
+`docs/ORCHESTRATION.md` set `HandoffTarget.Condition`, which does not exist. The field is
+`Description`, and it is not merely a label — the orchestrator renders it into the prompt as the basis
+on which the model chooses a handoff target, so the guide now says that.
+
+With this, every `new T { … }` example across `docs/` and `README.md` names only properties the types
+actually have.
+
 ### Documented — storage configuration examples set properties the types do not have
 
 Every registration example in `docs/STORAGES.md` and `docs/SETUP.md` that constructs a storage

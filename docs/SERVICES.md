@@ -199,27 +199,31 @@ foreach (var r in batch)
 ```csharp
 public interface IImageService
 {
-    Task<ImageGenerationResponse> GenerateAsync(
+    Task<ImageGenerationResponse> GenerateImageAsync(
+        string provider,
         ImageGenerationRequest request,
         CancellationToken cancellationToken = default);
 
-    Task<ImageGenerationResponse> EditAsync(
+    Task<ImageGenerationResponse> EditImageAsync(
+        string provider,
         ImageEditRequest request,
         CancellationToken cancellationToken = default);
 }
 
-// 사용 예시
-var response = await hive.Images.GenerateAsync(new ImageGenerationRequest
+// 사용 예시 — provider는 요청이 아니라 메서드 인자다
+var response = await hive.Images.GenerateImageAsync("openai", new ImageGenerationRequest
 {
-    Provider = "openai",
     Model = "dall-e-3",
     Prompt = "A futuristic city at sunset",
-    Size = GeneratedImageSize.Square1024
+    Size = GeneratedImageSize.Square1024,
+    // N = 2,
 });
 
 foreach (var image in response.Images)
 {
-    Console.WriteLine(image.Url ?? Convert.ToBase64String(image.Data ?? []));
+    // 결과는 항상 바이트로 온다 — URL 속성은 없다
+    File.WriteAllBytes("out.png", image.Data);
+    Console.WriteLine(image.RevisedPrompt);   // 모델이 프롬프트를 고쳐 쓴 경우
 }
 ```
 
@@ -232,24 +236,25 @@ foreach (var image in response.Images)
 ```csharp
 public interface IVideoService
 {
-    Task<VideoGenerationResponse> GenerateAsync(
+    Task<VideoGenerationResponse> GenerateVideoAsync(
+        string provider,
         VideoGenerationRequest request,
+        IProgress<VideoGenerationProgress>? progress = null,
         CancellationToken cancellationToken = default);
 }
 
 // 사용 예시 (Google Veo 등)
-var response = await hive.Videos.GenerateAsync(new VideoGenerationRequest
+var response = await hive.Videos.GenerateVideoAsync("google", new VideoGenerationRequest
 {
-    Provider = "google",
     Model = "veo-2.0-generate-001",
     Prompt = "A serene mountain lake at dawn",
-    Size = GeneratedVideoSize.Landscape720p
+    Size = GeneratedVideoSize.Landscape720p,
+    // DurationSeconds = 8,
+    // PollInterval = TimeSpan.FromSeconds(10),   // 기본값
 });
 
-foreach (var video in response.Videos)
-{
-    Console.WriteLine(video.Url);
-}
+// 응답은 단일 비디오이며 바이트로 온다
+File.WriteAllBytes("out.mp4", response.Video.Data);
 ```
 
 ---
@@ -261,34 +266,35 @@ Text-to-Speech 및 Speech-to-Text를 처리합니다.
 ```csharp
 public interface IAudioService
 {
-    Task<TextToSpeechResponse> TextToSpeechAsync(
+    Task<TextToSpeechResponse> GenerateSpeechAsync(
+        string provider,
         TextToSpeechRequest request,
         CancellationToken cancellationToken = default);
 
-    Task<SpeechToTextResponse> SpeechToTextAsync(
+    Task<SpeechToTextResponse> TranscribeAsync(
+        string provider,
         SpeechToTextRequest request,
         CancellationToken cancellationToken = default);
 }
 
 // TTS
-var ttsResponse = await hive.Audio.TextToSpeechAsync(new TextToSpeechRequest
+var ttsResponse = await hive.Audio.GenerateSpeechAsync("openai", new TextToSpeechRequest
 {
-    Provider = "openai",
     Model = "tts-1",
     Voice = "alloy",
     Text = "안녕하세요, IronHive입니다."
 });
-var audioBytes = ttsResponse.Audio.Data;
+var audio = ttsResponse.Audio;             // GeneratedAudio { MimeType, Data }
 
-// STT
-var sttResponse = await hive.Audio.SpeechToTextAsync(new SpeechToTextRequest
+// STT — 오디오는 GeneratedAudio로 감싸 넘긴다
+var sttResponse = await hive.Audio.TranscribeAsync("openai", new SpeechToTextRequest
 {
-    Provider = "openai",
     Model = "whisper-1",
-    AudioData = audioBytes,
-    Language = "ko"
+    Audio = audio
 });
 Console.WriteLine(sttResponse.Text);
+foreach (var seg in sttResponse.Segments ?? [])
+    Console.WriteLine($"  [{seg.Start:F1}s] {seg.Speaker}: {seg.Text}");
 ```
 
 ---
@@ -386,13 +392,15 @@ await hive.Memory.CreateCollectionAsync("qdrant", "documents", "openai", "text-e
 var collection = await hive.Memory.GetCollectionAsync("qdrant", "documents");
 var results = await collection.SemanticSearchAsync("인공지능의 역사", new SearchOptions
 {
-    TopK = 5,
+    Limit = 5,          // 기본값 5
     MinScore = 0.7f
 });
 
-foreach (var hit in results.Hits)
+foreach (var hit in results.Results)
 {
-    Console.WriteLine($"[{hit.Score:F2}] {hit.Record.Content}");
+    // hit은 ScoredVectorRecord — 본문은 Payload 항목이다 (키는 적재한 파이프라인이 정한다)
+    hit.Payload.TryGetValue("text", out var text);
+    Console.WriteLine($"[{hit.Score:F2}] {text}");
 }
 ```
 
@@ -485,8 +493,8 @@ var messages = new List<Message>
             new TextMessageContent { Value = "이 이미지를 설명해주세요." },
             new ImageMessageContent
             {
-                MediaType = "image/png",
-                Data = Convert.ToBase64String(imageBytes)
+                Format = ImageFormat.Png,
+                Base64 = Convert.ToBase64String(imageBytes)
             }
         ]
     }

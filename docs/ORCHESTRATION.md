@@ -150,13 +150,14 @@ var result = await orch.ExecuteAsync(messages);
 ```csharp
 var builder = new HandoffOrchestratorBuilder();
 builder
+    // Description은 프롬프트에 그대로 실려 모델이 전환 대상을 고르는 근거가 된다
     .AddAgent(triageAgent,
-        new HandoffTarget { AgentName = "billing", Condition = "결제 관련 문의" },
-        new HandoffTarget { AgentName = "support", Condition = "기술 지원 문의" })
+        new HandoffTarget { AgentName = "billing", Description = "결제 관련 문의" },
+        new HandoffTarget { AgentName = "support", Description = "기술 지원 문의" })
     .AddAgent(billingAgent,
-        new HandoffTarget { AgentName = "triage", Condition = "다른 문의로 돌아가기" })
+        new HandoffTarget { AgentName = "triage", Description = "다른 문의로 돌아가기" })
     .AddAgent(supportAgent,
-        new HandoffTarget { AgentName = "triage", Condition = "다른 문의로 돌아가기" })
+        new HandoffTarget { AgentName = "triage", Description = "다른 문의로 돌아가기" })
     .SetInitialAgent("triage")
     .SetMaxTransitions(20);
 
