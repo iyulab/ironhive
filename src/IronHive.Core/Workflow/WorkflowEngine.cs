@@ -52,7 +52,7 @@ public sealed class WorkflowEngine<TContext> : IWorkflow<TContext>
     public async Task RunFromAsync(string nodeId, TContext context, CancellationToken cancellationToken = default)
     {
         var nodes = SeekTo(Nodes, nodeId)
-                   ?? throw new InvalidOperationException($"nodeId '{nodeId}'를 찾을 수 없습니다.");
+                   ?? throw new InvalidOperationException($"Node '{nodeId}' was not found.");
 
         try
         {
@@ -132,7 +132,7 @@ public sealed class WorkflowEngine<TContext> : IWorkflow<TContext>
                     await ExecuteParallelAsync(p, ctx, ct);
                     break;
                 default:
-                    throw new NotSupportedException($"지원하지 않는 노드 타입: {node.GetType().FullName}");
+                    throw new NotSupportedException($"Unsupported node type: {node.GetType().FullName}");
             }
             OnProgressed(ctx, node.Id, stepName);
         }
@@ -144,26 +144,26 @@ public sealed class WorkflowEngine<TContext> : IWorkflow<TContext>
     private async Task ExecuteTaskAsync(TaskNode node, TContext ctx, CancellationToken ct)
     {
         if (!_steps.TryGetValue(node.Step, out var step))
-            throw new KeyNotFoundException($"'{node.Step}' 스텝이 등록되어 있지 않습니다.");
+            throw new KeyNotFoundException($"Step '{node.Step}' is not registered.");
 
         var iface = step.GetType().GetInterfaces()
             .FirstOrDefault(i => i.IsGenericType &&
                                  i.GetGenericTypeDefinition() == typeof(IWorkflowTask<,>) &&
                                  i.GetGenericArguments()[0] == typeof(TContext))
-            ?? throw new InvalidOperationException($"'{node.Step}'는 IWorkflowTask를 구현하지 않습니다.");
+            ?? throw new InvalidOperationException($"Step '{node.Step}' does not implement IWorkflowTask.");
 
         var optionsType = iface.GetGenericArguments()[1];
         var options = node.With.ConvertTo(optionsType);
 
         var method = iface.GetMethod(nameof(IWorkflowTask<TContext, object?>.ExecuteAsync),
                                      [typeof(TContext), optionsType, typeof(CancellationToken)])
-                     ?? throw new MissingMethodException($"'{iface}'에서 ExecuteAsync 메서드를 찾을 수 없습니다.");
+                     ?? throw new MissingMethodException($"ExecuteAsync was not found on '{iface}'.");
 
         var task = (Task<TaskStepResult>)method.Invoke(step, [ctx, options, ct])!;
         var result = await task.ConfigureAwait(false);
 
         if (result.IsError)
-            throw result.Exception ?? new InvalidOperationException(result.Message ?? "작업이 실패했습니다.");
+            throw result.Exception ?? new InvalidOperationException(result.Message ?? "The workflow step failed.");
     }
 
     /// <summary>
@@ -172,7 +172,7 @@ public sealed class WorkflowEngine<TContext> : IWorkflow<TContext>
     private async Task<IEnumerable<WorkflowNode>> ExecuteConditionAsync(ConditionNode node, TContext ctx, CancellationToken ct)
     {
         if (!_steps.TryGetValue(node.Step, out var step) || step is not IWorkflowCondition<TContext> cond)
-            throw new KeyNotFoundException($"'{node.Step}' 스텝이 등록되어 있지 않습니다.");
+            throw new KeyNotFoundException($"Step '{node.Step}' is not registered.");
 
         var res = await cond.EvaluateAsync(ctx, ct);
 
@@ -181,7 +181,7 @@ public sealed class WorkflowEngine<TContext> : IWorkflow<TContext>
         else if (node.DefaultBranch != null)
             return node.DefaultBranch;
         else
-            throw new InvalidOperationException($"분기 키 '{res.Key}'에 해당하는 브랜치를 찾을 수 없습니다.");
+            throw new InvalidOperationException($"No branch matches the condition key '{res.Key}'.");
     }
 
     /// <summary>

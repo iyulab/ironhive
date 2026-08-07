@@ -26,7 +26,7 @@ public class GeneratedImage
     public string ToBase64()
     {
         if (string.IsNullOrEmpty(MimeType))
-            throw new InvalidOperationException("MimeType이 설정되어야 합니다.");
+            throw new InvalidOperationException("MimeType must be set.");
         
         return $"data:{MimeType};base64,{Convert.ToBase64String(Data)}";
     }

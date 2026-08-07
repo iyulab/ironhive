@@ -22,7 +22,8 @@ public class ToolInput : IReadOnlyDictionary<string, object?>
         _items = input is null || (input is string str && string.IsNullOrWhiteSpace(str))
                  ? new Dictionary<string, object?>(StringComparer.Ordinal)
                  : input.ConvertTo<Dictionary<string, object?>>()
-                 ?? throw new ArgumentException("입력 객체는 Dictionary<string, object?> 형식이어야 합니다.", nameof(input));
+                 ?? throw new ArgumentException(
+                        "The input must be convertible to Dictionary<string, object?>.", nameof(input));
     }
 
     /// <summary>

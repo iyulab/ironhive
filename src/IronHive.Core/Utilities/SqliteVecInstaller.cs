@@ -81,7 +81,7 @@ public static class SqliteVecInstaller
             }
 
             if (outPath is null)
-                throw new InvalidDataException("다운로드한 tar.gz 파일에 vec0 확장 모듈이 포함되어 있지 않습니다.");
+                throw new InvalidDataException("The downloaded archive does not contain the vec0 extension module.");
 
             // 메타파일 작성
             WriteMetaFile(outPath, version, downloadUri);
@@ -122,7 +122,7 @@ public static class SqliteVecInstaller
         {
             Architecture.X64 => "x86_64",
             Architecture.Arm64 => "aarch64",
-            _ => throw new PlatformNotSupportedException($"지원하지 않는 CPU 아키텍처: {RuntimeInformation.ProcessArchitecture}")
+            _ => throw new PlatformNotSupportedException($"Unsupported CPU architecture: {RuntimeInformation.ProcessArchitecture}")
         };
     }
 
@@ -132,7 +132,7 @@ public static class SqliteVecInstaller
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return "windows";
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) return "linux";
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) return "macos";
-        throw new PlatformNotSupportedException("지원하지 않는 OS");
+        throw new PlatformNotSupportedException("Unsupported operating system.");
     }
     
     /// <summary> 메타파일 작성 </summary>

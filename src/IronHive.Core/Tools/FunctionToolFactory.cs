@@ -47,7 +47,7 @@ public static class FunctionToolFactory
     public static ITool CreateFrom(Delegate function, DelegateDescriptor descriptor, IServiceProvider? services = null)
     {
         if (string.IsNullOrWhiteSpace(descriptor.Name))
-            throw new ArgumentException("툴 이름은 비어있을 수 없습니다.", nameof(descriptor));
+            throw new ArgumentException("The tool name is required.", nameof(descriptor));
 
         var method = function.Method;
         var parameters = BuildJsonSchemaParameters(method);
@@ -145,7 +145,7 @@ public static class FunctionToolFactory
 
             // 프로퍼티 추가
             if (!properties.TryAdd(param.Name!, node.Root))
-                throw new InvalidOperationException($"동일한 이름의 매개변수 '{param.Name}'가 이미 존재합니다.");
+                throw new InvalidOperationException($"A parameter named '{param.Name}' already exists.");
 
             // 필수 여부: 파라미터가 선택적이 아니면 required에 추가
             if (!param.IsOptional)

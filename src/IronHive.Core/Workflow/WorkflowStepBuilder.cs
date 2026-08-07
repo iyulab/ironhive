@@ -137,7 +137,7 @@ public class WorkflowStepBuilder<TContext>
             : _services.GetKeyedService<IWorkflowStep>(name)
               ?? ActivatorUtilities.CreateInstance<TStep>(_services);
         if (step is null)
-            throw new InvalidOperationException($"'{typeof(TStep).FullName}' 스텝을 생성할 수 없습니다.");
+            throw new InvalidOperationException($"Step '{typeof(TStep).FullName}' could not be constructed.");
 
         _steps.TryAdd(name, step);
     }

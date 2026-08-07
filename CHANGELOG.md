@@ -27,6 +27,26 @@ used this factory.
 credential is present, not whether the configuration is usable. It is not a registration gate — a
 keyless local server and a gateway that supplies the credential upstream are both valid without one.
 
+### Changed — exception messages are English
+
+Sixty-six exception messages across six assemblies were Korean. They are operator-facing at runtime and
+part of what the packages ship, so a non-Korean-speaking operator could not triage a failure whose message
+they could not read — and the reasoning that keeps Korean out of log pipelines applies equally to a message
+pasted into an issue or a search: a Latin-boundary tokenizer indexes a Korean phrase as one opaque token,
+and `grep` needs UTF-8-aware matching to find it.
+
+Two of them named properties that do not exist. The Azure storage validation reported `ContainerName` and
+`ShareName` as required; the property is `StorageName`, and the message now says which of the two roles it
+plays. Several others now name the configuration property they are about (`AmazonS3Config.AccessKey`
+rather than "an access key is required"), so the message points at the setting to change.
+
+`ExceptionMessageLanguageConventionTests` keeps it that way. `LogLanguageConventionTests` already covers
+`[LoggerMessage]` attributes by reflection, but exception messages are literals inside method bodies that
+reflection cannot reach, so this reads the sources. Turning it on caught one more that a text search had
+missed — a construction split across lines — and injecting Korean back into a message confirms the check
+names the file, line and text. XML documentation is deliberately out of scope: it is Korean throughout by
+established practice and is read at development time rather than emitted at runtime.
+
 ### Added — the GoogleAI and Vertex configuration mapping is asserted, not just its timeout
 
 The existing tests covered the timeout only. Every other field — the Gemini API key, Vertex's project,

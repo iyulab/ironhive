@@ -32,7 +32,7 @@ public class DateTimeJsonConverter : JsonConverter<DateTime>
         }
         else
         {
-            throw new JsonException($"예상하지 못한 토큰 타입: {reader.TokenType}");
+            throw new JsonException($"Unexpected token type: {reader.TokenType}");
         }
     }
 

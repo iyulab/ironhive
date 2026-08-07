@@ -25,7 +25,7 @@ public static partial class OpenApiServerExtensions
         {
             yield return Uri.TryCreate(url, UriKind.Absolute, out var uri) 
                 ? uri 
-                : throw new InvalidOperationException($"서버 URL '{url}'이 올바른 절대 URL이 아닙니다.");
+                : throw new InvalidOperationException($"Server URL '{url}' is not a valid absolute URL.");
             
             yield break;
         }

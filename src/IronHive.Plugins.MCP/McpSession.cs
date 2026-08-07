@@ -246,7 +246,7 @@ public class McpSession : IAsyncDisposable
                     }
                     : null,
             }),
-            _ => throw new NotSupportedException($"서버 타입 {config.GetType().Name}은(는) 지원되지 않습니다.")
+            _ => throw new NotSupportedException($"Server type {config.GetType().Name} is not supported.")
         };
     }
 

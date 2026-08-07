@@ -30,7 +30,7 @@ public class MemoryWorkerBuilder
     public MemoryPipelineBuilder UseQueue(string storageName)
     {
         if (!_queues.TryGetValue(storageName, out var queue))
-            throw new InvalidOperationException($"큐 스토리지 '{storageName}'(이)가 등록되어 있지 않습니다.");
+            throw new InvalidOperationException($"Queue storage '{storageName}' is not registered.");
         var builder = new WorkflowFactory(_sp).CreateBuilder().StartWith<MemoryContext>();
 
         return new MemoryPipelineBuilder(queue, builder);

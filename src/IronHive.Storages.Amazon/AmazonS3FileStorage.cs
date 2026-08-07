@@ -18,7 +18,7 @@ public class AmazonS3FileStorage : IFileStorage
     public AmazonS3FileStorage(AmazonS3Config config)
     {
         if (string.IsNullOrWhiteSpace(config.BucketName))
-            throw new ArgumentException("S3 버킷 이름이 필요합니다.", nameof(config));
+            throw new ArgumentException("AmazonS3Config.BucketName is required.", nameof(config));
 
         _config = config;
         _client = CreateClient(config);
@@ -100,7 +100,7 @@ public class AmazonS3FileStorage : IFileStorage
         CancellationToken cancellationToken = default)
     {
         if (IsDirectory(filePath))
-            throw new ArgumentException("디렉터리 경로로 파일 존재 여부를 확인할 수 없습니다.", nameof(filePath));
+            throw new ArgumentException("Cannot test a directory path for file existence.", nameof(filePath));
 
         try
         {
@@ -120,7 +120,7 @@ public class AmazonS3FileStorage : IFileStorage
         CancellationToken cancellationToken = default)
     {
         if (!await ExistsFileAsync(filePath, cancellationToken))
-            throw new FileNotFoundException($"파일을 찾을 수 없습니다: {filePath}");
+            throw new FileNotFoundException($"File not found: {filePath}");
 
         // S3에서 객체를 가져와 메모리 스트림에 복사합니다.
         using var response = await _client.GetObjectAsync(BucketName, filePath, cancellationToken).ConfigureAwait(false);
@@ -139,7 +139,7 @@ public class AmazonS3FileStorage : IFileStorage
         CancellationToken cancellationToken = default)
     {
         if (!overwrite && await ExistsFileAsync(filePath, cancellationToken))
-            throw new IOException($"파일이 이미 존재합니다: {filePath}");
+            throw new IOException($"File already exists: {filePath}");
 
         // S3 PutObjectRequest에 스트림 전달
         var response = await _client.PutObjectAsync(new PutObjectRequest
@@ -151,7 +151,7 @@ public class AmazonS3FileStorage : IFileStorage
         data.Position = 0;
 
         if (response.HttpStatusCode != HttpStatusCode.OK)
-            throw new IOException($"파일 업로드에 실패했습니다: {filePath}");
+            throw new IOException($"File upload failed: {filePath}");
     }
 
     /// <inheritdoc />
@@ -160,7 +160,7 @@ public class AmazonS3FileStorage : IFileStorage
         CancellationToken cancellationToken = default)
     {
         if (IsDirectory(filePath))
-            throw new ArgumentException("디렉터리 경로로 파일을 삭제할 수 없습니다.", nameof(filePath));
+            throw new ArgumentException("Cannot delete a directory path as a file.", nameof(filePath));
 
         // 개별 객체 삭제
         await _client.DeleteObjectAsync(BucketName, filePath, cancellationToken);
@@ -172,7 +172,7 @@ public class AmazonS3FileStorage : IFileStorage
         CancellationToken cancellationToken = default)
     {
         if (!IsDirectory(directoryPath))
-            throw new ArgumentException("디렉터리 경로는 '/'로 끝나야 합니다.", nameof(directoryPath));
+            throw new ArgumentException("A directory path must end with '/'.", nameof(directoryPath));
 
         // 디렉터리인 경우 해당 prefix로 시작하는 모든 객체를 삭제합니다.
         var listRequest = new ListObjectsV2Request
@@ -222,13 +222,13 @@ public class AmazonS3FileStorage : IFileStorage
     private static AmazonS3Client CreateClient(AmazonS3Config config)
     {
         if (string.IsNullOrWhiteSpace(config.AccessKey))
-            throw new ArgumentException("AWS IAM 액세스 키가 필요합니다.", nameof(config));
+            throw new ArgumentException("AmazonS3Config.AccessKey is required.", nameof(config));
 
         if (string.IsNullOrWhiteSpace(config.SecretAccessKey))
-            throw new ArgumentException("AWS IAM 비밀 액세스 키가 필요합니다.", nameof(config));
+            throw new ArgumentException("AmazonS3Config.SecretAccessKey is required.", nameof(config));
 
         if (string.IsNullOrWhiteSpace(config.RegionCode))
-            throw new ArgumentException("AWS S3 서비스가 위치한 지역 코드가 필요합니다.", nameof(config));
+            throw new ArgumentException("AmazonS3Config.RegionCode is required.", nameof(config));
 
         var clientConfig = new AmazonS3ClientConfig
         {

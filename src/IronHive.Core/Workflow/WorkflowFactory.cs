@@ -62,7 +62,7 @@ public class WorkflowFactory : IWorkflowFactory
         foreach (var name in names)
         {
             var step = _services?.GetKeyedService<IWorkflowStep>(name)
-                       ?? throw new InvalidOperationException($"'{name}' 스텝이 DI에 등록되지 않았습니다.");
+                       ?? throw new InvalidOperationException($"Step '{name}' is not registered in the service provider.");
             steps[name] = step;
         }
 
@@ -96,7 +96,7 @@ public class WorkflowFactory : IWorkflowFactory
             })
             .Build();
         var def = deserializer.Deserialize<WorkflowDefinition>(yaml)
-                  ?? throw new InvalidOperationException("YAML 역직렬화 결과가 null입니다.");
+                  ?? throw new InvalidOperationException("YAML deserialization returned null.");
         return CreateFrom<TContext>(def);
     }
 
@@ -109,7 +109,7 @@ public class WorkflowFactory : IWorkflowFactory
     public IWorkflow<TContext> CreateFromJson<TContext>(string json)
     {
         var def = JsonSerializer.Deserialize<WorkflowDefinition>(json, s_jsonOptions)
-                  ?? throw new InvalidOperationException("JSON 역직렬화 결과가 null입니다.");
+                  ?? throw new InvalidOperationException("JSON deserialization returned null.");
         return CreateFrom<TContext>(def);
     }
 }

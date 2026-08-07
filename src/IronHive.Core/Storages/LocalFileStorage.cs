@@ -73,7 +73,7 @@ public class LocalFileStorage : IFileStorage
     {
         filePath = EnsurePath(filePath);
         if (IsDirectory(filePath))
-            throw new ArgumentException("디렉토리 경로로 파일 존재 여부를 확인할 수 없습니다.", nameof(filePath));
+            throw new ArgumentException("Cannot test a directory path for file existence.", nameof(filePath));
 
         cancellationToken.ThrowIfCancellationRequested();
         var isExists = File.Exists(filePath);
@@ -87,7 +87,7 @@ public class LocalFileStorage : IFileStorage
     {
         filePath = EnsurePath(filePath);
         if (!await ExistsFileAsync(filePath, cancellationToken))
-            throw new FileNotFoundException($"파일을 찾을 수 없습니다: {filePath}");
+            throw new FileNotFoundException($"File not found: {filePath}");
 
         await using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, _defaultBufferSize, FileOptions.Asynchronous);
         var memoryStream = new MemoryStream();
@@ -105,7 +105,7 @@ public class LocalFileStorage : IFileStorage
     {
         filePath = EnsurePath(filePath);
         if (IsDirectory(filePath))
-            throw new ArgumentException("디렉토리 경로로 파일을 쓸 수 없습니다.", nameof(filePath));
+            throw new ArgumentException("Cannot write to a directory path as a file.", nameof(filePath));
 
         // 스트림이 길이 정보를 지원하는 경우 최적 버퍼 크기를 결정
         int bufferSize = data.CanSeek ? GetOptimalBufferSize(data.Length) : _defaultBufferSize;
@@ -134,7 +134,7 @@ public class LocalFileStorage : IFileStorage
     {
         filePath = EnsurePath(filePath);
         if (IsDirectory(filePath))
-            throw new ArgumentException("디렉토리 경로로 파일을 삭제할 수 없습니다.", nameof(filePath));
+            throw new ArgumentException("Cannot delete a directory path as a file.", nameof(filePath));
 
         cancellationToken.ThrowIfCancellationRequested();
         File.Delete(filePath);
@@ -147,7 +147,7 @@ public class LocalFileStorage : IFileStorage
         CancellationToken cancellationToken = default)
     {
         if (!IsDirectory(directoryPath))
-            throw new ArgumentException("디렉토리 경로가 아닙니다.", nameof(directoryPath));
+            throw new ArgumentException("The path is not a directory.", nameof(directoryPath));
         
         Directory.Delete(directoryPath, true);
         return Task.CompletedTask;

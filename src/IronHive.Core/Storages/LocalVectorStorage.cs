@@ -303,7 +303,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
 
         foreach (var v in vectors)
         {
-            if (v.Vectors is null) throw new ArgumentException("Vectors가 null입니다.", nameof(vectors));
+            if (v.Vectors is null) throw new ArgumentException("VectorRecord.Vectors is null.", nameof(vectors));
 
             // meta upsert
             long intId;
@@ -542,7 +542,7 @@ public sealed partial class LocalVectorStorage : IVectorStorage
 
         // vec0 모듈 설치
         var dirPath = Path.GetDirectoryName(conn.DataSource)
-            ?? throw new InvalidOperationException("데이터베이스 경로를 찾을 수 없습니다.");
+            ?? throw new InvalidOperationException("The database path could not be resolved.");
         var modulePath = SqliteVecInstaller.TryGetModule(dirPath, out var module) && module.Version == _moduleVersion
             ? module.FilePath
             : await SqliteVecInstaller.InstallAsync(dirPath, _moduleVersion);
@@ -583,10 +583,10 @@ public sealed partial class LocalVectorStorage : IVectorStorage
             throw new ArgumentNullException(nameof(collectionName));
 
         if (!CollectionNameRegex().IsMatch(collectionName))
-            throw new ArgumentException("컬렉션 이름은 영문자/숫자/밑줄만 가능하며 숫자로 시작할 수 없습니다.", nameof(collectionName));
+            throw new ArgumentException("A collection name may contain only letters, digits and underscores, and may not start with a digit.", nameof(collectionName));
 
         if (collectionName.Equals(CollectionMetaTable, StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException("컬렉션 이름이 예약어와 충돌합니다.", nameof(collectionName));
+            throw new ArgumentException("The collection name collides with a reserved word.", nameof(collectionName));
 
         // Sqlite는 대소문자를 구분하지 않습니다.
         return collectionName.ToLowerInvariant();

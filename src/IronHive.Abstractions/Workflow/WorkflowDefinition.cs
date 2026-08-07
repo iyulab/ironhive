@@ -26,7 +26,7 @@ public sealed class WorkflowDefinition
                 continue;
 
             if (!ids.Add(n.Id))
-                throw new InvalidOperationException($"중복된 node Id 발견: '{n.Id}'");
+                throw new InvalidOperationException($"Duplicate node id: '{n.Id}'");
         }
     }
 
