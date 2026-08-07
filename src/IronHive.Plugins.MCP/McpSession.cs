@@ -219,36 +219,51 @@ public class McpSession : IAsyncDisposable
     {
         return config switch
         {
-            McpStdioClientConfig stdio => new StdioClientTransport(new StdioClientTransportOptions
-            {
-                Name = stdio.ServerName,
-                Command = stdio.Command,
-                Arguments = stdio.Arguments?.ToList(),
-                EnvironmentVariables = stdio.EnvironmentVariables,
-                ShutdownTimeout = stdio.ShutdownTimeout,
-                WorkingDirectory = stdio.WorkingDirectory,
-            }),
-            McpHttpClientConfig http => new HttpClientTransport(new HttpClientTransportOptions
-            {
-                TransportMode = HttpTransportMode.AutoDetect,
-                Name = http.ServerName,
-                Endpoint = http.Endpoint,
-                AdditionalHeaders = http.AdditionalHeaders,
-                ConnectionTimeout = http.ConnectionTimeout,
-                OAuth = http.OAuth is { } oauth
-                    ? new ClientOAuthOptions
-                    {
-                        RedirectUri = oauth.RedirectUri,
-                        ClientId = oauth.ClientId,
-                        ClientSecret = oauth.ClientSecret,
-                        Scopes = oauth.Scopes,
-                        AdditionalAuthorizationParameters = oauth.AdditionalParameters ?? [],
-                    }
-                    : null,
-            }),
+            McpStdioClientConfig stdio => new StdioClientTransport(BuildStdioOptions(stdio)),
+            McpHttpClientConfig http => new HttpClientTransport(BuildHttpOptions(http)),
             _ => throw new NotSupportedException($"Server type {config.GetType().Name} is not supported.")
         };
     }
+
+    /// <summary>
+    /// Maps the stdio configuration onto the vendor transport options. Split out so the mapping can be
+    /// asserted: the transport does not expose these once constructed, and the server name, the command
+    /// and the working directory are three adjacent strings — a swap compiles and launches the wrong
+    /// process, or launches the right one from the wrong place.
+    /// </summary>
+    internal static StdioClientTransportOptions BuildStdioOptions(McpStdioClientConfig stdio) => new()
+    {
+        Name = stdio.ServerName,
+        Command = stdio.Command,
+        Arguments = stdio.Arguments?.ToList(),
+        EnvironmentVariables = stdio.EnvironmentVariables,
+        ShutdownTimeout = stdio.ShutdownTimeout,
+        WorkingDirectory = stdio.WorkingDirectory,
+    };
+
+    /// <summary>
+    /// Maps the HTTP configuration onto the vendor transport options. The OAuth client id and secret are
+    /// adjacent strings of the same type, so a swap compiles and sends the secret as the public
+    /// identifier. The transport mode is adapter policy rather than configuration and is fixed here.
+    /// </summary>
+    internal static HttpClientTransportOptions BuildHttpOptions(McpHttpClientConfig http) => new()
+    {
+        TransportMode = HttpTransportMode.AutoDetect,
+        Name = http.ServerName,
+        Endpoint = http.Endpoint,
+        AdditionalHeaders = http.AdditionalHeaders,
+        ConnectionTimeout = http.ConnectionTimeout,
+        OAuth = http.OAuth is { } oauth
+            ? new ClientOAuthOptions
+            {
+                RedirectUri = oauth.RedirectUri,
+                ClientId = oauth.ClientId,
+                ClientSecret = oauth.ClientSecret,
+                Scopes = oauth.Scopes,
+                AdditionalAuthorizationParameters = oauth.AdditionalParameters ?? [],
+            }
+            : null,
+    };
 
     /// <summary>
     /// 현재 세션의 상태를 업데이트 합니다.

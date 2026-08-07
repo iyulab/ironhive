@@ -27,6 +27,29 @@ used this factory.
 credential is present, not whether the configuration is usable. It is not a registration gate — a
 keyless local server and a gateway that supplies the credential upstream are both valid without one.
 
+### Fixed — MCP configuration equality was incomplete in both directions
+
+`McpHttpClientConfig.Equals` omitted `OAuth`, so two configurations differing only in their credentials
+compared equal. Both configurations also compared their collections — headers, arguments, environment — with
+the default comparer, which is reference equality, so the same settings deserialised twice compared unequal.
+The two mistakes point opposite ways and come from the same cause, and `GetHashCode` inherited both.
+
+Equality now compares content: the OAuth redirect URI, client id, secret and scopes participate; headers and
+environment compare by key and value; arguments compare in order, because command-line arguments are
+position-sensitive. `GetHashCode` uses only the content-stable parts, so it cannot disagree with `Equals`.
+
+Nothing gates on this today — the client manager reconnects unconditionally on update — so no behaviour
+changes. An incomplete equality override is a trap for whatever starts to.
+
+### Added — MCP transport mappings are asserted
+
+The stdio transport takes a server name, a command and a working directory as three adjacent strings, so a
+swap compiles and launches the wrong process, or the right one from the wrong place. The OAuth options take a
+client id and a secret the same way. Both mappings are now built by named internal methods the tests assert,
+with the transport construction doing nothing configuration-dependent, and both were verified by injecting
+those swaps. The tests also pin that the transport mode is adapter policy rather than a vendor default, and
+that absent optional fields stay absent instead of becoming empty collections.
+
 ### Added — storage configuration mappings are asserted
 
 No storage adapter had a test covering how its configuration reaches its vendor client. These are worse

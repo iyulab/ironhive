@@ -47,14 +47,52 @@ public class McpStdioClientConfig : IMcpClientConfig
         return obj is McpStdioClientConfig server &&
                ServerName == server.ServerName &&
                Command == server.Command &&
-               EqualityComparer<IEnumerable<string>?>.Default.Equals(Arguments, server.Arguments) &&
-               EqualityComparer<Dictionary<string, string?>?>.Default.Equals(EnvironmentVariables, server.EnvironmentVariables) &&
+               ArgumentsEqual(Arguments, server.Arguments) &&
+               EnvironmentEqual(EnvironmentVariables, server.EnvironmentVariables) &&
                ShutdownTimeout.Equals(server.ShutdownTimeout) &&
                WorkingDirectory == server.WorkingDirectory;
     }
 
     public override int GetHashCode()
     {
-        return HashCode.Combine(ServerName, Command, Arguments, EnvironmentVariables, ShutdownTimeout, WorkingDirectory);
+        // Only content-stable parts participate. A collection's own hash is identity-based, so including
+        // it would make the hash disagree with Equals, which compares the collections by content.
+        return HashCode.Combine(
+            ServerName,
+            Command,
+            Arguments?.Count(),
+            EnvironmentVariables?.Count,
+            ShutdownTimeout,
+            WorkingDirectory);
+    }
+
+    /// <summary>
+    /// Compared by content, in order — command-line arguments are position-sensitive. The default
+    /// comparer is reference equality, so the same argument list in two instances compared unequal, which
+    /// is what deserialising the same settings twice produces.
+    /// </summary>
+    private static bool ArgumentsEqual(IEnumerable<string>? left, IEnumerable<string>? right)
+    {
+        if (ReferenceEquals(left, right)) return true;
+        if (left is null || right is null) return false;
+        return left.SequenceEqual(right, StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// Compared by content and ignoring order — environment variables are a set of names, not a sequence.
+    /// </summary>
+    private static bool EnvironmentEqual(Dictionary<string, string?>? left, Dictionary<string, string?>? right)
+    {
+        if (ReferenceEquals(left, right)) return true;
+        if (left is null || right is null) return false;
+        if (left.Count != right.Count) return false;
+
+        foreach (var (key, value) in left)
+        {
+            if (!right.TryGetValue(key, out var other) || !string.Equals(value, other, StringComparison.Ordinal))
+                return false;
+        }
+
+        return true;
     }
 }

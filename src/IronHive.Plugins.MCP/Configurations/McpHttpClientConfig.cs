@@ -31,18 +31,71 @@ public class McpHttpClientConfig : IMcpClientConfig
     /// </summary>
     public McpHttpOAuthConfig? OAuth { get; set; }
 
+    /// <remarks>
+    /// <see cref="OAuth"/> participates: two configurations that differ only in their credentials are
+    /// different configurations. Leaving it out made them compare equal, which is the kind of omission
+    /// that is harmless until something starts gating a reconnect on equality.
+    /// </remarks>
     public override bool Equals(object? obj)
     {
         return obj is McpHttpClientConfig other &&
                ServerName == other.ServerName &&
                EqualityComparer<Uri>.Default.Equals(Endpoint, other.Endpoint) &&
-               EqualityComparer<Dictionary<string, string>?>.Default.Equals(AdditionalHeaders, other.AdditionalHeaders) &&
-               ConnectionTimeout.Equals(other.ConnectionTimeout);
+               HeadersEqual(AdditionalHeaders, other.AdditionalHeaders) &&
+               ConnectionTimeout.Equals(other.ConnectionTimeout) &&
+               OAuthEquals(OAuth, other.OAuth);
     }
 
     public override int GetHashCode()
     {
-        return HashCode.Combine(ServerName, Endpoint, AdditionalHeaders, ConnectionTimeout);
+        // Only content-stable parts participate. A dictionary's own hash is identity-based, so including
+        // it would make the hash disagree with Equals, which now compares the headers by content.
+        return HashCode.Combine(
+            ServerName,
+            Endpoint,
+            AdditionalHeaders?.Count,
+            ConnectionTimeout,
+            OAuth?.RedirectUri,
+            OAuth?.ClientId,
+            OAuth?.ClientSecret);
+    }
+
+    /// <summary>
+    /// Compared by content. The default comparer for a dictionary is reference equality, so two
+    /// configurations carrying the same headers in separate instances — which is what deserialising the
+    /// same settings twice produces — compared unequal.
+    /// </summary>
+    private static bool HeadersEqual(Dictionary<string, string>? left, Dictionary<string, string>? right)
+    {
+        if (ReferenceEquals(left, right)) return true;
+        if (left is null || right is null) return false;
+        if (left.Count != right.Count) return false;
+
+        foreach (var (key, value) in left)
+        {
+            if (!right.TryGetValue(key, out var other) || !string.Equals(value, other, StringComparison.Ordinal))
+                return false;
+        }
+
+        return true;
+    }
+
+    private static bool OAuthEquals(McpHttpOAuthConfig? left, McpHttpOAuthConfig? right)
+    {
+        if (ReferenceEquals(left, right)) return true;
+        if (left is null || right is null) return false;
+
+        return EqualityComparer<Uri>.Default.Equals(left.RedirectUri, right.RedirectUri) &&
+               left.ClientId == right.ClientId &&
+               left.ClientSecret == right.ClientSecret &&
+               ScopesEqual(left.Scopes, right.Scopes);
+    }
+
+    private static bool ScopesEqual(IList<string>? left, IList<string>? right)
+    {
+        if (ReferenceEquals(left, right)) return true;
+        if (left is null || right is null) return false;
+        return left.SequenceEqual(right, StringComparer.Ordinal);
     }
 }
 
