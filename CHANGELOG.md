@@ -27,6 +27,23 @@ used this factory.
 credential is present, not whether the configuration is usable. It is not a registration gate — a
 keyless local server and a gateway that supplies the credential upstream are both valid without one.
 
+### Added — storage configuration mappings are asserted
+
+No storage adapter had a test covering how its configuration reaches its vendor client. These are worse
+placed for that gap than the providers: an access key and its secret, a user name and its password, a host
+and an API key are adjacent parameters of the same type, so a swap compiles and surfaces only as an
+authentication failure against a live service. Azure is the extreme case — `StorageName` names the
+container, and reaching the wrong place does not fail at all, it silently addresses the wrong storage.
+
+Each adapter now builds its vendor arguments through one internal seam that the tests assert, with the
+construction site doing nothing configuration-dependent: Amazon and Qdrant gained an arguments record,
+RabbitMQ's connection factory is built by a named method, and the Azure endpoint and credential helpers are
+reachable. Verified by injecting three adjacent-slot swaps — secret as key id, password as user name,
+container name as account name — and confirming each is caught.
+
+The Amazon tests also pin that a missing required setting is reported by name, so the message points at the
+setting to change rather than describing it.
+
 ### Changed — exception messages are English
 
 Sixty-six exception messages across six assemblies were Korean. They are operator-facing at runtime and

@@ -201,22 +201,30 @@ public partial class RabbitMQueueStorage : IQueueStorage
         _mgmChannel?.Dispose(); _mgmChannel = null;
 
         _conn?.Dispose();
-        var factory = new ConnectionFactory
-        {
-            HostName = _config.Host,
-            Port = _config.Port,
-            UserName = _config.UserName,
-            Password = _config.Password,
-            VirtualHost = _config.VirtualHost,
-            Ssl = { Enabled = _config.SslEnabled },
-            AutomaticRecoveryEnabled = true,
-            TopologyRecoveryEnabled = true,
-            NetworkRecoveryInterval = TimeSpan.FromSeconds(10),
-        };
+        var factory = CreateConnectionFactory(_config);
 
         _conn = await factory.CreateConnectionAsync(ct);
         return _conn;
     }
+
+    /// <summary>
+    /// Maps the configuration onto the vendor connection factory. Split out so the mapping can be
+    /// asserted without opening a connection: user name and password are adjacent strings of the same
+    /// type, so a swap compiles and surfaces only as an authentication failure against a live broker.
+    /// The recovery settings are adapter policy rather than configuration and are fixed here.
+    /// </summary>
+    internal static ConnectionFactory CreateConnectionFactory(RabbitMQConfig config) => new()
+    {
+        HostName = config.Host,
+        Port = config.Port,
+        UserName = config.UserName,
+        Password = config.Password,
+        VirtualHost = config.VirtualHost,
+        Ssl = { Enabled = config.SslEnabled },
+        AutomaticRecoveryEnabled = true,
+        TopologyRecoveryEnabled = true,
+        NetworkRecoveryInterval = TimeSpan.FromSeconds(10),
+    };
 
     /// <summary> RabbitMQ 큐를 선언합니다. </summary>
     private async Task DeclareQueueAsync(IChannel channel, CancellationToken ct)

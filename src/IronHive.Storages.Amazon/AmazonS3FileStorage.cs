@@ -219,7 +219,18 @@ public class AmazonS3FileStorage : IFileStorage
     /// <summary>
     /// AWS 클라이언트 생성
     /// </summary>
-    private static AmazonS3Client CreateClient(AmazonS3Config config)
+    /// <summary>
+    /// The arguments the vendor client is constructed from. The constructed client exposes neither
+    /// credential, so the mapping is built here and asserted rather than inferred from a successful
+    /// construction: two strings of the same type in adjacent parameters are exactly the shape that
+    /// compiles while sending the secret as the key id.
+    /// </summary>
+    internal readonly record struct ClientArguments(
+        string AccessKeyId,
+        string SecretAccessKey,
+        AmazonS3ClientConfig ClientConfig);
+
+    internal static ClientArguments BuildArguments(AmazonS3Config config)
     {
         if (string.IsNullOrWhiteSpace(config.AccessKey))
             throw new ArgumentException("AmazonS3Config.AccessKey is required.", nameof(config));
@@ -230,14 +241,23 @@ public class AmazonS3FileStorage : IFileStorage
         if (string.IsNullOrWhiteSpace(config.RegionCode))
             throw new ArgumentException("AmazonS3Config.RegionCode is required.", nameof(config));
 
-        var clientConfig = new AmazonS3ClientConfig
-        {
-            RegionEndpoint = RegionEndpoint.GetBySystemName(config.RegionCode),
-        };
+        return new ClientArguments(
+            AccessKeyId: config.AccessKey,
+            SecretAccessKey: config.SecretAccessKey,
+            ClientConfig: new AmazonS3ClientConfig
+            {
+                RegionEndpoint = RegionEndpoint.GetBySystemName(config.RegionCode),
+            });
+    }
 
+    // The single place arguments reach the vendor constructor, so the mapping asserted above is the
+    // mapping used. Nothing configuration-dependent happens here.
+    private static AmazonS3Client CreateClient(AmazonS3Config config)
+    {
+        var arguments = BuildArguments(config);
         return new AmazonS3Client(
-            awsAccessKeyId: config.AccessKey,
-            awsSecretAccessKey: config.SecretAccessKey,
-            clientConfig: clientConfig);
+            awsAccessKeyId: arguments.AccessKeyId,
+            awsSecretAccessKey: arguments.SecretAccessKey,
+            clientConfig: arguments.ClientConfig);
     }
 }

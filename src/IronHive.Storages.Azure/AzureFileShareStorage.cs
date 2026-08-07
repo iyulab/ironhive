@@ -241,7 +241,7 @@ public class AzureFileShareStorage : IFileStorage
     /// <summary>
     /// AccountName을 이용한 Uri 생성
     /// </summary>
-    private static Uri GetFileStorageUri(AzureStorageConfig config)
+    internal static Uri GetFileStorageUri(AzureStorageConfig config)
     {
         if (string.IsNullOrWhiteSpace(config.AccountName))
             throw new ArgumentException("AzureStorageConfig.AccountName is required.", nameof(config));
@@ -251,7 +251,7 @@ public class AzureFileShareStorage : IFileStorage
     /// <summary>
     /// AccountKey를 이용한 인증 방식
     /// </summary>
-    private static StorageSharedKeyCredential GetSharedKeyCredential(AzureStorageConfig config)
+    internal static StorageSharedKeyCredential GetSharedKeyCredential(AzureStorageConfig config)
     {
         if (string.IsNullOrWhiteSpace(config.AccountName))
             throw new ArgumentException("AzureStorageConfig.AccountName is required.", nameof(config));
@@ -261,7 +261,7 @@ public class AzureFileShareStorage : IFileStorage
     /// <summary>
     /// SAS Token을 이용한 인증 방식
     /// </summary>
-    private static AzureSasCredential GetSasTokenCredential(AzureStorageConfig config)
+    internal static AzureSasCredential GetSasTokenCredential(AzureStorageConfig config)
     {
         if (string.IsNullOrWhiteSpace(config.SASToken))
             throw new ArgumentException("AzureStorageConfig.SASToken is required.", nameof(config));

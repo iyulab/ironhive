@@ -311,14 +311,37 @@ public class QdrantVectorStorage : IVectorStorage
     /// <summary>
     /// QdrantClient 인스턴스를 생성합니다.
     /// </summary>
+    /// <summary>
+    /// The arguments the vendor client is constructed from. The constructed client exposes none of them,
+    /// so the mapping is built here and asserted rather than inferred from a successful construction —
+    /// a host reaching the API key parameter compiles, and the resulting authentication failure names
+    /// neither the field nor this factory.
+    /// </summary>
+    internal readonly record struct ClientArguments(
+        string Host,
+        int Port,
+        bool Https,
+        string ApiKey,
+        TimeSpan GrpcTimeout);
+
+    internal static ClientArguments BuildArguments(QdrantConfig config) => new(
+        Host: config.Host,
+        Port: config.Port,
+        Https: config.Https,
+        ApiKey: config.ApiKey,
+        GrpcTimeout: config.GrpcTimeout);
+
+    // The single place arguments reach the vendor constructor, so the mapping asserted above is the
+    // mapping used. Nothing configuration-dependent happens here.
     private static QdrantClient CreateQdrantClient(QdrantConfig config)
     {
+        var arguments = BuildArguments(config);
         return new QdrantClient(
-            host: config.Host,
-            port: config.Port,
-            https: config.Https,
-            apiKey: config.ApiKey,
-            grpcTimeout: config.GrpcTimeout);
+            host: arguments.Host,
+            port: arguments.Port,
+            https: arguments.Https,
+            apiKey: arguments.ApiKey,
+            grpcTimeout: arguments.GrpcTimeout);
     }
 
     /// <summary>
