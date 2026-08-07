@@ -45,6 +45,30 @@ public class DocumentationConventionTests
         new(@"public\s+(?:required\s+|virtual\s+|override\s+|static\s+)*[^\s(){};]+(?:<[^>]*>)?[\s?\[\]]+(?<name>[A-Za-z_][A-Za-z0-9_]*)\s*\{\s*get",
             RegexOptions.Compiled);
 
+    // A documented interface declaration, e.g. "public interface IHiveService : IDisposable { ... }".
+    // Kept separate from TypeDeclaration (class/record) rather than folding interface into its
+    // alternation: interface bodies contain nothing but member signatures (no executable statements,
+    // so no if/for/foreach/catch to confuse a call-site scan), which is what makes the method-name
+    // check below safe to run against them without also matching control-flow parentheses.
+    private static readonly Regex InterfaceDeclaration =
+        new(@"public\s+interface\s+(?<type>[A-Z][A-Za-z0-9_]*)[^\n]*\n\{(?<body>(?:[^\n]|\n(?!\}))*)\n\}",
+            RegexOptions.Compiled);
+
+    // A method name immediately followed by "(" -- interface bodies are pure declarations, so this
+    // is a declared method's name, not a call site. Excludes attribute application ("[Range(1, 10)]")
+    // and member access ("x.Foo(", which cannot legally appear in an interface's own signatures but
+    // is excluded anyway in case a documented default-interface-method body is ever added).
+    private static readonly Regex DeclaredMethod =
+        new(@"(?<!\[\s*)(?<!\.)\b(?<name>[A-Za-z_][A-Za-z0-9_]*)\s*\(", RegexOptions.Compiled);
+
+    // A "//" line comment. These docs annotate interface members with trailing Korean explanations
+    // -- e.g. "// 모델 ID (예: \"gpt-4o-mini\")" -- and an acronym immediately followed by a
+    // parenthetical ("ID (예: ...)") reads exactly like "ID(" to DeclaredMethod once whitespace is
+    // allowed between name and "(". Comments must be stripped before that scan for the same reason
+    // StringLiteral is stripped before the object-initialiser scan above: prose can accidentally spell
+    // code.
+    private static readonly Regex LineComment = new(@"//[^\n]*", RegexOptions.Compiled);
+
     private static DirectoryInfo RepositoryRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
@@ -108,6 +132,34 @@ public class DocumentationConventionTests
                                     .Select(f => f.Name));
 
         return new HashSet<string>(names, StringComparer.Ordinal);
+    }
+
+    private static HashSet<string> PublicMethodNames(Type type)
+    {
+        // For a class, GetMethods already includes members inherited from base classes. An interface
+        // has no such base-class chain -- GetMethods on an interface returns only members declared
+        // directly on it, NOT members it inherits by extending another interface (e.g.
+        // IToolCollection : ICollection<ITool> does not surface Add/Remove/Contains/Clear this way).
+        // GetInterfaces() + each interface's own GetMethods() fills that gap.
+        var inherited = type.IsInterface
+            ? type.GetInterfaces().SelectMany(i => i.GetMethods(BindingFlags.Public | BindingFlags.Instance))
+            : [];
+
+        // IsSpecialName excludes property/event accessors (get_X/set_X/add_X/remove_X) -- those are
+        // checked by the property guard, not this one, and including them here would let a doc rename
+        // a property while keeping its now-stale backing accessor name a coincidental match.
+        var names = type.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                        .Concat(inherited)
+                        .Where(m => !m.IsSpecialName)
+                        .Select(m => m.Name);
+
+        return new HashSet<string>(names, StringComparer.Ordinal);
+    }
+
+    private static string DescribeMethods(Type type)
+    {
+        var names = PublicMethodNames(type).OrderBy(n => n, StringComparer.Ordinal);
+        return string.Join(", ", names);
     }
 
     private static string Relative(string path)
@@ -184,6 +236,47 @@ public class DocumentationConventionTests
     }
 
     /// <summary>
+    /// The checks above cover the property axis only -- a documented interface's method signatures can
+    /// drift the same way a documented property can, and interfaces are nothing but method/property
+    /// signatures. This checks that every method name declared inside a documented interface body names
+    /// a real method on the real interface. It does not check arity, parameter types, or overload
+    /// resolution -- like the property check above, it only asserts the name exists, which is enough to
+    /// catch a rename or removal without needing to parse (and risk mis-parsing) full signatures.
+    /// </summary>
+    [Fact]
+    public void EveryDocumentedInterfaceDeclaration_DeclaresOnlyMethodsThatExist()
+    {
+        var types = PublicTypesByName();
+        var failures = new List<string>();
+
+        foreach (var path in DocumentPaths())
+        {
+            var text = File.ReadAllText(path);
+
+            foreach (var declaration in InterfaceDeclaration.Matches(text).Cast<Match>())
+            {
+                if (!types.TryGetValue(declaration.Groups["type"].Value, out var type)) continue;
+
+                var methods = PublicMethodNames(type);
+                if (methods.Count == 0) continue;
+
+                var body = LineComment.Replace(StringLiteral.Replace(declaration.Groups["body"].Value, "\"\""), "");
+                foreach (var call in DeclaredMethod.Matches(body).Cast<Match>())
+                {
+                    var name = call.Groups["name"].Value;
+                    if (methods.Contains(name)) continue;
+
+                    failures.Add(string.Format(CultureInfo.InvariantCulture,
+                        "{0}: documented {1}.{2}(...) -- no such method. Actual: {3}",
+                        Relative(path), type.Name, name, DescribeMethods(type)));
+                }
+            }
+        }
+
+        Assert.True(failures.Count == 0, Message(failures));
+    }
+
+    /// <summary>
     /// The checks above are only meaningful if they see the documents and can resolve the types. Both
     /// failure modes are silent — no documents found, or no type names matched, produces a pass — so the
     /// preconditions are asserted rather than assumed.
@@ -208,6 +301,26 @@ public class DocumentationConventionTests
 
         Assert.True(resolvedInitialisers >= 20,
             $"expected the documents to contain resolvable initialisers, matched {resolvedInitialisers}");
+
+        var resolvedInterfaceMethods = 0;
+        foreach (var path in paths)
+        {
+            var text = File.ReadAllText(path);
+            foreach (var declaration in InterfaceDeclaration.Matches(text).Cast<Match>())
+            {
+                if (!types.TryGetValue(declaration.Groups["type"].Value, out var type)) continue;
+                var methods = PublicMethodNames(type);
+                if (methods.Count == 0) continue;
+
+                var body = LineComment.Replace(StringLiteral.Replace(declaration.Groups["body"].Value, "\"\""), "");
+                resolvedInterfaceMethods += DeclaredMethod.Matches(body)
+                    .Cast<Match>()
+                    .Count(m => methods.Contains(m.Groups["name"].Value));
+            }
+        }
+
+        Assert.True(resolvedInterfaceMethods >= 15,
+            $"expected documented interfaces to contain resolvable method names, matched {resolvedInterfaceMethods}");
     }
 
     private static string Message(List<string> failures)

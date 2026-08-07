@@ -333,15 +333,17 @@ foreach (var model in models)
 ```csharp
 public interface IFileStorageService
 {
-    Task UploadAsync(string storageName, string path, Stream data, CancellationToken ct = default);
-    Task<Stream> DownloadAsync(string storageName, string path, CancellationToken ct = default);
-    Task DeleteAsync(string storageName, string path, CancellationToken ct = default);
-    Task<IEnumerable<string>> ListAsync(string storageName, string? prefix = null, CancellationToken ct = default);
+    Task<IEnumerable<string>> ListAsync(string storageName, string? prefix = null, int depth = 1, CancellationToken cancellationToken = default);
+    Task<bool> ExistsFileAsync(string storageName, string filePath, CancellationToken cancellationToken = default);
+    Task<Stream> ReadFileAsync(string storageName, string filePath, CancellationToken cancellationToken = default);
+    Task WriteFileAsync(string storageName, string filePath, Stream data, bool overwrite = true, CancellationToken cancellationToken = default);
+    Task DeleteFileAsync(string storageName, string filePath, CancellationToken cancellationToken = default);
+    Task DeleteDirectoryAsync(string storageName, string directoryPath, CancellationToken cancellationToken = default);
 }
 
 // 사용 예시
-await hive.Files.UploadAsync("s3", "documents/report.pdf", pdfStream);
-var stream = await hive.Files.DownloadAsync("s3", "documents/report.pdf");
+await hive.Files.WriteFileAsync("s3", "documents/report.pdf", pdfStream);
+var stream = await hive.Files.ReadFileAsync("s3", "documents/report.pdf");
 ```
 
 ---

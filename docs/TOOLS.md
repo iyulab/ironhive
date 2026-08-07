@@ -136,18 +136,21 @@ var tool = FunctionToolFactory.CreateFrom(myDelegate, descriptor, serviceProvide
 ## IToolCollection 인터페이스
 
 ```csharp
-public interface IToolCollection : IEnumerable<ITool>
+public interface IToolCollection : ICollection<ITool>
 {
-    void Add(ITool tool);
-    bool Remove(string uniqueName);
-    ITool? Get(string uniqueName);
-    bool Contains(string uniqueName);
-    IToolCollection FilterBy(IEnumerable<string> names);  // 이름 필터링
-    void Set(string uniqueName, ITool tool);               // 교체
-    void SetRange(IEnumerable<ITool> tools);               // 일괄 교체
-    void Clear();
+    IReadOnlyCollection<string> Keys { get; }
+    bool TryGet(string key, out ITool? item);
+    bool ContainsKey(string key);
+    void AddRange(IEnumerable<ITool> items);
+    void Set(ITool item);                                  // 교체
+    void SetRange(IEnumerable<ITool> items);                // 일괄 교체
+    bool Remove(string key);
+    int RemoveAll(Predicate<ITool>? match = null);
+    IToolCollection FilterBy(IEnumerable<string> names);    // 이름 필터링
 }
 ```
+
+`Add`/`Contains`/`Clear`(ITool 기준)는 `ICollection<ITool>`에서 상속됩니다.
 
 ---
 
