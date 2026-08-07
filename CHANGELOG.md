@@ -27,6 +27,23 @@ used this factory.
 credential is present, not whether the configuration is usable. It is not a registration gate — a
 keyless local server and a gateway that supplies the credential upstream are both valid without one.
 
+### Documented — the memory-pipeline guide described an API that no longer exists
+
+`docs/MEMORY.md` documented `MemoryContext` with nine flat properties — `SourceId`, `StorageName`,
+`CollectionName`, `EmbeddingProvider`, `EmbeddingModel`, `FilePath`, `Text`, `Vectors`, `Metadata` — none
+of which the type has. Those settings moved onto `IMemorySource` and `IMemoryTarget` implementations,
+and the per-step data onto `Payload`. The custom-pipeline example was worse than incomplete: it declared
+`Task<MemoryContext> ExecuteAsync(...)` returning the context, where the interface returns
+`TaskStepResult`, and assigned `context.Text`, so the example as written did not compile.
+
+The guide now describes the real shape — `Source`, `Target`, `Payload`, the polymorphic source and
+target types, the documented target-narrowing step, and the `Payload` keys the built-in pipelines
+exchange (`text`, `chunks`, `vectors`), each read from the pipeline that writes it. The example itself is
+now a compiled test, so an interface change breaks the build rather than quietly outdating the prose.
+
+`AnthropicConfig` in `docs/PROVIDERS.md` also misstated `ExtraHeaders` as `Dictionary` rather than
+`IDictionary` and omitted `HttpClient`.
+
 ### Documented — `BaseUrl` means something different in the two OpenAI configurations
 
 `OpenAIConfig.BaseUrl` is the complete endpoint: it reaches the vendor SDK verbatim and the adapter

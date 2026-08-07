@@ -127,10 +127,11 @@ public class AnthropicConfig
 {
     public string? ApiKey { get; set; }      // API 키 또는 AuthToken 중 하나 필수
     public string? AuthToken { get; set; }
-    public string? BaseUrl { get; set; }
-    public Dictionary<string, string>? ExtraHeaders { get; set; }
+    public string? BaseUrl { get; set; }     // 완전한 엔드포인트 (벤더 기본값: https://api.anthropic.com)
+    public IDictionary<string, string>? ExtraHeaders { get; set; }
     public int? MaxRetries { get; set; }
-    public TimeSpan? Timeout { get; set; }
+    public TimeSpan? Timeout { get; set; }   // 생략 시 벤더 기본값 10분
+    public HttpClient? HttpClient { get; set; }
 }
 ```
 

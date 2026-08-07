@@ -61,12 +61,15 @@ var worker = hive.CreateMemoryWorkerFrom(builder =>
         .Build());
 
 // 워커 시작
-await worker.StartAsync(cancellationToken);
+await worker.StartAsync();
 
-// 처리 완료/오류 이벤트 구독
+// 진행/완료/오류 이벤트 구독 — WorkflowEventArgs<MemoryContext>
 worker.Progressed += (_, args) =>
 {
-    Console.WriteLine($"[{args.PipelineName}] {args.Status}: {args.Context.SourceId}");
+    // Type: Started | Progressed | Completed | Failed | Cancelled
+    Console.WriteLine($"[{args.StepName}] {args.Type}: {args.Context.Source.Id}");
+    if (args.Exception is not null)
+        Console.WriteLine($"  {args.Message}");
 };
 
 // 워커 정지 (graceful)
@@ -83,25 +86,24 @@ await worker.StopAsync(force: true);   // 즉시 정지
 ```csharp
 var collection = await hive.Memory.GetCollectionAsync("qdrant", "documents");
 
-// 파일 경로로 인덱싱
+// 파일 경로로 인덱싱 — StorageName은 파일을 읽어 올 파일 스토리지 이름이다
 await collection.IndexSourceAsync("local-queue", new FileMemorySource
 {
-    SourceId = "doc-001",
+    Id = "doc-001",
+    StorageName = "local-files",
     FilePath = "./documents/manual.pdf"
 });
 
 // 텍스트 직접 인덱싱
 await collection.IndexSourceAsync("local-queue", new TextMemorySource
 {
-    SourceId = "text-001",
-    Text = "IronHive는 .NET 10 AI 프레임워크입니다.",
-    Metadata = new Dictionary<string, object>
-    {
-        ["category"] = "introduction",
-        ["author"] = "team"
-    }
+    Id = "text-001",
+    Value = "IronHive는 .NET 10 AI 프레임워크입니다."
 });
 ```
+
+`Id`를 생략하면 GUID가 부여된다. 다만 `DeindexSourceAsync`가 이 값을 키로 쓰므로, 나중에 제거할
+소스에는 직접 지정한다.
 
 ### 소스 제거
 
@@ -124,16 +126,25 @@ var results = await collection.SemanticSearchAsync(
     "machine learning applications",
     new SearchOptions
     {
-        TopK = 10,           // 반환 결과 수 (기본값: 5)
+        Limit = 10,          // 반환 결과 수 (기본값: 5)
         MinScore = 0.7f,     // 최소 유사도 점수 (0~1)
+        SourceIds = ["doc-001"],  // 특정 소스로 한정 (옵션)
     });
 
-foreach (var hit in results.Hits)
+// VectorSearchResult { CollectionName, Query, Results }
+// 각 항목은 ScoredVectorRecord — VectorRecord + Score
+foreach (var hit in results.Results)
 {
-    Console.WriteLine($"[{hit.Score:F3}] {hit.Record.Content}");
-    Console.WriteLine($"  Source: {hit.Record.Metadata?["source"]}");
+    Console.WriteLine($"[{hit.Score:F3}] {hit.SourceId} / {hit.VectorId}");
+    if (hit.Payload.TryGetValue("text", out var text))
+        Console.WriteLine($"  {text}");
 }
 ```
+
+레코드 본문은 별도 속성이 아니라 `Payload`에 담긴다(`IDictionary<string, object?>`, ordinal 비교).
+**어떤 키가 들어가는지는 적재한 파이프라인이 정한다** — `CreateVectorsPipeline`은 청크 경로에서
+`text`, 대화 경로(`DialogueExtractionPipeline`)에서 `question`·`answer`를 넣는다. 커스텀 파이프라인으로
+적재했다면 그쪽이 정한 키를 읽는다.
 
 ---
 
@@ -149,15 +160,20 @@ foreach (var hit in results.Hits)
 
 ### 커스텀 파이프라인
 
+파이프라인은 `MemoryContext`를 **제자리에서 수정하고** 성공/실패만 반환한다 — 컨텍스트를 반환값으로
+넘기지 않는다. 단계 사이의 데이터는 `context.Payload`로 주고받는다(아래 `MemoryContext` 절 참조).
+
 ```csharp
 // IMemoryPipeline 구현
 public class MyFilterPipeline : IMemoryPipeline
 {
-    public async Task<MemoryContext> ExecuteAsync(MemoryContext context, CancellationToken ct)
+    public Task<TaskStepResult> ExecuteAsync(MemoryContext context, CancellationToken ct = default)
     {
-        // 전처리 로직
-        context.Text = context.Text?.ToUpper();
-        return context;
+        // 앞 단계가 넣어 둔 값을 읽고, 바꿔서 다시 넣는다
+        if (context.Payload.TryGetValue("text", out var value) && value is string text)
+            context.Payload["text"] = text.ToUpperInvariant();
+
+        return Task.FromResult(TaskStepResult.Success());
     }
 }
 
@@ -166,10 +182,11 @@ public class MyPipelineOptions { public int MaxLength { get; set; } = 1000; }
 
 public class MyOptionsPipeline : IMemoryPipeline<MyPipelineOptions>
 {
-    public async Task<MemoryContext> ExecuteAsync(MemoryContext context, MyPipelineOptions options, CancellationToken ct)
+    public Task<TaskStepResult> ExecuteAsync(
+        MemoryContext context, MyPipelineOptions options, CancellationToken ct = default)
     {
         // options.MaxLength 사용
-        return context;
+        return Task.FromResult(TaskStepResult.Success());
     }
 }
 
@@ -178,24 +195,74 @@ builder.Then<MyFilterPipeline>("filter")
        .Then<MyOptionsPipeline, MyPipelineOptions>("my-opts", new MyPipelineOptions { MaxLength = 500 });
 ```
 
+실패는 예외를 던지거나 `TaskStepResult.Fail(exception)`을 반환한다. `TaskStepResult`는
+`IsError`/`Message`/`Exception`을 가지며 `Success(message?)`·`Fail(exception)` 팩토리를 제공한다.
+
+> 위 예제는 `tests/IronHive.Tests/Memory/DocumentedPipelineExampleTests.cs`에서 **컴파일·실행된다.**
+> 이 절은 한때 인터페이스에 없던 시그니처(`Task<MemoryContext>` 반환)와 존재하지 않는 속성
+> (`context.Text`)을 기술하고 있었다 — 산문은 그것을 알아채지 못하지만 컴파일러는 알아챈다.
+
 ---
 
 ## MemoryContext
 
+컨텍스트는 **어디서 읽는지(`Source`)**, **어디로 쓰는지(`Target`)**, 그리고 **단계 사이에 주고받는
+값(`Payload`)** 세 가지만 갖는다. 스토리지 이름·임베딩 모델처럼 대상에 따라 달라지는 설정은
+컨텍스트에 평평하게 놓이지 않고 각 `IMemoryTarget` 구현이 소유한다.
+
 ```csharp
 public class MemoryContext
 {
-    public string? SourceId { get; set; }           // 소스 고유 ID
-    public string? StorageName { get; set; }        // 벡터 스토리지 이름
-    public string? CollectionName { get; set; }     // 컬렉션 이름
-    public string? EmbeddingProvider { get; set; }  // 임베딩 프로바이더
-    public string? EmbeddingModel { get; set; }     // 임베딩 모델
-    public string? FilePath { get; set; }           // 처리할 파일 경로
-    public string? Text { get; set; }               // 추출된 텍스트
-    public IEnumerable<VectorRecord>? Vectors { get; set; }  // 생성된 벡터
-    public Dictionary<string, object>? Metadata { get; set; }
+    public required IMemorySource Source { get; set; }   // 무엇을 읽을지
+    public required IMemoryTarget Target { get; set; }   // 어디에 적재할지
+    public IDictionary<string, object?> Payload { get; } // 단계 간 전달값 (ordinal 비교)
 }
 ```
+
+### Source / Target
+
+```csharp
+public interface IMemorySource { string Id { get; set; } }   // "text" | "file" | "web"
+
+public class TextMemorySource : MemorySourceBase { public required string Value { get; set; } }
+public class FileMemorySource : MemorySourceBase
+{
+    public required string StorageName { get; set; }
+    public required string FilePath { get; set; }
+}
+
+public interface IMemoryTarget { }                           // "vector"
+
+public class VectorMemoryTarget : MemoryTargetBase
+{
+    public required string StorageName { get; set; }
+    public required string CollectionName { get; set; }
+    public required string EmbeddingProvider { get; set; }
+    public required string EmbeddingModel { get; set; }
+}
+```
+
+둘 다 `type` 판별자를 쓰는 다형 JSON 계약이므로 워커 정의를 직렬화해도 구현 타입이 보존된다.
+
+파이프라인은 필요한 구현 타입으로 좁혀서 쓴다 — 좁혀지지 않으면 그 파이프라인이 이 대상에 대해
+호출된 것 자체가 배선 오류다:
+
+```csharp
+if (context.Target is not VectorMemoryTarget target)
+    throw new InvalidOperationException("target is not a VectorMemoryTarget");
+
+// target.EmbeddingProvider / target.EmbeddingModel 사용
+```
+
+### Payload 키
+
+기본 제공 파이프라인이 쓰는 키다. 커스텀 파이프라인을 중간에 끼울 때 이 이름으로 읽고 쓴다.
+
+| 키 | 넣는 쪽 | 값 |
+|---|---|---|
+| `text` | `TextExtractionPipeline` | 추출된 원문 |
+| `chunks` | `TextChunkingPipeline` · `DialogueExtractionPipeline` | 청크 또는 대화 목록 |
+| `vectors` | `CreateVectorsPipeline` | 생성된 `VectorRecord` 목록 |
 
 ---
 
