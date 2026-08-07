@@ -27,6 +27,43 @@ used this factory.
 credential is present, not whether the configuration is usable. It is not a registration gate — a
 keyless local server and a gateway that supplies the credential upstream are both valid without one.
 
+### Added — documentation drift is a test failure
+
+The repository already required a document to be updated in the same commit as the surface it
+describes. That rule was held by convention alone and was not kept: a single sweep found twenty-five
+documented properties that no longer existed, across five guides, every one where a refactor had passed
+through. `DocumentationConventionTests` now enforces it — each `new T { P = … }` in an example, and each
+property in a documented type declaration, is resolved against the compiled assemblies by reflection.
+
+Reflection rather than text matching is deliberate: a scratch regex pass over the same documents missed
+two real failures on `ApiKeyCredential`, whose only member is a positional record parameter and so never
+appears as a `{ get; }` declaration. The check also ignores string literals, which can contain what
+looks exactly like an assignment (`"DefaultEndpointsProtocol=https;…"`), and lambda parameters (`ex =>`).
+
+A third test asserts the check has documents and types to inspect at all. Both ways this guard could
+fail silently — finding no documents, or resolving no type names — would otherwise read as a pass.
+
+Known limits, deliberately not papered over: an initialiser containing a nested initialiser is skipped
+rather than mis-parsed; a `new X { … }` naming a type that does not exist anywhere is skipped, because
+that is indistinguishable from a vendor or framework type; and a type name that is ambiguous across
+assemblies is skipped rather than checked against the wrong one.
+
+### Documented — the OpenAPI plugin section described a different API
+
+`docs/PLUGINS.md` had `OpenApiClientManager` constructed with no arguments and `AddOrUpdate` taking a
+name and an options object carrying a spec URL, base URLs and a single credential. The manager takes an
+`IToolCollection` and `AddOrUpdate` takes a constructed `OpenApiClient`; the options carry a *dictionary*
+of credentials keyed by the spec's security-scheme name, default headers and a timeout, and nothing
+else. Callers parse the specification themselves, and the request base URL comes from the spec's
+`servers`.
+
+The credential examples set `HeaderName` and `ApiKey` on `ApiKeyCredential`, which is a positional record
+whose only member is `Value`, and named two types that do not exist (`BearerTokenCredential`,
+`BasicAuthCredential`) in place of `HttpBearerCredential` and `HttpBasicCredential`. Where a key travels
+— header, query, path or cookie — is decided by the specification, not the credential, which the section
+now says. The tool-listing example called methods with the wrong names (`GetClient`, `GetToolsAsync`) and
+an operation filter that does not exist.
+
 ### Documented — the service guide described a provider argument that lives elsewhere
 
 `docs/SERVICES.md` showed `Provider` being set on the image, video and audio request objects. No such

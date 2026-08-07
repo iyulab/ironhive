@@ -104,71 +104,74 @@ OpenAPI(Swagger) 스펙에서 자동으로 LLM 도구를 생성합니다.
 
 ### 클라이언트 생성
 
-```csharp
-var apiManager = new OpenApiClientManager();
+`OpenApiClientManager`는 등록된 클라이언트의 도구를 **생성자로 받은 `IToolCollection`에 자동 반영**한다.
+스펙 파싱은 호출자가 한다 — 옵션에 스펙 URL을 넣는 자리는 없고, `Microsoft.OpenApi`로 읽은
+`OpenApiDocument`를 넘긴다.
 
-await apiManager.AddOrUpdate("petstore", new OpenApiClientOptions
+```csharp
+var tools = new ToolCollection();
+var apiManager = new OpenApiClientManager(tools);
+
+// 스펙을 읽어 OpenApiDocument로 만든다 (Microsoft.OpenApi)
+using var stream = await new HttpClient().GetStreamAsync(
+    "https://petstore.swagger.io/v2/swagger.json");
+var result = await OpenApiDocument.LoadAsync(stream);
+
+var client = new OpenApiClient(result.Document!, new OpenApiClientOptions
 {
-    SpecUrl = "https://petstore.swagger.io/v2/swagger.json",
-    BaseUrls = ["https://petstore.swagger.io/v2"],  // 순차 시도
-    Credential = new ApiKeyCredential
+    // 키는 스펙의 security scheme 이름이다
+    Credentials = new Dictionary<string, IOpenApiCredential>
     {
-        HeaderName = "api_key",
-        ApiKey = "special-key"
-    }
-});
+        ["api_key"] = new ApiKeyCredential("special-key")
+    },
+    TimeoutSeconds = 60,
+})
+{
+    ClientName = "petstore"   // required
+};
+
+apiManager.AddOrUpdate(client);   // tools 컬렉션에 도구가 등록된다
 ```
+
+요청을 보낼 base URL은 옵션이 아니라 **스펙의 `servers`** 에서 온다 — operation → path item →
+document 순으로 처음 발견된 것을 쓴다.
 
 ### 인증 방식
 
+전부 **positional record** 이며, 자격증명은 스펙의 security scheme 이름으로 매핑한다.
+헤더·쿼리·경로·쿠키 중 어디에 실릴지는 자격증명이 아니라 **스펙의 `in`/`name`** 이 정한다.
+
 ```csharp
-// API Key (헤더)
-new ApiKeyCredential
-{
-    HeaderName = "X-API-Key",
-    ApiKey = "..."
-}
-
-// Bearer Token
-new BearerTokenCredential
-{
-    Token = "..."
-}
-
-// Basic Auth
-new BasicAuthCredential
-{
-    Username = "user",
-    Password = "pass"
-}
+new ApiKeyCredential("...")                  // apiKey — 위치는 스펙이 정한다
+new HttpBearerCredential("...")              // http, scheme: bearer
+new HttpBasicCredential("user", "pass")      // http, scheme: basic
+new OAuth2Credential("...")                  // oauth2 (access token)
+new OpenIdConnectCredential("...")           // openIdConnect (access token)
 ```
+
+각 타입의 `Match(scheme)`가 스펙의 스킴과 맞는지 검사하므로, 스킴 이름이 같아도 종류가 다르면 적용되지 않는다.
 
 ### 도구 사용
 
 ```csharp
-// 클라이언트에서 도구 목록 조회
-var client = apiManager.GetClient("petstore");
-var tools = await client.GetToolsAsync();
-
-// 특정 operation만 선택
-var tools = await client.GetToolsAsync(operationIds: ["getPetById", "addPet"]);
-
-// 에이전트에 등록
-foreach (var tool in tools)
+if (apiManager.TryGetClient("petstore", out var client))
 {
-    agent.Tools?.Add(tool);
+    var apiTools = await client.ListToolsAsync();
+
+    foreach (var tool in apiTools)
+        agent.Tools?.Add(tool);
 }
+
+// 등록된 전체 클라이언트
+foreach (var c in apiManager.Clients)
+    Console.WriteLine($"{c.ClientName}: {c.Title}");
+
+// 제거 — 해당 클라이언트의 도구도 함께 정리된다
+apiManager.Remove("petstore");
 ```
 
-### IToolCollection에 직접 등록
-
-`OpenApiClientManager`는 `IToolCollection`과 자동 연동 가능합니다:
-
-```csharp
-var toolCollection = new ToolCollection();
-await apiManager.AddOrUpdate("petstore", options, toolCollection);
-// toolCollection에 OpenAPI 도구가 자동으로 추가/갱신됨
-```
+`ListToolsAsync`는 스펙의 모든 operation을 도구로 만든다(첫 호출 결과를 캐시한다).
+일부만 노출하려면 도구 컬렉션에 넣을 때 걸러낸다.
 
 ### OpenApiTool 특성
 
