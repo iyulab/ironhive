@@ -27,8 +27,8 @@ var hive = new HiveServiceBuilder()
     .AddAnthropicProviders("anthropic", new AnthropicConfig { ApiKey = "..." })
 
     // 스토리지 등록
-    .AddLocalVectorStorage("local-vec", new LocalVectorConfig { Path = "./data/vectors.db" })
-    .AddLocalQueueStorage("local-queue", new LocalQueueConfig { Path = "./data/queue" })
+    .AddLocalVectorStorage("local-vec", new LocalVectorConfig { DatabasePath = "./data/vectors.db" })
+    .AddLocalQueueStorage("local-queue", new LocalQueueConfig { DirectoryPath = "./data/queue" })
     .AddLocalFileStorage("local-files")
 
     .Build();
@@ -106,13 +106,13 @@ builder.AddLocalFileStorage("local");
 // 로컬 벡터 스토리지 (SQLite + sqlite-vec)
 builder.AddLocalVectorStorage("local-vec", new LocalVectorConfig
 {
-    Path = "./vectors.db"
+    DatabasePath = "./vectors.db"
 });
 
 // 로컬 큐 스토리지 (파일 시스템 기반)
 builder.AddLocalQueueStorage("local-queue", new LocalQueueConfig
 {
-    Path = "./queue-data"
+    DirectoryPath = "./queue-data"
 });
 ```
 
@@ -128,7 +128,7 @@ builder.Services.AddHiveService((hiveBuilder, serviceProvider) =>
         {
             ApiKey = builder.Configuration["OpenAI:ApiKey"]!
         })
-        .AddLocalVectorStorage("local", new LocalVectorConfig { Path = "./vectors.db" })
+        .AddLocalVectorStorage("local", new LocalVectorConfig { DatabasePath = "./vectors.db" })
         .Build());
 
 // 파일 파서 등록 (PDF, Word, Excel, PPT, Image)

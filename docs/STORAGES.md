@@ -35,9 +35,9 @@ builder.AddFileStorage("local", new LocalFileStorage());
 ```csharp
 builder.AddAmazonS3Storage("s3", new AmazonS3Config
 {
-    AccessKeyId = "AKIA...",
+    AccessKey = "AKIA...",
     SecretAccessKey = "...",
-    Region = "ap-northeast-2",
+    RegionCode = "ap-northeast-2",
     BucketName = "my-bucket"
 });
 ```
@@ -51,10 +51,18 @@ builder.AddAmazonS3Storage("s3", new AmazonS3Config
 ```csharp
 builder.AddAzureBlobStorage("azure-blob", new AzureStorageConfig
 {
+    // AuthType 기본값 = ConnectionString
     ConnectionString = "DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;",
-    ContainerName = "documents"
+    StorageName = "documents"   // 컨테이너 이름
 });
 ```
+
+⚠️ **`AzureStorageConfig.StorageName`은 컨테이너(또는 공유) 이름**이고, `AddAzureBlobStorage`의 첫
+인자(`"azure-blob"`)는 이 스토리지를 가리키는 **논리 이름**이다. 이름이 같고 뜻이 다르므로 둘을 바꿔
+넣으면 엉뚱한 컨테이너를 만든다. `StorageName`은 필수이며 `Validate()`가 비어 있으면 던진다.
+
+`AuthType`으로 인증 방식을 고른다 — `ConnectionString`(기본) · `AccountKey`(+`AccountName`) ·
+`SASToken` · `AzureIdentity`(+`TokenCredential`, 기본 `DefaultAzureCredential`).
 
 지원 기능: Blob 업로드/다운로드, 컨테이너 관리
 
@@ -66,7 +74,7 @@ builder.AddAzureBlobStorage("azure-blob", new AzureStorageConfig
 builder.AddAzureFilesStorage("azure-files", new AzureStorageConfig
 {
     ConnectionString = "...",
-    ShareName = "myshare"
+    StorageName = "myshare"   // 파일 공유 이름 — Blob과 같은 속성을 쓴다
 });
 ```
 
@@ -83,7 +91,8 @@ builder.AddAzureFilesStorage("azure-files", new AzureStorageConfig
 ```csharp
 builder.AddLocalVectorStorage("local-vec", new LocalVectorConfig
 {
-    Path = "./data/vectors.db"
+    DatabasePath = "./data/vectors.db"
+    // Version 생략 시 SqliteVecInstaller.DefaultVersion
 });
 ```
 
@@ -172,7 +181,9 @@ var result = await vectorStorage.SearchVectorsAsync("documents", queryVector, li
 ```csharp
 builder.AddLocalQueueStorage("local-queue", new LocalQueueConfig
 {
-    Path = "./data/queue"
+    DirectoryPath = "./data/queue",
+    // TimeToLive = TimeSpan.FromHours(24),  // 생략 시 만료 없음
+    // CacheSize = 100,                      // 기본값
 });
 ```
 
@@ -185,12 +196,14 @@ builder.AddLocalQueueStorage("local-queue", new LocalQueueConfig
 ```csharp
 builder.AddQueueStorage("rabbitmq", new RabbitMQueueStorage(new RabbitMQConfig
 {
-    HostName = "localhost",
-    Port = 5672,
+    Host = "localhost",       // 기본값 "localhost"
+    Port = 5672,              // 기본값 5672
     UserName = "guest",
     Password = "guest",
     VirtualHost = "/",
-    QueueName = "memory-tasks"
+    QueueName = "memory-tasks",   // 필수
+    // SslEnabled = true,
+    // MessageTTL = 3_600_000,    // ms
 }));
 ```
 
@@ -218,9 +231,19 @@ public interface IQueueStorage
 // 메시지 발행
 await queueStorage.EnqueueAsync(new MemoryContext
 {
-    StorageName = "qdrant",
-    CollectionName = "documents",
-    FilePath = "./doc.pdf"
+    Source = new FileMemorySource
+    {
+        Id = "doc-001",
+        StorageName = "local-files",   // 파일을 읽어 올 파일 스토리지
+        FilePath = "./doc.pdf"
+    },
+    Target = new VectorMemoryTarget
+    {
+        StorageName = "qdrant",        // 적재할 벡터 스토리지
+        CollectionName = "documents",
+        EmbeddingProvider = "openai",
+        EmbeddingModel = "text-embedding-3-small"
+    }
 });
 
 // 소비자 생성

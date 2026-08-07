@@ -27,6 +27,23 @@ used this factory.
 credential is present, not whether the configuration is usable. It is not a registration gate — a
 keyless local server and a gateway that supplies the credential upstream are both valid without one.
 
+### Documented — storage configuration examples set properties the types do not have
+
+Every registration example in `docs/STORAGES.md` and `docs/SETUP.md` that constructs a storage
+configuration named at least one property that does not exist, so none of them compiled as printed:
+`AmazonS3Config` takes `AccessKey` and `RegionCode`, not `AccessKeyId` and `Region`; `RabbitMQConfig`
+takes `Host`, not `HostName`; `LocalVectorConfig` takes `DatabasePath` and `LocalQueueConfig`
+`DirectoryPath`, not `Path`; and the Azure examples set `ContainerName` and `ShareName`, neither of
+which exists — the container or share is `AzureStorageConfig.StorageName`.
+
+That last one deserves the note it now carries: the registration call's first argument is also called a
+storage name, but it is the logical name of the storage, while `StorageName` on the configuration is the
+container or share. Swapping them creates the wrong container rather than failing. The Azure section
+also now lists the `AuthType` alternatives, which were undocumented.
+
+The queue example built a `MemoryContext` from the pre-refactor shape (`StorageName`,
+`CollectionName`, `FilePath` as flat properties) and now constructs the real `Source`/`Target` pair.
+
 ### Documented — the memory-pipeline guide described an API that no longer exists
 
 `docs/MEMORY.md` documented `MemoryContext` with nine flat properties — `SourceId`, `StorageName`,
