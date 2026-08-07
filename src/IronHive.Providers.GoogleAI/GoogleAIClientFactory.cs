@@ -1,3 +1,4 @@
+using Google.Apis.Auth.OAuth2;
 using Google.GenAI;
 using Google.GenAI.Types;
 
@@ -5,31 +6,63 @@ namespace IronHive.Providers.GoogleAI;
 
 internal static class GoogleAIClientFactory
 {
-    internal static Client Create(GoogleAIConfig config)
-    {
-        return new Client(
-            vertexAI: false,
-            apiKey: config.ApiKey,
-            httpOptions: ResolveHttpOptions(config.HttpOptions, config.Timeout, nameof(GoogleAIConfig)),
-            clientOptions: config.HttpClientFactory != null ? new ClientOptions
-            {
-                HttpClientFactory = config.HttpClientFactory
-            } : null);
-    }
+    /// <summary>
+    /// The arguments the vendor client is constructed from. The constructed <see cref="Client"/> exposes
+    /// none of them, so the configuration-dependent mapping is built here and asserted, rather than
+    /// inferred from a successful construction: a field routed to the wrong parameter compiles, and for a
+    /// credential the resulting error names neither the field nor the factory.
+    /// </summary>
+    internal readonly record struct ClientArguments(
+        bool VertexAI,
+        string? ApiKey,
+        ICredential? Credential,
+        string? Project,
+        string? Location,
+        HttpOptions HttpOptions,
+        ClientOptions? ClientOptions);
 
-    internal static Client Create(VertexAIConfig config)
-    {
-        return new Client(
-            vertexAI: true,
-            credential: config.Credential,
-            project: config.Project,
-            location: config.Location,
-            httpOptions: ResolveHttpOptions(config.HttpOptions, config.Timeout, nameof(VertexAIConfig)),
-            clientOptions: config.HttpClientFactory != null ? new ClientOptions
-            {
-                HttpClientFactory = config.HttpClientFactory
-            } : null);
-    }
+    /// <summary>
+    /// Gemini authenticates with an API key; the project and location belong to Vertex and stay unset.
+    /// </summary>
+    internal static ClientArguments BuildArguments(GoogleAIConfig config) => new(
+        VertexAI: false,
+        ApiKey: config.ApiKey,
+        Credential: null,
+        Project: null,
+        Location: null,
+        HttpOptions: ResolveHttpOptions(config.HttpOptions, config.Timeout, nameof(GoogleAIConfig)),
+        ClientOptions: ResolveClientOptions(config.HttpClientFactory));
+
+    /// <summary>
+    /// Vertex addresses a project and location and authenticates with a credential rather than a key —
+    /// given none, the vendor falls back to Application Default Credentials.
+    /// </summary>
+    internal static ClientArguments BuildArguments(VertexAIConfig config) => new(
+        VertexAI: true,
+        ApiKey: null,
+        Credential: config.Credential,
+        Project: config.Project,
+        Location: config.Location,
+        HttpOptions: ResolveHttpOptions(config.HttpOptions, config.Timeout, nameof(VertexAIConfig)),
+        ClientOptions: ResolveClientOptions(config.HttpClientFactory));
+
+    private static ClientOptions? ResolveClientOptions(Func<HttpClient>? httpClientFactory)
+        => httpClientFactory is null ? null : new ClientOptions { HttpClientFactory = httpClientFactory };
+
+    internal static Client Create(GoogleAIConfig config) => Create(BuildArguments(config));
+
+    internal static Client Create(VertexAIConfig config) => Create(BuildArguments(config));
+
+    // The single place arguments reach the vendor constructor, so the mapping asserted above is the
+    // mapping used. Nothing configuration-dependent happens here.
+    private static Client Create(ClientArguments arguments) => new(
+        vertexAI: arguments.VertexAI,
+        apiKey: arguments.ApiKey,
+        credential: arguments.Credential,
+        project: arguments.Project,
+        location: arguments.Location,
+        httpOptions: arguments.HttpOptions,
+        clientOptions: arguments.ClientOptions);
 
     /// <summary>
     /// Folds the configuration's timeout into the vendor <see cref="HttpOptions"/>, which is where the

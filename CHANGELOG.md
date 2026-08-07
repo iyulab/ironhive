@@ -27,6 +27,20 @@ used this factory.
 credential is present, not whether the configuration is usable. It is not a registration gate — a
 keyless local server and a gateway that supplies the credential upstream are both valid without one.
 
+### Added — the GoogleAI and Vertex configuration mapping is asserted, not just its timeout
+
+The existing tests covered the timeout only. Every other field — the Gemini API key, Vertex's project,
+location and credential, and both configurations' HTTP client factory — reached the vendor client
+unasserted, which is the same gap that let a base URL sit in the credential slot of the Anthropic adapter
+across several releases. A field routed to the wrong parameter compiles, and for a credential the
+resulting error names neither the field nor the factory.
+
+The factory now builds its vendor-constructor arguments through one internal `BuildArguments`, and a
+single private `Create` passes them straight through, so the mapping that is asserted is the mapping that
+is used. The tests pin each field to its own slot and additionally pin that Gemini-only and Vertex-only
+fields stay out of each other's — a project must not become an API key, and project and location must not
+swap. Both of those were verified by injecting them and confirming the failures.
+
 ### Added — documentation drift is a test failure
 
 The repository already required a document to be updated in the same commit as the surface it
