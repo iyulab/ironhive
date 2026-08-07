@@ -4,6 +4,44 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## Unreleased
+
+### Fixed — a keyless OpenAI-compatible provider no longer aborts service registration
+
+`OpenAICompatibleConfig` documents the API key as optional, and the servers the package exists to
+support — Ollama, LM Studio, vLLM, llama.cpp server — require no credential by default. Registering
+one without a key nevertheless threw `ArgumentException: Value cannot be an empty string (Parameter
+'key')` from `System.ClientModel`, because the model finder and the embedding generator are both
+constructed eagerly by the registration helpers and reach `OpenAIClientFactory` with an empty key.
+The documented registration examples were themselves affected, as was any caller reading a credential
+from the environment with an empty-string fallback: the failure happened during `Build()`, before any
+request, and named neither the provider nor the field.
+
+An absent key is now carried as a placeholder credential. This is sent rather than dropped — requests
+include an `Authorization` header with that value — so a server that rejects an unexpected credential
+answers with an error that names it, instead of the previous crash before startup completed. A key
+that is present is untouched, and the hand-rolled chat-completions path is unaffected because it never
+used this factory.
+
+`OpenAIConfig.Validate()` is unchanged but now documents what it actually answers: whether a
+credential is present, not whether the configuration is usable. It is not a registration gate — a
+keyless local server and a gateway that supplies the credential upstream are both valid without one.
+
+### Added — the `OpenAIConfig` to client mapping is asserted
+
+`IronHive.Providers.OpenAI` had no test covering how its configuration reaches the vendor client, which
+is the same blind spot that let a one-line base-URL misroute survive several releases in the Anthropic
+adapter (0.18.0). Every field is now pinned to its own slot — endpoint, organization, project, network
+timeout, transport — so a field routed elsewhere fails the build rather than a request.
+
+### Fixed — samples no longer require every credential, and no longer name a private host
+
+The console sample registered all four providers unconditionally with an empty-string fallback, so a
+reader holding one API key could not run it: a provider that genuinely requires a credential rejects
+an empty one during `Build()`. Providers are now registered only when their key is present. Both
+samples also pointed their OpenAI-compatible provider at a private host; they now default to
+`http://localhost:8080` and read `LOCAL_BASE_URL` instead.
+
 ## 0.18.0 — 2026-08-07
 
 ### Added — `GoogleAIConfig.Timeout` and `VertexAIConfig.Timeout`, and an explicit adapter default

@@ -218,6 +218,9 @@ OpenAI `/v1` API와 호환되는 모든 서버를 지원합니다: Ollama, LM St
 
 ### 등록
 
+`ApiKey`는 **옵션**이다. 이 절이 다루는 서버들은 기본적으로 자격증명을 요구하지 않으므로 생략해도
+등록·요청이 모두 동작한다. 요구하는 서버에만 설정한다.
+
 ```csharp
 // Ollama
 builder.AddOpenAICompatibleProviders("ollama", new OpenAICompatibleConfig

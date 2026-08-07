@@ -47,8 +47,14 @@ public class OpenAIConfig
     public HttpClient? HttpClient { get; set; }
 
     /// <summary>
-    /// API key 유무를 검증합니다.
+    /// API key가 설정되어 있는지 확인합니다.
     /// </summary>
+    /// <remarks>
+    /// 이것은 "사용 가능한 설정인가"가 아니라 "자격증명이 있는가"에 대한 답입니다. 자격증명을 요구하지
+    /// 않는 엔드포인트 — OpenAI 호환 로컬 서버, 또는 상류에서 자격증명을 주입하는 게이트웨이 — 는 키가
+    /// 없어도 정상 동작하므로, 이 메서드가 <c>false</c>를 반환하는 것이 곧 오류를 뜻하지는 않습니다.
+    /// 그래서 provider 등록 경로는 이것을 게이트로 쓰지 않습니다.
+    /// </remarks>
     public bool Validate()
     {
         return !string.IsNullOrWhiteSpace(ApiKey);

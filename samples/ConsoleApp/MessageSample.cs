@@ -54,25 +54,31 @@ public static class MessageSample
             // OutputFormat = OutputFormat.For<AnswerShape>()
         };
 
-        var hive = new HiveServiceBuilder()
-            .AddOpenAIProviders("openai", new OpenAIConfig
-            {
-                ApiKey = Environment.GetEnvironmentVariable("OPENAI") ?? string.Empty
-            })
-            .AddAnthropicProviders("anthropic", new AnthropicConfig
-            {
-                ApiKey = Environment.GetEnvironmentVariable("ANTHROPIC") ?? string.Empty
-            })
-            .AddGoogleAIProviders("google", new GoogleAIConfig
-            {
-                ApiKey = Environment.GetEnvironmentVariable("GOOGLE") ?? string.Empty
-            })
-            .AddOpenAICompatibleProviders("openai-compatible", new OpenAICompatibleConfig
-            {
-                BaseUrl = "http://labs.iyulab.com:10150/v1",
-                ApiKey = Environment.GetEnvironmentVariable("LOCAL") ?? string.Empty
-            })
-            .Build();
+        // 자격증명이 있는 provider만 등록한다. 키를 하나만 가진 사람도 이 샘플을 실행할 수 있어야 하고,
+        // 키가 필수인 provider(Gemini 등)는 빈 키로 등록하면 Build() 자체가 실패한다.
+        var builder = new HiveServiceBuilder();
+
+        var openAIKey = Environment.GetEnvironmentVariable("OPENAI");
+        if (!string.IsNullOrWhiteSpace(openAIKey))
+            builder.AddOpenAIProviders("openai", new OpenAIConfig { ApiKey = openAIKey });
+
+        var anthropicKey = Environment.GetEnvironmentVariable("ANTHROPIC");
+        if (!string.IsNullOrWhiteSpace(anthropicKey))
+            builder.AddAnthropicProviders("anthropic", new AnthropicConfig { ApiKey = anthropicKey });
+
+        var googleKey = Environment.GetEnvironmentVariable("GOOGLE");
+        if (!string.IsNullOrWhiteSpace(googleKey))
+            builder.AddGoogleAIProviders("google", new GoogleAIConfig { ApiKey = googleKey });
+
+        // OpenAI 호환 서버(llama.cpp, LM Studio, vLLM, Ollama 등)는 보통 자격증명이 필요 없다.
+        // LOCAL_BASE_URL 로 주소를 바꿀 수 있고, LOCAL_API_KEY 는 요구하는 서버에서만 설정한다.
+        builder.AddOpenAICompatibleProviders("openai-compatible", new OpenAICompatibleConfig
+        {
+            BaseUrl = Environment.GetEnvironmentVariable("LOCAL_BASE_URL") ?? "http://localhost:8080",
+            ApiKey = Environment.GetEnvironmentVariable("LOCAL_API_KEY") ?? string.Empty
+        });
+
+        var hive = builder.Build();
 
         // OpenAI 샘플
         // request.Provider = "openai";

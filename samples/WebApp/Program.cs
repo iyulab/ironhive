@@ -40,8 +40,13 @@ builder.Services.AddHiveService((builder, sp) =>
     if (!string.IsNullOrEmpty(xaiKey))
         builder.AddOpenAIProviders("xai", new OpenAIConfig { BaseUrl = "https://api.x.ai/v1/", ApiKey = xaiKey });
 
-    if (!string.IsNullOrEmpty(localKey))
-        builder.AddOpenAICompatibleProviders("iyulab", new OpenAICompatibleConfig { BaseUrl = "http://labs.iyulab.com:10150/v1-openai/", ApiKey = localKey });
+    // OpenAI 호환 서버는 보통 자격증명이 필요 없으므로 키 유무로 등록을 막지 않는다.
+    // 주소는 LOCAL_BASE_URL 로 바꾼다.
+    builder.AddOpenAICompatibleProviders("local", new OpenAICompatibleConfig
+    {
+        BaseUrl = Environment.GetEnvironmentVariable("LOCAL_BASE_URL") ?? "http://localhost:8080",
+        ApiKey = localKey ?? string.Empty
+    });
     
     return builder.Build();
 });
