@@ -27,6 +27,23 @@ used this factory.
 credential is present, not whether the configuration is usable. It is not a registration gate — a
 keyless local server and a gateway that supplies the credential upstream are both valid without one.
 
+### Documented — `BaseUrl` means something different in the two OpenAI configurations
+
+`OpenAIConfig.BaseUrl` is the complete endpoint: it reaches the vendor SDK verbatim and the adapter
+adds no version segment, so `https://gateway.example.com` sends requests to `/responses` and `/models`
+and every one of them 404s. `OpenAICompatibleConfig.BaseUrl` is the opposite — a server address, with
+`Path` (default `/v1`) appended by the adapter. Two properties of the same name in the same provider
+family with opposite contracts, and nothing but a 404 to tell them apart.
+
+Neither is changed. A version segment is deliberately not synthesised for the plain configuration
+because the rule differs per compatible service — GPUStack serves `/v1-openai` — and appending one
+would corrupt paths the sibling configurations already build correctly. What was missing was the
+statement of the contract, which is now in the XML documentation, in `docs/PROVIDERS.md`, and pinned at
+the wire by `BaseUrlPathContractTests` rather than described only in prose.
+
+The `OpenAIConfig` listing in `docs/PROVIDERS.md` also no longer describes members that do not exist
+(`MaxRetries`), misstates the nullability of `BaseUrl`, or omits `Organization` and `Project`.
+
 ### Added — the `OpenAIConfig` to client mapping is asserted
 
 `IronHive.Providers.OpenAI` had no test covering how its configuration reaches the vendor client, which

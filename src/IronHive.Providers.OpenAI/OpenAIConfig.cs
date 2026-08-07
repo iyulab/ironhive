@@ -6,8 +6,22 @@ namespace IronHive.Providers.OpenAI;
 public class OpenAIConfig
 {
     /// <summary>
-    /// OpenAI API의 기본 URL을 가져오거나 설정합니다.
+    /// OpenAI API의 기본 URL을 가져오거나 설정합니다. 비워 두면 SDK 기본값(<c>https://api.openai.com/v1</c>)이 쓰입니다.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// **버전 세그먼트를 포함한 완전한 엔드포인트**여야 합니다. 이 값은 벤더 SDK의 엔드포인트로 그대로
+    /// 전달되며, 어댑터는 <c>/v1</c> 같은 경로를 붙이지 않습니다. 예를 들어
+    /// <c>https://gateway.example.com</c> 을 설정하면 요청이 <c>/responses</c>·<c>/models</c> 로 나가
+    /// 대상 서버에서 404가 되고, 올바른 값은 <c>https://gateway.example.com/v1</c> 입니다.
+    /// </para>
+    /// <para>
+    /// ⚠️ 같은 이름의 <c>OpenAICompatibleConfig.BaseUrl</c>은 **반대 계약**입니다 — 그쪽은 «API 경로 없는
+    /// 서버 주소»이고 <c>Path</c>(기본 <c>/v1</c>)를 어댑터가 덧붙입니다. 두 설정을 오가며 같은 값을
+    /// 그대로 옮기면 한쪽에서 404가 됩니다. 경로를 자동으로 붙이지 않는 이유는 그 규칙이 호환 provider마다
+    /// 다르기 때문입니다(예: GPUStack은 <c>/v1-openai</c>).
+    /// </para>
+    /// </remarks>
     public string BaseUrl { get; set; } = string.Empty;
 
     /// <summary>

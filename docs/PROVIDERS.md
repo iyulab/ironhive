@@ -47,11 +47,31 @@ builder.AddEmbeddingGenerator("openai", new OpenAIEmbeddingGenerator(config));
 ```csharp
 public class OpenAIConfig
 {
-    public string ApiKey { get; set; }
-    public string? BaseUrl { get; set; }  // Azure OpenAI나 커스텀 엔드포인트용
-    // + MaxRetries, Timeout, HttpClient 등
+    public string ApiKey { get; set; }        // 필수는 아니다 — 아래 참조
+    public string BaseUrl { get; set; }       // 커스텀 엔드포인트·게이트웨이용. 버전 세그먼트 포함
+    public string Organization { get; set; }  // 조직 ID (옵션)
+    public string Project { get; set; }       // 프로젝트 ID (옵션)
+    public TimeSpan TimeOut { get; set; }     // 기본 10분
+    public HttpClient? HttpClient { get; set; }
 }
 ```
+
+#### `BaseUrl`은 버전 세그먼트를 포함한 완전한 엔드포인트다
+
+이 값은 벤더 SDK 엔드포인트로 그대로 전달되고 **어댑터는 `/v1`을 붙이지 않는다.**
+`https://gateway.example.com`을 넣으면 요청이 `/responses`·`/models`로 나가 404가 된다 —
+올바른 값은 `https://gateway.example.com/v1`이다.
+
+⚠️ 아래 `OpenAICompatibleConfig.BaseUrl`은 **같은 이름에 반대 계약**이다: 그쪽은 «API 경로 없는 서버
+주소»이고 `Path`(기본 `/v1`)를 어댑터가 덧붙인다. 두 설정 사이에서 같은 값을 그대로 옮기면 한쪽이
+404가 된다. 경로를 자동으로 붙이지 않는 이유는 규칙이 호환 서비스마다 다르기 때문이다
+(GPUStack은 `/v1-openai`). 이 계약은 `BaseUrlPathContractTests`가 와이어 레벨로 고정한다.
+
+#### `ApiKey`가 없어도 등록·요청이 가능하다
+
+자격증명을 요구하지 않는 엔드포인트(호환 로컬 서버, 또는 상류에서 자격증명을 주입하는 게이트웨이)를
+위해 키가 비면 placeholder 자격증명이 쓰인다. 실제 OpenAI를 상대로 키를 빠뜨리면 요청 시점에 인증
+오류로 드러난다. `OpenAIConfig.Validate()`는 «키가 있는가»에만 답하며 등록 게이트가 아니다.
 
 ### 지원 기능
 
