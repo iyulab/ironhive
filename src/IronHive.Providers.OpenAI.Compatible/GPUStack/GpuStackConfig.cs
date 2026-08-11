@@ -39,6 +39,9 @@ public class GpuStackConfig
     /// </summary>
     public TimeSpan ConnectTimeout { get; set; } = TimeSpan.FromSeconds(2);
 
+    /// <inheritdoc cref="OpenAICompatibleConfig.TokenLimitParameter"/>
+    public TokenLimitParameter TokenLimitParameter { get; set; } = TokenLimitParameter.MaxCompletionTokens;
+
     /// <summary>
     /// 현재 유효한 BaseUrl을 반환합니다.
     /// <see cref="BaseUrlResolver"/>가 설정된 경우 이를 우선 호출하며,

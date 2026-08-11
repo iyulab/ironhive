@@ -31,4 +31,55 @@ public class OpenAICompatibleMessageGeneratorTests
         using var gen = new GpuStackMessageGenerator(new GpuStackConfig { BaseUrl = "http://localhost:8080", ApiKey = "k" });
         GetInner(gen).Should().BeOfType<ChatCompletionMessageGenerator>();
     }
+
+    [Fact]
+    public void OpenAICompatible_TokenLimitParameter_ReachesInnerGenerator()
+    {
+        using var gen = new OpenAICompatibleMessageGenerator(new OpenAICompatibleConfig
+        {
+            BaseUrl = "http://localhost:11434",
+            ApiKey = "k",
+            TokenLimitParameter = TokenLimitParameter.MaxTokens,
+        });
+
+        gen.EffectiveTokenLimitParameter.Should().Be(TokenLimitParameter.MaxTokens);
+        ((ChatCompletionMessageGenerator)GetInner(gen)).TokenLimitParameter.Should().Be(TokenLimitParameter.MaxTokens);
+    }
+
+    [Fact]
+    public void GpuStack_TokenLimitParameter_ReachesInnerGenerator()
+    {
+        using var gen = new GpuStackMessageGenerator(new GpuStackConfig
+        {
+            BaseUrl = "http://localhost:8080",
+            ApiKey = "k",
+            TokenLimitParameter = TokenLimitParameter.MaxTokens,
+        });
+
+        gen.EffectiveTokenLimitParameter.Should().Be(TokenLimitParameter.MaxTokens);
+        ((ChatCompletionMessageGenerator)GetInner(gen)).TokenLimitParameter.Should().Be(TokenLimitParameter.MaxTokens);
+    }
+
+    [Fact]
+    public void GpuStack_TokenLimitParameter_DefaultsToMaxCompletionTokens_NoRegression()
+    {
+        using var gen = new GpuStackMessageGenerator(new GpuStackConfig { BaseUrl = "http://localhost:8080", ApiKey = "k" });
+        gen.EffectiveTokenLimitParameter.Should().Be(TokenLimitParameter.MaxCompletionTokens);
+    }
+
+    [Fact]
+    public void GpuStack_TokenLimitParameter_SurvivesInnerGeneratorSwap()
+    {
+        var endpoint = "http://localhost:8080";
+        using var gen = new GpuStackMessageGenerator(new GpuStackConfig
+        {
+            BaseUrlResolver = () => endpoint,
+            TokenLimitParameter = TokenLimitParameter.MaxTokens,
+        });
+
+        gen.EffectiveTokenLimitParameter.Should().Be(TokenLimitParameter.MaxTokens);
+
+        endpoint = "http://localhost:8081";
+        gen.EffectiveTokenLimitParameter.Should().Be(TokenLimitParameter.MaxTokens);
+    }
 }

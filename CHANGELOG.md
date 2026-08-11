@@ -6,6 +6,20 @@ changes are expected and used freely for structural correctness (see
 
 ## Unreleased
 
+### Fixed — GPUStack ignored `TokenLimitParameter`, always sending `max_completion_tokens`
+
+`TokenLimitParameter` was added to `OpenAICompatibleConfig` and threaded through
+`OpenAICompatibleMessageGenerator` to the inner Chat Completions generator, but `GpuStackConfig` never
+gained the matching property and `GpuStackMessageGenerator` constructed its inner generator without
+setting it — on both the initial construction and the resolver-driven swap in `GetOrUpdateInner()`. GPUStack
+callers were pinned to the default `max_completion_tokens` with no way to switch to `max_tokens` for a
+server that predates the rename, silently dropping the parameter server-side.
+
+`GpuStackConfig.TokenLimitParameter` now exists with the same default (`MaxCompletionTokens`, no
+regression) and reaches the inner generator at both construction sites, mirroring the sibling class.
+`GpuStackMessageGenerator.EffectiveTokenLimitParameter` is added for the same observability reason as
+the sibling's.
+
 ### Fixed — a keyless OpenAI-compatible provider no longer aborts service registration
 
 `OpenAICompatibleConfig` documents the API key as optional, and the servers the package exists to
