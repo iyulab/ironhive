@@ -54,6 +54,68 @@ public class AgentConfigTests
     }
 
     [Fact]
+    public void Validate_ToolsPopulated_ShouldThrowNotSupportedException()
+    {
+        var config = new AgentConfig
+        {
+            Provider = "openai",
+            Model = "gpt-4o",
+            Tools = ["web-search"]
+        };
+
+        var act = () => config.Validate();
+
+        act.Should().Throw<NotSupportedException>()
+            .WithMessage("*Tools*ToolOptions*");
+    }
+
+    [Fact]
+    public void Validate_ToolOptionsPopulated_ShouldThrowNotSupportedException()
+    {
+        var config = new AgentConfig
+        {
+            Provider = "openai",
+            Model = "gpt-4o",
+            ToolOptions = new Dictionary<string, object?> { ["web-search"] = new { maxResults = 5 } }
+        };
+
+        var act = () => config.Validate();
+
+        act.Should().Throw<NotSupportedException>();
+    }
+
+    [Fact]
+    public void Validate_ToolsNull_ShouldNotThrow()
+    {
+        var config = new AgentConfig
+        {
+            Provider = "openai",
+            Model = "gpt-4o",
+            Tools = null
+        };
+
+        var act = () => config.Validate();
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Validate_ToolsEmptyList_ShouldNotThrow()
+    {
+        var config = new AgentConfig
+        {
+            Provider = "openai",
+            Model = "gpt-4o",
+            Tools = [],
+            ToolOptions = new Dictionary<string, object?>()
+        };
+
+        var act = () => config.Validate();
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
     public void Parameters_MaxTokens_NullConfig_ShouldBeNull()
     {
         var config = new AgentConfig { Parameters = null };

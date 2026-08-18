@@ -32,9 +32,6 @@ agent:
   provider: openai
   model: gpt-4o-mini
   instructions: You are a helpful assistant.
-  tools:
-    - web-search
-    - calculator
   parameters:
     maxTokens: 512
     temperature: 0.7
@@ -50,8 +47,26 @@ agent:
         agent.Provider.Should().Be("openai");
         agent.Model.Should().Be("gpt-4o-mini");
         agent.Instructions.Should().Be("You are a helpful assistant.");
-        agent.Tools.Should().BeNull();
         agent.MaxTokens.Should().Be(512);
+    }
+
+    [Fact]
+    public void CreateAgentFromYaml_WithTools_ShouldThrowNotSupportedException()
+    {
+        // AgentConfig.Tools is parsed but never resolved into IAgent.Tools by this service — see
+        // AgentConfigExtensions.Validate. A declared tool must fail loud, not silently never execute.
+        var yaml = @"
+agent:
+  name: TestBot
+  provider: openai
+  model: gpt-4o-mini
+  tools:
+    - web-search
+";
+
+        var act = () => _service.CreateAgentFromYaml(yaml);
+
+        act.Should().Throw<NotSupportedException>();
     }
 
     [Fact]
@@ -119,7 +134,6 @@ agent:
                 ""provider"": ""openai"",
                 ""model"": ""gpt-4o-mini"",
                 ""instructions"": ""Be helpful."",
-                ""tools"": [""search""],
                 ""parameters"": {
                     ""maxTokens"": 1000,
                     ""temperature"": 0.5
@@ -135,8 +149,24 @@ agent:
         agent.Name.Should().Be("JsonBot");
         agent.Provider.Should().Be("openai");
         agent.Model.Should().Be("gpt-4o-mini");
-        agent.Tools.Should().BeNull();
         agent.MaxTokens.Should().Be(1000);
+    }
+
+    [Fact]
+    public void CreateAgentFromJson_WithTools_ShouldThrowNotSupportedException()
+    {
+        var json = @"{
+            ""agent"": {
+                ""name"": ""JsonBot"",
+                ""provider"": ""openai"",
+                ""model"": ""gpt-4o-mini"",
+                ""tools"": [""search""]
+            }
+        }";
+
+        var act = () => _service.CreateAgentFromJson(json);
+
+        act.Should().Throw<NotSupportedException>();
     }
 
     [Fact]
@@ -189,7 +219,6 @@ description = ""A TOML agent""
 provider = ""openai""
 model = ""gpt-4o-mini""
 instructions = ""Be concise.""
-tools = [""calculator""]
 
 [agent.parameters]
 maxTokens = 256
@@ -205,8 +234,23 @@ temperature = 0.3
         agent.Provider.Should().Be("openai");
         agent.Model.Should().Be("gpt-4o-mini");
         agent.Instructions.Should().Be("Be concise.");
-        agent.Tools.Should().BeNull();
         agent.MaxTokens.Should().Be(256);
+    }
+
+    [Fact]
+    public void CreateAgentFromToml_WithTools_ShouldThrowNotSupportedException()
+    {
+        var toml = @"
+[agent]
+name = ""TomlBot""
+provider = ""openai""
+model = ""gpt-4o-mini""
+tools = [""calculator""]
+";
+
+        var act = () => _service.CreateAgentFromToml(toml);
+
+        act.Should().Throw<NotSupportedException>();
     }
 
     [Fact]

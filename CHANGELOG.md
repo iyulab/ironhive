@@ -4,6 +4,24 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.19.1 — 2026-08-18
+
+### Fixed — `AgentConfig.Tools`/`ToolOptions` were parsed but silently dropped when building an agent
+
+`AgentService.CreateAgentFromConfig` (reached from `CreateAgentFromYaml`/`CreateAgentFromJson`/
+`CreateAgentFromToml`/`CreateAgent(Action<AgentConfig>)`) never read `AgentConfig.Tools` or
+`AgentConfig.ToolOptions` when constructing the resulting `BasicAgent` — a caller declaring
+`tools: [...]` in YAML/JSON/TOML got a successfully-created agent whose `IAgent.Tools` was `null`,
+so the declared tool silently never executed. No exception, no log.
+
+`AgentConfigExtensions.Validate()` (already the single validation choke point for all four entry
+points) now throws `NotSupportedException` when either field is populated, naming the fields and
+pointing at the supported alternative (set `IAgent.Tools` directly on the constructed agent, or use
+a framework with its own name-to-tool resolution, e.g. Ironbees's `AgentConfig.Tools` +
+`IronhiveOptions.Tools`). `IronHive.Core` has no name-to-`ITool` registry of its own, so resolving
+the names instead of rejecting them would require introducing one — out of scope for this fix and
+not requested by any current consumer.
+
 ## 0.19.0 — 2026-08-11
 
 ### Fixed — GPUStack ignored `TokenLimitParameter`, always sending `max_completion_tokens`
