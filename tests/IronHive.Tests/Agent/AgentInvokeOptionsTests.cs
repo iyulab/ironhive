@@ -11,8 +11,12 @@ namespace IronHive.Tests.Agent;
 public class AgentInvokeOptionsTests
 {
     // 에이전트 고정 속성 — IAgent 프로퍼티/invoke 인자로 도달 (의식적으로 하드코딩)
+    // Tools는 이전에 여기 있었으나 2026-08-24 AgentInvokeOptions.Tools로 이동했다 — IAgent 인스턴스가
+    // 이름으로 캐시·공유되는 소비자(예: Ironbees AgentRegistry)에서는 공유 IAgent.Tools를 직접
+    // 변경하면 동시 요청 간 경합이 생기므로, 세션 스코프 도구는 per-invoke override가 있어야
+    // 안전하게 표현 가능하다.
     private static readonly HashSet<string> AgentFixedProperties =
-        ["Provider", "Model", "System", "Messages", "Tools"];
+        ["Provider", "Model", "System", "Messages"];
 
     [Fact]
     public void AgentInvokeOptions_Should_Cover_All_PerRequest_MessageRequest_Properties()

@@ -4,6 +4,31 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.20.0 — 2026-08-24
+
+### Added — `AgentInvokeOptions.Tools` (per-invoke tool override)
+
+`IAgent.Tools` is set once at agent construction and, in consumers that cache/share `IAgent`
+instances by name (e.g. Ironbees's `AgentRegistry`), mutating it directly to vary the tool set
+per request would race across concurrent invocations of the same agent. `AgentInvokeOptions` now
+exposes `Tools: IToolCollection?`, following the same per-request overlay convention as
+`MaxTokens`/`Temperature`/etc.: when set, it overrides `IAgent.Tools` for that call only and
+leaves the shared agent instance untouched; null keeps the agent's configured tools. `BasicAgent`
+honors it in `CreateRequest`.
+
+### Changed — `AIToolAdapter` (`IronHive.Core.Microsoft`) is now public and executes AIFunctions
+
+Previously `internal` and declaration-only (`InvokeAsync` always threw `NotSupportedException`),
+documented as existing solely so `ChatClientAdapter` could pass `ChatOptions.Tools` through to
+`MessageGenerationRequest.Tools` for M.E.AI's own `FunctionInvokingChatClient` to execute.
+Consumers integrating an M.E.AI `AIFunction`-shaped tool source (e.g. an MCP client's
+`McpClientTool`) into IronHive's own tool-calling pipeline (`IHiveService.Messages`, or an
+`AgentInvokeOptions.Tools` override) had no public path and had to hand-roll an equivalent
+adapter. `AIToolAdapter` is now `public`, and `InvokeAsync` executes the wrapped `AIFunction`
+(via `AIFunction.InvokeAsync`) when one is present, returning `ToolOutput.Failure` for a
+declaration-only `AITool` or a thrown exception rather than leaking either as an unhandled
+exception. `Parameters` now also recognizes any `AIFunctionDeclaration`, not just `AIFunction`.
+
 ## 0.19.1 — 2026-08-18
 
 ### Fixed — `AgentConfig.Tools`/`ToolOptions` were parsed but silently dropped when building an agent

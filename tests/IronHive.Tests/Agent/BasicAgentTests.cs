@@ -311,6 +311,38 @@ public class BasicAgentTests
     }
 
     [Fact]
+    public async Task InvokeAsync_WithOptionsTools_Should_Override_Agent_Tools_For_This_Call_Only()
+    {
+        // Arrange
+        var agent = CreateAgent();
+        agent.Tools = new ToolCollection([CreateMockTool("agent-default-tool")]);
+
+        var perRequestTools = new ToolCollection([CreateMockTool("desk-scoped-tool")]);
+        var options = new AgentInvokeOptions { Tools = perRequestTools };
+
+        MessageRequest? capturedRequest = null;
+        _mockMessageService
+            .GenerateMessageAsync(Arg.Do<MessageRequest>(req => capturedRequest = req), Arg.Any<CancellationToken>())
+            .Returns(new MessageResponse
+            {
+                ResponseId = "msg-gen",
+                DoneReason = MessageDoneReason.EndTurn,
+                Message = new Message { Role = MessageRole.Assistant },
+                Model = string.Empty,
+                Timestamp = DateTime.UtcNow
+            });
+
+        // Act
+        await agent.InvokeAsync([Message.User("Hello")], options);
+
+        // Assert — per-request Tools override 반영, 공유 agent.Tools 인스턴스는 불변
+        capturedRequest.Should().NotBeNull();
+        capturedRequest!.Tools.Should().BeSameAs(perRequestTools);
+        agent.Tools.Should().HaveCount(1);
+        agent.Tools!.First().UniqueName.Should().Be("agent-default-tool");
+    }
+
+    [Fact]
     public async Task InvokeAsync_WithoutOptions_Should_Use_Agent_Defaults()
     {
         // Arrange

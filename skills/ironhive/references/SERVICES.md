@@ -303,8 +303,8 @@ var chatClient = new ChatClientAdapter(hive.Messages, "openai", "gpt-4o");
 // Use as IEmbeddingGenerator<string, Embedding<float>>
 var embedder = new EmbeddingGeneratorAdapter(hive.Embeddings, "openai", "text-embedding-3-small");
 
-// Use function tool as AITool
-var aiTool = new AIToolAdapter(myTool);
+// Wrap an AITool (e.g. an MCP McpClientTool) as an IronHive ITool — InvokeAsync executes it
+var tool = new AIToolAdapter(mcpClientTool);
 ```
 
 ## Telemetry

@@ -25,7 +25,7 @@
 - **RAG 파이프라인** — 텍스트 추출, 청킹, 임베딩, 벡터 검색
 - **다중 모달리티** — 이미지 생성, 음성 TTS/STT, 비디오 생성
 - **플러그인** — MCP (HTTP/Stdio/OAuth), OpenAPI 자동 도구 생성
-- **M.E.AI 호환** — `ChatClientAdapter` / `EmbeddingGeneratorAdapter`
+- **M.E.AI 호환** — `ChatClientAdapter` / `EmbeddingGeneratorAdapter` / `AIToolAdapter`(임의의 `AITool`을 `ITool`로 래핑·실행 — MCP `McpClientTool` 등)
 - **워크플로우** — 코드 기반 타입 안전 워크플로우 엔진
 - **도메인 예외** — 컨텍스트 윈도우 초과 시 프로바이더별 오류를 `ContextOverflowException`(`ContextWindow` 포함)으로 정규화 — 문자열 파싱 없이 `catch`로 압축·복구 로직 작성 가능
 

@@ -185,8 +185,8 @@ var chatClient = new ChatClientAdapter(hive.Messages, "openai", "gpt-4o");
 // IronHive → M.E.AI IEmbeddingGenerator<string, Embedding<float>>
 var embedder = new EmbeddingGeneratorAdapter(hive.Embeddings, "openai", "text-embedding-3-small");
 
-// IronHive ITool → M.E.AI AITool
-var aiTool = new AIToolAdapter(myTool);
+// M.E.AI AITool(예: MCP McpClientTool) → IronHive ITool — 실행까지 위임한다
+var tool = new AIToolAdapter(mcpClientTool);
 ```
 
 ---
