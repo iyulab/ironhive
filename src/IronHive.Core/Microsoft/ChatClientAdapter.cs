@@ -214,10 +214,25 @@ public class ChatClientAdapter : IChatClient
                 var adapted = options.Tools.Select(t => (ITool)new AIToolAdapter(t));
                 request.Tools = new ToolCollection(adapted);
             }
+
+            request.ToolChoice = ToMessageToolChoice(options.ToolMode);
         }
 
         return request;
     }
+
+    /// <summary>
+    /// M.E.AI의 <see cref="ChatToolMode"/>를 IronHive의 <see cref="MessageToolChoice"/>로 변환합니다.
+    /// null(미설정)은 null로 유지합니다 — 모델이 자유롭게 결정하는 기본 동작을 그대로 보존합니다.
+    /// </summary>
+    internal static MessageToolChoice? ToMessageToolChoice(ChatToolMode? toolMode) => toolMode switch
+    {
+        null => null,
+        NoneChatToolMode => MessageToolChoice.None,
+        RequiredChatToolMode { RequiredFunctionName: { } name } => MessageToolChoice.Function(name),
+        RequiredChatToolMode => MessageToolChoice.Required,
+        _ => MessageToolChoice.Auto
+    };
 
     private static Message? ConvertMessage(ChatMessage message, Dictionary<string, string> toolResults)
     {

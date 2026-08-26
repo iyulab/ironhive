@@ -4,6 +4,24 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.21.0 — 2026-08-26
+
+### Added — `ChatOptions.ToolMode` now reaches the wire (`MessageGenerationRequest.ToolChoice`)
+
+`Microsoft.Extensions.AI.ChatOptions.ToolMode` had no effect anywhere in the M.E.AI bridge:
+`ChatClientAdapter.ConvertToRequest` never read it, and `MessageGenerationRequest` had no field
+to carry it even if it had. A caller setting `ChatToolMode.None` to force a text-only response, or
+`RequireAny`/`RequireSpecific` to force a tool call, produced the identical request as one that
+left `ToolMode` unset — the model stayed free to decide either way, silently.
+`MessageGenerationRequest` now exposes `ToolChoice: MessageToolChoice?` (new type,
+`IronHive.Abstractions.Messages`), populated from `ChatOptions.ToolMode` in `ChatClientAdapter`.
+`IronHive.Providers.OpenAI.Compatible` translates it into the OpenAI-compatible wire's
+`tool_choice` field (`"none"`/`"required"`/`{"type":"function","function":{"name":...}}`); `None`
+additionally omits the `tools` array from the request entirely, since some self-hosted backends
+only partially honor `tool_choice` as a soft hint and still expose the tool grammar/schema
+regardless of the field. Other providers do not yet read `ToolChoice` — unchanged (silently
+ignored) behavior for those paths.
+
 ## 0.20.0 — 2026-08-24
 
 ### Added — `AgentInvokeOptions.Tools` (per-invoke tool override)

@@ -64,6 +64,13 @@ public class MessageGenerationRequest
     public IToolCollection? Tools { get; set; }
 
     /// <summary>
+    /// 모델이 도구를 호출할지, 어떤 도구를 호출할지를 제어합니다.
+    /// null이면 모델이 자유롭게 결정합니다(<see cref="MessageToolChoice.Auto"/>와 동일).
+    /// <see cref="Tools"/>가 비어있지 않을 때만 의미가 있습니다.
+    /// </summary>
+    public MessageToolChoice? ToolChoice { get; set; }
+
+    /// <summary>
     /// 구조화 출력 설정입니다. null이면 기본 텍스트 출력입니다.
     /// </summary>
     public OutputFormat? OutputFormat { get; set; }

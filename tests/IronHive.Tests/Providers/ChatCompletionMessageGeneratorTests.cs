@@ -2,6 +2,7 @@ using FluentAssertions;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Tools;
+using IronHive.Core.Tools;
 using IronHive.Providers.OpenAI.Compatible;
 using IronHive.Providers.OpenAI.Compatible.ChatCompletion;
 
@@ -210,6 +211,83 @@ public class ChatCompletionMessageGeneratorTests
     {
         new OpenAICompatibleConfig().TokenLimitParameter
             .Should().Be(TokenLimitParameter.MaxCompletionTokens);
+    }
+
+    // === tool_choice ===
+    //
+    // ChatOptions.ToolMode (via ChatClientAdapter -> MessageGenerationRequest.ToolChoice) must
+    // actually reach the wire — an unset/Auto value omits tool_choice entirely so the server's own
+    // default applies, unchanged from before this field existed.
+
+    private static Message[] UserWithTools => [Message.User("hi")];
+
+    private static MessageGenerationRequest RequestWithTools(MessageToolChoice? toolChoice) => new()
+    {
+        Model = "test-model",
+        Messages = UserWithTools,
+        Tools = new ToolCollection([new StubTool("get_weather")]),
+        ToolChoice = toolChoice,
+    };
+
+    private sealed class StubTool(string name) : ITool
+    {
+        public string UniqueName => name;
+        public string? Description => null;
+        public object? Parameters => null;
+        public bool RequiresApproval { get; set; }
+        public Task<ToolOutput> InvokeAsync(ToolInput input, CancellationToken cancellationToken = default) =>
+            Task.FromResult(ToolOutput.Success(string.Empty));
+    }
+
+    [Fact]
+    public void BuildRequest_ToolChoiceUnset_OmitsToolChoice_KeepsTools()
+    {
+        var payload = SerializePayload(ChatCompletionMessageGenerator.BuildRequest(RequestWithTools(null)));
+
+        payload.Should().NotContain("tool_choice");
+        payload.Should().Contain("get_weather");
+    }
+
+    [Fact]
+    public void BuildRequest_ToolChoiceAuto_OmitsToolChoice_KeepsTools()
+    {
+        var payload = SerializePayload(
+            ChatCompletionMessageGenerator.BuildRequest(RequestWithTools(MessageToolChoice.Auto)));
+
+        payload.Should().NotContain("tool_choice");
+        payload.Should().Contain("get_weather");
+    }
+
+    [Fact]
+    public void BuildRequest_ToolChoiceNone_OmitsToolsEntirely_NotJustToolChoice()
+    {
+        // Not just tool_choice:"none" — the tool catalog itself must be gone, since some self-hosted
+        // backends only partially honor tool_choice as a hint (see docket a95e2953 ask #2).
+        var payload = SerializePayload(
+            ChatCompletionMessageGenerator.BuildRequest(RequestWithTools(MessageToolChoice.None)));
+
+        payload.Should().NotContain("get_weather");
+        payload.Should().NotContain("\"tools\"");
+    }
+
+    [Fact]
+    public void BuildRequest_ToolChoiceRequired_SendsRequiredString_KeepsTools()
+    {
+        var payload = SerializePayload(
+            ChatCompletionMessageGenerator.BuildRequest(RequestWithTools(MessageToolChoice.Required)));
+
+        payload.Should().Contain("\"tool_choice\":\"required\"");
+        payload.Should().Contain("get_weather");
+    }
+
+    [Fact]
+    public void BuildRequest_ToolChoiceFunction_SendsTypeAndFunctionNameObject_KeepsTools()
+    {
+        var payload = SerializePayload(
+            ChatCompletionMessageGenerator.BuildRequest(RequestWithTools(MessageToolChoice.Function("get_weather"))));
+
+        payload.Should().Contain("\"tool_choice\":{\"type\":\"function\",\"function\":{\"name\":\"get_weather\"}}");
+        payload.Should().Contain("\"tools\"");
     }
 
     [Theory]

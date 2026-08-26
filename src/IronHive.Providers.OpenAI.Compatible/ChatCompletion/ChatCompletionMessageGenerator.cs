@@ -302,19 +302,26 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
             TopK = request.TopK,
             Stop = request.StopSequences,
             ResponseFormat = BuildResponseFormat(request),
-            Tools = request.Tools?.Select(t => new ChatTool
-            {
-                Function = new ChatTool.FunctionSchema
+            // ToolChoiceMode.None omits Tools entirely rather than relying on tool_choice:"none" alone —
+            // some self-hosted/local backends (llama.cpp-family servers in particular) only partially
+            // honor tool_choice as a soft hint and still expose the tool grammar/schema regardless. An
+            // empty tool catalog is the one construction that structurally cannot produce a tool call.
+            Tools = request.ToolChoice?.Mode == MessageToolChoiceMode.None
+                ? null
+                : request.Tools?.Select(t => new ChatTool
                 {
-                    Name = t.UniqueName,
-                    Description = t.Description,
-                    Parameters = t.Parameters ?? new JsonObject
+                    Function = new ChatTool.FunctionSchema
                     {
-                        ["type"] = "object",
-                        ["properties"] = new JsonObject()
+                        Name = t.UniqueName,
+                        Description = t.Description,
+                        Parameters = t.Parameters ?? new JsonObject
+                        {
+                            ["type"] = "object",
+                            ["properties"] = new JsonObject()
+                        }
                     }
-                }
-            }),
+                }),
+            ToolChoice = BuildToolChoice(request.ToolChoice),
             ReasoningEffort = request.ThinkingEffort switch
             {
                 null => null,
@@ -348,6 +355,25 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
             }
         };
     }
+
+    /// <summary>
+    /// Builds the OpenAI-compatible <c>tool_choice</c> wire value: omitted (null, server default
+    /// "auto") for <see cref="MessageToolChoiceMode.Auto"/> or an unset choice, a bare string for
+    /// <c>none</c>/<c>required</c>, or <c>{"type":"function","function":{"name":...}}</c> to force
+    /// one named function.
+    /// </summary>
+    internal static JsonNode? BuildToolChoice(MessageToolChoice? toolChoice) => toolChoice?.Mode switch
+    {
+        null or MessageToolChoiceMode.Auto => null,
+        MessageToolChoiceMode.None => JsonValue.Create("none"),
+        MessageToolChoiceMode.Required => JsonValue.Create("required"),
+        MessageToolChoiceMode.Function => new JsonObject
+        {
+            ["type"] = "function",
+            ["function"] = new JsonObject { ["name"] = toolChoice.FunctionName }
+        },
+        _ => null
+    };
 
     private static ChatResponseFormat? BuildResponseFormat(MessageGenerationRequest request)
     {

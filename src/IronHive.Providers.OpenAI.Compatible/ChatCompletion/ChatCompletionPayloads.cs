@@ -300,6 +300,13 @@ public class ChatCompletionRequest : ChatCompletionPayloadBase
     [JsonPropertyName("tools")]
     public IEnumerable<ChatTool>? Tools { get; set; }
 
+    /// <summary>OpenAI-compatible tool_choice — a bare string ("none"/"auto"/"required") or
+    /// {"type":"function","function":{"name":...}}, or omitted entirely for the server's own
+    /// default. Built from <see cref="IronHive.Abstractions.Messages.MessageToolChoice"/> by
+    /// <see cref="ChatCompletionMessageGenerator.BuildToolChoice"/>.</summary>
+    [JsonPropertyName("tool_choice")]
+    public JsonNode? ToolChoice { get; set; }
+
     /// <summary>o-series/gpt-5-style reasoning effort. Most compatible servers ignore an unrecognized value
     /// silently; the vendor-specific overrides in <see cref="ChatCompletionPayloadBase.ExtraBody"/> carry the
     /// actual signal for reasoning-capable open-weight models.</summary>

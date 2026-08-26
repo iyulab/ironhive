@@ -247,7 +247,8 @@ public class ChatClientAdapterTests : IDisposable
         ["TopP"] = "TopP",
         ["TopK"] = "TopK",
         ["StopSequences"] = "StopSequences",
-        ["Tools"] = "Tools"
+        ["Tools"] = "Tools",
+        ["ToolMode"] = "ToolChoice"
     };
 
     [Fact]
@@ -300,6 +301,7 @@ public class ChatClientAdapterTests : IDisposable
         {
             return new List<AITool> { AIFunctionFactory.Create(() => "result", "my_tool", "My tool") };
         }
+        if (type == typeof(ChatToolMode)) return ChatToolMode.RequireAny;
 
         throw new NotSupportedException(
             $"No sample value for {propertyType} — extend SampleValueFor when adding a knob of a new type");
@@ -951,6 +953,76 @@ public class ChatClientAdapterTests : IDisposable
         req.System.Should().Be("You are helpful");
         req.Tools.Should().HaveCount(1);
         req.Tools!.First().UniqueName.Should().Be("my_tool");
+    }
+
+    #endregion
+
+    #region GetResponseAsync — ToolChoice mapping (regression — docket a95e2953)
+
+    // ChatOptions.ToolMode previously had no sink at all in ConvertToRequest — a caller setting
+    // ChatToolMode.None to force a text-only response saw no effect on the wire. These pin the
+    // mapping so the knob can't silently regress back to a no-op.
+
+    [Fact]
+    public async Task GetResponseAsync_NoToolMode_ToolChoiceIsNull()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+        var messages = new List<ChatMessage> { new(ChatRole.User, "Hello") };
+
+        await _adapter.GetResponseAsync(messages);
+
+        capturedRequest().ToolChoice.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetResponseAsync_ToolModeAuto_MapsToAuto()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+        var messages = new List<ChatMessage> { new(ChatRole.User, "Hello") };
+        var options = new ChatOptions { ToolMode = ChatToolMode.Auto };
+
+        await _adapter.GetResponseAsync(messages, options);
+
+        capturedRequest().ToolChoice.Should().Be(MessageToolChoice.Auto);
+    }
+
+    [Fact]
+    public async Task GetResponseAsync_ToolModeNone_MapsToNone()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+        var messages = new List<ChatMessage> { new(ChatRole.User, "Hello") };
+        var options = new ChatOptions { ToolMode = ChatToolMode.None };
+
+        await _adapter.GetResponseAsync(messages, options);
+
+        capturedRequest().ToolChoice.Should().Be(MessageToolChoice.None);
+    }
+
+    [Fact]
+    public async Task GetResponseAsync_ToolModeRequireAny_MapsToRequired()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+        var messages = new List<ChatMessage> { new(ChatRole.User, "Hello") };
+        var options = new ChatOptions { ToolMode = ChatToolMode.RequireAny };
+
+        await _adapter.GetResponseAsync(messages, options);
+
+        capturedRequest().ToolChoice.Should().Be(MessageToolChoice.Required);
+    }
+
+    [Fact]
+    public async Task GetResponseAsync_ToolModeRequireSpecific_MapsToFunctionWithName()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+        var messages = new List<ChatMessage> { new(ChatRole.User, "Hello") };
+        var options = new ChatOptions { ToolMode = ChatToolMode.RequireSpecific("get_weather") };
+
+        await _adapter.GetResponseAsync(messages, options);
+
+        var toolChoice = capturedRequest().ToolChoice;
+        toolChoice.Should().NotBeNull();
+        toolChoice!.Mode.Should().Be(MessageToolChoiceMode.Function);
+        toolChoice.FunctionName.Should().Be("get_weather");
     }
 
     #endregion
