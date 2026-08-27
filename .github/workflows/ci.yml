@@ -12,6 +12,10 @@ on:
       - '**/*.props'
       - '**/*.slnx'
       - '.github/workflows/ci.yml'
+      # IronHive.DocSnippets.Tests compiles these against the current API — a docs-only edit that
+      # breaks a worked example needs to run CI too, not just src/tests changes.
+      - 'docs/**'
+      - 'skills/**'
   pull_request:
     branches: [main]
     paths:
@@ -23,6 +27,10 @@ on:
       - '**/*.props'
       - '**/*.slnx'
       - '.github/workflows/ci.yml'
+      # IronHive.DocSnippets.Tests compiles these against the current API — a docs-only edit that
+      # breaks a worked example needs to run CI too, not just src/tests changes.
+      - 'docs/**'
+      - 'skills/**'
   workflow_dispatch:
 
 concurrency:
@@ -56,3 +64,6 @@ jobs:
         # NOTE: the filter is convention alignment, not a verdict on the hang's root cause —
         # that stays under investigation (umbrella issue 20260720-ci-test-hang-unfiltered-run).
         run: dotnet test tests/IronHive.Tests --no-build -c Release --verbosity normal --filter "Category!=Integration&Category!=RequiresApiKey&Category!=Performance" --blame-hang --blame-hang-timeout 5m
+
+      - name: Doc snippet compile guard
+        run: dotnet test tests/IronHive.DocSnippets.Tests --no-build -c Release --verbosity normal

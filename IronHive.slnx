@@ -37,6 +37,7 @@
   </Folder>
   <Folder Name="/30. tests/">
     <Project Path="tests/chat-api-tests/ChatApiTests.csproj" />
+    <Project Path="tests/IronHive.DocSnippets.Tests/IronHive.DocSnippets.Tests.csproj" />
     <Project Path="tests/IronHive.Tests/IronHive.Tests.csproj" />
     <Project Path="tests/multi-agent-test/MultiAgentTest.csproj" />
   </Folder>
