@@ -6,6 +6,7 @@ using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Workflow;
 using IronHive.Core;
+using NSubstitute;
 
 namespace IronHive.Tests.Core;
 
@@ -109,5 +110,145 @@ public class HiveServiceTests
 
         // Assert
         service.Should().BeAssignableTo<IDisposable>();
+    }
+
+    [Fact]
+    public void GetMessageGenerator_ShouldThrow_WhenNoneRegistered()
+    {
+        // Arrange
+        var service = new HiveServiceBuilder().Build();
+
+        // Act
+        var act = () => service.GetMessageGenerator();
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>().WithMessage("*No message generators*");
+    }
+
+    [Fact]
+    public void GetMessageGenerator_ShouldAutoSelect_WhenExactlyOneRegistered()
+    {
+        // Arrange
+        var generator = Substitute.For<IMessageGenerator>();
+        var service = new HiveServiceBuilder()
+            .AddMessageGenerator("openai", generator)
+            .Build();
+
+        // Act
+        var result = service.GetMessageGenerator();
+
+        // Assert
+        result.Should().BeSameAs(generator);
+    }
+
+    [Fact]
+    public void GetMessageGenerator_ShouldThrow_WhenMultipleRegisteredAndProviderUnspecified()
+    {
+        // Arrange
+        var service = new HiveServiceBuilder()
+            .AddMessageGenerator("openai", Substitute.For<IMessageGenerator>())
+            .AddMessageGenerator("anthropic", Substitute.For<IMessageGenerator>())
+            .Build();
+
+        // Act
+        var act = () => service.GetMessageGenerator();
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Multiple message generators*");
+    }
+
+    [Fact]
+    public void GetMessageGenerator_ShouldReturnNamedProvider_WhenSpecified()
+    {
+        // Arrange
+        var openai = Substitute.For<IMessageGenerator>();
+        var anthropic = Substitute.For<IMessageGenerator>();
+        var service = new HiveServiceBuilder()
+            .AddMessageGenerator("openai", openai)
+            .AddMessageGenerator("anthropic", anthropic)
+            .Build();
+
+        // Act
+        var result = service.GetMessageGenerator("anthropic");
+
+        // Assert
+        result.Should().BeSameAs(anthropic);
+    }
+
+    [Fact]
+    public void GetMessageGenerator_ShouldThrow_WhenProviderNotRegistered()
+    {
+        // Arrange
+        var service = new HiveServiceBuilder()
+            .AddMessageGenerator("openai", Substitute.For<IMessageGenerator>())
+            .Build();
+
+        // Act
+        var act = () => service.GetMessageGenerator("nonexistent");
+
+        // Assert
+        act.Should().Throw<KeyNotFoundException>().WithMessage("*nonexistent*");
+    }
+
+    [Fact]
+    public void GetEmbeddingGenerator_ShouldThrow_WhenNoneRegistered()
+    {
+        // Arrange
+        var service = new HiveServiceBuilder().Build();
+
+        // Act
+        var act = () => service.GetEmbeddingGenerator();
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>().WithMessage("*No embedding generators*");
+    }
+
+    [Fact]
+    public void GetEmbeddingGenerator_ShouldAutoSelect_WhenExactlyOneRegistered()
+    {
+        // Arrange
+        var generator = Substitute.For<IEmbeddingGenerator>();
+        var service = new HiveServiceBuilder()
+            .AddEmbeddingGenerator("openai", generator)
+            .Build();
+
+        // Act
+        var result = service.GetEmbeddingGenerator();
+
+        // Assert
+        result.Should().BeSameAs(generator);
+    }
+
+    [Fact]
+    public void GetEmbeddingGenerator_ShouldReturnNamedProvider_WhenSpecified()
+    {
+        // Arrange
+        var openai = Substitute.For<IEmbeddingGenerator>();
+        var cohere = Substitute.For<IEmbeddingGenerator>();
+        var service = new HiveServiceBuilder()
+            .AddEmbeddingGenerator("openai", openai)
+            .AddEmbeddingGenerator("cohere", cohere)
+            .Build();
+
+        // Act
+        var result = service.GetEmbeddingGenerator("cohere");
+
+        // Assert
+        result.Should().BeSameAs(cohere);
+    }
+
+    [Fact]
+    public void GetEmbeddingGenerator_ShouldThrow_WhenProviderNotRegistered()
+    {
+        // Arrange
+        var service = new HiveServiceBuilder()
+            .AddEmbeddingGenerator("openai", Substitute.For<IEmbeddingGenerator>())
+            .Build();
+
+        // Act
+        var act = () => service.GetEmbeddingGenerator("nonexistent");
+
+        // Assert
+        act.Should().Throw<KeyNotFoundException>().WithMessage("*nonexistent*");
     }
 }

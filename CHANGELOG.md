@@ -4,6 +4,32 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.22.0 — 2026-08-27
+
+### Added — `IHiveService.GetMessageGenerator`/`GetEmbeddingGenerator`
+
+A consumer registering providers through `HiveServiceBuilder` had no way to get back the raw,
+provider-bound `IMessageGenerator`/`IEmbeddingGenerator` that `ChatClientAdapter`/
+`EmbeddingGeneratorAdapter` (the M.E.AI bridge) require — `IHiveService.Messages`/`.Embeddings`
+(`IMessageService`/`IEmbeddingService`) route by provider name per call and never hand out the
+underlying instance. The only way to use the M.E.AI bridge was to construct a second, disconnected
+provider instance by hand, duplicating whatever configuration the builder already held.
+
+`IHiveService` now exposes:
+
+```csharp
+IMessageGenerator GetMessageGenerator(string? provider = null);
+IEmbeddingGenerator GetEmbeddingGenerator(string? provider = null);
+```
+
+Both auto-select the sole registered provider when `provider` is omitted and exactly one is
+registered, and throw `InvalidOperationException` when none or more than one is registered without
+disambiguation — the same routing rule `IMessageService`'s internal lookup already used, now shared
+via `IronHive.Core.Utilities.GeneratorLookup` so the two call sites cannot drift. An unregistered
+`provider` throws `KeyNotFoundException`. `docs/ARCHITECTURE.md` and
+`skills/ironhive/references/SERVICES.md`'s M.E.AI examples now use these instead of constructing a
+second provider instance.
+
 ## 0.21.0 — 2026-08-26
 
 ### Added — `ChatOptions.ToolMode` now reaches the wire (`MessageGenerationRequest.ToolChoice`)

@@ -12,6 +12,7 @@ using IronHive.Abstractions.Vector;
 using IronHive.Abstractions.Queue;
 using IronHive.Core.Memory;
 using IronHive.Core.Agent;
+using IronHive.Core.Utilities;
 
 namespace IronHive.Core;
 
@@ -20,6 +21,8 @@ public class HiveService : IHiveService
     private readonly AgentService _agents;
     private readonly IReadOnlyDictionary<string, IVectorStorage> _vectors;
     private readonly IReadOnlyDictionary<string, IQueueStorage> _queues;
+    private readonly IReadOnlyDictionary<string, IMessageGenerator> _messageGenerators;
+    private readonly IReadOnlyDictionary<string, IEmbeddingGenerator> _embeddingGenerators;
 
     internal HiveService(
         IModelService models,
@@ -30,7 +33,9 @@ public class HiveService : IHiveService
         IAudioService audio,
         IFileStorageService files,
         IReadOnlyDictionary<string, IVectorStorage> vectors,
-        IReadOnlyDictionary<string, IQueueStorage> queues)
+        IReadOnlyDictionary<string, IQueueStorage> queues,
+        IReadOnlyDictionary<string, IMessageGenerator> messageGenerators,
+        IReadOnlyDictionary<string, IEmbeddingGenerator> embeddingGenerators)
     {
         Models = models;
         Messages = messages;
@@ -43,6 +48,8 @@ public class HiveService : IHiveService
         _agents = new AgentService(messages);
         _vectors = vectors;
         _queues = queues;
+        _messageGenerators = messageGenerators;
+        _embeddingGenerators = embeddingGenerators;
     }
 
     public IModelService Models { get; }
@@ -67,6 +74,12 @@ public class HiveService : IHiveService
 
     public IAgent CreateAgentFromYaml(string yaml)
         => _agents.CreateAgentFromYaml(yaml);
+
+    public IMessageGenerator GetMessageGenerator(string? provider = null)
+        => GeneratorLookup.GetRequired(_messageGenerators, provider, "message");
+
+    public IEmbeddingGenerator GetEmbeddingGenerator(string? provider = null)
+        => GeneratorLookup.GetRequired(_embeddingGenerators, provider, "embedding");
 
     public IMemoryWorker CreateMemoryWorker(
         Func<MemoryWorkerBuilder, MemoryPipelineBuilder> configure,

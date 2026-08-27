@@ -252,24 +252,7 @@ public class MessageService : IMessageService
     // ---- 제너레이터 조회 ----
 
     private IMessageGenerator GetRequiredGenerator(string? provider)
-    {
-        if (string.IsNullOrWhiteSpace(provider))
-        {
-            var entries = _generators.ToList();
-            if (entries.Count == 0)
-                throw new InvalidOperationException(
-                    "No message generators are registered. Call AddMessageGenerator() during setup.");
-            if (entries.Count > 1)
-                throw new InvalidOperationException(
-                    $"Multiple message generators are registered ({string.Join(", ", entries.Select(e => e.Key))}). " +
-                    "Specify a provider via MessageRequest.Provider.");
-            return entries[0].Value;
-        }
-
-        if (!_generators.TryGetValue(provider, out var generator))
-            throw new KeyNotFoundException($"Message generator '{provider}' is not registered.");
-        return generator;
-    }
+        => GeneratorLookup.GetRequired(_generators, provider, "message", "MessageRequest.Provider");
 
     // ---- MessageContext 구성 ----
 

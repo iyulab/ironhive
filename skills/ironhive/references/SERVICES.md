@@ -297,16 +297,17 @@ var msg = new Message
 ## M.E.AI Compatibility
 
 ```csharp
-// ChatClientAdapter/EmbeddingGeneratorAdapter wrap a single provider's IMessageGenerator/
-// IEmbeddingGenerator directly — IHiveService.Messages/.Embeddings (IMessageService/
-// IEmbeddingService), which route by name across multiple registered providers, don't fit here.
+// ChatClientAdapter/EmbeddingGeneratorAdapter wrap a single provider's raw IMessageGenerator/
+// IEmbeddingGenerator. To reuse a provider registered via HiveServiceBuilder without
+// reconstructing it, pull it out with IHiveService.GetMessageGenerator/GetEmbeddingGenerator
+// (auto-selects the sole registered provider when unspecified, throws if more than one).
 
 // Use as Microsoft.Extensions.AI IChatClient
-var chatClient = new OpenAIMessageGenerator(new OpenAIConfig { ApiKey = "your-api-key" })
+var chatClient = hive.GetMessageGenerator("openai")
     .AsChatClient("gpt-4o", "openai");
 
 // Use as IEmbeddingGenerator<string, Embedding<float>>
-var embedder = new OpenAIEmbeddingGenerator(new OpenAIConfig { ApiKey = "your-api-key" })
+var embedder = hive.GetEmbeddingGenerator("openai")
     .AsEmbeddingGenerator("text-embedding-3-small", "openai");
 
 // Wrap an AITool (e.g. an MCP McpClientTool) as an IronHive ITool — InvokeAsync executes it
