@@ -179,11 +179,17 @@ IQueueStorage (입력) → Pipeline Steps → IVectorStorage (출력)
 IronHive 구현체를 M.E.AI 생태계와 연동합니다:
 
 ```csharp
+// ChatClientAdapter/EmbeddingGeneratorAdapter는 provider 하나를 감싸는 IMessageGenerator/
+// IEmbeddingGenerator를 직접 받는다 — 여러 provider를 이름으로 라우팅하는 IHiveService.Messages/
+// .Embeddings(IMessageService/IEmbeddingService)는 여기 넘길 수 없다.
+
 // IronHive → M.E.AI IChatClient
-var chatClient = new ChatClientAdapter(hive.Messages, "openai", "gpt-4o");
+var generator = new OpenAIMessageGenerator(new OpenAIConfig { ApiKey = "your-api-key" });
+var chatClient = new ChatClientAdapter(generator, "gpt-4o", "openai");
 
 // IronHive → M.E.AI IEmbeddingGenerator<string, Embedding<float>>
-var embedder = new EmbeddingGeneratorAdapter(hive.Embeddings, "openai", "text-embedding-3-small");
+var embeddingGenerator = new OpenAIEmbeddingGenerator(new OpenAIConfig { ApiKey = "your-api-key" });
+var embedder = new EmbeddingGeneratorAdapter(embeddingGenerator, "text-embedding-3-small", "openai");
 
 // M.E.AI AITool(예: MCP McpClientTool) → IronHive ITool — 실행까지 위임한다
 var tool = new AIToolAdapter(mcpClientTool);
