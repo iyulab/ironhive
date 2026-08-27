@@ -184,12 +184,12 @@ IronHive 구현체를 M.E.AI 생태계와 연동합니다:
 // .Embeddings(IMessageService/IEmbeddingService)는 여기 넘길 수 없다.
 
 // IronHive → M.E.AI IChatClient
-var generator = new OpenAIMessageGenerator(new OpenAIConfig { ApiKey = "your-api-key" });
-var chatClient = new ChatClientAdapter(generator, "gpt-4o", "openai");
+var chatClient = new OpenAIMessageGenerator(new OpenAIConfig { ApiKey = "your-api-key" })
+    .AsChatClient("gpt-4o", "openai");
 
 // IronHive → M.E.AI IEmbeddingGenerator<string, Embedding<float>>
-var embeddingGenerator = new OpenAIEmbeddingGenerator(new OpenAIConfig { ApiKey = "your-api-key" });
-var embedder = new EmbeddingGeneratorAdapter(embeddingGenerator, "text-embedding-3-small", "openai");
+var embedder = new OpenAIEmbeddingGenerator(new OpenAIConfig { ApiKey = "your-api-key" })
+    .AsEmbeddingGenerator("text-embedding-3-small", "openai");
 
 // M.E.AI AITool(예: MCP McpClientTool) → IronHive ITool — 실행까지 위임한다
 var tool = new AIToolAdapter(mcpClientTool);
