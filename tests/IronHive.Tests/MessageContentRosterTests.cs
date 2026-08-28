@@ -1,8 +1,6 @@
-using System.Reflection;
-using System.Text.Json.Serialization;
-using FluentAssertions;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
+using IronHive.Tests.Conventions;
 using Xunit;
 
 namespace IronHive.Tests;
@@ -35,12 +33,8 @@ public class MessageContentRosterTests
     [Fact]
     public void MessageContent_JsonDerivedTypes_MatchesKnownRoster()
     {
-        var declared = typeof(MessageContent)
-            .GetCustomAttributes<JsonDerivedTypeAttribute>()
-            .Select(a => a.DerivedType)
-            .ToHashSet();
-
-        declared.Should().BeEquivalentTo(
+        JsonDerivedTypeRosterAssert.MatchesKnownRoster(
+            typeof(MessageContent),
             KnownContentTypes,
             "a new MessageContent subtype was added -- decide how each of the 4 " +
             "IronHive.Providers.* MessageGenerators (Anthropic/OpenAI/OpenAI.Compatible/GoogleAI) " +
