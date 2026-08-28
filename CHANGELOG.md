@@ -4,6 +4,15 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.22.1 — 2026-08-28
+
+### Changed — `ModelContextProtocol` dependency
+
+Updated `ModelContextProtocol` to 2.2.0 (previously 1.4.1). No public API changes — this
+package's MCP integration is a client only (`McpClient.CreateAsync`/`ListToolsAsync`) with no
+client capabilities configured, so it is unaffected by the capabilities the 2.0 protocol
+revision deprecated (roots, sampling, logging).
+
 ## 0.22.0 — 2026-08-27
 
 ### Added — `IHiveService.GetMessageGenerator`/`GetEmbeddingGenerator`
