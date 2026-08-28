@@ -38,7 +38,12 @@ jobs:
         run: dotnet build IronHive.slnx --no-restore -c Release
 
       - name: Test
-        run: dotnet test tests/IronHive.Tests --no-build -c Release --verbosity normal --filter "Category!=Integration&Category!=RequiresApiKey&Category!=Performance"
+        # Mirrors ci.yml's --blame-hang: without it, a hung test rides the job's 20-minute
+        # timeout-cancel silently instead of dumping a diagnosable trace after 5 minutes
+        # (observed directly on this workflow, run 33171897265, 2026-08-28 — cancelled at the
+        # 20-minute mark, retried and passed in 1m16s; root cause undiagnosed because the run
+        # that actually hung produced no trace).
+        run: dotnet test tests/IronHive.Tests --no-build -c Release --verbosity normal --filter "Category!=Integration&Category!=RequiresApiKey&Category!=Performance" --blame-hang --blame-hang-timeout 5m
 
       - name: Doc snippet compile guard
         run: dotnet test tests/IronHive.DocSnippets.Tests --no-build -c Release --verbosity normal
