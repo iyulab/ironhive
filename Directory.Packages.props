@@ -3,14 +3,14 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup Label="Microsoft">
-    <PackageVersion Include="Anthropic" Version="12.35.1" />
-    <PackageVersion Include="Google.GenAI" Version="1.13.0" />
+    <PackageVersion Include="Anthropic" Version="12.44.0" />
+    <PackageVersion Include="Google.GenAI" Version="1.20.0" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.9" />
     <!-- Explicit lift: Microsoft.Data.Sqlite 10.0.9 pulls SQLitePCLRaw 2.1.11
          (NU1903 high, GHSA-2m69-gcr7-jv3q); upstream 2.1.12 stable landed 2026-07-09.
          Direct reference in IronHive.Core so the >= 2.1.12 floor propagates to package consumers.
          Remove once Microsoft.Data.Sqlite's transitive floor reaches 2.1.12. -->
-    <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
+    <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
     <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.7.0" />
     <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.7.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
@@ -19,16 +19,16 @@
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.Resilience" Version="10.7.0" />
-    <PackageVersion Include="Microsoft.ML.Tokenizers" Version="1.0.3" />
+    <PackageVersion Include="Microsoft.ML.Tokenizers" Version="2.0.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.0" />
     <PackageVersion Include="Microsoft.OpenApi" Version="3.8.0" />
     <PackageVersion Include="Microsoft.OpenApi.YamlReader" Version="3.8.0" />
     <PackageVersion Include="OpenAI" Version="2.12.0" />
   </ItemGroup>
   <ItemGroup Label="OpenTelemetry">
-    <PackageVersion Include="OpenTelemetry" Version="1.11.2" />
+    <PackageVersion Include="OpenTelemetry" Version="1.18.0" />
     <PackageVersion Include="OpenTelemetry.Api" Version="1.16.0" />
-    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.11.2" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.18.0" />
   </ItemGroup>
   <ItemGroup Label="Azure">
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
