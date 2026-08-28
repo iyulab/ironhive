@@ -1,5 +1,5 @@
 using System.Text.Json.Nodes;
-using FluentAssertions;
+using AwesomeAssertions;
 using IronHive.Providers.Anthropic;
 
 namespace IronHive.Tests.Providers;

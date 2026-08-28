@@ -1,6 +1,6 @@
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
-using FluentAssertions;
+using AwesomeAssertions;
 using IronHive.Abstractions.Json;
 
 namespace IronHive.Tests.Json;

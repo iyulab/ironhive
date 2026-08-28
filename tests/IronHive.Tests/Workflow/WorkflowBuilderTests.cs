@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using IronHive.Abstractions.Workflow;
 using IronHive.Core.Workflow;
 using Microsoft.Extensions.DependencyInjection;

@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Memory;
 using IronHive.Core.Memory.Pipelines;

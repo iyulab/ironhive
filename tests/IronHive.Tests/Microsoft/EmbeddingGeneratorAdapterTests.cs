@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using IronHive.Core.Microsoft;
 using Microsoft.Extensions.AI;
 using NSubstitute;

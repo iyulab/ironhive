@@ -1,6 +1,6 @@
 using System.Reflection;
 using System.Text.Json.Serialization;
-using FluentAssertions;
+using AwesomeAssertions;
 
 namespace IronHive.Tests.Conventions;
 

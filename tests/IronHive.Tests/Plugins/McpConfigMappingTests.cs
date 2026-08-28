@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using IronHive.Plugins.MCP;
 using IronHive.Plugins.MCP.Configurations;
 using ModelContextProtocol.Client;

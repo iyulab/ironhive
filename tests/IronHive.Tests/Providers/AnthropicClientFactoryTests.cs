@@ -1,5 +1,5 @@
 using Anthropic;
-using FluentAssertions;
+using AwesomeAssertions;
 using IronHive.Providers.Anthropic;
 
 namespace IronHive.Tests.Providers;

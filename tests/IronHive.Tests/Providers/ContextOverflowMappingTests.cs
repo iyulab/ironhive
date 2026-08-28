@@ -1,6 +1,6 @@
 using System.Net;
 using Anthropic.Exceptions;
-using FluentAssertions;
+using AwesomeAssertions;
 using Google.GenAI;
 using IronHive.Abstractions.Exceptions;
 using IronHive.Providers.OpenAI.Compatible.ChatCompletion;

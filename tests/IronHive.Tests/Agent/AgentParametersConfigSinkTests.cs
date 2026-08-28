@@ -1,5 +1,5 @@
 using System.Reflection;
-using FluentAssertions;
+using AwesomeAssertions;
 using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Messages;
 using Xunit;

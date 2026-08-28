@@ -1,5 +1,5 @@
 using System.ClientModel.Primitives;
-using FluentAssertions;
+using AwesomeAssertions;
 using IronHive.Abstractions;
 using IronHive.Core;
 using IronHive.Providers.OpenAI;

@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using IronHive.Abstractions.Vector;
 
 namespace IronHive.Tests.Vector;

@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using IronHive.Core.Utilities;
 
 namespace IronHive.Tests.Utilities;

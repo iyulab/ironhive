@@ -1,5 +1,5 @@
 using Amazon;
-using FluentAssertions;
+using AwesomeAssertions;
 using IronHive.Storages.Amazon;
 using IronHive.Storages.Azure;
 using IronHive.Storages.Qdrant;

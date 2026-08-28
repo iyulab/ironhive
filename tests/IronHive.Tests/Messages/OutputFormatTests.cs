@@ -1,6 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using FluentAssertions;
+using AwesomeAssertions;
 using IronHive.Abstractions.Messages;
 
 namespace IronHive.Tests.Messages;

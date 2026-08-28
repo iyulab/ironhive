@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
-using FluentAssertions;
+using AwesomeAssertions;
 using IronHive.Providers.OpenAI;
 using IronHive.Providers.OpenAI.Compatible;
 

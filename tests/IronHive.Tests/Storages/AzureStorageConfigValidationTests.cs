@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using IronHive.Storages.Azure;
 
 namespace IronHive.Tests.Storages;

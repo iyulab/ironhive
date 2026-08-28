@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using Google.Apis.Auth.OAuth2;
 using NSubstitute;
 using IronHive.Providers.GoogleAI;

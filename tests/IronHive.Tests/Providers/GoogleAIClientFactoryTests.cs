@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using Google.GenAI.Types;
 using IronHive.Providers.GoogleAI;
 

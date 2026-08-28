@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using IronHive.Abstractions.Messages;
 using IronHive.Core.Agent;
 using NSubstitute;

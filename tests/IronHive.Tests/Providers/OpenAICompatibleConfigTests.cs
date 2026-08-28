@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using IronHive.Providers.OpenAI.Compatible;
 
 namespace IronHive.Tests.Providers;
