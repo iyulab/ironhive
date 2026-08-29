@@ -63,7 +63,7 @@ public class MessageServiceTests
         };
 
         // Act
-        var result = await _service.GenerateMessageAsync(request);
+        var result = await _service.GenerateMessageAsync(request, TestContext.Current.CancellationToken);
 
         // Assert
         result.Should().NotBeNull();
@@ -99,7 +99,7 @@ public class MessageServiceTests
         };
 
         // Act
-        await _service.GenerateMessageAsync(request);
+        await _service.GenerateMessageAsync(request, TestContext.Current.CancellationToken);
 
         // Assert
         capturedRequest.Should().NotBeNull();
@@ -133,7 +133,7 @@ public class MessageServiceTests
         };
 
         // Act
-        await _service.GenerateMessageAsync(request);
+        await _service.GenerateMessageAsync(request, TestContext.Current.CancellationToken);
 
         // Assert
         capturedRequest.Should().NotBeNull();
@@ -167,7 +167,7 @@ public class MessageServiceTests
         };
 
         // Act
-        await _service.GenerateMessageAsync(request);
+        await _service.GenerateMessageAsync(request, TestContext.Current.CancellationToken);
 
         // Assert
         capturedRequest.Should().NotBeNull();
@@ -229,7 +229,7 @@ public class MessageServiceTests
 
         // Act
         var responses = new List<StreamingMessageResponse>();
-        await foreach (var response in _service.GenerateStreamingMessageAsync(request))
+        await foreach (var response in _service.GenerateStreamingMessageAsync(request, TestContext.Current.CancellationToken))
         {
             responses.Add(response);
         }
@@ -269,7 +269,7 @@ public class MessageServiceTests
 
         // Act
         var responses = new List<StreamingMessageResponse>();
-        await foreach (var response in _service.GenerateStreamingMessageAsync(request))
+        await foreach (var response in _service.GenerateStreamingMessageAsync(request, TestContext.Current.CancellationToken))
         {
             responses.Add(response);
         }

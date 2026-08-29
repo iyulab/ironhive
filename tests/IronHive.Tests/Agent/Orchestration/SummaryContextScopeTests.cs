@@ -317,7 +317,7 @@ public class SummaryContextScopeTests
             Message.User("Summarize your findings")
         };
 
-        var result = await orch.ExecuteAsync(messages);
+        var result = await orch.ExecuteAsync(messages, TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
 

@@ -122,7 +122,7 @@ public class BasicAgentTests
             .Returns(expectedResponse);
 
         // Act
-        var result = await agent.InvokeAsync(messages);
+        var result = await agent.InvokeAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         result.Should().NotBeNull();
@@ -155,7 +155,7 @@ public class BasicAgentTests
         });
 
         // Act
-        await agent.InvokeAsync(messages);
+        await agent.InvokeAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         capturedRequest.Should().NotBeNull();
@@ -189,7 +189,7 @@ public class BasicAgentTests
         });
 
         // Act
-        await agent.InvokeAsync(messages);
+        await agent.InvokeAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         capturedRequest.Should().NotBeNull();
@@ -221,7 +221,7 @@ public class BasicAgentTests
             });
 
         // Act
-        await agent.InvokeAsync(messages);
+        await agent.InvokeAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         capturedRequest.Should().NotBeNull();
@@ -254,7 +254,7 @@ public class BasicAgentTests
         });
 
         // Act
-        await agent.InvokeAsync(messages);
+        await agent.InvokeAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         capturedRequest.Should().NotBeNull();
@@ -296,7 +296,7 @@ public class BasicAgentTests
             });
 
         // Act
-        await agent.InvokeAsync([Message.User("Hello")], options);
+        await agent.InvokeAsync([Message.User("Hello")], options, TestContext.Current.CancellationToken);
 
         // Assert
         capturedRequest.Should().NotBeNull();
@@ -333,7 +333,7 @@ public class BasicAgentTests
             });
 
         // Act
-        await agent.InvokeAsync([Message.User("Hello")], options);
+        await agent.InvokeAsync([Message.User("Hello")], options, TestContext.Current.CancellationToken);
 
         // Assert — per-request Tools override 반영, 공유 agent.Tools 인스턴스는 불변
         capturedRequest.Should().NotBeNull();
@@ -362,7 +362,7 @@ public class BasicAgentTests
             });
 
         // Act — 기존 호출부 시그니처 그대로: 소스 호환 검증을 겸한다
-        await agent.InvokeAsync([Message.User("Hello")]);
+        await agent.InvokeAsync([Message.User("Hello")], cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         capturedRequest.Should().NotBeNull();
@@ -391,7 +391,7 @@ public class BasicAgentTests
             });
 
         // Act
-        await agent.InvokeAsync([Message.User("Hello")], new AgentInvokeOptions());
+        await agent.InvokeAsync([Message.User("Hello")], new AgentInvokeOptions(), TestContext.Current.CancellationToken);
 
         // Assert — null 필드는 기본값 유지
         capturedRequest.Should().NotBeNull();
@@ -426,7 +426,7 @@ public class BasicAgentTests
 
         // Act
         var responses = new List<StreamingMessageResponse>();
-        await foreach (var response in agent.InvokeStreamingAsync(messages))
+        await foreach (var response in agent.InvokeStreamingAsync(messages, cancellationToken: TestContext.Current.CancellationToken))
         {
             responses.Add(response);
         }
@@ -453,7 +453,7 @@ public class BasicAgentTests
             .Returns(AsyncEnumerable.Empty<StreamingMessageResponse>());
 
         // Act
-        await foreach (var _ in agent.InvokeStreamingAsync(messages))
+        await foreach (var _ in agent.InvokeStreamingAsync(messages, cancellationToken: TestContext.Current.CancellationToken))
         {
         }
 

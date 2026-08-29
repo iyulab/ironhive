@@ -30,7 +30,7 @@ public class DialogueExtractionPipelineTests
         SetupResponse("<qa><q>When did Apollo 11 land?</q><a>July 20, 1969.</a></qa>");
 
         // Act
-        var result = await _pipeline.ExecuteAsync(context, _options);
+        var result = await _pipeline.ExecuteAsync(context, _options, TestContext.Current.CancellationToken);
 
         // Assert
         result.IsError.Should().BeFalse();
@@ -54,7 +54,7 @@ public class DialogueExtractionPipelineTests
             """);
 
         // Act
-        var result = await _pipeline.ExecuteAsync(context, _options);
+        var result = await _pipeline.ExecuteAsync(context, _options, TestContext.Current.CancellationToken);
 
         // Assert
         result.IsError.Should().BeFalse();
@@ -74,7 +74,7 @@ public class DialogueExtractionPipelineTests
                 CreateResponse("<qa><q>Q from chunk 2?</q><a>A2.</a></qa>"));
 
         // Act
-        var result = await _pipeline.ExecuteAsync(context, _options);
+        var result = await _pipeline.ExecuteAsync(context, _options, TestContext.Current.CancellationToken);
 
         // Assert
         result.IsError.Should().BeFalse();
@@ -93,7 +93,7 @@ public class DialogueExtractionPipelineTests
         var options = new DialogueExtractionPipeline.Options("my-provider", "my-model");
 
         // Act
-        await _pipeline.ExecuteAsync(context, options);
+        await _pipeline.ExecuteAsync(context, options, TestContext.Current.CancellationToken);
 
         // Assert
         await _mockMessages.Received(1).GenerateMessageAsync(
@@ -109,7 +109,7 @@ public class DialogueExtractionPipelineTests
         SetupResponse("<qa><q>Q?</q><a>A.</a></qa>");
 
         // Act
-        await _pipeline.ExecuteAsync(context, _options);
+        await _pipeline.ExecuteAsync(context, _options, TestContext.Current.CancellationToken);
 
         // Assert
         await _mockMessages.Received(1).GenerateMessageAsync(
@@ -125,7 +125,7 @@ public class DialogueExtractionPipelineTests
         SetupResponse("<qa><q>Q?</q><a>A.</a></qa>");
 
         // Act
-        await _pipeline.ExecuteAsync(context, _options);
+        await _pipeline.ExecuteAsync(context, _options, TestContext.Current.CancellationToken);
 
         // Assert
         await _mockMessages.Received(1).GenerateMessageAsync(
@@ -145,7 +145,7 @@ public class DialogueExtractionPipelineTests
         SetupResponse("<qa><q>Q?</q><a>A.</a></qa>");
 
         // Act
-        await _pipeline.ExecuteAsync(context, _options);
+        await _pipeline.ExecuteAsync(context, _options, TestContext.Current.CancellationToken);
 
         // Assert
         await _mockMessages.Received(1).GenerateMessageAsync(
@@ -165,7 +165,7 @@ public class DialogueExtractionPipelineTests
         SetupResponse("<qa><q>Q?</q><a>A.</a></qa>");
 
         // Act
-        await _pipeline.ExecuteAsync(context, _options);
+        await _pipeline.ExecuteAsync(context, _options, TestContext.Current.CancellationToken);
 
         // Assert: Payload "chunks" is now List<Dialogue>
         context.Payload["chunks"].Should().BeOfType<List<DialogueExtractionPipeline.Dialogue>>();
@@ -187,7 +187,7 @@ public class DialogueExtractionPipelineTests
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _pipeline.ExecuteAsync(context, _options));
+            () => _pipeline.ExecuteAsync(context, _options, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -203,7 +203,7 @@ public class DialogueExtractionPipelineTests
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _pipeline.ExecuteAsync(context, _options));
+            () => _pipeline.ExecuteAsync(context, _options, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -217,7 +217,7 @@ public class DialogueExtractionPipelineTests
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _pipeline.ExecuteAsync(context, _options));
+            () => _pipeline.ExecuteAsync(context, _options, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -238,7 +238,7 @@ public class DialogueExtractionPipelineTests
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _pipeline.ExecuteAsync(context, _options));
+            () => _pipeline.ExecuteAsync(context, _options, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -250,7 +250,7 @@ public class DialogueExtractionPipelineTests
 
         // Act & Assert
         await Assert.ThrowsAsync<FormatException>(
-            () => _pipeline.ExecuteAsync(context, _options));
+            () => _pipeline.ExecuteAsync(context, _options, TestContext.Current.CancellationToken));
     }
 
     #endregion
@@ -265,7 +265,7 @@ public class DialogueExtractionPipelineTests
         SetupResponse("<qa>  <q>  Trimmed question?  </q>  <a>  Trimmed answer.  </a>  </qa>");
 
         // Act
-        await _pipeline.ExecuteAsync(context, _options);
+        await _pipeline.ExecuteAsync(context, _options, TestContext.Current.CancellationToken);
 
         // Assert
         var dialogues = context.Payload["chunks"] as List<DialogueExtractionPipeline.Dialogue>;
@@ -289,7 +289,7 @@ public class DialogueExtractionPipelineTests
             """);
 
         // Act
-        await _pipeline.ExecuteAsync(context, _options);
+        await _pipeline.ExecuteAsync(context, _options, TestContext.Current.CancellationToken);
 
         // Assert
         var dialogues = context.Payload["chunks"] as List<DialogueExtractionPipeline.Dialogue>;
@@ -309,7 +309,7 @@ public class DialogueExtractionPipelineTests
             """);
 
         // Act
-        await _pipeline.ExecuteAsync(context, _options);
+        await _pipeline.ExecuteAsync(context, _options, TestContext.Current.CancellationToken);
 
         // Assert
         var dialogues = context.Payload["chunks"] as List<DialogueExtractionPipeline.Dialogue>;
@@ -328,7 +328,7 @@ public class DialogueExtractionPipelineTests
             """);
 
         // Act
-        await _pipeline.ExecuteAsync(context, _options);
+        await _pipeline.ExecuteAsync(context, _options, TestContext.Current.CancellationToken);
 
         // Assert
         var dialogues = context.Payload["chunks"] as List<DialogueExtractionPipeline.Dialogue>;

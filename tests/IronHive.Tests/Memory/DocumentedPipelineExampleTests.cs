@@ -57,7 +57,7 @@ public class DocumentedPipelineExampleTests
         var context = Context();
         context.Payload["text"] = "hello";
 
-        var result = await new MyFilterPipeline().ExecuteAsync(context);
+        var result = await new MyFilterPipeline().ExecuteAsync(context, TestContext.Current.CancellationToken);
 
         result.IsError.Should().BeFalse();
         context.Payload["text"].Should().Be("HELLO");
@@ -68,7 +68,7 @@ public class DocumentedPipelineExampleTests
     {
         var context = Context();
 
-        var result = await new MyFilterPipeline().ExecuteAsync(context);
+        var result = await new MyFilterPipeline().ExecuteAsync(context, TestContext.Current.CancellationToken);
 
         result.IsError.Should().BeFalse();
         context.Payload.Should().NotContainKey("text");
@@ -77,7 +77,7 @@ public class DocumentedPipelineExampleTests
     [Fact]
     public async Task TheDocumentedOptionsPipeline_MatchesTheGenericInterface()
     {
-        var result = await new MyOptionsPipeline().ExecuteAsync(Context(), new MyPipelineOptions());
+        var result = await new MyOptionsPipeline().ExecuteAsync(Context(), new MyPipelineOptions(), TestContext.Current.CancellationToken);
 
         result.IsError.Should().BeFalse();
     }

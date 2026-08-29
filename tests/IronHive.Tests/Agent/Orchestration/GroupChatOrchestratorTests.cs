@@ -32,7 +32,7 @@ public class GroupChatOrchestratorTests
             .Build();
 
         // Act
-        var result = await orch.ExecuteAsync(MakeUserMessages("start"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("start"), TestContext.Current.CancellationToken);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -52,7 +52,7 @@ public class GroupChatOrchestratorTests
             .SetMaxRounds(5)           // safety limit at 5
             .Build();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.Steps.Should().HaveCount(5);
@@ -77,7 +77,7 @@ public class GroupChatOrchestratorTests
             .TerminateOnKeyword("APPROVED")
             .Build();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("review"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("review"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.Steps.Should().HaveCount(3);
@@ -113,7 +113,7 @@ public class GroupChatOrchestratorTests
             .TerminateAfterRounds(4)
             .Build();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("write an article"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("write an article"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.Steps.Should().HaveCount(4);
@@ -174,7 +174,7 @@ public class GroupChatOrchestratorTests
             .Build();
 
         var events = new List<OrchestrationStreamEvent>();
-        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("go")))
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken))
         {
             events.Add(evt);
         }
@@ -205,7 +205,7 @@ public class GroupChatOrchestratorTests
             .WithTerminationCondition(composite)
             .Build();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.Steps.Should().HaveCount(3); // stopped at keyword, not at 10
@@ -226,10 +226,10 @@ public class GroupChatOrchestratorTests
             .SetOrchestrationId("ck-success")
             .Build();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
-        var ckpt = await store.LoadAsync("ck-success");
+        var ckpt = await store.LoadAsync("ck-success", TestContext.Current.CancellationToken);
         ckpt.Should().BeNull("checkpoint should be deleted on success");
     }
 
@@ -249,10 +249,10 @@ public class GroupChatOrchestratorTests
             .SetOrchestrationId("ck-fail")
             .Build();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeFalse();
-        var ckpt = await store.LoadAsync("ck-fail");
+        var ckpt = await store.LoadAsync("ck-fail", TestContext.Current.CancellationToken);
         ckpt.Should().NotBeNull("checkpoint should be saved on failure");
         ckpt!.CompletedSteps.Should().HaveCount(1);
     }
@@ -301,7 +301,7 @@ public class GroupChatOrchestratorTests
                 Message.Assistant("response-a"),
                 Message.Assistant("response-b")
             ]
-        });
+        }, TestContext.Current.CancellationToken);
 
         var executedAgents = new List<string>();
 
@@ -314,7 +314,7 @@ public class GroupChatOrchestratorTests
             .SetOrchestrationId(orchId)
             .Build();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         // RoundRobin continues from round 2: a, b (rounds 2 and 3)
@@ -342,13 +342,13 @@ public class GroupChatOrchestratorTests
             })
             .Build();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().Contain("Approval denied for agent 'b'");
         approvalCalls.Should().Contain("a").And.Contain("b");
 
-        var ckpt = await store.LoadAsync("ck-approval");
+        var ckpt = await store.LoadAsync("ck-approval", TestContext.Current.CancellationToken);
         ckpt.Should().NotBeNull("checkpoint should be saved when approval is denied");
         ckpt!.CompletedSteps.Should().HaveCount(1, "only agent 'a' completed before 'b' was denied");
     }
@@ -371,7 +371,7 @@ public class GroupChatOrchestratorTests
             .SetRequireApprovalForAgents("b")
             .Build();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         approvalCalls.Should().NotContain("a", "agent 'a' is not in RequireApprovalForAgents");

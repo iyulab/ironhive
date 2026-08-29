@@ -32,7 +32,7 @@ public class CreateVectorsPipelineTests
         var context = CreateContext(s_twoTexts);
         SetupEmbeddings(s_vec1, s_vec2);
 
-        var result = await _pipeline.ExecuteAsync(context);
+        var result = await _pipeline.ExecuteAsync(context, TestContext.Current.CancellationToken);
 
         result.IsError.Should().BeFalse();
         var vectors = context.Payload["vectors"] as List<VectorRecord>;
@@ -46,7 +46,7 @@ public class CreateVectorsPipelineTests
         var context = CreateContext(s_oneText);
         SetupEmbeddings(s_vec1);
 
-        await _pipeline.ExecuteAsync(context);
+        await _pipeline.ExecuteAsync(context, TestContext.Current.CancellationToken);
 
         var vectors = context.Payload["vectors"] as List<VectorRecord>;
         vectors![0].Payload.Should().ContainKey("text");
@@ -59,7 +59,7 @@ public class CreateVectorsPipelineTests
         var context = CreateContext(s_oneText);
         SetupEmbeddings(s_vec1);
 
-        await _pipeline.ExecuteAsync(context);
+        await _pipeline.ExecuteAsync(context, TestContext.Current.CancellationToken);
 
         var vectors = context.Payload["vectors"] as List<VectorRecord>;
         vectors![0].SourceId.Should().Be("test-source");
@@ -71,7 +71,7 @@ public class CreateVectorsPipelineTests
         var context = CreateContext(s_oneText);
         SetupEmbeddings(s_vec3);
 
-        await _pipeline.ExecuteAsync(context);
+        await _pipeline.ExecuteAsync(context, TestContext.Current.CancellationToken);
 
         var vectors = context.Payload["vectors"] as List<VectorRecord>;
         vectors![0].Vectors.Should().BeEquivalentTo(s_vec3);
@@ -83,7 +83,7 @@ public class CreateVectorsPipelineTests
         var context = CreateContext(s_oneText);
         SetupEmbeddings(s_vec1);
 
-        await _pipeline.ExecuteAsync(context);
+        await _pipeline.ExecuteAsync(context, TestContext.Current.CancellationToken);
 
         await _mockEmbedder.Received(1).EmbedBatchAsync(
             "test-provider",
@@ -135,7 +135,7 @@ public class CreateVectorsPipelineTests
         var context = CreateContext(dialogues);
         SetupEmbeddings(s_vec1, s_vec2);
 
-        var result = await _pipeline.ExecuteAsync(context);
+        var result = await _pipeline.ExecuteAsync(context, TestContext.Current.CancellationToken);
 
         result.IsError.Should().BeFalse();
         var vectors = context.Payload["vectors"] as List<VectorRecord>;
@@ -152,7 +152,7 @@ public class CreateVectorsPipelineTests
         var context = CreateContext(dialogues);
         SetupEmbeddings(s_vec1);
 
-        await _pipeline.ExecuteAsync(context);
+        await _pipeline.ExecuteAsync(context, TestContext.Current.CancellationToken);
 
         var vectors = context.Payload["vectors"] as List<VectorRecord>;
         vectors![0].Payload.Should().ContainKey("question");
@@ -172,7 +172,7 @@ public class CreateVectorsPipelineTests
         var context = CreateContext(dialogues);
         SetupEmbeddings(s_vec1, s_vec2);
 
-        await _pipeline.ExecuteAsync(context);
+        await _pipeline.ExecuteAsync(context, TestContext.Current.CancellationToken);
 
         await _mockEmbedder.Received(1).EmbedBatchAsync(
             "test-provider", "test-model",
@@ -243,7 +243,7 @@ public class CreateVectorsPipelineTests
     {
         var context = CreateContextRaw(42); // not IEnumerable<string> or Dialogue
 
-        var result = await _pipeline.ExecuteAsync(context);
+        var result = await _pipeline.ExecuteAsync(context, TestContext.Current.CancellationToken);
 
         result.IsError.Should().BeTrue();
         result.Exception.Should().BeOfType<InvalidOperationException>();

@@ -44,7 +44,7 @@ This is the third paragraph.";
         var options = new TextChunkingPipeline.Options(ChunkSize: 500);
 
         // Act
-        var result = await _pipeline.ExecuteAsync(context, options);
+        var result = await _pipeline.ExecuteAsync(context, options, TestContext.Current.CancellationToken);
 
         // Assert
         result.IsError.Should().BeFalse();
@@ -63,7 +63,7 @@ This is the third paragraph.";
         var options = new TextChunkingPipeline.Options(ChunkSize: 50);
 
         // Act
-        var result = await _pipeline.ExecuteAsync(context, options);
+        var result = await _pipeline.ExecuteAsync(context, options, TestContext.Current.CancellationToken);
 
         // Assert
         result.IsError.Should().BeFalse();
@@ -82,7 +82,7 @@ This is the third paragraph.";
         var options = new TextChunkingPipeline.Options(ChunkSize: 100);
 
         // Act
-        var result = await _pipeline.ExecuteAsync(context, options);
+        var result = await _pipeline.ExecuteAsync(context, options, TestContext.Current.CancellationToken);
 
         // Assert
         result.IsError.Should().BeFalse();
@@ -101,7 +101,7 @@ This is the third paragraph.";
         var options = new TextChunkingPipeline.Options(ChunkSize: 30);
 
         // Act
-        var result = await _pipeline.ExecuteAsync(context, options);
+        var result = await _pipeline.ExecuteAsync(context, options, TestContext.Current.CancellationToken);
 
         // Assert
         result.IsError.Should().BeFalse();
@@ -151,7 +151,7 @@ This is the third paragraph.";
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _pipeline.ExecuteAsync(context, options));
+            () => _pipeline.ExecuteAsync(context, options, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -168,7 +168,7 @@ This is the third paragraph.";
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _pipeline.ExecuteAsync(context, options));
+            () => _pipeline.ExecuteAsync(context, options, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -180,7 +180,7 @@ This is the third paragraph.";
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _pipeline.ExecuteAsync(context, options));
+            () => _pipeline.ExecuteAsync(context, options, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -197,7 +197,7 @@ This is the third paragraph.";
         var options = new TextChunkingPipeline.Options(ChunkSize: 100);
 
         // Act
-        var result = await _pipeline.ExecuteAsync(context, options);
+        var result = await _pipeline.ExecuteAsync(context, options, TestContext.Current.CancellationToken);
 
         // Assert
         result.IsError.Should().BeFalse();

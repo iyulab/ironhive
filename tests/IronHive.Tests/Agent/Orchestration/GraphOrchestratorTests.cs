@@ -107,7 +107,7 @@ public class GraphOrchestratorTests
             .SetOutputNode("a")
             .Build();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.Steps.Should().HaveCount(1);
@@ -132,7 +132,7 @@ public class GraphOrchestratorTests
             .SetOutputNode("c")
             .Build();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("start"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("start"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.Steps.Should().HaveCount(3);
@@ -167,7 +167,7 @@ public class GraphOrchestratorTests
             .SetOutputNode("d")
             .Build();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("start"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("start"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         callOrder.Should().HaveCount(4);
@@ -197,7 +197,7 @@ public class GraphOrchestratorTests
             .SetOutputNode("b")
             .Build();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.Steps.Should().HaveCount(2);
@@ -218,7 +218,7 @@ public class GraphOrchestratorTests
             .SetOutputNode("b")
             .Build();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         // B is skipped due to false condition; output falls back to last success (A)
         result.IsSuccess.Should().BeTrue();
@@ -245,7 +245,7 @@ public class GraphOrchestratorTests
             .SetOutputNode("b")
             .Build();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeFalse();
         result.Steps.Should().HaveCount(1);
@@ -266,7 +266,7 @@ public class GraphOrchestratorTests
             .SetOutputNode("b")
             .Build();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.TokenUsage.Should().NotBeNull();
@@ -292,7 +292,7 @@ public class GraphOrchestratorTests
             .Build();
 
         var events = new List<OrchestrationStreamEvent>();
-        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("input")))
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken))
         {
             events.Add(evt);
         }
@@ -318,7 +318,7 @@ public class GraphOrchestratorTests
             .Build();
 
         var events = new List<OrchestrationStreamEvent>();
-        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("input")))
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken))
         {
             events.Add(evt);
         }
@@ -344,7 +344,7 @@ public class GraphOrchestratorTests
             .Build();
 
         var events = new List<OrchestrationStreamEvent>();
-        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("input")))
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken))
         {
             events.Add(evt);
         }
@@ -400,7 +400,7 @@ public class GraphOrchestratorTests
             .SetOutputNode("d")
             .Build();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("start"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("start"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.Steps.Should().HaveCount(4);
@@ -429,12 +429,12 @@ public class GraphOrchestratorTests
             .SetOutputNode("b")
             .Build();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("test"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("test"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
 
         // 성공 시 체크포인트가 삭제되어야 함
-        var checkpoint = await store.LoadAsync("graph-chk-1");
+        var checkpoint = await store.LoadAsync("graph-chk-1", TestContext.Current.CancellationToken);
         checkpoint.Should().BeNull();
     }
 
@@ -462,12 +462,12 @@ public class GraphOrchestratorTests
             .SetOutputNode("f")
             .Build();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("test"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("test"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeFalse();
 
         // 실패 시 체크포인트가 저장되어야 함
-        var checkpoint = await store.LoadAsync("graph-chk-2");
+        var checkpoint = await store.LoadAsync("graph-chk-2", TestContext.Current.CancellationToken);
         checkpoint.Should().NotBeNull();
         checkpoint!.CompletedSteps.Should().HaveCountGreaterThanOrEqualTo(1);
     }
@@ -504,7 +504,7 @@ public class GraphOrchestratorTests
                 }
             ]
         };
-        await store.SaveAsync("graph-resume-1", existingCheckpoint);
+        await store.SaveAsync("graph-resume-1", existingCheckpoint, TestContext.Current.CancellationToken);
 
         var orch = new GraphOrchestratorBuilder()
             .WithOptions(new GraphOrchestratorOptions
@@ -519,7 +519,7 @@ public class GraphOrchestratorTests
             .SetOutputNode("b")
             .Build();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("test"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("test"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         // a는 체크포인트에서 복원되었으므로 재실행되지 않아야 함
@@ -551,14 +551,14 @@ public class GraphOrchestratorTests
             .SetOutputNode("b")
             .Build();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("test"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("test"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().Contain("Approval denied");
         result.Error.Should().Contain("b");
 
         // 체크포인트가 저장되어야 함 (a는 완료)
-        var checkpoint = await store.LoadAsync("graph-approval-1");
+        var checkpoint = await store.LoadAsync("graph-approval-1", TestContext.Current.CancellationToken);
         checkpoint.Should().NotBeNull();
     }
 
@@ -583,13 +583,13 @@ public class GraphOrchestratorTests
             .Build();
 
         var events = new List<OrchestrationStreamEvent>();
-        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("go")))
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken))
         {
             events.Add(evt);
         }
 
         events.Should().Contain(e => e.EventType == OrchestrationEventType.Completed);
-        var checkpoint = await store.LoadAsync("stream-chk-del");
+        var checkpoint = await store.LoadAsync("stream-chk-del", TestContext.Current.CancellationToken);
         checkpoint.Should().BeNull("checkpoint should be deleted on streaming success");
     }
 
@@ -618,7 +618,7 @@ public class GraphOrchestratorTests
             .SetOutputNode("b")
             .Build();
 
-        await foreach (var _ in orch.ExecuteStreamingAsync(MakeUserMessages("go")))
+        await foreach (var _ in orch.ExecuteStreamingAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken))
         { }
 
         // 각 노드 완료 후 저장됨 (a, b = 2 saves)
@@ -648,7 +648,7 @@ public class GraphOrchestratorTests
             .Build();
 
         var events = new List<OrchestrationStreamEvent>();
-        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("go")))
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken))
         {
             events.Add(evt);
         }
@@ -656,7 +656,7 @@ public class GraphOrchestratorTests
         events.Should().Contain(e => e.EventType == OrchestrationEventType.Failed
             && e.Error != null && e.Error.Contains("Approval denied"));
 
-        var checkpoint = await store.LoadAsync("stream-approval-deny");
+        var checkpoint = await store.LoadAsync("stream-approval-deny", TestContext.Current.CancellationToken);
         checkpoint.Should().NotBeNull("checkpoint should be saved when approval is denied");
     }
 

@@ -16,7 +16,7 @@ public class SequentialOrchestratorTests
     {
         var orch = new SequentialOrchestrator();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("hello"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("hello"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().Contain("No agents");
@@ -29,7 +29,7 @@ public class SequentialOrchestratorTests
         var orch = new SequentialOrchestrator();
         orch.AddAgent(agent);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.Steps.Should().HaveCount(1);
@@ -49,7 +49,7 @@ public class SequentialOrchestratorTests
         var orch = new SequentialOrchestrator();
         orch.AddAgents([a, b, c]);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("start"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("start"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.Steps.Should().HaveCount(3);
@@ -86,7 +86,7 @@ public class SequentialOrchestratorTests
         });
         orch.AddAgents([a, b]);
 
-        await orch.ExecuteAsync(MakeUserMessages("initial"));
+        await orch.ExecuteAsync(MakeUserMessages("initial"), TestContext.Current.CancellationToken);
 
         receivedInputs[0].Should().Contain("initial");
         receivedInputs[1].Should().Contain("from-a");
@@ -129,7 +129,7 @@ public class SequentialOrchestratorTests
         });
         orch.AddAgents([a, b, c]);
 
-        await orch.ExecuteAsync(MakeUserMessages("start"));
+        await orch.ExecuteAsync(MakeUserMessages("start"), TestContext.Current.CancellationToken);
 
         // Agent a: 1 message (initial)
         // Agent b: 2 messages (initial + from-a)
@@ -149,7 +149,7 @@ public class SequentialOrchestratorTests
         });
         orch.AddAgents([a, b]);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeFalse();
         result.Steps.Should().HaveCount(1);
@@ -169,7 +169,7 @@ public class SequentialOrchestratorTests
         });
         orch.AddAgents([a, b]);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.Steps.Should().HaveCount(2);
@@ -190,7 +190,7 @@ public class SequentialOrchestratorTests
         });
         orch.AddAgents([a, b]);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().Contain("No successful agent output");
@@ -210,7 +210,7 @@ public class SequentialOrchestratorTests
         });
         orch.AddAgents([a, b]);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().Contain("Approval denied");
@@ -226,7 +226,7 @@ public class SequentialOrchestratorTests
         var orch = new SequentialOrchestrator();
         orch.AddAgents([a, b]);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.TokenUsage.Should().NotBeNull();
@@ -242,7 +242,7 @@ public class SequentialOrchestratorTests
         var orch = new SequentialOrchestrator();
         orch.AddAgent(a);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.TotalDuration.Should().BeGreaterThan(TimeSpan.Zero);
@@ -255,7 +255,7 @@ public class SequentialOrchestratorTests
         var orch = new SequentialOrchestrator();
 
         var events = new List<OrchestrationStreamEvent>();
-        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("hello")))
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("hello"), TestContext.Current.CancellationToken))
         {
             events.Add(evt);
         }
@@ -273,7 +273,7 @@ public class SequentialOrchestratorTests
         orch.AddAgents([a, b]);
 
         var events = new List<OrchestrationStreamEvent>();
-        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("input")))
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken))
         {
             events.Add(evt);
         }
@@ -298,7 +298,7 @@ public class SequentialOrchestratorTests
         orch.AddAgent(a);
 
         var events = new List<OrchestrationStreamEvent>();
-        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("input")))
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken))
         {
             events.Add(evt);
         }
@@ -320,10 +320,10 @@ public class SequentialOrchestratorTests
         });
         orch.AddAgent(new MockAgent("a") { ResponseFunc = _ => "ok" });
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
-        var ckpt = await store.LoadAsync("ck-success");
+        var ckpt = await store.LoadAsync("ck-success", TestContext.Current.CancellationToken);
         ckpt.Should().BeNull("checkpoint should be deleted on success");
     }
 
@@ -339,10 +339,10 @@ public class SequentialOrchestratorTests
         });
         orch.AddAgent(new MockAgent("a") { ResponseFunc = _ => throw new InvalidOperationException("boom") });
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeFalse();
-        var ckpt = await store.LoadAsync("ck-fail");
+        var ckpt = await store.LoadAsync("ck-fail", TestContext.Current.CancellationToken);
         ckpt.Should().NotBeNull("checkpoint should be saved on failure");
         ckpt!.CompletedSteps.Should().HaveCount(1);
     }
@@ -373,7 +373,7 @@ public class SequentialOrchestratorTests
             CompletedStepCount = 1,
             CompletedSteps = [existingStep],
             CurrentMessages = [Message.Assistant("from-a")]
-        });
+        }, TestContext.Current.CancellationToken);
 
         var executedAgents = new List<string>();
         var orch = new SequentialOrchestrator(new SequentialOrchestratorOptions
@@ -384,7 +384,7 @@ public class SequentialOrchestratorTests
         orch.AddAgent(new MockAgent("a") { ResponseFunc = _ => { executedAgents.Add("a"); return "from-a"; } });
         orch.AddAgent(new MockAgent("b") { ResponseFunc = _ => { executedAgents.Add("b"); return "from-b"; } });
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         executedAgents.Should().NotContain("a", "agent 'a' was already completed in checkpoint");
@@ -406,12 +406,12 @@ public class SequentialOrchestratorTests
         orch.AddAgent(new MockAgent("a") { ResponseFunc = _ => "from-a" });
         orch.AddAgent(new MockAgent("b") { ResponseFunc = _ => "from-b" });
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().Contain("Approval denied for agent 'b'");
 
-        var ckpt = await store.LoadAsync("ck-approval");
+        var ckpt = await store.LoadAsync("ck-approval", TestContext.Current.CancellationToken);
         ckpt.Should().NotBeNull("checkpoint should be saved when approval is denied");
         ckpt!.CompletedSteps.Should().HaveCount(1, "only agent 'a' completed");
     }
@@ -433,7 +433,7 @@ public class SequentialOrchestratorTests
         orch.AddAgent(new MockAgent("a") { ResponseFunc = _ => "from-a" });
         orch.AddAgent(new MockAgent("b") { ResponseFunc = _ => "from-b" });
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         approvalCalls.Should().NotContain("a", "agent 'a' is not in RequireApprovalForAgents");
@@ -453,13 +453,13 @@ public class SequentialOrchestratorTests
         orch.AddAgent(new MockAgent("b") { ResponseFunc = _ => "from-b" });
 
         var events = new List<OrchestrationStreamEvent>();
-        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("go")))
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken))
         {
             events.Add(evt);
         }
 
         events.Should().Contain(e => e.EventType == OrchestrationEventType.Completed);
-        var ckpt = await store.LoadAsync("stream-ck-del");
+        var ckpt = await store.LoadAsync("stream-ck-del", TestContext.Current.CancellationToken);
         ckpt.Should().BeNull("checkpoint should be deleted on streaming success");
     }
 
@@ -478,7 +478,7 @@ public class SequentialOrchestratorTests
         orch.AddAgent(new MockAgent("b") { ResponseFunc = _ => "from-b" });
 
         var events = new List<OrchestrationStreamEvent>();
-        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("go")))
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken))
         {
             events.Add(evt);
         }
@@ -486,7 +486,7 @@ public class SequentialOrchestratorTests
         events.Should().Contain(e => e.EventType == OrchestrationEventType.ApprovalDenied);
         events.Should().Contain(e => e.EventType == OrchestrationEventType.Failed);
 
-        var ckpt = await store.LoadAsync("stream-ck-approval");
+        var ckpt = await store.LoadAsync("stream-ck-approval", TestContext.Current.CancellationToken);
         ckpt.Should().NotBeNull("checkpoint should be saved when streaming approval is denied");
         ckpt!.CompletedSteps.Should().HaveCount(1, "only agent 'a' completed");
     }
@@ -519,7 +519,7 @@ public class SequentialOrchestratorTests
                 }
             ],
             CurrentMessages = [Message.Assistant("from-a")]
-        });
+        }, TestContext.Current.CancellationToken);
 
         var executedAgents = new List<string>();
         var orch = new SequentialOrchestrator(new SequentialOrchestratorOptions
@@ -531,7 +531,7 @@ public class SequentialOrchestratorTests
         orch.AddAgent(new MockAgent("b") { ResponseFunc = _ => { executedAgents.Add("b"); return "from-b"; } });
 
         var events = new List<OrchestrationStreamEvent>();
-        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("go")))
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken))
         {
             events.Add(evt);
         }

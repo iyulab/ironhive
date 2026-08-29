@@ -34,7 +34,7 @@ public class ImageParserTests
         var bytes = new byte[] { 1, 2, 3 };
         using var stream = new MemoryStream(bytes);
 
-        var blocks = await _parser.ParseAsync($"file{ext}", stream);
+        var blocks = await _parser.ParseAsync($"file{ext}", stream, TestContext.Current.CancellationToken);
 
         var block = blocks.Should().ContainSingle().Which.Should().BeOfType<ImageBlock>().Subject;
         block.MimeType.Should().Be(expectedMime);

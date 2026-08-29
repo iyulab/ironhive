@@ -63,7 +63,7 @@ jobs:
         # dump naming the hung test, so the next occurrence is diagnosable from the run log alone.
         # NOTE: the filter is convention alignment, not a verdict on the hang's root cause —
         # that stays under investigation (umbrella issue 20260720-ci-test-hang-unfiltered-run).
-        run: dotnet test tests/IronHive.Tests --no-build -c Release --verbosity normal --filter "Category!=Integration&Category!=RequiresApiKey&Category!=Performance" --blame-hang --blame-hang-timeout 5m
+        run: dotnet test tests/IronHive.Tests --no-build -c Release --verbosity normal --filter-not-trait "Category=Integration" --filter-not-trait "Category=RequiresApiKey" --filter-not-trait "Category=Performance" --hangdump --hangdump-timeout 5m
 
       - name: Doc snippet compile guard
         run: dotnet test tests/IronHive.DocSnippets.Tests --no-build -c Release --verbosity normal

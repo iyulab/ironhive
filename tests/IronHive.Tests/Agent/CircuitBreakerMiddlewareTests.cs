@@ -55,10 +55,7 @@ public class CircuitBreakerMiddlewareTests
         });
         var agent = CreateMockAgent();
 
-        var result = await sut.InvokeAsync(
-            agent,
-            [],
-            null, (_, _) => Task.FromResult(s_okResponse));
+        var result = await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse), TestContext.Current.CancellationToken);
 
         result.Should().BeSameAs(s_okResponse);
         sut.State.Should().Be(CircuitState.Closed);
@@ -84,7 +81,7 @@ public class CircuitBreakerMiddlewareTests
         }
 
         // Success resets count
-        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse));
+        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse), TestContext.Current.CancellationToken);
 
         // 2 more failures should not open (count was reset)
         for (var i = 0; i < 2; i++)
@@ -195,7 +192,7 @@ public class CircuitBreakerMiddlewareTests
         sut.State.Should().Be(CircuitState.Open);
 
         // Wait for break duration
-        await Task.Delay(100);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
 
         sut.State.Should().Be(CircuitState.HalfOpen);
     }
@@ -215,10 +212,10 @@ public class CircuitBreakerMiddlewareTests
             agent, [],
             null, (_, _) => throw new InvalidOperationException("fail"));
         await act.Should().ThrowAsync<InvalidOperationException>();
-        await Task.Delay(100);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
 
         // Success in HalfOpen → Closed
-        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse));
+        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse), TestContext.Current.CancellationToken);
 
         sut.State.Should().Be(CircuitState.Closed);
     }
@@ -238,7 +235,7 @@ public class CircuitBreakerMiddlewareTests
             agent, [],
             null, (_, _) => throw new InvalidOperationException("fail"));
         await act1.Should().ThrowAsync<InvalidOperationException>();
-        await Task.Delay(100);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
         sut.State.Should().Be(CircuitState.HalfOpen);
 
         // Failure in HalfOpen → Open again
@@ -277,7 +274,7 @@ public class CircuitBreakerMiddlewareTests
         sut.State.Should().Be(CircuitState.Closed);
 
         // Should work again
-        var result = await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse));
+        var result = await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse), TestContext.Current.CancellationToken);
         result.Should().BeSameAs(s_okResponse);
     }
 
@@ -318,11 +315,11 @@ public class CircuitBreakerMiddlewareTests
         await act.Should().ThrowAsync<InvalidOperationException>();
 
         // Open → HalfOpen (via timer)
-        await Task.Delay(100);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
         _ = sut.State; // Trigger state update
 
         // HalfOpen → Closed (via success)
-        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse));
+        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse), TestContext.Current.CancellationToken);
 
         stateChanges.Should().HaveCount(3);
         stateChanges[0].Should().Be((CircuitState.Closed, CircuitState.Open));
@@ -414,7 +411,7 @@ public class CircuitBreakerMiddlewareTests
         }
 
         // Wait for failure window to expire
-        await Task.Delay(100);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
 
         // 2 more failures (total in window = 2, threshold = 3)
         for (var i = 0; i < 2; i++)

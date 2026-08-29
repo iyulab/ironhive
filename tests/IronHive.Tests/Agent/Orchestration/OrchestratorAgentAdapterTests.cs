@@ -27,7 +27,7 @@ public class OrchestratorAgentAdapterTests
         var adapter = orch.AsAgent("nested-orch", "Nested orchestrator");
 
         // Act
-        var response = await adapter.InvokeAsync(MakeUserMessages("input"));
+        var response = await adapter.InvokeAsync(MakeUserMessages("input"), cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         adapter.Provider.Should().Be("orchestrator");
@@ -52,7 +52,7 @@ public class OrchestratorAgentAdapterTests
         outerOrch.AddAgents([innerOrch.AsAgent(), outerAgent]);
 
         // Act
-        var result = await outerOrch.ExecuteAsync(MakeUserMessages("start"));
+        var result = await outerOrch.ExecuteAsync(MakeUserMessages("start"), TestContext.Current.CancellationToken);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -124,7 +124,7 @@ public class OrchestratorAgentAdapterTests
 
         // Act
         var events = new List<StreamingMessageResponse>();
-        await foreach (var evt in adapter.InvokeStreamingAsync(MakeUserMessages("go")))
+        await foreach (var evt in adapter.InvokeStreamingAsync(MakeUserMessages("go"), cancellationToken: TestContext.Current.CancellationToken))
         {
             events.Add(evt);
         }

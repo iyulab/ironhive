@@ -16,7 +16,7 @@ public class TerminationConditionTests
         var condition = new MaxRoundsTermination(5);
         var steps = MakeSteps(3);
 
-        var result = await condition.ShouldTerminateAsync(steps);
+        var result = await condition.ShouldTerminateAsync(steps, TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
     }
@@ -27,7 +27,7 @@ public class TerminationConditionTests
         var condition = new MaxRoundsTermination(3);
         var steps = MakeSteps(3);
 
-        var result = await condition.ShouldTerminateAsync(steps);
+        var result = await condition.ShouldTerminateAsync(steps, TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
     }
@@ -38,7 +38,7 @@ public class TerminationConditionTests
         var condition = new MaxRoundsTermination(3);
         var steps = MakeSteps(5);
 
-        var result = await condition.ShouldTerminateAsync(steps);
+        var result = await condition.ShouldTerminateAsync(steps, TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
     }
@@ -58,7 +58,7 @@ public class TerminationConditionTests
     {
         var condition = new MaxRoundsTermination(5);
 
-        var result = await condition.ShouldTerminateAsync(Array.Empty<AgentStepResult>());
+        var result = await condition.ShouldTerminateAsync(Array.Empty<AgentStepResult>(), TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
     }
@@ -73,7 +73,7 @@ public class TerminationConditionTests
         var condition = new KeywordTermination("DONE");
         var steps = MakeStepsWithText("still working", "DONE");
 
-        var result = await condition.ShouldTerminateAsync(steps);
+        var result = await condition.ShouldTerminateAsync(steps, TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
     }
@@ -84,7 +84,7 @@ public class TerminationConditionTests
         var condition = new KeywordTermination("DONE");
         var steps = MakeStepsWithText("still working", "not finished");
 
-        var result = await condition.ShouldTerminateAsync(steps);
+        var result = await condition.ShouldTerminateAsync(steps, TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
     }
@@ -94,7 +94,7 @@ public class TerminationConditionTests
     {
         var condition = new KeywordTermination("DONE");
 
-        var result = await condition.ShouldTerminateAsync(Array.Empty<AgentStepResult>());
+        var result = await condition.ShouldTerminateAsync(Array.Empty<AgentStepResult>(), TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
     }
@@ -105,7 +105,7 @@ public class TerminationConditionTests
         var condition = new KeywordTermination("done", StringComparison.OrdinalIgnoreCase);
         var steps = MakeStepsWithText("DONE");
 
-        var result = await condition.ShouldTerminateAsync(steps);
+        var result = await condition.ShouldTerminateAsync(steps, TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
     }
@@ -116,7 +116,7 @@ public class TerminationConditionTests
         var condition = new KeywordTermination("DONE", StringComparison.Ordinal);
         var steps = MakeStepsWithText("done");
 
-        var result = await condition.ShouldTerminateAsync(steps);
+        var result = await condition.ShouldTerminateAsync(steps, TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
     }
@@ -127,7 +127,7 @@ public class TerminationConditionTests
         var condition = new KeywordTermination("DONE");
         var steps = MakeStepsWithText("DONE", "still working");
 
-        var result = await condition.ShouldTerminateAsync(steps);
+        var result = await condition.ShouldTerminateAsync(steps, TestContext.Current.CancellationToken);
 
         result.Should().BeFalse(); // last step doesn't contain keyword
     }
@@ -149,7 +149,7 @@ public class TerminationConditionTests
         var condition = new TokenBudgetTermination(100);
         var steps = MakeStepsWithTokens((10, 5), (10, 5)); // total = 30
 
-        var result = await condition.ShouldTerminateAsync(steps);
+        var result = await condition.ShouldTerminateAsync(steps, TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
     }
@@ -160,7 +160,7 @@ public class TerminationConditionTests
         var condition = new TokenBudgetTermination(30);
         var steps = MakeStepsWithTokens((10, 5), (10, 5)); // total = 30
 
-        var result = await condition.ShouldTerminateAsync(steps);
+        var result = await condition.ShouldTerminateAsync(steps, TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
     }
@@ -171,7 +171,7 @@ public class TerminationConditionTests
         var condition = new TokenBudgetTermination(20);
         var steps = MakeStepsWithTokens((10, 5), (10, 5)); // total = 30
 
-        var result = await condition.ShouldTerminateAsync(steps);
+        var result = await condition.ShouldTerminateAsync(steps, TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
     }
@@ -181,7 +181,7 @@ public class TerminationConditionTests
     {
         var condition = new TokenBudgetTermination(100);
 
-        var result = await condition.ShouldTerminateAsync(Array.Empty<AgentStepResult>());
+        var result = await condition.ShouldTerminateAsync(Array.Empty<AgentStepResult>(), TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
     }
@@ -205,7 +205,7 @@ public class TerminationConditionTests
             new() { AgentName = "a", IsSuccess = true, Response = null }
         };
 
-        var result = await condition.ShouldTerminateAsync(steps);
+        var result = await condition.ShouldTerminateAsync(steps, TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
     }
@@ -224,7 +224,7 @@ public class TerminationConditionTests
 
         var steps = MakeStepsWithText("working", "DONE"); // 2 steps, last has DONE
 
-        var result = await composite.ShouldTerminateAsync(steps);
+        var result = await composite.ShouldTerminateAsync(steps, TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
     }
@@ -239,7 +239,7 @@ public class TerminationConditionTests
 
         var steps = MakeStepsWithText("working", "DONE");
 
-        var result = await composite.ShouldTerminateAsync(steps);
+        var result = await composite.ShouldTerminateAsync(steps, TestContext.Current.CancellationToken);
 
         result.Should().BeFalse(); // not all conditions met
     }
@@ -254,7 +254,7 @@ public class TerminationConditionTests
 
         var steps = MakeStepsWithText("working", "DONE");
 
-        var result = await composite.ShouldTerminateAsync(steps);
+        var result = await composite.ShouldTerminateAsync(steps, TestContext.Current.CancellationToken);
 
         result.Should().BeTrue(); // one condition met
     }
@@ -269,7 +269,7 @@ public class TerminationConditionTests
 
         var steps = MakeStepsWithText("working", "still working");
 
-        var result = await composite.ShouldTerminateAsync(steps);
+        var result = await composite.ShouldTerminateAsync(steps, TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
     }

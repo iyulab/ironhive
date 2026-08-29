@@ -162,7 +162,7 @@ public class ContextScopeTests
             Message.User("current task")
         };
 
-        var result = await orch.ExecuteAsync(messages);
+        var result = await orch.ExecuteAsync(messages, TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
 
@@ -196,7 +196,7 @@ public class ContextScopeTests
 
         var messages = MakeMessages("first", "second", "third");
 
-        var result = await orch.ExecuteAsync(messages);
+        var result = await orch.ExecuteAsync(messages, TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
 
@@ -225,7 +225,7 @@ public class ContextScopeTests
 
         var messages = MakeMessages("first", "second", "third");
 
-        var result = await orch.ExecuteAsync(messages);
+        var result = await orch.ExecuteAsync(messages, TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         capturedMessages.Should().HaveCount(3);
@@ -262,7 +262,7 @@ public class ContextScopeTests
 
         var messages = MakeMessages("task1", "task2", "task3", "task4");
 
-        await orch.ExecuteAsync(messages);
+        await orch.ExecuteAsync(messages, TestContext.Current.CancellationToken);
 
         // Agent2 should get scoped messages from accumulated history
         // Full history would be: task1, task2, task3, task4, output1

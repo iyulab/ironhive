@@ -27,7 +27,7 @@ public class ContextOverflowMappingTests
         using var response = JsonResponse(HttpStatusCode.BadRequest,
             """{"error":{"code":400,"message":"request (42259 tokens) exceeds the available context size (32768 tokens), try increasing it","type":"exceed_context_size_error"}}""");
 
-        var ex = await ChatCompletionExceptionDetector.DetectAsync(response);
+        var ex = await ChatCompletionExceptionDetector.DetectAsync(response, TestContext.Current.CancellationToken);
 
         ex.Should().BeOfType<ContextOverflowException>().Which.ContextWindow.Should().Be(32768);
     }
@@ -38,7 +38,7 @@ public class ContextOverflowMappingTests
         using var response = JsonResponse(HttpStatusCode.BadRequest,
             """{"error":{"type":"exceed_context_size_error","message":"context overflow","n_ctx":32768}}""");
 
-        var ex = await ChatCompletionExceptionDetector.DetectAsync(response);
+        var ex = await ChatCompletionExceptionDetector.DetectAsync(response, TestContext.Current.CancellationToken);
 
         ex.Should().BeOfType<ContextOverflowException>().Which.ContextWindow.Should().Be(32768);
     }
@@ -51,7 +51,7 @@ public class ContextOverflowMappingTests
             .Replace("__MESSAGE__", message);
         using var response = JsonResponse(HttpStatusCode.BadRequest, json);
 
-        var ex = await ChatCompletionExceptionDetector.DetectAsync(response);
+        var ex = await ChatCompletionExceptionDetector.DetectAsync(response, TestContext.Current.CancellationToken);
 
         ex.Should().BeOfType<ContextOverflowException>().Which.ContextWindow.Should().Be(32768);
     }
@@ -71,7 +71,7 @@ public class ContextOverflowMappingTests
         using var response = JsonResponse(HttpStatusCode.BadRequest,
             """{"error":{"message":"Invalid API key provided","type":"invalid_request_error","code":"invalid_api_key"}}""");
 
-        var ex = await ChatCompletionExceptionDetector.DetectAsync(response);
+        var ex = await ChatCompletionExceptionDetector.DetectAsync(response, TestContext.Current.CancellationToken);
 
         ex.Should().BeOfType<HttpRequestException>().Which.Message.Should().Be("Invalid API key provided");
     }

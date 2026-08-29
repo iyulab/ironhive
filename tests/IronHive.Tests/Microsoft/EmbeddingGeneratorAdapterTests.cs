@@ -76,7 +76,7 @@ public class EmbeddingGeneratorAdapterTests : IDisposable
     {
         SetupEmbeddings(s_vec1, s_vec2);
 
-        await _adapter.GenerateAsync(["input1", "input2"]);
+        await _adapter.GenerateAsync(["input1", "input2"], cancellationToken: TestContext.Current.CancellationToken);
 
         await _mockGenerator.Received(1).EmbedBatchAsync(
             "test-model",
@@ -90,7 +90,7 @@ public class EmbeddingGeneratorAdapterTests : IDisposable
         SetupEmbeddings(s_vec1);
         var options = new EmbeddingGenerationOptions { ModelId = "override-model" };
 
-        await _adapter.GenerateAsync(["input"], options);
+        await _adapter.GenerateAsync(["input"], options, TestContext.Current.CancellationToken);
 
         await _mockGenerator.Received(1).EmbedBatchAsync(
             "override-model",
@@ -103,7 +103,7 @@ public class EmbeddingGeneratorAdapterTests : IDisposable
     {
         SetupEmbeddings(s_vec1);
 
-        await _adapter.GenerateAsync(["input"]);
+        await _adapter.GenerateAsync(["input"], cancellationToken: TestContext.Current.CancellationToken);
 
         await _mockGenerator.Received(1).EmbedBatchAsync(
             "test-model",
@@ -116,7 +116,7 @@ public class EmbeddingGeneratorAdapterTests : IDisposable
     {
         SetupEmbeddings(s_vec1, s_vec2);
 
-        var result = await _adapter.GenerateAsync(["input1", "input2"]);
+        var result = await _adapter.GenerateAsync(["input1", "input2"], cancellationToken: TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(2);
         result[0].Vector.ToArray().Should().BeEquivalentTo(s_vec1);
@@ -164,8 +164,7 @@ public class EmbeddingGeneratorAdapterTests : IDisposable
         // through untouched -- the check is on the result, not on a capability list.
         SetupEmbeddings(s_vec1, s_vec2);
 
-        var result = await _adapter.GenerateAsync(
-            ["a", "b"], new EmbeddingGenerationOptions { Dimensions = s_vec1.Length });
+        var result = await _adapter.GenerateAsync(["a", "b"], new EmbeddingGenerationOptions { Dimensions = s_vec1.Length }, TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(2);
     }
@@ -175,7 +174,7 @@ public class EmbeddingGeneratorAdapterTests : IDisposable
     {
         SetupEmbeddings(s_vec1);
 
-        var result = await _adapter.GenerateAsync(["a"], new EmbeddingGenerationOptions());
+        var result = await _adapter.GenerateAsync(["a"], new EmbeddingGenerationOptions(), TestContext.Current.CancellationToken);
 
         result.Should().ContainSingle();
         result[0].Vector.Length.Should().Be(s_vec1.Length);
@@ -189,7 +188,7 @@ public class EmbeddingGeneratorAdapterTests : IDisposable
         // count, which silently corrupts any cost arithmetic downstream of it.
         SetupEmbeddings(s_vec1, s_vec2);
 
-        var result = await _adapter.GenerateAsync(["a much longer input than one token", "input2"]);
+        var result = await _adapter.GenerateAsync(["a much longer input than one token", "input2"], cancellationToken: TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(2);
         result.Usage.Should().BeNull();
@@ -214,7 +213,7 @@ public class EmbeddingGeneratorAdapterTests : IDisposable
     {
         SetupEmbeddings(s_vec1);
 
-        var result = await _adapter.GenerateAsync(["single input"]);
+        var result = await _adapter.GenerateAsync(["single input"], cancellationToken: TestContext.Current.CancellationToken);
 
         result.Should().ContainSingle();
         result[0].Vector.ToArray().Should().BeEquivalentTo(s_vec1);

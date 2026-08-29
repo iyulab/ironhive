@@ -111,7 +111,7 @@ public class ChatClientAdapterTests : IDisposable
             new(ChatRole.User, "Hello")
         };
 
-        await _adapter.GetResponseAsync(messages);
+        await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
 
         capturedRequest().System.Should().Be("You are a helpful assistant.");
     }
@@ -125,7 +125,7 @@ public class ChatClientAdapterTests : IDisposable
             new(ChatRole.User, "Hello")
         };
 
-        await _adapter.GetResponseAsync(messages);
+        await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
 
         capturedRequest().Model.Should().Be("test-model");
     }
@@ -140,7 +140,7 @@ public class ChatClientAdapterTests : IDisposable
         };
         var options = new ChatOptions { ModelId = "override-model" };
 
-        await _adapter.GetResponseAsync(messages, options);
+        await _adapter.GetResponseAsync(messages, options, TestContext.Current.CancellationToken);
 
         capturedRequest().Model.Should().Be("override-model");
     }
@@ -158,7 +158,7 @@ public class ChatClientAdapterTests : IDisposable
             MaxOutputTokens = 1024
         };
 
-        await _adapter.GetResponseAsync(messages, options);
+        await _adapter.GetResponseAsync(messages, options, TestContext.Current.CancellationToken);
 
         capturedRequest().MaxTokens.Should().Be(1024);
     }
@@ -179,7 +179,7 @@ public class ChatClientAdapterTests : IDisposable
             StopSequences = ["STOP", "END"]
         };
 
-        await _adapter.GetResponseAsync(messages, options);
+        await _adapter.GetResponseAsync(messages, options, TestContext.Current.CancellationToken);
 
         var request = capturedRequest();
         request.Temperature.Should().Be(0.2f);
@@ -196,7 +196,7 @@ public class ChatClientAdapterTests : IDisposable
         var callerList = new List<string> { "STOP" };
         var options = new ChatOptions { StopSequences = callerList };
 
-        await _adapter.GetResponseAsync(messages, options);
+        await _adapter.GetResponseAsync(messages, options, TestContext.Current.CancellationToken);
         callerList.Add("MUTATED-AFTER-THE-CALL");
 
         capturedRequest().StopSequences.Should().BeEquivalentTo(["STOP"]);
@@ -217,7 +217,7 @@ public class ChatClientAdapterTests : IDisposable
             StopSequences = ["STOP"]
         };
 
-        await foreach (var _ in _adapter.GetStreamingResponseAsync(messages, options)) { }
+        await foreach (var _ in _adapter.GetStreamingResponseAsync(messages, options, TestContext.Current.CancellationToken)) { }
 
         var request = capturedRequest();
         request.MaxTokens.Should().Be(512);
@@ -262,7 +262,7 @@ public class ChatClientAdapterTests : IDisposable
             var optionProperty = typeof(ChatOptions).GetProperty(optionName)!;
             optionProperty.SetValue(options, SampleValueFor(optionProperty.PropertyType));
 
-            await _adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "Hi")], options);
+            await _adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "Hi")], options, TestContext.Current.CancellationToken);
 
             var sink = typeof(MessageGenerationRequest).GetProperty(sinkName)!;
             sink.GetValue(capturedRequest())
@@ -320,7 +320,7 @@ public class ChatClientAdapterTests : IDisposable
             new(ChatRole.User, "Hello world")
         };
 
-        await _adapter.GetResponseAsync(messages);
+        await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
 
         var req = capturedRequest();
         req.Messages.Should().HaveCount(1);
@@ -341,7 +341,7 @@ public class ChatClientAdapterTests : IDisposable
             new(ChatRole.User, [imageContent])
         };
 
-        await _adapter.GetResponseAsync(messages);
+        await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
 
         var req = capturedRequest();
         var userMsg = req.Messages.First().Should().BeOfType<Message>().Subject;
@@ -362,7 +362,7 @@ public class ChatClientAdapterTests : IDisposable
             new(ChatRole.Assistant, [functionCall])
         };
 
-        await _adapter.GetResponseAsync(messages);
+        await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
 
         var req = capturedRequest();
         var assistantMsg = req.Messages.First().Should().BeOfType<Message>().Subject;
@@ -385,7 +385,7 @@ public class ChatClientAdapterTests : IDisposable
             new(ChatRole.User, [new TextContent("text"), dataContent])
         };
 
-        await _adapter.GetResponseAsync(messages);
+        await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
 
         var req = capturedRequest();
         var userMsg = req.Messages.First().Should().BeOfType<Message>().Subject;
@@ -415,7 +415,7 @@ public class ChatClientAdapterTests : IDisposable
         });
 
         var messages = new List<ChatMessage> { new(ChatRole.User, "Hi") };
-        var response = await _adapter.GetResponseAsync(messages);
+        var response = await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
 
         response.ResponseId.Should().Be("resp-1");
         response.FinishReason.Should().Be(ChatFinishReason.Stop);
@@ -448,7 +448,7 @@ public class ChatClientAdapterTests : IDisposable
         });
 
         var messages = new List<ChatMessage> { new(ChatRole.User, "Search for test") };
-        var response = await _adapter.GetResponseAsync(messages);
+        var response = await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
 
         response.FinishReason.Should().Be(ChatFinishReason.ToolCalls);
         var msg = response.Messages.First();
@@ -473,7 +473,7 @@ public class ChatClientAdapterTests : IDisposable
         });
 
         var messages = new List<ChatMessage> { new(ChatRole.User, "Hello") };
-        var response = await _adapter.GetResponseAsync(messages);
+        var response = await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
 
         response.Usage.Should().BeNull();
     }
@@ -500,7 +500,7 @@ public class ChatClientAdapterTests : IDisposable
         });
 
         var messages = new List<ChatMessage> { new(ChatRole.User, "Hi") };
-        var response = await _adapter.GetResponseAsync(messages);
+        var response = await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
 
         response.FinishReason.Should().NotBeNull();
         response.FinishReason!.Value.Value.Should().Be(expectedValue);
@@ -519,7 +519,7 @@ public class ChatClientAdapterTests : IDisposable
         });
 
         var messages = new List<ChatMessage> { new(ChatRole.User, "Hi") };
-        var response = await _adapter.GetResponseAsync(messages);
+        var response = await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
 
         response.FinishReason.Should().BeNull();
     }
@@ -544,7 +544,7 @@ public class ChatClientAdapterTests : IDisposable
             new(ChatRole.User, [imageContent])
         };
 
-        await _adapter.GetResponseAsync(messages);
+        await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
 
         var req = capturedRequest();
         var userMsg = req.Messages.First().Should().BeOfType<Message>().Subject;
@@ -567,7 +567,7 @@ public class ChatClientAdapterTests : IDisposable
 
         var messages = new List<ChatMessage> { new(ChatRole.User, "Hi") };
         var updates = new List<ChatResponseUpdate>();
-        await foreach (var update in _adapter.GetStreamingResponseAsync(messages))
+        await foreach (var update in _adapter.GetStreamingResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken))
         {
             updates.Add(update);
         }
@@ -596,7 +596,7 @@ public class ChatClientAdapterTests : IDisposable
 
         var messages = new List<ChatMessage> { new(ChatRole.User, "Hi") };
         var updates = new List<ChatResponseUpdate>();
-        await foreach (var update in _adapter.GetStreamingResponseAsync(messages))
+        await foreach (var update in _adapter.GetStreamingResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken))
         {
             updates.Add(update);
         }
@@ -626,7 +626,7 @@ public class ChatClientAdapterTests : IDisposable
 
         var messages = new List<ChatMessage> { new(ChatRole.User, "Hi") };
         var updates = new List<ChatResponseUpdate>();
-        await foreach (var update in _adapter.GetStreamingResponseAsync(messages))
+        await foreach (var update in _adapter.GetStreamingResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken))
         {
             updates.Add(update);
         }
@@ -660,7 +660,7 @@ public class ChatClientAdapterTests : IDisposable
 
         var messages = new List<ChatMessage> { new(ChatRole.User, "Hi") };
         var updates = new List<ChatResponseUpdate>();
-        await foreach (var update in _adapter.GetStreamingResponseAsync(messages))
+        await foreach (var update in _adapter.GetStreamingResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken))
         {
             updates.Add(update);
         }
@@ -686,7 +686,7 @@ public class ChatClientAdapterTests : IDisposable
 
         var messages = new List<ChatMessage> { new(ChatRole.User, "Hi") };
         var updates = new List<ChatResponseUpdate>();
-        await foreach (var update in _adapter.GetStreamingResponseAsync(messages))
+        await foreach (var update in _adapter.GetStreamingResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken))
         {
             updates.Add(update);
         }
@@ -712,7 +712,7 @@ public class ChatClientAdapterTests : IDisposable
 
         var messages = new List<ChatMessage> { new(ChatRole.User, "Hi") };
         var updates = new List<ChatResponseUpdate>();
-        await foreach (var update in _adapter.GetStreamingResponseAsync(messages))
+        await foreach (var update in _adapter.GetStreamingResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken))
         {
             updates.Add(update);
         }
@@ -747,7 +747,7 @@ public class ChatClientAdapterTests : IDisposable
 
         var messages = new List<ChatMessage> { new(ChatRole.User, "Weather?") };
         var updates = new List<ChatResponseUpdate>();
-        await foreach (var update in _adapter.GetStreamingResponseAsync(messages))
+        await foreach (var update in _adapter.GetStreamingResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken))
         {
             updates.Add(update);
         }
@@ -800,7 +800,7 @@ public class ChatClientAdapterTests : IDisposable
             new(ChatRole.Tool, [functionResult])
         };
 
-        await _adapter.GetResponseAsync(messages);
+        await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
 
         var req = capturedRequest();
         req.Messages.Should().HaveCount(1);
@@ -822,7 +822,7 @@ public class ChatClientAdapterTests : IDisposable
         });
 
         var messages = new List<ChatMessage> { new(ChatRole.User, "Hi") };
-        var response = await _adapter.GetResponseAsync(messages);
+        var response = await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
 
         response.ModelId.Should().Be("test-model");
     }
@@ -840,7 +840,7 @@ public class ChatClientAdapterTests : IDisposable
         var tool = AIFunctionFactory.Create(() => "result", "test_tool", "A test tool");
         var options = new ChatOptions { Tools = [tool] };
 
-        await _adapter.GetResponseAsync(messages, options);
+        await _adapter.GetResponseAsync(messages, options, TestContext.Current.CancellationToken);
 
         var req = capturedRequest();
         req.Tools.Should().NotBeNull();
@@ -859,7 +859,7 @@ public class ChatClientAdapterTests : IDisposable
         var tool2 = AIFunctionFactory.Create((string query) => $"Results for {query}", "search", "Search the web");
         var options = new ChatOptions { Tools = [tool1, tool2] };
 
-        await _adapter.GetResponseAsync(messages, options);
+        await _adapter.GetResponseAsync(messages, options, TestContext.Current.CancellationToken);
 
         var req = capturedRequest();
         req.Tools.Should().HaveCount(2);
@@ -872,7 +872,7 @@ public class ChatClientAdapterTests : IDisposable
         var capturedRequest = SetupGeneratorReturns();
         var messages = new List<ChatMessage> { new(ChatRole.User, "Hello") };
 
-        await _adapter.GetResponseAsync(messages);
+        await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
 
         var req = capturedRequest();
         req.Tools.Should().BeNull();
@@ -885,7 +885,7 @@ public class ChatClientAdapterTests : IDisposable
         var messages = new List<ChatMessage> { new(ChatRole.User, "Hello") };
         var options = new ChatOptions { Tools = [] };
 
-        await _adapter.GetResponseAsync(messages, options);
+        await _adapter.GetResponseAsync(messages, options, TestContext.Current.CancellationToken);
 
         var req = capturedRequest();
         req.Tools.Should().BeNull();
@@ -903,7 +903,7 @@ public class ChatClientAdapterTests : IDisposable
             "Get weather for a city");
         var options = new ChatOptions { Tools = [tool] };
 
-        await _adapter.GetResponseAsync(messages, options);
+        await _adapter.GetResponseAsync(messages, options, TestContext.Current.CancellationToken);
 
         var req = capturedRequest();
         var forwardedTool = req.Tools!.First();
@@ -923,7 +923,7 @@ public class ChatClientAdapterTests : IDisposable
         var tool = AIFunctionFactory.Create(() => "result", "no_params_tool", "Tool without params");
         var options = new ChatOptions { Tools = [tool] };
 
-        await _adapter.GetResponseAsync(messages, options);
+        await _adapter.GetResponseAsync(messages, options, TestContext.Current.CancellationToken);
 
         var req = capturedRequest();
         req.Tools!.First().UniqueName.Should().Be("no_params_tool");
@@ -946,7 +946,7 @@ public class ChatClientAdapterTests : IDisposable
             Tools = [tool]
         };
 
-        await _adapter.GetResponseAsync(messages, options);
+        await _adapter.GetResponseAsync(messages, options, TestContext.Current.CancellationToken);
 
         var req = capturedRequest();
         req.MaxTokens.Should().Be(512);
@@ -969,7 +969,7 @@ public class ChatClientAdapterTests : IDisposable
         var capturedRequest = SetupGeneratorReturns();
         var messages = new List<ChatMessage> { new(ChatRole.User, "Hello") };
 
-        await _adapter.GetResponseAsync(messages);
+        await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
 
         capturedRequest().ToolChoice.Should().BeNull();
     }
@@ -981,7 +981,7 @@ public class ChatClientAdapterTests : IDisposable
         var messages = new List<ChatMessage> { new(ChatRole.User, "Hello") };
         var options = new ChatOptions { ToolMode = ChatToolMode.Auto };
 
-        await _adapter.GetResponseAsync(messages, options);
+        await _adapter.GetResponseAsync(messages, options, TestContext.Current.CancellationToken);
 
         capturedRequest().ToolChoice.Should().Be(MessageToolChoice.Auto);
     }
@@ -993,7 +993,7 @@ public class ChatClientAdapterTests : IDisposable
         var messages = new List<ChatMessage> { new(ChatRole.User, "Hello") };
         var options = new ChatOptions { ToolMode = ChatToolMode.None };
 
-        await _adapter.GetResponseAsync(messages, options);
+        await _adapter.GetResponseAsync(messages, options, TestContext.Current.CancellationToken);
 
         capturedRequest().ToolChoice.Should().Be(MessageToolChoice.None);
     }
@@ -1005,7 +1005,7 @@ public class ChatClientAdapterTests : IDisposable
         var messages = new List<ChatMessage> { new(ChatRole.User, "Hello") };
         var options = new ChatOptions { ToolMode = ChatToolMode.RequireAny };
 
-        await _adapter.GetResponseAsync(messages, options);
+        await _adapter.GetResponseAsync(messages, options, TestContext.Current.CancellationToken);
 
         capturedRequest().ToolChoice.Should().Be(MessageToolChoice.Required);
     }
@@ -1017,7 +1017,7 @@ public class ChatClientAdapterTests : IDisposable
         var messages = new List<ChatMessage> { new(ChatRole.User, "Hello") };
         var options = new ChatOptions { ToolMode = ChatToolMode.RequireSpecific("get_weather") };
 
-        await _adapter.GetResponseAsync(messages, options);
+        await _adapter.GetResponseAsync(messages, options, TestContext.Current.CancellationToken);
 
         var toolChoice = capturedRequest().ToolChoice;
         toolChoice.Should().NotBeNull();
@@ -1064,7 +1064,7 @@ public class ChatClientAdapterTests : IDisposable
         var messages = new List<ChatMessage> { new(ChatRole.User, "Search") };
 
         // Must not throw JsonException — was the regression from Filer issue 2026-04-28.
-        var response = await _adapter.GetResponseAsync(messages);
+        var response = await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
 
         var fc = response.Messages.First().Contents.OfType<FunctionCallContent>().Single();
         fc.CallId.Should().Be("tool-noargs");
@@ -1101,7 +1101,7 @@ public class ChatClientAdapterTests : IDisposable
         var messages = new List<ChatMessage> { new(ChatRole.User, "Search") };
 
         var updates = new List<ChatResponseUpdate>();
-        await foreach (var update in _adapter.GetStreamingResponseAsync(messages))
+        await foreach (var update in _adapter.GetStreamingResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken))
         {
             updates.Add(update);
         }

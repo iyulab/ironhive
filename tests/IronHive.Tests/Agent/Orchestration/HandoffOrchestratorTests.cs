@@ -46,7 +46,7 @@ public class HandoffOrchestratorTests
             .Build();
 
         // Act
-        var result = await orch.ExecuteAsync(MakeUserMessages("I have a billing problem"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("I have a billing problem"), TestContext.Current.CancellationToken);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -76,7 +76,7 @@ public class HandoffOrchestratorTests
             .Build();
 
         // Act
-        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken);
 
         // Assert: should stop after MaxTransitions + 1 total steps (initial + transitions)
         result.IsSuccess.Should().BeTrue();
@@ -144,7 +144,7 @@ public class HandoffOrchestratorTests
             })
             .Build();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("hello"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("hello"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         handlerCalled.Should().BeTrue();
@@ -169,7 +169,7 @@ public class HandoffOrchestratorTests
             .Build();
 
         var events = new List<OrchestrationStreamEvent>();
-        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("go")))
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken))
         {
             events.Add(evt);
         }
@@ -193,10 +193,10 @@ public class HandoffOrchestratorTests
             .SetOrchestrationId("ck-success")
             .Build();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
-        var ckpt = await store.LoadAsync("ck-success");
+        var ckpt = await store.LoadAsync("ck-success", TestContext.Current.CancellationToken);
         ckpt.Should().BeNull("checkpoint should be deleted on success");
     }
 
@@ -215,10 +215,10 @@ public class HandoffOrchestratorTests
             .SetOrchestrationId("ck-fail")
             .Build();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeFalse();
-        var ckpt = await store.LoadAsync("ck-fail");
+        var ckpt = await store.LoadAsync("ck-fail", TestContext.Current.CancellationToken);
         ckpt.Should().NotBeNull("checkpoint should be saved on failure");
         ckpt!.CompletedSteps.Should().HaveCount(1);
     }
@@ -257,7 +257,7 @@ public class HandoffOrchestratorTests
                 new Message { Role = MessageRole.Assistant, Content = [new TextMessageContent { Value = """{"handoff_to": "billing", "context": "issue"}""" }] },
                 Message.User("issue")
             ]
-        });
+        }, TestContext.Current.CancellationToken);
 
         var executedAgents = new List<string>();
 
@@ -276,7 +276,7 @@ public class HandoffOrchestratorTests
             .SetOrchestrationId(orchId)
             .Build();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         executedAgents.Should().NotContain("triage", "triage was already completed in checkpoint");
@@ -311,13 +311,13 @@ public class HandoffOrchestratorTests
             })
             .Build();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().Contain("Approval denied for agent 'billing'");
         approvalCalls.Should().Contain("triage").And.Contain("billing");
 
-        var ckpt = await store.LoadAsync("ck-approval");
+        var ckpt = await store.LoadAsync("ck-approval", TestContext.Current.CancellationToken);
         ckpt.Should().NotBeNull("checkpoint should be saved when approval is denied");
         ckpt!.CompletedSteps.Should().HaveCount(1, "triage step completed before billing was denied");
     }
@@ -347,7 +347,7 @@ public class HandoffOrchestratorTests
             .SetRequireApprovalForAgents("billing")
             .Build();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         approvalCalls.Should().NotContain("triage", "triage is not in RequireApprovalForAgents");
@@ -381,7 +381,7 @@ public class HandoffOrchestratorTests
             .Build();
 
         // Act
-        var result = await orch.ExecuteAsync(MakeUserMessages("test"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("test"), TestContext.Current.CancellationToken);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -423,8 +423,8 @@ public class HandoffOrchestratorTests
         // Act: 동시 실행
         var tasks = new[]
         {
-            orch1.ExecuteAsync(MakeUserMessages("request 1")),
-            orch2.ExecuteAsync(MakeUserMessages("request 2"))
+            orch1.ExecuteAsync(MakeUserMessages("request 1"), TestContext.Current.CancellationToken),
+            orch2.ExecuteAsync(MakeUserMessages("request 2"), TestContext.Current.CancellationToken)
         };
         var results = await Task.WhenAll(tasks);
 
@@ -464,7 +464,7 @@ public class HandoffOrchestratorTests
             .Build();
 
         // Act
-        await orch.ExecuteAsync(MakeUserMessages("I have a billing question"));
+        await orch.ExecuteAsync(MakeUserMessages("I have a billing question"), TestContext.Current.CancellationToken);
 
         // Assert: triage 에이전트가 받은 메시지에 handoff 지시사항이 포함되어야 함
         capturedMessages.Should().NotBeNull();

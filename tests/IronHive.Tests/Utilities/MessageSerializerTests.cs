@@ -24,7 +24,7 @@ public class MessageSerializerTests
     [Fact]
     public void Serialize_Null_ReturnsNull()
     {
-        var result = MessageSerializer.Serialize<string>(null!);
+        var result = MessageSerializer.Serialize<string>(null!, cancellationToken: TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -34,7 +34,7 @@ public class MessageSerializerTests
     [Fact]
     public void Deserialize_NullBuffer_ReturnsDefault()
     {
-        var result = MessageSerializer.Deserialize<string>(null!);
+        var result = MessageSerializer.Deserialize<string>(null!, cancellationToken: TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -42,7 +42,7 @@ public class MessageSerializerTests
     [Fact]
     public void Deserialize_EmptyBuffer_ReturnsDefault()
     {
-        var result = MessageSerializer.Deserialize<string>([]);
+        var result = MessageSerializer.Deserialize<string>([], cancellationToken: TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -50,7 +50,7 @@ public class MessageSerializerTests
     [Fact]
     public void Deserialize_EmptyBuffer_ReturnsDefaultForValueType()
     {
-        var result = MessageSerializer.Deserialize<int>([]);
+        var result = MessageSerializer.Deserialize<int>([], cancellationToken: TestContext.Current.CancellationToken);
 
         result.Should().Be(0);
     }
@@ -61,8 +61,8 @@ public class MessageSerializerTests
     public void RoundTrip_String_PreservesValue()
     {
         var original = "Hello, MessagePack!";
-        var bytes = MessageSerializer.Serialize(original);
-        var result = MessageSerializer.Deserialize<string>(bytes!);
+        var bytes = MessageSerializer.Serialize(original, cancellationToken: TestContext.Current.CancellationToken);
+        var result = MessageSerializer.Deserialize<string>(bytes!, cancellationToken: TestContext.Current.CancellationToken);
 
         result.Should().Be(original);
     }
@@ -71,8 +71,8 @@ public class MessageSerializerTests
     public void RoundTrip_Integer_PreservesValue()
     {
         var original = 42;
-        var bytes = MessageSerializer.Serialize(original);
-        var result = MessageSerializer.Deserialize<int>(bytes!);
+        var bytes = MessageSerializer.Serialize(original, cancellationToken: TestContext.Current.CancellationToken);
+        var result = MessageSerializer.Deserialize<int>(bytes!, cancellationToken: TestContext.Current.CancellationToken);
 
         result.Should().Be(original);
     }
@@ -80,8 +80,8 @@ public class MessageSerializerTests
     [Fact]
     public void RoundTrip_Boolean_PreservesValue()
     {
-        var bytes = MessageSerializer.Serialize(true);
-        var result = MessageSerializer.Deserialize<bool>(bytes!);
+        var bytes = MessageSerializer.Serialize(true, cancellationToken: TestContext.Current.CancellationToken);
+        var result = MessageSerializer.Deserialize<bool>(bytes!, cancellationToken: TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
     }
@@ -98,11 +98,11 @@ public class MessageSerializerTests
             Tags = ["a", "b", "c"]
         };
 
-        var bytes = MessageSerializer.Serialize(original);
+        var bytes = MessageSerializer.Serialize(original, cancellationToken: TestContext.Current.CancellationToken);
         bytes.Should().NotBeNull();
         bytes!.Length.Should().BeGreaterThan(0);
 
-        var result = MessageSerializer.Deserialize<SerializerTestPayload>(bytes);
+        var result = MessageSerializer.Deserialize<SerializerTestPayload>(bytes, cancellationToken: TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result!.Name.Should().Be("test");
@@ -124,8 +124,8 @@ public class MessageSerializerTests
             }
         };
 
-        var bytes = MessageSerializer.Serialize(original);
-        var result = MessageSerializer.Deserialize<SerializerTestContainer>(bytes!);
+        var bytes = MessageSerializer.Serialize(original, cancellationToken: TestContext.Current.CancellationToken);
+        var result = MessageSerializer.Deserialize<SerializerTestContainer>(bytes!, cancellationToken: TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result!.Id.Should().Be("container-1");
@@ -140,8 +140,8 @@ public class MessageSerializerTests
     public void RoundTrip_List_PreservesElements()
     {
         var original = new List<int> { 1, 2, 3, 4, 5 };
-        var bytes = MessageSerializer.Serialize(original);
-        var result = MessageSerializer.Deserialize<List<int>>(bytes!);
+        var bytes = MessageSerializer.Serialize(original, cancellationToken: TestContext.Current.CancellationToken);
+        var result = MessageSerializer.Deserialize<List<int>>(bytes!, cancellationToken: TestContext.Current.CancellationToken);
 
         result.Should().BeEquivalentTo(original);
     }
@@ -156,8 +156,8 @@ public class MessageSerializerTests
             ["gamma"] = 3
         };
 
-        var bytes = MessageSerializer.Serialize(original);
-        var result = MessageSerializer.Deserialize<Dictionary<string, int>>(bytes!);
+        var bytes = MessageSerializer.Serialize(original, cancellationToken: TestContext.Current.CancellationToken);
+        var result = MessageSerializer.Deserialize<Dictionary<string, int>>(bytes!, cancellationToken: TestContext.Current.CancellationToken);
 
         result.Should().BeEquivalentTo(original);
     }
@@ -168,7 +168,7 @@ public class MessageSerializerTests
     public void Serialize_ProducesNonEmptyBytes()
     {
         var original = "A string to serialize";
-        var bytes = MessageSerializer.Serialize(original);
+        var bytes = MessageSerializer.Serialize(original, cancellationToken: TestContext.Current.CancellationToken);
 
         bytes.Should().NotBeNull();
         bytes!.Length.Should().BeGreaterThan(0);

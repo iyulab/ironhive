@@ -59,9 +59,7 @@ public class RateLimitMiddlewareTests : IDisposable
         });
         var agent = CreateMockAgent();
 
-        var result = await sut.InvokeAsync(
-            agent, [],
-            null, (_, _) => Task.FromResult(s_okResponse));
+        var result = await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse), TestContext.Current.CancellationToken);
 
         result.Should().BeSameAs(s_okResponse);
     }
@@ -78,9 +76,7 @@ public class RateLimitMiddlewareTests : IDisposable
 
         for (var i = 0; i < 3; i++)
         {
-            var result = await sut.InvokeAsync(
-                agent, [],
-                null, (_, _) => Task.FromResult(s_okResponse));
+            var result = await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse), TestContext.Current.CancellationToken);
             result.Should().BeSameAs(s_okResponse);
         }
     }
@@ -91,9 +87,7 @@ public class RateLimitMiddlewareTests : IDisposable
         var sut = CreateSut(10, TimeSpan.FromMinutes(1));
         var agent = CreateMockAgent();
 
-        var result = await sut.InvokeAsync(
-            agent, [],
-            null, (_, _) => Task.FromResult(s_okResponse));
+        var result = await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse), TestContext.Current.CancellationToken);
 
         result.Should().BeSameAs(s_okResponse);
     }
@@ -114,10 +108,10 @@ public class RateLimitMiddlewareTests : IDisposable
 
         sut.CurrentRequestCount.Should().Be(0);
 
-        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse));
+        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse), TestContext.Current.CancellationToken);
         sut.CurrentRequestCount.Should().Be(1);
 
-        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse));
+        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse), TestContext.Current.CancellationToken);
         sut.CurrentRequestCount.Should().Be(2);
     }
 
@@ -131,10 +125,10 @@ public class RateLimitMiddlewareTests : IDisposable
         });
         var agent = CreateMockAgent();
 
-        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse));
+        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse), TestContext.Current.CancellationToken);
         sut.CurrentRequestCount.Should().Be(1);
 
-        await Task.Delay(100);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
 
         sut.CurrentRequestCount.Should().Be(0);
     }
@@ -154,14 +148,12 @@ public class RateLimitMiddlewareTests : IDisposable
         var agent = CreateMockAgent();
 
         // Fill the limit
-        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse));
-        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse));
+        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse), TestContext.Current.CancellationToken);
+        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse), TestContext.Current.CancellationToken);
 
         // Third request should wait and then succeed
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        var result = await sut.InvokeAsync(
-            agent, [],
-            null, (_, _) => Task.FromResult(s_okResponse));
+        var result = await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse), TestContext.Current.CancellationToken);
         sw.Stop();
 
         result.Should().BeSameAs(s_okResponse);
@@ -186,10 +178,10 @@ public class RateLimitMiddlewareTests : IDisposable
         var agent = CreateMockAgent("limited-agent");
 
         // Fill the limit
-        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse));
+        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse), TestContext.Current.CancellationToken);
 
         // Second request triggers rate limiting
-        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse));
+        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse), TestContext.Current.CancellationToken);
 
         rateLimitedAgent.Should().Be("limited-agent");
         waitDuration.Should().NotBeNull();
@@ -211,7 +203,7 @@ public class RateLimitMiddlewareTests : IDisposable
         var agent = CreateMockAgent();
 
         // Fill the limit
-        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse));
+        await sut.InvokeAsync(agent, [], null, (_, _) => Task.FromResult(s_okResponse), TestContext.Current.CancellationToken);
 
         // Cancel while waiting for slot
         using var cts = new CancellationTokenSource(50);

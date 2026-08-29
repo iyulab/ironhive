@@ -60,8 +60,8 @@ public class LocalVectorStorageTests : IDisposable
         };
 
         // Act
-        await _storage.CreateCollectionAsync(collection);
-        var exists = await _storage.CollectionExistsAsync("test_collection");
+        await _storage.CreateCollectionAsync(collection, TestContext.Current.CancellationToken);
+        var exists = await _storage.CollectionExistsAsync("test_collection", TestContext.Current.CancellationToken);
 
         // Assert
         exists.Should().BeTrue();
@@ -71,7 +71,7 @@ public class LocalVectorStorageTests : IDisposable
     public async Task CollectionExistsAsync_ShouldReturnFalse_WhenNotExists()
     {
         // Act
-        var exists = await _storage.CollectionExistsAsync("nonexistent_collection");
+        var exists = await _storage.CollectionExistsAsync("nonexistent_collection", TestContext.Current.CancellationToken);
 
         // Assert
         exists.Should().BeFalse();
@@ -88,10 +88,10 @@ public class LocalVectorStorageTests : IDisposable
             EmbeddingProvider = "openai",
             EmbeddingModel = "text-embedding-ada-002"
         };
-        await _storage.CreateCollectionAsync(collection);
+        await _storage.CreateCollectionAsync(collection, TestContext.Current.CancellationToken);
 
         // Act
-        var info = await _storage.GetCollectionInfoAsync("info_test");
+        var info = await _storage.GetCollectionInfoAsync("info_test", TestContext.Current.CancellationToken);
 
         // Assert
         info.Should().NotBeNull();
@@ -105,7 +105,7 @@ public class LocalVectorStorageTests : IDisposable
     public async Task GetCollectionInfoAsync_ShouldReturnNull_WhenNotExists()
     {
         // Act
-        var info = await _storage.GetCollectionInfoAsync("nonexistent");
+        var info = await _storage.GetCollectionInfoAsync("nonexistent", TestContext.Current.CancellationToken);
 
         // Assert
         info.Should().BeNull();
@@ -121,17 +121,17 @@ public class LocalVectorStorageTests : IDisposable
             Dimensions = 384,
             EmbeddingProvider = "openai",
             EmbeddingModel = "model-a"
-        });
+        }, TestContext.Current.CancellationToken);
         await _storage.CreateCollectionAsync(new VectorCollectionInfo
         {
             Name = "collection_b",
             Dimensions = 768,
             EmbeddingProvider = "anthropic",
             EmbeddingModel = "model-b"
-        });
+        }, TestContext.Current.CancellationToken);
 
         // Act
-        var collections = (await _storage.ListCollectionsAsync()).ToList();
+        var collections = (await _storage.ListCollectionsAsync(TestContext.Current.CancellationToken)).ToList();
 
         // Assert
         collections.Should().HaveCount(2);
@@ -149,11 +149,11 @@ public class LocalVectorStorageTests : IDisposable
             Dimensions = 384,
             EmbeddingProvider = "openai",
             EmbeddingModel = "model"
-        });
+        }, TestContext.Current.CancellationToken);
 
         // Act
-        await _storage.DeleteCollectionAsync("to_delete");
-        var exists = await _storage.CollectionExistsAsync("to_delete");
+        await _storage.DeleteCollectionAsync("to_delete", TestContext.Current.CancellationToken);
+        var exists = await _storage.CollectionExistsAsync("to_delete", TestContext.Current.CancellationToken);
 
         // Assert
         exists.Should().BeFalse();
@@ -176,8 +176,8 @@ public class LocalVectorStorageTests : IDisposable
         };
 
         // Act
-        await _storage.CreateCollectionAsync(collection);
-        var exists = await _storage.CollectionExistsAsync("mycollection");
+        await _storage.CreateCollectionAsync(collection, TestContext.Current.CancellationToken);
+        var exists = await _storage.CollectionExistsAsync("mycollection", TestContext.Current.CancellationToken);
 
         // Assert
         exists.Should().BeTrue();
@@ -262,8 +262,8 @@ public class LocalVectorStorageTests : IDisposable
         };
 
         // Act
-        await _storage.UpsertVectorsAsync("vectors_test", vectors);
-        var found = (await _storage.FindVectorsAsync("vectors_test", filter: new VectorRecordFilter(vectorIds: ["vec-1"]))).ToList();
+        await _storage.UpsertVectorsAsync("vectors_test", vectors, TestContext.Current.CancellationToken);
+        var found = (await _storage.FindVectorsAsync("vectors_test", filter: new VectorRecordFilter(vectorIds: ["vec-1"]), cancellationToken: TestContext.Current.CancellationToken)).ToList();
 
         // Assert
         found.Should().HaveCount(1);
@@ -284,7 +284,7 @@ public class LocalVectorStorageTests : IDisposable
             Vectors = [0.1f, 0.2f, 0.3f, 0.4f],
             Payload = new Dictionary<string, object?> { ["version"] = 1 }
         };
-        await _storage.UpsertVectorsAsync("upsert_test", [initialVector]);
+        await _storage.UpsertVectorsAsync("upsert_test", [initialVector], TestContext.Current.CancellationToken);
 
         var updatedVector = new VectorRecord
         {
@@ -295,8 +295,8 @@ public class LocalVectorStorageTests : IDisposable
         };
 
         // Act
-        await _storage.UpsertVectorsAsync("upsert_test", [updatedVector]);
-        var found = (await _storage.FindVectorsAsync("upsert_test", filter: new VectorRecordFilter(vectorIds: ["vec-1"]))).ToList();
+        await _storage.UpsertVectorsAsync("upsert_test", [updatedVector], TestContext.Current.CancellationToken);
+        var found = (await _storage.FindVectorsAsync("upsert_test", filter: new VectorRecordFilter(vectorIds: ["vec-1"]), cancellationToken: TestContext.Current.CancellationToken)).ToList();
 
         // Assert
         found.Should().HaveCount(1);
@@ -319,12 +319,12 @@ public class LocalVectorStorageTests : IDisposable
                 Payload = new Dictionary<string, object?>()
             }
         };
-        await _storage.UpsertVectorsAsync("delete_test", vectors);
+        await _storage.UpsertVectorsAsync("delete_test", vectors, TestContext.Current.CancellationToken);
 
         // Act
-        await _storage.DeleteVectorsAsync("delete_test", new VectorRecordFilter(vectorIds: ["vec-to-delete"]));
+        await _storage.DeleteVectorsAsync("delete_test", new VectorRecordFilter(vectorIds: ["vec-to-delete"]), TestContext.Current.CancellationToken);
 
-        var found = (await _storage.FindVectorsAsync("delete_test", filter: new VectorRecordFilter(vectorIds: ["vec-to-delete"]))).ToList();
+        var found = (await _storage.FindVectorsAsync("delete_test", filter: new VectorRecordFilter(vectorIds: ["vec-to-delete"]), cancellationToken: TestContext.Current.CancellationToken)).ToList();
 
         // Assert
         found.Should().BeEmpty();
@@ -342,10 +342,10 @@ public class LocalVectorStorageTests : IDisposable
             new() { VectorId = "vec-2", SourceId = "doc-1", Vectors = [0.2f, 0.3f, 0.4f, 0.5f], Payload = new Dictionary<string, object?>() },
             new() { VectorId = "vec-3", SourceId = "doc-2", Vectors = [0.3f, 0.4f, 0.5f, 0.6f], Payload = new Dictionary<string, object?>() }
         };
-        await _storage.UpsertVectorsAsync("find_source_test", vectors);
+        await _storage.UpsertVectorsAsync("find_source_test", vectors, TestContext.Current.CancellationToken);
 
         // Act
-        var found = (await _storage.FindVectorsAsync("find_source_test", filter: new VectorRecordFilter(sourceIds: ["doc-1"]))).ToList();
+        var found = (await _storage.FindVectorsAsync("find_source_test", filter: new VectorRecordFilter(sourceIds: ["doc-1"]), cancellationToken: TestContext.Current.CancellationToken)).ToList();
 
         // Assert
         found.Should().HaveCount(2);
@@ -368,12 +368,12 @@ public class LocalVectorStorageTests : IDisposable
             new() { VectorId = "vec-2", SourceId = "doc-2", Vectors = [0.0f, 1.0f, 0.0f, 0.0f], Payload = new Dictionary<string, object?>() },
             new() { VectorId = "vec-3", SourceId = "doc-3", Vectors = [0.9f, 0.1f, 0.0f, 0.0f], Payload = new Dictionary<string, object?>() }
         };
-        await _storage.UpsertVectorsAsync("search_test", vectors);
+        await _storage.UpsertVectorsAsync("search_test", vectors, TestContext.Current.CancellationToken);
 
         var queryVector = new float[] { 1.0f, 0.0f, 0.0f, 0.0f };
 
         // Act
-        var results = (await _storage.SearchVectorsAsync("search_test", queryVector, limit: 3)).ToList();
+        var results = (await _storage.SearchVectorsAsync("search_test", queryVector, limit: 3, cancellationToken: TestContext.Current.CancellationToken)).ToList();
 
         // Assert
         results.Should().NotBeEmpty();
@@ -393,12 +393,12 @@ public class LocalVectorStorageTests : IDisposable
             Vectors = [i * 0.1f, 0.0f, 0.0f, 0.0f],
             Payload = new Dictionary<string, object?>()
         }).ToList();
-        await _storage.UpsertVectorsAsync("limit_test", vectors);
+        await _storage.UpsertVectorsAsync("limit_test", vectors, TestContext.Current.CancellationToken);
 
         var queryVector = new float[] { 1.0f, 0.0f, 0.0f, 0.0f };
 
         // Act
-        var results = (await _storage.SearchVectorsAsync("limit_test", queryVector, limit: 3)).ToList();
+        var results = (await _storage.SearchVectorsAsync("limit_test", queryVector, limit: 3, cancellationToken: TestContext.Current.CancellationToken)).ToList();
 
         // Assert
         results.Should().HaveCount(3);
@@ -415,12 +415,12 @@ public class LocalVectorStorageTests : IDisposable
             new() { VectorId = "similar", SourceId = "doc-1", Vectors = [0.9f, 0.1f, 0.0f, 0.0f], Payload = new Dictionary<string, object?>() },
             new() { VectorId = "different", SourceId = "doc-2", Vectors = [0.0f, 0.0f, 1.0f, 0.0f], Payload = new Dictionary<string, object?>() }
         };
-        await _storage.UpsertVectorsAsync("minscore_test", vectors);
+        await _storage.UpsertVectorsAsync("minscore_test", vectors, TestContext.Current.CancellationToken);
 
         var queryVector = new float[] { 1.0f, 0.0f, 0.0f, 0.0f };
 
         // Act
-        var results = (await _storage.SearchVectorsAsync("minscore_test", queryVector, minScore: 0.7f)).ToList();
+        var results = (await _storage.SearchVectorsAsync("minscore_test", queryVector, minScore: 0.7f, cancellationToken: TestContext.Current.CancellationToken)).ToList();
 
         // Assert
         // Only the similar vector should pass the minScore threshold

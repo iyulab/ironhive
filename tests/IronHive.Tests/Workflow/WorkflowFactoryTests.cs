@@ -192,7 +192,7 @@ public class WorkflowFactoryTests
 
         var workflow = factory.CreateFrom<TestContext>(def);
         var ctx = new TestContext();
-        await workflow.RunAsync(ctx);
+        await workflow.RunAsync(ctx, Xunit.TestContext.Current.CancellationToken);
 
         ctx.Log.Should().Contain("executed");
     }

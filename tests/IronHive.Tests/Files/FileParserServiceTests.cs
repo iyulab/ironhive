@@ -16,7 +16,7 @@ public class FileParserServiceTests
         var service = new FileParserService();
 
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            service.ParseAsync("file.txt", null!));
+            service.ParseAsync("file.txt", null!, TestContext.Current.CancellationToken));
     }
 
     [Theory]
@@ -28,7 +28,7 @@ public class FileParserServiceTests
         var service = new FileParserService();
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            service.ParseAsync(fileName!, new MemoryStream()));
+            service.ParseAsync(fileName!, new MemoryStream(), TestContext.Current.CancellationToken));
     }
 
     // --- ParseAsync with matching parser ---
@@ -44,7 +44,7 @@ public class FileParserServiceTests
 
         var service = new FileParserService([parser]);
 
-        var result = await service.ParseAsync("doc.pdf", new MemoryStream());
+        var result = await service.ParseAsync("doc.pdf", new MemoryStream(), TestContext.Current.CancellationToken);
 
         result.Should().BeSameAs(expected);
     }
@@ -58,7 +58,7 @@ public class FileParserServiceTests
 
         var service = new FileParserService();
 
-        var result = await service.ParseAsync("readme.unknown", stream);
+        var result = await service.ParseAsync("readme.unknown", stream, TestContext.Current.CancellationToken);
 
         result.Should().ContainSingle()
             .Which.Should().BeOfType<TextBlock>()
@@ -73,7 +73,7 @@ public class FileParserServiceTests
 
         var service = new FileParserService();
 
-        var result = await service.ParseAsync("file.bin", stream);
+        var result = await service.ParseAsync("file.bin", stream, TestContext.Current.CancellationToken);
 
         result.Should().ContainSingle()
             .Which.Should().BeOfType<BinaryBlock>();
@@ -97,7 +97,7 @@ public class FileParserServiceTests
         var stream = new MemoryStream(new byte[] { 1, 2, 3 });
         stream.Position = 2;
 
-        await service.ParseAsync("file.txt", stream);
+        await service.ParseAsync("file.txt", stream, TestContext.Current.CancellationToken);
 
         positionOnParse.Should().Be(0);
     }

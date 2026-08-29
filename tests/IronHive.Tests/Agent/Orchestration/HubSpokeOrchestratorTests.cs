@@ -17,7 +17,7 @@ public class HubSpokeOrchestratorTests
         var orch = new HubSpokeOrchestrator();
         orch.AddSpokeAgent(new MockAgent("spoke1") { ResponseFunc = _ => "ok" });
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("hello"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("hello"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().Contain("Hub agent is not set");
@@ -29,7 +29,7 @@ public class HubSpokeOrchestratorTests
         var orch = new HubSpokeOrchestrator();
         orch.SetHubAgent(new MockAgent("hub") { ResponseFunc = _ => "{\"complete\": true}" });
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("hello"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("hello"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().Contain("No spoke agents");
@@ -45,7 +45,7 @@ public class HubSpokeOrchestratorTests
         orch.SetHubAgent(hub);
         orch.AddSpokeAgent(spoke);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         // Only hub step, no spoke execution
@@ -83,7 +83,7 @@ public class HubSpokeOrchestratorTests
         orch.SetHubAgent(hub);
         orch.AddSpokeAgent(worker);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         spokeExecuted.Should().BeTrue();
@@ -139,7 +139,7 @@ public class HubSpokeOrchestratorTests
         orch.AddSpokeAgent(analyst);
         orch.AddSpokeAgent(writer);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         executedAgents.Should().Contain("analyst");
@@ -173,7 +173,7 @@ public class HubSpokeOrchestratorTests
         orch.SetHubAgent(hub);
         orch.AddSpokeAgent(spoke);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.Steps.Should().Contain(s => s.AgentName == "nonexistent" && !s.IsSuccess);
@@ -200,7 +200,7 @@ public class HubSpokeOrchestratorTests
         orch.SetHubAgent(hub);
         orch.AddSpokeAgent(worker);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         // 2 rounds: hub + spoke per round = 4 steps
@@ -224,7 +224,7 @@ public class HubSpokeOrchestratorTests
         orch.SetHubAgent(hub);
         orch.AddSpokeAgent(spoke);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeFalse();
         result.Steps.Should().HaveCount(1);
@@ -249,7 +249,7 @@ public class HubSpokeOrchestratorTests
         orch.SetHubAgent(hub);
         orch.AddSpokeAgent(spoke);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         // Invalid JSON is treated as a parse failure
         result.IsSuccess.Should().BeFalse();
@@ -281,7 +281,7 @@ public class HubSpokeOrchestratorTests
         orch.SetHubAgent(hub);
         orch.AddSpokeAgent(worker);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         // Steps: hub(round1) + spoke(worker) + hub(round2)
@@ -305,7 +305,7 @@ public class HubSpokeOrchestratorTests
         orch.SetHubAgent(hub);
         orch.AddSpokeAgent(spoke);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().Contain("Failed to parse hub response JSON");
@@ -336,7 +336,7 @@ public class HubSpokeOrchestratorTests
         orch.SetHubAgent(hub);
         orch.AddSpokeAgent(worker);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.TokenUsage.Should().NotBeNull();
@@ -361,7 +361,7 @@ public class HubSpokeOrchestratorTests
         orch.AddSpokeAgent(spoke);
 
         var events = new List<OrchestrationStreamEvent>();
-        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("input")))
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken))
         {
             events.Add(evt);
         }
@@ -389,7 +389,7 @@ public class HubSpokeOrchestratorTests
         orch.AddSpokeAgent(spoke);
 
         var events = new List<OrchestrationStreamEvent>();
-        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("input")))
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken))
         {
             events.Add(evt);
         }
@@ -418,11 +418,11 @@ public class HubSpokeOrchestratorTests
         orch.SetHubAgent(hub);
         orch.AddSpokeAgent(spoke);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("test"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("test"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
 
-        var checkpoint = await store.LoadAsync("hs-chk-1");
+        var checkpoint = await store.LoadAsync("hs-chk-1", TestContext.Current.CancellationToken);
         checkpoint.Should().BeNull();
     }
 
@@ -444,11 +444,11 @@ public class HubSpokeOrchestratorTests
         orch.SetHubAgent(hub);
         orch.AddSpokeAgent(spoke);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("test"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("test"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeFalse();
 
-        var checkpoint = await store.LoadAsync("hs-chk-2");
+        var checkpoint = await store.LoadAsync("hs-chk-2", TestContext.Current.CancellationToken);
         checkpoint.Should().NotBeNull();
     }
 
@@ -507,7 +507,7 @@ public class HubSpokeOrchestratorTests
             ],
             CurrentMessages = MakeUserMessages("test").ToList()
         };
-        await store.SaveAsync("hs-resume-1", existingCheckpoint);
+        await store.SaveAsync("hs-resume-1", existingCheckpoint, TestContext.Current.CancellationToken);
 
         var orch = new HubSpokeOrchestrator(new HubSpokeOrchestratorOptions
         {
@@ -517,7 +517,7 @@ public class HubSpokeOrchestratorTests
         orch.SetHubAgent(hub);
         orch.AddSpokeAgent(spoke);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("test"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("test"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         // Hub는 round 1부터 시작하므로 1번만 호출
@@ -546,13 +546,13 @@ public class HubSpokeOrchestratorTests
         orch.SetHubAgent(hub);
         orch.AddSpokeAgent(spoke);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("test"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("test"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().Contain("Approval denied");
         result.Error.Should().Contain("spoke");
 
-        var checkpoint = await store.LoadAsync("hs-approval-1");
+        var checkpoint = await store.LoadAsync("hs-approval-1", TestContext.Current.CancellationToken);
         checkpoint.Should().NotBeNull();
     }
 
@@ -577,7 +577,7 @@ public class HubSpokeOrchestratorTests
         orch.SetHubAgent(hub);
         orch.AddSpokeAgent(spoke);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().Contain("nonexistent");
@@ -607,7 +607,7 @@ public class HubSpokeOrchestratorTests
         orch.SetHubAgent(hub);
         orch.AddSpokeAgent(spoke);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.Steps.Should().Contain(s => s.AgentName == "nonexistent" && !s.IsSuccess);

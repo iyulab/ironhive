@@ -219,7 +219,7 @@ public class WorkflowBuilderTests
             .Build();
 
         var context = new TestContext();
-        await workflow.RunAsync(context);
+        await workflow.RunAsync(context, Xunit.TestContext.Current.CancellationToken);
 
         context.Log.Should().HaveCount(2);
     }

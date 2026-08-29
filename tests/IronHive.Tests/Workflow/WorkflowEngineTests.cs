@@ -23,7 +23,7 @@ public class WorkflowEngineTests
             new TaskNode { Id = "n3", Step = "step3" });
 
         var ctx = new TestContext();
-        await engine.RunAsync(ctx);
+        await engine.RunAsync(ctx, Xunit.TestContext.Current.CancellationToken);
 
         ctx.Log.Should().Equal("A", "B", "C");
     }
@@ -34,7 +34,7 @@ public class WorkflowEngineTests
         var engine = CreateEngine(new Dictionary<string, IWorkflowStep>());
 
         var ctx = new TestContext();
-        await engine.RunAsync(ctx);
+        await engine.RunAsync(ctx, Xunit.TestContext.Current.CancellationToken);
 
         ctx.Log.Should().BeEmpty();
     }
@@ -50,7 +50,7 @@ public class WorkflowEngineTests
         engine.Progressed += (_, e) => events.Add(e.Type);
 
         var ctx = new TestContext();
-        await engine.RunAsync(ctx);
+        await engine.RunAsync(ctx, Xunit.TestContext.Current.CancellationToken);
 
         events.Should().Contain(WorkflowProgressType.Failed);
     }
@@ -72,7 +72,7 @@ public class WorkflowEngineTests
         var events = new List<WorkflowProgressType>();
         engine.Progressed += (_, e) => events.Add(e.Type);
 
-        await engine.RunAsync(new TestContext());
+        await engine.RunAsync(new TestContext(), Xunit.TestContext.Current.CancellationToken);
 
         events.First().Should().Be(WorkflowProgressType.Started);
         events.Last().Should().Be(WorkflowProgressType.Completed);
@@ -96,7 +96,7 @@ public class WorkflowEngineTests
                 progressEvents.Add(e);
         };
 
-        await engine.RunAsync(new TestContext());
+        await engine.RunAsync(new TestContext(), Xunit.TestContext.Current.CancellationToken);
 
         progressEvents.Should().HaveCount(2); // before and after execution
         progressEvents[0].NodeId.Should().Be("myNode");
@@ -124,7 +124,7 @@ public class WorkflowEngineTests
                 failedEvents.Add(e);
         };
 
-        await engine.RunAsync(new TestContext());
+        await engine.RunAsync(new TestContext(), Xunit.TestContext.Current.CancellationToken);
 
         failedEvents.Should().HaveCount(1);
         failedEvents[0].Exception.Should().BeOfType<InvalidOperationException>();
@@ -143,7 +143,7 @@ public class WorkflowEngineTests
         var events = new List<WorkflowProgressType>();
         engine.Progressed += (_, e) => events.Add(e.Type);
 
-        await engine.RunAsync(new TestContext());
+        await engine.RunAsync(new TestContext(), Xunit.TestContext.Current.CancellationToken);
 
         events.Should().Contain(WorkflowProgressType.Failed);
     }
@@ -163,7 +163,7 @@ public class WorkflowEngineTests
             new TaskNode { Step = "step3" });
 
         var ctx = new TestContext();
-        await engine.RunAsync(ctx);
+        await engine.RunAsync(ctx, Xunit.TestContext.Current.CancellationToken);
 
         ctx.Log.Should().Equal("A"); // C should NOT be executed
     }
@@ -219,7 +219,7 @@ public class WorkflowEngineTests
             });
 
         var ctx = new TestContext { Value = 10 }; // > 5 → "high"
-        await engine.RunAsync(ctx);
+        await engine.RunAsync(ctx, Xunit.TestContext.Current.CancellationToken);
 
         ctx.Log.Should().Equal("HIGH");
     }
@@ -244,7 +244,7 @@ public class WorkflowEngineTests
             });
 
         var ctx = new TestContext();
-        await engine.RunAsync(ctx);
+        await engine.RunAsync(ctx, Xunit.TestContext.Current.CancellationToken);
 
         ctx.Log.Should().Equal("DEFAULT");
     }
@@ -269,7 +269,7 @@ public class WorkflowEngineTests
         var events = new List<WorkflowProgressType>();
         engine.Progressed += (_, e) => events.Add(e.Type);
 
-        await engine.RunAsync(new TestContext());
+        await engine.RunAsync(new TestContext(), Xunit.TestContext.Current.CancellationToken);
 
         events.Should().Contain(WorkflowProgressType.Failed);
     }
@@ -299,7 +299,7 @@ public class WorkflowEngineTests
             });
 
         var ctx = new TestContext();
-        await engine.RunAsync(ctx);
+        await engine.RunAsync(ctx, Xunit.TestContext.Current.CancellationToken);
 
         ctx.Log.Should().HaveCount(2);
         ctx.Log.Should().Contain("A");
@@ -327,7 +327,7 @@ public class WorkflowEngineTests
             });
 
         var ctx = new TestContext();
-        await engine.RunAsync(ctx);
+        await engine.RunAsync(ctx, Xunit.TestContext.Current.CancellationToken);
 
         ctx.Log.Should().Contain("FAST");
     }
@@ -352,7 +352,7 @@ public class WorkflowEngineTests
             });
 
         var ctx = new TestContext { Value = 0 };
-        await engine.RunAsync(ctx);
+        await engine.RunAsync(ctx, Xunit.TestContext.Current.CancellationToken);
 
         // With Copied context, each branch gets a clone, so the original is unchanged
         // (Clone happens via JSON serialization, the original ctx is not modified)
@@ -379,7 +379,7 @@ public class WorkflowEngineTests
             });
 
         var ctx = new TestContext { Value = 0 };
-        await engine.RunAsync(ctx);
+        await engine.RunAsync(ctx, Xunit.TestContext.Current.CancellationToken);
 
         // With Shared context, both branches modify the same context
         ctx.Value.Should().Be(2);
@@ -404,7 +404,7 @@ public class WorkflowEngineTests
             new TaskNode { Id = "n3", Step = "step3" });
 
         var ctx = new TestContext();
-        await engine.RunFromAsync("n2", ctx);
+        await engine.RunFromAsync("n2", ctx, Xunit.TestContext.Current.CancellationToken);
 
         ctx.Log.Should().Equal("B", "C"); // Skips n1
     }
@@ -453,7 +453,7 @@ public class WorkflowEngineTests
             });
 
         var ctx = new TestContext();
-        await engine.RunFromAsync("target", ctx);
+        await engine.RunFromAsync("target", ctx, Xunit.TestContext.Current.CancellationToken);
 
         ctx.Log.Should().Equal("INNER", "AFTER");
     }
@@ -483,7 +483,7 @@ public class WorkflowEngineTests
             });
 
         var ctx = new TestContext();
-        await engine.RunFromAsync("branch-b", ctx);
+        await engine.RunFromAsync("branch-b", ctx, Xunit.TestContext.Current.CancellationToken);
 
         // Should find branch-b and execute from there (only B in that sub-sequence)
         ctx.Log.Should().Contain("B");

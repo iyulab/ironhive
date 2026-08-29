@@ -31,7 +31,7 @@ public class FileCheckpointStoreTests : IDisposable
         var checkpoint = CreateCheckpoint("orch-1", "TestOrchestrator", 2);
 
         // Act
-        await _store.SaveAsync("orch-1", checkpoint);
+        await _store.SaveAsync("orch-1", checkpoint, TestContext.Current.CancellationToken);
 
         // Assert
         Directory.Exists(_testDir).Should().BeTrue();
@@ -45,8 +45,8 @@ public class FileCheckpointStoreTests : IDisposable
         var checkpoint = CreateCheckpoint("orch-2", "Sequential", 3);
 
         // Act
-        await _store.SaveAsync("orch-2", checkpoint);
-        var loaded = await _store.LoadAsync("orch-2");
+        await _store.SaveAsync("orch-2", checkpoint, TestContext.Current.CancellationToken);
+        var loaded = await _store.LoadAsync("orch-2", TestContext.Current.CancellationToken);
 
         // Assert
         loaded.Should().NotBeNull();
@@ -65,8 +65,8 @@ public class FileCheckpointStoreTests : IDisposable
         var checkpoint = CreateCheckpointWithMessages("orch-msg");
 
         // Act
-        await _store.SaveAsync("orch-msg", checkpoint);
-        var loaded = await _store.LoadAsync("orch-msg");
+        await _store.SaveAsync("orch-msg", checkpoint, TestContext.Current.CancellationToken);
+        var loaded = await _store.LoadAsync("orch-msg", TestContext.Current.CancellationToken);
 
         // Assert
         loaded.Should().NotBeNull();
@@ -84,7 +84,7 @@ public class FileCheckpointStoreTests : IDisposable
     [Fact]
     public async Task LoadAsync_ReturnsNull_WhenNotFound()
     {
-        var result = await _store.LoadAsync("nonexistent");
+        var result = await _store.LoadAsync("nonexistent", TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -94,13 +94,13 @@ public class FileCheckpointStoreTests : IDisposable
     {
         // Arrange
         var checkpoint = CreateCheckpoint("orch-del", "Test", 1);
-        await _store.SaveAsync("orch-del", checkpoint);
+        await _store.SaveAsync("orch-del", checkpoint, TestContext.Current.CancellationToken);
 
         // Act
-        await _store.DeleteAsync("orch-del");
+        await _store.DeleteAsync("orch-del", TestContext.Current.CancellationToken);
 
         // Assert
-        var loaded = await _store.LoadAsync("orch-del");
+        var loaded = await _store.LoadAsync("orch-del", TestContext.Current.CancellationToken);
         loaded.Should().BeNull();
         File.Exists(Path.Combine(_testDir, "orch-del.json")).Should().BeFalse();
     }
@@ -109,7 +109,7 @@ public class FileCheckpointStoreTests : IDisposable
     public async Task DeleteAsync_DoesNotThrow_WhenNotFound()
     {
         // Should not throw
-        await _store.DeleteAsync("nonexistent");
+        await _store.DeleteAsync("nonexistent", TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -120,9 +120,9 @@ public class FileCheckpointStoreTests : IDisposable
         var v2 = CreateCheckpoint("orch-ow", "Sequential", 5);
 
         // Act
-        await _store.SaveAsync("orch-ow", v1);
-        await _store.SaveAsync("orch-ow", v2);
-        var loaded = await _store.LoadAsync("orch-ow");
+        await _store.SaveAsync("orch-ow", v1, TestContext.Current.CancellationToken);
+        await _store.SaveAsync("orch-ow", v2, TestContext.Current.CancellationToken);
+        var loaded = await _store.LoadAsync("orch-ow", TestContext.Current.CancellationToken);
 
         // Assert
         loaded!.CompletedStepCount.Should().Be(5);
@@ -134,8 +134,8 @@ public class FileCheckpointStoreTests : IDisposable
         // IDs with path separators should be safely handled
         var checkpoint = CreateCheckpoint("path/to/something", "Test", 1);
 
-        await _store.SaveAsync("path/to/something", checkpoint);
-        var loaded = await _store.LoadAsync("path/to/something");
+        await _store.SaveAsync("path/to/something", checkpoint, TestContext.Current.CancellationToken);
+        var loaded = await _store.LoadAsync("path/to/something", TestContext.Current.CancellationToken);
 
         loaded.Should().NotBeNull();
         loaded!.OrchestrationId.Should().Be("path/to/something");
@@ -147,8 +147,8 @@ public class FileCheckpointStoreTests : IDisposable
         var longId = new string('a', 250);
         var checkpoint = CreateCheckpoint(longId, "Test", 1);
 
-        await _store.SaveAsync(longId, checkpoint);
-        var loaded = await _store.LoadAsync(longId);
+        await _store.SaveAsync(longId, checkpoint, TestContext.Current.CancellationToken);
+        var loaded = await _store.LoadAsync(longId, TestContext.Current.CancellationToken);
 
         loaded.Should().NotBeNull();
         loaded!.OrchestrationId.Should().Be(longId);
@@ -168,8 +168,8 @@ public class FileCheckpointStoreTests : IDisposable
         };
 
         // Act
-        await _store.SaveAsync("orch-ts", checkpoint);
-        var loaded = await _store.LoadAsync("orch-ts");
+        await _store.SaveAsync("orch-ts", checkpoint, TestContext.Current.CancellationToken);
+        var loaded = await _store.LoadAsync("orch-ts", TestContext.Current.CancellationToken);
 
         // Assert
         loaded!.CreatedAt.Should().Be(createdAt);
@@ -204,8 +204,8 @@ public class FileCheckpointStoreTests : IDisposable
         };
 
         // Act
-        await _store.SaveAsync("orch-step", checkpoint);
-        var loaded = await _store.LoadAsync("orch-step");
+        await _store.SaveAsync("orch-step", checkpoint, TestContext.Current.CancellationToken);
+        var loaded = await _store.LoadAsync("orch-step", TestContext.Current.CancellationToken);
 
         // Assert
         loaded!.CompletedSteps.Should().HaveCount(1);

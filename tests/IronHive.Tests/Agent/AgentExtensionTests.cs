@@ -65,7 +65,7 @@ public class AgentExtensionTests
             });
 
         var wrappedAgent = innerAgent.WithMiddleware(middleware);
-        await wrappedAgent.InvokeAsync(Array.Empty<Message>());
+        await wrappedAgent.InvokeAsync(Array.Empty<Message>(), cancellationToken: TestContext.Current.CancellationToken);
 
         middlewareInvoked.Should().BeTrue();
     }
@@ -88,7 +88,7 @@ public class AgentExtensionTests
                 }
             });
 
-        var result = await innerAgent.InvokeAsync("안녕");
+        var result = await innerAgent.InvokeAsync("안녕", cancellationToken: TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         capturedMsgs.Should().NotBeNull();
@@ -109,7 +109,7 @@ public class AgentExtensionTests
                 Arg.Any<AgentInvokeOptions?>(), Arg.Any<CancellationToken>())
             .Returns(AsyncEnumerable.Empty<StreamingMessageResponse>());
 
-        await foreach (var _ in innerAgent.InvokeStreamingAsync("안녕")) { }
+        await foreach (var _ in innerAgent.InvokeStreamingAsync("안녕", cancellationToken: TestContext.Current.CancellationToken)) { }
 
         capturedMsgs.Should().NotBeNull();
         var msgList = capturedMsgs!.ToList();

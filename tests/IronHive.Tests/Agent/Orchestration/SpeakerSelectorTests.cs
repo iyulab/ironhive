@@ -17,10 +17,7 @@ public class SpeakerSelectorTests
     {
         var selector = new RoundRobinSpeakerSelector();
 
-        var result = await selector.SelectNextSpeakerAsync(
-            Array.Empty<AgentStepResult>(),
-            Array.Empty<Message>(),
-            Array.Empty<IAgent>());
+        var result = await selector.SelectNextSpeakerAsync(Array.Empty<AgentStepResult>(), Array.Empty<Message>(), Array.Empty<IAgent>(), TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -33,10 +30,7 @@ public class SpeakerSelectorTests
 
         for (int i = 0; i < 5; i++)
         {
-            var result = await selector.SelectNextSpeakerAsync(
-                Array.Empty<AgentStepResult>(),
-                Array.Empty<Message>(),
-                agents);
+            var result = await selector.SelectNextSpeakerAsync(Array.Empty<AgentStepResult>(), Array.Empty<Message>(), agents, TestContext.Current.CancellationToken);
 
             result.Should().Be("only");
         }
@@ -51,10 +45,7 @@ public class SpeakerSelectorTests
 
         for (int i = 0; i < 6; i++)
         {
-            selected.Add(await selector.SelectNextSpeakerAsync(
-                Array.Empty<AgentStepResult>(),
-                Array.Empty<Message>(),
-                agents));
+            selected.Add(await selector.SelectNextSpeakerAsync(Array.Empty<AgentStepResult>(), Array.Empty<Message>(), agents, TestContext.Current.CancellationToken));
         }
 
         selected.Should().Equal("a", "b", "c", "a", "b", "c");
@@ -69,10 +60,7 @@ public class SpeakerSelectorTests
     {
         var selector = new RandomSpeakerSelector();
 
-        var result = await selector.SelectNextSpeakerAsync(
-            Array.Empty<AgentStepResult>(),
-            Array.Empty<Message>(),
-            Array.Empty<IAgent>());
+        var result = await selector.SelectNextSpeakerAsync(Array.Empty<AgentStepResult>(), Array.Empty<Message>(), Array.Empty<IAgent>(), TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -85,10 +73,7 @@ public class SpeakerSelectorTests
 
         for (int i = 0; i < 10; i++)
         {
-            var result = await selector.SelectNextSpeakerAsync(
-                Array.Empty<AgentStepResult>(),
-                Array.Empty<Message>(),
-                agents);
+            var result = await selector.SelectNextSpeakerAsync(Array.Empty<AgentStepResult>(), Array.Empty<Message>(), agents, TestContext.Current.CancellationToken);
 
             result.Should().Be("only");
         }
@@ -103,10 +88,7 @@ public class SpeakerSelectorTests
 
         for (int i = 0; i < 20; i++)
         {
-            var result = await selector.SelectNextSpeakerAsync(
-                Array.Empty<AgentStepResult>(),
-                Array.Empty<Message>(),
-                agents);
+            var result = await selector.SelectNextSpeakerAsync(Array.Empty<AgentStepResult>(), Array.Empty<Message>(), agents, TestContext.Current.CancellationToken);
 
             result.Should().BeOneOf(validNames);
         }
@@ -122,10 +104,7 @@ public class SpeakerSelectorTests
         var manager = Substitute.For<IAgent>();
         var selector = new LlmSpeakerSelector(manager);
 
-        var result = await selector.SelectNextSpeakerAsync(
-            Array.Empty<AgentStepResult>(),
-            Array.Empty<Message>(),
-            Array.Empty<IAgent>());
+        var result = await selector.SelectNextSpeakerAsync(Array.Empty<AgentStepResult>(), Array.Empty<Message>(), Array.Empty<IAgent>(), TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -137,10 +116,7 @@ public class SpeakerSelectorTests
         var selector = new LlmSpeakerSelector(manager);
         var agents = MakeAgents("writer", "editor");
 
-        var result = await selector.SelectNextSpeakerAsync(
-            Array.Empty<AgentStepResult>(),
-            Array.Empty<Message>(),
-            agents);
+        var result = await selector.SelectNextSpeakerAsync(Array.Empty<AgentStepResult>(), Array.Empty<Message>(), agents, TestContext.Current.CancellationToken);
 
         result.Should().Be("writer");
     }
@@ -152,10 +128,7 @@ public class SpeakerSelectorTests
         var selector = new LlmSpeakerSelector(manager);
         var agents = MakeAgents("writer", "editor");
 
-        var result = await selector.SelectNextSpeakerAsync(
-            Array.Empty<AgentStepResult>(),
-            Array.Empty<Message>(),
-            agents);
+        var result = await selector.SelectNextSpeakerAsync(Array.Empty<AgentStepResult>(), Array.Empty<Message>(), agents, TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -167,10 +140,7 @@ public class SpeakerSelectorTests
         var selector = new LlmSpeakerSelector(manager);
         var agents = MakeAgents("writer", "editor");
 
-        var result = await selector.SelectNextSpeakerAsync(
-            Array.Empty<AgentStepResult>(),
-            Array.Empty<Message>(),
-            agents);
+        var result = await selector.SelectNextSpeakerAsync(Array.Empty<AgentStepResult>(), Array.Empty<Message>(), agents, TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -182,10 +152,7 @@ public class SpeakerSelectorTests
         var selector = new LlmSpeakerSelector(manager);
         var agents = MakeAgents("writer", "editor");
 
-        var result = await selector.SelectNextSpeakerAsync(
-            Array.Empty<AgentStepResult>(),
-            Array.Empty<Message>(),
-            agents);
+        var result = await selector.SelectNextSpeakerAsync(Array.Empty<AgentStepResult>(), Array.Empty<Message>(), agents, TestContext.Current.CancellationToken);
 
         result.Should().Be("writer");
     }

@@ -47,7 +47,7 @@ public class EmbeddingServiceTests
         _generators["openai"] = _mockGenerator;
 
         // Act
-        var result = await _service.EmbedAsync("openai", "text-embedding-3-small", "Hello world");
+        var result = await _service.EmbedAsync("openai", "text-embedding-3-small", "Hello world", TestContext.Current.CancellationToken);
 
         // Assert
         result.Should().NotBeNull();
@@ -67,7 +67,7 @@ public class EmbeddingServiceTests
         _generators["openai"] = _mockGenerator;
 
         // Act
-        var result = await _service.EmbedAsync("openai", "text-embedding-ada-002", "test");
+        var result = await _service.EmbedAsync("openai", "text-embedding-ada-002", "test", TestContext.Current.CancellationToken);
 
         // Assert
         result.Should().HaveCount(1536);
@@ -108,7 +108,7 @@ public class EmbeddingServiceTests
         var inputs = new[] { "text1", "text2" };
 
         // Act
-        var result = await _service.EmbedBatchAsync("openai", "text-embedding-3-small", inputs);
+        var result = await _service.EmbedBatchAsync("openai", "text-embedding-3-small", inputs, TestContext.Current.CancellationToken);
 
         // Assert
         result.Should().NotBeNull();
@@ -135,7 +135,7 @@ public class EmbeddingServiceTests
         var inputs = new[] { "first", "second", "third" };
 
         // Act
-        var result = (await _service.EmbedBatchAsync("openai", "model", inputs)).ToList();
+        var result = (await _service.EmbedBatchAsync("openai", "model", inputs, TestContext.Current.CancellationToken)).ToList();
 
         // Assert
         result[0].Index.Should().Be(0);
@@ -170,7 +170,7 @@ public class EmbeddingServiceTests
         _generators["openai"] = _mockGenerator;
 
         // Act
-        var result = await _service.CountTokensAsync("openai", "text-embedding-3-small", "Hello world");
+        var result = await _service.CountTokensAsync("openai", "text-embedding-3-small", "Hello world", TestContext.Current.CancellationToken);
 
         // Assert
         result.Should().Be(2);
@@ -188,7 +188,7 @@ public class EmbeddingServiceTests
         _generators["openai"] = _mockGenerator;
 
         // Act
-        var result = await _service.CountTokensAsync("openai", "model", "");
+        var result = await _service.CountTokensAsync("openai", "model", "", TestContext.Current.CancellationToken);
 
         // Assert
         result.Should().Be(0);
@@ -229,7 +229,7 @@ public class EmbeddingServiceTests
         var inputs = new[] { "Hello", "Hello world" };
 
         // Act
-        var result = await _service.CountTokensBatchAsync("openai", "model", inputs);
+        var result = await _service.CountTokensBatchAsync("openai", "model", inputs, TestContext.Current.CancellationToken);
 
         // Assert
         result.Should().NotBeNull();

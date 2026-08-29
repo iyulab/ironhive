@@ -41,7 +41,7 @@ public class ModelServiceTests
     public async Task ListModelsAsync_NoProviders_ReturnsEmpty()
     {
         var service = CreateService();
-        var result = await service.ListModelsAsync();
+        var result = await service.ListModelsAsync(TestContext.Current.CancellationToken);
 
         result.Should().BeEmpty();
     }
@@ -55,7 +55,7 @@ public class ModelServiceTests
         _catalogs["openai"] = catalog;
 
         var service = CreateService();
-        var result = (await service.ListModelsAsync()).ToList();
+        var result = (await service.ListModelsAsync(TestContext.Current.CancellationToken)).ToList();
 
         result.Should().HaveCount(1);
         result[0].Provider.Should().Be("openai");
@@ -77,7 +77,7 @@ public class ModelServiceTests
         _catalogs["anthropic"] = catalog2;
 
         var service = CreateService();
-        var result = (await service.ListModelsAsync()).ToList();
+        var result = (await service.ListModelsAsync(TestContext.Current.CancellationToken)).ToList();
 
         result.Should().HaveCount(2);
         result.Select(r => r.Provider).Should().Contain(["openai", "anthropic"]);
@@ -92,7 +92,7 @@ public class ModelServiceTests
         _catalogs["bad-provider"] = catalog;
 
         var service = CreateService();
-        var result = (await service.ListModelsAsync()).ToList();
+        var result = (await service.ListModelsAsync(TestContext.Current.CancellationToken)).ToList();
 
         result.Should().HaveCount(1);
         result[0].Provider.Should().Be("bad-provider");
@@ -110,7 +110,7 @@ public class ModelServiceTests
         _catalogs["openai"] = catalog;
 
         var service = CreateService();
-        var result = await service.ListModelsAsync("openai");
+        var result = await service.ListModelsAsync("openai", TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result!.Provider.Should().Be("openai");
@@ -121,7 +121,7 @@ public class ModelServiceTests
     public async Task ListModelsAsync_ByProvider_UnknownProvider_ReturnsNull()
     {
         var service = CreateService();
-        var result = await service.ListModelsAsync("unknown");
+        var result = await service.ListModelsAsync("unknown", TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -137,7 +137,7 @@ public class ModelServiceTests
         _catalogs["openai"] = catalog;
 
         var service = CreateService();
-        var result = await service.FindModelAsync("openai", "gpt-4");
+        var result = await service.FindModelAsync("openai", "gpt-4", TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result!.ModelId.Should().Be("gpt-4");
@@ -147,7 +147,7 @@ public class ModelServiceTests
     public async Task FindModelAsync_UnknownProvider_ReturnsNull()
     {
         var service = CreateService();
-        var result = await service.FindModelAsync("missing", "any-model");
+        var result = await service.FindModelAsync("missing", "any-model", TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -161,7 +161,7 @@ public class ModelServiceTests
         _catalogs["openai"] = catalog;
 
         var service = CreateService();
-        var result = await service.FindModelAsync("openai", "nonexistent");
+        var result = await service.FindModelAsync("openai", "nonexistent", TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -178,7 +178,7 @@ public class ModelServiceTests
         _catalogs["openai"] = catalog;
 
         var service = CreateService();
-        var result = await service.FindModelAsync<SpecialModelCard>("openai", "special");
+        var result = await service.FindModelAsync<SpecialModelCard>("openai", "special", TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result!.ContextWindow.Should().Be(128000);
@@ -194,7 +194,7 @@ public class ModelServiceTests
         _catalogs["openai"] = catalog;
 
         var service = CreateService();
-        var result = await service.FindModelAsync<SpecialModelCard>("openai", "basic");
+        var result = await service.FindModelAsync<SpecialModelCard>("openai", "basic", TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }

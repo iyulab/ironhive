@@ -33,7 +33,7 @@ public class MessageServiceProviderResolutionTests
         var generators = new Dictionary<string, IMessageGenerator> { ["openai"] = generator };
         var svc = new MessageService(generators);
 
-        var result = await svc.GenerateMessageAsync(MakeRequest(provider: ""));
+        var result = await svc.GenerateMessageAsync(MakeRequest(provider: ""), TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.DoneReason.Should().Be(MessageDoneReason.EndTurn);

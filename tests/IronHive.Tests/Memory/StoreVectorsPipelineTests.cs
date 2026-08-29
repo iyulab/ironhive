@@ -26,7 +26,7 @@ public class StoreVectorsPipelineTests
         var context = CreateContext();
         _storages["test-storage"] = _mockVectorStorage;
 
-        var result = await _pipeline.ExecuteAsync(context);
+        var result = await _pipeline.ExecuteAsync(context, TestContext.Current.CancellationToken);
 
         result.IsError.Should().BeFalse();
     }
@@ -37,7 +37,7 @@ public class StoreVectorsPipelineTests
         var context = CreateContext();
         _storages["test-storage"] = _mockVectorStorage;
 
-        await _pipeline.ExecuteAsync(context);
+        await _pipeline.ExecuteAsync(context, TestContext.Current.CancellationToken);
 
         await _mockVectorStorage.Received(1).UpsertVectorsAsync(
             "test-collection",
@@ -56,7 +56,7 @@ public class StoreVectorsPipelineTests
         var context = CreateContext(vectors);
         _storages["test-storage"] = _mockVectorStorage;
 
-        await _pipeline.ExecuteAsync(context);
+        await _pipeline.ExecuteAsync(context, TestContext.Current.CancellationToken);
 
         await _mockVectorStorage.Received(1).UpsertVectorsAsync(
             "test-collection",
@@ -85,7 +85,7 @@ public class StoreVectorsPipelineTests
         var context = CreateContext();
         _storages["test-storage"] = _mockVectorStorage;
 
-        await _pipeline.ExecuteAsync(context);
+        await _pipeline.ExecuteAsync(context, TestContext.Current.CancellationToken);
 
         // Verify the mock vector storage was used (meaning the lookup succeeded)
         await _mockVectorStorage.Received(1).UpsertVectorsAsync(

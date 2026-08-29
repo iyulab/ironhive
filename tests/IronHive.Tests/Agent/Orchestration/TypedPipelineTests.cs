@@ -69,7 +69,7 @@ public class TypedPipelineTests
         var agent = new MockAgent("echo") { ResponseFunc = _ => "response-text" };
         var executor = CreateStringExecutor(agent);
 
-        var result = await executor.ExecuteAsync("hello");
+        var result = await executor.ExecuteAsync("hello", TestContext.Current.CancellationToken);
 
         result.Should().Be("response-text");
     }
@@ -90,7 +90,7 @@ public class TypedPipelineTests
         };
         var executor = CreateStringExecutor(agent);
 
-        await executor.ExecuteAsync("test-input");
+        await executor.ExecuteAsync("test-input", TestContext.Current.CancellationToken);
 
         receivedInput.Should().Be("test-input");
     }
@@ -107,7 +107,7 @@ public class TypedPipelineTests
         var pipeline = TypedPipeline.Start(executor).Build();
 
         pipeline.Name.Should().Be("first");
-        var result = await pipeline.ExecuteAsync(42);
+        var result = await pipeline.ExecuteAsync(42, TestContext.Current.CancellationToken);
         result.Should().Be("value:42");
     }
 
@@ -123,7 +123,7 @@ public class TypedPipelineTests
 
         var pipeline = TypedPipeline.Start(first).Then(second).Build();
 
-        var result = await pipeline.ExecuteAsync("5");
+        var result = await pipeline.ExecuteAsync("5", TestContext.Current.CancellationToken);
         result.Should().Be("result:10");
     }
 
@@ -140,7 +140,7 @@ public class TypedPipelineTests
             .Then(third)
             .Build();
 
-        var result = await pipeline.ExecuteAsync("hello");
+        var result = await pipeline.ExecuteAsync("hello", TestContext.Current.CancellationToken);
         result.Should().Be("7.5"); // "hello".Length=5, 5*1.5=7.5
     }
 
@@ -179,7 +179,7 @@ public class TypedPipelineTests
             .Then(formatter)
             .Build();
 
-        var result = await pipeline.ExecuteAsync("raw document text");
+        var result = await pipeline.ExecuteAsync("raw document text", TestContext.Current.CancellationToken);
         result.Should().Be("[summary]");
     }
 

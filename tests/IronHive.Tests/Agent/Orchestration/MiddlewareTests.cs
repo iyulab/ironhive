@@ -24,7 +24,7 @@ public class MiddlewareTests
         var agent = new MockAgent("a") { ResponseFunc = _ => { order.Add("agent"); return "result"; } };
         var wrapped = agent.WithMiddleware(middleware1, middleware2);
 
-        await wrapped.InvokeAsync(MakeUserMessages("go"));
+        await wrapped.InvokeAsync(MakeUserMessages("go"), cancellationToken: TestContext.Current.CancellationToken);
 
         order.Should().Equal("m1-before", "m2-before", "agent", "m2-after", "m1-after");
     }
@@ -46,7 +46,7 @@ public class MiddlewareTests
         };
 
         var wrapped = agent.WithMiddleware(middleware);
-        await wrapped.InvokeAsync(MakeUserMessages("hello"));
+        await wrapped.InvokeAsync(MakeUserMessages("hello"), cancellationToken: TestContext.Current.CancellationToken);
 
         receivedText.Should().Be("MODIFIED: hello");
     }
@@ -62,7 +62,7 @@ public class MiddlewareTests
         };
 
         var wrapped = agent.WithMiddleware(middleware);
-        var response = await wrapped.InvokeAsync(MakeUserMessages("go"));
+        var response = await wrapped.InvokeAsync(MakeUserMessages("go"), cancellationToken: TestContext.Current.CancellationToken);
 
         agentCalled.Should().BeFalse();
         GetText(response.Message!).Should().Be("short-circuited");
@@ -84,7 +84,7 @@ public class MiddlewareTests
         });
         orch.AddAgents([agent1, agent2]);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         // middleware wraps each agent call
@@ -124,7 +124,7 @@ public class MiddlewareTests
         var middleware = new RetryMiddleware(3);
         var wrapped = agent.WithMiddleware(middleware);
 
-        var response = await wrapped.InvokeAsync(MakeUserMessages("go"));
+        var response = await wrapped.InvokeAsync(MakeUserMessages("go"), cancellationToken: TestContext.Current.CancellationToken);
 
         callCount.Should().Be(1);
         GetText(response.Message!).Should().Be("success");
@@ -148,7 +148,7 @@ public class MiddlewareTests
         var agent = new MockAgent("test") { ResponseFunc = _ => { callCount++; return "success"; } };
         var wrapped = agent.WithMiddleware(middleware, failingMiddleware);
 
-        var response = await wrapped.InvokeAsync(MakeUserMessages("go"));
+        var response = await wrapped.InvokeAsync(MakeUserMessages("go"), cancellationToken: TestContext.Current.CancellationToken);
 
         callCount.Should().Be(1); // Only 1 successful call to agent
         failingMiddleware.CallCount.Should().Be(3); // Failed 2 times + 1 success
@@ -224,7 +224,7 @@ public class MiddlewareTests
         var agent = new MockAgent("TestAgent");
         var wrapped = agent.WithMiddleware(middleware);
 
-        await wrapped.InvokeAsync(MakeUserMessages("hello"));
+        await wrapped.InvokeAsync(MakeUserMessages("hello"), cancellationToken: TestContext.Current.CancellationToken);
 
         logs.Should().HaveCount(2);
         logs[0].Should().Contain("TestAgent").And.Contain("starting");
@@ -256,7 +256,7 @@ public class MiddlewareTests
         var agent = new MockAgent("TestAgent") { ResponseFunc = _ => "short response" };
         var wrapped = agent.WithMiddleware(middleware);
 
-        await wrapped.InvokeAsync(MakeUserMessages("hi"));
+        await wrapped.InvokeAsync(MakeUserMessages("hi"), cancellationToken: TestContext.Current.CancellationToken);
 
         logs[1].Should().Contain("tokens:");
     }
@@ -276,7 +276,7 @@ public class MiddlewareTests
         var agent = new MockAgent("TestAgent");
         var wrapped = agent.WithMiddleware(middleware);
 
-        await wrapped.InvokeAsync(MakeUserMessages("hello world"));
+        await wrapped.InvokeAsync(MakeUserMessages("hello world"), cancellationToken: TestContext.Current.CancellationToken);
 
         logs[0].Should().Contain("[MyApp]");
         logs[0].Should().NotContain("hello world");
@@ -289,7 +289,7 @@ public class MiddlewareTests
         var agent = new MockAgent("TestAgent");
         var wrapped = agent.WithMiddleware(middleware);
 
-        var response = await wrapped.InvokeAsync(MakeUserMessages("go"));
+        var response = await wrapped.InvokeAsync(MakeUserMessages("go"), cancellationToken: TestContext.Current.CancellationToken);
 
         GetText(response.Message!).Should().NotBeEmpty();
     }
@@ -307,7 +307,7 @@ public class MiddlewareTests
         var wrapped = agent.WithMiddleware(middleware);
 
         var events = new List<StreamingMessageResponse>();
-        await foreach (var evt in wrapped.InvokeStreamingAsync(MakeUserMessages("hello")))
+        await foreach (var evt in wrapped.InvokeStreamingAsync(MakeUserMessages("hello"), cancellationToken: TestContext.Current.CancellationToken))
         {
             events.Add(evt);
         }
@@ -332,7 +332,7 @@ public class MiddlewareTests
 
         // 스트리밍 호출 - 미들웨어 바이패스되어야 함
         var events = new List<StreamingMessageResponse>();
-        await foreach (var evt in wrapped.InvokeStreamingAsync(MakeUserMessages("hello")))
+        await foreach (var evt in wrapped.InvokeStreamingAsync(MakeUserMessages("hello"), cancellationToken: TestContext.Current.CancellationToken))
         {
             events.Add(evt);
         }
@@ -359,7 +359,7 @@ public class MiddlewareTests
 
         // Act: 스트리밍 실행
         var events = new List<OrchestrationStreamEvent>();
-        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("hello")))
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("hello"), TestContext.Current.CancellationToken))
         {
             events.Add(evt);
         }
@@ -383,9 +383,9 @@ public class MiddlewareTests
         var wrapped = agent.WithMiddleware(middleware);
 
         // 첫 번째 호출
-        var response1 = await wrapped.InvokeAsync(MakeUserMessages("hello"));
+        var response1 = await wrapped.InvokeAsync(MakeUserMessages("hello"), cancellationToken: TestContext.Current.CancellationToken);
         // 두 번째 호출 - 캐시 히트
-        var response2 = await wrapped.InvokeAsync(MakeUserMessages("hello"));
+        var response2 = await wrapped.InvokeAsync(MakeUserMessages("hello"), cancellationToken: TestContext.Current.CancellationToken);
 
         callCount.Should().Be(1); // 에이전트는 1번만 호출
         GetText(response1.Message!).Should().Be("cached");
@@ -400,8 +400,8 @@ public class MiddlewareTests
         var middleware = new CachingMiddleware(TimeSpan.FromMinutes(5));
         var wrapped = agent.WithMiddleware(middleware);
 
-        var response1 = await wrapped.InvokeAsync(MakeUserMessages("hello"));
-        var response2 = await wrapped.InvokeAsync(MakeUserMessages("world")); // 다른 입력
+        var response1 = await wrapped.InvokeAsync(MakeUserMessages("hello"), cancellationToken: TestContext.Current.CancellationToken);
+        var response2 = await wrapped.InvokeAsync(MakeUserMessages("world"), cancellationToken: TestContext.Current.CancellationToken); // 다른 입력
 
         callCount.Should().Be(2);
         GetText(response1.Message!).Should().Be("response-1");
@@ -424,9 +424,9 @@ public class MiddlewareTests
         var agent = new MockAgent("test");
         var wrapped = agent.WithMiddleware(middleware);
 
-        await wrapped.InvokeAsync(MakeUserMessages("hello")); // miss
-        await wrapped.InvokeAsync(MakeUserMessages("hello")); // hit
-        await wrapped.InvokeAsync(MakeUserMessages("world")); // miss
+        await wrapped.InvokeAsync(MakeUserMessages("hello"), cancellationToken: TestContext.Current.CancellationToken); // miss
+        await wrapped.InvokeAsync(MakeUserMessages("hello"), cancellationToken: TestContext.Current.CancellationToken); // hit
+        await wrapped.InvokeAsync(MakeUserMessages("world"), cancellationToken: TestContext.Current.CancellationToken); // miss
 
         misses.Should().Be(2);
         hits.Should().Be(1);
@@ -453,7 +453,7 @@ public class MiddlewareTests
         var agent = new MockAgent("test") { ResponseFunc = _ => "fast response" };
         var wrapped = agent.WithMiddleware(middleware);
 
-        var response = await wrapped.InvokeAsync(MakeUserMessages("go"));
+        var response = await wrapped.InvokeAsync(MakeUserMessages("go"), cancellationToken: TestContext.Current.CancellationToken);
 
         GetText(response.Message!).Should().Be("fast response");
     }
@@ -493,7 +493,7 @@ public class MiddlewareTests
         // 5 requests should all succeed immediately
         for (var i = 0; i < 5; i++)
         {
-            await wrapped.InvokeAsync(MakeUserMessages($"request-{i}"));
+            await wrapped.InvokeAsync(MakeUserMessages($"request-{i}"), cancellationToken: TestContext.Current.CancellationToken);
         }
 
         middleware.CurrentRequestCount.Should().Be(5);
@@ -514,14 +514,14 @@ public class MiddlewareTests
         var wrapped = agent.WithMiddleware(middleware);
 
         // First 2 requests - immediate
-        await wrapped.InvokeAsync(MakeUserMessages("req-1"));
-        await wrapped.InvokeAsync(MakeUserMessages("req-2"));
+        await wrapped.InvokeAsync(MakeUserMessages("req-1"), cancellationToken: TestContext.Current.CancellationToken);
+        await wrapped.InvokeAsync(MakeUserMessages("req-2"), cancellationToken: TestContext.Current.CancellationToken);
 
         // 3rd request should trigger rate limit (but eventually succeed)
-        var task = wrapped.InvokeAsync(MakeUserMessages("req-3"));
+        var task = wrapped.InvokeAsync(MakeUserMessages("req-3"), cancellationToken: TestContext.Current.CancellationToken);
 
         // Wait briefly then check callback was triggered
-        await Task.Delay(100);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
         rateLimitedCount.Should().BeGreaterThan(0);
     }
 
@@ -708,15 +708,12 @@ public class MiddlewareTests
         // Act & Assert - 초기 상태는 Closed
         Assert.Equal(CircuitState.Closed, middleware.State);
 
-        var response = await middleware.InvokeAsync(
-            agent,
-            MakeUserMessages("test"),
-            null, (_, _) => Task.FromResult(new MessageResponse
+        var response = await middleware.InvokeAsync(agent, MakeUserMessages("test"), null, (_, _) => Task.FromResult(new MessageResponse
             {
                 ResponseId = "1",
                 DoneReason = MessageDoneReason.EndTurn,
                 Message = Message.Assistant("ok")
-            }));
+            }), TestContext.Current.CancellationToken);
 
         Assert.Equal("ok", GetText(response.Message!));
         Assert.Equal(CircuitState.Closed, middleware.State);
@@ -741,10 +738,7 @@ public class MiddlewareTests
         {
             try
             {
-                await middleware.InvokeAsync(
-                    agent,
-                    MakeUserMessages("test"),
-                    null, (_, _) => throw new InvalidOperationException($"fail-{++failCount}"));
+                await middleware.InvokeAsync(agent, MakeUserMessages("test"), null, (_, _) => throw new InvalidOperationException($"fail-{++failCount}"), TestContext.Current.CancellationToken);
             }
             catch (InvalidOperationException) { }
         }
@@ -756,10 +750,7 @@ public class MiddlewareTests
 
         // Open 상태에서 요청 시 CircuitBreakerOpenException 발생
         await Assert.ThrowsAsync<CircuitBreakerOpenException>(async () =>
-            await middleware.InvokeAsync(
-                agent,
-                MakeUserMessages("test"),
-                null, (_, _) => Task.FromResult<MessageResponse>(null!)));
+            await middleware.InvokeAsync(agent, MakeUserMessages("test"), null, (_, _) => Task.FromResult<MessageResponse>(null!), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -778,29 +769,23 @@ public class MiddlewareTests
         // Act - 1번 실패로 Open
         try
         {
-            await middleware.InvokeAsync(
-                agent,
-                MakeUserMessages("test"),
-                null, (_, _) => throw new InvalidOperationException("fail"));
+            await middleware.InvokeAsync(agent, MakeUserMessages("test"), null, (_, _) => throw new InvalidOperationException("fail"), TestContext.Current.CancellationToken);
         }
         catch (InvalidOperationException) { }
 
         Assert.Equal(CircuitState.Open, middleware.State);
 
         // BreakDuration 대기 후 Half-Open
-        await Task.Delay(100);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
         Assert.Equal(CircuitState.HalfOpen, middleware.State);
 
         // Half-Open에서 성공하면 Closed
-        await middleware.InvokeAsync(
-            agent,
-            MakeUserMessages("test"),
-            null, (_, _) => Task.FromResult(new MessageResponse
+        await middleware.InvokeAsync(agent, MakeUserMessages("test"), null, (_, _) => Task.FromResult(new MessageResponse
             {
                 ResponseId = "1",
                 DoneReason = MessageDoneReason.EndTurn,
                 Message = Message.Assistant("ok")
-            }));
+            }), TestContext.Current.CancellationToken);
 
         Assert.Equal(CircuitState.Closed, middleware.State);
     }
@@ -815,10 +800,7 @@ public class MiddlewareTests
         // Act - 실패로 Open
         try
         {
-            await middleware.InvokeAsync(
-                agent,
-                MakeUserMessages("test"),
-                null, (_, _) => throw new InvalidOperationException("fail"));
+            await middleware.InvokeAsync(agent, MakeUserMessages("test"), null, (_, _) => throw new InvalidOperationException("fail"), TestContext.Current.CancellationToken);
         }
         catch { }
 
@@ -889,10 +871,7 @@ public class MiddlewareTests
         var gate = new TaskCompletionSource<bool>();
 
         // Act - 첫 번째 요청이 실행 중 (블로킹)
-        var task1 = middleware.InvokeAsync(
-            agent,
-            MakeUserMessages("test-1"),
-            null, async (_, _) =>
+        var task1 = middleware.InvokeAsync(agent, MakeUserMessages("test-1"), null, async (_, _) =>
             {
                 await gate.Task;
                 return new MessageResponse
@@ -901,15 +880,12 @@ public class MiddlewareTests
                     DoneReason = MessageDoneReason.EndTurn,
                     Message = Message.Assistant("ok")
                 };
-            });
+            }, TestContext.Current.CancellationToken);
 
-        await Task.Delay(20); // task1이 실행 슬롯 점유
+        await Task.Delay(20, TestContext.Current.CancellationToken); // task1이 실행 슬롯 점유
 
         // 두 번째 요청 (대기열로)
-        var task2 = middleware.InvokeAsync(
-            agent,
-            MakeUserMessages("test-2"),
-            null, async (_, _) =>
+        var task2 = middleware.InvokeAsync(agent, MakeUserMessages("test-2"), null, async (_, _) =>
             {
                 await gate.Task;
                 return new MessageResponse
@@ -918,16 +894,13 @@ public class MiddlewareTests
                     DoneReason = MessageDoneReason.EndTurn,
                     Message = Message.Assistant("ok")
                 };
-            });
+            }, TestContext.Current.CancellationToken);
 
-        await Task.Delay(20); // task2가 대기열 점유
+        await Task.Delay(20, TestContext.Current.CancellationToken); // task2가 대기열 점유
 
         // 세 번째 요청 - 거부되어야 함
         await Assert.ThrowsAsync<BulkheadRejectedException>(async () =>
-            await middleware.InvokeAsync(
-                agent,
-                MakeUserMessages("test-3"),
-                null, (_, _) => Task.FromResult<MessageResponse>(null!)));
+            await middleware.InvokeAsync(agent, MakeUserMessages("test-3"), null, (_, _) => Task.FromResult<MessageResponse>(null!), TestContext.Current.CancellationToken));
 
         Assert.True(rejected);
 
@@ -945,10 +918,7 @@ public class MiddlewareTests
         var gate = new TaskCompletionSource<bool>();
 
         // Act - 슬롯 점유
-        var task1 = middleware.InvokeAsync(
-            agent,
-            MakeUserMessages("test-1"),
-            null, async (_, _) =>
+        var task1 = middleware.InvokeAsync(agent, MakeUserMessages("test-1"), null, async (_, _) =>
             {
                 await gate.Task;
                 return new MessageResponse
@@ -957,9 +927,9 @@ public class MiddlewareTests
                     DoneReason = MessageDoneReason.EndTurn,
                     Message = Message.Assistant("ok")
                 };
-            });
+            }, TestContext.Current.CancellationToken);
 
-        await Task.Delay(20);
+        await Task.Delay(20, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(1, middleware.CurrentExecuting);
@@ -987,10 +957,7 @@ public class MiddlewareTests
         var agent = new MockAgent("primary");
 
         // Act
-        var response = await middleware.InvokeAsync(
-            agent,
-            MakeUserMessages("test"),
-            null, (_, _) => throw new InvalidOperationException("primary failed"));
+        var response = await middleware.InvokeAsync(agent, MakeUserMessages("test"), null, (_, _) => throw new InvalidOperationException("primary failed"), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(fallbackCalled);
@@ -1007,10 +974,7 @@ public class MiddlewareTests
         var agent = new MockAgent("primary") { ResponseFunc = _ => "primary-result" };
 
         // Act
-        var response = await middleware.InvokeAsync(
-            agent,
-            MakeUserMessages("test"),
-            null, (_, _) => agent.InvokeAsync(MakeUserMessages("test")));
+        var response = await middleware.InvokeAsync(agent, MakeUserMessages("test"), null, (_, _) => agent.InvokeAsync(MakeUserMessages("test")), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.False(fallbackCalled);
@@ -1031,16 +995,10 @@ public class MiddlewareTests
 
         // Act & Assert - InvalidOperationException should NOT trigger fallback
         await Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await middleware.InvokeAsync(
-                agent,
-                MakeUserMessages("test"),
-                null, (_, _) => throw new InvalidOperationException("not a timeout")));
+            await middleware.InvokeAsync(agent, MakeUserMessages("test"), null, (_, _) => throw new InvalidOperationException("not a timeout"), TestContext.Current.CancellationToken));
 
         // TimeoutException SHOULD trigger fallback
-        var response = await middleware.InvokeAsync(
-            agent,
-            MakeUserMessages("test"),
-            null, (_, _) => throw new TimeoutException("timed out"));
+        var response = await middleware.InvokeAsync(agent, MakeUserMessages("test"), null, (_, _) => throw new TimeoutException("timed out"), TestContext.Current.CancellationToken);
 
         Assert.Equal("fallback", GetText(response.Message!));
     }
@@ -1058,10 +1016,7 @@ public class MiddlewareTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<FallbackFailedException>(async () =>
-            await middleware.InvokeAsync(
-                agent,
-                MakeUserMessages("test"),
-                null, (_, _) => throw new InvalidOperationException("primary failed")));
+            await middleware.InvokeAsync(agent, MakeUserMessages("test"), null, (_, _) => throw new InvalidOperationException("primary failed"), TestContext.Current.CancellationToken));
 
         Assert.Contains("primary", ex.Message);
         Assert.Contains("fallback", ex.Message);
@@ -1086,10 +1041,7 @@ public class MiddlewareTests
         var agent = new MockAgent("primary-agent");
 
         // Act
-        var response = await middleware.InvokeAsync(
-            agent,
-            MakeUserMessages("test"),
-            null, (_, _) => throw new InvalidOperationException("fail"));
+        var response = await middleware.InvokeAsync(agent, MakeUserMessages("test"), null, (_, _) => throw new InvalidOperationException("fail"), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(factoryCalled);
@@ -1112,10 +1064,7 @@ public class MiddlewareTests
         var agent = new MockAgent("agent") { ResponseFunc = _ => { order.Add("agent"); return "result"; } };
 
         // Act
-        await composite.InvokeAsync(
-            agent,
-            MakeUserMessages("test"),
-            null, (msgs, _) => agent.InvokeAsync(msgs));
+        await composite.InvokeAsync(agent, MakeUserMessages("test"), null, (msgs, _) => agent.InvokeAsync(msgs), TestContext.Current.CancellationToken);
 
         // Assert
         order.Should().Equal("m1-before", "m2-before", "agent", "m2-after", "m1-after");

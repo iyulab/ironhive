@@ -166,7 +166,7 @@ public class FunctionToolFactoryTests
         };
 
         var input = new ToolInput(new Dictionary<string, object?> { ["a"] = 3, ["b"] = 5 });
-        var result = await tool.InvokeAsync(input);
+        var result = await tool.InvokeAsync(input, TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.Result.Should().Be("8");
@@ -189,7 +189,7 @@ public class FunctionToolFactoryTests
         };
 
         var input = new ToolInput(new Dictionary<string, object?> { ["name"] = "World" });
-        var result = await tool.InvokeAsync(input);
+        var result = await tool.InvokeAsync(input, TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.Result.Should().Contain("Hello, World!");
@@ -208,7 +208,7 @@ public class FunctionToolFactoryTests
             RequiresApproval = false
         };
 
-        var result = await tool.InvokeAsync(new ToolInput());
+        var result = await tool.InvokeAsync(new ToolInput(), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.Result.Should().Contain("executed done");
@@ -227,7 +227,7 @@ public class FunctionToolFactoryTests
             RequiresApproval = false
         };
 
-        var result = await tool.InvokeAsync(new ToolInput());
+        var result = await tool.InvokeAsync(new ToolInput(), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.Result.Should().Contain("executed done");
@@ -245,7 +245,7 @@ public class FunctionToolFactoryTests
             RequiresApproval = false
         };
 
-        var result = await tool.InvokeAsync(new ToolInput());
+        var result = await tool.InvokeAsync(new ToolInput(), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeFalse();
         result.Result.Should().Contain("Boom!");
@@ -266,7 +266,7 @@ public class FunctionToolFactoryTests
         };
 
         var input = new ToolInput(new Dictionary<string, object?> { ["text"] = "hi" });
-        var result = await tool.InvokeAsync(input);
+        var result = await tool.InvokeAsync(input, TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.Result.Should().Contain("hi");

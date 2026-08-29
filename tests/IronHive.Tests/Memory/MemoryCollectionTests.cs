@@ -51,7 +51,7 @@ public class MemoryCollectionTests
         var sut = CreateSut();
 
         // Act
-        await sut.IndexSourceAsync("my-queue", source);
+        await sut.IndexSourceAsync("my-queue", source, TestContext.Current.CancellationToken);
 
         // Assert
         await queue.Received(1).EnqueueAsync(
@@ -73,7 +73,7 @@ public class MemoryCollectionTests
         var sut = CreateSut();
 
         // Act
-        await sut.IndexSourceAsync("q1", source);
+        await sut.IndexSourceAsync("q1", source, TestContext.Current.CancellationToken);
 
         // Assert
         captured.Should().NotBeNull();
@@ -113,7 +113,7 @@ public class MemoryCollectionTests
         var sut = CreateSut();
 
         // Act
-        await sut.DeindexSourceAsync("source-42");
+        await sut.DeindexSourceAsync("source-42", TestContext.Current.CancellationToken);
 
         // Assert
         await vectorStorage.Received(1).DeleteVectorsAsync(
@@ -157,7 +157,7 @@ public class MemoryCollectionTests
         var sut = CreateSut();
 
         // Act
-        var result = await sut.SemanticSearchAsync("test query");
+        var result = await sut.SemanticSearchAsync("test query", cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         result.CollectionName.Should().Be(CollectionName);
@@ -184,7 +184,7 @@ public class MemoryCollectionTests
         var sut = CreateSut();
 
         // Act
-        await sut.SemanticSearchAsync("query", options);
+        await sut.SemanticSearchAsync("query", options, TestContext.Current.CancellationToken);
 
         // Assert
         await vectorStorage.Received(1).SearchVectorsAsync(
@@ -215,7 +215,7 @@ public class MemoryCollectionTests
         var sut = CreateSut();
 
         // Act
-        await sut.SemanticSearchAsync("query", options);
+        await sut.SemanticSearchAsync("query", options, TestContext.Current.CancellationToken);
 
         // Assert
         await vectorStorage.Received(1).SearchVectorsAsync(
@@ -245,7 +245,7 @@ public class MemoryCollectionTests
         var sut = CreateSut();
 
         // Act
-        await sut.SemanticSearchAsync("query");
+        await sut.SemanticSearchAsync("query", cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert: default options = MinScore 0, Limit 5, no filter
         await vectorStorage.Received(1).SearchVectorsAsync(

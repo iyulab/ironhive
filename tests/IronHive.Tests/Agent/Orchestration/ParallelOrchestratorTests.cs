@@ -16,7 +16,7 @@ public class ParallelOrchestratorTests
     {
         var orch = new ParallelOrchestrator();
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("hello"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("hello"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().Contain("No agents");
@@ -29,7 +29,7 @@ public class ParallelOrchestratorTests
         var orch = new ParallelOrchestrator();
         orch.AddAgent(agent);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.Steps.Should().HaveCount(1);
@@ -49,7 +49,7 @@ public class ParallelOrchestratorTests
         var orch = new ParallelOrchestrator();
         orch.AddAgents([a, b, c]);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("start"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("start"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.Steps.Should().HaveCount(3);
@@ -69,7 +69,7 @@ public class ParallelOrchestratorTests
         });
         orch.AddAgents([a, b]);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.Steps.Should().HaveCount(2);
@@ -91,7 +91,7 @@ public class ParallelOrchestratorTests
         });
         orch.AddAgents([a, b, c]);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         // First successful should be "b" (a failed)
@@ -111,7 +111,7 @@ public class ParallelOrchestratorTests
         });
         orch.AddAgents([a, b]);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         GetTextFromMessage(result.FinalOutput).Should().Be("fast-b");
@@ -129,7 +129,7 @@ public class ParallelOrchestratorTests
         });
         orch.AddAgents([a, b]);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         var text = GetTextFromMessage(result.FinalOutput);
@@ -168,7 +168,7 @@ public class ParallelOrchestratorTests
         });
         orch.AddAgents([CreateAgent("a"), CreateAgent("b"), CreateAgent("c"), CreateAgent("d")]);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.Steps.Should().HaveCount(4);
@@ -187,7 +187,7 @@ public class ParallelOrchestratorTests
         });
         orch.AddAgents([a, b]);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().Contain("All agents failed");
@@ -206,7 +206,7 @@ public class ParallelOrchestratorTests
         });
         orch.AddAgents([a, b]);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.Steps.Should().HaveCount(2);
@@ -223,7 +223,7 @@ public class ParallelOrchestratorTests
         var orch = new ParallelOrchestrator();
         orch.AddAgents([a, b]);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.TokenUsage.Should().NotBeNull();
@@ -239,7 +239,7 @@ public class ParallelOrchestratorTests
         var orch = new ParallelOrchestrator();
         orch.AddAgent(a);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.TotalDuration.Should().BeGreaterThan(TimeSpan.Zero);
@@ -252,7 +252,7 @@ public class ParallelOrchestratorTests
         var orch = new ParallelOrchestrator();
 
         var events = new List<OrchestrationStreamEvent>();
-        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("hello")))
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("hello"), TestContext.Current.CancellationToken))
         {
             events.Add(evt);
         }
@@ -270,7 +270,7 @@ public class ParallelOrchestratorTests
         orch.AddAgents([a, b]);
 
         var events = new List<OrchestrationStreamEvent>();
-        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("input")))
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken))
         {
             events.Add(evt);
         }
@@ -294,7 +294,7 @@ public class ParallelOrchestratorTests
         orch.AddAgents([a, b]);
 
         var events = new List<OrchestrationStreamEvent>();
-        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("input")))
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken))
         {
             events.Add(evt);
         }
@@ -330,7 +330,7 @@ public class ParallelOrchestratorTests
         var orch = new ParallelOrchestrator();
         orch.AddAgents([a, b]);
 
-        await orch.ExecuteAsync(MakeUserMessages("shared-input"));
+        await orch.ExecuteAsync(MakeUserMessages("shared-input"), TestContext.Current.CancellationToken);
 
         receivedInputs.Should().HaveCount(2);
         receivedInputs.Should().AllBe("shared-input");
@@ -349,10 +349,10 @@ public class ParallelOrchestratorTests
         });
         orch.AddAgent(new MockAgent("a") { ResponseFunc = _ => "ok" });
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
-        var ckpt = await store.LoadAsync("ck-success");
+        var ckpt = await store.LoadAsync("ck-success", TestContext.Current.CancellationToken);
         ckpt.Should().BeNull("checkpoint should be deleted on success");
     }
 
@@ -367,10 +367,10 @@ public class ParallelOrchestratorTests
         });
         orch.AddAgent(new MockAgent("a") { ResponseFunc = _ => throw new InvalidOperationException("boom") });
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeFalse();
-        var ckpt = await store.LoadAsync("ck-fail");
+        var ckpt = await store.LoadAsync("ck-fail", TestContext.Current.CancellationToken);
         ckpt.Should().NotBeNull("checkpoint should be saved on failure");
         ckpt!.CompletedSteps.Should().HaveCount(1);
     }
@@ -395,7 +395,7 @@ public class ParallelOrchestratorTests
             CompletedStepCount = 1,
             CompletedSteps = [existingStep],
             CurrentMessages = [Message.User("go")]
-        });
+        }, TestContext.Current.CancellationToken);
 
         var executedAgents = new List<string>();
         var lockObj = new object();
@@ -408,7 +408,7 @@ public class ParallelOrchestratorTests
         orch.AddAgent(new MockAgent("a") { ResponseFunc = _ => { lock (lockObj) executedAgents.Add("a"); return "from-a"; } });
         orch.AddAgent(new MockAgent("b") { ResponseFunc = _ => { lock (lockObj) executedAgents.Add("b"); return "from-b"; } });
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         executedAgents.Should().NotContain("a", "agent 'a' was already completed in checkpoint");
@@ -435,13 +435,13 @@ public class ParallelOrchestratorTests
         orch.AddAgent(new MockAgent("a") { ResponseFunc = _ => "from-a" });
         orch.AddAgent(new MockAgent("b") { ResponseFunc = _ => "from-b" });
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().Contain("Approval denied for agent 'b'");
         approvalCalls.Should().Contain("a").And.Contain("b");
 
-        var ckpt = await store.LoadAsync("ck-approval");
+        var ckpt = await store.LoadAsync("ck-approval", TestContext.Current.CancellationToken);
         ckpt.Should().NotBeNull("checkpoint should be saved when approval is denied");
     }
 
@@ -462,7 +462,7 @@ public class ParallelOrchestratorTests
         orch.AddAgent(new MockAgent("a") { ResponseFunc = _ => "from-a" });
         orch.AddAgent(new MockAgent("b") { ResponseFunc = _ => "from-b" });
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("go"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         approvalCalls.Should().NotContain("a", "agent 'a' is not in RequireApprovalForAgents");
@@ -560,7 +560,7 @@ public class ParallelOrchestratorTests
         });
         orch.AddAgents([a, b]);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         result.Steps.Should().HaveCount(2);
@@ -578,7 +578,7 @@ public class ParallelOrchestratorTests
         });
         orch.AddAgents([a, b]);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().Contain("RequireAllSuccess").And.Contain("a");
@@ -597,7 +597,7 @@ public class ParallelOrchestratorTests
         });
         orch.AddAgents([a, b]);
 
-        var result = await orch.ExecuteAsync(MakeUserMessages("input"));
+        var result = await orch.ExecuteAsync(MakeUserMessages("input"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue("partial success is allowed by default");
         result.Steps.Should().HaveCount(2);

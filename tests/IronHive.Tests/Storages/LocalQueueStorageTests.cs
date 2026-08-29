@@ -57,23 +57,23 @@ public class LocalQueueStorageTests : IDisposable
     [Fact]
     public async Task EnqueueAsync_SingleMessage_IncreasesCount()
     {
-        var initialCount = await _storage.CountAsync();
+        var initialCount = await _storage.CountAsync(TestContext.Current.CancellationToken);
         initialCount.Should().Be(0);
 
-        await _storage.EnqueueAsync("hello");
+        await _storage.EnqueueAsync("hello", TestContext.Current.CancellationToken);
 
-        var count = await _storage.CountAsync();
+        var count = await _storage.CountAsync(TestContext.Current.CancellationToken);
         count.Should().Be(1);
     }
 
     [Fact]
     public async Task EnqueueAsync_MultipleMessages_IncreasesCount()
     {
-        await _storage.EnqueueAsync("msg1");
-        await _storage.EnqueueAsync("msg2");
-        await _storage.EnqueueAsync("msg3");
+        await _storage.EnqueueAsync("msg1", TestContext.Current.CancellationToken);
+        await _storage.EnqueueAsync("msg2", TestContext.Current.CancellationToken);
+        await _storage.EnqueueAsync("msg3", TestContext.Current.CancellationToken);
 
-        var count = await _storage.CountAsync();
+        var count = await _storage.CountAsync(TestContext.Current.CancellationToken);
         count.Should().Be(3);
     }
 
@@ -82,9 +82,9 @@ public class LocalQueueStorageTests : IDisposable
     {
         var obj = new TestPayload { Name = "test", Value = 42 };
 
-        await _storage.EnqueueAsync(obj);
+        await _storage.EnqueueAsync(obj, TestContext.Current.CancellationToken);
 
-        var count = await _storage.CountAsync();
+        var count = await _storage.CountAsync(TestContext.Current.CancellationToken);
         count.Should().Be(1);
     }
 
@@ -95,7 +95,7 @@ public class LocalQueueStorageTests : IDisposable
     [Fact]
     public async Task DequeueAsync_EmptyQueue_ReturnsNull()
     {
-        var msg = await _storage.DequeueAsync<string>();
+        var msg = await _storage.DequeueAsync<string>(TestContext.Current.CancellationToken);
 
         msg.Should().BeNull();
     }
@@ -103,9 +103,9 @@ public class LocalQueueStorageTests : IDisposable
     [Fact]
     public async Task DequeueAsync_AfterEnqueue_ReturnsMessage()
     {
-        await _storage.EnqueueAsync("hello world");
+        await _storage.EnqueueAsync("hello world", TestContext.Current.CancellationToken);
 
-        var msg = await _storage.DequeueAsync<string>();
+        var msg = await _storage.DequeueAsync<string>(TestContext.Current.CancellationToken);
 
         msg.Should().NotBeNull();
         msg!.Body.Should().Be("hello world");
@@ -114,15 +114,15 @@ public class LocalQueueStorageTests : IDisposable
     [Fact]
     public async Task DequeueAsync_FIFO_Order()
     {
-        await _storage.EnqueueAsync("first");
-        await Task.Delay(10); // Ensure different ticks
-        await _storage.EnqueueAsync("second");
-        await Task.Delay(10);
-        await _storage.EnqueueAsync("third");
+        await _storage.EnqueueAsync("first", TestContext.Current.CancellationToken);
+        await Task.Delay(10, TestContext.Current.CancellationToken); // Ensure different ticks
+        await _storage.EnqueueAsync("second", TestContext.Current.CancellationToken);
+        await Task.Delay(10, TestContext.Current.CancellationToken);
+        await _storage.EnqueueAsync("third", TestContext.Current.CancellationToken);
 
-        var msg1 = await _storage.DequeueAsync<string>();
-        var msg2 = await _storage.DequeueAsync<string>();
-        var msg3 = await _storage.DequeueAsync<string>();
+        var msg1 = await _storage.DequeueAsync<string>(TestContext.Current.CancellationToken);
+        var msg2 = await _storage.DequeueAsync<string>(TestContext.Current.CancellationToken);
+        var msg3 = await _storage.DequeueAsync<string>(TestContext.Current.CancellationToken);
 
         msg1!.Body.Should().Be("first");
         msg2!.Body.Should().Be("second");
@@ -133,9 +133,9 @@ public class LocalQueueStorageTests : IDisposable
     public async Task DequeueAsync_ComplexObject_Deserializes()
     {
         var original = new TestPayload { Name = "test", Value = 42 };
-        await _storage.EnqueueAsync(original);
+        await _storage.EnqueueAsync(original, TestContext.Current.CancellationToken);
 
-        var msg = await _storage.DequeueAsync<TestPayload>();
+        var msg = await _storage.DequeueAsync<TestPayload>(TestContext.Current.CancellationToken);
 
         msg.Should().NotBeNull();
         msg!.Body.Name.Should().Be("test");
@@ -145,10 +145,10 @@ public class LocalQueueStorageTests : IDisposable
     [Fact]
     public async Task DequeueAsync_LocksFile_PreventsDoubleDequeueing()
     {
-        await _storage.EnqueueAsync("only-one");
+        await _storage.EnqueueAsync("only-one", TestContext.Current.CancellationToken);
 
-        var msg1 = await _storage.DequeueAsync<string>();
-        var msg2 = await _storage.DequeueAsync<string>();
+        var msg1 = await _storage.DequeueAsync<string>(TestContext.Current.CancellationToken);
+        var msg2 = await _storage.DequeueAsync<string>(TestContext.Current.CancellationToken);
 
         msg1.Should().NotBeNull();
         msg2.Should().BeNull();
@@ -164,10 +164,10 @@ public class LocalQueueStorageTests : IDisposable
             TimeToLive = TimeSpan.FromMilliseconds(1)
         });
 
-        await storage.EnqueueAsync("expires-fast");
-        await Task.Delay(50); // Wait for expiration
+        await storage.EnqueueAsync("expires-fast", TestContext.Current.CancellationToken);
+        await Task.Delay(50, TestContext.Current.CancellationToken); // Wait for expiration
 
-        var msg = await storage.DequeueAsync<string>();
+        var msg = await storage.DequeueAsync<string>(TestContext.Current.CancellationToken);
         msg.Should().BeNull();
 
         if (Directory.Exists(dir))
@@ -181,30 +181,30 @@ public class LocalQueueStorageTests : IDisposable
     [Fact]
     public async Task CompleteAsync_RemovesLockedFile()
     {
-        await _storage.EnqueueAsync("ack-test");
+        await _storage.EnqueueAsync("ack-test", TestContext.Current.CancellationToken);
 
-        var msg = await _storage.DequeueAsync<string>();
+        var msg = await _storage.DequeueAsync<string>(TestContext.Current.CancellationToken);
         msg.Should().NotBeNull();
 
-        await msg!.CompleteAsync();
+        await msg!.CompleteAsync(TestContext.Current.CancellationToken);
 
         // After complete, file should be deleted — count of message files is 0
-        var count = await _storage.CountAsync();
+        var count = await _storage.CountAsync(TestContext.Current.CancellationToken);
         count.Should().Be(0);
     }
 
     [Fact]
     public async Task RequeueAsync_RestoresMessageFile()
     {
-        await _storage.EnqueueAsync("requeue-test");
+        await _storage.EnqueueAsync("requeue-test", TestContext.Current.CancellationToken);
 
-        var msg = await _storage.DequeueAsync<string>();
+        var msg = await _storage.DequeueAsync<string>(TestContext.Current.CancellationToken);
         msg.Should().NotBeNull();
 
-        await msg!.RequeueAsync();
+        await msg!.RequeueAsync(TestContext.Current.CancellationToken);
 
         // After requeue, message should be available again
-        var count = await _storage.CountAsync();
+        var count = await _storage.CountAsync(TestContext.Current.CancellationToken);
         count.Should().Be(1);
     }
 
@@ -215,14 +215,14 @@ public class LocalQueueStorageTests : IDisposable
     [Fact]
     public async Task ClearAsync_RemovesAllMessages()
     {
-        await _storage.EnqueueAsync("a");
-        await _storage.EnqueueAsync("b");
-        await _storage.EnqueueAsync("c");
-        (await _storage.CountAsync()).Should().Be(3);
+        await _storage.EnqueueAsync("a", TestContext.Current.CancellationToken);
+        await _storage.EnqueueAsync("b", TestContext.Current.CancellationToken);
+        await _storage.EnqueueAsync("c", TestContext.Current.CancellationToken);
+        (await _storage.CountAsync(TestContext.Current.CancellationToken)).Should().Be(3);
 
-        await _storage.ClearAsync();
+        await _storage.ClearAsync(TestContext.Current.CancellationToken);
 
-        (await _storage.CountAsync()).Should().Be(0);
+        (await _storage.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [Fact]
@@ -236,7 +236,7 @@ public class LocalQueueStorageTests : IDisposable
     [Fact]
     public async Task ClearAsync_RecreatesDirectory()
     {
-        await _storage.ClearAsync();
+        await _storage.ClearAsync(TestContext.Current.CancellationToken);
 
         Directory.Exists(_testDir).Should().BeTrue();
     }
@@ -248,7 +248,7 @@ public class LocalQueueStorageTests : IDisposable
     [Fact]
     public async Task CreateConsumerAsync_ReturnsConsumer()
     {
-        var consumer = await _storage.CreateConsumerAsync<string>(msg => Task.CompletedTask);
+        var consumer = await _storage.CreateConsumerAsync<string>(msg => Task.CompletedTask, TestContext.Current.CancellationToken);
 
         consumer.Should().NotBeNull();
     }
@@ -260,8 +260,8 @@ public class LocalQueueStorageTests : IDisposable
     [Fact]
     public async Task RestoreAsync_RestoresEnqueuedMessages()
     {
-        await _storage.EnqueueAsync("msg1");
-        await _storage.EnqueueAsync("msg2");
+        await _storage.EnqueueAsync("msg1", TestContext.Current.CancellationToken);
+        await _storage.EnqueueAsync("msg2", TestContext.Current.CancellationToken);
 
         var restored = await _storage.RestoreAsync<string>();
 

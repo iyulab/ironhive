@@ -64,7 +64,7 @@ public class CachingMiddlewareTests
         var messages = CreateUserMessages("hello");
         var response = CreateResponse();
 
-        await middleware.InvokeAsync(agent, messages, null, (_, _) => Task.FromResult(response));
+        await middleware.InvokeAsync(agent, messages, null, (_, _) => Task.FromResult(response), TestContext.Current.CancellationToken);
         middleware.CacheCount.Should().Be(1);
 
         middleware.ClearCache();
@@ -86,7 +86,7 @@ public class CachingMiddlewareTests
         {
             callCount++;
             return Task.FromResult(response);
-        });
+        }, TestContext.Current.CancellationToken);
 
         result.Should().BeSameAs(response);
         callCount.Should().Be(1);
@@ -106,14 +106,14 @@ public class CachingMiddlewareTests
         {
             callCount++;
             return Task.FromResult(response);
-        });
+        }, TestContext.Current.CancellationToken);
 
         // Second call with same input
         var result = await middleware.InvokeAsync(agent, messages, null, (_, _) =>
         {
             callCount++;
             return Task.FromResult(CreateResponse(text: "different"));
-        });
+        }, TestContext.Current.CancellationToken);
 
         result.Should().BeSameAs(response);
         callCount.Should().Be(1); // next() not called on cache hit
@@ -133,8 +133,8 @@ public class CachingMiddlewareTests
             return Task.FromResult(CreateResponse());
         };
 
-        await middleware.InvokeAsync(agent, messages, new AgentInvokeOptions { MaxTurns = 1 }, next);
-        await middleware.InvokeAsync(agent, messages, new AgentInvokeOptions { MaxTurns = 2 }, next);
+        await middleware.InvokeAsync(agent, messages, new AgentInvokeOptions { MaxTurns = 1 }, next, TestContext.Current.CancellationToken);
+        await middleware.InvokeAsync(agent, messages, new AgentInvokeOptions { MaxTurns = 2 }, next, TestContext.Current.CancellationToken);
 
         callCount.Should().Be(2, "same messages with different options must not share a cache entry");
     }
@@ -153,8 +153,8 @@ public class CachingMiddlewareTests
             return Task.FromResult(CreateResponse());
         };
 
-        await middleware.InvokeAsync(agent, messages, new AgentInvokeOptions { MaxTurns = 3 }, next);
-        await middleware.InvokeAsync(agent, messages, new AgentInvokeOptions { MaxTurns = 3 }, next);
+        await middleware.InvokeAsync(agent, messages, new AgentInvokeOptions { MaxTurns = 3 }, next, TestContext.Current.CancellationToken);
+        await middleware.InvokeAsync(agent, messages, new AgentInvokeOptions { MaxTurns = 3 }, next, TestContext.Current.CancellationToken);
 
         callCount.Should().Be(1, "identical messages and options should hit the cache");
     }
@@ -173,8 +173,8 @@ public class CachingMiddlewareTests
             return Task.FromResult(CreateResponse());
         };
 
-        await middleware.InvokeAsync(agent, messages, null, next);
-        await middleware.InvokeAsync(agent, messages, new AgentInvokeOptions { MaxTokens = 100 }, next);
+        await middleware.InvokeAsync(agent, messages, null, next, TestContext.Current.CancellationToken);
+        await middleware.InvokeAsync(agent, messages, new AgentInvokeOptions { MaxTokens = 100 }, next, TestContext.Current.CancellationToken);
 
         callCount.Should().Be(2, "null options and non-null options must not share a cache entry");
     }
@@ -220,10 +220,8 @@ public class CachingMiddlewareTests
             return Task.FromResult(CreateResponse());
         };
 
-        await middleware.InvokeAsync(agent, messages,
-            new AgentInvokeOptions { OutputFormat = OutputFormat.For("""{"type":"object"}""") }, next);
-        await middleware.InvokeAsync(agent, messages,
-            new AgentInvokeOptions { OutputFormat = OutputFormat.For("""{"type":"array"}""") }, next);
+        await middleware.InvokeAsync(agent, messages, new AgentInvokeOptions { OutputFormat = OutputFormat.For("""{"type":"object"}""") }, next, TestContext.Current.CancellationToken);
+        await middleware.InvokeAsync(agent, messages, new AgentInvokeOptions { OutputFormat = OutputFormat.For("""{"type":"array"}""") }, next, TestContext.Current.CancellationToken);
 
         callCount.Should().Be(2, "different output formats must not share a cache entry");
     }
@@ -239,13 +237,13 @@ public class CachingMiddlewareTests
         {
             callCount++;
             return Task.FromResult(CreateResponse(text: "first"));
-        });
+        }, TestContext.Current.CancellationToken);
 
         await middleware.InvokeAsync(agent, CreateUserMessages("world"), null, (_, _) =>
         {
             callCount++;
             return Task.FromResult(CreateResponse(text: "second"));
-        });
+        }, TestContext.Current.CancellationToken);
 
         callCount.Should().Be(2);
         middleware.CacheCount.Should().Be(2);
@@ -262,13 +260,13 @@ public class CachingMiddlewareTests
         {
             callCount++;
             return Task.FromResult(CreateResponse());
-        });
+        }, TestContext.Current.CancellationToken);
 
         await middleware.InvokeAsync(CreateMockAgent("agent-b"), messages, null, (_, _) =>
         {
             callCount++;
             return Task.FromResult(CreateResponse());
-        });
+        }, TestContext.Current.CancellationToken);
 
         callCount.Should().Be(2);
     }
@@ -291,16 +289,16 @@ public class CachingMiddlewareTests
         {
             callCount++;
             return Task.FromResult(CreateResponse(text: "first"));
-        });
+        }, TestContext.Current.CancellationToken);
 
         // Wait for expiration
-        await Task.Delay(100);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
 
         var result = await middleware.InvokeAsync(agent, messages, null, (_, _) =>
         {
             callCount++;
             return Task.FromResult(CreateResponse(text: "second"));
-        });
+        }, TestContext.Current.CancellationToken);
 
         callCount.Should().Be(2);
         result.Message!.Content.OfType<TextMessageContent>().First().Value.Should().Be("second");
@@ -322,14 +320,14 @@ public class CachingMiddlewareTests
         {
             callCount++;
             return Task.FromResult(CreateResponse());
-        });
+        }, TestContext.Current.CancellationToken);
 
         // Second call should still be cached
         await middleware.InvokeAsync(agent, messages, null, (_, _) =>
         {
             callCount++;
             return Task.FromResult(CreateResponse());
-        });
+        }, TestContext.Current.CancellationToken);
 
         callCount.Should().Be(1);
     }
@@ -344,7 +342,7 @@ public class CachingMiddlewareTests
         var messages = CreateUserMessages("hello");
 
         await middleware.InvokeAsync(agent, messages, null, (_, _) =>
-            Task.FromResult(CreateResponse(reason: MessageDoneReason.ToolCall)));
+            Task.FromResult(CreateResponse(reason: MessageDoneReason.ToolCall)), TestContext.Current.CancellationToken);
 
         middleware.CacheCount.Should().Be(0);
     }
@@ -357,7 +355,7 @@ public class CachingMiddlewareTests
         var messages = CreateUserMessages("hello");
 
         await middleware.InvokeAsync(agent, messages, null, (_, _) =>
-            Task.FromResult(CreateResponse(reason: MessageDoneReason.EndTurn)));
+            Task.FromResult(CreateResponse(reason: MessageDoneReason.EndTurn)), TestContext.Current.CancellationToken);
 
         middleware.CacheCount.Should().Be(1);
     }
@@ -370,7 +368,7 @@ public class CachingMiddlewareTests
         var messages = CreateUserMessages("hello");
 
         await middleware.InvokeAsync(agent, messages, null, (_, _) =>
-            Task.FromResult(CreateResponse(reason: MessageDoneReason.MaxTokens)));
+            Task.FromResult(CreateResponse(reason: MessageDoneReason.MaxTokens)), TestContext.Current.CancellationToken);
 
         middleware.CacheCount.Should().Be(1);
     }
@@ -387,7 +385,7 @@ public class CachingMiddlewareTests
         for (var i = 0; i < 5; i++)
         {
             await middleware.InvokeAsync(agent, CreateUserMessages($"msg-{i}"), null, (_, _) =>
-                Task.FromResult(CreateResponse()));
+                Task.FromResult(CreateResponse()), TestContext.Current.CancellationToken);
         }
 
         middleware.CacheCount.Should().BeLessThanOrEqualTo(2);
@@ -408,11 +406,11 @@ public class CachingMiddlewareTests
         var messages = CreateUserMessages("hello");
 
         await middleware.InvokeAsync(agent, messages, null, (_, _) =>
-            Task.FromResult(CreateResponse()));
+            Task.FromResult(CreateResponse()), TestContext.Current.CancellationToken);
 
         // Second call triggers cache hit
         await middleware.InvokeAsync(agent, messages, null, (_, _) =>
-            Task.FromResult(CreateResponse()));
+            Task.FromResult(CreateResponse()), TestContext.Current.CancellationToken);
 
         hitAgent.Should().Be("my-agent");
     }
@@ -430,7 +428,7 @@ public class CachingMiddlewareTests
         var messages = CreateUserMessages("hello");
 
         await middleware.InvokeAsync(agent, messages, null, (_, _) =>
-            Task.FromResult(CreateResponse()));
+            Task.FromResult(CreateResponse()), TestContext.Current.CancellationToken);
 
         missAgent.Should().Be("my-agent");
     }
@@ -452,13 +450,13 @@ public class CachingMiddlewareTests
         {
             callCount++;
             return Task.FromResult(CreateResponse());
-        });
+        }, TestContext.Current.CancellationToken);
 
         await middleware.InvokeAsync(CreateMockAgent(instructions: "Be concise"), messages, null, (_, _) =>
         {
             callCount++;
             return Task.FromResult(CreateResponse());
-        });
+        }, TestContext.Current.CancellationToken);
 
         // When instructions excluded from key, same agent+messages = cache hit
         callCount.Should().Be(1);
@@ -479,13 +477,13 @@ public class CachingMiddlewareTests
         {
             callCount++;
             return Task.FromResult(CreateResponse());
-        });
+        }, TestContext.Current.CancellationToken);
 
         await middleware.InvokeAsync(CreateMockAgent(instructions: "Be concise"), messages, null, (_, _) =>
         {
             callCount++;
             return Task.FromResult(CreateResponse());
-        });
+        }, TestContext.Current.CancellationToken);
 
         callCount.Should().Be(2);
     }

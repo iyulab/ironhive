@@ -19,7 +19,7 @@ public class TruncatingResultDistillerTests
     {
         var response = MakeResponse("Short result text");
 
-        var result = await _distiller.DistillAsync("agent1", response);
+        var result = await _distiller.DistillAsync("agent1", response, cancellationToken: TestContext.Current.CancellationToken);
 
         result.Should().BeSameAs(response);
     }
@@ -30,7 +30,7 @@ public class TruncatingResultDistillerTests
         var shortText = new string('A', 2999); // Just below 3000 default threshold
         var response = MakeResponse(shortText);
 
-        var result = await _distiller.DistillAsync("agent1", response);
+        var result = await _distiller.DistillAsync("agent1", response, cancellationToken: TestContext.Current.CancellationToken);
 
         result.Should().BeSameAs(response);
     }
@@ -48,7 +48,7 @@ public class TruncatingResultDistillerTests
             Timestamp = DateTime.UtcNow
         };
 
-        var result = await _distiller.DistillAsync("agent1", response);
+        var result = await _distiller.DistillAsync("agent1", response, cancellationToken: TestContext.Current.CancellationToken);
 
         result.Should().BeSameAs(response);
     }
@@ -68,7 +68,7 @@ public class TruncatingResultDistillerTests
             MinInputCharsForDistillation = 3000
         };
 
-        var result = await _distiller.DistillAsync("agent1", response, options);
+        var result = await _distiller.DistillAsync("agent1", response, options, TestContext.Current.CancellationToken);
 
         var distilledText = GetText(result);
         distilledText.Length.Should().BeLessThan(longText.Length);
@@ -91,7 +91,7 @@ public class TruncatingResultDistillerTests
             MinInputCharsForDistillation = 3000
         };
 
-        var result = await _distiller.DistillAsync("agent1", response, options);
+        var result = await _distiller.DistillAsync("agent1", response, options, TestContext.Current.CancellationToken);
 
         var distilledText = GetText(result);
         distilledText.Should().StartWith("HEAD_MARKER_");
@@ -109,7 +109,7 @@ public class TruncatingResultDistillerTests
             MinInputCharsForDistillation = 3000
         };
 
-        var result = await _distiller.DistillAsync("agent1", response, options);
+        var result = await _distiller.DistillAsync("agent1", response, options, TestContext.Current.CancellationToken);
 
         var distilledText = GetText(result);
         distilledText.Should().Contain("chars omitted");
@@ -136,7 +136,7 @@ public class TruncatingResultDistillerTests
             PreserveToolCalls = true
         };
 
-        var result = await _distiller.DistillAsync("agent1", response, options);
+        var result = await _distiller.DistillAsync("agent1", response, options, TestContext.Current.CancellationToken);
 
         var assistant = result.Message as Message;
         assistant.Should().NotBeNull();
@@ -160,7 +160,7 @@ public class TruncatingResultDistillerTests
             PreserveToolCalls = false
         };
 
-        var result = await _distiller.DistillAsync("agent1", response, options);
+        var result = await _distiller.DistillAsync("agent1", response, options, TestContext.Current.CancellationToken);
 
         var assistant = result.Message as Message;
         assistant.Should().NotBeNull();
@@ -184,7 +184,7 @@ public class TruncatingResultDistillerTests
             PreserveToolCalls = true
         };
 
-        var result = await _distiller.DistillAsync("agent1", response, options);
+        var result = await _distiller.DistillAsync("agent1", response, options, TestContext.Current.CancellationToken);
 
         var assistant = result.Message as Message;
         var tool = assistant!.Content.OfType<ToolMessageContent>().First();
@@ -221,7 +221,7 @@ public class TruncatingResultDistillerTests
             PreserveToolCalls = true
         };
 
-        var result = await _distiller.DistillAsync("agent1", response, options);
+        var result = await _distiller.DistillAsync("agent1", response, options, TestContext.Current.CancellationToken);
 
         var assistant = result.Message as Message;
         var tool = assistant!.Content.OfType<ToolMessageContent>().First();
@@ -252,7 +252,7 @@ public class TruncatingResultDistillerTests
             MinInputCharsForDistillation = 3000
         };
 
-        var result = await _distiller.DistillAsync("researcher", response, options);
+        var result = await _distiller.DistillAsync("researcher", response, options, TestContext.Current.CancellationToken);
 
         result.ResponseId.Should().Be("resp-123");
         result.DoneReason.Should().Be(MessageDoneReason.EndTurn);
@@ -279,7 +279,7 @@ public class TruncatingResultDistillerTests
             MinInputCharsForDistillation = 1000 // Input is 500 < 1000
         };
 
-        var result = await _distiller.DistillAsync("agent1", response, options);
+        var result = await _distiller.DistillAsync("agent1", response, options, TestContext.Current.CancellationToken);
 
         result.Should().BeSameAs(response); // Below threshold, not distilled
     }
@@ -296,7 +296,7 @@ public class TruncatingResultDistillerTests
             MinInputCharsForDistillation = 1000 // Input is 1500 > 1000
         };
 
-        var result = await _distiller.DistillAsync("agent1", response, options);
+        var result = await _distiller.DistillAsync("agent1", response, options, TestContext.Current.CancellationToken);
 
         result.Should().NotBeSameAs(response);
         GetText(result).Length.Should().BeLessThan(1500);
@@ -332,7 +332,7 @@ public class TruncatingResultDistillerTests
             Message.User("Analyze")
         };
 
-        var result = await orch.ExecuteAsync(messages);
+        var result = await orch.ExecuteAsync(messages, TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
 

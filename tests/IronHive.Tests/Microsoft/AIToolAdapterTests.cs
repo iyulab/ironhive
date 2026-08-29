@@ -42,7 +42,7 @@ public class AIToolAdapterTests
         var output = await tool.InvokeAsync(new ToolInput(new Dictionary<string, object?>
         {
             ["name"] = "world"
-        }));
+        }), TestContext.Current.CancellationToken);
 
         output.IsSuccess.Should().BeTrue();
         output.Result.Should().Contain("hello world");
@@ -56,7 +56,7 @@ public class AIToolAdapterTests
             name: "explode");
         var tool = new AIToolAdapter(function);
 
-        var output = await tool.InvokeAsync(new ToolInput());
+        var output = await tool.InvokeAsync(new ToolInput(), TestContext.Current.CancellationToken);
 
         output.IsSuccess.Should().BeFalse();
         output.Result.Should().Be("boom");
@@ -69,7 +69,7 @@ public class AIToolAdapterTests
         var declarationOnly = function.AsDeclarationOnly();
         var tool = new AIToolAdapter(declarationOnly);
 
-        var output = await tool.InvokeAsync(new ToolInput());
+        var output = await tool.InvokeAsync(new ToolInput(), TestContext.Current.CancellationToken);
 
         output.IsSuccess.Should().BeFalse();
         output.Result.Should().Contain("greet");
