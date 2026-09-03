@@ -113,6 +113,13 @@ public class GraphOrchestratorBuilder
             _outputNodeId);
     }
 
+    /// <summary>
+    /// GraphOrchestrator는 의도적으로 DAG 전용이다 — 사이클을 금지함으로써 "항상 종료한다"는
+    /// 성질을 구조적으로 보장한다. 반복 루프(생성→검증→재시도 등)가 필요하면 Graph에 사이클을
+    /// 만들지 말고 HubSpokeOrchestrator(MaxRounds) 또는 GroupChatOrchestrator
+    /// (ITerminationCondition)를 사용한다 — 자세한 안내는 docs/ORCHESTRATION.md
+    /// "사이클 미지원 — 반복 루프가 필요하면" 절 참조.
+    /// </summary>
     private void ValidateNoCycles()
     {
         var inDegree = new Dictionary<string, int>();
@@ -153,7 +160,10 @@ public class GraphOrchestratorBuilder
 
         if (visited != _nodes.Count)
         {
-            throw new InvalidOperationException("Graph contains a cycle. Only DAG (Directed Acyclic Graph) is supported.");
+            throw new InvalidOperationException(
+                "Graph contains a cycle. Only DAG (Directed Acyclic Graph) is supported. " +
+                "For a retry/validation loop, use HubSpokeOrchestrator (MaxRounds) or " +
+                "GroupChatOrchestrator (ITerminationCondition) instead.");
         }
     }
 }

@@ -320,6 +320,22 @@ builder
     .SetStartNode("A");
 ```
 
+### 사이클 미지원 — 반복 루프가 필요하면
+
+`GraphOrchestratorBuilder.Build()`는 그래프에 사이클이 있으면 예외를 던집니다
+(`Graph contains a cycle. Only DAG (Directed Acyclic Graph) is supported.`, 대안 안내 포함).
+이는 누락이 아니라 의도된 설계입니다 — DAG 제약 덕분에 GraphOrchestrator는 "항상 종료한다"는
+성질을 구조적으로 보장합니다.
+
+"생성 → 검증 → 실패 시 재시도" 같은 반복 루프가 필요하면, Graph 안에 사이클을 만드는 대신
+아래 두 오케스트레이터를 쓰세요 — 둘 다 이미 반복·조건부 종료를 1급으로 지원합니다:
+
+- **HubSpokeOrchestrator** — `MaxRounds`로 허브↔스포크 라운드를 여러 번 반복 (위 HubSpokeOrchestrator 절 참조).
+- **GroupChatOrchestrator** — `ITerminationCondition`으로 조건이 충족될 때까지 반복 (위 종료 조건 절 참조).
+
+Graph 노드 합성 안에서 직접 반복 루프를 표현하는 것(예: 검증 노드가 실패 시 생성 노드로 되돌아가는
+엣지)은 현재 지원하지 않습니다 — 종료 보장을 잃지 않는 형태의 설계가 아직 없기 때문입니다.
+
 ---
 
 ## 스트리밍
