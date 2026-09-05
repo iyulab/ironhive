@@ -29,6 +29,16 @@
 - **워크플로우** — 코드 기반 타입 안전 워크플로우 엔진
 - **도메인 예외** — 컨텍스트 윈도우 초과 시 프로바이더별 오류를 `ContextOverflowException`(`ContextWindow` 포함)으로 정규화 — 문자열 파싱 없이 `catch`로 압축·복구 로직 작성 가능
 
+## 왜 IronHive인가
+
+2026년 4월 Microsoft Agent Framework 1.0이 AutoGen과 Semantic Kernel을 통합해 GA로 출시되며 .NET LLM 오케스트레이션의 유력한 기본 선택지로 떠올랐습니다. IronHive는 이와 다른 설계 축을 선택합니다 — **로컬 우선, 클라우드 무의존**입니다.
+
+- **완전한 로컬 추론 루프** — [lm-supply](https://github.com/iyulab/lm-supply)로 LLM 생성·임베딩·리랭킹·OCR까지 GGUF/ONNX 백엔드로 순수 .NET에서 실행합니다. 클라우드 계정이나 네트워크 연결 없이도 에이전트 루프 전체가 동작합니다.
+- **네이티브 .NET, 브리지 불필요** — Microsoft Agent Framework의 로컬 실행 경로(Foundry Local)는 2026년 기준 Python 전용이며, .NET에서 쓰려면 커뮤니티 어댑터를 거쳐야 합니다. IronHive는 로컬 추론이 처음부터 .NET 1급 시민입니다.
+- **RAG 파이프라인 내장** — 문서 처리([FileFlux](https://github.com/iyulab/FileFlux)/[WebFlux](https://github.com/iyulab/WebFlux))부터 하이브리드 검색([FluxIndex](https://github.com/iyulab/FluxIndex))까지 별도 통합 없이 바로 사용합니다.
+
+Azure 생태계에 이미 투자한 팀이라면 Microsoft Agent Framework가 자연스러운 선택입니다. 오프라인/에어갭 환경, 데이터 상주 요구사항, 또는 클라우드 종속을 피하려는 .NET 애플리케이션이라면 IronHive가 그 자리를 채웁니다.
+
 ## 설치
 
 ```bash
