@@ -4,6 +4,21 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.22.2 — 2026-09-08
+
+### Fixed — `IronHive.Plugins.MCP`
+
+- `McpSession.ConnectAsync`/`ReconnectAsync` no longer send a `ping` right after the
+  `initialize` handshake. `McpClient.CreateAsync` already completes the handshake before
+  returning, so the extra ping proved nothing about liveness; its only distinct effect was
+  that a server which does not implement the `ping` utility moved the session to `Errored`,
+  and because `McpClientManager` registers tools only from the `Connected` event, that
+  server's entire toolset silently vanished with a state flag as the only signal.
+  `HealthAsync` still pings — that is the explicit spec-level liveness check.
+- `McpSession.ListToolsAsync` now moves the session to `Errored` (raising the `Errored`
+  event) before rethrowing when the server fails `tools/list`. Previously the manager
+  swallowed the fault and the session stayed `Connected` with zero tools and no event.
+
 ## 0.22.1 — 2026-08-28
 
 ### Changed — `ModelContextProtocol` dependency
