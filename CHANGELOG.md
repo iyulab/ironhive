@@ -160,23 +160,6 @@ with the transport construction doing nothing configuration-dependent, and both 
 those swaps. The tests also pin that the transport mode is adapter policy rather than a vendor default, and
 that absent optional fields stay absent instead of becoming empty collections.
 
-### Added — storage configuration mappings are asserted
-
-No storage adapter had a test covering how its configuration reaches its vendor client. These are worse
-placed for that gap than the providers: an access key and its secret, a user name and its password, a host
-and an API key are adjacent parameters of the same type, so a swap compiles and surfaces only as an
-authentication failure against a live service. Azure is the extreme case — `StorageName` names the
-container, and reaching the wrong place does not fail at all, it silently addresses the wrong storage.
-
-Each adapter now builds its vendor arguments through one internal seam that the tests assert, with the
-construction site doing nothing configuration-dependent: Amazon and Qdrant gained an arguments record,
-RabbitMQ's connection factory is built by a named method, and the Azure endpoint and credential helpers are
-reachable. Verified by injecting three adjacent-slot swaps — secret as key id, password as user name,
-container name as account name — and confirming each is caught.
-
-The Amazon tests also pin that a missing required setting is reported by name, so the message points at the
-setting to change rather than describing it.
-
 ### Changed — exception messages are English
 
 Sixty-six exception messages across six assemblies were Korean. They are operator-facing at runtime and
@@ -196,20 +179,6 @@ reflection cannot reach, so this reads the sources. Turning it on caught one mor
 missed — a construction split across lines — and injecting Korean back into a message confirms the check
 names the file, line and text. XML documentation is deliberately out of scope: it is Korean throughout by
 established practice and is read at development time rather than emitted at runtime.
-
-### Added — the GoogleAI and Vertex configuration mapping is asserted, not just its timeout
-
-The existing tests covered the timeout only. Every other field — the Gemini API key, Vertex's project,
-location and credential, and both configurations' HTTP client factory — reached the vendor client
-unasserted, which is the same gap that let a base URL sit in the credential slot of the Anthropic adapter
-across several releases. A field routed to the wrong parameter compiles, and for a credential the
-resulting error names neither the field nor the factory.
-
-The factory now builds its vendor-constructor arguments through one internal `BuildArguments`, and a
-single private `Create` passes them straight through, so the mapping that is asserted is the mapping that
-is used. The tests pin each field to its own slot and additionally pin that Gemini-only and Vertex-only
-fields stay out of each other's — a project must not become an API key, and project and location must not
-swap. Both of those were verified by injecting them and confirming the failures.
 
 ### Added — documentation drift is a test failure
 
