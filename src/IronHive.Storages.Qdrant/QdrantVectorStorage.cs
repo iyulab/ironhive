@@ -81,7 +81,7 @@ public class QdrantVectorStorage : IVectorStorage
                         Datatype = Datatype.Float32,
                         Distance = Distance.Cosine,
                         Size = (ulong)collection.Dimensions,
-                        OnDisk = true,
+                        Memory = Memory.Cold,
                     }
                 }
             },
@@ -232,15 +232,15 @@ public class QdrantVectorStorage : IVectorStorage
         CancellationToken cancellationToken = default)
     {
         var condition = BuildFilter(filter);
-        var scoredPoints = await _client.SearchAsync(
+        var scoredPoints = await _client.QueryAsync(
             collectionName: collectionName,
-            vector: vector.ToArray(),
+            query: vector.ToArray(),
+            usingVector: DefaultVectorsName,
             filter: condition,
             limit: (ulong)limit,
             payloadSelector: true,
             vectorsSelector: false,
             scoreThreshold: minScore,
-            vectorName: DefaultVectorsName,
             cancellationToken: cancellationToken);
 
         var records = new List<ScoredVectorRecord>();

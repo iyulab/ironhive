@@ -3,45 +3,45 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup Label="Microsoft">
-    <PackageVersion Include="Anthropic" Version="12.44.0" />
-    <PackageVersion Include="Google.GenAI" Version="1.20.0" />
-    <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.9" />
+    <PackageVersion Include="Anthropic" Version="12.46.0" />
+    <PackageVersion Include="Google.GenAI" Version="1.21.0" />
+    <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.11" />
     <!-- Explicit lift: Microsoft.Data.Sqlite 10.0.9 pulls SQLitePCLRaw 2.1.11
          (NU1903 high, GHSA-2m69-gcr7-jv3q); upstream 2.1.12 stable landed 2026-07-09.
          Direct reference in IronHive.Core so the >= 2.1.12 floor propagates to package consumers.
          Remove once Microsoft.Data.Sqlite's transitive floor reaches 2.1.12. -->
     <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
-    <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.7.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.9.0" />
     <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.7.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Resilience" Version="10.7.0" />
-    <PackageVersion Include="Microsoft.OpenApi" Version="3.8.0" />
-    <PackageVersion Include="Microsoft.OpenApi.YamlReader" Version="3.8.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Resilience" Version="10.9.0" />
+    <PackageVersion Include="Microsoft.OpenApi" Version="3.10.2" />
+    <PackageVersion Include="Microsoft.OpenApi.YamlReader" Version="3.10.2" />
     <PackageVersion Include="OpenAI" Version="2.12.0" />
   </ItemGroup>
   <ItemGroup Label="OpenTelemetry">
-    <PackageVersion Include="OpenTelemetry.Api" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry.Api" Version="1.18.0" />
   </ItemGroup>
   <ItemGroup Label="Azure">
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
-    <PackageVersion Include="Azure.Storage.Blobs" Version="12.29.1" />
+    <PackageVersion Include="Azure.Storage.Blobs" Version="12.29.2" />
     <PackageVersion Include="Azure.Storage.Files.Shares" Version="12.27.1" />
   </ItemGroup>
   <ItemGroup Label="AWS">
-    <PackageVersion Include="AWSSDK.S3" Version="4.0.101" />
+    <PackageVersion Include="AWSSDK.S3" Version="4.0.102.5" />
   </ItemGroup>
   <ItemGroup Label="Testing">
     <!-- xUnit v3/MTP native mode: no Microsoft.NET.Test.Sdk needed, coverlet.collector was a dead
          reference (CI never invoked the coverage collector flag) -->
     <PackageVersion Include="AwesomeAssertions" Version="9.6.0" />
-    <PackageVersion Include="NSubstitute" Version="6.0.0" />
+    <PackageVersion Include="NSubstitute" Version="6.2.0" />
     <PackageVersion Include="xunit.v3" Version="4.0.0" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0" />
-    <PackageVersion Include="Microsoft.Testing.Extensions.HangDump" Version="2.3.3" />
+    <PackageVersion Include="Microsoft.Testing.Extensions.HangDump" Version="2.4.0" />
   </ItemGroup>
   <ItemGroup Label="Serialization">
     <PackageVersion Include="MessagePack" Version="3.1.8" />
@@ -49,24 +49,24 @@
     <PackageVersion Include="Tomlyn" Version="2.10.1" />
   </ItemGroup>
   <ItemGroup Label="JSON Schema">
-    <PackageVersion Include="JsonSchema.Net" Version="9.2.2" />
-    <PackageVersion Include="JsonSchema.Net.Generation" Version="7.3.10" />
+    <PackageVersion Include="JsonSchema.Net" Version="9.4.0" />
+    <PackageVersion Include="JsonSchema.Net.Generation" Version="7.3.11" />
   </ItemGroup>
   <ItemGroup Label="Document Processing">
     <PackageVersion Include="DocumentFormat.OpenXml" Version="3.5.1" />
-    <PackageVersion Include="HtmlAgilityPack" Version="1.12.4" />
-    <PackageVersion Include="PdfPig" Version="0.1.15" />
+    <PackageVersion Include="HtmlAgilityPack" Version="1.13.0" />
+    <PackageVersion Include="PdfPig" Version="0.1.16" />
   </ItemGroup>
   <ItemGroup Label="Tokenizers">
     <PackageVersion Include="Tiktoken" Version="3.1.5" />
   </ItemGroup>
   <ItemGroup Label="Infrastructure">
-    <PackageVersion Include="Qdrant.Client" Version="1.18.1" />
-    <PackageVersion Include="RabbitMQ.Client" Version="7.2.1" />
+    <PackageVersion Include="Qdrant.Client" Version="1.19.0" />
+    <PackageVersion Include="RabbitMQ.Client" Version="7.2.2" />
   </ItemGroup>
   <ItemGroup Label="Utilities">
     <PackageVersion Include="dotenv.net" Version="4.0.2" />
-    <PackageVersion Include="Scriban" Version="7.2.5" />
+    <PackageVersion Include="Scriban" Version="7.4.0" />
     <PackageVersion Include="ModelContextProtocol" Version="2.2.0" />
   </ItemGroup>
   <ItemGroup Label="Samples">
