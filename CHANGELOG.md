@@ -19,6 +19,13 @@ changes are expected and used freely for structural correctness (see
   event) before rethrowing when the server fails `tools/list`. Previously the manager
   swallowed the fault and the session stayed `Connected` with zero tools and no event.
 
+### Behaviour change
+
+A server that rejects `ping` but completes `initialize` now **connects, and its tools are
+registered** — previously that session went to `Errored` and the server contributed no tools.
+Consumers that relied on the strict handshake check should call `HealthAsync`, which still
+pings and still reports a non-compliant server.
+
 ## 0.22.1 — 2026-08-28
 
 ### Changed — `ModelContextProtocol` dependency
