@@ -33,6 +33,59 @@ VertexAI, whatever the vendor SDK defaulted to for Anthropic) to bound a stalled
 indefinitely instead — set the provider's `Timeout` explicitly to restore a ceiling. `OpenAIConfig.TimeOut`
 is renamed to `Timeout`, a source-breaking change for any caller that set it by name.
 
+### Added — `IDocumentReranker`/`IRerankService`, `CohereDocumentReranker`
+
+New capability area mirroring `Embeddings`: `IronHive.Abstractions.Reranking.IDocumentReranker`
+(provider-level) and `IRerankService` (app-level, exposed as `IHiveService.Rerank` and its
+`Rerankers` provider dictionary — not `Generators`, since the provider interface isn't named
+`*Generator`), wired through `IHiveServiceBuilder.AddDocumentReranker`.
+`CohereDocumentReranker` (`IronHive.Providers.OpenAI.Compatible.Reranking`, payloads in
+`CohereRerankPayloads.cs`) talks to a Cohere-shaped `POST /rerank`
+(<https://docs.cohere.com/reference/rerank>) — the shape self-hosted servers such as Infinity
+(explicitly a "locally deployed Cohere rerank API"), vLLM's `/rerank`/`/v1/rerank`/`/v2/rerank`
+(documented Cohere/Jina-compatible), and GPUStack's `/v1/rerank` (Jina-compatible, a superset of
+Cohere's shape) implement, named for the wire protocol it actually speaks rather than
+`OpenAICompatible*` (reusing an already-resolved `OpenAIConfig` only for connection settings,
+matching the naming precedent set by `OpenAICompatible*` itself: named for the shape spoken, not
+the package it lives in). Not every self-hosted rerank server follows this shape — HuggingFace's
+Text Embeddings Inference (TEI) uses its own distinct request fields (`texts`/`raw_scores`/
+`return_text` rather than `documents`/`model`/`top_n`) and is not compatible with this client.
+`OpenAICompatibleServiceType` gains a `Rerank` flag (included in `All`) so
+`AddOpenAICompatibleProviders` registers it alongside the other services.
+
+`CohereDocumentReranker` takes an already-resolved `OpenAIConfig` (mirroring
+`ChatCompletionMessageGenerator`) rather than `OpenAICompatibleConfig` directly, because the rerank
+path is not always the chat/embeddings path on the same server: GPUStack serves chat/embeddings/
+models at `/v1-openai/` but rerank at `/v1/` (llama-box backend only). `GpuStackServiceType` gains
+a matching `Rerank` flag (included in `All`); `GpuStackConfig.ToRerankConfig()` (internal) builds
+the `/v1/`-targeting `OpenAIConfig` alongside the existing `ToOpenAI()` for `/v1-openai/`.
+
+### Removed — `GpuStackMessageGenerator` (merged into `OpenAICompatibleMessageGenerator`)
+
+`GpuStackMessageGenerator` and `OpenAICompatibleMessageGenerator` were identical modulo the config
+type they held (`GpuStackConfig` vs `OpenAICompatibleConfig`) — same dynamic-resolution wrapper,
+same signature-based inner-generator swap, same `TokenLimitParameter` hand-off. That duplication had
+already caused a real defect (0.19.0: a `TokenLimitParameter` fix landed on the OpenAICompatible side
+and not the GPUStack one, because there was no single place to fix it). `GpuStackConfig` gains
+`ToOpenAICompatible()` (internal), converting itself to an `OpenAICompatibleConfig` (`Path` set to
+GPUStack's `/v1-openai/`, resolvers/`TokenLimitParameter`/`ConnectTimeout` carried over as-is —
+dynamic base-URL/API-key rotation via `BaseUrlResolver`/`ApiKeyResolver` still works after conversion
+since the same delegate is reused, not re-wrapped), mirroring the existing `ToOpenAI()`/
+`ToRerankConfig()` converters on the same class. `GpuStackMessageGenerator.cs` is deleted;
+`AddGpuStackProviders` now registers `new OpenAICompatibleMessageGenerator(config.ToOpenAICompatible())`.
+No behavior change for either provider — this is a duplication removal, not a feature change.
+
+### Added — `Images`/`Audio` flags on `OpenAICompatibleServiceType`/`GpuStackServiceType`
+
+`OpenAIImageGenerator` and `OpenAIAudioProcessor` (`IronHive.Providers.OpenAI`) already take a plain
+`OpenAIConfig`, same as `OpenAIEmbeddingGenerator`/`OpenAIModelFinder` — nothing OpenAI-specific stops
+them from working against any OpenAI-compatible endpoint. `OpenAICompatibleServiceType` and
+`GpuStackServiceType` each gain `Images`/`Audio` flags (both included in `All`), and
+`AddOpenAICompatibleProviders`/`AddGpuStackProviders` register the two generators via `config.ToOpenAI()`
+the same way embeddings and models already were. Support in practice depends on what the target
+server/deployed models actually implement (e.g. GPUStack routes image requests to its SGLang backend
+and audio to VoxBox) — registering the flag does not itself guarantee the server understands the call.
+
 ### Added — `SpeechToTextRequest.Diarized`
 
 `OpenAIAudioProcessor.TranscribeAsync` selected the diarized transcription endpoint by checking whether

@@ -10,6 +10,12 @@ namespace IronHive.Tests.Providers;
 /// 404-ing every Chat-Completions-only endpoint. Compatible/GPUStack no longer go through a configurable
 /// surface switch at all — they wire directly to <see cref="ChatCompletionMessageGenerator"/>, so this asserts
 /// that wiring rather than a runtime flag that could regress back to the wrong default.
+/// <para>
+/// GPUStack no longer has its own generator class — <see cref="GpuStackConfig.ToOpenAICompatible"/> converts
+/// to an <see cref="OpenAICompatibleConfig"/> and <see cref="OpenAICompatibleMessageGenerator"/> takes it from
+/// there, since the two generators were previously identical modulo the config type (see CHANGELOG 0.19.0,
+/// where that duplication let a fix land on one and not the other).
+/// </para>
 /// </summary>
 public class OpenAICompatibleMessageGeneratorTests
 {
@@ -28,7 +34,8 @@ public class OpenAICompatibleMessageGeneratorTests
     [Fact]
     public void GpuStack_UsesChatCompletionsGenerator()
     {
-        using var gen = new GpuStackMessageGenerator(new GpuStackConfig { BaseUrl = "http://localhost:8080", ApiKey = "k" });
+        var config = new GpuStackConfig { BaseUrl = "http://localhost:8080", ApiKey = "k" };
+        using var gen = new OpenAICompatibleMessageGenerator(config.ToOpenAICompatible());
         GetInner(gen).Should().BeOfType<ChatCompletionMessageGenerator>();
     }
 
@@ -49,12 +56,13 @@ public class OpenAICompatibleMessageGeneratorTests
     [Fact]
     public void GpuStack_TokenLimitParameter_ReachesInnerGenerator()
     {
-        using var gen = new GpuStackMessageGenerator(new GpuStackConfig
+        var config = new GpuStackConfig
         {
             BaseUrl = "http://localhost:8080",
             ApiKey = "k",
             TokenLimitParameter = TokenLimitParameter.MaxTokens,
-        });
+        };
+        using var gen = new OpenAICompatibleMessageGenerator(config.ToOpenAICompatible());
 
         gen.EffectiveTokenLimitParameter.Should().Be(TokenLimitParameter.MaxTokens);
         ((ChatCompletionMessageGenerator)GetInner(gen)).TokenLimitParameter.Should().Be(TokenLimitParameter.MaxTokens);
@@ -63,7 +71,8 @@ public class OpenAICompatibleMessageGeneratorTests
     [Fact]
     public void GpuStack_TokenLimitParameter_DefaultsToMaxCompletionTokens_NoRegression()
     {
-        using var gen = new GpuStackMessageGenerator(new GpuStackConfig { BaseUrl = "http://localhost:8080", ApiKey = "k" });
+        var config = new GpuStackConfig { BaseUrl = "http://localhost:8080", ApiKey = "k" };
+        using var gen = new OpenAICompatibleMessageGenerator(config.ToOpenAICompatible());
         gen.EffectiveTokenLimitParameter.Should().Be(TokenLimitParameter.MaxCompletionTokens);
     }
 
@@ -71,11 +80,12 @@ public class OpenAICompatibleMessageGeneratorTests
     public void GpuStack_TokenLimitParameter_SurvivesInnerGeneratorSwap()
     {
         var endpoint = "http://localhost:8080";
-        using var gen = new GpuStackMessageGenerator(new GpuStackConfig
+        var config = new GpuStackConfig
         {
             BaseUrlResolver = () => endpoint,
             TokenLimitParameter = TokenLimitParameter.MaxTokens,
-        });
+        };
+        using var gen = new OpenAICompatibleMessageGenerator(config.ToOpenAICompatible());
 
         gen.EffectiveTokenLimitParameter.Should().Be(TokenLimitParameter.MaxTokens);
 

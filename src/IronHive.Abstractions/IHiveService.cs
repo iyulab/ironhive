@@ -5,6 +5,7 @@ using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Images;
 using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Messages;
+using IronHive.Abstractions.Reranking;
 using IronHive.Abstractions.Videos;
 using IronHive.Abstractions.Audio;
 
@@ -15,6 +16,7 @@ public interface IHiveService : IDisposable
     IModelService Models { get; }
     IMessageService Messages { get; }
     IEmbeddingService Embeddings { get; }
+    IRerankService Rerank { get; }
     IImageService Images { get; }
     IVideoService Videos { get; }
     IAudioService Audio { get; }

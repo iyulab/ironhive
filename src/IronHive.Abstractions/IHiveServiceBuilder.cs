@@ -5,6 +5,7 @@ using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Images;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Queue;
+using IronHive.Abstractions.Reranking;
 using IronHive.Abstractions.Vector;
 using IronHive.Abstractions.Videos;
 
@@ -16,6 +17,7 @@ public interface IHiveServiceBuilder
     IHiveServiceBuilder AddMessageGenerator(string name, IMessageGenerator generator);
     IHiveServiceBuilder AddMessageMiddleware(IMessageMiddleware middleware);
     IHiveServiceBuilder AddEmbeddingGenerator(string name, IEmbeddingGenerator generator);
+    IHiveServiceBuilder AddDocumentReranker(string name, IDocumentReranker reranker);
     IHiveServiceBuilder AddImageGenerator(string name, IImageGenerator generator);
     IHiveServiceBuilder AddVideoGenerator(string name, IVideoGenerator generator);
     IHiveServiceBuilder AddAudioProcessor(string name, IAudioProcessor processor);

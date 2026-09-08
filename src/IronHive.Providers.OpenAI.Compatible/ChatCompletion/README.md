@@ -2,7 +2,8 @@
 
 OpenAI Chat Completions API(`POST /chat/completions`)를 raw HTTP/JSON으로 구현한 내부 모듈입니다.
 Ollama, LM Studio, vLLM, llama.cpp server, GPUStack 등 OpenAI 호환 서버 대상이며,
-`OpenAICompatibleMessageGenerator`/`GpuStack.GpuStackMessageGenerator`가 내부적으로 위임합니다.
+`OpenAICompatibleMessageGenerator`가 내부적으로 위임합니다(`OpenAICompatibleConfig`/`GpuStackConfig`
+양쪽 모두 이 한 클래스가 처리합니다 — 별도 GPUStack 전용 제네레이터는 없습니다).
 
 ## 파일 구성
 

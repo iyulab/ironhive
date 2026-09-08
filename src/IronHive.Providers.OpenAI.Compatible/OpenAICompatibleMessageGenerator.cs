@@ -8,6 +8,11 @@ namespace IronHive.Providers.OpenAI.Compatible;
 /// <see cref="ChatCompletionMessageGenerator"/> (Chat Completions surface) over the resolved <c>/v1</c> base URL.
 /// When <see cref="OpenAICompatibleConfig.BaseUrlResolver"/> or <see cref="OpenAICompatibleConfig.ApiKeyResolver"/>
 /// is set, the endpoint/key is re-resolved per request and the inner generator is swapped on change.
+/// <para>
+/// Also serves GPUStack: <see cref="GpuStack.GpuStackConfig.ToOpenAICompatible"/> converts a
+/// <see cref="GpuStack.GpuStackConfig"/> into an <see cref="OpenAICompatibleConfig"/> targeting
+/// <c>/v1-openai/</c>, so this one class covers both rather than a GPUStack-specific duplicate.
+/// </para>
 /// </summary>
 public class OpenAICompatibleMessageGenerator : IMessageGenerator
 {

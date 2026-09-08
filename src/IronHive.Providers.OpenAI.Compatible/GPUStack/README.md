@@ -12,6 +12,9 @@
 - Chat Completions API
 - Embeddings API
 - Models API
+- Rerank API (`POST /v1/rerank`, Jina/Cohere 호환 — llama-box 백엔드에서만, `/v1-openai/`가 아닌 `/v1/` 경로)
+- Images API (SGLang 백엔드)
+- Audio API — TTS/STT (VoxBox 백엔드)
 
 ## 특징
 
@@ -62,13 +65,16 @@ var config = new GpuStackConfig
 };
 ```
 
-내부 `GpuStackMessageGenerator`는 resolv된 `(BaseUrl, ApiKey)` 시그니처가 바뀔 때에만
-inner generator를 재생성하므로, 키만 회전해도 새 키가 정확히 적용됩니다.
+메시지 생성은 `OpenAICompatibleMessageGenerator`(GPUStack 전용 클래스가 아니라 `OpenAICompatibleConfig`와
+공유하는 클래스)가 처리합니다 — `GpuStackConfig.ToOpenAICompatible()`이 `BaseUrlResolver`/`ApiKeyResolver`를
+그대로 전달하며 `OpenAICompatibleConfig`로 변환하므로, resolve된 `(BaseUrl, ApiKey)` 시그니처가 바뀔 때에만
+inner generator를 재생성하는 동작은 변환 후에도 그대로 유지됩니다. 키만 회전해도 새 키가 정확히 적용됩니다.
 
 ## 제한사항
 
 GPUStack은 Chat Completions API 기반(`ChatCompletionMessageGenerator`)으로 동작합니다.
-배포된 모델에 따라 지원 기능이 다를 수 있습니다.
+배포된 모델에 따라 지원 기능이 다를 수 있습니다. Rerank는 llama-box 백엔드에서만 지원되며
+`/v1-openai/`가 아닌 `/v1/`을 사용합니다.
 
 ---
 

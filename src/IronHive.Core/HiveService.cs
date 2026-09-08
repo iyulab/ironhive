@@ -6,6 +6,7 @@ using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Images;
 using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Messages;
+using IronHive.Abstractions.Reranking;
 using IronHive.Abstractions.Videos;
 using IronHive.Abstractions.Audio;
 using IronHive.Abstractions.Vector;
@@ -25,6 +26,7 @@ public class HiveService : IHiveService
         IModelService models,
         IMessageService messages,
         IEmbeddingService embeddings,
+        IRerankService rerank,
         IImageService images,
         IVideoService videos,
         IAudioService audio,
@@ -35,6 +37,7 @@ public class HiveService : IHiveService
         Models = models;
         Messages = messages;
         Embeddings = embeddings;
+        Rerank = rerank;
         Images = images;
         Videos = videos;
         Audio = audio;
@@ -48,6 +51,7 @@ public class HiveService : IHiveService
     public IModelService Models { get; }
     public IMessageService Messages { get; }
     public IEmbeddingService Embeddings { get; }
+    public IRerankService Rerank { get; }
     public IImageService Images { get; }
     public IVideoService Videos { get; }
     public IAudioService Audio { get; }

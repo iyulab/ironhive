@@ -9,6 +9,12 @@ public class GpuStackConfig
     private const string ApiPath = "/v1-openai/";
 
     /// <summary>
+    /// GPUStack serves its Jina-compatible rerank API (llama-box backend) at <c>/v1/rerank</c>,
+    /// not under <c>/v1-openai/</c> like chat/embeddings/models.
+    /// </summary>
+    private const string RerankApiPath = "/v1/";
+
+    /// <summary>
     /// 인증용 API 키를 가져오거나 설정합니다.
     /// </summary>
     public string? ApiKey { get; set; }
@@ -75,11 +81,42 @@ public class GpuStackConfig
     }
 
     /// <summary>
-    /// Converts the current configuration to an equivalent <see cref="OpenAIConfig"/> instance.
+    /// Converts the current configuration to an equivalent <see cref="OpenAIConfig"/> instance,
+    /// targeting GPUStack's OpenAI-compatible surface (chat completions, embeddings, models) at
+    /// <c>/v1-openai/</c>.
     /// </summary>
-    public OpenAIConfig ToOpenAI() => new()
+    public OpenAIConfig ToOpenAI() => ToOpenAIConfig(ApiPath);
+
+    /// <summary>
+    /// Converts the current configuration to an equivalent <see cref="OpenAICompatibleConfig"/>, so
+    /// GPUStack's Chat Completions surface can be served by the same
+    /// <see cref="OpenAICompatibleMessageGenerator"/> that <see cref="OpenAICompatibleConfig"/> uses —
+    /// GPUStack's dynamic base-URL/API-key resolution is otherwise identical, so a GPUStack-specific
+    /// message generator would just duplicate it.
+    /// </summary>
+    internal OpenAICompatibleConfig ToOpenAICompatible() => new()
     {
-        BaseUrl = ResolveBaseUrl().TrimEnd('/') + ApiPath,
+        // Baked in as the static fallback; BaseUrlResolver/ApiKeyResolver below still take
+        // precedence per request, so dynamic rotation is unaffected.
+        BaseUrl = ResolveBaseUrl(),
+        ApiKey = ResolveApiKey(),
+        Path = ApiPath,
+        BaseUrlResolver = BaseUrlResolver,
+        ApiKeyResolver = ApiKeyResolver,
+        ConnectTimeout = ConnectTimeout,
+        TokenLimitParameter = TokenLimitParameter,
+    };
+
+    /// <summary>
+    /// Converts the current configuration to an equivalent <see cref="OpenAIConfig"/> instance,
+    /// targeting GPUStack's Jina-compatible rerank endpoint at <c>/v1/rerank</c> rather than
+    /// <see cref="ApiPath"/>.
+    /// </summary>
+    internal OpenAIConfig ToRerankConfig() => ToOpenAIConfig(RerankApiPath);
+
+    private OpenAIConfig ToOpenAIConfig(string apiPath) => new()
+    {
+        BaseUrl = ResolveBaseUrl().TrimEnd('/') + apiPath,
         ApiKey = ResolveApiKey(),
         HttpClient = new HttpClient(new SocketsHttpHandler
         {

@@ -15,6 +15,15 @@ public enum OpenAICompatibleServiceType
     /// <summary>Embedding generation.</summary>
     Embeddings = 1 << 2,
 
+    /// <summary>Reranking (<c>POST /rerank</c>, Cohere-shaped).</summary>
+    Rerank = 1 << 3,
+
+    /// <summary>Image generation/editing.</summary>
+    Images = 1 << 4,
+
+    /// <summary>Audio processing (TTS/STT).</summary>
+    Audio = 1 << 5,
+
     /// <summary>All supported services.</summary>
-    All = Models | Language | Embeddings
+    All = Models | Language | Embeddings | Rerank | Images | Audio
 }

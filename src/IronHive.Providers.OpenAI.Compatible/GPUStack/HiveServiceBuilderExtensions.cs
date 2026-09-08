@@ -1,5 +1,7 @@
 using IronHive.Providers.OpenAI;
+using IronHive.Providers.OpenAI.Compatible;
 using IronHive.Providers.OpenAI.Compatible.GpuStack;
+using IronHive.Providers.OpenAI.Compatible.Reranking;
 
 namespace IronHive.Abstractions;
 
@@ -18,10 +20,19 @@ public static partial class CompatibleHiveServiceBuilderExtensions
             builder.AddModelFinder(providerName, new OpenAIModelFinder(config.ToOpenAI()));
 
         if (serviceType.HasFlag(GpuStackServiceType.Language))
-            builder.AddMessageGenerator(providerName, new GpuStackMessageGenerator(config));
+            builder.AddMessageGenerator(providerName, new OpenAICompatibleMessageGenerator(config.ToOpenAICompatible()));
 
         if (serviceType.HasFlag(GpuStackServiceType.Embeddings))
             builder.AddEmbeddingGenerator(providerName, new OpenAIEmbeddingGenerator(config.ToOpenAI()));
+
+        if (serviceType.HasFlag(GpuStackServiceType.Rerank))
+            builder.AddDocumentReranker(providerName, new CohereDocumentReranker(config.ToRerankConfig()));
+
+        if (serviceType.HasFlag(GpuStackServiceType.Images))
+            builder.AddImageGenerator(providerName, new OpenAIImageGenerator(config.ToOpenAI()));
+
+        if (serviceType.HasFlag(GpuStackServiceType.Audio))
+            builder.AddAudioProcessor(providerName, new OpenAIAudioProcessor(config.ToOpenAI()));
 
         return builder;
     }

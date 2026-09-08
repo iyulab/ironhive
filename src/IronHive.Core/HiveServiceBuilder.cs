@@ -6,6 +6,7 @@ using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Images;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Queue;
+using IronHive.Abstractions.Reranking;
 using IronHive.Abstractions.Vector;
 using IronHive.Abstractions.Videos;
 using IronHive.Core.Files;
@@ -19,6 +20,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     private readonly Dictionary<string, IMessageGenerator> _messages = new();
     private readonly List<IMessageMiddleware> _messageMiddlewares = new();
     private readonly Dictionary<string, IEmbeddingGenerator> _embeddings = new();
+    private readonly Dictionary<string, IDocumentReranker> _rerankers = new();
     private readonly Dictionary<string, IImageGenerator> _images = new();
     private readonly Dictionary<string, IVideoGenerator> _videos = new();
     private readonly Dictionary<string, IAudioProcessor> _audios = new();
@@ -45,9 +47,15 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     }
 
     public IHiveServiceBuilder AddEmbeddingGenerator(string name, IEmbeddingGenerator generator)
-    { 
-        _embeddings[name] = generator; 
-        return this; 
+    {
+        _embeddings[name] = generator;
+        return this;
+    }
+
+    public IHiveServiceBuilder AddDocumentReranker(string name, IDocumentReranker reranker)
+    {
+        _rerankers[name] = reranker;
+        return this;
     }
 
     public IHiveServiceBuilder AddImageGenerator(string name, IImageGenerator generator)
@@ -91,6 +99,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         var modelService = new ModelService(_models);
         var messageService = new MessageService(_messages, _messageMiddlewares);
         var embeddingService = new EmbeddingService(_embeddings);
+        var rerankService = new RerankService(_rerankers);
         var imageService = new ImageService(_images);
         var videoService = new VideoService(_videos);
         var audioService = new AudioService(_audios);
@@ -100,6 +109,7 @@ public class HiveServiceBuilder : IHiveServiceBuilder
             models: modelService,
             messages: messageService,
             embeddings: embeddingService,
+            rerank: rerankService,
             images: imageService,
             videos: videoService,
             audio: audioService,

@@ -12,9 +12,9 @@ namespace IronHive.Providers.OpenAI.Compatible.ChatCompletion;
 /// <summary>
 /// Message generator targeting the OpenAI <b>Chat Completions</b> API (<c>POST /v1/chat/completions</c>) — the
 /// de-facto standard OpenAI-compatible / self-hosted servers (Ollama, LM Studio, vLLM, llama.cpp server, GPUStack)
-/// implement. Used exclusively by this package (<see cref="OpenAICompatibleMessageGenerator"/>,
-/// <see cref="GpuStack.GpuStackMessageGenerator"/>); first-party OpenAI always uses the Responses API
-/// (<see cref="IronHive.Providers.OpenAI.OpenAIMessageGenerator"/>) instead.
+/// implement. Used exclusively by this package, via <see cref="OpenAICompatibleMessageGenerator"/> (which
+/// serves both <see cref="OpenAICompatibleConfig"/> and <see cref="GpuStack.GpuStackConfig"/>); first-party
+/// OpenAI always uses the Responses API (<see cref="IronHive.Providers.OpenAI.OpenAIMessageGenerator"/>) instead.
 /// <para>
 /// Talks raw HTTP/JSON (<see cref="ChatCompletionHttpClient"/>) rather than the OpenAI SDK. Compatible servers
 /// commonly emit a <c>reasoning_content</c> (or <c>reasoning</c>) field on reasoning-capable models that the

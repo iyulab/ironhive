@@ -284,8 +284,32 @@ public enum OpenAICompatibleServiceType
     Models = 1,
     Language = 2,
     Embeddings = 4,
-    All = Models | Language | Embeddings
+    Rerank = 8,
+    Images = 16,
+    Audio = 32,
+    All = Models | Language | Embeddings | Rerank | Images | Audio
 }
+```
+
+`Images`/`Audio`는 각각 `OpenAIImageGenerator`/`OpenAIAudioProcessor`(둘 다 `IronHive.Providers.OpenAI`)를 `config.ToOpenAI()`로 등록한다 — 실제 지원 여부는 서버/배포된 모델에 따라 다르다(예: 이미지 생성을 지원하지 않는 순수 LLM 서버는 `Images` 요청 시 오류를 반환한다).
+
+### 리랭킹
+
+Cohere 형태의 `POST /rerank`(<https://docs.cohere.com/reference/rerank>)를 구현하는 서버(Infinity, vLLM 등)를 지원한다. `CohereDocumentReranker`가 `IDocumentReranker`를 구현하며, `hive.Rerank`(`IRerankService`)를 통해 프로바이더 이름으로 라우팅된다.
+
+⚠️ 모든 자체 호스팅 rerank 서버가 이 형태를 따르는 건 아니다 — 예를 들어 HuggingFace TEI(text-embeddings-inference)의 `/rerank`는 `documents`/`model`/`top_n` 대신 `texts`/`raw_scores`/`return_text`를 쓰는 독자 포맷이라 이 클라이언트와 호환되지 않는다.
+
+```csharp
+builder.AddOpenAICompatibleProviders("tei", new OpenAICompatibleConfig
+{
+    BaseUrl = "http://localhost:8080"
+}, OpenAICompatibleServiceType.Rerank);
+
+var results = await hive.Rerank.RerankAsync(
+    "tei", "rerank-model", "가장 관련 있는 문서는?",
+    documents: ["문서 A", "문서 B", "문서 C"],
+    topN: 2);
+// results: documents의 원본 인덱스 + 점수, 점수 내림차순
 ```
 
 ---
@@ -294,7 +318,7 @@ public enum OpenAICompatibleServiceType
 
 **패키지**: `IronHive.Providers.OpenAI.Compatible`
 
-GPUStack 전용 최적화 프로바이더 (`GpuStackMessageGenerator`, base URL 경로 `/v1-openai/`). `GpuStackConfig.ToOpenAI()`도 동일하게 표면을 `ChatCompletions`로 고정한다.
+GPUStack 전용 최적화 프로바이더 (base URL 경로 `/v1-openai/`). 메시지 생성은 별도 클래스 없이 `OpenAICompatibleMessageGenerator`가 처리한다 — `GpuStackConfig.ToOpenAICompatible()`(internal)이 `OpenAICompatibleConfig`로 변환하고(`Path`를 `/v1-openai/`로 고정, resolver·`TokenLimitParameter`·`ConnectTimeout` 그대로 전달), 그 결과를 넘긴다. `OpenAICompatibleConfig`용 제네레이터와 로직이 완전히 동일했기 때문에 GPUStack 전용 클래스는 제거되었다. `GpuStackConfig.ToOpenAI()`도 동일하게 표면을 `ChatCompletions`로 고정한다.
 
 ```csharp
 builder.AddGpuStackProviders("gpustack", new GpuStackConfig
@@ -313,8 +337,28 @@ public enum GpuStackServiceType
     Models = 1,
     Language = 2,
     Embeddings = 4,
-    All = Models | Language | Embeddings
+    Rerank = 8,
+    Images = 16,
+    Audio = 32,
+    All = Models | Language | Embeddings | Rerank | Images | Audio
 }
+```
+
+`Images`(SGLang 백엔드)/`Audio`(VoxBox 백엔드, TTS/STT)도 chat/embeddings/models와 같은 `/v1-openai/` 경로를 쓰므로 `config.ToOpenAI()`를 그대로 재사용한다.
+
+### 리랭킹
+
+GPUStack은 Jina 호환(Cohere 호환의 상위 호환) `POST /v1/rerank`를 제공한다 — llama-box 백엔드에서만 지원되며, chat/embeddings/models가 쓰는 `/v1-openai/` 경로와 다르다. `GpuStackConfig.ToRerankConfig()`(internal)가 이 경로를 targeting하는 `OpenAIConfig`를 만들고, `CohereDocumentReranker`(`IronHive.Providers.OpenAI.Compatible.Reranking`)에 넘겨진다.
+
+```csharp
+builder.AddGpuStackProviders("gpustack", new GpuStackConfig
+{
+    BaseUrl = "http://gpustack-server:8080",
+    ApiKey = "..."
+}, GpuStackServiceType.Rerank);
+
+var results = await hive.Rerank.RerankAsync(
+    "gpustack", "bge-reranker-v2-m3", "query", documents: ["doc1", "doc2"]);
 ```
 
 ---

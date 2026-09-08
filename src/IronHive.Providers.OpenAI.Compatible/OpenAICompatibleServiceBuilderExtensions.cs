@@ -1,5 +1,6 @@
 using IronHive.Providers.OpenAI;
 using IronHive.Providers.OpenAI.Compatible;
+using IronHive.Providers.OpenAI.Compatible.Reranking;
 
 namespace IronHive.Abstractions;
 
@@ -24,6 +25,15 @@ public static partial class CompatibleHiveServiceBuilderExtensions
 
         if (serviceType.HasFlag(OpenAICompatibleServiceType.Embeddings))
             builder.AddEmbeddingGenerator(providerName, new OpenAIEmbeddingGenerator(config.ToOpenAI()));
+
+        if (serviceType.HasFlag(OpenAICompatibleServiceType.Rerank))
+            builder.AddDocumentReranker(providerName, new CohereDocumentReranker(config.ToOpenAI()));
+
+        if (serviceType.HasFlag(OpenAICompatibleServiceType.Images))
+            builder.AddImageGenerator(providerName, new OpenAIImageGenerator(config.ToOpenAI()));
+
+        if (serviceType.HasFlag(OpenAICompatibleServiceType.Audio))
+            builder.AddAudioProcessor(providerName, new OpenAIAudioProcessor(config.ToOpenAI()));
 
         return builder;
     }
