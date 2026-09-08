@@ -57,12 +57,26 @@ internal sealed class ChatCompletionHttpClient : IDisposable
     {
         request.Stream = false;
         using var content = JsonContent.Create(request, options: JsonOptions);
-        using var response = await _http.PostAsync(ChatCompletionsPath, content, cancellationToken).ConfigureAwait(false);
-        if (!response.IsSuccessStatusCode)
-            throw await ChatCompletionExceptionDetector.DetectAsync(response, cancellationToken).ConfigureAwait(false);
 
-        return await response.Content.ReadFromJsonAsync<ChatCompletionResponse>(JsonOptions, cancellationToken).ConfigureAwait(false)
-            ?? throw new InvalidOperationException("Failed to deserialize the chat completion response.");
+        HttpResponseMessage response;
+        try
+        {
+            response = await _http.PostAsync(ChatCompletionsPath, content, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            // HttpClient.Timeout (not the caller's token) cut the request short.
+            throw new TimeoutException("The chat completion request timed out.", ex);
+        }
+
+        using (response)
+        {
+            if (!response.IsSuccessStatusCode)
+                throw await ChatCompletionExceptionDetector.DetectAsync(response, cancellationToken).ConfigureAwait(false);
+
+            return await response.Content.ReadFromJsonAsync<ChatCompletionResponse>(JsonOptions, cancellationToken).ConfigureAwait(false)
+                ?? throw new InvalidOperationException("Failed to deserialize the chat completion response.");
+        }
     }
 
     public async IAsyncEnumerable<StreamingChatCompletionResponse> PostStreamingAsync(
@@ -74,33 +88,59 @@ internal sealed class ChatCompletionHttpClient : IDisposable
 
         using var content = JsonContent.Create(request, options: JsonOptions);
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, ChatCompletionsPath) { Content = content };
-        using var response = await _http.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-        if (!response.IsSuccessStatusCode)
-            throw await ChatCompletionExceptionDetector.DetectAsync(response, cancellationToken).ConfigureAwait(false);
 
-        using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-        using var reader = new StreamReader(stream);
-
-        string? line;
-        while ((line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false)) is not null)
+        HttpResponseMessage response;
+        try
         {
-            // GPUStack emits mid-stream errors as a bare "error: <message>" line instead of an HTTP error.
-            if (line.StartsWith("error:", StringComparison.Ordinal))
+            response = await _http.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            // HttpClient.Timeout (not the caller's token) cut the request short.
+            throw new TimeoutException("The chat completion request timed out.", ex);
+        }
+
+        using (response)
+        {
+            if (!response.IsSuccessStatusCode)
+                throw await ChatCompletionExceptionDetector.DetectAsync(response, cancellationToken).ConfigureAwait(false);
+
+            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            using var reader = new StreamReader(stream);
+
+            string? line;
+            while (true)
             {
-                var errorMessage = line["error:".Length..].Trim();
-                throw ChatCompletionExceptionDetector.Detect(errorMessage);
+                try
+                {
+                    line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+                {
+                    throw new TimeoutException("The chat completion request timed out.", ex);
+                }
+
+                if (line is null)
+                    yield break;
+
+                // GPUStack emits mid-stream errors as a bare "error: <message>" line instead of an HTTP error.
+                if (line.StartsWith("error:", StringComparison.Ordinal))
+                {
+                    var errorMessage = line["error:".Length..].Trim();
+                    throw ChatCompletionExceptionDetector.Detect(errorMessage);
+                }
+
+                if (!line.StartsWith("data:", StringComparison.Ordinal))
+                    continue;
+
+                var data = line["data:".Length..].Trim();
+                if (data is "[DONE]" || data.Length == 0)
+                    continue;
+
+                var chunk = JsonSerializer.Deserialize<StreamingChatCompletionResponse>(data, JsonOptions);
+                if (chunk != null)
+                    yield return chunk;
             }
-
-            if (!line.StartsWith("data:", StringComparison.Ordinal))
-                continue;
-
-            var data = line["data:".Length..].Trim();
-            if (data is "[DONE]" || data.Length == 0)
-                continue;
-
-            var chunk = JsonSerializer.Deserialize<StreamingChatCompletionResponse>(data, JsonOptions);
-            if (chunk != null)
-                yield return chunk;
         }
     }
 }

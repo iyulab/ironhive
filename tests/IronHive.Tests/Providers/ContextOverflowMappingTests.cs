@@ -88,7 +88,7 @@ public class ContextOverflowMappingTests
     public void OpenAI_Map_Ignores_NonSdk_Exceptions()
     {
         var ex = new InvalidOperationException("maximum context length is 128000 tokens");
-        OpenAIMapper.Map(ex).Should().BeNull();
+        OpenAIMapper.Map(ex, TestContext.Current.CancellationToken).Should().BeNull();
     }
 
     // ---- Anthropic ----
@@ -101,7 +101,7 @@ public class ContextOverflowMappingTests
         var body = """{"type":"error","error":{"type":"invalid_request_error","message":"prompt is too long: 210145 tokens > 204698 maximum"}}""";
         var sdkException = AnthropicExceptionFactory.CreateApiException(HttpStatusCode.BadRequest, body);
 
-        var mapped = AnthropicMapper.Map(sdkException);
+        var mapped = AnthropicMapper.Map(sdkException, TestContext.Current.CancellationToken);
 
         mapped.Should().BeOfType<ContextOverflowException>().Which.ContextWindow.Should().Be(204698);
     }
@@ -112,7 +112,7 @@ public class ContextOverflowMappingTests
         var body = """{"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low"}}""";
         var sdkException = AnthropicExceptionFactory.CreateApiException(HttpStatusCode.BadRequest, body);
 
-        AnthropicMapper.Map(sdkException).Should().BeNull();
+        AnthropicMapper.Map(sdkException, TestContext.Current.CancellationToken).Should().BeNull();
     }
 
     [Fact]
@@ -123,7 +123,7 @@ public class ContextOverflowMappingTests
         var body = """{"type":"error","error":{"type":"rate_limit_error","message":"prompt is too long: 1 tokens > 1 maximum"}}""";
         var sdkException = AnthropicExceptionFactory.CreateApiException(HttpStatusCode.TooManyRequests, body);
 
-        AnthropicMapper.Map(sdkException).Should().BeOfType<RateLimitException>();
+        AnthropicMapper.Map(sdkException, TestContext.Current.CancellationToken).Should().BeOfType<RateLimitException>();
     }
 
     // ---- Google GenAI (Gemini) ----
@@ -136,7 +136,7 @@ public class ContextOverflowMappingTests
         var message = "The input token count (185586) exceeds the maximum number of tokens allowed (131072).";
         var clientError = new ClientError(message, 400, "INVALID_ARGUMENT");
 
-        var mapped = GoogleAIMapper.Map(clientError);
+        var mapped = GoogleAIMapper.Map(clientError, TestContext.Current.CancellationToken);
 
         mapped.Should().BeOfType<ContextOverflowException>().Which.ContextWindow.Should().Be(131072);
     }
@@ -146,7 +146,7 @@ public class ContextOverflowMappingTests
     {
         var clientError = new ClientError("API key not valid. Please pass a valid API key.", 400, "INVALID_ARGUMENT");
 
-        GoogleAIMapper.Map(clientError).Should().BeNull();
+        GoogleAIMapper.Map(clientError, TestContext.Current.CancellationToken).Should().BeNull();
     }
 
     [Fact]
@@ -154,6 +154,6 @@ public class ContextOverflowMappingTests
     {
         var clientError = new ClientError("API key not valid.", 400, "UNAUTHENTICATED");
 
-        GoogleAIMapper.Map(clientError).Should().BeNull();
+        GoogleAIMapper.Map(clientError, TestContext.Current.CancellationToken).Should().BeNull();
     }
 }

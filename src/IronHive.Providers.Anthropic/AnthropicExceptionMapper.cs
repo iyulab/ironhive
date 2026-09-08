@@ -8,7 +8,8 @@ namespace IronHive.Providers.Anthropic;
 /// <summary>
 /// Normalizes Anthropic SDK errors to IronHive domain exceptions. Currently covers
 /// context-window overflow (invalid_request_error with message "prompt is too long:
-/// X tokens > Y maximum") -> <see cref="ContextOverflowException"/>.
+/// X tokens > Y maximum") -> <see cref="ContextOverflowException"/>, and a request that
+/// was cut short by the SDK's own network timeout -> <see cref="TimeoutException"/>.
 /// </summary>
 internal static partial class AnthropicExceptionMapper
 {
@@ -19,8 +20,11 @@ internal static partial class AnthropicExceptionMapper
     /// base-type catch-all — and reads the message from <c>ResponseBody</c> (the raw JSON),
     /// not <c>.Message</c>, which the SDK prefixes with <c>"Status Code: {code}"</c>.
     /// </summary>
-    public static Exception? Map(Exception exception)
+    public static Exception? Map(Exception exception, CancellationToken cancellationToken = default)
     {
+        if (IsTimeout(exception, cancellationToken, out var timeout))
+            return timeout;
+
         if (IsContextOverflow(exception, out var overflow))
             return overflow;
 
@@ -28,6 +32,23 @@ internal static partial class AnthropicExceptionMapper
             return rateLimit;
 
         return null;
+    }
+
+    /// <summary>
+    /// The SDK's internal network timeout cancels the request via its own, unrelated
+    /// <see cref="CancellationTokenSource"/>, which surfaces to the caller as a bare
+    /// <see cref="OperationCanceledException"/> — indistinguishable from the caller's own
+    /// <paramref name="cancellationToken"/> being canceled unless checked here. Only when
+    /// that token was NOT the source is this really a timeout.
+    /// </summary>
+    private static bool IsTimeout(Exception exception, CancellationToken cancellationToken, out TimeoutException? result)
+    {
+        result = null;
+        if (exception is not OperationCanceledException || cancellationToken.IsCancellationRequested)
+            return false;
+
+        result = new TimeoutException("The Anthropic request timed out.", exception);
+        return true;
     }
 
     [GeneratedRegex(@"prompt is too long:\s*\d+ tokens? > (\d+) maximum", RegexOptions.IgnoreCase)]

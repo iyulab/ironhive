@@ -25,6 +25,23 @@ extension now backs all six services' provider lookup instead of a `Core`-intern
 `Messages.Generators.GetOrFirstValue`/`Embeddings.Generators.GetOrFirstValue`) but will be removed in a
 future release. Use `Messages.Generators`/`Embeddings.Generators` directly instead.
 
+### Fixed — provider network timeouts surfaced as a cancel, not a timeout
+
+An SDK's or `HttpClient`'s own internal timeout cancels the in-flight request through a
+`CancellationTokenSource` the caller never sees, which throws a bare `OperationCanceledException` —
+indistinguishable in shape from the caller's own token being canceled. `RetryMiddleware`'s
+`catch (OperationCanceledException) { throw; }` then silently treated a real timeout the same as a
+user cancellation: no retry, and no way for a consumer to tell the two apart.
+
+`AnthropicExceptionMapper`, `OpenAIExceptionMapper`, `GoogleAIExceptionMapper`, and the raw
+`ChatCompletionHttpClient` (OpenAI-compatible / self-hosted servers) now check whether the caller's own
+`cancellationToken` actually requested the cancellation; when it did not, the exception is rethrown as
+`System.TimeoutException` instead, matching the convention `TimeoutMiddleware` already used.
+
+**Behaviour change**: code that caught `OperationCanceledException` to detect a provider-side timeout
+will no longer see it there — it now arrives as `TimeoutException`. A caller's own cancellation is
+unaffected and still surfaces as `OperationCanceledException`.
+
 ## 0.22.2 — 2026-09-08
 
 ### Fixed — `IronHive.Plugins.MCP`

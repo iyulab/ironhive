@@ -42,7 +42,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
     {
         var req = ToMessageCreateParams(request);
         var res = await _client.Messages.Create(req, cancellationToken)
-            .MapException(AnthropicExceptionMapper.Map);
+            .MapException(ex => AnthropicExceptionMapper.Map(ex, cancellationToken));
 
         var content = new List<MessageContent>();
         foreach (var block in res.Content)
@@ -124,7 +124,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
         var usage = new MessageTokenUsage();
 
         await foreach (var evt in _client.Messages.CreateStreaming(req, cancellationToken)
-            .MapException(AnthropicExceptionMapper.Map, cancellationToken))
+            .MapException(ex => AnthropicExceptionMapper.Map(ex, cancellationToken), cancellationToken))
         {
             // 1. 메시지 시작 이벤트
             if (evt.TryPickStart(out var mse))

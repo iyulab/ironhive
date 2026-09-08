@@ -46,7 +46,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         var (contents, config) = ToGoogleAIParams(request);
         var response = await _client.Models.GenerateContentAsync(
             request.Model, contents, config, cancellationToken)
-            .MapException(GoogleAIExceptionMapper.Map);
+            .MapException(ex => GoogleAIExceptionMapper.Map(ex, cancellationToken));
 
         MessageDoneReason? reason = null;
         var usage = new MessageTokenUsage();
@@ -137,7 +137,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
 
         await foreach (var res in _client.Models.GenerateContentStreamAsync(
             request.Model, contents, config, cancellationToken)
-            .MapException(GoogleAIExceptionMapper.Map, cancellationToken))
+            .MapException(ex => GoogleAIExceptionMapper.Map(ex, cancellationToken), cancellationToken))
         {
             // 메시지 시작
             if (current == null)
