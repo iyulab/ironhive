@@ -6,6 +6,13 @@ changes are expected and used freely for structural correctness (see
 
 ## Unreleased
 
+### Changed — `GoogleAIEmbeddingGenerator.EmbedBatchAsync` chunks and parallelizes above 100 inputs
+
+Google AI's `embedContent` accepts at most 100 inputs per call; a batch larger than that previously failed
+against the vendor API with no indication of the limit. `EmbedBatchAsync` now splits the input into
+chunks of at most 100, issues one request per chunk in parallel, and reassembles the results in original
+input order.
+
 ### Added — per-tool `JsonSerializerOptions`
 
 `FunctionTool.JsonOptions` (nullable, per-instance) now controls both argument deserialization and

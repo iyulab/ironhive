@@ -44,24 +44,39 @@ public class GoogleAIEmbeddingGenerator : IEmbeddingGenerator
             ?? throw new InvalidOperationException("No embedding values found in response.");
     }
 
+    /// <summary>
+    /// Google AI의 embedContent 요청 하나당 허용되는 최대 입력 개수입니다.
+    /// </summary>
+    private const int MaxBatchSize = 100;
+
     /// <inheritdoc />
     public async Task<IEnumerable<EmbeddingResult>> EmbedBatchAsync(
         string modelId,
         IEnumerable<string> inputs,
         CancellationToken cancellationToken = default)
     {
-        var contents = inputs.Select(input => new Content
-        {
-            Parts = [new Part { Text = input }]
-        }).ToList();
+        var indexed = inputs.Select((input, index) => (input, index)).ToList();
 
-        var res = await _client.Models.EmbedContentAsync(modelId, contents, cancellationToken: cancellationToken);
+        var batchTasks = indexed
+            .Chunk(MaxBatchSize)
+            .Select(async batch =>
+            {
+                var contents = batch.Select(b => new Content
+                {
+                    Parts = [new Part { Text = b.input }]
+                }).ToList();
 
-        return (res.Embeddings ?? []).Select((e, i) => new EmbeddingResult
-        {
-            Index = i,
-            Embedding = e.Values?.Select(v => (float)v).ToArray()
-        });
+                var res = await _client.Models.EmbedContentAsync(modelId, contents, cancellationToken: cancellationToken);
+
+                return batch.Zip(res.Embeddings ?? [], (b, e) => new EmbeddingResult
+                {
+                    Index = b.index,
+                    Embedding = e.Values?.Select(v => (float)v).ToArray()
+                });
+            });
+
+        var batchResults = await Task.WhenAll(batchTasks);
+        return batchResults.SelectMany(r => r);
     }
 
     /// <inheritdoc />
