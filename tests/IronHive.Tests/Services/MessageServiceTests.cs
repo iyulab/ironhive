@@ -1,7 +1,9 @@
 using AwesomeAssertions;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
+using IronHive.Abstractions.Tools;
 using IronHive.Core.Services;
+using IronHive.Core.Tools;
 using NSubstitute;
 
 namespace IronHive.Tests.Services;
@@ -289,6 +291,92 @@ public class MessageServiceTests
         // Assert
         act.Should().NotThrow();
     }
+
+    #region ToolOptions.Timeout behavior (regression)
+
+    // ToolOptions.Timeout exceeded is swallowed into a ToolOutput.Failure fed back to the model —
+    // not thrown as an exception — while the caller's own CancellationToken firing during a tool
+    // call still surfaces as a thrown exception. Nothing previously pinned this distinction.
+
+    private sealed class DelayingTool(string name, TimeSpan delay) : ITool
+    {
+        public string UniqueName => name;
+        public string? Description => null;
+        public object? Parameters => null;
+        public bool RequiresApproval => false;
+
+        public async Task<ToolOutput> InvokeAsync(ToolInput input, CancellationToken cancellationToken = default)
+        {
+            await Task.Delay(delay, cancellationToken);
+            return ToolOutput.Success("done");
+        }
+    }
+
+    private static Message ToolCallMessage(string toolName) => new()
+    {
+        Role = MessageRole.Assistant,
+        Content = [new ToolMessageContent { Id = "1", Name = toolName, Input = "{}", IsApproved = true }]
+    };
+
+    [Fact]
+    public async Task ExecuteTools_TimeoutExceeded_ReturnsFailureOutput_DoesNotThrow()
+    {
+        var mockGenerator = Substitute.For<IMessageGenerator>();
+        mockGenerator
+            .GenerateMessageAsync(Arg.Any<MessageGenerationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(
+                new MessageResponse { ResponseId = "r1", DoneReason = MessageDoneReason.ToolCall, Message = ToolCallMessage("slow") },
+                new MessageResponse { ResponseId = "r2", DoneReason = MessageDoneReason.EndTurn, Message = Message.Assistant("done") });
+        _generators["openai"] = mockGenerator;
+
+        var request = new MessageRequest
+        {
+            Provider = "openai",
+            Model = "gpt-4o",
+            Messages = [Message.User("go")],
+            Tools = new ToolCollection([new DelayingTool("slow", TimeSpan.FromSeconds(5))]),
+            ToolOptions = new ToolOptions { Timeout = TimeSpan.FromMilliseconds(50) }
+        };
+
+        var result = await _service.GenerateMessageAsync(request, TestContext.Current.CancellationToken);
+
+        var toolContent = result.Message!.Content.OfType<ToolMessageContent>().Single();
+        toolContent.Output.Should().NotBeNull();
+        toolContent.Output!.IsSuccess.Should().BeFalse();
+        toolContent.Output.Content.OfType<TextMessageContent>().Single().Value.Should().Contain("timed out");
+    }
+
+    [Fact]
+    public async Task ExecuteTools_CallerCancels_ThrowsInsteadOfSwallowedAsTimeoutFailure()
+    {
+        // Unlike a ToolOptions.Timeout expiring (swallowed into ToolOutput.Failure, above), the
+        // caller's own token firing during a tool call is not swallowed — it still surfaces as a
+        // thrown exception (wrapped in InvalidOperationException by the per-tool Task.Run catch in
+        // ExecuteToolsAsync, with the cancellation as its InnerException).
+        var mockGenerator = Substitute.For<IMessageGenerator>();
+        mockGenerator
+            .GenerateMessageAsync(Arg.Any<MessageGenerationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new MessageResponse { ResponseId = "r1", DoneReason = MessageDoneReason.ToolCall, Message = ToolCallMessage("slow") });
+        _generators["openai"] = mockGenerator;
+
+        using var cts = new CancellationTokenSource();
+        var request = new MessageRequest
+        {
+            Provider = "openai",
+            Model = "gpt-4o",
+            Messages = [Message.User("go")],
+            Tools = new ToolCollection([new DelayingTool("slow", TimeSpan.FromSeconds(5))]),
+            // No ToolOptions.Timeout — the caller's own token is what fires during the tool call.
+        };
+        cts.CancelAfter(TimeSpan.FromMilliseconds(50));
+
+        var act = async () => await _service.GenerateMessageAsync(request, cts.Token);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>())
+            .WithInnerException<OperationCanceledException>();
+    }
+
+    #endregion
 }
 
 /// <summary>

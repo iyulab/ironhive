@@ -37,7 +37,7 @@ public class FunctionToolAttribute : Attribute
     public bool RequiresApproval { get; set; }
 
     /// <summary>
-    /// 도구 사용시 제한 시간입니다. 초 단위로 지정하며, 기본값은 1분(60초)입니다.
+    /// 도구 사용시 제한 시간입니다. 초 단위로 지정하며, 0 이하이면 무제한입니다. 기본값은 무제한(0)입니다.
     /// </summary>
-    public long Timeout { get; set; } = 60;
+    public long Timeout { get; set; }
 }

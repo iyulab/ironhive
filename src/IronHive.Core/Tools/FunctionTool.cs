@@ -66,17 +66,19 @@ public sealed class FunctionTool : ITool
 
     /// <summary>
     /// 도구 호출의 최대 실행 시간(타임아웃)입니다.
-    /// 단위는 초이며, 기본값은 60초입니다.
+    /// 단위는 초이며, 0 이하이면 무제한입니다. 기본값은 무제한(0)입니다.
     /// </summary>
-    public long Timeout { get; set; } = 60;
+    public long Timeout { get; set; }
 
     /// <inheritdoc />
     public async Task<ToolOutput> InvokeAsync(
         ToolInput input,
         CancellationToken cancellationToken = default)
     {
+        var hasTimeout = Timeout > 0;
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeoutCts.CancelAfter(TimeSpan.FromSeconds(Timeout));
+        if (hasTimeout)
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(Timeout));
 
         try
         {
@@ -94,17 +96,20 @@ public sealed class FunctionTool : ITool
                 return await HandleDynamicResultAsync(raw, _method.ReturnType, timeoutCts.Token);
             }, timeoutCts.Token);
 
-            var delayTask = Task.Delay(TimeSpan.FromSeconds(Timeout), timeoutCts.Token);
-            var completed = await Task.WhenAny(execTask, delayTask).ConfigureAwait(false);
-            if (completed != execTask)
+            if (hasTimeout)
             {
-                // 호출자 취소가 우선
-                cancellationToken.ThrowIfCancellationRequested();
-                
-                // 타임아웃: 내부 작업에 취소 신호 전파
-                timeoutCts.Cancel();
-                _ = execTask.ContinueWith(t => { var _ = t.Exception; }, TaskContinuationOptions.OnlyOnFaulted);
-                return ToolOutput.Failure($"The tool execution was cancelled due to timeout ({Timeout} seconds).");
+                var delayTask = Task.Delay(TimeSpan.FromSeconds(Timeout), timeoutCts.Token);
+                var completed = await Task.WhenAny(execTask, delayTask).ConfigureAwait(false);
+                if (completed != execTask)
+                {
+                    // 호출자 취소가 우선
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    // 타임아웃: 내부 작업에 취소 신호 전파
+                    timeoutCts.Cancel();
+                    _ = execTask.ContinueWith(t => { var _ = t.Exception; }, TaskContinuationOptions.OnlyOnFaulted);
+                    return ToolOutput.Failure($"The tool execution was cancelled due to timeout ({Timeout} seconds).");
+                }
             }
 
             cancellationToken.ThrowIfCancellationRequested();

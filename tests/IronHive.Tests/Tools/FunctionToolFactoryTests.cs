@@ -294,7 +294,7 @@ public class FunctionToolFactoryTests
     }
 
     [Fact]
-    public void Timeout_DefaultsTo60Seconds()
+    public void Timeout_DefaultsToUnlimited()
     {
         var tool = new FunctionTool(new Func<string>(() => ""))
         {
@@ -304,7 +304,7 @@ public class FunctionToolFactoryTests
             RequiresApproval = false
         };
 
-        tool.Timeout.Should().Be(60);
+        tool.Timeout.Should().Be(0);
     }
 
     #endregion

@@ -80,6 +80,15 @@ OpenAI-compatible Chat Completions wire DTO does the same for the `tool` role �
 `Content` to text, joining `TextMessageContent`s and replacing anything else with a short
 placeholder describing what was omitted.
 
+### Fixed — `FunctionTool` defaulted to a hard 60-second timeout on every call
+
+`ToolOptions.Timeout` (the request-level, per-call timeout) already defaulted to unlimited, but
+`FunctionTool.Timeout`/`FunctionToolAttribute.Timeout`/`FunctionToolFactory.DelegateDescriptor.Timeout`
+independently defaulted to `60` (seconds) — so every `.NET`-method-backed tool silently failed after a
+minute regardless of `ToolOptions.Timeout`. All three now default to `0`, meaning unlimited; `0` or
+below skips the timeout race entirely. Set `Timeout` explicitly (on the tool, the attribute, or the
+delegate descriptor) to restore a bound for a specific tool.
+
 ## 0.22.2 — 2026-09-08
 
 ### Fixed — `IronHive.Plugins.MCP`

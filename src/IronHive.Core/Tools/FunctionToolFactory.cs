@@ -181,5 +181,8 @@ public record DelegateDescriptor
     
     public bool RequiresApproval { get; set; }
 
-    public long Timeout { get; set; } = 60;
+    /// <summary>
+    /// 도구 사용시 제한 시간입니다. 초 단위로 지정하며, 0 이하이면 무제한입니다.
+    /// </summary>
+    public long Timeout { get; set; }
 }
