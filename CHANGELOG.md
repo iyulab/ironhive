@@ -6,6 +6,19 @@ changes are expected and used freely for structural correctness (see
 
 ## Unreleased
 
+## 0.24.0 — 2026-09-08
+
+### Added — `GpuStackConfig.ToOpenAICompatible()` is public
+
+0.23.0 removed `GpuStackMessageGenerator` in favour of
+`new OpenAICompatibleMessageGenerator(config.ToOpenAICompatible())`, but left the converter
+`internal`, so only the registry's `AddGpuStackProviders` could take that path — a consumer that
+builds generators directly (a gateway adapter registering GPUStack as a candidate, for example) had
+no public way left to construct a GPUStack chat generator and had to re-derive the conversion by
+hand. The converter is now public, mirroring the already-public `ToOpenAI()`, and a test pins that it
+carries every setting (`/v1-openai/` path, static base URL/API key fallbacks, both resolvers by
+reference, `ConnectTimeout`, `TokenLimitParameter`).
+
 ## 0.23.0 — 2026-09-08
 
 ### Changed — every provider now defaults to a short connect timeout and an unbounded request timeout

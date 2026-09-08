@@ -94,7 +94,15 @@ public class GpuStackConfig
     /// GPUStack's dynamic base-URL/API-key resolution is otherwise identical, so a GPUStack-specific
     /// message generator would just duplicate it.
     /// </summary>
-    internal OpenAICompatibleConfig ToOpenAICompatible() => new()
+    /// <remarks>
+    /// This is the public path for building a GPUStack chat generator outside the service registry:
+    /// <c>new OpenAICompatibleMessageGenerator(config.ToOpenAICompatible())</c>. The registry's
+    /// <c>AddGpuStackProviders</c> does exactly this; a consumer that wires generators directly
+    /// (a gateway adapter, for example) needs the same conversion — <see cref="Path"/> set to
+    /// GPUStack's <c>/v1-openai/</c>, the resolvers, <see cref="ConnectTimeout"/> and
+    /// <see cref="TokenLimitParameter"/> carried over — and should not have to re-derive it.
+    /// </remarks>
+    public OpenAICompatibleConfig ToOpenAICompatible() => new()
     {
         // Baked in as the static fallback; BaseUrlResolver/ApiKeyResolver below still take
         // precedence per request, so dynamic rotation is unaffected.

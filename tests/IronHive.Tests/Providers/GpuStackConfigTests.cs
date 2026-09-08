@@ -179,4 +179,33 @@ public class GpuStackConfigTests
         current = "key-2";
         compatible.ToOpenAI().ApiKey.Should().Be("key-2");
     }
+
+    [Fact]
+    public void ToOpenAICompatible_CarriesEverySettingAndTargetsTheOpenAIPath()
+    {
+        // The public path for a consumer that builds the generator itself (outside the registry):
+        // it has to reproduce what AddGpuStackProviders gets, field for field, or the two GPUStack
+        // routes silently diverge -- the exact duplication 0.23.0 removed the generator to end.
+        Func<string> baseUrl = () => "http://10.0.0.5:8080";
+        Func<string?> apiKey = () => "rotated";
+        var config = new GpuStackConfig
+        {
+            BaseUrl = "http://172.19.10.10:8080",
+            ApiKey = "static",
+            BaseUrlResolver = baseUrl,
+            ApiKeyResolver = apiKey,
+            ConnectTimeout = TimeSpan.FromSeconds(7),
+            TokenLimitParameter = TokenLimitParameter.MaxTokens,
+        };
+
+        var compatible = config.ToOpenAICompatible();
+
+        compatible.Path.Should().Be("/v1-openai/", "GPUStack serves chat/embeddings/models there, not at the generic /v1/");
+        compatible.BaseUrl.Should().Be("http://10.0.0.5:8080", "the resolver's answer is baked in as the static fallback");
+        compatible.ApiKey.Should().Be("rotated");
+        compatible.BaseUrlResolver.Should().BeSameAs(baseUrl, "rotation keeps working because the delegate is reused, not re-wrapped");
+        compatible.ApiKeyResolver.Should().BeSameAs(apiKey);
+        compatible.ConnectTimeout.Should().Be(TimeSpan.FromSeconds(7));
+        compatible.TokenLimitParameter.Should().Be(TokenLimitParameter.MaxTokens);
+    }
 }
