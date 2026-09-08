@@ -12,23 +12,12 @@ namespace IronHive.Plugins.MCP;
 public class McpSession : IAsyncDisposable
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
-    private readonly Func<IMcpClientConfig, IClientTransport> _transportFactory;
     private McpClient? _client;
 
     public McpSession(IMcpClientConfig config)
-        : this(config, CreateTransport)
-    {
-    }
-
-    /// <summary>
-    /// Test seam: lets a session run over an in-process transport (e.g. <c>StreamClientTransport</c>
-    /// on pipes) so connect policy can be asserted against a scripted server without a process or a socket.
-    /// </summary>
-    internal McpSession(IMcpClientConfig config, Func<IMcpClientConfig, IClientTransport> transportFactory)
     {
         ServerName = config.ServerName;
         Config = config;
-        _transportFactory = transportFactory;
     }
 
     /// <summary>
@@ -114,12 +103,11 @@ public class McpSession : IAsyncDisposable
             if (State == McpConnectionState.Connected && _client != null)
                 return;
 
-            // 클라이언트를 생성합니다. CreateAsync는 initialize/initialized 핸드셰이크가 끝나야 반환하므로
-            // 여기까지 왔다는 것이 곧 서버가 요청에 응답한다는 증명이다. 그 직후에 다시 ping을 보내는 것은
-            // 생존 정보를 더하지 않으면서, ping을 구현하지 않은 서버 하나를 «도구 전부 소실 + 상태 플래그 하나»로
-            // 바꾸는 유일한 경로였다(McpClientManager는 Connected 이벤트에서만 도구를 등록한다). 스펙 기준 생존
-            // 검사가 필요하면 HealthAsync를 명시적으로 부른다.
-            var transport = _transportFactory(Config);
+            // CreateAsync는 initialize 핸드셰이크가 끝나야 반환되므로, 이 시점에 이미 서버가 응답한다는 게
+            // 증명된 상태다. 그 직후 ping을 또 보내면 얻는 정보는 없고, ping을 구현 안 한 서버는 이 호출 때문에
+            // 세션이 Errored로 빠져 도구가 전부 사라지는 부작용만 있었다(McpClientManager는 Connected 이벤트
+            // 에서만 도구를 등록한다). 스펙 기준 생존 확인이 필요하면 HealthAsync를 따로 호출한다.
+            var transport = CreateTransport(Config);
             _client = await McpClient.CreateAsync(
                 transport,
                 clientOptions: options,
@@ -187,7 +175,7 @@ public class McpSession : IAsyncDisposable
 
             // 새로운 설정으로 클라이언트를 생성합니다. (ConnectAsync와 같은 이유로 핸드셰이크 뒤 ping은 없다.)
             Config = config;
-            var transport = _transportFactory(Config);
+            var transport = CreateTransport(Config);
             _client = await McpClient.CreateAsync(
                 transport,
                 clientOptions: options,
