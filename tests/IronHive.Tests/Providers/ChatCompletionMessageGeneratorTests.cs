@@ -261,11 +261,11 @@ public class ChatCompletionMessageGeneratorTests
 
     private static Message[] UserWithTools => [Message.User("hi")];
 
-    private static MessageGenerationRequest RequestWithTools(MessageToolChoice? toolChoice) => new()
+    private static MessageGenerationRequest RequestWithTools(ToolChoice? toolChoice) => new()
     {
         Model = "test-model",
         Messages = UserWithTools,
-        Tools = new ToolCollection([new StubTool("get_weather")]),
+        Tools = new ToolCollection([new StubTool("get_weather"), new StubTool("get_forecast"), new StubTool("get_alerts")]),
         ToolChoice = toolChoice,
     };
 
@@ -292,7 +292,7 @@ public class ChatCompletionMessageGeneratorTests
     public void BuildRequest_ToolChoiceAuto_OmitsToolChoice_KeepsTools()
     {
         var payload = SerializePayload(
-            ChatCompletionMessageGenerator.BuildRequest(RequestWithTools(MessageToolChoice.Auto)));
+            ChatCompletionMessageGenerator.BuildRequest(RequestWithTools(ToolChoice.Auto)));
 
         payload.Should().NotContain("tool_choice");
         payload.Should().Contain("get_weather");
@@ -304,7 +304,7 @@ public class ChatCompletionMessageGeneratorTests
         // Not just tool_choice:"none" — the tool catalog itself must be gone, since some self-hosted
         // backends only partially honor tool_choice as a hint (see docket a95e2953 ask #2).
         var payload = SerializePayload(
-            ChatCompletionMessageGenerator.BuildRequest(RequestWithTools(MessageToolChoice.None)));
+            ChatCompletionMessageGenerator.BuildRequest(RequestWithTools(ToolChoice.None)));
 
         payload.Should().NotContain("get_weather");
         payload.Should().NotContain("\"tools\"");
@@ -314,7 +314,7 @@ public class ChatCompletionMessageGeneratorTests
     public void BuildRequest_ToolChoiceRequired_SendsRequiredString_KeepsTools()
     {
         var payload = SerializePayload(
-            ChatCompletionMessageGenerator.BuildRequest(RequestWithTools(MessageToolChoice.Required)));
+            ChatCompletionMessageGenerator.BuildRequest(RequestWithTools(ToolChoice.Required)));
 
         payload.Should().Contain("\"tool_choice\":\"required\"");
         payload.Should().Contain("get_weather");
@@ -324,10 +324,24 @@ public class ChatCompletionMessageGeneratorTests
     public void BuildRequest_ToolChoiceFunction_SendsTypeAndFunctionNameObject_KeepsTools()
     {
         var payload = SerializePayload(
-            ChatCompletionMessageGenerator.BuildRequest(RequestWithTools(MessageToolChoice.Function("get_weather"))));
+            ChatCompletionMessageGenerator.BuildRequest(RequestWithTools(ToolChoice.Function("get_weather"))));
 
         payload.Should().Contain("\"tool_choice\":{\"type\":\"function\",\"function\":{\"name\":\"get_weather\"}}");
         payload.Should().Contain("\"tools\"");
+    }
+
+    [Fact]
+    public void BuildRequest_ToolChoiceMultiFunction_SendsRequired_FiltersToolsToNamedSet()
+    {
+        // No native "one of these N" wire value exists — approximate it with tool_choice:"required"
+        // plus the outgoing tools array filtered down to just the named subset.
+        var payload = SerializePayload(
+            ChatCompletionMessageGenerator.BuildRequest(RequestWithTools(ToolChoice.Function("get_weather", "get_forecast"))));
+
+        payload.Should().Contain("\"tool_choice\":\"required\"");
+        payload.Should().Contain("get_weather");
+        payload.Should().Contain("get_forecast");
+        payload.Should().NotContain("get_alerts");
     }
 
     [Theory]

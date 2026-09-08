@@ -303,13 +303,15 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
             TopK = request.TopK,
             Stop = request.StopSequences,
             ResponseFormat = BuildResponseFormat(request),
-            // ToolChoiceMode.None omits Tools entirely rather than relying on tool_choice:"none" alone —
+            // NoneToolChoice omits Tools entirely rather than relying on tool_choice:"none" alone —
             // some self-hosted/local backends (llama.cpp-family servers in particular) only partially
             // honor tool_choice as a soft hint and still expose the tool grammar/schema regardless. An
             // empty tool catalog is the one construction that structurally cannot produce a tool call.
-            Tools = request.ToolChoice?.Mode == MessageToolChoiceMode.None
+            Tools = request.ToolChoice is NoneToolChoice
                 ? null
-                : request.Tools?.Select(t => new ChatTool
+                : (request.ToolChoice is FunctionToolChoice { Names.Count: > 1 } multi
+                    ? request.Tools?.FilterBy(multi.Names)
+                    : request.Tools)?.Select(t => new ChatTool
                 {
                     Function = new ChatTool.FunctionSchema
                     {
@@ -359,20 +361,24 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
 
     /// <summary>
     /// Builds the OpenAI-compatible <c>tool_choice</c> wire value: omitted (null, server default
-    /// "auto") for <see cref="MessageToolChoiceMode.Auto"/> or an unset choice, a bare string for
+    /// "auto") for <see cref="AutoToolChoice"/> or an unset choice, a bare string for
     /// <c>none</c>/<c>required</c>, or <c>{"type":"function","function":{"name":...}}</c> to force
-    /// one named function.
+    /// one named function. A <see cref="FunctionToolChoice"/> naming more than one function has no
+    /// native wire representation here — it degrades to <c>"required"</c> combined with the outgoing
+    /// <c>tools</c> array already filtered down to just those names (see <see cref="BuildRequest"/>),
+    /// the closest available approximation of "force one of this set".
     /// </summary>
-    internal static JsonNode? BuildToolChoice(MessageToolChoice? toolChoice) => toolChoice?.Mode switch
+    internal static JsonNode? BuildToolChoice(ToolChoice? toolChoice) => toolChoice switch
     {
-        null or MessageToolChoiceMode.Auto => null,
-        MessageToolChoiceMode.None => JsonValue.Create("none"),
-        MessageToolChoiceMode.Required => JsonValue.Create("required"),
-        MessageToolChoiceMode.Function => new JsonObject
+        null or AutoToolChoice => null,
+        NoneToolChoice => JsonValue.Create("none"),
+        RequiredToolChoice => JsonValue.Create("required"),
+        FunctionToolChoice { Names.Count: 1 } f => new JsonObject
         {
             ["type"] = "function",
-            ["function"] = new JsonObject { ["name"] = toolChoice.FunctionName }
+            ["function"] = new JsonObject { ["name"] = f.Names.First() }
         },
+        FunctionToolChoice => JsonValue.Create("required"),
         _ => null
     };
 

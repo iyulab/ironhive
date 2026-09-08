@@ -470,7 +470,12 @@ public class AnthropicMessageGenerator : IMessageGenerator
         }
 
         // 도구 변환
-        var tools = request.Tools?.Select(t =>
+        // 다중 함수명 강제(FunctionToolChoice.Names.Count > 1)는 Anthropic wire에 표현할 수 없어
+        // ToolChoiceAny로 근사하는 대신, 도구 목록 자체를 해당 이름들로 필터링합니다.
+        var toolSource = request.ToolChoice is FunctionToolChoice { Names.Count: > 1 } multiChoice
+            ? request.Tools?.FilterBy(multiChoice.Names)
+            : request.Tools;
+        var tools = toolSource?.Select(t =>
         {
             ToolUnion toolUnion = new Tool
             {
@@ -531,6 +536,17 @@ public class AnthropicMessageGenerator : IMessageGenerator
             // turn a silent no-op into a hard request failure, which is worse than ignoring them.
             StopSequences = request.StopSequences?.ToList(),
             Tools = tools?.Count > 0 ? tools : null,
+            // 다중 함수명(FunctionToolChoice.Names.Count > 1)은 Anthropic wire에 "이 N개 중 하나 강제"에
+            // 해당하는 값이 없어 ToolChoiceAny로 근사합니다 — 대신 위에서 도구 목록 자체를 필터링합니다.
+            ToolChoice = request.ToolChoice switch
+            {
+                null or AutoToolChoice => null,
+                NoneToolChoice => new ToolChoiceNone(),
+                RequiredToolChoice => new ToolChoiceAny(),
+                FunctionToolChoice { Names.Count: 1 } f => new ToolChoiceTool(f.Names.First()),
+                FunctionToolChoice => new ToolChoiceAny(),
+                _ => null
+            },
             Thinking = thinking,
             OutputConfig = outputConfig,
         };
@@ -544,6 +560,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
         ImageFormat.Webp => "image/webp",
         _ => throw new NotSupportedException($"not supported image format {format}")
     };
+
 }
 
 public static class AnthropicHelper

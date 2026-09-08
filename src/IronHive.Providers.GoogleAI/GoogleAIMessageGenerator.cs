@@ -609,6 +609,29 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                 Parts = [new Part { Text = request.System }]
             },
             Tools = tools,
+            // FunctionCallingConfig.AllowedFunctionNames가 여러 함수 이름을 그대로 지원하므로,
+            // 다른 프로바이더와 달리 도구 목록을 별도로 필터링할 필요가 없습니다.
+            ToolConfig = request.ToolChoice switch
+            {
+                null or AutoToolChoice => null,
+                NoneToolChoice => new ToolConfig
+                {
+                    FunctionCallingConfig = new FunctionCallingConfig { Mode = FunctionCallingConfigMode.None }
+                },
+                RequiredToolChoice => new ToolConfig
+                {
+                    FunctionCallingConfig = new FunctionCallingConfig { Mode = FunctionCallingConfigMode.Any }
+                },
+                FunctionToolChoice f => new ToolConfig
+                {
+                    FunctionCallingConfig = new FunctionCallingConfig
+                    {
+                        Mode = FunctionCallingConfigMode.Any,
+                        AllowedFunctionNames = f.Names.ToList()
+                    }
+                },
+                _ => null
+            },
             CandidateCount = 1,
             MaxOutputTokens = request.MaxTokens,
             Temperature = request.Temperature,
@@ -641,4 +664,5 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         AudioFormat.Aiff => "audio/aiff",
         _ => throw new NotImplementedException("not supported yet")
     };
+
 }

@@ -80,6 +80,32 @@ OpenAI-compatible Chat Completions wire DTO does the same for the `tool` role �
 `Content` to text, joining `TextMessageContent`s and replacing anything else with a short
 placeholder describing what was omitted.
 
+### Breaking — `MessageToolChoice` renamed to `ToolChoice`, now a class hierarchy with multi-function support
+
+`MessageToolChoice` (a sealed class wrapping a `MessageToolChoiceMode` enum) is now `ToolChoice`, an
+abstract base with `AutoToolChoice`/`NoneToolChoice`/`RequiredToolChoice`/`FunctionToolChoice`
+subclasses. `MessageGenerationRequest.ToolChoice`'s type follows. `ToolChoice.Function(...)` now takes
+`params string[]` — `FunctionToolChoice.Names` can hold more than one name, forcing the model to one
+of a named set rather than only ever a single specific function.
+
+`ToolChoice` now reaches the wire on all four generators (previously only
+`IronHive.Providers.OpenAI.Compatible` read it at all). Anthropic's `tool_choice`
+(`ToolChoiceAuto`/`ToolChoiceNone`/`ToolChoiceAny`/`ToolChoiceTool`), GoogleAI's
+`toolConfig.functionCallingConfig` (`AUTO`/`NONE`/`ANY`), and OpenAI's Responses API
+`ResponseToolChoice` (`CreateAutoChoice`/`CreateNoneChoice`/`CreateRequiredChoice`) all map cleanly
+for `Auto`/`None`/`Required`. A single-name `FunctionToolChoice` maps to Anthropic's `ToolChoiceTool`
+and OpenAI's `ResponseToolChoice.CreateFunctionChoice`; OpenAI-Compatible sends
+`{"type":"function","function":{"name":...}}` as before. Multi-name `FunctionToolChoice` is where the
+wires diverge: GoogleAI's `functionCallingConfig.allowedFunctionNames` natively accepts a set of
+names, so no extra work is needed there, but none of Anthropic's, OpenAI's, or OpenAI-Compatible's
+`tool_choice` has a "one of these N" value — all three degrade to "require any tool"
+(`ToolChoiceAny` / `CreateRequiredChoice()` / `tool_choice:"required"`) combined with the outgoing
+tool catalog filtered down to just the named subset, the closest available approximation on those
+wires.
+
+(OpenAI's Responses API itself has an exact-match `tool_choice:"allowed_tools"` for this, but the
+.NET SDK doesn't model it yet — see the comment in `OpenAIMessageGenerator.BuildOptions`.)
+
 ### Fixed — `FunctionTool` defaulted to a hard 60-second timeout on every call
 
 `ToolOptions.Timeout` (the request-level, per-call timeout) already defaulted to unlimited, but

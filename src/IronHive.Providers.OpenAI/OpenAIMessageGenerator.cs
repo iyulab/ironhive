@@ -365,7 +365,13 @@ public class OpenAIMessageGenerator : IMessageGenerator
 
         if (request.Tools != null)
         {
-            foreach (var t in request.Tools)
+            // 다중 함수명은 CreateRequiredChoice() + 도구 목록 필터링으로 근사합니다. Responses API는
+            // 정확히 이 시맨틱을 위한 tool_choice:"allowed_tools"를 지원하지만 이 SDK 버전엔 아직
+            // 없음 — SDK가 추가하거나 CreateResponseOptions.Patch로 직접 넣을 때 이 부분을 바꾸면 됩니다.
+            var toolSource = request.ToolChoice is FunctionToolChoice { Names.Count: > 1 } multiChoice
+                ? request.Tools.FilterBy(multiChoice.Names)
+                : request.Tools;
+            foreach (var t in toolSource)
             {
                 var parameters = t.Parameters ?? new JsonObject
                 {
@@ -379,6 +385,16 @@ public class OpenAIMessageGenerator : IMessageGenerator
                     t.Description));
             }
         }
+
+        options.ToolChoice = request.ToolChoice switch
+        {
+            null or AutoToolChoice => null,
+            NoneToolChoice => ResponseToolChoice.CreateNoneChoice(),
+            RequiredToolChoice => ResponseToolChoice.CreateRequiredChoice(),
+            FunctionToolChoice { Names.Count: 1 } f => ResponseToolChoice.CreateFunctionChoice(f.Names.First()),
+            FunctionToolChoice => ResponseToolChoice.CreateRequiredChoice(),
+            _ => null
+        };
 
         foreach (var msg in request.Messages)
         {

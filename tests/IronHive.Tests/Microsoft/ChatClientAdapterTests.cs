@@ -985,7 +985,7 @@ public class ChatClientAdapterTests : IDisposable
 
         await _adapter.GetResponseAsync(messages, options, TestContext.Current.CancellationToken);
 
-        capturedRequest().ToolChoice.Should().Be(MessageToolChoice.Auto);
+        capturedRequest().ToolChoice.Should().Be(ToolChoice.Auto);
     }
 
     [Fact]
@@ -997,7 +997,7 @@ public class ChatClientAdapterTests : IDisposable
 
         await _adapter.GetResponseAsync(messages, options, TestContext.Current.CancellationToken);
 
-        capturedRequest().ToolChoice.Should().Be(MessageToolChoice.None);
+        capturedRequest().ToolChoice.Should().Be(ToolChoice.None);
     }
 
     [Fact]
@@ -1009,7 +1009,7 @@ public class ChatClientAdapterTests : IDisposable
 
         await _adapter.GetResponseAsync(messages, options, TestContext.Current.CancellationToken);
 
-        capturedRequest().ToolChoice.Should().Be(MessageToolChoice.Required);
+        capturedRequest().ToolChoice.Should().Be(ToolChoice.Required);
     }
 
     [Fact]
@@ -1022,9 +1022,8 @@ public class ChatClientAdapterTests : IDisposable
         await _adapter.GetResponseAsync(messages, options, TestContext.Current.CancellationToken);
 
         var toolChoice = capturedRequest().ToolChoice;
-        toolChoice.Should().NotBeNull();
-        toolChoice!.Mode.Should().Be(MessageToolChoiceMode.Function);
-        toolChoice.FunctionName.Should().Be("get_weather");
+        toolChoice.Should().BeOfType<FunctionToolChoice>()
+            .Which.Names.Should().BeEquivalentTo(["get_weather"]);
     }
 
     #endregion
