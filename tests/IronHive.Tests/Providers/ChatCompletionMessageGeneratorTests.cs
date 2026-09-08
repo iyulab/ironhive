@@ -60,6 +60,20 @@ public class ChatCompletionMessageGeneratorTests
     }
 
     [Fact]
+    public void BuildMessages_UserAudio_MapsToInputAudioPart()
+    {
+        var msg = Message.User(
+            new AudioMessageContent { Format = AudioFormat.Wav, Base64 = "aGVsbG8=" });
+
+        var messages = ChatCompletionMessageGenerator.BuildMessages(Request(null, msg));
+
+        var user = messages.Single().Should().BeOfType<UserChatMessage>().Subject;
+        var audio = user.Content.Single().Should().BeOfType<AudioChatMessageContent>().Subject;
+        audio.InputAudio.Data.Should().Be("aGVsbG8=");
+        audio.InputAudio.Format.Should().Be("wav");
+    }
+
+    [Fact]
     public void BuildMessages_AssistantText_MapsToAssistantMessage()
     {
         var messages = ChatCompletionMessageGenerator.BuildMessages(

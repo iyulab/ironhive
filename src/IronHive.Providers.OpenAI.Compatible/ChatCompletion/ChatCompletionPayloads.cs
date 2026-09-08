@@ -159,6 +159,7 @@ public class ChatToolCallDelta
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(TextChatMessageContent), "text")]
 [JsonDerivedType(typeof(ImageChatMessageContent), "image_url")]
+[JsonDerivedType(typeof(AudioChatMessageContent), "input_audio")]
 public abstract class ChatMessageContent
 { }
 
@@ -181,6 +182,24 @@ public class ImageChatMessageContent : ChatMessageContent
 
         [JsonPropertyName("detail")]
         public string? Detail { get; set; }
+    }
+}
+
+public class AudioChatMessageContent : ChatMessageContent
+{
+    [JsonPropertyName("input_audio")]
+    public required AudioSource InputAudio { get; set; }
+
+    public class AudioSource
+    {
+        /// <summary>Base64-encoded audio data.</summary>
+        [JsonPropertyName("data")]
+        public required string Data { get; set; }
+
+        /// <summary>Either <c>"wav"</c> or <c>"mp3"</c> — the only formats the Chat Completions
+        /// <c>input_audio</c> content part accepts.</summary>
+        [JsonPropertyName("format")]
+        public required string Format { get; set; }
     }
 }
 

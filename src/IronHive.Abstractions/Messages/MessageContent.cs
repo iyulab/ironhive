@@ -9,6 +9,7 @@ namespace IronHive.Abstractions.Messages;
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(TextMessageContent), "text")]
 [JsonDerivedType(typeof(ImageMessageContent), "image")]
+[JsonDerivedType(typeof(AudioMessageContent), "audio")]
 [JsonDerivedType(typeof(ToolMessageContent), "tool")]
 [JsonDerivedType(typeof(ThinkingMessageContent), "thinking")]
 public abstract class MessageContent

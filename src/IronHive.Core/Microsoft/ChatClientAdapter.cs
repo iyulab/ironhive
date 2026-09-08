@@ -258,6 +258,15 @@ public class ChatClientAdapter : IChatClient
                         Base64 = Convert.ToBase64String(dataContent.Data.ToArray())
                     });
                 }
+                else if (content is DataContent audioContent
+                    && audioContent.MediaType?.StartsWith("audio/", StringComparison.Ordinal) == true)
+                {
+                    Message.Content.Add(new AudioMessageContent
+                    {
+                        Format = GetAudioFormat(audioContent.MediaType),
+                        Base64 = Convert.ToBase64String(audioContent.Data.ToArray())
+                    });
+                }
             }
 
             if (Message.Content.Count == 0 && !string.IsNullOrEmpty(message.Text))
@@ -424,6 +433,19 @@ public class ChatClientAdapter : IChatClient
             "image/gif" => ImageFormat.Gif,
             "image/webp" => ImageFormat.Webp,
             _ => ImageFormat.Jpeg
+        };
+    }
+
+    private static AudioFormat GetAudioFormat(string? mediaType)
+    {
+        return mediaType?.ToLowerInvariant() switch
+        {
+            "audio/wav" or "audio/x-wav" => AudioFormat.Wav,
+            "audio/flac" or "audio/x-flac" => AudioFormat.Flac,
+            "audio/aac" => AudioFormat.Aac,
+            "audio/ogg" => AudioFormat.Ogg,
+            "audio/aiff" or "audio/x-aiff" => AudioFormat.Aiff,
+            _ => AudioFormat.Mp3
         };
     }
 

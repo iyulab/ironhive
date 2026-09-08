@@ -42,6 +42,19 @@ user cancellation: no retry, and no way for a consumer to tell the two apart.
 will no longer see it there — it now arrives as `TimeoutException`. A caller's own cancellation is
 unaffected and still surfaces as `OperationCanceledException`.
 
+### Added — `AudioMessageContent`
+
+`MessageContent` gains an `"audio"` variant — `AudioMessageContent { Format, Base64 }`, shaped like
+`ImageMessageContent`, with `AudioFormat` covering `Wav`/`Mp3`/`Flac`/`Aac`/`Ogg`/`Aiff`.
+
+Wired into the two generators whose vendor API actually accepts audio input: GoogleAI (any of the 6
+formats, via `Part.InlineData` — the same path images already use) and OpenAI-Compatible Chat
+Completions (a new `input_audio` content part, `Wav`/`Mp3` only — the only two formats that API
+accepts). Anthropic's Messages API and OpenAI's Responses API have no audio-input content block at
+all, so both continue to reject `AudioMessageContent` via their existing "unsupported type" exception.
+`ChatClientAdapter` maps Microsoft.Extensions.AI's `audio/*` `DataContent` the same way it already
+mapped `image/*`.
+
 ## 0.22.2 — 2026-09-08
 
 ### Fixed — `IronHive.Plugins.MCP`

@@ -420,6 +420,27 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                             }
                         });
                     }
+                    // 오디오 메시지
+                    else if (item is AudioMessageContent audio)
+                    {
+                        parts.Add(new Part
+                        {
+                            InlineData = new Blob
+                            {
+                                MimeType = audio.Format switch
+                                {
+                                    AudioFormat.Wav => "audio/wav",
+                                    AudioFormat.Mp3 => "audio/mp3",
+                                    AudioFormat.Flac => "audio/flac",
+                                    AudioFormat.Aac => "audio/aac",
+                                    AudioFormat.Ogg => "audio/ogg",
+                                    AudioFormat.Aiff => "audio/aiff",
+                                    _ => throw new NotImplementedException("not supported yet")
+                                },
+                                Data = Convert.FromBase64String(audio.Base64 ?? string.Empty)
+                            }
+                        });
+                    }
                     else
                     {
                         throw new NotImplementedException("not supported yet");

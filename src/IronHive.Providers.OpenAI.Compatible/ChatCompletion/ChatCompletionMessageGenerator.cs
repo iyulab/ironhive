@@ -420,6 +420,22 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
                             }
                         });
                     }
+                    else if (item is AudioMessageContent audio)
+                    {
+                        parts.Add(new AudioChatMessageContent
+                        {
+                            InputAudio = new AudioChatMessageContent.AudioSource
+                            {
+                                Data = audio.Base64,
+                                Format = audio.Format switch
+                                {
+                                    AudioFormat.Wav => "wav",
+                                    AudioFormat.Mp3 => "mp3",
+                                    _ => throw new NotSupportedException($"not supported audio format {audio.Format}")
+                                }
+                            }
+                        });
+                    }
                     else
                     {
                         throw new NotImplementedException("not supported yet");

@@ -26,6 +26,7 @@ public class MessageContentRosterTests
     [
         typeof(TextMessageContent),
         typeof(ImageMessageContent),
+        typeof(AudioMessageContent),
         typeof(ToolMessageContent),
         typeof(ThinkingMessageContent),
     ];
