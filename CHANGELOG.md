@@ -25,6 +25,28 @@ extension now backs all six services' provider lookup instead of a `Core`-intern
 `Messages.Generators.GetOrFirstValue`/`Embeddings.Generators.GetOrFirstValue`) but will be removed in a
 future release. Use `Messages.Generators`/`Embeddings.Generators` directly instead.
 
+## 0.22.2 — 2026-09-08
+
+### Fixed — `IronHive.Plugins.MCP`
+
+- `McpSession.ConnectAsync`/`ReconnectAsync` no longer send a `ping` right after the
+  `initialize` handshake. `McpClient.CreateAsync` already completes the handshake before
+  returning, so the extra ping proved nothing about liveness; its only distinct effect was
+  that a server which does not implement the `ping` utility moved the session to `Errored`,
+  and because `McpClientManager` registers tools only from the `Connected` event, that
+  server's entire toolset silently vanished with a state flag as the only signal.
+  `HealthAsync` still pings — that is the explicit spec-level liveness check.
+- `McpSession.ListToolsAsync` now moves the session to `Errored` (raising the `Errored`
+  event) before rethrowing when the server fails `tools/list`. Previously the manager
+  swallowed the fault and the session stayed `Connected` with zero tools and no event.
+
+### Behaviour change
+
+A server that rejects `ping` but completes `initialize` now **connects, and its tools are
+registered** — previously that session went to `Errored` and the server contributed no tools.
+Consumers that relied on the strict handshake check should call `HealthAsync`, which still
+pings and still reports a non-compliant server.
+
 ## 0.22.1 — 2026-08-28
 
 ### Changed — `ModelContextProtocol` dependency

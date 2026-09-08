@@ -96,7 +96,15 @@ public class McpClientManager
 
         client.ListToolsAsync().ContinueWith(t =>
         {
-            if (t.IsFaulted || t.Result is null)
+            if (t.IsFaulted)
+            {
+                // The session has already moved to Errored and raised the event (which is what removes
+                // this server's tools); observe the exception so it does not surface as unobserved.
+                _ = t.Exception;
+                return;
+            }
+
+            if (t.Result is null)
                 return;
 
             foreach (var tool in t.Result)

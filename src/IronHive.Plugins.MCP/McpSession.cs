@@ -12,12 +12,23 @@ namespace IronHive.Plugins.MCP;
 public class McpSession : IAsyncDisposable
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly Func<IMcpClientConfig, IClientTransport> _transportFactory;
     private McpClient? _client;
 
     public McpSession(IMcpClientConfig config)
+        : this(config, CreateTransport)
+    {
+    }
+
+    /// <summary>
+    /// Test seam: lets a session run over an in-process transport (e.g. <c>StreamClientTransport</c>
+    /// on pipes) so connect policy can be asserted against a scripted server without a process or a socket.
+    /// </summary>
+    internal McpSession(IMcpClientConfig config, Func<IMcpClientConfig, IClientTransport> transportFactory)
     {
         ServerName = config.ServerName;
         Config = config;
+        _transportFactory = transportFactory;
     }
 
     /// <summary>
@@ -67,7 +78,9 @@ public class McpSession : IAsyncDisposable
     }
 
     /// <summary>
-    /// MCP 서버와의 연결을 확인합니다.
+    /// MCP 서버와의 연결을 확인합니다. 스펙상 필수 유틸리티인 <c>ping</c>을 보내므로, <c>ping</c>에 응답하지
+    /// 않는(비준수) 서버는 여기서 <see cref="McpConnectionState.Errored"/>가 된다 — 명시적으로 «스펙 기준 생존
+    /// 여부»를 물은 호출자에게는 그것이 답이다. 연결 자체는 이 검사를 전제하지 않는다(<see cref="ConnectAsync"/> 참조).
     /// </summary>
     public async Task<bool> HealthAsync(
         CancellationToken cancellationToken = default)
@@ -101,15 +114,16 @@ public class McpSession : IAsyncDisposable
             if (State == McpConnectionState.Connected && _client != null)
                 return;
 
-            // 클라이언트를 생성합니다.
-            var transport = CreateTransport(Config);
+            // 클라이언트를 생성합니다. CreateAsync는 initialize/initialized 핸드셰이크가 끝나야 반환하므로
+            // 여기까지 왔다는 것이 곧 서버가 요청에 응답한다는 증명이다. 그 직후에 다시 ping을 보내는 것은
+            // 생존 정보를 더하지 않으면서, ping을 구현하지 않은 서버 하나를 «도구 전부 소실 + 상태 플래그 하나»로
+            // 바꾸는 유일한 경로였다(McpClientManager는 Connected 이벤트에서만 도구를 등록한다). 스펙 기준 생존
+            // 검사가 필요하면 HealthAsync를 명시적으로 부른다.
+            var transport = _transportFactory(Config);
             _client = await McpClient.CreateAsync(
                 transport,
                 clientOptions: options,
                 cancellationToken: cancellationToken).ConfigureAwait(false);
-
-            // 서버와의 연결을 확인합니다.
-            await _client.PingAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
 
             UpdateState(McpConnectionState.Connected);
         }
@@ -171,16 +185,14 @@ public class McpSession : IAsyncDisposable
                 UpdateState(McpConnectionState.Disconnected);
             }
 
-            // 새로운 설정으로 클라이언트를 생성합니다.
+            // 새로운 설정으로 클라이언트를 생성합니다. (ConnectAsync와 같은 이유로 핸드셰이크 뒤 ping은 없다.)
             Config = config;
-            var transport = CreateTransport(Config);
+            var transport = _transportFactory(Config);
             _client = await McpClient.CreateAsync(
                 transport,
                 clientOptions: options,
                 cancellationToken: cancellationToken).ConfigureAwait(false);
 
-            // 서버와의 연결을 확인합니다.
-            await _client.PingAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
             UpdateState(McpConnectionState.Connected);
         }
         catch (Exception ex)
@@ -194,7 +206,10 @@ public class McpSession : IAsyncDisposable
     }
 
     /// <summary>
-    /// Mcp 서버의 툴을 반환합니다.
+    /// Mcp 서버의 툴을 반환합니다. 조회가 실패하면 세션을 <see cref="McpConnectionState.Errored"/>로 옮기고
+    /// <see cref="Errored"/>를 발생시킨 뒤 예외를 다시 던진다 — 도구를 나열하지 못하는 서버는 연결에 실패한
+    /// 서버와 똑같이 소비자에게 아무것도 주지 못하므로, 같은 경로로 드러나야 한다(조용히 «연결됨 + 도구 0개»로
+    /// 남는 것이 가장 나쁜 결과다).
     /// </summary>
     public async Task<IEnumerable<McpTool>> ListToolsAsync(
         CancellationToken cancellationToken = default)
@@ -202,7 +217,17 @@ public class McpSession : IAsyncDisposable
         if (_client == null)
             return [];
 
-        var tools = await _client.ListToolsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+        IList<McpClientTool> tools;
+        try
+        {
+            tools = await _client.ListToolsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            UpdateState(McpConnectionState.Errored, ex);
+            throw;
+        }
+
         return tools.Select(t =>
         {
             return new McpTool(t)
