@@ -429,9 +429,18 @@ public class OpenAIMessageGenerator : IMessageGenerator
                                 tool.Name,
                                 BinaryData.FromString(tool.Input ?? string.Empty)));
 
+                            // Responses API의 function_call_output.output은 이 SDK 버전에서 plain string만
+                            // 노출한다(구조화 콘텐츠 없음) — 텍스트는 그대로 이어붙이고, 비텍스트 콘텐츠는
+                            // 설명 텍스트로 대체한다.
                             options.InputItems.Add(ResponseItem.CreateFunctionCallOutputItem(
                                 tool.Id ?? string.Empty,
-                                tool.Output?.Result ?? string.Empty));
+                                tool.Output is null || tool.Output.Content.Count == 0
+                                    ? string.Empty
+                                    : string.Join("\n", tool.Output.Content.Select(c => c switch
+                                    {
+                                        TextMessageContent text => text.Value ?? string.Empty,
+                                        _ => "[unsupported content omitted — not supported in this provider's tool-result format]"
+                                    }))));
                         }
                         else
                         {

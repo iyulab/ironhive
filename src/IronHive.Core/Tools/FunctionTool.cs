@@ -2,6 +2,8 @@
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using IronHive.Abstractions.Json;
+using IronHive.Abstractions.Messages;
+using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Tools;
 
 namespace IronHive.Core.Tools;
@@ -108,9 +110,12 @@ public sealed class FunctionTool : ITool
             cancellationToken.ThrowIfCancellationRequested();
 
             var result = await execTask.ConfigureAwait(false);
-            var json = JsonSerializer.Serialize(result, JsonDefaultOptions.Options);
-
-            return ToolOutput.Success(json);
+            return result switch
+            {
+                MessageContent single => ToolOutput.Success([single]),
+                IEnumerable<MessageContent> many => ToolOutput.Success(many),
+                _ => ToolOutput.Success(JsonSerializer.Serialize(result, JsonDefaultOptions.Options))
+            };
         }
         catch (OperationCanceledException)
         {

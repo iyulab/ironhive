@@ -55,6 +55,31 @@ all, so both continue to reject `AudioMessageContent` via their existing "unsupp
 `ChatClientAdapter` maps Microsoft.Extensions.AI's `audio/*` `DataContent` the same way it already
 mapped `image/*`.
 
+### Breaking — `ToolOutput.Result` (string) replaced by `Content` (`MessageContent[]`)
+
+A tool's result could only ever be a single opaque string, even when the underlying call produced
+richer content (an image, a mix of text and media). `ToolOutput.Result` is gone; `ToolOutput.Content`
+is an `IReadOnlyList<MessageContent>` instead. `Success`/`Failure` keep their `string?` overloads
+(wrapping into a single `TextMessageContent`) and gain a `Success(IEnumerable<MessageContent>)`
+overload for structured results.
+
+`FunctionTool` now inspects the invoked method's return value: a `MessageContent` or
+`IEnumerable<MessageContent>` (covariance covers `List<TextMessageContent>`, `MessageContent[]`, ...)
+is carried through as-is; every other return type is still JSON-serialized into a single
+`TextMessageContent`, unchanged from before.
+
+All four `IMessageGenerator`s now translate `ToolOutput.Content` into their provider's native
+tool-result wire shape where one exists: Anthropic's `tool_result` content blocks (text + image;
+anything else degrades to a descriptive text block, since Anthropic has no other block types here)
+and Gemini's `functionResponse` (text joined into the structured `Response`, image/audio content
+added as `Parts[].InlineData` — genuinely multimodal). OpenAI's Responses API SDK exposes
+`function_call_output.output` as a plain string only (confirmed on both 2.12.0 and 2.13.0 — the
+only structured, multi-part tool-output item type is `ComputerCallOutputResponseItem`, specific to
+the built-in computer-use tool, not general custom function tools), and this project's own
+OpenAI-compatible Chat Completions wire DTO does the same for the `tool` role — both flatten
+`Content` to text, joining `TextMessageContent`s and replacing anything else with a short
+placeholder describing what was omitted.
+
 ## 0.22.2 — 2026-09-08
 
 ### Fixed — `IronHive.Plugins.MCP`

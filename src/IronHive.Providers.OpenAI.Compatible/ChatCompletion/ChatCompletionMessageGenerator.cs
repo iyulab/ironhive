@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json.Nodes;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
+using IronHive.Abstractions.Tools;
 using IronHiveMessage = IronHive.Abstractions.Messages.Message;
 using IronHiveMessageRole = IronHive.Abstractions.Messages.MessageRole;
 using ChatMessage = IronHive.Providers.OpenAI.Compatible.ChatCompletion.ChatMessage;
@@ -474,7 +475,17 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
                                     Arguments = tool.Input ?? "{}"
                                 }
                             });
-                            toolOutputs.Add((id, tool.Output?.Result ?? string.Empty));
+                            // Chat Completions의 tool 역할 content는 wire상 plain string입니다(user와 달리
+                            // content-part 배열 없음) — 텍스트는 그대로 이어붙이고, 비텍스트 콘텐츠는
+                            // 설명 텍스트로 대체합니다.
+                            var toolOutputText = tool.Output is null || tool.Output.Content.Count == 0
+                                ? string.Empty
+                                : string.Join("\n", tool.Output.Content.Select(c => c switch
+                                {
+                                    TextMessageContent text => text.Value ?? string.Empty,
+                                    _ => "[unsupported content omitted — not supported in this provider's tool-result format]"
+                                }));
+                            toolOutputs.Add((id, toolOutputText));
                         }
                         else
                         {

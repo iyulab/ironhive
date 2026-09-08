@@ -308,7 +308,7 @@ public class ChatClientAdapter : IChatClient
 
                         if (toolResults.TryGetValue(callId, out var result))
                         {
-                            toolMsg.Output = new ToolOutput(true, result);
+                            toolMsg.Output = ToolOutput.Success(result);
                         }
 
                         Message.Content.Add(toolMsg);

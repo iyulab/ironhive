@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using AwesomeAssertions;
+using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Tools;
 
@@ -7,6 +8,9 @@ namespace IronHive.Tests.Tools;
 
 public class FunctionToolFactoryTests
 {
+    private static string Text(ToolOutput output) =>
+        output.Content.OfType<TextMessageContent>().Single().Value;
+
     #region CreateFrom<T> / CreateFrom(Type)
 
     [Fact]
@@ -169,7 +173,7 @@ public class FunctionToolFactoryTests
         var result = await tool.InvokeAsync(input, TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
-        result.Result.Should().Be("8");
+        Text(result).Should().Be("8");
     }
 
     [Fact]
@@ -192,7 +196,7 @@ public class FunctionToolFactoryTests
         var result = await tool.InvokeAsync(input, TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
-        result.Result.Should().Contain("Hello, World!");
+        Text(result).Should().Contain("Hello, World!");
     }
 
     [Fact]
@@ -211,7 +215,7 @@ public class FunctionToolFactoryTests
         var result = await tool.InvokeAsync(new ToolInput(), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
-        result.Result.Should().Contain("executed done");
+        Text(result).Should().Contain("executed done");
         called.Should().BeTrue();
     }
 
@@ -230,7 +234,7 @@ public class FunctionToolFactoryTests
         var result = await tool.InvokeAsync(new ToolInput(), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
-        result.Result.Should().Contain("executed done");
+        Text(result).Should().Contain("executed done");
     }
 
     [Fact]
@@ -248,7 +252,7 @@ public class FunctionToolFactoryTests
         var result = await tool.InvokeAsync(new ToolInput(), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeFalse();
-        result.Result.Should().Contain("Boom!");
+        Text(result).Should().Contain("Boom!");
     }
 
     [Fact]
@@ -269,7 +273,7 @@ public class FunctionToolFactoryTests
         var result = await tool.InvokeAsync(input, TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
-        result.Result.Should().Contain("hi");
+        Text(result).Should().Contain("hi");
     }
 
     private static string RepeatHelper(string text, int count = 1)

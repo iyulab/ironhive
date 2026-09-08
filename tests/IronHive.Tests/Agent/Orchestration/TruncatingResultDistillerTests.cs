@@ -188,7 +188,8 @@ public class TruncatingResultDistillerTests
 
         var assistant = result.Message as Message;
         var tool = assistant!.Content.OfType<ToolMessageContent>().First();
-        tool.Output!.Result!.Length.Should().BeLessThan(10000);
+        var text = tool.Output!.Content.OfType<TextMessageContent>().Single();
+        text.Value.Length.Should().BeLessThan(10000);
     }
 
     [Fact]

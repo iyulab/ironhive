@@ -202,8 +202,11 @@ var request = new MessageRequest
         Timeout       = TimeSpan.FromSeconds(30),
         OnAfterInvoke = (content, ct) =>
         {
-            if (content.Output is { Result: not null } output)
-                content.Output = new ToolOutput(output.IsSuccess, TextCompactor.Compact(output.Result));
+            if (content.Output is { } output)
+            {
+                var text = string.Join("\n", output.Content.OfType<TextMessageContent>().Select(c => c.Value));
+                content.Output = ToolOutput.Success(TextCompactor.Compact(text));
+            }
             return Task.CompletedTask;
         }
     }

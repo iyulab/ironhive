@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Tools;
 using IronHive.Core.Microsoft;
 using Microsoft.Extensions.AI;
@@ -7,6 +8,9 @@ namespace IronHive.Tests.Microsoft;
 
 public class AIToolAdapterTests
 {
+    private static string Text(ToolOutput output) =>
+        output.Content.OfType<TextMessageContent>().Single().Value;
+
     [Fact]
     public void Constructor_NullAiTool_ThrowsArgumentNullException()
     {
@@ -45,7 +49,7 @@ public class AIToolAdapterTests
         }), TestContext.Current.CancellationToken);
 
         output.IsSuccess.Should().BeTrue();
-        output.Result.Should().Contain("hello world");
+        Text(output).Should().Contain("hello world");
     }
 
     [Fact]
@@ -59,7 +63,7 @@ public class AIToolAdapterTests
         var output = await tool.InvokeAsync(new ToolInput(), TestContext.Current.CancellationToken);
 
         output.IsSuccess.Should().BeFalse();
-        output.Result.Should().Be("boom");
+        Text(output).Should().Be("boom");
     }
 
     [Fact]
@@ -72,6 +76,6 @@ public class AIToolAdapterTests
         var output = await tool.InvokeAsync(new ToolInput(), TestContext.Current.CancellationToken);
 
         output.IsSuccess.Should().BeFalse();
-        output.Result.Should().Contain("greet");
+        Text(output).Should().Contain("greet");
     }
 }

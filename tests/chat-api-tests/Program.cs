@@ -680,7 +680,7 @@ async Task<TestResult> TestToolWithParams(IMessageGenerator generator, string mo
     // Execute and verify
     var input = new ToolInput(tc.Input);
     var output = await tool.InvokeAsync(input);
-    var resultValue = output.Result ?? "";
+    var resultValue = output.Content.OfType<TextMessageContent>().FirstOrDefault()?.Value ?? "";
     var hasCorrectResult = resultValue.Contains("45");
 
     return TestResult.Pass(

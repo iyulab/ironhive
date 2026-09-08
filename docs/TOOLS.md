@@ -223,7 +223,7 @@ var options = input.GetValue<MyOptions>("options");
 // ToolOutput — 결과 반환
 return ToolOutput.Success("처리 완료");
 return ToolOutput.Success(new { id = 42, name = "item" });
-return ToolOutput.Error("오류가 발생했습니다");
+return ToolOutput.Failure("오류가 발생했습니다");
 ```
 
 ---
@@ -259,9 +259,10 @@ var request = new MessageRequest
         Timeout       = TimeSpan.FromSeconds(30),
         OnAfterInvoke = (content, ct) =>
         {
-            if (content.Output is { Result: not null } output)
+            if (content.Output is { } output)
             {
-                content.Output = new ToolOutput(output.IsSuccess, TextCompactor.Compact(output.Result, options));
+                var text = string.Join("\n", output.Content.OfType<TextMessageContent>().Select(c => c.Value));
+                content.Output = ToolOutput.Success(TextCompactor.Compact(text, options));
             }
             return Task.CompletedTask;
         }

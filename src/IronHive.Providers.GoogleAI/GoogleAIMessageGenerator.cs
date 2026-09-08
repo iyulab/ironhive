@@ -3,6 +3,7 @@ using Google.GenAI.Types;
 using IronHive.Abstractions.Extensions;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
+using IronHive.Abstractions.Tools;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -409,13 +410,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                         {
                             InlineData = new Blob
                             {
-                                MimeType = image.Format switch
-                                {
-                                    ImageFormat.Png => "image/png",
-                                    ImageFormat.Jpeg => "image/jpeg",
-                                    ImageFormat.Webp => "image/webp",
-                                    _ => throw new NotImplementedException("not supported yet")
-                                },
+                                MimeType = ToMimeType(image.Format),
                                 Data = Convert.FromBase64String(image.Base64 ?? string.Empty)
                             }
                         });
@@ -427,16 +422,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                         {
                             InlineData = new Blob
                             {
-                                MimeType = audio.Format switch
-                                {
-                                    AudioFormat.Wav => "audio/wav",
-                                    AudioFormat.Mp3 => "audio/mp3",
-                                    AudioFormat.Flac => "audio/flac",
-                                    AudioFormat.Aac => "audio/aac",
-                                    AudioFormat.Ogg => "audio/ogg",
-                                    AudioFormat.Aiff => "audio/aiff",
-                                    _ => throw new NotImplementedException("not supported yet")
-                                },
+                                MimeType = ToMimeType(audio.Format),
                                 Data = Convert.FromBase64String(audio.Base64 ?? string.Empty)
                             }
                         });
@@ -496,17 +482,57 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                         modelParts.Add(part);
 
                         // 도구 결과 메시지
+                        // 텍스트 콘텐츠는 합쳐져 구조화 Response에 담기고, 이미지/오디오 콘텐츠는
+                        // Parts에 InlineData로 추가됩니다(네이티브 멀티모달 지원).
+                        var functionResponse = new FunctionResponse { Id = tool.Id, Name = tool.Name };
+                        if (tool.Output is null)
+                        {
+                            functionResponse.Response = new Dictionary<string, object>();
+                        }
+                        else
+                        {
+                            var texts = new List<string>();
+                            List<FunctionResponsePart>? responseParts = null;
+                            foreach (var resultContent in tool.Output.Content)
+                            {
+                                switch (resultContent)
+                                {
+                                    case TextMessageContent resultText:
+                                        texts.Add(resultText.Value ?? string.Empty);
+                                        break;
+                                    case ImageMessageContent resultImage:
+                                        (responseParts ??= []).Add(new FunctionResponsePart
+                                        {
+                                            InlineData = new FunctionResponseBlob
+                                            {
+                                                MimeType = ToMimeType(resultImage.Format),
+                                                Data = Convert.FromBase64String(resultImage.Base64 ?? string.Empty)
+                                            }
+                                        });
+                                        break;
+                                    case AudioMessageContent resultAudio:
+                                        (responseParts ??= []).Add(new FunctionResponsePart
+                                        {
+                                            InlineData = new FunctionResponseBlob
+                                            {
+                                                MimeType = ToMimeType(resultAudio.Format),
+                                                Data = Convert.FromBase64String(resultAudio.Base64 ?? string.Empty)
+                                            }
+                                        });
+                                        break;
+                                }
+                            }
+                            functionResponse.Response = new Dictionary<string, object>
+                            {
+                                ["success"] = tool.Output.IsSuccess,
+                                ["result"] = string.Join("\n", texts)
+                            };
+                            functionResponse.Parts = responseParts;
+                        }
+
                         userParts.Add(new Part
                         {
-                            FunctionResponse = new FunctionResponse
-                            {
-                                Id = tool.Id,
-                                Name = tool.Name,
-                                Response = tool.Output != null
-                                    ? JsonSerializer.Deserialize<Dictionary<string, object>>(
-                                        JsonSerializer.Serialize(tool.Output))
-                                    : new Dictionary<string, object>()
-                            }
+                            FunctionResponse = functionResponse
                         });
                     }
                     else
@@ -596,4 +622,23 @@ public class GoogleAIMessageGenerator : IMessageGenerator
 
         return (contents, config);
     }
+
+    private static string ToMimeType(ImageFormat format) => format switch
+    {
+        ImageFormat.Png => "image/png",
+        ImageFormat.Jpeg => "image/jpeg",
+        ImageFormat.Webp => "image/webp",
+        _ => throw new NotImplementedException("not supported yet")
+    };
+
+    private static string ToMimeType(AudioFormat format) => format switch
+    {
+        AudioFormat.Wav => "audio/wav",
+        AudioFormat.Mp3 => "audio/mp3",
+        AudioFormat.Flac => "audio/flac",
+        AudioFormat.Aac => "audio/aac",
+        AudioFormat.Ogg => "audio/ogg",
+        AudioFormat.Aiff => "audio/aiff",
+        _ => throw new NotImplementedException("not supported yet")
+    };
 }

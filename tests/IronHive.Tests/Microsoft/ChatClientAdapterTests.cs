@@ -807,7 +807,9 @@ public class ChatClientAdapterTests : IDisposable
         var assistantMsg = req.Messages.First().Should().BeOfType<Message>().Subject;
         var toolContent = assistantMsg.Content.OfType<ToolMessageContent>().Single();
         toolContent.Output.Should().NotBeNull();
-        toolContent.Output!.Result.Should().Be("22\u00b0C, sunny");
+        toolContent.Output!.Content.Should().ContainSingle()
+            .Which.Should().BeOfType<TextMessageContent>()
+            .Which.Value.Should().Be("22\u00b0C, sunny");
     }
 
     [Fact]

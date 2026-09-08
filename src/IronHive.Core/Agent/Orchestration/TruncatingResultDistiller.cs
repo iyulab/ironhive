@@ -1,3 +1,4 @@
+using System.Linq;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
@@ -92,13 +93,18 @@ public sealed class TruncatingResultDistiller : IResultDistiller
             return tool;
         }
 
-        var outputText = tool.Output.Result;
-        if (outputText is null || outputText.Length <= maxOutputChars)
+        var textItems = tool.Output.Content.OfType<TextMessageContent>().ToList();
+        var totalTextChars = textItems.Sum(t => t.Value.Length);
+        if (totalTextChars <= maxOutputChars)
         {
             return tool;
         }
 
-        var truncated = TruncateText(outputText, maxOutputChars);
+        var combinedText = string.Join("\n", textItems.Select(t => t.Value));
+        var truncated = TruncateText(combinedText, maxOutputChars);
+
+        var newContent = new List<MessageContent> { new TextMessageContent { Value = truncated } };
+        newContent.AddRange(tool.Output.Content.Where(c => c is not TextMessageContent));
 
         return new ToolMessageContent
         {
@@ -108,7 +114,7 @@ public sealed class TruncatingResultDistiller : IResultDistiller
             IsApproved = tool.IsApproved,
             Output = new Abstractions.Tools.ToolOutput
             {
-                Result = truncated,
+                Content = newContent,
                 IsSuccess = tool.Output.IsSuccess
             }
         };
@@ -146,10 +152,13 @@ public sealed class TruncatingResultDistiller : IResultDistiller
             total += item switch
             {
                 TextMessageContent text => text.Value.Length,
-                ToolMessageContent tool => (tool.Output?.Result?.Length ?? 0) + (tool.Input?.Length ?? 0),
+                ToolMessageContent tool => GetToolOutputTextChars(tool) + (tool.Input?.Length ?? 0),
                 _ => 0
             };
         }
         return total;
     }
+
+    private static int GetToolOutputTextChars(ToolMessageContent tool)
+        => tool.Output?.Content.OfType<TextMessageContent>().Sum(t => t.Value.Length) ?? 0;
 }

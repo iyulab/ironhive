@@ -8,6 +8,7 @@ using IronHiveMessageRole = IronHive.Abstractions.Messages.MessageRole;
 using IronHive.Abstractions.Extensions;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
+using IronHive.Abstractions.Tools;
 using MessageContent = IronHive.Abstractions.Messages.MessageContent;
 using TextMessageContent = IronHive.Abstractions.Messages.Content.TextMessageContent;
 using ImageMessageContent = IronHive.Abstractions.Messages.Content.ImageMessageContent;
@@ -325,14 +326,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
                         {
                             Source = new Base64ImageSource
                             {
-                                MediaType = image.Format switch
-                                {
-                                    ImageFormat.Png => "image/png",
-                                    ImageFormat.Jpeg => "image/jpeg",
-                                    ImageFormat.Gif => "image/gif",
-                                    ImageFormat.Webp => "image/webp",
-                                    _ => throw new NotSupportedException($"not supported image format {image.Format}")
-                                },
+                                MediaType = ToMediaType(image.Format),
                                 Data = image.Base64 ?? string.Empty
                             }
                         });
@@ -410,11 +404,42 @@ public class AnthropicMessageGenerator : IMessageGenerator
                                     ? JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(tool.Input) ?? new()
                                     : new Dictionary<string, JsonElement>()
                             });
+                            // 텍스트/이미지는 각각 TextBlockParam/ImageBlockParam으로 그대로 매핑하고,
+                            // Anthropic이 블록으로 지원하지 않는 콘텐츠(오디오 등)는 설명 텍스트로 대체합니다.
+                            ToolResultBlockParamContent resultContent = string.Empty;
+                            if (tool.Output is { Content.Count: > 0 } toolOutput)
+                            {
+                                var resultBlocks = new List<Block>();
+                                foreach (var c in toolOutput.Content)
+                                {
+                                    if (c is TextMessageContent resultText)
+                                    {
+                                        resultBlocks.Add(new TextBlockParam { Text = resultText.Value ?? string.Empty });
+                                    }
+                                    else if (c is ImageMessageContent resultImage)
+                                    {
+                                        resultBlocks.Add(new ImageBlockParam
+                                        {
+                                            Source = new Base64ImageSource
+                                            {
+                                                MediaType = ToMediaType(resultImage.Format),
+                                                Data = resultImage.Base64 ?? string.Empty
+                                            }
+                                        });
+                                    }
+                                    else
+                                    {
+                                        resultBlocks.Add(new TextBlockParam { Text = "[unsupported content omitted — not supported in Anthropic tool_result blocks]" });
+                                    }
+                                }
+                                resultContent = resultBlocks;
+                            }
+
                             userBlocks.Add(new ToolResultBlockParam
                             {
                                 ToolUseID = tool.Id,
                                 IsError = tool.Output != null && !tool.Output.IsSuccess,
-                                Content = tool.Output?.Result ?? string.Empty,
+                                Content = resultContent,
                             });
                         }
                         else
@@ -511,6 +536,14 @@ public class AnthropicMessageGenerator : IMessageGenerator
         };
     }
 
+    private static string ToMediaType(ImageFormat format) => format switch
+    {
+        ImageFormat.Png => "image/png",
+        ImageFormat.Jpeg => "image/jpeg",
+        ImageFormat.Gif => "image/gif",
+        ImageFormat.Webp => "image/webp",
+        _ => throw new NotSupportedException($"not supported image format {format}")
+    };
 }
 
 public static class AnthropicHelper

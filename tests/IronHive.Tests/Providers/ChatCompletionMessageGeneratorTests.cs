@@ -92,7 +92,7 @@ public class ChatCompletionMessageGeneratorTests
             Id = "call_1",
             Name = "get_weather",
             Input = "{\"city\":\"seoul\"}",
-            Output = new ToolOutput(true, "sunny"),
+            Output = ToolOutput.Success("sunny"),
             IsApproved = true,
         };
         var messages = ChatCompletionMessageGenerator.BuildMessages(
@@ -108,6 +108,32 @@ public class ChatCompletionMessageGeneratorTests
         var tool = messages[2].Should().BeOfType<ToolChatMessage>().Subject;
         tool.ToolCallId.Should().Be("call_1");
         tool.Content.Should().Be("sunny");
+    }
+
+    [Fact]
+    public void BuildMessages_ToolResultWithMixedContent_JoinsTextAndDescribesNonText()
+    {
+        // Chat Completions' tool-role content is a plain string on the wire — text is joined as-is,
+        // and content with no textual wire representation (images, ...) degrades to a placeholder.
+        var toolContent = new ToolMessageContent
+        {
+            Id = "call_1",
+            Name = "get_chart",
+            Input = "{}",
+            Output = ToolOutput.Success(
+            [
+                new TextMessageContent { Value = "here you go" },
+                new ImageMessageContent { Format = ImageFormat.Png, Base64 = "AAAA" }
+            ]),
+            IsApproved = true,
+        };
+        var messages = ChatCompletionMessageGenerator.BuildMessages(
+            Request(null, Message.User("chart?"), Message.Assistant(toolContent)));
+
+        var tool = messages[2].Should().BeOfType<ToolChatMessage>().Subject;
+        tool.Content.Should().Contain("here you go");
+        tool.Content.Should().Contain("unsupported");
+        tool.Content.Should().NotContain("AAAA");
     }
 
     [Fact]
