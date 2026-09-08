@@ -27,18 +27,21 @@ public interface IHiveService : IDisposable
 
     /// <summary>
     /// 등록된 provider의 raw <see cref="IMessageGenerator"/>를 가져옵니다.
-    /// <paramref name="provider"/>를 지정하지 않으면 단일 등록된 provider가 자동 선택되고,
-    /// 둘 이상 등록돼 있으면 예외가 발생합니다(<see cref="Messages"/>가 요청별로 라우팅하는
-    /// 것과 같은 규칙). M.E.AI 연동(<c>AsChatClient</c> 등) 등 provider 하나에 직접 바인딩된
-    /// 컴포넌트가 필요할 때 씁니다.
     /// </summary>
+    /// <remarks>
+    /// 대신 <c>Messages.Generators</c>를 쓰세요 — <c>Messages.Generators.GetOrFirstValue(provider)</c>가
+    /// 동일하게 동작합니다.
+    /// </remarks>
+    [Obsolete("Use Messages.Generators (with the GetOrFirstValue extension) instead. Will be removed in a future release.")]
     IMessageGenerator GetMessageGenerator(string? provider = null);
 
     /// <summary>
     /// 등록된 provider의 raw <see cref="IEmbeddingGenerator"/>를 가져옵니다.
-    /// <paramref name="provider"/>를 지정하지 않으면 단일 등록된 provider가 자동 선택되고,
-    /// 둘 이상 등록돼 있으면 예외가 발생합니다. M.E.AI 연동(<c>AsEmbeddingGenerator</c> 등)
-    /// 등 provider 하나에 직접 바인딩된 컴포넌트가 필요할 때 씁니다.
     /// </summary>
+    /// <remarks>
+    /// 대신 <c>Embeddings.Generators</c>를 쓰세요 — <c>Embeddings.Generators.GetOrFirstValue(provider)</c>가
+    /// 동일하게 동작합니다.
+    /// </remarks>
+    [Obsolete("Use Embeddings.Generators (with the GetOrFirstValue extension) instead. Will be removed in a future release.")]
     IEmbeddingGenerator GetEmbeddingGenerator(string? provider = null);
 }

@@ -47,7 +47,7 @@ public class MessageServiceProviderResolutionTests
         var act = async () => await svc.GenerateMessageAsync(MakeRequest(provider: ""));
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*No message generators*");
+            .WithMessage("*No IMessageGenerator*");
     }
 
     [Fact]
@@ -94,7 +94,7 @@ public class MessageServiceProviderResolutionTests
         };
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*No message generators*");
+            .WithMessage("*No IMessageGenerator*");
     }
 
     [Fact]

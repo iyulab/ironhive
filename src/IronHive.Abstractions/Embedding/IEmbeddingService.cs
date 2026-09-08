@@ -6,6 +6,12 @@
 public interface IEmbeddingService
 {
     /// <summary>
+    /// 등록된 provider 이름과 <see cref="IEmbeddingGenerator"/>의 딕셔너리입니다. M.E.AI 연동
+    /// (<c>AsEmbeddingGenerator</c> 등) 등 provider 하나에 직접 바인딩된 컴포넌트가 필요할 때 씁니다.
+    /// </summary>
+    IReadOnlyDictionary<string, IEmbeddingGenerator> Generators { get; }
+
+    /// <summary>
     /// 지정된 프로바이더와 모델을 사용하여 단일 입력에 대한 임베딩을 생성합니다.
     /// </summary>
     /// <param name="provider">사용할 공급자의 이름입니다.</param>

@@ -15,6 +15,14 @@ namespace IronHive.Abstractions.Messages;
 public interface IMessageService
 {
     /// <summary>
+    /// 등록된 provider 이름과 <see cref="IMessageGenerator"/>의 딕셔너리입니다. M.E.AI 연동
+    /// (<c>AsChatClient</c> 등) 등 provider 하나에 직접 바인딩된 컴포넌트가 필요할 때 씁니다.
+    /// provider를 지정하지 않고 단일 등록된 provider를 자동 선택하려면
+    /// <c>Generators.GetOrFirstValue(provider)</c>를 쓰세요.
+    /// </summary>
+    IReadOnlyDictionary<string, IMessageGenerator> Generators { get; }
+
+    /// <summary>
     /// 주어진 요청을 기반으로 채팅 응답 메시지를 생성합니다.
     /// </summary>
     Task<MessageResponse> GenerateMessageAsync(

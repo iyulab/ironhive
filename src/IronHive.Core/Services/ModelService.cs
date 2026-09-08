@@ -14,6 +14,9 @@ public class ModelService : IModelService
     }
 
     /// <inheritdoc />
+    public IReadOnlyDictionary<string, IModelFinder> Finders => _catalogs;
+
+    /// <inheritdoc />
     public async Task<IEnumerable<ModelCardList>> ListModelsAsync(
         CancellationToken cancellationToken = default)
     {

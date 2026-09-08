@@ -13,6 +13,9 @@ public class VideoService : IVideoService
     }
 
     /// <inheritdoc />
+    public IReadOnlyDictionary<string, IVideoGenerator> Generators => _generators;
+
+    /// <inheritdoc />
     public async Task<VideoGenerationResponse> GenerateVideoAsync(
         string provider,
         VideoGenerationRequest request,

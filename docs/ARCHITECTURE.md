@@ -181,15 +181,15 @@ IronHive 구현체를 M.E.AI 생태계와 연동합니다:
 ```csharp
 // ChatClientAdapter/EmbeddingGeneratorAdapter는 provider 하나에 바인딩된 raw
 // IMessageGenerator/IEmbeddingGenerator를 받는다. HiveServiceBuilder로 등록한 provider를
-// 재구성 없이 그대로 쓰려면 IHiveService.GetMessageGenerator/GetEmbeddingGenerator로 꺼낸다
-// (provider 미지정 시 단일 등록된 provider 자동 선택, 둘 이상이면 예외).
+// 재구성 없이 그대로 쓰려면 각 서비스의 Generators 딕셔너리에서 꺼낸다 — GetOrFirstValue는 provider를
+// 지정하지 않으면 단일 등록된 provider를 자동 선택하고, 둘 이상이면 예외를 던진다.
 
 // IronHive → M.E.AI IChatClient
-var chatClient = hive.GetMessageGenerator("openai")
+var chatClient = hive.Messages.Generators.GetOrFirstValue("openai")
     .AsChatClient("gpt-4o", "openai");
 
 // IronHive → M.E.AI IEmbeddingGenerator<string, Embedding<float>>
-var embedder = hive.GetEmbeddingGenerator("openai")
+var embedder = hive.Embeddings.Generators.GetOrFirstValue("openai")
     .AsEmbeddingGenerator("text-embedding-3-small", "openai");
 
 // M.E.AI AITool(예: MCP McpClientTool) → IronHive ITool — 실행까지 위임한다

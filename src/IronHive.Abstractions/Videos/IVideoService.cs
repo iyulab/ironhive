@@ -6,6 +6,11 @@ namespace IronHive.Abstractions.Videos;
 public interface IVideoService
 {
     /// <summary>
+    /// 등록된 provider 이름과 <see cref="IVideoGenerator"/>의 딕셔너리입니다.
+    /// </summary>
+    IReadOnlyDictionary<string, IVideoGenerator> Generators { get; }
+
+    /// <summary>
     /// 비디오를 생성합니다.
     /// </summary>
     Task<VideoGenerationResponse> GenerateVideoAsync(

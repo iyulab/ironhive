@@ -13,6 +13,9 @@ public class ImageService : IImageService
     }
 
     /// <inheritdoc />
+    public IReadOnlyDictionary<string, IImageGenerator> Generators => _generators;
+
+    /// <inheritdoc />
     public async Task<ImageGenerationResponse> GenerateImageAsync(
         string provider,
         ImageGenerationRequest request,

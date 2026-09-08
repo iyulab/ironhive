@@ -19,6 +19,7 @@ public class DocSnippetComplianceTests
     // an AITool from their MCP client) — the snippet itself is what's under test, not how to obtain
     // those values.
     private const string MeaiPreamble = """
+        using System.Collections.Generic;
         using IronHive.Abstractions;
         using IronHive.Core.Extensions;
         using IronHive.Core.Microsoft;

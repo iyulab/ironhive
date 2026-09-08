@@ -4,6 +4,27 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## Unreleased
+
+### Added — `Generators`/`Finders`/`Processors` on every service, `IReadOnlyDictionary.GetOrFirstValue`
+
+`IHiveService.GetMessageGenerator`/`GetEmbeddingGenerator` (0.22.0) special-cased raw provider access
+for two of the six services. `Models`, `Messages`, `Embeddings`, `Images`, `Videos`, `Audio` now all
+expose their registered-provider dictionary directly — `IModelService.Finders`, `IAudioService.Processors`,
+and `Generators` on the other four — instead of each service growing its own `Get{}` accessor.
+
+`IReadOnlyDictionary<string, TValue>.GetOrFirstValue(key)` (new extension, next to the existing
+`IDictionary<string, object?>.TryGetValue<T>` in the same `System.Collections.Generic`-namespaced
+`DictionaryExtensions`, so no new `using` is needed) replaces `GeneratorLookup`: pass a key to look it up,
+or omit it to auto-select the sole registered entry and throw if none or more than one are registered.
+Error messages name the entry by `typeof(TValue).Name` rather than a caller-supplied label. One shared
+extension now backs all six services' provider lookup instead of a `Core`-internal helper only
+`MessageService` and `HiveService` used.
+
+`IHiveService.GetMessageGenerator`/`GetEmbeddingGenerator` are `[Obsolete]` — still work (they delegate to
+`Messages.Generators.GetOrFirstValue`/`Embeddings.Generators.GetOrFirstValue`) but will be removed in a
+future release. Use `Messages.Generators`/`Embeddings.Generators` directly instead.
+
 ## 0.22.1 — 2026-08-28
 
 ### Changed — `ModelContextProtocol` dependency

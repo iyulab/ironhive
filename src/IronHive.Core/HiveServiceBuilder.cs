@@ -105,8 +105,6 @@ public class HiveServiceBuilder : IHiveServiceBuilder
             audio: audioService,
             files: fileService,
             vectors: _vectors,
-            queues: _queues,
-            messageGenerators: _messages,
-            embeddingGenerators: _embeddings);
+            queues: _queues);
     }
 }

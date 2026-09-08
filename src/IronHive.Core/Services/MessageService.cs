@@ -22,11 +22,14 @@ public class MessageService : IMessageService
     }
 
     /// <inheritdoc />
+    public IReadOnlyDictionary<string, IMessageGenerator> Generators => _generators;
+
+    /// <inheritdoc />
     public async Task<MessageResponse> GenerateMessageAsync(
         MessageRequest request,
         CancellationToken cancellationToken = default)
     {
-        var generator = GetRequiredGenerator(request.Provider);
+        var generator = _generators.GetOrFirstValue(request.Provider);
         var pipeline = BuildPipeline(generator, _middlewares, cancellationToken);
         var context = new MessageContext(request, req => ConfigureGeneration(request, req));
 
@@ -84,7 +87,7 @@ public class MessageService : IMessageService
         MessageRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var generator = GetRequiredGenerator(request.Provider);
+        var generator = _generators.GetOrFirstValue(request.Provider);
         var pipeline = BuildStreamingPipeline(generator, _middlewares, cancellationToken);
         var context = new MessageContext(request, req => ConfigureGeneration(request, req));
 
@@ -235,7 +238,7 @@ public class MessageService : IMessageService
         MessageRequest request,
         CancellationToken cancellationToken = default)
     {
-        var generator = GetRequiredGenerator(request.Provider);
+        var generator = _generators.GetOrFirstValue(request.Provider);
         var req = new MessageGenerationRequest
         {
             Model = request.Model,
@@ -248,11 +251,6 @@ public class MessageService : IMessageService
         };
         return generator.CountTokensAsync(req, cancellationToken);
     }
-
-    // ---- 제너레이터 조회 ----
-
-    private IMessageGenerator GetRequiredGenerator(string? provider)
-        => GeneratorLookup.GetRequired(_generators, provider, "message", "MessageRequest.Provider");
 
     // ---- MessageContext 구성 ----
 

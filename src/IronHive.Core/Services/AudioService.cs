@@ -13,6 +13,9 @@ public class AudioService : IAudioService
     }
 
     /// <inheritdoc />
+    public IReadOnlyDictionary<string, IAudioProcessor> Processors => _processors;
+
+    /// <inheritdoc />
     public async Task<TextToSpeechResponse> GenerateSpeechAsync(
         string provider,
         TextToSpeechRequest request,

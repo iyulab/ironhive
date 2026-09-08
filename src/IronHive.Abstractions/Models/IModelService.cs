@@ -6,6 +6,12 @@ namespace IronHive.Abstractions.Models;
 public interface IModelService
 {
     /// <summary>
+    /// 등록된 provider 이름과 <see cref="IModelFinder"/>의 딕셔너리입니다. provider 하나에 직접
+    /// 바인딩된 컴포넌트가 필요할 때, 또는 등록된 provider 목록을 확인할 때 씁니다.
+    /// </summary>
+    IReadOnlyDictionary<string, IModelFinder> Finders { get; }
+
+    /// <summary>
     /// 사용 가능한 모든 모델 목록을 비동기적으로 가져옵니다.
     /// </summary>
     Task<IEnumerable<ModelCardList>> ListModelsAsync(

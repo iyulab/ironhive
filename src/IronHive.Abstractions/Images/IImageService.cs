@@ -13,6 +13,11 @@ namespace IronHive.Abstractions.Images;
 public interface IImageService
 {
     /// <summary>
+    /// 등록된 provider 이름과 <see cref="IImageGenerator"/>의 딕셔너리입니다.
+    /// </summary>
+    IReadOnlyDictionary<string, IImageGenerator> Generators { get; }
+
+    /// <summary>
     /// 지정된 프로바이더와 모델을 사용하여 이미지를 생성합니다.
     /// </summary>
     /// <param name="provider">사용할 프로바이더의 이름입니다.</param>

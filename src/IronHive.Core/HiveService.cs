@@ -12,7 +12,6 @@ using IronHive.Abstractions.Vector;
 using IronHive.Abstractions.Queue;
 using IronHive.Core.Memory;
 using IronHive.Core.Agent;
-using IronHive.Core.Utilities;
 
 namespace IronHive.Core;
 
@@ -21,8 +20,6 @@ public class HiveService : IHiveService
     private readonly AgentService _agents;
     private readonly IReadOnlyDictionary<string, IVectorStorage> _vectors;
     private readonly IReadOnlyDictionary<string, IQueueStorage> _queues;
-    private readonly IReadOnlyDictionary<string, IMessageGenerator> _messageGenerators;
-    private readonly IReadOnlyDictionary<string, IEmbeddingGenerator> _embeddingGenerators;
 
     internal HiveService(
         IModelService models,
@@ -33,9 +30,7 @@ public class HiveService : IHiveService
         IAudioService audio,
         IFileStorageService files,
         IReadOnlyDictionary<string, IVectorStorage> vectors,
-        IReadOnlyDictionary<string, IQueueStorage> queues,
-        IReadOnlyDictionary<string, IMessageGenerator> messageGenerators,
-        IReadOnlyDictionary<string, IEmbeddingGenerator> embeddingGenerators)
+        IReadOnlyDictionary<string, IQueueStorage> queues)
     {
         Models = models;
         Messages = messages;
@@ -48,8 +43,6 @@ public class HiveService : IHiveService
         _agents = new AgentService(messages);
         _vectors = vectors;
         _queues = queues;
-        _messageGenerators = messageGenerators;
-        _embeddingGenerators = embeddingGenerators;
     }
 
     public IModelService Models { get; }
@@ -75,11 +68,13 @@ public class HiveService : IHiveService
     public IAgent CreateAgentFromYaml(string yaml)
         => _agents.CreateAgentFromYaml(yaml);
 
+    [Obsolete("Use Messages.Generators (with the GetOrFirstValue extension) instead. Will be removed in a future release.")]
     public IMessageGenerator GetMessageGenerator(string? provider = null)
-        => GeneratorLookup.GetRequired(_messageGenerators, provider, "message");
+        => Messages.Generators.GetOrFirstValue(provider);
 
+    [Obsolete("Use Embeddings.Generators (with the GetOrFirstValue extension) instead. Will be removed in a future release.")]
     public IEmbeddingGenerator GetEmbeddingGenerator(string? provider = null)
-        => GeneratorLookup.GetRequired(_embeddingGenerators, provider, "embedding");
+        => Embeddings.Generators.GetOrFirstValue(provider);
 
     public IMemoryWorker CreateMemoryWorker(
         Func<MemoryWorkerBuilder, MemoryPipelineBuilder> configure,

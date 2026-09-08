@@ -13,6 +13,9 @@ public class EmbeddingService : IEmbeddingService
     }
 
     /// <inheritdoc />
+    public IReadOnlyDictionary<string, IEmbeddingGenerator> Generators => _generators;
+
+    /// <inheritdoc />
     public async Task<float[]> EmbedAsync(
         string provider,
         string modelId,

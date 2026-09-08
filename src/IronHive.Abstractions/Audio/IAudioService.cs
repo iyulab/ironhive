@@ -13,6 +13,11 @@ namespace IronHive.Abstractions.Audio;
 public interface IAudioService
 {
     /// <summary>
+    /// 등록된 provider 이름과 <see cref="IAudioProcessor"/>의 딕셔너리입니다.
+    /// </summary>
+    IReadOnlyDictionary<string, IAudioProcessor> Processors { get; }
+
+    /// <summary>
     /// 텍스트를 음성으로 변환합니다. (TTS)
     /// </summary>
     /// <param name="provider">사용할 프로바이더 이름</param>
