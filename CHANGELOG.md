@@ -33,6 +33,20 @@ VertexAI, whatever the vendor SDK defaulted to for Anthropic) to bound a stalled
 indefinitely instead — set the provider's `Timeout` explicitly to restore a ceiling. `OpenAIConfig.TimeOut`
 is renamed to `Timeout`, a source-breaking change for any caller that set it by name.
 
+### Added — `SpeechToTextRequest.Diarized`
+
+`OpenAIAudioProcessor.TranscribeAsync` selected the diarized transcription endpoint by checking whether
+`Model` contained the substring `"diarize"` — a request that happened to name a diarization-capable model
+without that substring silently got the plain (non-diarized) response shape. `SpeechToTextRequest` now
+carries an explicit `Diarized` flag instead (named to match the vendor SDK's own
+`AudioTranscriptionFormat.Diarized` and the adjective/state-flag convention used elsewhere in this
+codebase, e.g. `Done`, `IsSuccess` — a bare verb read as "record in a diary", not "perform diarization").
+
+`GoogleAIAudioProcessor.TranscribeAsync` previously ignored the request entirely and always forced a
+structured JSON response (segments, speakers, timestamps) regardless of whether diarization was wanted,
+paying for that constraint on every plain-transcript call. It now branches on `Diarized`: a plain-text
+prompt with no response schema when `false`, the existing structured-output request when `true`.
+
 ### Changed — `GoogleAIEmbeddingGenerator.EmbedBatchAsync` chunks and parallelizes above 100 inputs
 
 Google AI's `embedContent` accepts at most 100 inputs per call; a batch larger than that previously failed

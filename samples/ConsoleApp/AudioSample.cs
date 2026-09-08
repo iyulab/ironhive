@@ -71,8 +71,9 @@ public static class AudioSample
             request: new SpeechToTextRequest
             {
                 Model = "gpt-4o-transcribe-diarize",
+                Diarized = true,
                 Audio = new GeneratedAudio
-                { 
+                {
                     MimeType = "audio/mp3",
                     Data = openaiAudioData,
                 }

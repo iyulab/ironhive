@@ -107,9 +107,58 @@ public partial class GoogleAIAudioProcessor : IAudioProcessor
     }
 
     /// <inheritdoc />
-    public virtual async Task<SpeechToTextResponse> TranscribeAsync(
+    public virtual Task<SpeechToTextResponse> TranscribeAsync(
         SpeechToTextRequest request,
         CancellationToken cancellationToken = default)
+        => request.Diarized
+            ? TranscribeDiarizedAsync(request, cancellationToken)
+            : TranscribeTextAsync(request, cancellationToken);
+
+    /// <summary>
+    /// 화자분리 없이 순수 텍스트만 요청합니다. 스키마를 강제하지 않으므로 지연·제약이 적습니다.
+    /// </summary>
+    private async Task<SpeechToTextResponse> TranscribeTextAsync(
+        SpeechToTextRequest request,
+        CancellationToken cancellationToken)
+    {
+        var contents = new Content
+        {
+            Role = "user",
+            Parts =
+            [
+                new Part
+                {
+                    Text = "Transcribe the provided audio accurately. Return only the transcript text, with no additional commentary."
+                },
+                new Part
+                {
+                    InlineData = new Blob
+                    {
+                        MimeType = request.Audio.MimeType,
+                        Data = request.Audio.Data
+                    }
+                }
+            ]
+        };
+
+        var response = await _client.Models.GenerateContentAsync(
+            request.Model,
+            [contents],
+            config: null,
+            cancellationToken);
+
+        var text = response.Candidates?.FirstOrDefault()?.Content?.Parts?.FirstOrDefault()?.Text
+            ?? throw new InvalidOperationException("No text data in response.");
+
+        return new SpeechToTextResponse { Text = text };
+    }
+
+    /// <summary>
+    /// 화자별로 분리된 세그먼트를 요청합니다. 응답을 JSON 스키마로 강제해 세그먼트/화자/타임스탬프를 받습니다.
+    /// </summary>
+    private async Task<SpeechToTextResponse> TranscribeDiarizedAsync(
+        SpeechToTextRequest request,
+        CancellationToken cancellationToken)
     {
         // Gemini API는 GenerateContent를 통해 오디오를 처리합니다.
         var contents = new Content

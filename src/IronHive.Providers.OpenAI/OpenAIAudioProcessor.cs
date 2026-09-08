@@ -72,7 +72,7 @@ public class OpenAIAudioProcessor : IAudioProcessor
             _ => "bin"
         };
 
-        if (request.Model.Contains("diarize"))
+        if (request.Diarized)
         {
             var result = await client.TranscribeAudioDiarizedAsync(
                 stream,
