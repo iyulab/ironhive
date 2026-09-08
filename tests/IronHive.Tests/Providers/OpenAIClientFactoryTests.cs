@@ -78,18 +78,20 @@ public class OpenAIClientFactoryTests
         var options = OpenAIClientFactory.BuildOptions(new OpenAIConfig
         {
             ApiKey = "sk-test",
-            TimeOut = TimeSpan.FromMinutes(3),
+            Timeout = TimeSpan.FromMinutes(3),
         });
 
         options.NetworkTimeout.Should().Be(TimeSpan.FromMinutes(3));
     }
 
     [Fact]
-    public void DefaultTimeout_IsCarriedRatherThanLeftToTheSdk()
+    public void DefaultTimeout_LeavesTheNetworkBudgetUnbounded()
     {
+        // No Timeout configured means no ceiling — ConnectTimeout bounds connection establishment
+        // instead, and the default transport's HttpClient.Timeout is infinite (see below).
         var options = OpenAIClientFactory.BuildOptions(new OpenAIConfig { ApiKey = "sk-test" });
 
-        options.NetworkTimeout.Should().Be(new OpenAIConfig().TimeOut);
+        options.NetworkTimeout.Should().BeNull();
     }
 
     [Fact]
@@ -107,11 +109,14 @@ public class OpenAIClientFactoryTests
     }
 
     [Fact]
-    public void NoInjectedHttpClient_LeavesTheSdkTransportInPlace()
+    public void NoInjectedHttpClient_StillBuildsATransportWithAConnectTimeoutAndNoRequestTimeout()
     {
+        // Without an injected client, the adapter builds its own — carrying ConnectTimeout — rather
+        // than falling through to the vendor's default transport, so a short connect budget always
+        // applies even when the caller never touches HttpClient.
         var options = OpenAIClientFactory.BuildOptions(new OpenAIConfig { ApiKey = "sk-test" });
 
-        options.Transport.Should().BeNull("the SDK's own transport disables the request timeout");
+        options.Transport.Should().BeOfType<HttpClientPipelineTransport>();
     }
 
     /// <summary>

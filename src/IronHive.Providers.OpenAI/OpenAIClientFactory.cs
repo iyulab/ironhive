@@ -42,10 +42,21 @@ public static class OpenAIClientFactory
             options.OrganizationId = config.Organization;
         if (!string.IsNullOrWhiteSpace(config.Project))
             options.ProjectId = config.Project;
-        if (config.TimeOut.Ticks > 0)
-            options.NetworkTimeout = config.TimeOut;
-        if (config.HttpClient != null)
-            options.Transport = new HttpClientPipelineTransport(config.HttpClient);
+        if (config.Timeout != System.Threading.Timeout.InfiniteTimeSpan)
+            options.NetworkTimeout = config.Timeout;
+
+        var httpClient = config.HttpClient ?? new HttpClient(new SocketsHttpHandler
+        {
+            ConnectTimeout = config.ConnectTimeout
+        })
+        {
+            // A bare HttpClient's 100-second default would cap time-to-first-byte ahead of
+            // NetworkTimeout and win. Disabling it here leaves NetworkTimeout (unset by default —
+            // see OpenAIConfig.Timeout) as the only request-level ceiling, matching what the SDK's
+            // own default transport already does when no client is injected at all.
+            Timeout = System.Threading.Timeout.InfiniteTimeSpan
+        };
+        options.Transport = new HttpClientPipelineTransport(httpClient);
 
         return options;
     }

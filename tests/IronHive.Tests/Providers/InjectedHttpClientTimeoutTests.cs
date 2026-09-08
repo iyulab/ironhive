@@ -8,7 +8,7 @@ namespace IronHive.Tests.Providers;
 /// <summary>
 /// An injected <see cref="HttpClient"/> carries its own 100-second default timeout, which is applied
 /// ahead of the SDK's per-read budget and therefore caps time-to-first-byte no matter what
-/// <c>OpenAIConfig.TimeOut</c> says. Locally hosted servers exceed that while loading a model, and the
+/// <c>OpenAIConfig.Timeout</c> says. Locally hosted servers exceed that while loading a model, and the
 /// resulting cancellation names neither the handler nor the configured timeout. These configs build
 /// the client themselves, so the disabling is theirs to guarantee.
 /// </summary>

@@ -40,9 +40,23 @@ public class OpenAIConfig
     public string Project { get; set; } = string.Empty;
 
     /// <summary>
-    /// Http요청의 타임아웃을 가져오거나 설정합니다. (Default: 10분)
+    /// Http 요청의 타임아웃을 가져오거나 설정합니다.
+    /// (Default: <see cref="System.Threading.Timeout.InfiniteTimeSpan"/> — 무제한)
     /// </summary>
-    public TimeSpan TimeOut { get; set; } = TimeSpan.FromMinutes(10);
+    /// <remarks>
+    /// 기본값(무제한)일 때는 요청 타임아웃을 두지 않습니다. 대신 <see cref="ConnectTimeout"/>이 TCP
+    /// 연결 수립을 제한하므로, 응답이 없는 호스트에서 무한정 멈추지는 않습니다.
+    /// </remarks>
+    public TimeSpan Timeout { get; set; } = System.Threading.Timeout.InfiniteTimeSpan;
+
+    /// <summary>
+    /// TCP 연결(connect) 타임아웃입니다. (Default: 5초)
+    /// </summary>
+    /// <remarks>
+    /// <see cref="HttpClient"/>를 직접 주입하면 이 값은 무시됩니다 — 연결 타임아웃은 주입한
+    /// 클라이언트의 책임이 됩니다.
+    /// </remarks>
+    public TimeSpan ConnectTimeout { get; set; } = TimeSpan.FromSeconds(5);
 
     /// <summary>
     /// SDK가 사용할 HttpClient를 외부에서 주입합니다.
@@ -53,9 +67,10 @@ public class OpenAIConfig
     /// <para>
     /// 주입하는 인스턴스의 <see cref="System.Net.Http.HttpClient.Timeout"/>은
     /// <see cref="System.Threading.Timeout.InfiniteTimeSpan"/>으로 설정하십시오. 기본값 100초를 그대로 두면
-    /// 그 값이 <see cref="TimeOut"/>보다 먼저 적용되어 첫 바이트 수신까지의 시간을 100초로 제한하며,
-    /// <see cref="TimeOut"/> 설정은 무시된 것처럼 동작합니다. 주입하지 않으면 SDK 기본 전송 계층이
-    /// 같은 이유로 이미 무제한을 사용하므로 이 문제가 없습니다.
+    /// 그 값이 <see cref="Timeout"/>보다 먼저 적용되어 첫 바이트 수신까지의 시간을 100초로 제한하며,
+    /// <see cref="Timeout"/> 설정은 무시된 것처럼 동작합니다. 주입하지 않으면 어댑터가
+    /// <see cref="ConnectTimeout"/>을 적용하고 <see cref="System.Net.Http.HttpClient.Timeout"/>을
+    /// 무제한으로 설정한 기본 클라이언트를 생성하므로 이 문제가 없습니다.
     /// </para>
     /// </summary>
     public HttpClient? HttpClient { get; set; }

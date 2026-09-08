@@ -47,14 +47,20 @@ builder.AddEmbeddingGenerator("openai", new OpenAIEmbeddingGenerator(config));
 ```csharp
 public class OpenAIConfig
 {
-    public string ApiKey { get; set; }        // 필수는 아니다 — 아래 참조
-    public string BaseUrl { get; set; }       // 커스텀 엔드포인트·게이트웨이용. 버전 세그먼트 포함
-    public string Organization { get; set; }  // 조직 ID (옵션)
-    public string Project { get; set; }       // 프로젝트 ID (옵션)
-    public TimeSpan TimeOut { get; set; }     // 기본 10분
+    public string ApiKey { get; set; }          // 필수는 아니다 — 아래 참조
+    public string BaseUrl { get; set; }         // 커스텀 엔드포인트·게이트웨이용. 버전 세그먼트 포함
+    public string Organization { get; set; }    // 조직 ID (옵션)
+    public string Project { get; set; }         // 프로젝트 ID (옵션)
+    public TimeSpan Timeout { get; set; }        // 요청 타임아웃. 기본 Timeout.InfiniteTimeSpan(무제한)
+    public TimeSpan ConnectTimeout { get; set; } // TCP 연결 타임아웃. 기본 5초
     public HttpClient? HttpClient { get; set; }
 }
 ```
+
+`HttpClient`를 직접 주입하지 않으면 어댑터가 `ConnectTimeout`을 적용하고
+`HttpClient.Timeout`을 무제한으로 설정한 기본 클라이언트를 만든다 — 응답이 느린 요청은 `Timeout`을
+명시적으로 설정하지 않는 한 무한정 기다리고, 대신 연결 자체가 안 되는 호스트는 `ConnectTimeout` 안에
+빠르게 실패한다.
 
 #### `BaseUrl`은 버전 세그먼트를 포함한 완전한 엔드포인트다
 
@@ -125,15 +131,20 @@ builder.AddAnthropicProviders("anthropic", new AnthropicConfig
 ```csharp
 public class AnthropicConfig
 {
-    public string? ApiKey { get; set; }      // API 키 또는 AuthToken 중 하나 필수
+    public string? ApiKey { get; set; }          // API 키 또는 AuthToken 중 하나 필수
     public string? AuthToken { get; set; }
-    public string? BaseUrl { get; set; }     // 완전한 엔드포인트 (벤더 기본값: https://api.anthropic.com)
+    public string? BaseUrl { get; set; }         // 완전한 엔드포인트 (벤더 기본값: https://api.anthropic.com)
     public IDictionary<string, string>? ExtraHeaders { get; set; }
     public int? MaxRetries { get; set; }
-    public TimeSpan? Timeout { get; set; }   // 생략 시 벤더 기본값 10분
+    public TimeSpan Timeout { get; set; }        // 요청 타임아웃. 기본 Timeout.InfiniteTimeSpan(무제한)
+    public TimeSpan ConnectTimeout { get; set; } // TCP 연결 타임아웃. 기본 5초
     public HttpClient? HttpClient { get; set; }
 }
 ```
+
+`HttpClient`를 직접 설정하지 않으면 어댑터가 `ConnectTimeout`을 적용하고 `HttpClient.Timeout`을
+무제한으로 설정한 기본 클라이언트를 만든다 — 연결 자체가 안 되는 호스트만 `ConnectTimeout` 안에
+빠르게 실패하고, 응답이 느린 요청은 `Timeout`을 명시적으로 설정하지 않는 한 무한정 기다린다.
 
 ### 지원 기능
 
@@ -180,7 +191,7 @@ public enum AnthropicServiceType
 builder.AddGoogleAIProviders("google", new GoogleAIConfig
 {
     ApiKey = "AIza...",
-    Timeout = TimeSpan.FromMinutes(10)   // 생략 시 GoogleAIDefaults.Timeout (10분)
+    Timeout = TimeSpan.FromMinutes(10)   // 생략 시 무제한 (ConnectTimeout만 적용)
 });
 
 // Vertex AI
@@ -194,10 +205,11 @@ builder.AddVertexAIProviders("vertex", new VertexAIConfig
 
 ### 타임아웃
 
-`GoogleAIConfig.Timeout` / `VertexAIConfig.Timeout`이 요청 타임아웃을 정한다. 생략하면
-`GoogleAIDefaults.Timeout`(10분)이 적용된다 — 벤더 SDK는 타임아웃이 지정되지 않으면 `HttpClient`
-기본값 100초를 그대로 쓰는데, 그 값은 비스트리밍 호출에서 응답 전체를, 스트리밍 호출에서 첫 바이트까지의
-시간을 제한한다. 어댑터가 명시적 기본값을 두어 그것이 조용히 상속되지 않게 한다.
+`GoogleAIConfig.Timeout` / `VertexAIConfig.Timeout`이 요청 타임아웃을 정한다. **생략하면 요청
+타임아웃을 두지 않는다** — 대신 `ConnectTimeout`(기본 5초)이 TCP 연결 수립을 제한하므로, 응답이
+없는 호스트에서 무한정 멈추지는 않는다. 어댑터는 `HttpClientFactory`를 지정하지 않으면 항상 자체
+`HttpClient`를 공급해 `Timeout`을 무제한으로 두므로, 벤더 SDK가 만드는 바닐라 `HttpClient`의 100초
+기본값을 조용히 물려받는 일이 없다.
 
 `HttpOptions`로도 같은 값을 지정할 수 있으나(밀리초 단위) **둘을 동시에 설정하면
 `InvalidOperationException`을 던진다.** 어느 쪽이 이겼는지 알 수 없는 상태를 만들지 않기 위한 것이며,

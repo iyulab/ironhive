@@ -57,4 +57,25 @@ public class AnthropicClientFactoryTests
         client.Timeout.Should().Be(TimeSpan.FromMinutes(10));
         client.MaxRetries.Should().Be(7);
     }
+
+    [Fact]
+    public void Create_NoHttpClientInjected_BuildsOneWithNoRequestTimeout()
+    {
+        // Without an injected client, the factory has to build its own so a bare HttpClient's
+        // 100-second default is never inherited silently ahead of AnthropicConfig.Timeout.
+        var client = Create(new AnthropicConfig { ApiKey = "sk-test" });
+
+        client.HttpClient.Should().NotBeNull();
+        client.HttpClient!.Timeout.Should().Be(System.Threading.Timeout.InfiniteTimeSpan);
+    }
+
+    [Fact]
+    public void Create_InjectedHttpClient_IsUsedAsIs()
+    {
+        using var injected = new HttpClient();
+
+        var client = Create(new AnthropicConfig { ApiKey = "sk-test", HttpClient = injected });
+
+        client.HttpClient.Should().BeSameAs(injected);
+    }
 }

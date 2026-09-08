@@ -87,7 +87,7 @@ public class GpuStackConfig
         })
         {
             // See OpenAICompatibleConfig.ToOpenAI: HttpClient's 100-second default would cap
-            // time-to-first-byte ahead of OpenAIConfig.TimeOut and silently win.
+            // time-to-first-byte ahead of OpenAIConfig.Timeout and silently win.
             Timeout = System.Threading.Timeout.InfiniteTimeSpan
         },
     };

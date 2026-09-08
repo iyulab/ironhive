@@ -6,6 +6,33 @@ changes are expected and used freely for structural correctness (see
 
 ## Unreleased
 
+### Changed — every provider now defaults to a short connect timeout and an unbounded request timeout
+
+`OpenAIConfig.Timeout` (renamed from `TimeOut` — every other provider already spelled it this way),
+`AnthropicConfig.Timeout`, `GoogleAIConfig.Timeout`, and `VertexAIConfig.Timeout` are now non-nullable
+`TimeSpan`, defaulting to `System.Threading.Timeout.InfiniteTimeSpan` instead of a fixed ceiling (10
+minutes) — the same sentinel `HttpClient.Timeout` itself uses for "no timeout", so a request has no
+ceiling of its own unless one is set explicitly. This replaces the earlier `TimeSpan?`-with-`null`-means-
+infinite design: a nullable field bought nothing here since every consumer only ever needed a single
+"unset" state, and non-nullable keeps parity with `ConnectTimeout` and the underlying `HttpClient`/
+`SocketsHttpHandler` properties it feeds. Each config gains a `ConnectTimeout` (default 5 seconds;
+unchanged at 2 seconds for the LAN-oriented `OpenAICompatibleConfig`/`GpuStackConfig`) that bounds only
+TCP connection establishment via `SocketsHttpHandler.ConnectTimeout`, so an unreachable host still fails
+fast instead of hanging for the whole request window.
+
+When no `HttpClient`/`HttpClientFactory` is injected, every factory now builds its own default client
+carrying `ConnectTimeout` with `HttpClient.Timeout` disabled (`Timeout.InfiniteTimeSpan`) — previously only
+`OpenAICompatibleConfig`/`GpuStackConfig` did this; `OpenAIClientFactory`, `AnthropicClientFactory`, and
+`GoogleAIClientFactory` fell through to the SDK's own default transport, which for GoogleAI meant silently
+inheriting a bare `HttpClient`'s 100-second default once the adapter stopped imposing its own ceiling.
+`GoogleAIDefaults` (which existed only to hold that 10-minute fallback) is removed — `GoogleAIConfig`/
+`VertexAIConfig` now inline their `ConnectTimeout` default like every other provider config does.
+
+**Behaviour change.** A deployment that relied on the previous fixed default (10 minutes for OpenAI/GoogleAI/
+VertexAI, whatever the vendor SDK defaulted to for Anthropic) to bound a stalled request will now wait
+indefinitely instead — set the provider's `Timeout` explicitly to restore a ceiling. `OpenAIConfig.TimeOut`
+is renamed to `Timeout`, a source-breaking change for any caller that set it by name.
+
 ### Changed — `GoogleAIEmbeddingGenerator.EmbedBatchAsync` chunks and parallelizes above 100 inputs
 
 Google AI's `embedContent` accepts at most 100 inputs per call; a batch larger than that previously failed

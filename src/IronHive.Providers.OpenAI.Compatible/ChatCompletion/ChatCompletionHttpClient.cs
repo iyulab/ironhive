@@ -36,10 +36,13 @@ internal sealed class ChatCompletionHttpClient : IDisposable
 
     public ChatCompletionHttpClient(OpenAIConfig config)
     {
-        _http = config.HttpClient ?? new HttpClient();
+        _http = config.HttpClient ?? new HttpClient(new SocketsHttpHandler
+        {
+            ConnectTimeout = config.ConnectTimeout
+        });
         _http.BaseAddress = new Uri((string.IsNullOrWhiteSpace(config.BaseUrl)
             ? "https://api.openai.com/v1/" : config.BaseUrl).EnsureSuffix('/'));
-        _http.Timeout = config.TimeOut;
+        _http.Timeout = config.Timeout;
 
         if (!string.IsNullOrWhiteSpace(config.ApiKey))
             _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", config.ApiKey);

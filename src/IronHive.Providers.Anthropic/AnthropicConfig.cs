@@ -57,12 +57,32 @@ public class AnthropicConfig
 
     /// <summary>
     /// API 요청의 타임아웃 시간입니다.
+    /// (Default: <see cref="System.Threading.Timeout.InfiniteTimeSpan"/> — 무제한)
     /// </summary>
-    public TimeSpan? Timeout { get; set; }
+    /// <remarks>
+    /// 기본값(무제한)일 때는 요청 타임아웃을 두지 않습니다. 대신 <see cref="ConnectTimeout"/>이 TCP
+    /// 연결 수립을 제한하므로, 응답이 없는 호스트에서 무한정 멈추지는 않습니다.
+    /// </remarks>
+    public TimeSpan Timeout { get; set; } = System.Threading.Timeout.InfiniteTimeSpan;
+
+    /// <summary>
+    /// TCP 연결(connect) 타임아웃입니다. (Default: 5초)
+    /// </summary>
+    /// <remarks>
+    /// <see cref="HttpClient"/>를 직접 설정하면 이 값은 무시됩니다 — 연결 타임아웃은 그 클라이언트의
+    /// 책임이 됩니다.
+    /// </remarks>
+    public TimeSpan ConnectTimeout { get; set; } = TimeSpan.FromSeconds(5);
 
     /// <summary>
     /// 사용자 정의 <see cref="HttpClient"/>를 설정할 수 있습니다.
     /// </summary>
+    /// <remarks>
+    /// 지정하지 않으면 어댑터가 <see cref="ConnectTimeout"/>을 적용하고
+    /// <see cref="System.Net.Http.HttpClient.Timeout"/>을 무제한으로 설정한 기본 클라이언트를
+    /// 생성합니다 — 벤더 SDK가 만드는 바닐라 <see cref="HttpClient"/>의 100초 기본값을 조용히
+    /// 물려받지 않도록 하기 위함입니다.
+    /// </remarks>
     public HttpClient? HttpClient { get; set; }
     
     /// <summary>

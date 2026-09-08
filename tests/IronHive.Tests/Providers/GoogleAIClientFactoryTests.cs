@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Google.GenAI.Types;
 using IronHive.Providers.GoogleAI;
+using System.Threading;
 
 namespace IronHive.Tests.Providers;
 
@@ -27,20 +28,39 @@ public class GoogleAIClientFactoryTests
     };
 
     [Fact]
-    public void GoogleAI_NoTimeoutConfigured_AppliesTheAdapterDefaultRatherThanTheVendorsHundredSeconds()
+    public void GoogleAI_NoTimeoutConfigured_LeavesTheRequestUnbounded()
     {
+        // No HttpOptions.Timeout is imposed — the HttpClient built by ResolveHttpClientFactory already
+        // has an unbounded Timeout, so the vendor's bare-HttpClient 100-second default is never reached.
         var options = Resolve(new GoogleAIConfig { ApiKey = "k" });
 
-        options.Timeout.Should().Be((int)GoogleAIDefaults.Timeout.TotalMilliseconds);
-        options.Timeout.Should().NotBe(100_000, "the bare HttpClient default must never be inherited");
+        options.Timeout.Should().BeNull();
     }
 
     [Fact]
-    public void VertexAI_NoTimeoutConfigured_AppliesTheSameDefault()
+    public void VertexAI_NoTimeoutConfigured_LeavesTheRequestUnbounded()
     {
         var options = Resolve(VertexBase());
 
-        options.Timeout.Should().Be((int)GoogleAIDefaults.Timeout.TotalMilliseconds);
+        options.Timeout.Should().BeNull();
+    }
+
+    [Fact]
+    public void GoogleAI_NoHttpClientFactoryConfigured_DefaultFactoryDisablesItsOwnRequestTimeout()
+    {
+        var factory = GoogleAIClientFactory.ResolveHttpClientFactory(null, TimeSpan.FromSeconds(5));
+
+        using var http = factory();
+        http.Timeout.Should().Be(Timeout.InfiniteTimeSpan);
+    }
+
+    [Fact]
+    public void GoogleAI_HttpClientFactoryConfigured_IsUsedAsIs()
+    {
+        using var expected = new HttpClient();
+        var factory = GoogleAIClientFactory.ResolveHttpClientFactory(() => expected, TimeSpan.FromSeconds(5));
+
+        factory().Should().BeSameAs(expected);
     }
 
     [Fact]

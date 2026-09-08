@@ -11,10 +11,10 @@ internal static class GoogleAIClientFactory
             vertexAI: false,
             apiKey: config.ApiKey,
             httpOptions: ResolveHttpOptions(config.HttpOptions, config.Timeout, nameof(GoogleAIConfig)),
-            clientOptions: config.HttpClientFactory != null ? new ClientOptions
+            clientOptions: new ClientOptions
             {
-                HttpClientFactory = config.HttpClientFactory
-            } : null);
+                HttpClientFactory = ResolveHttpClientFactory(config.HttpClientFactory, config.ConnectTimeout)
+            });
     }
 
     internal static Client Create(VertexAIConfig config)
@@ -25,40 +25,61 @@ internal static class GoogleAIClientFactory
             project: config.Project,
             location: config.Location,
             httpOptions: ResolveHttpOptions(config.HttpOptions, config.Timeout, nameof(VertexAIConfig)),
-            clientOptions: config.HttpClientFactory != null ? new ClientOptions
+            clientOptions: new ClientOptions
             {
-                HttpClientFactory = config.HttpClientFactory
-            } : null);
+                HttpClientFactory = ResolveHttpClientFactory(config.HttpClientFactory, config.ConnectTimeout)
+            });
+    }
+
+    /// <summary>
+    /// Resolves the <see cref="HttpClient"/> factory the vendor client uses. When the consumer supplies
+    /// one, it is used as-is — connect timeout and request timeout become that factory's responsibility.
+    /// Otherwise this builds a client whose connect budget is bounded by <paramref name="connectTimeout"/>
+    /// and whose <see cref="HttpClient.Timeout"/> is disabled, so the vendor's own bare-<see cref="HttpClient"/>
+    /// default (100 seconds, capping time-to-first-byte) is never inherited silently.
+    /// </summary>
+    internal static Func<HttpClient> ResolveHttpClientFactory(Func<HttpClient>? factory, TimeSpan connectTimeout)
+    {
+        if (factory != null)
+            return factory;
+
+        return () => new HttpClient(new SocketsHttpHandler { ConnectTimeout = connectTimeout })
+        {
+            Timeout = System.Threading.Timeout.InfiniteTimeSpan
+        };
     }
 
     /// <summary>
     /// Folds the configuration's timeout into the vendor <see cref="HttpOptions"/>, which is where the
-    /// SDK reads it from. Two things are deliberate here. The vendor default when nothing is supplied
-    /// is a bare <see cref="System.Net.Http.HttpClient"/>'s 100 seconds, which bounds a whole
-    /// non-streaming call and the wait for a streaming call's first byte — so the adapter always
-    /// supplies a value rather than letting that be inherited silently. And a configuration that sets
-    /// the timeout twice, in different units, is rejected rather than resolved by precedence: a
-    /// setting that loses silently is the same class of defect as one that never reaches the client.
+    /// SDK reads it from. <paramref name="timeout"/> at its default
+    /// (<see cref="System.Threading.Timeout.InfiniteTimeSpan"/>) is treated as "not set" rather than a
+    /// concrete value to send — the client built by <see cref="ResolveHttpClientFactory"/> already has
+    /// an unbounded <see cref="HttpClient.Timeout"/>, so leaving it alone means "no request ceiling",
+    /// not an accidental inheritance of the vendor's bare-<see cref="HttpClient"/> 100-second default.
+    /// And a configuration that sets the timeout twice, in different units, is rejected rather than
+    /// resolved by precedence: a setting that loses silently is the same class of defect as one that
+    /// never reaches the client.
     /// </summary>
-    internal static HttpOptions ResolveHttpOptions(HttpOptions? options, TimeSpan? timeout, string configName)
+    internal static HttpOptions ResolveHttpOptions(HttpOptions? options, TimeSpan timeout, string configName)
     {
-        if (timeout.HasValue && options?.Timeout != null)
+        var isSet = timeout != System.Threading.Timeout.InfiniteTimeSpan;
+
+        if (isSet && options?.Timeout != null)
         {
             throw new InvalidOperationException(
                 $"{configName}.Timeout and {configName}.HttpOptions.Timeout are both set. " +
                 $"Set only one — use {configName}.Timeout unless the vendor options are needed for something else.");
         }
 
-        if (timeout.HasValue && timeout.Value <= TimeSpan.Zero)
+        if (isSet && timeout <= TimeSpan.Zero)
         {
             throw new InvalidOperationException($"{configName}.Timeout must be greater than zero.");
         }
 
-        var effective = timeout ?? (options?.Timeout is null ? GoogleAIDefaults.Timeout : null);
-        if (effective is null)
-            return options!;
+        if (!isSet)
+            return options ?? new HttpOptions();
 
-        var milliseconds = (int)Math.Min(effective.Value.TotalMilliseconds, int.MaxValue);
+        var milliseconds = (int)Math.Min(timeout.TotalMilliseconds, int.MaxValue);
         return options is null
             ? new HttpOptions { Timeout = milliseconds }
             : options with { Timeout = milliseconds };
