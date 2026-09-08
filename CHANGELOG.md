@@ -6,6 +6,8 @@ changes are expected and used freely for structural correctness (see
 
 ## Unreleased
 
+## 0.23.0 — 2026-09-08
+
 ### Changed — every provider now defaults to a short connect timeout and an unbounded request timeout
 
 `OpenAIConfig.Timeout` (renamed from `TimeOut` — every other provider already spelled it this way),
