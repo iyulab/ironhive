@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Schema;
 
@@ -58,7 +59,8 @@ public static class FunctionToolFactory
             Description = descriptor.Description,
             Parameters = parameters,
             RequiresApproval = descriptor.RequiresApproval,
-            Timeout = descriptor.Timeout
+            Timeout = descriptor.Timeout,
+            JsonOptions = descriptor.JsonOptions
         };
     }
 
@@ -185,4 +187,10 @@ public record DelegateDescriptor
     /// 도구 사용시 제한 시간입니다. 초 단위로 지정하며, 0 이하이면 무제한입니다.
     /// </summary>
     public long Timeout { get; set; }
+
+    /// <summary>
+    /// 입력 역직렬화와 결과 직렬화에 사용할 옵션입니다.
+    /// null이면 <see cref="JsonDefaultOptions.FunctionOptions"/>를 사용합니다.
+    /// </summary>
+    public JsonSerializerOptions? JsonOptions { get; set; }
 }

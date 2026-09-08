@@ -70,6 +70,12 @@ public sealed class FunctionTool : ITool
     /// </summary>
     public long Timeout { get; set; }
 
+    /// <summary>
+    /// 입력 역직렬화와 결과 직렬화에 사용할 옵션입니다.
+    /// null이면 <see cref="JsonDefaultOptions.FunctionOptions"/>를 사용합니다.
+    /// </summary>
+    public JsonSerializerOptions? JsonOptions { get; set; }
+
     /// <inheritdoc />
     public async Task<ToolOutput> InvokeAsync(
         ToolInput input,
@@ -119,7 +125,7 @@ public sealed class FunctionTool : ITool
             {
                 MessageContent single => ToolOutput.Success([single]),
                 IEnumerable<MessageContent> many => ToolOutput.Success(many),
-                _ => ToolOutput.Success(JsonSerializer.Serialize(result, JsonDefaultOptions.Options))
+                _ => ToolOutput.Success(JsonSerializer.Serialize(result, JsonOptions ?? JsonDefaultOptions.FunctionOptions))
             };
         }
         catch (OperationCanceledException)
@@ -189,8 +195,8 @@ public sealed class FunctionTool : ITool
             // 5) 인자가 존재하는 경우
             else if (input.TryGetValue(name, out var value))
             {
-                args[i] = value.ConvertTo(param.ParameterType);
-            }    
+                args[i] = value.ConvertTo(param.ParameterType, JsonOptions ?? JsonDefaultOptions.FunctionOptions);
+            }
             // 6) 인자가 존재하지 않지만, 기본값이 있는 경우
             else if (param.HasDefaultValue)
             {

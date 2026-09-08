@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using System.Text.Json;
 using Microsoft.OpenApi;
+using IronHive.Abstractions.Json;
 using IronHive.Abstractions.Tools;
 
 namespace IronHive.Plugins.OpenAPI;
@@ -163,7 +164,7 @@ public sealed class OpenApiTool : ITool
             {
                 if (contentType == "application/json")
                 {
-                    var json = JsonSerializer.Serialize(bItem);
+                    var json = JsonSerializer.Serialize(bItem, JsonDefaultOptions.Options);
                     body = new StringContent(json, Encoding.UTF8, contentType);
                 }
                 else

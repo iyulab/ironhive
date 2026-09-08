@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Text.Json;
 using AwesomeAssertions;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Tools;
@@ -305,6 +306,101 @@ public class FunctionToolFactoryTests
         };
 
         tool.Timeout.Should().Be(0);
+    }
+
+    #endregion
+
+    #region JsonOptions
+
+    [Fact]
+    public void JsonOptions_DefaultsToNull()
+    {
+        var tool = new FunctionTool(new Func<string>(() => ""))
+        {
+            Name = "tool",
+            Description = null,
+            Parameters = null,
+            RequiresApproval = false
+        };
+
+        tool.JsonOptions.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task InvokeAsync_QuotedNumericStringArgument_UsesFunctionOptionsByDefault()
+    {
+        // Mirrors what an LLM's raw JSON tool-call arguments look like: {"n":"21"} — the value
+        // arrives as a JSON string, not a JSON number. JsonDefaultOptions.FunctionOptions enables
+        // NumberHandling.AllowReadingFromString, so this binds to int without any per-tool
+        // JsonOptions override.
+        var tool = new FunctionTool(new Func<int, int>(n => n * 2))
+        {
+            Name = "double",
+            Description = null,
+            Parameters = null,
+            RequiresApproval = false
+        };
+
+        var input = new ToolInput("""{"n":"21"}""");
+        var result = await tool.InvokeAsync(input, TestContext.Current.CancellationToken);
+
+        result.IsSuccess.Should().BeTrue();
+        Text(result).Should().Be("42");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_JsonOptionsOverride_AppliesToArgumentDeserialization()
+    {
+        var strictOptions = new JsonSerializerOptions(); // no NumberHandling.AllowReadingFromString
+        var tool = new FunctionTool(new Func<int, int>(n => n * 2))
+        {
+            Name = "double",
+            Description = null,
+            Parameters = null,
+            RequiresApproval = false,
+            JsonOptions = strictOptions
+        };
+
+        var input = new ToolInput("""{"n":"21"}""");
+        var result = await tool.InvokeAsync(input, TestContext.Current.CancellationToken);
+
+        // A quoted numeric string can't bind to int without AllowReadingFromString, so the strict
+        // override makes argument deserialization fail; reflection's MethodInfo.Invoke then silently
+        // substitutes default(int) for the unbound parameter rather than throwing, so the call still
+        // succeeds — with the wrong value (0, not 42). This confirms JsonOptions genuinely reaches
+        // argument binding, not that it produces a clean failure.
+        result.IsSuccess.Should().BeTrue();
+        Text(result).Should().Be("0");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_JsonOptionsOverride_AppliesToResultSerialization()
+    {
+        // JsonDefaultOptions.FunctionOptions defaults to WriteIndented:false (tool output is
+        // consumed by the model as text, not read by a human — indentation only costs tokens).
+        // A per-tool override can turn it back on, affecting only this tool's output.
+        var indentedOptions = new JsonSerializerOptions { WriteIndented = true };
+        var indentedTool = new FunctionTool(new Func<object>(() => new { a = 1, b = 2 }))
+        {
+            Name = "indented",
+            Description = null,
+            Parameters = null,
+            RequiresApproval = false,
+            JsonOptions = indentedOptions
+        };
+        var defaultTool = new FunctionTool(new Func<object>(() => new { a = 1, b = 2 }))
+        {
+            Name = "default",
+            Description = null,
+            Parameters = null,
+            RequiresApproval = false
+        };
+
+        var indentedResult = await indentedTool.InvokeAsync(new ToolInput(), TestContext.Current.CancellationToken);
+        var defaultResult = await defaultTool.InvokeAsync(new ToolInput(), TestContext.Current.CancellationToken);
+
+        Text(indentedResult).Should().Contain("\n");
+        Text(defaultResult).Should().NotContain("\n");
     }
 
     #endregion

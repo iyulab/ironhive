@@ -1,6 +1,10 @@
 ﻿using System.Data;
+using System.Text;
+using IronHive.Abstractions.Messages;
+using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Tools;
 using ModelContextProtocol.Client;
+using ModelContextProtocol.Protocol;
 
 namespace IronHive.Plugins.MCP;
 
@@ -52,12 +56,53 @@ public class McpTool : ITool
             progress: null,
             cancellationToken: cancellationToken);
 
-        var text = result.Content.Select(c => c.ToString());
-        var content = string.Join("\n", text);
-        
+        // 텍스트/이미지/오디오는 그대로 매핑되고, 그 외(임베디드 리소스의 인식하지 못하는 MIME 타입,
+        // 중첩 tool_use/tool_result 등)는 설명 텍스트로 대체됩니다.
+        var content = new List<MessageContent>();
+        foreach (var block in result.Content)
+        {
+            MessageContent mapped = block switch
+            {
+                TextContentBlock text => new TextMessageContent { Value = text.Text },
+                ImageContentBlock image => ToImageFormat(image.MimeType) is { } format
+                    ? new ImageMessageContent { Format = format, Base64 = Encoding.UTF8.GetString(image.Data.Span) }
+                    : new TextMessageContent { Value = $"[unsupported image content omitted — unrecognized MIME type '{image.MimeType}']" },
+                AudioContentBlock audio => ToAudioFormat(audio.MimeType) is { } format
+                    ? new AudioMessageContent { Format = format, Base64 = Encoding.UTF8.GetString(audio.Data.Span) }
+                    : new TextMessageContent { Value = $"[unsupported audio content omitted — unrecognized MIME type '{audio.MimeType}']" },
+                EmbeddedResourceBlock { Resource: TextResourceContents text } => new TextMessageContent { Value = text.Text },
+                EmbeddedResourceBlock { Resource: BlobResourceContents blob } when blob.MimeType is not null && ToImageFormat(blob.MimeType) is { } imageFormat =>
+                    new ImageMessageContent { Format = imageFormat, Base64 = Encoding.UTF8.GetString(blob.Blob.Span) },
+                EmbeddedResourceBlock { Resource: BlobResourceContents blob } when blob.MimeType is not null && ToAudioFormat(blob.MimeType) is { } audioFormat =>
+                    new AudioMessageContent { Format = audioFormat, Base64 = Encoding.UTF8.GetString(blob.Blob.Span) },
+                EmbeddedResourceBlock { Resource: BlobResourceContents blob } =>
+                    new TextMessageContent { Value = $"[unsupported resource content omitted — uri '{blob.Uri}', mimeType '{blob.MimeType}']" },
+                _ => new TextMessageContent { Value = $"[unsupported {block.Type} content omitted]" }
+            };
+            content.Add(mapped);
+        }
+
         // MCP protocol: IsError absent means success
-        return result.IsError is true
-            ? ToolOutput.Failure(content)
-            : ToolOutput.Success(content);
+        return new ToolOutput(result.IsError is not true, content);
     }
+
+    private static ImageFormat? ToImageFormat(string? mimeType) => mimeType switch
+    {
+        "image/png" => ImageFormat.Png,
+        "image/jpeg" or "image/jpg" => ImageFormat.Jpeg,
+        "image/gif" => ImageFormat.Gif,
+        "image/webp" => ImageFormat.Webp,
+        _ => null
+    };
+
+    private static AudioFormat? ToAudioFormat(string? mimeType) => mimeType switch
+    {
+        "audio/wav" or "audio/x-wav" or "audio/wave" => AudioFormat.Wav,
+        "audio/mp3" or "audio/mpeg" => AudioFormat.Mp3,
+        "audio/flac" => AudioFormat.Flac,
+        "audio/aac" => AudioFormat.Aac,
+        "audio/ogg" => AudioFormat.Ogg,
+        "audio/aiff" or "audio/x-aiff" => AudioFormat.Aiff,
+        _ => null
+    };
 }

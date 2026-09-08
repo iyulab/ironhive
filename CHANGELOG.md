@@ -6,6 +6,29 @@ changes are expected and used freely for structural correctness (see
 
 ## Unreleased
 
+### Added — per-tool `JsonSerializerOptions`
+
+`FunctionTool.JsonOptions` (nullable, per-instance) now controls both argument deserialization and
+result serialization, falling back to a new `JsonDefaultOptions.FunctionOptions` when unset —
+mirroring the existing `Timeout` pattern (global default + per-tool override). `FunctionOptions`
+starts from the same settings as the general-purpose `Options`, except `WriteIndented` is off: tool
+results are consumed by the model as text, not read by a human, so indentation only costs tokens.
+`FunctionToolFactory.DelegateDescriptor` carries `JsonOptions` through the delegate-registration path.
+
+### Fixed — MCP tool content mapped to its CLR type name instead of real content
+
+`McpTool.InvokeAsync` mapped every MCP `ContentBlock` through `ContentBlock.ToString()`, but only
+`TextContentBlock` overrides it — image/audio/resource content was serialized as its own CLR type
+name. Now maps text/image/audio blocks (and embedded text/blob resources) onto their matching
+`MessageContent` types, with an unrecognized-MIME-type or unsupported-block-type text placeholder as
+fallback, so `ToolOutput.Content` carries real content instead of garbage.
+
+### Fixed — `OpenApiTool` JSON request body serialized with no `JsonSerializerOptions`
+
+`OpenApiTool`'s JSON request body was serialized with zero `JsonSerializerOptions` (not even the
+general-purpose default), so enums went out as raw numbers and property casing/escaping didn't match
+what most external APIs expect. Now uses `JsonDefaultOptions.Options`.
+
 ### Added — `Generators`/`Finders`/`Processors` on every service, `IReadOnlyDictionary.GetOrFirstValue`
 
 `IHiveService.GetMessageGenerator`/`GetEmbeddingGenerator` (0.22.0) special-cased raw provider access
