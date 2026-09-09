@@ -14,6 +14,10 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.Testing.Extensions.HangDump" />
+    <!-- A real MCP server, hosted in-process on loopback, so McpSession is exercised through the
+         SDK handshake it actually negotiates, not through a transport the test supplied. -->
+    <PackageReference Include="ModelContextProtocol.AspNetCore" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
   <ItemGroup>

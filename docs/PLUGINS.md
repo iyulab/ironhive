@@ -15,6 +15,11 @@
 
 **패키지**: `IronHive.Plugins.MCP`
 
+**지원 규격**: MCP **2026-07-28** 리비전(ModelContextProtocol SDK 2.x). 연결 시 SDK가 `server/discover`로 먼저
+협상하고, 그 리비전 이전의 서버에는 `initialize` 핸드셰이크로 폴백합니다 — 협상 결과는
+`McpSession.NegotiatedProtocolVersion`으로 볼 수 있습니다. 2026-07-28 리비전은 `ping`을 제거했으므로
+`HealthAsync`는 협상된 리비전에 맞는 유틸리티(`server/discover` 또는 구형 서버의 `ping`)로 생존을 확인합니다.
+
 ### 연결 방식
 
 #### HTTP (SSE / Streamable HTTP)
@@ -86,6 +91,10 @@ foreach (var tool in tools)
 {
     agent.Tools?.Add(tool);
 }
+
+// 협상된 규격 리비전과 스펙 기준 생존 확인 (2026-07-28 서버는 server/discover, 구형 서버는 ping)
+Console.WriteLine(session.NegotiatedProtocolVersion);   // "2026-07-28" 또는 "2025-11-25" 등
+var alive = await session.HealthAsync();
 ```
 
 ### McpTool 특성

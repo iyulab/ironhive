@@ -1,7 +1,9 @@
-﻿using System.Data;
+using System.Data;
+using System.Text.Json.Nodes;
 using IronHive.Plugins.MCP.Configurations;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Authentication;
+using ModelContextProtocol.Protocol;
 
 namespace IronHive.Plugins.MCP;
 
@@ -41,6 +43,13 @@ public class McpSession : IAsyncDisposable
     public string? ErrorMessage { get; private set; }
 
     /// <summary>
+    /// 이 세션에서 협상된 MCP 프로토콜 리비전(예: <c>2026-07-28</c>, <c>2025-11-25</c>)입니다.
+    /// 연결 전에는 <see langword="null"/>입니다. SDK가 <c>server/discover</c>로 먼저 협상하고,
+    /// 그 리비전 이전의 서버에만 <c>initialize</c> 핸드셰이크로 폴백합니다.
+    /// </summary>
+    public string? NegotiatedProtocolVersion => _client?.NegotiatedProtocolVersion;
+
+    /// <summary>
     /// MCP 서버에 연결이 성공했을 때 발생하는 이벤트입니다.
     /// </summary>
     public event EventHandler<McpConnectionEventArgs>? Connected;
@@ -67,9 +76,12 @@ public class McpSession : IAsyncDisposable
     }
 
     /// <summary>
-    /// MCP 서버와의 연결을 확인합니다. 스펙상 필수 유틸리티인 <c>ping</c>을 보내므로, <c>ping</c>에 응답하지
-    /// 않는(비준수) 서버는 여기서 <see cref="McpConnectionState.Errored"/>가 된다 — 명시적으로 «스펙 기준 생존
-    /// 여부»를 물은 호출자에게는 그것이 답이다. 연결 자체는 이 검사를 전제하지 않는다(<see cref="ConnectAsync"/> 참조).
+    /// MCP 서버가 «협상된 리비전의 스펙 기준으로» 살아 있는지 확인합니다. 2026-07-28 리비전은 <c>ping</c>을
+    /// 제거하고 <c>server/discover</c>를 필수 RPC로 두었으므로, 그 리비전 이상으로 협상된 세션은
+    /// <c>server/discover</c>로, 그 이전(<c>initialize</c> 핸드셰이크) 세션은 <c>ping</c>으로 묻습니다.
+    /// 그 요청에 응답하지 않는 서버는 여기서 <see cref="McpConnectionState.Errored"/>가 된다 — 명시적으로
+    /// «스펙 기준 생존 여부»를 물은 호출자에게는 그것이 답이다. 연결 자체는 이 검사를 전제하지 않는다
+    /// (<see cref="ConnectAsync"/> 참조).
     /// </summary>
     public async Task<bool> HealthAsync(
         CancellationToken cancellationToken = default)
@@ -79,7 +91,18 @@ public class McpSession : IAsyncDisposable
 
         try
         {
-            await _client.PingAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+            if (UsesDiscoverLiveness(_client.NegotiatedProtocolVersion))
+            {
+                // The 2026-07-28 revision removed ping; server/discover is the mandatory utility.
+                await _client.SendRequestAsync(
+                    new JsonRpcRequest { Method = RequestMethods.ServerDiscover, Params = new JsonObject() },
+                    cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                await _client.PingAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+            }
+
             return true;
         }
         catch (Exception ex)
@@ -88,6 +111,16 @@ public class McpSession : IAsyncDisposable
             return false;
         }
     }
+
+    /// <summary>
+    /// 협상된 리비전이 2026-07-28 이상이면 <c>server/discover</c>가 생존 검사 수단이다. 리비전 문자열은
+    /// ISO 날짜라 서수 비교로 순서가 선다. 협상 전(<see langword="null"/>)은 <c>ping</c> 경로로 둔다.
+    /// </summary>
+    internal static bool UsesDiscoverLiveness(string? negotiatedProtocolVersion) =>
+        negotiatedProtocolVersion is not null
+        && string.CompareOrdinal(negotiatedProtocolVersion, July2026ProtocolVersion) >= 0;
+
+    private const string July2026ProtocolVersion = "2026-07-28";
 
     /// <summary>
     /// MCP 서버에 연결합니다. 기존 연결이 있다면, 해당 연결을 유지합니다.
@@ -103,10 +136,11 @@ public class McpSession : IAsyncDisposable
             if (State == McpConnectionState.Connected && _client != null)
                 return;
 
-            // CreateAsync는 initialize 핸드셰이크가 끝나야 반환되므로, 이 시점에 이미 서버가 응답한다는 게
-            // 증명된 상태다. 그 직후 ping을 또 보내면 얻는 정보는 없고, ping을 구현 안 한 서버는 이 호출 때문에
-            // 세션이 Errored로 빠져 도구가 전부 사라지는 부작용만 있었다(McpClientManager는 Connected 이벤트
-            // 에서만 도구를 등록한다). 스펙 기준 생존 확인이 필요하면 HealthAsync를 따로 호출한다.
+            // 클라이언트를 생성합니다. CreateAsync는 initialize/initialized 핸드셰이크가 끝나야 반환하므로
+            // 여기까지 왔다는 것이 곧 서버가 요청에 응답한다는 증명이다. 그 직후에 다시 ping을 보내는 것은
+            // 생존 정보를 더하지 않으면서, ping을 구현하지 않은 서버 하나를 «도구 전부 소실 + 상태 플래그 하나»로
+            // 바꾸는 유일한 경로였다(McpClientManager는 Connected 이벤트에서만 도구를 등록한다). 스펙 기준 생존
+            // 검사가 필요하면 HealthAsync를 명시적으로 부른다.
             var transport = CreateTransport(Config);
             _client = await McpClient.CreateAsync(
                 transport,

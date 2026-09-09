@@ -6,6 +6,28 @@ changes are expected and used freely for structural correctness (see
 
 ## Unreleased
 
+## 0.24.1 — 2026-09-09
+
+### Fixed
+
+- MCP health checks now follow the negotiated protocol revision. The 2026-07-28 revision removed the
+  `ping` utility and made `server/discover` mandatory, and the SDK negotiates that revision by
+  default, but `McpSession.HealthAsync` still judged liveness by ping — so a server implementing
+  exactly the current specification was reported unhealthy and moved to `Errored` by the very call
+  that asked whether it was alive. A session negotiated at 2026-07-28 or later is now checked with
+  `server/discover`; an initialize-era session keeps ping.
+
+### Added
+
+- `McpSession.NegotiatedProtocolVersion` exposes the revision the SDK agreed on for the session,
+  or `null` before connecting.
+
+### Removed
+
+- The `NU5104` suppression in `IronHive.Plugins.MCP`, which predated the MCP SDK's stable release and
+  was only hiding future prerelease dependencies.
+
+
 ## 0.24.0 — 2026-09-08
 
 ### Added — `GpuStackConfig.ToOpenAICompatible()` is public
