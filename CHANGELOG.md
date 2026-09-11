@@ -6,6 +6,33 @@ changes are expected and used freely for structural correctness (see
 
 ## Unreleased
 
+## 0.25.0 — 2026-09-11
+
+### Changed
+
+- Orchestrators no longer turn a cancelled run into a failed agent step. The shared agent-execution
+  path caught the `OperationCanceledException` raised when the orchestration's own token was
+  cancelled and recorded it as `Agent '<name>' failed: A task was canceled.` — so an orchestration
+  timeout was never reported as one, and a caller cancelling a run got a failed result back instead
+  of the exception. An orchestration timeout now returns `Orchestration timed out after <n>s` from
+  every orchestrator, and cancelling the token you passed throws `OperationCanceledException`.
+
+### Fixed
+
+- `SequentialOrchestrator` and `GraphOrchestrator` now report the same `OrchestrationResult` from
+  `ExecuteStreamingAsync` as from `ExecuteAsync`. The streaming halves rebuilt each step on their
+  own and disagreed with the buffered halves in several ways:
+  - A step's message was reassembled from text deltas alone, so reasoning and other non-text
+    content was dropped from the step, from the final output and from the input passed to the next
+    agent. The message the agent puts on its done frame is now used.
+  - With `StopOnAgentFailure` (the default), a failed agent ended the stream with `Completed` and a
+    successful result whenever an earlier agent had succeeded. It now ends with `Failed`, like the
+    buffered call.
+  - `ContextScope` and `ResultDistiller` were not applied when streaming.
+  - `GraphOrchestrator` stopped in the middle of a topological level on a failure, where the
+    buffered call finishes the level first; it also reported an orchestration timeout as an agent
+    timeout. Timeout messages now match the buffered call's.
+
 ## 0.24.1 — 2026-09-09
 
 ### Fixed

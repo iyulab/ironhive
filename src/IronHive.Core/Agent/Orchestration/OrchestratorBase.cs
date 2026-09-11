@@ -1,8 +1,11 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Text;
+using System.Threading.Channels;
 using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
+using IronHive.Abstractions.Messages.Content;
 using IronHive.Core.Utilities;
 
 namespace IronHive.Core.Agent.Orchestration;
@@ -144,14 +147,7 @@ public abstract class OrchestratorBase : IAgentOrchestrator
         CancellationToken cancellationToken)
     {
         var stopwatch = Stopwatch.StartNew();
-        var inputMessages = messages.ToList();
-
-        // Apply context scoping if configured
-        if (Options.ContextScope is not null)
-        {
-            var scoped = Options.ContextScope.ScopeMessages(inputMessages, agent.Name);
-            inputMessages = scoped is List<Message> list ? list : [.. scoped];
-        }
+        var inputMessages = ScopeInput(agent, messages);
 
         using var activity = HiveTelemetry.StartAgentActivity(agent.Name, agent.Description);
 
@@ -177,22 +173,8 @@ public abstract class OrchestratorBase : IAgentOrchestrator
                 durationSeconds: stopwatch.Elapsed.TotalSeconds,
                 success: true);
 
-            // Apply result distillation if configured
-            if (Options.ResultDistiller is not null)
-            {
-                response = await Options.ResultDistiller.DistillAsync(
-                    agent.Name, response, Options.ResultDistillationOptions, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-
-            return new AgentStepResult
-            {
-                AgentName = agent.Name,
-                Input = inputMessages,
-                Response = response,
-                Duration = stopwatch.Elapsed,
-                IsSuccess = true
-            };
+            return await CompleteStepAsync(agent, inputMessages, response, stopwatch.Elapsed, cancellationToken)
+                .ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -205,19 +187,15 @@ public abstract class OrchestratorBase : IAgentOrchestrator
                 durationSeconds: stopwatch.Elapsed.TotalSeconds,
                 success: false);
 
-            var errorMessage = $"Agent '{agent.Name}' timed out after {Options.AgentTimeout.TotalSeconds}s";
-            activity?.SetStatus(ActivityStatusCode.Error, errorMessage);
-
-            return new AgentStepResult
-            {
-                AgentName = agent.Name,
-                Input = inputMessages,
-                Duration = stopwatch.Elapsed,
-                IsSuccess = false,
-                Error = errorMessage
-            };
+            var timedOut = TimedOutStep(agent, inputMessages, stopwatch.Elapsed);
+            activity?.SetStatus(ActivityStatusCode.Error, timedOut.Error);
+            return timedOut;
         }
-        catch (Exception ex)
+        // A cancelled orchestration token is the orchestration's own timeout or the caller cancelling;
+        // neither is this agent failing. Recording it as a failed step hid both: the orchestrators'
+        // timeout handling never ran, and a caller's cancellation came back as a result saying
+        // "A task was canceled".
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             stopwatch.Stop();
 
@@ -229,16 +207,151 @@ public abstract class OrchestratorBase : IAgentOrchestrator
                 durationSeconds: stopwatch.Elapsed.TotalSeconds,
                 success: false);
 
-            return new AgentStepResult
-            {
-                AgentName = agent.Name,
-                Input = inputMessages,
-                Duration = stopwatch.Elapsed,
-                IsSuccess = false,
-                Error = $"Agent '{agent.Name}' failed: {ex.Message}"
-            };
+            return FailedStep(agent, inputMessages, stopwatch.Elapsed, ex);
         }
     }
+
+    /// <summary>
+    /// 에이전트를 스트리밍으로 실행하고 <see cref="ExecuteAgentAsync"/>와 같은 규칙으로 단계 결과를 만듭니다 —
+    /// 컨텍스트 스코프, 결과 증류, 오류 문구, 타임아웃 구분까지. 받은 청크는 <paramref name="onChunk"/>로 넘깁니다.
+    /// </summary>
+    /// <remarks>
+    /// 실시간 스트리밍 오케스트레이터가 단계를 각자 재구성하던 자리다(CONVENTIONS §5): 텍스트 델타만 모아 추론·도구
+    /// 콘텐츠를 버렸고, 스코프와 증류를 건너뛰었고, 타임아웃 문구가 달랐다. 응답 메시지는 에이전트가 done 프레임에
+    /// 실어 보낸 것(에이전트 경로의 MessageService가 채운다)을 쓰고, 텍스트 누적은 그것을 싣지 않는 생산자를 위한
+    /// 대체다. 오케스트레이션 토큰이 취소되면 예외를 그대로 던진다 — 호출한 오케스트레이터가 버퍼드와 같이 처리한다.
+    /// </remarks>
+    private protected async Task<AgentStepResult> ExecuteAgentStreamingStepAsync(
+        IAgent agent,
+        IEnumerable<Message> messages,
+        Func<StreamingMessageResponse, ValueTask> onChunk,
+        CancellationToken cancellationToken)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        var inputMessages = ScopeInput(agent, messages);
+        var text = new StringBuilder();
+        StreamingMessageDoneResponse? done = null;
+
+        try
+        {
+            await foreach (var chunk in ExecuteAgentStreamingAsync(agent, inputMessages, cancellationToken).ConfigureAwait(false))
+            {
+                await onChunk(chunk).ConfigureAwait(false);
+
+                switch (chunk)
+                {
+                    case StreamingContentDeltaResponse { Delta: TextDeltaContent textDelta }:
+                        text.Append(textDelta.Value);
+                        break;
+                    case StreamingMessageDoneResponse doneFrame:
+                        done = doneFrame;
+                        break;
+                }
+            }
+
+            stopwatch.Stop();
+
+            var response = new MessageResponse
+            {
+                ResponseId = done?.ResponseId,
+                DoneReason = done?.DoneReason,
+                Message = done?.Message ?? new Message
+                {
+                    Role = MessageRole.Assistant,
+                    Content = [new TextMessageContent { Value = text.ToString() }]
+                },
+                TokenUsage = done?.TokenUsage,
+                Model = done?.Model ?? string.Empty,
+                Timestamp = done?.Timestamp ?? DateTime.UtcNow
+            };
+
+            return await CompleteStepAsync(agent, inputMessages, response, stopwatch.Elapsed, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            stopwatch.Stop();
+            return TimedOutStep(agent, inputMessages, stopwatch.Elapsed);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            stopwatch.Stop();
+            return FailedStep(agent, inputMessages, stopwatch.Elapsed, ex);
+        }
+    }
+
+    /// <summary>
+    /// 실패로 끝난 실시간 스트림의 종결 이벤트 — 결과를 함께 실어 버퍼드 호출과 대조할 수 있게 한다.
+    /// </summary>
+    private protected static ValueTask WriteFailedAsync(
+        ChannelWriter<OrchestrationStreamEvent> writer,
+        string error,
+        List<AgentStepResult> steps,
+        TimeSpan duration,
+        CancellationToken cancellationToken)
+        => writer.WriteAsync(new OrchestrationStreamEvent
+        {
+            EventType = OrchestrationEventType.Failed,
+            Error = error,
+            Result = OrchestrationResult.Failure(error, steps, duration)
+        }, cancellationToken);
+
+    private List<Message> ScopeInput(IAgent agent, IEnumerable<Message> messages)
+    {
+        var inputMessages = messages.ToList();
+
+        // Apply context scoping if configured
+        if (Options.ContextScope is null)
+        {
+            return inputMessages;
+        }
+
+        var scoped = Options.ContextScope.ScopeMessages(inputMessages, agent.Name);
+        return scoped is List<Message> list ? list : [.. scoped];
+    }
+
+    private async Task<AgentStepResult> CompleteStepAsync(
+        IAgent agent,
+        List<Message> inputMessages,
+        MessageResponse response,
+        TimeSpan duration,
+        CancellationToken cancellationToken)
+    {
+        // Apply result distillation if configured
+        if (Options.ResultDistiller is not null)
+        {
+            response = await Options.ResultDistiller.DistillAsync(
+                agent.Name, response, Options.ResultDistillationOptions, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        return new AgentStepResult
+        {
+            AgentName = agent.Name,
+            Input = inputMessages,
+            Response = response,
+            Duration = duration,
+            IsSuccess = true
+        };
+    }
+
+    private AgentStepResult TimedOutStep(IAgent agent, List<Message> inputMessages, TimeSpan duration) => new()
+    {
+        AgentName = agent.Name,
+        Input = inputMessages,
+        Duration = duration,
+        IsSuccess = false,
+        Error = $"Agent '{agent.Name}' timed out after {Options.AgentTimeout.TotalSeconds}s"
+    };
+
+    private static AgentStepResult FailedStep(IAgent agent, List<Message> inputMessages, TimeSpan duration, Exception ex) => new()
+    {
+        AgentName = agent.Name,
+        Input = inputMessages,
+        Duration = duration,
+        IsSuccess = false,
+        Error = $"Agent '{agent.Name}' failed: {ex.Message}"
+    };
 
     /// <summary>
     /// 에이전트를 스트리밍 방식으로 실행하고 결과를 캡처합니다. (OpenTelemetry 추적 포함)

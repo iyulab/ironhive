@@ -1,12 +1,9 @@
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading.Channels;
 using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
-using IronHive.Abstractions.Messages.Content;
 using IronHive.Core.Utilities;
 
 namespace IronHive.Core.Agent.Orchestration;
@@ -22,6 +19,11 @@ public class GraphOrchestratorOptions : OrchestratorOptions
 /// DAG(Directed Acyclic Graph) 기반으로 에이전트를 실행하는 오케스트레이터입니다.
 /// 엣지 조건에 따라 분기(Fan-Out)하고, 인입 엣지가 모두 완료된 노드만 실행(Fan-In)합니다.
 /// </summary>
+/// <remarks>
+/// <see cref="ExecuteAsync"/>와 <see cref="ExecuteStreamingAsync"/>는 같은 규칙을 공유한다 — 체크포인트 복원,
+/// 레벨 계획(엣지 조건과 승인), 레벨 기록(실패 판정), 최종 출력 결정. 다른 것은 한 레벨의 노드를 버퍼드는
+/// 병렬로, 스트리밍은 델타를 섞지 않기 위해 순서대로 실행한다는 것뿐이다. 결과는 같다.
+/// </remarks>
 public class GraphOrchestrator : OrchestratorBase
 {
     private readonly Dictionary<string, AgentGraphNode> _nodes = new();
@@ -64,7 +66,7 @@ public class GraphOrchestrator : OrchestratorBase
 
         var stopwatch = Stopwatch.StartNew();
         var steps = new List<AgentStepResult>();
-        var nodeResults = new ConcurrentDictionary<string, AgentStepResult>();
+        var nodeResults = new Dictionary<string, AgentStepResult>();
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(Options.Timeout);
@@ -75,145 +77,32 @@ public class GraphOrchestrator : OrchestratorBase
         try
         {
             var inputMessages = messages.ToList();
+            var completedNodeIds = await RestoreCheckpointAsync(steps, nodeResults, cts.Token).ConfigureAwait(false);
 
-            // 체크포인트에서 재개
-            var checkpoint = await LoadCheckpointAsync(cts.Token).ConfigureAwait(false);
-            var completedSteps = checkpoint?.CompletedSteps.ToList() ?? [];
-            var completedNodeIds = new HashSet<string>();
-
-            // 체크포인트의 완료된 단계를 nodeResults에 복원
-            foreach (var step in completedSteps)
+            foreach (var level in GetTopologicalLevels())
             {
-                steps.Add(step);
-                // AgentName → nodeId 매핑 (노드 ID와 에이전트 이름이 다를 수 있으므로 역매핑)
-                var matchingNodeId = _nodes.FirstOrDefault(n => n.Value.Agent.Name == step.AgentName).Key;
-                if (matchingNodeId != null)
+                var plan = await PlanLevelAsync(level, completedNodeIds, nodeResults, inputMessages, steps, cts.Token)
+                    .ConfigureAwait(false);
+
+                if (plan.DeniedAgent is { } denied)
                 {
-                    nodeResults[matchingNodeId] = step;
-                    completedNodeIds.Add(matchingNodeId);
-                }
-            }
-
-            // 토폴로지 레벨별로 실행
-            var levels = GetTopologicalLevels();
-
-            foreach (var level in levels)
-            {
-                // 이미 완료된 노드 제외
-                var nodesToExecute = level.Where(id => !completedNodeIds.Contains(id)).ToList();
-                if (nodesToExecute.Count == 0) continue;
-
-                // 레벨 내 노드들을 필터링 (엣지 조건, 승인 확인)
-                var executableNodes = new List<(string NodeId, IEnumerable<Message> Input)>();
-
-                foreach (var nodeId in nodesToExecute)
-                {
-                    var node = _nodes[nodeId];
-
-                    // 인입 엣지 확인
-                    var incomingEdges = _edges.Where(e => e.TargetId == nodeId).ToList();
-                    IEnumerable<Message> nodeInput;
-
-                    if (incomingEdges.Count == 0)
-                    {
-                        nodeInput = inputMessages;
-                    }
-                    else
-                    {
-                        var shouldExecute = true;
-                        var collectedMessages = new List<Message>();
-
-                        foreach (var edge in incomingEdges)
-                        {
-                            if (!nodeResults.TryGetValue(edge.SourceId, out var sourceResult))
-                            {
-                                shouldExecute = false;
-                                break;
-                            }
-
-                            if (edge.Condition != null && !edge.Condition(sourceResult))
-                            {
-                                shouldExecute = false;
-                                break;
-                            }
-
-                            var sourceMessage = ExtractMessage(sourceResult.Response);
-                            if (sourceMessage != null)
-                            {
-                                collectedMessages.Add(sourceMessage);
-                            }
-                        }
-
-                        if (!shouldExecute) continue;
-                        nodeInput = collectedMessages.Count > 0 ? collectedMessages : inputMessages;
-                    }
-
-                    // 승인 체크 (순차)
-                    var previousStep = steps.LastOrDefault();
-                    if (!await CheckApprovalAsync(node.Agent, previousStep, cts.Token).ConfigureAwait(false))
-                    {
-                        await SaveCheckpointAsync(steps, inputMessages, cts.Token).ConfigureAwait(false);
-                        stopwatch.Stop();
-                        return OrchestrationResult.Failure(
-                            $"Approval denied for agent '{node.Agent.Name}'",
-                            steps,
-                            stopwatch.Elapsed);
-                    }
-
-                    executableNodes.Add((nodeId, nodeInput));
+                    await SaveCheckpointAsync(steps, inputMessages, cts.Token).ConfigureAwait(false);
+                    stopwatch.Stop();
+                    return OrchestrationResult.Failure(ApprovalDenied(denied), steps, stopwatch.Elapsed);
                 }
 
-                if (executableNodes.Count == 0) continue;
+                if (plan.Nodes.Count == 0) continue;
 
-                // 같은 레벨의 노드들을 병렬 실행
-                if (executableNodes.Count == 1)
+                // 같은 레벨의 노드는 서로 독립이므로 병렬 실행
+                var levelResults = await Task.WhenAll(plan.Nodes.Select(async n =>
+                        (n.NodeId, Result: await ExecuteAgentAsync(_nodes[n.NodeId].Agent, n.Input, cts.Token).ConfigureAwait(false))))
+                    .ConfigureAwait(false);
+
+                if (RecordLevel(levelResults, steps, nodeResults) is { } failure)
                 {
-                    // 단일 노드: 직접 실행
-                    var (nodeId, nodeInput) = executableNodes[0];
-                    var stepResult = await ExecuteAgentAsync(_nodes[nodeId].Agent, nodeInput, cts.Token).ConfigureAwait(false);
-                    steps.Add(stepResult);
-                    nodeResults[nodeId] = stepResult;
-
-                    if (!stepResult.IsSuccess && Options.StopOnAgentFailure)
-                    {
-                        await SaveCheckpointAsync(steps, inputMessages, cts.Token).ConfigureAwait(false);
-                        stopwatch.Stop();
-                        return OrchestrationResult.Failure(
-                            stepResult.Error ?? $"Agent '{_nodes[nodeId].Agent.Name}' failed",
-                            steps,
-                            stopwatch.Elapsed);
-                    }
-                }
-                else
-                {
-                    // 복수 노드: 병렬 실행
-                    var tasks = executableNodes.Select(async n =>
-                    {
-                        var result = await ExecuteAgentAsync(_nodes[n.NodeId].Agent, n.Input, cts.Token).ConfigureAwait(false);
-                        nodeResults[n.NodeId] = result;
-                        return (n.NodeId, Result: result);
-                    });
-
-                    var parallelResults = await Task.WhenAll(tasks).ConfigureAwait(false);
-
-                    foreach (var (nodeId, result) in parallelResults)
-                    {
-                        steps.Add(result);
-                    }
-
-                    if (Options.StopOnAgentFailure)
-                    {
-                        var failed = parallelResults.FirstOrDefault(r => !r.Result.IsSuccess);
-                        if (failed.NodeId != null)
-                        {
-                            await SaveCheckpointAsync(steps, inputMessages, cts.Token).ConfigureAwait(false);
-                            stopwatch.Stop();
-                            return OrchestrationResult.Failure(
-                                failed.Result.Error ?? $"Agent '{_nodes[failed.NodeId].Agent.Name}' failed",
-                                steps,
-                                stopwatch.Elapsed);
-                        }
-                    }
+                    await SaveCheckpointAsync(steps, inputMessages, cts.Token).ConfigureAwait(false);
+                    stopwatch.Stop();
+                    return OrchestrationResult.Failure(failure, steps, stopwatch.Elapsed);
                 }
 
                 // 레벨 완료 후 체크포인트 저장
@@ -222,22 +111,10 @@ public class GraphOrchestrator : OrchestratorBase
 
             stopwatch.Stop();
 
-            // 출력 노드의 결과를 최종 출력으로 사용
-            Message? finalOutput = null;
-            if (_outputNodeId != null && nodeResults.TryGetValue(_outputNodeId, out var outputResult))
-            {
-                finalOutput = ExtractMessage(outputResult.Response);
-            }
-
+            var finalOutput = ResolveFinalOutput(nodeResults, steps);
             if (finalOutput == null)
             {
-                var lastSuccess = steps.LastOrDefault(s => s.IsSuccess);
-                finalOutput = ExtractMessage(lastSuccess?.Response);
-            }
-
-            if (finalOutput == null)
-            {
-                return OrchestrationResult.Failure("No successful agent output", steps, stopwatch.Elapsed);
+                return OrchestrationResult.Failure(NoSuccessfulOutput, steps, stopwatch.Elapsed);
             }
 
             await DeleteCheckpointAsync(cancellationToken).ConfigureAwait(false);
@@ -251,10 +128,7 @@ public class GraphOrchestrator : OrchestratorBase
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
             stopwatch.Stop();
-            return OrchestrationResult.Failure(
-                $"Orchestration timed out after {Options.Timeout.TotalSeconds}s",
-                steps,
-                stopwatch.Elapsed);
+            return OrchestrationResult.Failure(OrchestrationTimedOut(), steps, stopwatch.Elapsed);
         }
     }
 
@@ -290,250 +164,106 @@ public class GraphOrchestrator : OrchestratorBase
         IEnumerable<Message> messages,
         CancellationToken cancellationToken)
     {
+        var stopwatch = Stopwatch.StartNew();
+        var steps = new List<AgentStepResult>();
+
         try
         {
-            var stopwatch = Stopwatch.StartNew();
-            var steps = new List<AgentStepResult>();
             var nodeResults = new Dictionary<string, AgentStepResult>();
             var inputMessages = messages.ToList();
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(Options.Timeout);
 
-            // 체크포인트에서 재개
-            var checkpoint = await LoadCheckpointAsync(cts.Token).ConfigureAwait(false);
-            var completedSteps = checkpoint?.CompletedSteps.ToList() ?? [];
-            var completedNodeIds = new HashSet<string>();
+            using var activity = HiveTelemetry.StartOrchestrationActivity(
+                Name, "graph", Options.OrchestrationId);
 
-            foreach (var step in completedSteps)
+            try
             {
-                steps.Add(step);
-                var matchingNodeId = _nodes.FirstOrDefault(n => n.Value.Agent.Name == step.AgentName).Key;
-                if (matchingNodeId != null)
+                var completedNodeIds = await RestoreCheckpointAsync(steps, nodeResults, cts.Token).ConfigureAwait(false);
+
+                await writer.WriteAsync(
+                    new OrchestrationStreamEvent { EventType = OrchestrationEventType.Started },
+                    cancellationToken).ConfigureAwait(false);
+
+                foreach (var level in GetTopologicalLevels())
                 {
-                    nodeResults[matchingNodeId] = step;
-                    completedNodeIds.Add(matchingNodeId);
-                }
-            }
+                    var plan = await PlanLevelAsync(level, completedNodeIds, nodeResults, inputMessages, steps, cts.Token)
+                        .ConfigureAwait(false);
 
-            await writer.WriteAsync(
-                new OrchestrationStreamEvent { EventType = OrchestrationEventType.Started },
-                cancellationToken).ConfigureAwait(false);
-
-            // 토폴로지 레벨을 평탄화하여 순차 실행 순서 생성
-            var executionOrder = GetTopologicalLevels().SelectMany(level => level).ToList();
-
-            foreach (var nodeId in executionOrder)
-            {
-                // 체크포인트에서 이미 완료된 노드는 건너뛰기
-                if (completedNodeIds.Contains(nodeId)) continue;
-
-                var node = _nodes[nodeId];
-
-                // 인입 엣지 확인
-                var incomingEdges = _edges.Where(e => e.TargetId == nodeId).ToList();
-                IEnumerable<Message> nodeInput;
-
-                if (incomingEdges.Count == 0)
-                {
-                    nodeInput = inputMessages;
-                }
-                else
-                {
-                    var shouldExecute = true;
-                    var collectedMessages = new List<Message>();
-
-                    foreach (var edge in incomingEdges)
+                    if (plan.DeniedAgent is { } denied)
                     {
-                        if (!nodeResults.TryGetValue(edge.SourceId, out var sourceResult))
-                        {
-                            shouldExecute = false;
-                            break;
-                        }
-
-                        if (edge.Condition != null && !edge.Condition(sourceResult))
-                        {
-                            shouldExecute = false;
-                            break;
-                        }
-
-                        var sourceMessage = ExtractMessage(sourceResult.Response);
-                        if (sourceMessage != null)
-                        {
-                            collectedMessages.Add(sourceMessage);
-                        }
+                        await SaveCheckpointAsync(steps, inputMessages, cts.Token).ConfigureAwait(false);
+                        stopwatch.Stop();
+                        await WriteFailedAsync(writer, ApprovalDenied(denied), steps, stopwatch.Elapsed, cancellationToken)
+                            .ConfigureAwait(false);
+                        return;
                     }
 
-                    if (!shouldExecute) continue;
-                    nodeInput = collectedMessages.Count > 0 ? collectedMessages : inputMessages;
+                    // 델타가 섞이지 않도록 레벨 안의 노드는 순서대로 — 기록과 실패 판정은 레벨이 끝난 뒤, 버퍼드와 같이
+                    var levelResults = new List<(string NodeId, AgentStepResult Result)>();
+                    foreach (var (nodeId, nodeInput) in plan.Nodes)
+                    {
+                        var agent = _nodes[nodeId].Agent;
+
+                        await writer.WriteAsync(new OrchestrationStreamEvent
+                        {
+                            EventType = OrchestrationEventType.AgentStarted,
+                            AgentName = agent.Name
+                        }, cancellationToken).ConfigureAwait(false);
+
+                        var step = await ExecuteAgentStreamingStepAsync(
+                            agent,
+                            nodeInput,
+                            chunk => writer.WriteAsync(new OrchestrationStreamEvent
+                            {
+                                EventType = OrchestrationEventType.MessageDelta,
+                                AgentName = agent.Name,
+                                StreamingResponse = chunk
+                            }, cancellationToken),
+                            cts.Token).ConfigureAwait(false);
+
+                        levelResults.Add((nodeId, step));
+
+                        await writer.WriteAsync(step.IsSuccess
+                            ? new OrchestrationStreamEvent
+                            {
+                                EventType = OrchestrationEventType.AgentCompleted,
+                                AgentName = agent.Name,
+                                CompletedResponse = step.Response
+                            }
+                            : new OrchestrationStreamEvent
+                            {
+                                EventType = OrchestrationEventType.AgentFailed,
+                                AgentName = agent.Name,
+                                Error = step.Error
+                            }, cancellationToken).ConfigureAwait(false);
+                    }
+
+                    if (levelResults.Count == 0) continue;
+
+                    if (RecordLevel(levelResults, steps, nodeResults) is { } failure)
+                    {
+                        await SaveCheckpointAsync(steps, inputMessages, cts.Token).ConfigureAwait(false);
+                        stopwatch.Stop();
+                        await WriteFailedAsync(writer, failure, steps, stopwatch.Elapsed, cancellationToken).ConfigureAwait(false);
+                        return;
+                    }
+
+                    // 레벨 완료 후 체크포인트 저장
+                    await SaveCheckpointAsync(steps, inputMessages, cts.Token).ConfigureAwait(false);
                 }
 
-                // 승인 체크
-                var previousStep = steps.LastOrDefault();
-                if (!await CheckApprovalAsync(node.Agent, previousStep, cts.Token).ConfigureAwait(false))
+                stopwatch.Stop();
+
+                var finalOutput = ResolveFinalOutput(nodeResults, steps);
+                if (finalOutput == null)
                 {
-                    await SaveCheckpointAsync(steps, inputMessages, cts.Token).ConfigureAwait(false);
-                    await writer.WriteAsync(new OrchestrationStreamEvent
-                    {
-                        EventType = OrchestrationEventType.Failed,
-                        Error = $"Approval denied for agent '{node.Agent.Name}'",
-                        Result = OrchestrationResult.Failure(
-                            $"Approval denied for agent '{node.Agent.Name}'",
-                            steps,
-                            stopwatch.Elapsed)
-                    }, cancellationToken).ConfigureAwait(false);
+                    await WriteFailedAsync(writer, NoSuccessfulOutput, steps, stopwatch.Elapsed, cancellationToken)
+                        .ConfigureAwait(false);
                     return;
                 }
 
-                await writer.WriteAsync(new OrchestrationStreamEvent
-                {
-                    EventType = OrchestrationEventType.AgentStarted,
-                    AgentName = node.Agent.Name
-                }, cancellationToken).ConfigureAwait(false);
-
-                var agentStopwatch = Stopwatch.StartNew();
-                var textBuilder = new StringBuilder();
-                StreamingMessageDoneResponse? doneResponse = null;
-
-                try
-                {
-                    using var agentCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
-                    agentCts.CancelAfter(Options.AgentTimeout);
-
-                    await foreach (var chunk in ExecuteAgentStreamingAsync(node.Agent, nodeInput, agentCts.Token).ConfigureAwait(false))
-                    {
-                        await writer.WriteAsync(new OrchestrationStreamEvent
-                        {
-                            EventType = OrchestrationEventType.MessageDelta,
-                            AgentName = node.Agent.Name,
-                            StreamingResponse = chunk
-                        }, cancellationToken).ConfigureAwait(false);
-
-                        switch (chunk)
-                        {
-                            case StreamingContentDeltaResponse delta:
-                                if (delta.Delta is TextDeltaContent textDelta)
-                                {
-                                    textBuilder.Append(textDelta.Value);
-                                }
-                                break;
-                            case StreamingMessageDoneResponse done:
-                                doneResponse = done;
-                                break;
-                        }
-                    }
-
-                    agentStopwatch.Stop();
-
-                    var responseMessage = new Message { Role = MessageRole.Assistant,
-                        Content = [new TextMessageContent { Value = textBuilder.ToString() }]
-                    };
-
-                    var response = new MessageResponse
-                    {
-                        ResponseId = doneResponse?.ResponseId,
-                        DoneReason = doneResponse?.DoneReason,
-                        Message = responseMessage,
-                        TokenUsage = doneResponse?.TokenUsage,
-                        Model = doneResponse?.Model ?? string.Empty,
-                        Timestamp = doneResponse?.Timestamp ?? DateTime.UtcNow
-                    };
-
-                    var stepResult = new AgentStepResult
-                    {
-                        AgentName = node.Agent.Name,
-                        Input = nodeInput.ToList(),
-                        Response = response,
-                        Duration = agentStopwatch.Elapsed,
-                        IsSuccess = true
-                    };
-                    steps.Add(stepResult);
-                    nodeResults[nodeId] = stepResult;
-
-                    await writer.WriteAsync(new OrchestrationStreamEvent
-                    {
-                        EventType = OrchestrationEventType.AgentCompleted,
-                        AgentName = node.Agent.Name,
-                        CompletedResponse = response
-                    }, cancellationToken).ConfigureAwait(false);
-
-                    // 노드 완료 후 체크포인트 저장
-                    await SaveCheckpointAsync(steps, inputMessages, cts.Token).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-                {
-                    agentStopwatch.Stop();
-                    var errorMessage = $"Agent '{node.Agent.Name}' timed out";
-
-                    var failResult = new AgentStepResult
-                    {
-                        AgentName = node.Agent.Name,
-                        Input = nodeInput.ToList(),
-                        Duration = agentStopwatch.Elapsed,
-                        IsSuccess = false,
-                        Error = errorMessage
-                    };
-                    steps.Add(failResult);
-                    nodeResults[nodeId] = failResult;
-
-                    await writer.WriteAsync(new OrchestrationStreamEvent
-                    {
-                        EventType = OrchestrationEventType.AgentFailed,
-                        AgentName = node.Agent.Name,
-                        Error = errorMessage
-                    }, cancellationToken).ConfigureAwait(false);
-
-                    if (Options.StopOnAgentFailure) break;
-                }
-                catch (Exception ex)
-                {
-                    agentStopwatch.Stop();
-                    var errorMessage = $"Agent '{node.Agent.Name}' failed: {ex.Message}";
-
-                    var failResult = new AgentStepResult
-                    {
-                        AgentName = node.Agent.Name,
-                        Input = nodeInput.ToList(),
-                        Duration = agentStopwatch.Elapsed,
-                        IsSuccess = false,
-                        Error = errorMessage
-                    };
-                    steps.Add(failResult);
-                    nodeResults[nodeId] = failResult;
-
-                    await writer.WriteAsync(new OrchestrationStreamEvent
-                    {
-                        EventType = OrchestrationEventType.AgentFailed,
-                        AgentName = node.Agent.Name,
-                        Error = errorMessage
-                    }, cancellationToken).ConfigureAwait(false);
-
-                    if (Options.StopOnAgentFailure) break;
-                }
-            }
-
-            stopwatch.Stop();
-
-            // 최종 결과 결정
-            Message? finalOutput = null;
-            if (_outputNodeId != null && nodeResults.TryGetValue(_outputNodeId, out var outputResult) && outputResult.IsSuccess)
-            {
-                finalOutput = ExtractMessage(outputResult.Response);
-            }
-
-            finalOutput ??= ExtractMessage(steps.LastOrDefault(s => s.IsSuccess)?.Response);
-
-            if (finalOutput == null)
-            {
-                await writer.WriteAsync(new OrchestrationStreamEvent
-                {
-                    EventType = OrchestrationEventType.Failed,
-                    Error = "No successful agent output",
-                    Result = OrchestrationResult.Failure("No successful agent output", steps, stopwatch.Elapsed)
-                }, cancellationToken).ConfigureAwait(false);
-            }
-            else
-            {
                 // 완료 시 체크포인트 삭제
                 await DeleteCheckpointAsync(cancellationToken).ConfigureAwait(false);
 
@@ -547,12 +277,164 @@ public class GraphOrchestrator : OrchestratorBase
                         AggregateTokenUsage(steps))
                 }, cancellationToken).ConfigureAwait(false);
             }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                stopwatch.Stop();
+                await WriteFailedAsync(writer, OrchestrationTimedOut(), steps, stopwatch.Elapsed, cancellationToken)
+                    .ConfigureAwait(false);
+            }
         }
         finally
         {
             writer.Complete();
         }
     }
+
+    private const string NoSuccessfulOutput = "No successful agent output";
+
+    private static string ApprovalDenied(string agentName) => $"Approval denied for agent '{agentName}'";
+
+    private string OrchestrationTimedOut() => $"Orchestration timed out after {Options.Timeout.TotalSeconds}s";
+
+    /// <summary>
+    /// 체크포인트의 완료된 단계를 복원하고, 이미 완료된 노드 ID를 반환합니다.
+    /// </summary>
+    private async Task<HashSet<string>> RestoreCheckpointAsync(
+        List<AgentStepResult> steps,
+        Dictionary<string, AgentStepResult> nodeResults,
+        CancellationToken cancellationToken)
+    {
+        var checkpoint = await LoadCheckpointAsync(cancellationToken).ConfigureAwait(false);
+        var completedNodeIds = new HashSet<string>();
+
+        foreach (var step in checkpoint?.CompletedSteps ?? [])
+        {
+            steps.Add(step);
+            // AgentName → nodeId 매핑 (노드 ID와 에이전트 이름이 다를 수 있으므로 역매핑)
+            var matchingNodeId = _nodes.FirstOrDefault(n => n.Value.Agent.Name == step.AgentName).Key;
+            if (matchingNodeId != null)
+            {
+                nodeResults[matchingNodeId] = step;
+                completedNodeIds.Add(matchingNodeId);
+            }
+        }
+
+        return completedNodeIds;
+    }
+
+    /// <summary>
+    /// 한 레벨에서 실행할 노드와 그 입력을 정합니다 — 이미 완료된 노드, 소스가 아직 실행되지 않은 노드,
+    /// 조건이 거짓인 엣지를 가진 노드는 제외. 승인은 레벨의 노드를 실행하기 전에 모두 확인합니다.
+    /// </summary>
+    private async Task<LevelPlan> PlanLevelAsync(
+        List<string> level,
+        HashSet<string> completedNodeIds,
+        Dictionary<string, AgentStepResult> nodeResults,
+        List<Message> inputMessages,
+        List<AgentStepResult> steps,
+        CancellationToken cancellationToken)
+    {
+        var nodes = new List<(string NodeId, IEnumerable<Message> Input)>();
+
+        foreach (var nodeId in level)
+        {
+            if (completedNodeIds.Contains(nodeId)) continue;
+
+            var nodeInput = ResolveNodeInput(nodeId, nodeResults, inputMessages);
+            if (nodeInput == null) continue;
+
+            var agent = _nodes[nodeId].Agent;
+            if (!await CheckApprovalAsync(agent, steps.LastOrDefault(), cancellationToken).ConfigureAwait(false))
+            {
+                return new LevelPlan(nodes, agent.Name);
+            }
+
+            nodes.Add((nodeId, nodeInput));
+        }
+
+        return new LevelPlan(nodes, DeniedAgent: null);
+    }
+
+    /// <summary>
+    /// 노드의 입력 — 인입 엣지가 없으면 오케스트레이션 입력, 있으면 소스 노드들의 출력.
+    /// 소스가 아직 실행되지 않았거나 엣지 조건이 거짓이면 null(실행하지 않음).
+    /// </summary>
+    private List<Message>? ResolveNodeInput(
+        string nodeId,
+        Dictionary<string, AgentStepResult> nodeResults,
+        List<Message> inputMessages)
+    {
+        var incomingEdges = _edges.Where(e => e.TargetId == nodeId).ToList();
+        if (incomingEdges.Count == 0)
+        {
+            return inputMessages;
+        }
+
+        var collectedMessages = new List<Message>();
+        foreach (var edge in incomingEdges)
+        {
+            if (!nodeResults.TryGetValue(edge.SourceId, out var sourceResult))
+            {
+                return null;
+            }
+
+            if (edge.Condition != null && !edge.Condition(sourceResult))
+            {
+                return null;
+            }
+
+            var sourceMessage = ExtractMessage(sourceResult.Response);
+            if (sourceMessage != null)
+            {
+                collectedMessages.Add(sourceMessage);
+            }
+        }
+
+        return collectedMessages.Count > 0 ? collectedMessages : inputMessages;
+    }
+
+    /// <summary>
+    /// 레벨의 결과를 계획 순서대로 기록하고, <see cref="OrchestratorOptions.StopOnAgentFailure"/>이면
+    /// 첫 실패의 오류를 반환합니다(아니면 null).
+    /// </summary>
+    private string? RecordLevel(
+        IEnumerable<(string NodeId, AgentStepResult Result)> levelResults,
+        List<AgentStepResult> steps,
+        Dictionary<string, AgentStepResult> nodeResults)
+    {
+        string? failure = null;
+
+        foreach (var (nodeId, result) in levelResults)
+        {
+            steps.Add(result);
+            nodeResults[nodeId] = result;
+
+            if (!result.IsSuccess && Options.StopOnAgentFailure)
+            {
+                failure ??= result.Error ?? $"Agent '{_nodes[nodeId].Agent.Name}' failed";
+            }
+        }
+
+        return failure;
+    }
+
+    /// <summary>
+    /// 출력 노드가 성공했으면 그 결과, 아니면 마지막 성공 단계의 결과.
+    /// </summary>
+    private Message? ResolveFinalOutput(
+        Dictionary<string, AgentStepResult> nodeResults,
+        List<AgentStepResult> steps)
+    {
+        var fromOutputNode = _outputNodeId != null
+            && nodeResults.TryGetValue(_outputNodeId, out var outputResult)
+            && outputResult.IsSuccess
+                ? ExtractMessage(outputResult.Response)
+                : null;
+
+        return fromOutputNode ?? ExtractMessage(steps.LastOrDefault(s => s.IsSuccess)?.Response);
+    }
+
+    private sealed record LevelPlan(List<(string NodeId, IEnumerable<Message> Input)> Nodes, string? DeniedAgent);
 
     /// <summary>
     /// Kahn 알고리즘으로 토폴로지 정렬 수행 (레벨별 그룹화)

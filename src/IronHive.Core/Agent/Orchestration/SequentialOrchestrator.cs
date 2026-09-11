@@ -1,11 +1,9 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading.Channels;
 using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
-using IronHive.Abstractions.Messages.Content;
 
 namespace IronHive.Core.Agent.Orchestration;
 
@@ -68,7 +66,7 @@ public class SequentialOrchestrator : OrchestratorBase
                     await SaveCheckpointAsync(steps, currentMessages, cts.Token).ConfigureAwait(false);
                     stopwatch.Stop();
                     return OrchestrationResult.Failure(
-                        $"Approval denied for agent '{agent.Name}'",
+                        ApprovalDenied(agent),
                         steps,
                         stopwatch.Elapsed);
                 }
@@ -84,7 +82,7 @@ public class SequentialOrchestrator : OrchestratorBase
                         await SaveCheckpointAsync(steps, currentMessages, cts.Token).ConfigureAwait(false);
                         stopwatch.Stop();
                         return OrchestrationResult.Failure(
-                            stepResult.Error ?? $"Agent '{agent.Name}' failed",
+                            FailureOf(stepResult),
                             steps,
                             stopwatch.Elapsed);
                     }
@@ -92,18 +90,7 @@ public class SequentialOrchestrator : OrchestratorBase
                 }
 
                 // 다음 에이전트를 위한 입력 준비
-                var outputMessage = ExtractMessage(stepResult.Response);
-                if (outputMessage != null && Options.PassOutputAsInput)
-                {
-                    if (Options.AccumulateHistory)
-                    {
-                        accumulatedMessages.Add(outputMessage);
-                    }
-                    else
-                    {
-                        currentMessages = [outputMessage];
-                    }
-                }
+                PassOutputForward(stepResult, ref currentMessages, accumulatedMessages);
 
                 // 각 단계 완료 후 체크포인트 저장
                 await SaveCheckpointAsync(steps, currentMessages, cts.Token).ConfigureAwait(false);
@@ -112,13 +99,12 @@ public class SequentialOrchestrator : OrchestratorBase
             stopwatch.Stop();
 
             // 마지막 성공 응답을 최종 출력으로 사용
-            var lastSuccessStep = steps.LastOrDefault(s => s.IsSuccess);
-            var finalOutput = ExtractMessage(lastSuccessStep?.Response);
+            var finalOutput = ExtractMessage(steps.LastOrDefault(s => s.IsSuccess)?.Response);
 
             if (finalOutput == null)
             {
                 return OrchestrationResult.Failure(
-                    "No successful agent output",
+                    NoSuccessfulOutput,
                     steps,
                     stopwatch.Elapsed);
             }
@@ -136,7 +122,7 @@ public class SequentialOrchestrator : OrchestratorBase
         {
             stopwatch.Stop();
             return OrchestrationResult.Failure(
-                $"Orchestration timed out after {Options.Timeout.TotalSeconds}s",
+                OrchestrationTimedOut(),
                 steps,
                 stopwatch.Elapsed);
         }
@@ -171,15 +157,19 @@ public class SequentialOrchestrator : OrchestratorBase
         await producerTask.ConfigureAwait(false);
     }
 
+    // The same run as ExecuteAsync, step for step: each agent goes through the shared streaming step
+    // (ExecuteAgentStreamingStepAsync), a failure under StopOnAgentFailure ends the run as a failure,
+    // and an orchestration timeout ends it without recording the interrupted agent as a step.
     private async Task ProduceStreamingEventsAsync(
         ChannelWriter<OrchestrationStreamEvent> writer,
         IEnumerable<Message> messages,
         CancellationToken cancellationToken)
     {
+        var stopwatch = Stopwatch.StartNew();
+        var steps = new List<AgentStepResult>();
+
         try
         {
-            var stopwatch = Stopwatch.StartNew();
-            var steps = new List<AgentStepResult>();
             var currentMessages = messages.ToList();
             var accumulatedMessages = new List<Message>(currentMessages);
             var startIndex = 0;
@@ -187,271 +177,159 @@ public class SequentialOrchestrator : OrchestratorBase
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(Options.Timeout);
 
-            // 체크포인트에서 재개
-            var checkpoint = await LoadCheckpointAsync(cts.Token).ConfigureAwait(false);
-            if (checkpoint != null)
+            try
             {
-                steps.AddRange(checkpoint.CompletedSteps);
-                startIndex = checkpoint.CompletedStepCount;
-                currentMessages = checkpoint.CurrentMessages.ToList();
-                accumulatedMessages = new List<Message>(currentMessages);
-            }
-
-            await writer.WriteAsync(
-                new OrchestrationStreamEvent { EventType = OrchestrationEventType.Started },
-                cancellationToken).ConfigureAwait(false);
-
-            var timedOut = false;
-            var approvalDenied = false;
-
-            var agentList = Agents.ToList();
-            for (var i = startIndex; i < agentList.Count; i++)
-            {
-                var agent = agentList[i];
-
-                // 승인 체크
-                var previousStep = steps.LastOrDefault();
-                if (!await CheckApprovalAsync(agent, previousStep, cts.Token).ConfigureAwait(false))
+                // 체크포인트에서 재개
+                var checkpoint = await LoadCheckpointAsync(cts.Token).ConfigureAwait(false);
+                if (checkpoint != null)
                 {
-                    await SaveCheckpointAsync(steps, currentMessages, cts.Token).ConfigureAwait(false);
-                    approvalDenied = true;
+                    steps.AddRange(checkpoint.CompletedSteps);
+                    startIndex = checkpoint.CompletedStepCount;
+                    currentMessages = checkpoint.CurrentMessages.ToList();
+                    accumulatedMessages = new List<Message>(currentMessages);
+                }
+
+                await writer.WriteAsync(
+                    new OrchestrationStreamEvent { EventType = OrchestrationEventType.Started },
+                    cancellationToken).ConfigureAwait(false);
+
+                var agentList = Agents.ToList();
+                for (var i = startIndex; i < agentList.Count; i++)
+                {
+                    var agent = agentList[i];
+
+                    // 승인 체크
+                    if (!await CheckApprovalAsync(agent, steps.LastOrDefault(), cts.Token).ConfigureAwait(false))
+                    {
+                        await SaveCheckpointAsync(steps, currentMessages, cts.Token).ConfigureAwait(false);
+
+                        await writer.WriteAsync(new OrchestrationStreamEvent
+                        {
+                            EventType = OrchestrationEventType.ApprovalDenied,
+                            AgentName = agent.Name,
+                            Error = ApprovalDenied(agent)
+                        }, cancellationToken).ConfigureAwait(false);
+
+                        stopwatch.Stop();
+                        await WriteFailedAsync(writer, ApprovalDenied(agent), steps, stopwatch.Elapsed, cancellationToken)
+                            .ConfigureAwait(false);
+                        return;
+                    }
 
                     await writer.WriteAsync(new OrchestrationStreamEvent
                     {
-                        EventType = OrchestrationEventType.ApprovalDenied,
-                        AgentName = agent.Name,
-                        Error = $"Approval denied for agent '{agent.Name}'"
+                        EventType = OrchestrationEventType.AgentStarted,
+                        AgentName = agent.Name
                     }, cancellationToken).ConfigureAwait(false);
-                    break;
-                }
 
-                await writer.WriteAsync(new OrchestrationStreamEvent
-                {
-                    EventType = OrchestrationEventType.AgentStarted,
-                    AgentName = agent.Name
-                }, cancellationToken).ConfigureAwait(false);
-
-                var input = Options.AccumulateHistory ? accumulatedMessages : currentMessages;
-                var agentStopwatch = Stopwatch.StartNew();
-
-                var textBuilder = new StringBuilder();
-                StreamingMessageDoneResponse? doneResponse = null;
-
-                try
-                {
-                    using var agentCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
-                    agentCts.CancelAfter(Options.AgentTimeout);
-
-                    await foreach (var chunk in ExecuteAgentStreamingAsync(agent, input, agentCts.Token).ConfigureAwait(false))
-                    {
+                    var input = Options.AccumulateHistory ? accumulatedMessages : currentMessages;
+                    var stepResult = await ExecuteAgentStreamingStepAsync(
+                        agent,
+                        input,
                         // 실시간으로 MessageDelta 이벤트 발행
-                        await writer.WriteAsync(new OrchestrationStreamEvent
+                        chunk => writer.WriteAsync(new OrchestrationStreamEvent
                         {
                             EventType = OrchestrationEventType.MessageDelta,
                             AgentName = agent.Name,
                             StreamingResponse = chunk
+                        }, cancellationToken),
+                        cts.Token).ConfigureAwait(false);
+                    steps.Add(stepResult);
+
+                    if (!stepResult.IsSuccess)
+                    {
+                        await writer.WriteAsync(new OrchestrationStreamEvent
+                        {
+                            EventType = OrchestrationEventType.AgentFailed,
+                            AgentName = agent.Name,
+                            Error = stepResult.Error
                         }, cancellationToken).ConfigureAwait(false);
 
-                        // 텍스트 컨텐츠 수집 (다음 에이전트 입력용)
-                        switch (chunk)
+                        if (Options.StopOnAgentFailure)
                         {
-                            case StreamingContentDeltaResponse delta:
-                                if (delta.Delta is TextDeltaContent textDelta)
-                                {
-                                    textBuilder.Append(textDelta.Value);
-                                }
-                                break;
-                            case StreamingMessageDoneResponse done:
-                                doneResponse = done;
-                                break;
+                            await SaveCheckpointAsync(steps, currentMessages, cts.Token).ConfigureAwait(false);
+                            stopwatch.Stop();
+                            await WriteFailedAsync(writer, FailureOf(stepResult), steps, stopwatch.Elapsed, cancellationToken)
+                                .ConfigureAwait(false);
+                            return;
                         }
+                        continue;
                     }
-
-                    agentStopwatch.Stop();
-
-                    // 성공 시 AgentStepResult 구성
-                    var responseMessage = new Message { Role = MessageRole.Assistant,
-                        Content = [new TextMessageContent { Value = textBuilder.ToString() }]
-                    };
-
-                    var response = new MessageResponse
-                    {
-                        ResponseId = doneResponse?.ResponseId,
-                        DoneReason = doneResponse?.DoneReason,
-                        Message = responseMessage,
-                        TokenUsage = doneResponse?.TokenUsage,
-                        Model = doneResponse?.Model ?? string.Empty,
-                        Timestamp = doneResponse?.Timestamp ?? DateTime.UtcNow
-                    };
-
-                    var stepResult = new AgentStepResult
-                    {
-                        AgentName = agent.Name,
-                        Input = input.ToList(),
-                        Response = response,
-                        Duration = agentStopwatch.Elapsed,
-                        IsSuccess = true
-                    };
-                    steps.Add(stepResult);
 
                     await writer.WriteAsync(new OrchestrationStreamEvent
                     {
                         EventType = OrchestrationEventType.AgentCompleted,
                         AgentName = agent.Name,
-                        CompletedResponse = response
+                        CompletedResponse = stepResult.Response
                     }, cancellationToken).ConfigureAwait(false);
 
                     // 다음 에이전트를 위한 입력 준비
-                    if (Options.PassOutputAsInput)
-                    {
-                        if (Options.AccumulateHistory)
-                        {
-                            accumulatedMessages.Add(responseMessage);
-                        }
-                        else
-                        {
-                            currentMessages = [responseMessage];
-                        }
-                    }
+                    PassOutputForward(stepResult, ref currentMessages, accumulatedMessages);
 
                     // 각 단계 완료 후 체크포인트 저장
                     await SaveCheckpointAsync(steps, currentMessages, cts.Token).ConfigureAwait(false);
                 }
-                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && !cts.Token.IsCancellationRequested)
-                {
-                    // 개별 에이전트 타임아웃
-                    agentStopwatch.Stop();
-                    var errorMessage = $"Agent '{agent.Name}' timed out after {Options.AgentTimeout.TotalSeconds}s";
 
-                    steps.Add(new AgentStepResult
-                    {
-                        AgentName = agent.Name,
-                        Input = input.ToList(),
-                        Duration = agentStopwatch.Elapsed,
-                        IsSuccess = false,
-                        Error = errorMessage
-                    });
+                stopwatch.Stop();
 
-                    await writer.WriteAsync(new OrchestrationStreamEvent
-                    {
-                        EventType = OrchestrationEventType.AgentFailed,
-                        AgentName = agent.Name,
-                        Error = errorMessage
-                    }, cancellationToken).ConfigureAwait(false);
-
-                    if (Options.StopOnAgentFailure)
-                    {
-                        break;
-                    }
-                }
-                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-                {
-                    // 전체 오케스트레이션 타임아웃
-                    agentStopwatch.Stop();
-                    timedOut = true;
-
-                    steps.Add(new AgentStepResult
-                    {
-                        AgentName = agent.Name,
-                        Input = input.ToList(),
-                        Duration = agentStopwatch.Elapsed,
-                        IsSuccess = false,
-                        Error = $"Orchestration timed out after {Options.Timeout.TotalSeconds}s"
-                    });
-
-                    await writer.WriteAsync(new OrchestrationStreamEvent
-                    {
-                        EventType = OrchestrationEventType.AgentFailed,
-                        AgentName = agent.Name,
-                        Error = $"Orchestration timed out after {Options.Timeout.TotalSeconds}s"
-                    }, cancellationToken).ConfigureAwait(false);
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    agentStopwatch.Stop();
-                    var errorMessage = $"Agent '{agent.Name}' failed: {ex.Message}";
-
-                    steps.Add(new AgentStepResult
-                    {
-                        AgentName = agent.Name,
-                        Input = input.ToList(),
-                        Duration = agentStopwatch.Elapsed,
-                        IsSuccess = false,
-                        Error = errorMessage
-                    });
-
-                    await writer.WriteAsync(new OrchestrationStreamEvent
-                    {
-                        EventType = OrchestrationEventType.AgentFailed,
-                        AgentName = agent.Name,
-                        Error = errorMessage
-                    }, cancellationToken).ConfigureAwait(false);
-
-                    if (Options.StopOnAgentFailure)
-                    {
-                        break;
-                    }
-                }
-            }
-
-            stopwatch.Stop();
-
-            if (timedOut)
-            {
-                await writer.WriteAsync(new OrchestrationStreamEvent
-                {
-                    EventType = OrchestrationEventType.Failed,
-                    Error = $"Orchestration timed out after {Options.Timeout.TotalSeconds}s",
-                    Result = OrchestrationResult.Failure(
-                        $"Orchestration timed out after {Options.Timeout.TotalSeconds}s",
-                        steps,
-                        stopwatch.Elapsed)
-                }, cancellationToken).ConfigureAwait(false);
-            }
-            else if (approvalDenied)
-            {
-                await writer.WriteAsync(new OrchestrationStreamEvent
-                {
-                    EventType = OrchestrationEventType.Failed,
-                    Error = "Approval denied",
-                    Result = OrchestrationResult.Failure("Approval denied", steps, stopwatch.Elapsed)
-                }, cancellationToken).ConfigureAwait(false);
-            }
-            else
-            {
-                var lastSuccess = steps.LastOrDefault(s => s.IsSuccess);
-                var finalOutput = ExtractMessage(lastSuccess?.Response);
-
+                var finalOutput = ExtractMessage(steps.LastOrDefault(s => s.IsSuccess)?.Response);
                 if (finalOutput == null)
                 {
-                    await writer.WriteAsync(new OrchestrationStreamEvent
-                    {
-                        EventType = OrchestrationEventType.Failed,
-                        Error = "No successful agent output",
-                        Result = OrchestrationResult.Failure("No successful agent output", steps, stopwatch.Elapsed)
-                    }, cancellationToken).ConfigureAwait(false);
+                    await WriteFailedAsync(writer, NoSuccessfulOutput, steps, stopwatch.Elapsed, cancellationToken)
+                        .ConfigureAwait(false);
+                    return;
                 }
-                else
-                {
-                    // 완료 시 체크포인트 삭제
-                    await DeleteCheckpointAsync(cancellationToken).ConfigureAwait(false);
 
-                    await writer.WriteAsync(new OrchestrationStreamEvent
-                    {
-                        EventType = OrchestrationEventType.Completed,
-                        Result = OrchestrationResult.Success(
-                            finalOutput,
-                            steps,
-                            stopwatch.Elapsed,
-                            AggregateTokenUsage(steps))
-                    }, cancellationToken).ConfigureAwait(false);
-                }
+                // 완료 시 체크포인트 삭제
+                await DeleteCheckpointAsync(cancellationToken).ConfigureAwait(false);
+
+                await writer.WriteAsync(new OrchestrationStreamEvent
+                {
+                    EventType = OrchestrationEventType.Completed,
+                    Result = OrchestrationResult.Success(
+                        finalOutput,
+                        steps,
+                        stopwatch.Elapsed,
+                        AggregateTokenUsage(steps))
+                }, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                // 전체 오케스트레이션 타임아웃
+                stopwatch.Stop();
+                await WriteFailedAsync(writer, OrchestrationTimedOut(), steps, stopwatch.Elapsed, cancellationToken)
+                    .ConfigureAwait(false);
             }
         }
         finally
         {
             writer.Complete();
+        }
+    }
+
+    private const string NoSuccessfulOutput = "No successful agent output";
+
+    private static string ApprovalDenied(IAgent agent) => $"Approval denied for agent '{agent.Name}'";
+
+    private static string FailureOf(AgentStepResult step) => step.Error ?? $"Agent '{step.AgentName}' failed";
+
+    private string OrchestrationTimedOut() => $"Orchestration timed out after {Options.Timeout.TotalSeconds}s";
+
+    private void PassOutputForward(AgentStepResult step, ref List<Message> currentMessages, List<Message> accumulatedMessages)
+    {
+        var outputMessage = ExtractMessage(step.Response);
+        if (outputMessage == null || !Options.PassOutputAsInput)
+        {
+            return;
+        }
+
+        if (Options.AccumulateHistory)
+        {
+            accumulatedMessages.Add(outputMessage);
+        }
+        else
+        {
+            currentMessages = [outputMessage];
         }
     }
 }
