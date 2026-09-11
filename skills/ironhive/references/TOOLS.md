@@ -217,6 +217,18 @@ var request = new MessageRequest
 whitespace normalization, truncation) for shrinking large tool outputs — not bound to
 `ToolOutput`, so it can be called from anywhere, `OnAfterInvoke` being the typical spot.
 
+`OnAfterInvoke` sees one result and runs in parallel, so it cannot bound the **total** that
+builds up across tool rounds. For that, register the message middleware
+`IronHive.Core.Services.ToolResultBudgetMiddleware`:
+
+```csharp
+builder.AddMessageMiddleware(new ToolResultBudgetMiddleware(maxTotalChars: 12_000));
+```
+
+Before every turn it shares the budget out over this call's tool results in call order — a
+result longer than what is left is cut, one with nothing left becomes `ExhaustedNotice` — and
+once the budget is spent it requests `ToolChoice.None`. Text only; buffered and streaming.
+
 ## Approval Handler
 
 Tools with `RequiresApproval = true` pause execution for human confirmation:

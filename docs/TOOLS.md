@@ -288,6 +288,28 @@ public class ToolOptions
 
 ---
 
+## 도구 결과 합계 예산 — ToolResultBudgetMiddleware
+
+`OnAfterInvoke`는 결과 **하나**를 다룹니다. 결과마다 상한을 지켜도 도구를 여러 라운드 부르면 결과가
+대화에 쌓여, 문맥 창이 작은 모델(로컬 추론 서버의 슬롯 등)에서는 합계가 넘칩니다. `OnAfterInvoke`는
+병렬로 호출되므로 호출 사이에 카운터를 둘 수도 없습니다.
+
+합계는 메시지 미들웨어로 제한합니다:
+
+```csharp
+builder.AddMessageMiddleware(new ToolResultBudgetMiddleware(maxTotalChars: 12_000));
+```
+
+- 매 턴 제너레이터를 부르기 직전에, 이번 호출에서 실행된 도구 결과를 **호출 순서대로** 훑어 예산을
+  배분합니다. 예산보다 긴 결과는 남은 만큼으로 잘리고, 남은 예산이 없는 결과는 `ExhaustedNotice`
+  문구로 바뀝니다.
+- 예산이 소진된 턴부터는 `ToolChoice.None`으로 요청해 모델이 받은 결과로 답하게 합니다.
+- 텍스트만 셉니다(이미지 등은 그대로 보냅니다). 대체 문구는 예산에 포함되지 않습니다.
+- 결과별 압축(`TextCompactor`)과 함께 쓸 수 있습니다 — 압축이 먼저, 예산이 그 다음입니다.
+- 버퍼드·스트리밍 호출 모두에 적용됩니다.
+
+---
+
 ## 관련 문서
 
 - [PLUGINS.md](PLUGINS.md) — MCP, OpenAPI 플러그인

@@ -27,6 +27,7 @@
 - **플러그인** — MCP (HTTP/Stdio/OAuth), OpenAPI 자동 도구 생성
 - **M.E.AI 호환** — `ChatClientAdapter` / `EmbeddingGeneratorAdapter` / `AIToolAdapter`(임의의 `AITool`을 `ITool`로 래핑·실행 — MCP `McpClientTool` 등)
 - **워크플로우** — 코드 기반 타입 안전 워크플로우 엔진
+- **도구 결과 합계 예산** — `ToolResultBudgetMiddleware`가 한 호출의 도구 루프 전체에서 모델에 보내는 결과 텍스트 합계를 제한(작은 문맥 창 대응, [docs/TOOLS.md](docs/TOOLS.md))
 - **도메인 예외** — 컨텍스트 윈도우 초과 시 프로바이더별 오류를 `ContextOverflowException`(`ContextWindow` 포함)으로 정규화 — 문자열 파싱 없이 `catch`로 압축·복구 로직 작성 가능
 
 ## 왜 IronHive인가

@@ -460,15 +460,18 @@ public class MessageService : IMessageService
             tasks.Add(task);
         }
 
+        // 도구 실패를 채널 완료에 실어 읽는 쪽에서 다시 던진다. 예외 없이 Complete()하면 실패가 관찰되지 않은 채
+        // 사라지고, 결과가 빈 도구로 루프가 계속된다 — 같은 실패에 버퍼드 경로는 던진다.
         _ = Task.Run(async () =>
         {
             try
             {
                 await Task.WhenAll(tasks).ConfigureAwait(false);
-            }
-            finally
-            {
                 channel.Writer.Complete();
+            }
+            catch (Exception ex)
+            {
+                channel.Writer.Complete(ex);
             }
         }, CancellationToken.None);
 

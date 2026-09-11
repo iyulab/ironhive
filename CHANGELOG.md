@@ -29,9 +29,21 @@ changes are expected and used freely for structural correctness (see
     separately; `CacheCount` and `MaxCacheSize` count both.
 
   A middleware of your own still needs `IStreamingAgentMiddleware` to run on streaming calls.
+- `ToolResultBudgetMiddleware` (`IronHive.Core.Services`) bounds the total tool-result text one
+  `IMessageService` call sends to the model. A per-result cap (`ToolOptions.OnAfterInvoke` with
+  `TextCompactor`) cannot stop results from adding up across rounds, and `OnAfterInvoke` runs in
+  parallel, so it cannot keep a running total either. Registered with `AddMessageMiddleware`, the
+  middleware shares the budget out in call order before every turn: a result longer than what is left
+  is cut to fit, a result with nothing left is replaced by a notice, and from the turn the budget runs
+  out the request asks for `ToolChoice.None` so the model answers with what it has. Text is counted;
+  other content is sent as is. Applies to buffered and streaming calls.
 
 ### Fixed
 
+- A streaming `IMessageService` call no longer swallows a tool that throws. The streaming tool loop
+  completed its progress channel without the tools' exception, so the failure went unobserved, the
+  tool was left without a result, and the loop carried on; the buffered call fails with the same
+  `InvalidOperationException` it always did, and the streaming call now does too.
 - The `IChatClient` bridge (`ChatClientAdapter`) no longer flattens every tool result to a string. A
   `FunctionResultContent` whose result is `AIContent` or a list of it now keeps its structure —
   text as text, `image/*` data as an image block — so providers that carry image tool results

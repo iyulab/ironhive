@@ -248,6 +248,35 @@ public class MessageServiceStreamingEquivalenceTests
         => $"system={request.System} | "
            + string.Join(" / ", request.Messages.Select(m => $"{m.Role}:[{string.Join(",", Fingerprint(m))}]"));
 
+    // The streaming half ran its tools on background tasks and completed the progress channel
+    // without their exception, so a tool that threw left an empty result and the loop went on --
+    // where the buffered half fails the call. Found by a middleware test whose tool fixture threw.
+    [Fact]
+    public async Task ToolThatThrows_FailsTheCallOnBothHalves()
+    {
+        Turn[] turns =
+        [
+            new("r1", MessageDoneReason.ToolCall, 10, 4, [new Part.Tool("call-1", "throws", "{}")]),
+            new("r2", MessageDoneReason.EndTurn, 5, 1, [new Part.Text("done")]),
+        ];
+
+        MessageRequest Request() => new()
+        {
+            Provider = Provider,
+            Model = Model,
+            Messages = [Message.User("run it")],
+            Tools = new ToolCollection([new ThrowingTool()]),
+        };
+
+        var buffered = async () => await RunBufferedAsync(turns, Request());
+        var streamed = async () => await RunStreamingAsync(turns, Request());
+
+        (await buffered.Should().ThrowAsync<InvalidOperationException>())
+            .WithInnerException<InvalidOperationException>().WithMessage(ThrowingTool.Message);
+        (await streamed.Should().ThrowAsync<InvalidOperationException>())
+            .WithInnerException<InvalidOperationException>().WithMessage(ThrowingTool.Message);
+    }
+
     // ---- runs ----
 
     private sealed record BufferedRun(MessageResponse Result, ScriptedGenerator Generator);
@@ -453,6 +482,22 @@ public class MessageServiceStreamingEquivalenceTests
 
         public Task<ToolOutput> InvokeAsync(ToolInput input, CancellationToken cancellationToken = default)
             => Task.FromResult(ToolOutput.Success("echoed"));
+    }
+
+    private sealed class ThrowingTool : ITool
+    {
+        public const string Message = "tool failed";
+
+        public string UniqueName => "throws";
+
+        public string? Description => null;
+
+        public object? Parameters => null;
+
+        public bool RequiresApproval => false;
+
+        public Task<ToolOutput> InvokeAsync(ToolInput input, CancellationToken cancellationToken = default)
+            => throw new InvalidOperationException(Message);
     }
 
     private sealed class CountingMiddleware : IMessageMiddleware
