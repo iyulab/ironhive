@@ -70,8 +70,14 @@ public class MessageServiceProviderResolutionTests
     public async Task GenerateStreamingMessageAsync_EmptyProvider_SingleGenerator_AutoSelects()
     {
         var generator = Substitute.For<IMessageGenerator>();
+        // A generation ends with a done frame. An empty stream is not one: it used to pass only because
+        // the tool loop read the missing done reason as "continue" and quietly called the generator
+        // MaxTurns times; it now throws (see MessageServiceStreamingEquivalenceTests).
         generator.GenerateStreamingMessageAsync(Arg.Any<MessageGenerationRequest>(), Arg.Any<CancellationToken>())
-            .Returns(AsyncEnumerable.Empty<StreamingMessageResponse>());
+            .Returns(new StreamingMessageResponse[]
+            {
+                new StreamingMessageDoneResponse { DoneReason = MessageDoneReason.EndTurn },
+            }.ToAsyncEnumerable());
 
         var generators = new Dictionary<string, IMessageGenerator> { ["openai"] = generator };
         var svc = new MessageService(generators);

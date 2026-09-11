@@ -32,6 +32,7 @@ public class MessageService : IMessageService
         var generator = _generators.GetOrFirstValue(request.Provider);
         var pipeline = BuildPipeline(generator, _middlewares, cancellationToken);
         var context = new MessageContext(request, req => ConfigureGeneration(request, req));
+        var collector = request.Suggestions != null ? new SuggestionCollector() : null;
 
         for (var turn = 0; turn < context.MaxTurns; turn++)
         {
@@ -49,23 +50,17 @@ public class MessageService : IMessageService
             context.CurrentMessage ??= new Message { Role = MessageRole.Assistant };
             foreach (var content in res.Message?.Content ?? [])
             {
+                // 이번 턴에 생성된 텍스트만, 도착한 턴에서 수집기에 넣는다 — 스트리밍 경로와 같은 자리다.
+                // 루프가 끝난 뒤 메시지 전체를 훑으면 재개 시 이어받은 이전 호출의 텍스트까지 다시 파싱해
+                // 그 제안을 이번 응답에 싣고 호출자의 입력을 고치며, 도구 루프의 다음 턴에는 태그가 남은
+                // 원문이 히스토리로 나간다.
+                if (collector != null && content is TextMessageContent tc)
+                    tc.Value = collector.Feed(tc.Value);
                 context.CurrentMessage.Content.Add(content);
             }
 
             if (!context.ShouldContinue())
                 break;
-        }
-
-        List<Suggestion>? suggestions = null;
-        if (request.Suggestions != null && context.CurrentMessage != null)
-        {
-            var collector = new SuggestionCollector();
-            foreach (var content in context.CurrentMessage.Content)
-            {
-                if (content is TextMessageContent tc)
-                    tc.Value = collector.Feed(tc.Value);
-            }
-            suggestions = collector.Drain();
         }
 
         return new MessageResponse
@@ -77,7 +72,7 @@ public class MessageService : IMessageService
             Model = request.Model,
             Duration = context.Elapsed,
             Timestamp = DateTime.UtcNow,
-            Suggestions = suggestions,
+            Suggestions = collector?.Drain(),
             Items = context.Items,
         };
     }
@@ -108,6 +103,7 @@ public class MessageService : IMessageService
             // 이번 턴의 상대 인덱스를 절대 인덱스로 바꾸기 위한 기준값. 턴 도중에는 CurrentMessage가 바뀌지 않으므로 한 번만 계산합니다.
             var baseIndex = context.CurrentMessage?.Content.Count ?? 0;
             var stack = new List<MessageContent>();
+            var turnDone = false;
 
             await foreach (var res in pipeline(context).ConfigureAwait(false))
             {
@@ -124,7 +120,11 @@ public class MessageService : IMessageService
                 }
                 else if (res is StreamingMessageErrorResponse mer)
                 {
+                    // 오류 프레임은 생성의 끝이다. 종료 사유 없이 턴을 넘기면 루프가 그것을 「계속」으로 읽어
+                    // 같은 요청을 MaxTurns 번까지 다시 보낸다. 프레임을 읽는 소비자를 위해 먼저 내보내고,
+                    // 버퍼드 경로(제너레이터가 던진다)와 같이 예외로 끝낸다.
                     yield return mer;
+                    throw new InvalidOperationException($"Streaming error: {mer.Code} - {mer.Message}");
                 }
                 else if (res is StreamingContentAddedResponse car)
                 {
@@ -197,6 +197,7 @@ public class MessageService : IMessageService
                 }
                 else if (res is StreamingMessageDoneResponse mdr)
                 {
+                    turnDone = true;
                     context.TurnReason = mdr.DoneReason;
                     context.TokenUsage = mdr.TokenUsage;
                     context.TrackedId = mdr.ResponseId;
@@ -208,6 +209,10 @@ public class MessageService : IMessageService
                     yield return res;
                 }
             }
+
+            // done 프레임 없이 끝난 턴도 같은 뿌리다 — 종료 사유가 없으면 루프는 그것을 「계속」으로 읽는다.
+            if (!turnDone)
+                throw new InvalidOperationException("The message generator ended the stream without a done frame.");
 
             context.CurrentMessage ??= new Message { Role = MessageRole.Assistant };
             foreach (var content in stack)

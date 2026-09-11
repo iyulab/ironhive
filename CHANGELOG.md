@@ -16,8 +16,21 @@ changes are expected and used freely for structural correctness (see
   timeout was never reported as one, and a caller cancelling a run got a failed result back instead
   of the exception. An orchestration timeout now returns `Orchestration timed out after <n>s` from
   every orchestrator, and cancelling the token you passed throws `OperationCanceledException`.
+- `MessageService.GenerateStreamingMessageAsync` now ends the call when a turn fails. A provider error
+  frame (`StreamingMessageErrorResponse`) is still yielded, and is then followed by an
+  `InvalidOperationException` — the same outcome as `GenerateMessageAsync`, whose generator throws.
+  Before, a turn that ended with an error frame had no done reason, which the tool loop read as
+  "continue": it sent the same request again, up to `MaxTurns` (50 by default), and then finished
+  with a done frame as if the call had completed. A generator stream that ends without a done frame
+  now throws for the same reason.
 
 ### Fixed
+
+- `MessageService.GenerateMessageAsync` with `Suggestions` now extracts suggestion blocks from each
+  turn as it arrives, as the streaming call does. It used to scan the whole message after the tool
+  loop, which re-parsed text carried in from an earlier call when resuming — returning that call's
+  suggestions again and editing the caller's input message — and sent the next turn of a tool loop
+  the unstripped block as history.
 
 - `SequentialOrchestrator` and `GraphOrchestrator` now report the same `OrchestrationResult` from
   `ExecuteStreamingAsync` as from `ExecuteAsync`. The streaming halves rebuilt each step on their

@@ -20,8 +20,8 @@ namespace IronHive.Tests.Conventions;
 // equivalence is per-operation and belongs in that operation's own tests.
 public class StreamingPairRosterTests
 {
-    private const string StreamingSuffix = "StreamingAsync";
-    private const string BufferedSuffix = "Async";
+    private const string StreamingToken = "Streaming";
+    private const string AsyncSuffix = "Async";
 
     // Every pair below has, or must gain, a test asserting that the two halves produce the
     // same logical result. Adding a row here without that test defeats the point.
@@ -30,7 +30,9 @@ public class StreamingPairRosterTests
         "IAgent.Invoke",
         "IAgentMiddleware+IStreamingAgentMiddleware.Invoke",
         "IAgentOrchestrator.Execute",
+        "IMessageGenerator.GenerateMessage",
         "IMessageMiddleware.Generate",
+        "IMessageService.GenerateMessage",
     ];
 
     [Fact]
@@ -63,13 +65,23 @@ public class StreamingPairRosterTests
                 .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
                 .Select(m => m.Name))
             {
-                if (name.EndsWith(StreamingSuffix, StringComparison.Ordinal))
+                if (!name.EndsWith(AsyncSuffix, StringComparison.Ordinal))
                 {
-                    Add(streaming, name[..^StreamingSuffix.Length], type);
+                    continue;
                 }
-                else if (name.EndsWith(BufferedSuffix, StringComparison.Ordinal))
+
+                // "Streaming" is not always a suffix: GenerateStreamingMessageAsync pairs with
+                // GenerateMessageAsync. Matching only a trailing "StreamingAsync" missed both
+                // message pairs -- the service that runs the tool loop and the generator every
+                // provider implements -- while the roster reported four pairs as the whole set.
+                if (name.Contains(StreamingToken, StringComparison.Ordinal))
                 {
-                    Add(buffered, name[..^BufferedSuffix.Length], type);
+                    var stem = name.Replace(StreamingToken, string.Empty, StringComparison.Ordinal);
+                    Add(streaming, stem[..^AsyncSuffix.Length], type);
+                }
+                else
+                {
+                    Add(buffered, name[..^AsyncSuffix.Length], type);
                 }
             }
         }
