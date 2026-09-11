@@ -196,6 +196,13 @@ var embedder = hive.Embeddings.Generators.GetOrFirstValue("openai")
 var tool = new AIToolAdapter(mcpClientTool);
 ```
 
+`IChatClient` 브리지는 M.E.AI의 도구 결과(`FunctionResultContent`)를 구조를 유지한 채 `ToolOutput`으로 옮긴다 —
+결과가 `AIContent`(또는 그 목록)이면 텍스트는 텍스트, 이미지(`DataContent` `image/*`)는 이미지 블록이 되어 이미지 도구 결과를
+네이티브로 싣는 provider(Anthropic · GoogleAI)까지 그대로 닿는다. 옮길 수 없는 블록은 버리지 않고 무엇이 반환됐는지 텍스트로
+알린다. 결과에 예외가 기록돼 있으면 실패(`IsSuccess=false`)로 표시해 오류 플래그를 가진 provider가 그것을 싣는다 — 모델에게 보일
+문구는 invoker가 정한 `Result`이며, 오류 상세를 노출할지는 invoker 설정이 정한다. 그 밖의 값은 이전처럼 문자열 형태로 간다.
+Chat Completions 계열 wire는 도구 메시지에 이미지 자리가 없어 텍스트로 평탄화된다.
+
 ---
 
 ## 관측성 (Observability)

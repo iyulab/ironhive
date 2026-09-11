@@ -812,6 +812,101 @@ public class ChatClientAdapterTests : IDisposable
             .Which.Value.Should().Be("22\u00b0C, sunny");
     }
 
+    // Docket iyulab/ironhive#252: the bridge used to flatten every FunctionResultContent to
+    // Result?.ToString(), so an image a tool returned reached no provider \u2014 not even the ones that
+    // carry image tool results natively. And it reported every result as a success.
+
+    [Fact]
+    public async Task GetResponseAsync_ImageToolResult_ReachesToolOutputAsImage()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+        var imageBytes = new byte[] { 9, 8, 7, 6 };
+        var messages = ToolRoundTrip(new FunctionResultContent("call-1", new DataContent(imageBytes, "image/png")));
+
+        await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
+
+        var output = SingleToolOutput(capturedRequest());
+        output.IsSuccess.Should().BeTrue();
+        var image = output.Content.Should().ContainSingle().Which.Should().BeOfType<ImageMessageContent>().Subject;
+        image.Format.Should().Be(ImageFormat.Png);
+        image.Base64.Should().Be(Convert.ToBase64String(imageBytes));
+    }
+
+    [Fact]
+    public async Task GetResponseAsync_ContentListToolResult_KeepsEveryBlockInOrder()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+        var result = new List<AIContent>
+        {
+            new TextContent("front page"),
+            new DataContent(new byte[] { 1 }, "image/jpeg")
+        };
+        var messages = ToolRoundTrip(new FunctionResultContent("call-1", result));
+
+        await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
+
+        var content = SingleToolOutput(capturedRequest()).Content;
+        content.Should().HaveCount(2);
+        content[0].Should().BeOfType<TextMessageContent>().Which.Value.Should().Be("front page");
+        content[1].Should().BeOfType<ImageMessageContent>().Which.Format.Should().Be(ImageFormat.Jpeg);
+    }
+
+    [Fact]
+    public async Task GetResponseAsync_ToolResultWithException_IsReportedAsFailure()
+    {
+        // FunctionInvokingChatClient puts the text it chose to show the model in Result and the
+        // exception beside it; the providers that carry an error flag (Anthropic is_error, GoogleAI
+        // success) need IsSuccess=false to set it.
+        var capturedRequest = SetupGeneratorReturns();
+        var messages = ToolRoundTrip(new FunctionResultContent("call-1", "Error: Function failed.")
+        {
+            Exception = new InvalidOperationException("disk full")
+        });
+
+        await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
+
+        var output = SingleToolOutput(capturedRequest());
+        output.IsSuccess.Should().BeFalse();
+        output.Content.Should().ContainSingle().Which.Should().BeOfType<TextMessageContent>()
+            .Which.Value.Should().Be("Error: Function failed.");
+    }
+
+    [Fact]
+    public async Task GetResponseAsync_UnrepresentableToolResultContent_IsNamedNotDropped()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+        var messages = ToolRoundTrip(new FunctionResultContent("call-1", new DataContent(new byte[] { 1 }, "application/pdf")));
+
+        await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
+
+        SingleToolOutput(capturedRequest()).Content.Should().ContainSingle()
+            .Which.Should().BeOfType<TextMessageContent>()
+            .Which.Value.Should().Contain("application/pdf",
+                "a block the bridge cannot carry must still tell the model something was returned");
+    }
+
+    [Fact]
+    public async Task GetResponseAsync_NonContentToolResult_KeepsItsTextForm()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+        var messages = ToolRoundTrip(new FunctionResultContent("call-1", 42));
+
+        await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
+
+        SingleToolOutput(capturedRequest()).Content.Should().ContainSingle()
+            .Which.Should().BeOfType<TextMessageContent>().Which.Value.Should().Be("42");
+    }
+
+    private static List<ChatMessage> ToolRoundTrip(FunctionResultContent result) =>
+    [
+        new(ChatRole.Assistant, [new FunctionCallContent(result.CallId, "read_image")]),
+        new(ChatRole.Tool, [result])
+    ];
+
+    private static ToolOutput SingleToolOutput(MessageGenerationRequest request) =>
+        request.Messages.Should().ContainSingle().Which.Should().BeOfType<Message>().Subject
+            .Content.OfType<ToolMessageContent>().Single().Output!;
+
     [Fact]
     public async Task GetResponseAsync_NullModelInResponse_FallsBackToConfiguredModel()
     {

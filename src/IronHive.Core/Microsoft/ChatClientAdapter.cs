@@ -168,14 +168,14 @@ public class ChatClientAdapter : IChatClient
         };
 
         // Collect tool results keyed by callId for merging into assistant messages
-        var toolResults = new Dictionary<string, string>();
+        var toolResults = new Dictionary<string, ToolOutput>();
         foreach (var msg in chatMessages)
         {
             foreach (var content in msg.Contents)
             {
                 if (content is FunctionResultContent result && result.CallId is not null)
                 {
-                    toolResults[result.CallId] = result.Result?.ToString() ?? string.Empty;
+                    toolResults[result.CallId] = ToToolOutput(result);
                 }
             }
         }
@@ -234,7 +234,7 @@ public class ChatClientAdapter : IChatClient
         _ => ToolChoice.Auto
     };
 
-    private static Message? ConvertMessage(ChatMessage message, Dictionary<string, string> toolResults)
+    private static Message? ConvertMessage(ChatMessage message, Dictionary<string, ToolOutput> toolResults)
     {
         if (message.Role == ChatRole.User)
         {
@@ -308,7 +308,7 @@ public class ChatClientAdapter : IChatClient
 
                         if (toolResults.TryGetValue(callId, out var result))
                         {
-                            toolMsg.Output = ToolOutput.Success(result);
+                            toolMsg.Output = result;
                         }
 
                         Message.Content.Add(toolMsg);
@@ -423,6 +423,62 @@ public class ChatClientAdapter : IChatClient
             MessageDoneReason.ContentFilter => ChatFinishReason.ContentFilter,
             _ => null
         };
+    }
+
+    /// <summary>
+    /// Translates a M.E.AI tool result into IronHive's structured tool output. Content the tool
+    /// returned as <see cref="AIContent"/> keeps its structure — text as text, images as images — so
+    /// a provider that carries image tool results natively receives the image; any other value keeps
+    /// its text form, as before. An exception recorded on the result marks the output a failure,
+    /// which is what lets providers with an error flag set it. The text shown for a failure is the
+    /// <see cref="FunctionResultContent.Result"/> the invoker chose, not the exception's message:
+    /// whether error details reach the model is the invoker's setting, not this bridge's.
+    /// </summary>
+    internal static ToolOutput ToToolOutput(FunctionResultContent result)
+    {
+        if (result.Exception is not null)
+        {
+            return ToolOutput.Failure(result.Result?.ToString() ?? string.Empty);
+        }
+
+        return result.Result switch
+        {
+            AIContent single => ToolOutput.Success(ToToolResultContent([single])),
+            IEnumerable<AIContent> many => ToolOutput.Success(ToToolResultContent(many)),
+            var other => ToolOutput.Success(other?.ToString() ?? string.Empty)
+        };
+    }
+
+    private static List<MessageContent> ToToolResultContent(IEnumerable<AIContent> contents)
+    {
+        var converted = new List<MessageContent>();
+        foreach (var content in contents)
+        {
+            switch (content)
+            {
+                case TextContent text:
+                    converted.Add(new TextMessageContent { Value = text.Text ?? string.Empty });
+                    break;
+
+                case DataContent data when data.MediaType?.StartsWith("image/", StringComparison.Ordinal) == true:
+                    converted.Add(new ImageMessageContent
+                    {
+                        Format = GetImageFormat(data.MediaType),
+                        Base64 = Convert.ToBase64String(data.Data.ToArray())
+                    });
+                    break;
+
+                default:
+                    // A block this bridge cannot carry is named rather than dropped: a tool that
+                    // returned something and a tool that returned nothing must not look the same
+                    // to the model.
+                    var kind = content is DataContent other ? other.MediaType : content.GetType().Name;
+                    converted.Add(new TextMessageContent { Value = $"[tool returned {kind} content, which cannot be forwarded]" });
+                    break;
+            }
+        }
+
+        return converted;
     }
 
     private static ImageFormat GetImageFormat(string? mediaType)
