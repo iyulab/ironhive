@@ -277,6 +277,113 @@ public class MessageServiceStreamingEquivalenceTests
             .WithInnerException<InvalidOperationException>().WithMessage(ThrowingTool.Message);
     }
 
+    // The same hook, one step later: OnAfterInvoke runs inside the tool task, so its exception took
+    // the same unobserved path as a tool's.
+    [Fact]
+    public async Task HookThatThrows_FailsTheCallOnBothHalves()
+    {
+        Turn[] turns =
+        [
+            new("r1", MessageDoneReason.ToolCall, 10, 4, [new Part.Tool("call-1", "echo", "{}")]),
+            new("r2", MessageDoneReason.EndTurn, 5, 1, [new Part.Text("done")]),
+        ];
+
+        MessageRequest Request() => new()
+        {
+            Provider = Provider,
+            Model = Model,
+            Messages = [Message.User("run it")],
+            Tools = new ToolCollection([new EchoTool()]),
+            ToolOptions = new ToolOptions { OnAfterInvoke = (_, _) => throw new InvalidOperationException(ThrowingTool.Message) },
+        };
+
+        var buffered = async () => await RunBufferedAsync(turns, Request());
+        var streamed = async () => await RunStreamingAsync(turns, Request());
+
+        (await buffered.Should().ThrowAsync<InvalidOperationException>())
+            .WithInnerException<InvalidOperationException>().WithMessage(ThrowingTool.Message);
+        (await streamed.Should().ThrowAsync<InvalidOperationException>())
+            .WithInnerException<InvalidOperationException>().WithMessage(ThrowingTool.Message);
+    }
+
+    // Every tool outcome other than success is written into the history the next turn sends: a failure
+    // the tool reports, a timeout, a name the collection does not have, and a result a hook supplies
+    // without running anything. Until these, every tool this suite ran succeeded.
+    [Fact]
+    public async Task ToolsThatDoNotSucceed_BothHalvesCarryTheSameResult()
+    {
+        Turn[] turns =
+        [
+            new("r1", MessageDoneReason.ToolCall, 10, 4,
+            [
+                new Part.Tool("call-1", "fails", "{}"),
+                new Part.Tool("call-2", "slow", "{}"),
+                new Part.Tool("call-3", "missing", "{}"),
+                new Part.Tool("call-4", "mocked", "{}"),
+            ]),
+            new("r2", MessageDoneReason.EndTurn, 30, 2, [new Part.Text("done")]),
+        ];
+
+        MessageRequest Request() => new()
+        {
+            Provider = Provider,
+            Model = Model,
+            Messages = [Message.User("run them")],
+            Tools = new ToolCollection([new FailingTool(), new SlowTool()]),
+            ToolOptions = new ToolOptions
+            {
+                Timeout = TimeSpan.FromMilliseconds(50),
+                OnBeforeInvoke = (tool, _) =>
+                {
+                    if (tool.Name == "mocked")
+                        tool.Output = ToolOutput.Success("from the hook");
+                    return Task.CompletedTask;
+                },
+            },
+        };
+
+        var buffered = await RunBufferedAsync(turns, Request());
+        var streamed = await RunStreamingAsync(turns, Request());
+
+        buffered.Result.Message!.Content.OfType<ToolMessageContent>().Select(t => OutputOf(t.Output)).Should().SatisfyRespectively(
+            o => o.Should().Be($"False:{FailingTool.Error}", "the fixture must include a tool that reports failure"),
+            o => o.Should().StartWith("False:").And.Contain("timed out", "the fixture must include a tool that times out"),
+            o => o.Should().StartWith("False:").And.Contain("Could not find tool", "the fixture must include a name the collection lacks"),
+            o => o.Should().Be("True:from the hook", "the fixture must include a result the hook supplies"));
+
+        AssertSameResult(buffered, streamed);
+    }
+
+    // A tool the provider marks unapproved pauses the loop for the caller: the call ends on that turn,
+    // and nothing runs -- not even the approved call beside it -- until the caller resumes.
+    [Fact]
+    public async Task ToolAwaitingApproval_EndsTheCallTheSameWayOnBothHalves()
+    {
+        Turn[] turns =
+        [
+            new("r1", MessageDoneReason.ToolCall, 10, 4,
+                [new Part.Tool("call-1", "echo", "{}"), new Part.Tool("call-2", "echo", "{}", Approved: false)]),
+            new("r2", MessageDoneReason.EndTurn, 5, 1, [new Part.Text("must not be reached")]),
+        ];
+
+        MessageRequest Request() => new()
+        {
+            Provider = Provider,
+            Model = Model,
+            Messages = [Message.User("run it")],
+            Tools = new ToolCollection([new EchoTool()]),
+        };
+
+        var buffered = await RunBufferedAsync(turns, Request());
+        var streamed = await RunStreamingAsync(turns, Request());
+
+        buffered.Generator.Calls.Should().Be(1, "the fixture must stop on the turn that asked for approval");
+        buffered.Result.Message!.Content.OfType<ToolMessageContent>()
+            .Should().HaveCount(2).And.OnlyContain(t => t.Output == null, "no tool runs while one awaits approval");
+
+        AssertSameResult(buffered, streamed);
+    }
+
     // ---- runs ----
 
     private sealed record BufferedRun(MessageResponse Result, ScriptedGenerator Generator);
@@ -312,7 +419,7 @@ public class MessageServiceStreamingEquivalenceTests
 
         public sealed record Thinking(string Value) : Part;
 
-        public sealed record Tool(string Id, string Name, string Input) : Part;
+        public sealed record Tool(string Id, string Name, string Input, bool Approved = true) : Part;
     }
 
     private sealed record Turn(string ResponseId, MessageDoneReason Reason, int InputTokens, int OutputTokens, Part[] Parts);
@@ -364,7 +471,7 @@ public class MessageServiceStreamingEquivalenceTests
                         yield return new StreamingContentAddedResponse
                         {
                             Index = i,
-                            Content = new ToolMessageContent { Id = tool.Id, Name = tool.Name, Input = string.Empty, IsApproved = true },
+                            Content = new ToolMessageContent { Id = tool.Id, Name = tool.Name, Input = string.Empty, IsApproved = tool.Approved },
                         };
                         yield return new StreamingContentDeltaResponse { Index = i, Delta = new ToolDeltaContent { Input = tool.Input } };
                         break;
@@ -401,7 +508,7 @@ public class MessageServiceStreamingEquivalenceTests
         {
             Part.Text text => new TextMessageContent { Value = text.Value },
             Part.Thinking thinking => new ThinkingMessageContent { Value = thinking.Value },
-            Part.Tool tool => new ToolMessageContent { Id = tool.Id, Name = tool.Name, Input = tool.Input, IsApproved = true },
+            Part.Tool tool => new ToolMessageContent { Id = tool.Id, Name = tool.Name, Input = tool.Input, IsApproved = tool.Approved },
             _ => throw new ArgumentOutOfRangeException(nameof(part)),
         };
 
@@ -482,6 +589,39 @@ public class MessageServiceStreamingEquivalenceTests
 
         public Task<ToolOutput> InvokeAsync(ToolInput input, CancellationToken cancellationToken = default)
             => Task.FromResult(ToolOutput.Success("echoed"));
+    }
+
+    private sealed class FailingTool : ITool
+    {
+        public const string Error = "no such record";
+
+        public string UniqueName => "fails";
+
+        public string? Description => null;
+
+        public object? Parameters => null;
+
+        public bool RequiresApproval => false;
+
+        public Task<ToolOutput> InvokeAsync(ToolInput input, CancellationToken cancellationToken = default)
+            => Task.FromResult(ToolOutput.Failure(Error));
+    }
+
+    private sealed class SlowTool : ITool
+    {
+        public string UniqueName => "slow";
+
+        public string? Description => null;
+
+        public object? Parameters => null;
+
+        public bool RequiresApproval => false;
+
+        public async Task<ToolOutput> InvokeAsync(ToolInput input, CancellationToken cancellationToken = default)
+        {
+            await Task.Delay(Timeout.Infinite, cancellationToken);
+            return ToolOutput.Success("late");
+        }
     }
 
     private sealed class ThrowingTool : ITool
