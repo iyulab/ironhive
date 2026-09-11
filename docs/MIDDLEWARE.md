@@ -339,7 +339,10 @@ var prepended = myPack.Prepend(new BulkheadMiddleware(10));
 | `LoggingMiddleware` · `CompositeMiddleware` | 양쪽 지원(Composite는 포함된 미들웨어의 스트리밍 절반을 순서대로 적용) |
 
 ⚠️ **직접 만든 미들웨어**는 `IStreamingAgentMiddleware`를 구현해야 스트리밍 호출에 참여합니다. `IAgentMiddleware`만 구현하면
-스트리밍 호출에서 **아무 표시 없이 건너뜁니다** — 오류도 경고도 없습니다. 내장 미들웨어가 이 상태로 돌아가지 않도록
+스트리밍 호출에서 **건너뜁니다** — 호출 자체는 오류 없이 성공하므로, 설정한 보호가 없다는 것이 결과에 드러나지 않습니다.
+그래서 **등록 시점에 경고를 남깁니다**: 에이전트(`WithMiddleware`) · 미들웨어 팩(`CompositeMiddleware`) ·
+오케스트레이터(`OrchestratorOptions.AgentMiddlewares`) 어디에 넣든, 스트리밍 절반이 없는 미들웨어의 이름과 그 결과를
+`Trace` 경고로 알립니다(`Trace.Listeners`로 수신). 내장 미들웨어가 이 상태로 돌아가지 않도록
 `AgentMiddlewareStreamingRosterTests`가 지킵니다.
 
 ---

@@ -20,6 +20,8 @@ public class CompositeMiddleware : IAgentMiddleware, IStreamingAgentMiddleware
         {
             throw new ArgumentException("At least one middleware is required.", nameof(middlewares));
         }
+
+        MiddlewareStreamingDiagnostics.WarnAboutBufferedOnly(_middlewares, $"middleware pack '{_name}'");
     }
 
     public CompositeMiddleware(string name, IEnumerable<IAgentMiddleware> middlewares)

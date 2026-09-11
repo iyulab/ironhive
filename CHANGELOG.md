@@ -28,7 +28,11 @@ changes are expected and used freely for structural correctness (see
     frames to the next streaming call with the same input. Buffered responses and streams are stored
     separately; `CacheCount` and `MaxCacheSize` count both.
 
-  A middleware of your own still needs `IStreamingAgentMiddleware` to run on streaming calls.
+  A middleware of your own still needs `IStreamingAgentMiddleware` to run on streaming calls, and
+  registering one without it now traces a warning naming the middleware — on an agent, in a
+  `CompositeMiddleware` pack, or in `OrchestratorOptions.AgentMiddlewares`. Such a middleware is
+  skipped on streaming calls, and the call succeeds, so nothing in the result shows that the
+  protection it was configured for was absent.
 - `ToolResultBudgetMiddleware` (`IronHive.Core.Services`) bounds the total tool-result text one
   `IMessageService` call sends to the model. A per-result cap (`ToolOptions.OnAfterInvoke` with
   `TextCompactor`) cannot stop results from adding up across rounds, and `OnAfterInvoke` runs in

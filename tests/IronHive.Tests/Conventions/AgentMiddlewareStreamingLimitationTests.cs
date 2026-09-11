@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using AwesomeAssertions;
 using IronHive.Abstractions.Agent;
@@ -73,6 +74,88 @@ public class AgentMiddlewareStreamingLimitationTests
         streamed!.IsSuccess.Should().BeTrue("the fixture must run the chain");
         marker.BufferedCalls.Should().Be(2);
         marker.StreamingCalls.Should().Be(2);
+    }
+
+    // The limitation above is silent in the result, so registration says it out loud. These pin that the
+    // warning names the middleware wherever it is registered, and that a middleware with both halves
+    // produces none -- a warning on every registration would be noise no one reads.
+    [Fact]
+    public void RegisteringABufferedOnlyMiddlewareOnAnAgent_Warns()
+    {
+        using var trace = new TraceCapture();
+
+        _ = new EchoAgent("a").WithMiddleware(new BufferedOnlyMarker());
+
+        trace.Messages.Should().ContainSingle(m => m.Contains(nameof(BufferedOnlyMarker), StringComparison.Ordinal))
+            .Which.Should().Contain("skipped on streaming calls");
+    }
+
+    [Fact]
+    public void RegisteringABufferedOnlyMiddlewareInAPack_Warns()
+    {
+        using var trace = new TraceCapture();
+
+        _ = new CompositeMiddleware("pack", new BufferedOnlyMarker());
+
+        trace.Messages.Should().ContainSingle(m => m.Contains(nameof(BufferedOnlyMarker), StringComparison.Ordinal))
+            .Which.Should().Contain("pack");
+    }
+
+    [Fact]
+    public void ConfiguringABufferedOnlyAgentMiddlewareOnAnOrchestrator_Warns()
+    {
+        using var trace = new TraceCapture();
+
+        _ = Chain(new BufferedOnlyMarker());
+
+        trace.Messages.Should().Contain(m => m.Contains(nameof(BufferedOnlyMarker), StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RegisteringAMiddlewareWithBothHalves_DoesNotWarn()
+    {
+        using var trace = new TraceCapture();
+
+        _ = new EchoAgent("a").WithMiddleware(new BothHalvesMarker());
+        _ = new CompositeMiddleware("pack", new BothHalvesMarker());
+        _ = Chain(new BothHalvesMarker());
+
+        trace.Messages.Should().NotContain(m => m.Contains(nameof(BothHalvesMarker), StringComparison.Ordinal));
+    }
+
+    private sealed class TraceCapture : TraceListener
+    {
+        private readonly List<string> _messages = [];
+
+        public TraceCapture() => Trace.Listeners.Add(this);
+
+        public IReadOnlyList<string> Messages
+        {
+            get
+            {
+                lock (_messages)
+                    return [.. _messages];
+            }
+        }
+
+        public override void Write(string? message) => Record(message);
+
+        public override void WriteLine(string? message) => Record(message);
+
+        private void Record(string? message)
+        {
+            if (string.IsNullOrEmpty(message))
+                return;
+
+            lock (_messages)
+                _messages.Add(message);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            Trace.Listeners.Remove(this);
+            base.Dispose(disposing);
+        }
     }
 
     private static SequentialOrchestrator Chain(IAgentMiddleware middleware)

@@ -38,6 +38,8 @@ public abstract class OrchestratorBase : IAgentOrchestrator
     {
         Options = options ?? throw new ArgumentNullException(nameof(options));
         Name = options.Name ?? GetType().Name;
+
+        MiddlewareStreamingDiagnostics.WarnAboutBufferedOnly(Options.AgentMiddlewares, $"orchestrator '{Name}'");
     }
 
     /// <inheritdoc />

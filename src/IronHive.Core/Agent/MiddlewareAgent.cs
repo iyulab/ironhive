@@ -25,6 +25,8 @@ public class MiddlewareAgent : IAgent
     {
         _inner = inner ?? throw new ArgumentNullException(nameof(inner));
         _middlewares = middlewares ?? throw new ArgumentNullException(nameof(middlewares));
+
+        MiddlewareStreamingDiagnostics.WarnAboutBufferedOnly(_middlewares, $"agent '{_inner.Name}'");
     }
 
     /// <inheritdoc />
