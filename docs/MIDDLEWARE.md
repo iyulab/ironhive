@@ -321,9 +321,16 @@ var prepended = myPack.Prepend(new BulkheadMiddleware(10));
 
 ## 스트리밍 지원
 
-`IStreamingAgentMiddleware`를 구현한 미들웨어만 스트리밍 호출에 참여합니다.
+`IStreamingAgentMiddleware`를 구현한 미들웨어만 스트리밍 호출에 참여합니다. 구현하지 않은 미들웨어는
+스트리밍 호출에서 **아무 표시 없이 건너뜁니다** — 오류도 경고도 없습니다.
 
-스트리밍 지원: `LoggingMiddleware`, `CompositeMiddleware` (스트리밍 미들웨어 자동 필터링)
+스트리밍 지원: `LoggingMiddleware`, `CompositeMiddleware`(포함된 미들웨어 중 스트리밍을 구현한 것만 적용).
+
+⚠️ 그래서 다음 내장 미들웨어는 **버퍼드 호출(`InvokeAsync`)에만** 적용됩니다: `TimeoutMiddleware` · `RetryMiddleware` ·
+`RateLimitMiddleware` · `CircuitBreakerMiddleware` · `BulkheadMiddleware` · `FallbackMiddleware` · `CachingMiddleware`.
+결과적으로 스트리밍 호출에서 `MiddlewarePacks.Resilience` · `AdvancedResilience` · `ResourceProtection`은 아무것도 적용하지
+않고, `Production`은 로깅만 적용합니다. 오케스트레이터의 `ExecuteStreamingAsync`도 `OrchestratorOptions.AgentMiddlewares`에
+같은 필터를 씁니다 — 타임아웃 · 재시도 · rate limit을 설정한 오케스트레이션을 스트리밍으로 실행하면 그 보호는 적용되지 않습니다.
 
 ---
 

@@ -117,6 +117,11 @@ public class CompositeMiddleware : IAgentMiddleware, IStreamingAgentMiddleware
 /// <summary>
 /// 자주 사용되는 미들웨어 조합을 미리 정의한 팩토리
 /// </summary>
+/// <remarks>
+/// 팩은 버퍼드 호출(<c>InvokeAsync</c>)에 적용됩니다. 스트리밍 호출에서는 <see cref="IStreamingAgentMiddleware"/>를
+/// 구현한 미들웨어만 실행되며, 내장 미들웨어 중에서는 <see cref="LoggingMiddleware"/>뿐입니다 — 재시도 · 타임아웃 ·
+/// 회로 차단기 · rate limit · bulkhead는 스트리밍 호출에 적용되지 않습니다.
+/// </remarks>
 public static class MiddlewarePacks
 {
     /// <summary>
