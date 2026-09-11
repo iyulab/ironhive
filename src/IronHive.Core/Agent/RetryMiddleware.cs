@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Messages;
 
@@ -5,8 +6,11 @@ namespace IronHive.Core.Agent;
 
 /// <summary>
 /// 에이전트 호출 실패 시 지수 백오프로 재시도하는 미들웨어입니다.
+/// 스트리밍과 비스트리밍 모두 지원합니다 — 스트리밍 호출은 <b>아직 한 프레임도 내보내지 않았을 때</b>
+/// 실패한 경우에만 재시도합니다. 이미 호출자에게 건넨 프레임은 되돌릴 수 없으므로, 첫 프레임 뒤의 실패는
+/// 그대로 전파됩니다.
 /// </summary>
-public class RetryMiddleware : IAgentMiddleware
+public class RetryMiddleware : IAgentMiddleware, IStreamingAgentMiddleware
 {
     private readonly RetryMiddlewareOptions _options;
 
@@ -57,22 +61,89 @@ public class RetryMiddleware : IAgentMiddleware
                     throw;
                 }
 
-                // 재시도 콜백 호출
-                _options.OnRetry?.Invoke(agent.Name, attempts, ex, delay);
-
-                // 지터가 포함된 지수 백오프 대기
-                var jitteredDelay = ApplyJitter(delay);
-                await Task.Delay(jitteredDelay, cancellationToken).ConfigureAwait(false);
-
-                // 다음 재시도를 위한 딜레이 증가
-                delay = TimeSpan.FromMilliseconds(
-                    Math.Min(delay.TotalMilliseconds * _options.BackoffMultiplier,
-                             _options.MaxDelay.TotalMilliseconds));
+                delay = await WaitBeforeRetryAsync(agent.Name, attempts, ex, delay, cancellationToken).ConfigureAwait(false);
             }
         }
 
         // 이 지점에 도달하면 안 됨
         throw lastException ?? new InvalidOperationException("Retry loop exited unexpectedly.");
+    }
+
+    /// <inheritdoc />
+    public async IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingAsync(
+        IAgent agent,
+        IEnumerable<Message> messages,
+        AgentInvokeOptions? options,
+        Func<IEnumerable<Message>, AgentInvokeOptions?, IAsyncEnumerable<StreamingMessageResponse>> next,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        // Each attempt re-enumerates the input, so it is materialized once.
+        var messageList = messages.ToList();
+        var attempts = 0;
+        var delay = _options.InitialDelay;
+
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var enumerator = next(messageList, options).GetAsyncEnumerator(cancellationToken);
+            try
+            {
+                bool hasFirst;
+                try
+                {
+                    hasFirst = await enumerator.MoveNextAsync().ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw; // 취소는 재시도하지 않음
+                }
+                catch (Exception ex)
+                {
+                    attempts++;
+                    if (attempts > _options.MaxRetries || !_options.ShouldRetry(ex))
+                    {
+                        _options.OnRetryFailed?.Invoke(agent.Name, attempts - 1, ex);
+                        throw;
+                    }
+
+                    delay = await WaitBeforeRetryAsync(agent.Name, attempts, ex, delay, cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
+
+                if (!hasFirst)
+                {
+                    yield break;
+                }
+
+                // From here on the caller has frames in hand: a later failure is theirs to see.
+                yield return enumerator.Current;
+                while (await enumerator.MoveNextAsync().ConfigureAwait(false))
+                {
+                    yield return enumerator.Current;
+                }
+
+                yield break;
+            }
+            finally
+            {
+                await enumerator.DisposeAsync().ConfigureAwait(false);
+            }
+        }
+    }
+
+    private async Task<TimeSpan> WaitBeforeRetryAsync(
+        string agentName, int attempt, Exception ex, TimeSpan delay, CancellationToken cancellationToken)
+    {
+        // 재시도 콜백 호출
+        _options.OnRetry?.Invoke(agentName, attempt, ex, delay);
+
+        // 지터가 포함된 지수 백오프 대기
+        await Task.Delay(ApplyJitter(delay), cancellationToken).ConfigureAwait(false);
+
+        // 다음 재시도를 위한 딜레이 증가
+        return TimeSpan.FromMilliseconds(
+            Math.Min(delay.TotalMilliseconds * _options.BackoffMultiplier,
+                     _options.MaxDelay.TotalMilliseconds));
     }
 
     private TimeSpan ApplyJitter(TimeSpan delay)

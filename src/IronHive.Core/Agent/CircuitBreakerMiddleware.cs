@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Messages;
 
@@ -6,8 +7,11 @@ namespace IronHive.Core.Agent;
 /// <summary>
 /// 연속 실패 시 회로를 차단하여 시스템을 보호하는 미들웨어입니다.
 /// Circuit Breaker 패턴을 구현합니다.
+/// 스트리밍과 비스트리밍 모두 지원합니다 — 스트리밍 호출은 첫 프레임 전에 회로 상태를 확인하고,
+/// 스트림이 끝까지 오면 성공, 프레임을 만드는 도중 예외가 나면 실패로 기록합니다. 호출자가 도중에
+/// 그만 읽은 스트림은 어느 쪽으로도 기록하지 않습니다.
 /// </summary>
-public class CircuitBreakerMiddleware : IAgentMiddleware
+public class CircuitBreakerMiddleware : IAgentMiddleware, IStreamingAgentMiddleware
 {
     private readonly CircuitBreakerMiddlewareOptions _options;
     private readonly object _lock = new();
@@ -55,18 +59,7 @@ public class CircuitBreakerMiddleware : IAgentMiddleware
         Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next,
         CancellationToken cancellationToken = default)
     {
-        lock (_lock)
-        {
-            UpdateState();
-
-            if (_state == CircuitState.Open)
-            {
-                _options.OnRejected?.Invoke(agent.Name, _state);
-                throw new CircuitBreakerOpenException(
-                    $"Circuit breaker is open for agent '{agent.Name}'. " +
-                    $"Will retry after {(_openedAt + _options.BreakDuration - DateTime.UtcNow).TotalSeconds:F1}s.");
-            }
-        }
+        ThrowIfOpen(agent.Name);
 
         try
         {
@@ -86,6 +79,70 @@ public class CircuitBreakerMiddleware : IAgentMiddleware
                 OnFailure(agent.Name, ex);
             }
             throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingAsync(
+        IAgent agent,
+        IEnumerable<Message> messages,
+        AgentInvokeOptions? options,
+        Func<IEnumerable<Message>, AgentInvokeOptions?, IAsyncEnumerable<StreamingMessageResponse>> next,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        ThrowIfOpen(agent.Name);
+
+        var enumerator = next(messages, options).GetAsyncEnumerator(cancellationToken);
+        try
+        {
+            while (true)
+            {
+                bool hasNext;
+                try
+                {
+                    hasNext = await enumerator.MoveNextAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+                {
+                    lock (_lock)
+                    {
+                        OnFailure(agent.Name, ex);
+                    }
+                    throw;
+                }
+
+                if (!hasNext)
+                {
+                    break;
+                }
+
+                yield return enumerator.Current;
+            }
+        }
+        finally
+        {
+            await enumerator.DisposeAsync().ConfigureAwait(false);
+        }
+
+        lock (_lock)
+        {
+            OnSuccess();
+        }
+    }
+
+    private void ThrowIfOpen(string agentName)
+    {
+        lock (_lock)
+        {
+            UpdateState();
+
+            if (_state == CircuitState.Open)
+            {
+                _options.OnRejected?.Invoke(agentName, _state);
+                throw new CircuitBreakerOpenException(
+                    $"Circuit breaker is open for agent '{agentName}'. " +
+                    $"Will retry after {(_openedAt + _options.BreakDuration - DateTime.UtcNow).TotalSeconds:F1}s.");
+            }
         }
     }
 

@@ -12,10 +12,11 @@ namespace IronHive.Tests.Conventions;
 
 // Known limitation, pinned rather than hidden: a middleware that implements only IAgentMiddleware is
 // not run on streaming calls -- neither by MiddlewareAgent nor by an orchestrator's ExecuteStreamingAsync.
-// These tests record today's behaviour so that changing it is a decision, and each has a control with a
-// middleware implementing both halves, so that "skipped" cannot be confused with "the test could not
-// observe the middleware at all". AgentMiddlewareStreamingRosterTests pins which built-in middleware is
-// affected; docs/MIDDLEWARE.md describes the consequence.
+// Every built-in middleware implements both halves since 0.26.0 (AgentMiddlewareStreamingRosterTests keeps
+// it that way), so this now concerns a caller's own middleware. These tests record the behaviour so that
+// changing it is a decision, and each has a control with a middleware implementing both halves, so that
+// "skipped" cannot be confused with "the test could not observe the middleware at all";
+// docs/MIDDLEWARE.md describes the consequence.
 //
 // Not part of OrchestratorStreamingEquivalenceTests on purpose: a reader of that class expects the two
 // halves to agree, and here they do not.

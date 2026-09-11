@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Messages;
 
@@ -7,8 +8,10 @@ namespace IronHive.Core.Agent;
 /// <summary>
 /// API 호출 빈도를 제한하는 미들웨어입니다.
 /// 슬라이딩 윈도우 방식으로 rate limit을 적용합니다.
+/// 스트리밍과 비스트리밍 모두 지원합니다 — 스트리밍 호출은 첫 프레임 전에 슬롯을 확보하고,
+/// 스트림이 끝난 시각(완료 · 예외 · 호출자의 조기 중단)을 요청 시각으로 기록합니다.
 /// </summary>
-public class RateLimitMiddleware : IAgentMiddleware, IDisposable
+public class RateLimitMiddleware : IAgentMiddleware, IStreamingAgentMiddleware, IDisposable
 {
     private readonly RateLimitMiddlewareOptions _options;
     private readonly ConcurrentQueue<DateTime> _requestTimestamps = new();
@@ -43,6 +46,29 @@ public class RateLimitMiddleware : IAgentMiddleware, IDisposable
         finally
         {
             // 요청 완료 시간 기록
+            _requestTimestamps.Enqueue(DateTime.UtcNow);
+        }
+    }
+
+    /// <inheritdoc />
+    public async IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingAsync(
+        IAgent agent,
+        IEnumerable<Message> messages,
+        AgentInvokeOptions? options,
+        Func<IEnumerable<Message>, AgentInvokeOptions?, IAsyncEnumerable<StreamingMessageResponse>> next,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await WaitForSlotAsync(agent.Name, cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            await foreach (var frame in next(messages, options).WithCancellation(cancellationToken).ConfigureAwait(false))
+            {
+                yield return frame;
+            }
+        }
+        finally
+        {
             _requestTimestamps.Enqueue(DateTime.UtcNow);
         }
     }

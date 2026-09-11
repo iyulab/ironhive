@@ -321,16 +321,26 @@ var prepended = myPack.Prepend(new BulkheadMiddleware(10));
 
 ## 스트리밍 지원
 
-`IStreamingAgentMiddleware`를 구현한 미들웨어만 스트리밍 호출에 참여합니다. 구현하지 않은 미들웨어는
-스트리밍 호출에서 **아무 표시 없이 건너뜁니다** — 오류도 경고도 없습니다.
+내장 미들웨어는 **모두** 버퍼드(`InvokeAsync`)와 스트리밍(`InvokeStreamingAsync`) 양쪽에 적용됩니다(0.26.0부터 —
+그 전에는 로깅 · Composite 외 일곱이 스트리밍에서 조용히 빠졌습니다). `MiddlewarePacks`와 오케스트레이터의
+`OrchestratorOptions.AgentMiddlewares`도 스트리밍 실행(`ExecuteStreamingAsync`)에 그대로 적용됩니다.
 
-스트리밍 지원: `LoggingMiddleware`, `CompositeMiddleware`(포함된 미들웨어 중 스트리밍을 구현한 것만 적용).
+스트림에서 각 미들웨어가 하는 일:
 
-⚠️ 그래서 다음 내장 미들웨어는 **버퍼드 호출(`InvokeAsync`)에만** 적용됩니다: `TimeoutMiddleware` · `RetryMiddleware` ·
-`RateLimitMiddleware` · `CircuitBreakerMiddleware` · `BulkheadMiddleware` · `FallbackMiddleware` · `CachingMiddleware`.
-결과적으로 스트리밍 호출에서 `MiddlewarePacks.Resilience` · `AdvancedResilience` · `ResourceProtection`은 아무것도 적용하지
-않고, `Production`은 로깅만 적용합니다. 오케스트레이터의 `ExecuteStreamingAsync`도 `OrchestratorOptions.AgentMiddlewares`에
-같은 필터를 씁니다 — 타임아웃 · 재시도 · rate limit을 설정한 오케스트레이션을 스트리밍으로 실행하면 그 보호는 적용되지 않습니다.
+| 미들웨어 | 스트리밍 동작 |
+|---|---|
+| `TimeoutMiddleware` | `Timeout`은 **스트림 전체**의 기한 — 첫 프레임부터 마지막 프레임까지, 호출자가 프레임 사이에 쓰는 시간 포함. 첫 프레임까지나 프레임 사이 유휴를 따로 재지 않습니다. 기한이 지나면 `TimeoutException`(호출자 취소는 `OperationCanceledException`) |
+| `RetryMiddleware` | **아직 한 프레임도 내보내지 않았을 때** 실패한 경우에만 재시도. 첫 프레임 뒤의 실패는 그대로 전파(이미 건넨 프레임은 되돌릴 수 없음) |
+| `FallbackMiddleware` | 1차 에이전트가 첫 프레임 전에 실패하면 대체 에이전트의 **스트림**으로 전환. `ResponseValidator`는 완성된 응답이 필요해 스트리밍에 적용되지 않음 |
+| `RateLimitMiddleware` | 첫 프레임 전에 슬롯 확보, 스트림이 끝난 시각(완료 · 예외 · 조기 중단)을 요청 시각으로 기록 |
+| `BulkheadMiddleware` | 첫 프레임 전에 실행 슬롯 획득, 스트림이 끝날 때 반납(호출자가 도중에 그만 읽어도 반납) |
+| `CircuitBreakerMiddleware` | 첫 프레임 전에 회로 확인, 끝까지 읽힌 스트림 = 성공, 프레임 생성 중 예외 = 실패. 도중에 그만 읽은 스트림은 기록하지 않음 |
+| `CachingMiddleware` | 프레임을 흘려보내며 모았다가 정상 종료(`EndTurn` · `MaxTokens`)로 끝까지 읽힌 스트림만 저장, 다음 스트리밍 호출에 같은 프레임을 재생. 버퍼드 응답과 스트림은 따로 저장 — 교차 적중 없음 |
+| `LoggingMiddleware` · `CompositeMiddleware` | 양쪽 지원(Composite는 포함된 미들웨어의 스트리밍 절반을 순서대로 적용) |
+
+⚠️ **직접 만든 미들웨어**는 `IStreamingAgentMiddleware`를 구현해야 스트리밍 호출에 참여합니다. `IAgentMiddleware`만 구현하면
+스트리밍 호출에서 **아무 표시 없이 건너뜁니다** — 오류도 경고도 없습니다. 내장 미들웨어가 이 상태로 돌아가지 않도록
+`AgentMiddlewareStreamingRosterTests`가 지킵니다.
 
 ---
 

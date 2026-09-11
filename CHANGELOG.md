@@ -6,6 +6,46 @@ changes are expected and used freely for structural correctness (see
 
 ## Unreleased
 
+## 0.26.0 — 2026-09-11
+
+### Added
+
+- Every built-in agent middleware now takes part in streaming calls. `TimeoutMiddleware`,
+  `RetryMiddleware`, `RateLimitMiddleware`, `CircuitBreakerMiddleware`, `BulkheadMiddleware`,
+  `FallbackMiddleware` and `CachingMiddleware` implemented only `IAgentMiddleware`, so
+  `InvokeStreamingAsync` and an orchestrator's `ExecuteStreamingAsync` skipped them without a word: a
+  timeout, retry or rate limit configured for an agent — or through `MiddlewarePacks` — did nothing
+  on a streaming call. They now implement `IStreamingAgentMiddleware` with these semantics:
+  - `Timeout` bounds the whole stream, from the first frame to the last, including the time the
+    caller spends between frames; it does not measure time-to-first-frame or idle gaps separately.
+  - `Retry` and `Fallback` act only on a failure that happens before any frame reached the caller;
+    a later failure propagates, since delivered frames cannot be taken back. `ResponseValidator`
+    needs a complete response and applies to `InvokeAsync` only.
+  - `RateLimit`, `Bulkhead` and `CircuitBreaker` take their slot or check their state before the
+    first frame and settle it when the stream ends — completed, failed, or abandoned by the caller.
+    A stream the caller stops reading is recorded as neither success nor failure by the breaker.
+  - `Caching` stores a stream that was read to a normal end (`EndTurn` / `MaxTokens`) and replays its
+    frames to the next streaming call with the same input. Buffered responses and streams are stored
+    separately; `CacheCount` and `MaxCacheSize` count both.
+
+  A middleware of your own still needs `IStreamingAgentMiddleware` to run on streaming calls.
+
+### Fixed
+
+- The `IChatClient` bridge (`ChatClientAdapter`) no longer flattens every tool result to a string. A
+  `FunctionResultContent` whose result is `AIContent` or a list of it now keeps its structure —
+  text as text, `image/*` data as an image block — so providers that carry image tool results
+  (Anthropic, Google AI) receive the image. A block the bridge cannot carry is named in text instead
+  of being dropped. A result that records an exception is now sent as a failed tool output, so the
+  providers' error flag is set; the text is the invoker's `Result`. Other values keep their string
+  form.
+- `BulkheadMiddleware` could corrupt its queue accounting. When the wrapped call itself failed, the
+  handler meant for a failure while waiting also ran, and — if another request was queued —
+  decremented that request's count and released the queue slot a second time, letting more requests
+  queue than `MaxQueueSize` allows.
+- `FallbackMiddleware` no longer reports the caller's own cancellation of the fallback call as
+  `FallbackFailedException`; the cancellation propagates.
+
 ## 0.25.0 — 2026-09-11
 
 ### Changed

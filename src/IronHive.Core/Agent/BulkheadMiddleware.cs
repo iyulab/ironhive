@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Messages;
 
@@ -6,8 +7,10 @@ namespace IronHive.Core.Agent;
 /// <summary>
 /// 격리된 실행 풀로 리소스 고갈을 방지하는 미들웨어입니다.
 /// Bulkhead 패턴을 구현하여 동시 실행 수를 제한합니다.
+/// 스트리밍과 비스트리밍 모두 지원합니다 — 스트리밍 호출은 첫 프레임 전에 실행 슬롯을 얻고,
+/// 스트림이 끝날 때(완료 · 예외 · 호출자의 조기 중단) 반납합니다.
 /// </summary>
-public class BulkheadMiddleware : IAgentMiddleware, IDisposable
+public class BulkheadMiddleware : IAgentMiddleware, IStreamingAgentMiddleware, IDisposable
 {
     private readonly BulkheadMiddlewareOptions _options;
     private readonly SemaphoreSlim _semaphore;
@@ -68,14 +71,56 @@ public class BulkheadMiddleware : IAgentMiddleware, IDisposable
         Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next,
         CancellationToken cancellationToken = default)
     {
+        await EnterAsync(agent.Name, cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            return await next(messages, options).ConfigureAwait(false);
+        }
+        finally
+        {
+            Exit();
+        }
+    }
+
+    /// <inheritdoc />
+    public async IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingAsync(
+        IAgent agent,
+        IEnumerable<Message> messages,
+        AgentInvokeOptions? options,
+        Func<IEnumerable<Message>, AgentInvokeOptions?, IAsyncEnumerable<StreamingMessageResponse>> next,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await EnterAsync(agent.Name, cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            await foreach (var frame in next(messages, options).WithCancellation(cancellationToken).ConfigureAwait(false))
+            {
+                yield return frame;
+            }
+        }
+        finally
+        {
+            Exit();
+        }
+    }
+
+    /// <summary>
+    /// 대기열 슬롯(제한이 있으면)을 거쳐 실행 슬롯을 얻습니다. 대기열 슬롯은 실행 슬롯을 얻든 못 얻든
+    /// 여기서 반납됩니다 — 실행이 시작된 뒤의 실패는 대기열과 무관하므로, 그 실패가 대기열 회계를
+    /// 건드리지 않게 하기 위해서입니다.
+    /// </summary>
+    private async Task EnterAsync(string agentName, CancellationToken cancellationToken)
+    {
         // 대기열 제한이 있는 경우 먼저 대기열 슬롯 확보
         if (_queueSemaphore != null)
         {
             if (!await _queueSemaphore.WaitAsync(0, cancellationToken).ConfigureAwait(false))
             {
-                _options.OnRejected?.Invoke(agent.Name, CurrentExecuting, CurrentQueued);
+                _options.OnRejected?.Invoke(agentName, CurrentExecuting, CurrentQueued);
                 throw new BulkheadRejectedException(
-                    $"Bulkhead rejected request for agent '{agent.Name}'. " +
+                    $"Bulkhead rejected request for agent '{agentName}'. " +
                     $"Queue is full (executing={CurrentExecuting}, queued={CurrentQueued}).");
             }
 
@@ -85,44 +130,32 @@ public class BulkheadMiddleware : IAgentMiddleware, IDisposable
         try
         {
             // 실행 슬롯 대기
-            _options.OnQueued?.Invoke(agent.Name, CurrentExecuting, CurrentQueued);
+            _options.OnQueued?.Invoke(agentName, CurrentExecuting, CurrentQueued);
 
             if (!await _semaphore.WaitAsync(_options.QueueTimeout, cancellationToken).ConfigureAwait(false))
             {
-                _options.OnRejected?.Invoke(agent.Name, CurrentExecuting, CurrentQueued);
+                _options.OnRejected?.Invoke(agentName, CurrentExecuting, CurrentQueued);
                 throw new BulkheadRejectedException(
-                    $"Bulkhead timed out waiting for slot for agent '{agent.Name}'. " +
+                    $"Bulkhead timed out waiting for slot for agent '{agentName}'. " +
                     $"Timeout={_options.QueueTimeout.TotalSeconds:F1}s.");
             }
-
+        }
+        finally
+        {
             if (_queueSemaphore != null)
             {
                 Interlocked.Decrement(ref _currentQueued);
                 _queueSemaphore.Release();
             }
-
-            Interlocked.Increment(ref _currentExecuting);
-
-            try
-            {
-                return await next(messages, options).ConfigureAwait(false);
-            }
-            finally
-            {
-                Interlocked.Decrement(ref _currentExecuting);
-                _semaphore.Release();
-            }
         }
-        catch (Exception)
-        {
-            if (_queueSemaphore != null && Volatile.Read(ref _currentQueued) > 0)
-            {
-                // 대기 중에 예외 발생 시 대기열 슬롯 해제
-                Interlocked.Decrement(ref _currentQueued);
-                _queueSemaphore.Release();
-            }
-            throw;
-        }
+
+        Interlocked.Increment(ref _currentExecuting);
+    }
+
+    private void Exit()
+    {
+        Interlocked.Decrement(ref _currentExecuting);
+        _semaphore.Release();
     }
 
     /// <summary>

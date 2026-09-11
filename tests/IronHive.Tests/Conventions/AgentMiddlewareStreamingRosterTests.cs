@@ -13,20 +13,13 @@ namespace IronHive.Tests.Conventions;
 // timeout, rate limit or circuit breaker configured for an agent applies to InvokeAsync and does
 // nothing for InvokeStreamingAsync.
 //
-// This pins which built-in middleware is in that state, so that giving one a streaming half, or adding
-// another without one, is a visible decision rather than drift. See docs/MIDDLEWARE.md, "스트리밍 지원".
+// Seven built-in middlewares were in that state until 0.26.0 (Timeout, Retry, RateLimit, CircuitBreaker,
+// Bulkhead, Fallback, Caching); every one now implements both halves. The list below is empty and stays
+// here as teeth: a new built-in middleware without a streaming half fails this test, so leaving a
+// streaming half out has to be a deliberate, documented decision. See docs/MIDDLEWARE.md, "스트리밍 지원".
 public class AgentMiddlewareStreamingRosterTests
 {
-    private static readonly string[] BufferedOnly =
-    [
-        "BulkheadMiddleware",
-        "CachingMiddleware",
-        "CircuitBreakerMiddleware",
-        "FallbackMiddleware",
-        "RateLimitMiddleware",
-        "RetryMiddleware",
-        "TimeoutMiddleware",
-    ];
+    private static readonly string[] BufferedOnly = [];
 
     [Fact]
     public void BuiltInMiddlewareWithoutAStreamingHalf_MatchesTheKnownList()
