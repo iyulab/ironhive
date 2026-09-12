@@ -271,39 +271,33 @@ public class OpenAIMessageGenerator : IMessageGenerator
                     "content_filter" => MessageDoneReason.ContentFilter,
                     _ => MessageDoneReason.Unknown,
                 };
-                // Raw vendor id, as on the buffered path and the completed path below: MessageService
-                // adds the "<provider>_" prefix itself, so prefixing here produced "openai_openai_…"
-                // for incomplete responses only (found by OpenAIResponsesEquivalenceTests).
-                yield return new StreamingMessageDoneResponse
-                {
-                    ResponseId = incomplete.Response.Id,
-                    DoneReason = reason,
-                    Model = incomplete.Response.Model,
-                    TokenUsage = new MessageTokenUsage
-                    {
-                        InputTokens = incomplete.Response.Usage?.InputTokenCount ?? 0,
-                        OutputTokens = incomplete.Response.Usage?.OutputTokenCount ?? 0
-                    },
-                    Timestamp = incomplete.Response.CreatedAt.UtcDateTime
-                };
+                yield return DoneFrame(incomplete.Response, reason);
             }
             else if (update is StreamingResponseCompletedUpdate completed)
             {
-                yield return new StreamingMessageDoneResponse
-                {
-                    ResponseId = completed.Response.Id,
-                    DoneReason = reason,
-                    Model = completed.Response.Model,
-                    TokenUsage = new MessageTokenUsage
-                    {
-                        InputTokens = completed.Response.Usage?.InputTokenCount ?? 0,
-                        OutputTokens = completed.Response.Usage?.OutputTokenCount ?? 0
-                    },
-                    Timestamp = completed.Response.CreatedAt.UtcDateTime
-                };
+                yield return DoneFrame(completed.Response, reason);
             }
         }
     }
+
+    /// <summary>
+    /// The one place a streaming done frame is built from a Responses API result, whichever event
+    /// carried it (completed or incomplete). Two copies of this once disagreed: the incomplete copy
+    /// prefixed the id with "openai_" — which MessageService then prefixed again — and the completed
+    /// copy carried no model or timestamp (0.26.1, OpenAIResponsesEquivalenceTests).
+    /// </summary>
+    private static StreamingMessageDoneResponse DoneFrame(ResponseResult response, MessageDoneReason reason) => new()
+    {
+        ResponseId = response.Id,
+        DoneReason = reason,
+        Model = response.Model,
+        TokenUsage = new MessageTokenUsage
+        {
+            InputTokens = response.Usage?.InputTokenCount ?? 0,
+            OutputTokens = response.Usage?.OutputTokenCount ?? 0
+        },
+        Timestamp = response.CreatedAt.UtcDateTime,
+    };
 
     /// <inheritdoc />
     public async Task<int> CountTokensAsync(
