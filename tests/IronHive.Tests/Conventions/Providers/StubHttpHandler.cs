@@ -46,6 +46,17 @@ internal sealed class StubHttpHandler : HttpMessageHandler
             };
     }
 
+    /// <summary>Joins SSE frames that carry only a data line — Google's <c>streamGenerateContent?alt=sse</c> emits no event names.</summary>
+    public static string SseData(params string[] frames)
+    {
+        var sb = new StringBuilder();
+        foreach (var data in frames)
+        {
+            sb.Append("data: ").Append(data).Append("\n\n");
+        }
+        return sb.ToString();
+    }
+
     /// <summary>Joins SSE events written as (event, data) pairs into one body, the way a vendor emits them.</summary>
     public static string Sse(params (string Event, string Data)[] events)
     {

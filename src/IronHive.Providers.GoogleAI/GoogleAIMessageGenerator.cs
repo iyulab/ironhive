@@ -85,7 +85,10 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                 reason ??= MessageDoneReason.ToolCall;
                 message.Content.Add(new ToolMessageContent
                 {
-                    Id = part.FunctionCall.Id ?? Guid.NewGuid().ToShort(),
+                    // Same minted shape as the streaming path ("tool_<short guid>"): the agent loop
+                    // matches results back to calls by this id on both paths, and a consumer must
+                    // not be able to tell the halves apart by it (GoogleAIEquivalenceTests).
+                    Id = part.FunctionCall.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
                     Name = part.FunctionCall.Name ?? string.Empty,
                     Input = JsonSerializer.Serialize(part.FunctionCall.Args),
                     IsApproved = request.Tools?.TryGet(part.FunctionCall.Name!, out var t) != true || t?.RequiresApproval == false,
@@ -119,6 +122,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
             DoneReason = reason,
             Message = message,
             TokenUsage = usage,
+            Model = response.ModelVersion,
         };
     }
 
@@ -133,8 +137,13 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         (int, MessageContent)? current = null;
 
         string? id = null;
+        string? model = null;
         MessageDoneReason? reason = null;
         MessageTokenUsage? usage = null;
+        // The buffered path reports ToolCall whenever a function call is present, wherever it sits
+        // among the parts. The stream used to decide by whichever part arrived last, so a call
+        // followed by narration came back as EndTurn on this path only (GoogleAIEquivalenceTests).
+        var sawToolCall = false;
 
         await foreach (var res in _client.Models.GenerateContentStreamAsync(
             request.Model, contents, config, cancellationToken)
@@ -144,6 +153,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
             if (current == null)
             {
                 id = res.ResponseId;
+                model ??= res.ModelVersion;
                 yield return new StreamingMessageBeginResponse();
             }
 
@@ -206,6 +216,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                     }
                     else if (part.FunctionCall != null)
                     {
+                        sawToolCall = true;
                         current = (0, new ToolMessageContent
                         {
                             Id = part.FunctionCall.Id ?? $"tool_{Guid.NewGuid().ToShort()}",
@@ -253,10 +264,12 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                         }
                         else
                         {
-                            // 동일 텍스트 블록인 경우, 델타 추가
-                            if (content is TextMessageContent textContent)
+                            // 동일 텍스트 블록인 경우, 델타 추가. 이미 yield한 Added 프레임의 객체를
+                            // 여기서 변형하지 않는다 — 소비자는 그 객체에 델타를 누적하므로, 생성기가
+                            // 같은 객체에 `Value += part.Text` 를 하면 텍스트가 두 번 들어간다
+                            // (GoogleAIEquivalenceTests가 «Hello worldworld» 로 잡았다).
+                            if (content is TextMessageContent)
                             {
-                                textContent.Value += part.Text;
                                 yield return new StreamingContentDeltaResponse
                                 {
                                     Index = index,
@@ -287,6 +300,8 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                     }
                     else if (part.FunctionCall != null)
                     {
+                        sawToolCall = true;
+
                         // 이전 블록 완료
                         yield return new StreamingContentCompletedResponse
                         {
@@ -317,16 +332,16 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         // 남아 있는 컨텐츠 처리
         if (current.HasValue)
         {
-            // 툴 호출인 경우, 완료 이유 재설정
-            if (current.Value.Item2 is ToolMessageContent)
-            {
-                reason = MessageDoneReason.ToolCall;
-            }
-
             yield return new StreamingContentCompletedResponse
             {
                 Index = current.Value.Item1,
             };
+        }
+
+        // 툴 호출이 하나라도 있었으면 완료 이유는 ToolCall — 버퍼드 경로와 같은 규칙
+        if (sawToolCall)
+        {
+            reason = MessageDoneReason.ToolCall;
         }
 
         // 종료
@@ -334,6 +349,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         {
             ResponseId = id,
             DoneReason = reason,
+            Model = model,
             TokenUsage = usage,
         };
     }

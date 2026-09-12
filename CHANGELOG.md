@@ -15,8 +15,22 @@ changes are expected and used freely for structural correctness (see
   completed stream reported the raw `<id>`. `MessageService` adds the `<provider>_` prefix itself,
   so the incomplete path alone surfaced as `openai_openai_<id>`.
 
+- `GoogleAIMessageGenerator`: a streamed response that carried a function call and then narrated
+  (text after the call) reported `EndTurn`, while the buffered call reported `ToolCall` — the stream
+  decided by whichever part arrived last. It now reports `ToolCall` whenever a function call was
+  present, as the buffered path always did.
+- `GoogleAIMessageGenerator`: while streaming text, the generator appended each new part to the
+  `TextMessageContent` it had already yielded in the content-added frame, and then yielded the same
+  part as a delta. `MessageService` accumulates deltas onto exactly that content, so the message it
+  assembled from a Gemini stream carried every part after the first twice ("Hello worldworld").
+  The yielded content is no longer mutated.
+- `GoogleAIMessageGenerator`: a function call the vendor sent without an id got a bare short guid on
+  the buffered path and `tool_<short guid>` on the stream. Both paths now mint `tool_<short guid>`,
+  so a consumer matching tool results back to calls sees one shape.
+
 ### Changed
 
+- `GoogleAIMessageGenerator` now fills `Model` from the vendor's `modelVersion` on both paths.
 - `OpenAIMessageGenerator` now fills `Model` and `Timestamp` on every path — the buffered response
   and the completed stream's done frame carried neither, the incomplete stream carried both.
 - `AnthropicMessageGenerator` now fills `Model` on both paths (from the response, and from
