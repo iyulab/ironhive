@@ -110,6 +110,9 @@ public class AnthropicMessageGenerator : IMessageGenerator
                 InputTokens = (int)res.Usage.InputTokens,
                 OutputTokens = (int)res.Usage.OutputTokens
             },
+            // Same envelope on both paths — the streaming done frame carries the model from
+            // message_start (AnthropicMessagesEquivalenceTests compares them).
+            Model = res.Model.Raw(),
         };
     }
 
@@ -121,6 +124,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
         var req = ToMessageCreateParams(request);
 
         string? id = null;
+        string? model = null;
         int index = 0;
         var usage = new MessageTokenUsage();
 
@@ -131,6 +135,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
             if (evt.TryPickStart(out var mse))
             {
                 id = mse.Message.ID;
+                model = mse.Message.Model.Raw();
                 usage.InputTokens = (int)mse.Message.Usage.InputTokens;
                 yield return new StreamingMessageBeginResponse();
             }
@@ -260,6 +265,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
                 yield return new StreamingMessageDoneResponse
                 {
                     ResponseId = id,
+                    Model = model,
                     DoneReason = mde.Delta.StopReason?.Value() switch
                     {
                         StopReason.ToolUse => MessageDoneReason.ToolCall,

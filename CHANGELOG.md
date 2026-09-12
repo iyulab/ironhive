@@ -19,6 +19,8 @@ changes are expected and used freely for structural correctness (see
 
 - `OpenAIMessageGenerator` now fills `Model` and `Timestamp` on every path — the buffered response
   and the completed stream's done frame carried neither, the incomplete stream carried both.
+- `AnthropicMessageGenerator` now fills `Model` on both paths (from the response, and from
+  `message_start` on the stream); it carried it on neither.
 - Provider generators gain equivalence tests that drive the real SDK and the real mapping with
   recorded vendor bodies through an injected `HttpClient` (`StubHttpHandler`), asserting that the
   buffered and streaming halves agree on done reason, usage, id, model, timestamp and content.
