@@ -6,6 +6,24 @@ changes are expected and used freely for structural correctness (see
 
 ## Unreleased
 
+## 0.26.1 — 2026-09-12
+
+### Fixed
+
+- `OpenAIMessageGenerator`: a streamed response that ended incomplete (`max_output_tokens`,
+  `content_filter`) reported its `ResponseId` as `openai_<id>`, while the buffered call and a
+  completed stream reported the raw `<id>`. `MessageService` adds the `<provider>_` prefix itself,
+  so the incomplete path alone surfaced as `openai_openai_<id>`.
+
+### Changed
+
+- `OpenAIMessageGenerator` now fills `Model` and `Timestamp` on every path — the buffered response
+  and the completed stream's done frame carried neither, the incomplete stream carried both.
+- Provider generators gain equivalence tests that drive the real SDK and the real mapping with
+  recorded vendor bodies through an injected `HttpClient` (`StubHttpHandler`), asserting that the
+  buffered and streaming halves agree on done reason, usage, id, model, timestamp and content.
+  OpenAI Responses first; the other generators follow.
+
 ## 0.26.0 — 2026-09-11
 
 ### Added

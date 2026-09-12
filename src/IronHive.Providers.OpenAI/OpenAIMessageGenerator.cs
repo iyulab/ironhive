@@ -114,7 +114,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
             ResponseId = response.Id,
             DoneReason = reason,
             Message = new IronHiveMessage
-            { 
+            {
                 Role = IronHiveMessageRole.Assistant,
                 Content = content,
             },
@@ -123,6 +123,10 @@ public class OpenAIMessageGenerator : IMessageGenerator
                 InputTokens = response.Usage?.InputTokenCount ?? 0,
                 OutputTokens = response.Usage?.OutputTokenCount ?? 0
             },
+            // Same envelope on every path: the streaming done frame carries these too (see below),
+            // and the equivalence test compares them.
+            Model = response.Model,
+            Timestamp = response.CreatedAt.UtcDateTime,
         };
     }
 
@@ -267,9 +271,12 @@ public class OpenAIMessageGenerator : IMessageGenerator
                     "content_filter" => MessageDoneReason.ContentFilter,
                     _ => MessageDoneReason.Unknown,
                 };
+                // Raw vendor id, as on the buffered path and the completed path below: MessageService
+                // adds the "<provider>_" prefix itself, so prefixing here produced "openai_openai_…"
+                // for incomplete responses only (found by OpenAIResponsesEquivalenceTests).
                 yield return new StreamingMessageDoneResponse
                 {
-                    ResponseId = incomplete.Response.Id != null ? $"openai_{incomplete.Response.Id}" : null,
+                    ResponseId = incomplete.Response.Id,
                     DoneReason = reason,
                     Model = incomplete.Response.Model,
                     TokenUsage = new MessageTokenUsage
@@ -286,11 +293,13 @@ public class OpenAIMessageGenerator : IMessageGenerator
                 {
                     ResponseId = completed.Response.Id,
                     DoneReason = reason,
+                    Model = completed.Response.Model,
                     TokenUsage = new MessageTokenUsage
                     {
                         InputTokens = completed.Response.Usage?.InputTokenCount ?? 0,
                         OutputTokens = completed.Response.Usage?.OutputTokenCount ?? 0
                     },
+                    Timestamp = completed.Response.CreatedAt.UtcDateTime
                 };
             }
         }
