@@ -102,6 +102,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
                 InputTokens = res.Usage?.PromptTokens ?? 0,
                 OutputTokens = res.Usage?.CompletionTokens ?? 0
             },
+            Model = res.Model,
         };
     }
 
@@ -115,6 +116,11 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         var reason = MessageDoneReason.EndTurn;
         var usage = new MessageTokenUsage();
         var begun = false;
+        // Every chunk repeats the completion id and model; the done frame carried neither, while
+        // the buffered call carried the id — so MessageService's "<provider>_<id>" was empty on the
+        // streaming path only (ChatCompletionEquivalenceTests).
+        string? id = null;
+        string? model = null;
 
         // Chat Completions streams text as raw deltas and tool calls keyed by index; there are no explicit
         // block start/stop events. We synthesize the IronHive content-block protocol: assign each block a
@@ -137,6 +143,9 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
                 begun = true;
                 yield return new StreamingMessageBeginResponse();
             }
+
+            id ??= chunk.Id;
+            model ??= chunk.Model;
 
             // reasoning_content (or reasoning) delta, surfaced via ExtraBody since no typed model exposes it.
             var reasoningDelta = ExtractReasoning(chunk.ExtraBody, "delta");
@@ -256,7 +265,9 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
 
         yield return new StreamingMessageDoneResponse
         {
+            ResponseId = id,
             DoneReason = reason,
+            Model = model,
             TokenUsage = usage,
         };
     }

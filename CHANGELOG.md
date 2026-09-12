@@ -24,6 +24,10 @@ changes are expected and used freely for structural correctness (see
   part as a delta. `MessageService` accumulates deltas onto exactly that content, so the message it
   assembled from a Gemini stream carried every part after the first twice ("Hello worldworld").
   The yielded content is no longer mutated.
+- `ChatCompletionMessageGenerator` (and therefore every `OpenAICompatible` provider): the streaming
+  done frame carried no `ResponseId`, while the buffered call carried the completion id — so the
+  `<provider>_<id>` that `MessageService` reports was empty on the streaming path only. The stream
+  now carries the id (and the model) every chunk repeats.
 - `GoogleAIMessageGenerator`: a function call the vendor sent without an id got a bare short guid on
   the buffered path and `tool_<short guid>` on the stream. Both paths now mint `tool_<short guid>`,
   so a consumer matching tool results back to calls sees one shape.
