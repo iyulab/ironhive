@@ -102,6 +102,9 @@ var alive = await session.HealthAsync();
 - `UniqueName`: `"mcp_{ServerName}_{ToolName}"` 형식
 - `RequiresApproval`: 기본값 `true`
 - JSON 폴리모픽 타입: `"mcp"`
+- 실패 의미: 서버가 `isError`로 답하면 그 내용이, 전송·프로토콜 실패(서버 프로세스 사망, 연결 거부/리셋,
+  프레임 파싱 실패)면 서버·도구 이름을 담은 메시지가 `ToolOutput.Failure`로 모델에 전달된다 — `FunctionTool`이
+  던지는 메서드에 주는 결과와 같다. 호출자 자신의 취소(`OperationCanceledException`)만 그대로 전파된다.
 
 ---
 

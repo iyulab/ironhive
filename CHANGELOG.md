@@ -6,6 +6,17 @@ changes are expected and used freely for structural correctness (see
 
 ## Unreleased
 
+## 0.26.2 — 2026-09-13
+
+### Fixed
+
+- `McpTool`: a transport or protocol failure during a call — the MCP server process died mid-call, the
+  connection was refused or reset, a frame did not parse — escaped `InvokeAsync` as an exception. Since
+  0.26.0 an exception that escapes a tool fails the whole message call, so one dead MCP server ended the
+  answer instead of being one failed tool result the model could read; `FunctionTool` already converted
+  the same class of failure to `ToolOutput.Failure`. `McpTool` now does the same, naming the server and
+  the tool, and rethrows only the caller's own cancellation.
+
 ## 0.26.1 — 2026-09-12
 
 ### Fixed

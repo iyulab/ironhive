@@ -51,10 +51,28 @@ public class McpTool : ITool
         ToolInput input,
         CancellationToken cancellationToken = default)
     {
-        var result = await _tool.CallAsync(
-            arguments: input,
-            progress: null,
-            cancellationToken: cancellationToken);
+        CallToolResult result;
+        try
+        {
+            result = await _tool.CallAsync(
+                arguments: input,
+                progress: null,
+                cancellationToken: cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw; // the caller's own cancellation is the caller's to handle, as it is for FunctionTool
+        }
+        catch (Exception ex)
+        {
+            // A transport or protocol failure — the server process died mid-call, the connection was
+            // refused or reset, a frame did not parse — is this tool failing to answer, which the model
+            // can read and work around, not a reason to end the whole turn. FunctionTool makes the same
+            // call for a throwing method; since 0.26.0 an exception that escapes here fails the entire
+            // message call, so the two have to agree.
+            return ToolOutput.Failure(
+                $"MCP server '{ServerName}' did not complete tool '{Name}': {ex.GetType().Name}: {ex.Message}");
+        }
 
         // 텍스트/이미지/오디오는 그대로 매핑되고, 그 외(임베디드 리소스의 인식하지 못하는 MIME 타입,
         // 중첩 tool_use/tool_result 등)는 설명 텍스트로 대체됩니다.
