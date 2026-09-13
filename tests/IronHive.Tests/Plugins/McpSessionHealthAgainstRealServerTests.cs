@@ -32,19 +32,15 @@ public class McpSessionHealthAgainstRealServerTests : IAsyncLifetime
     private WebApplication? _app;
     private Uri _endpoint = null!;
 
-    [McpServerToolType]
-    private static class EchoTool
-    {
-        [McpServerTool(Name = "echo")]
-        public static string Echo(string message) => message;
-    }
-
     public async ValueTask InitializeAsync()
     {
         var builder = WebApplication.CreateSlimBuilder();
         builder.WebHost.UseUrls("http://127.0.0.1:0");
         builder.Logging.ClearProviders();
-        builder.Services.AddMcpServer().WithHttpTransport().WithTools(typeof(EchoTool));
+        // Registered through the generic overload: WithTools(typeof(...)) on a private nested static class
+        // registered nothing — the server answered "tools/list is not available" (found by
+        // McpToolTransportFailureTests, cycle-641). This class never listed tools, so it never noticed.
+        builder.Services.AddMcpServer().WithHttpTransport().WithTools<McpHealthFixtureTools>();
 
         _app = builder.Build();
         _app.MapMcp();
@@ -120,4 +116,12 @@ public class McpSessionHealthAgainstRealServerTests : IAsyncLifetime
         healthy.Should().BeFalse("a server that is gone is not alive");
         session.State.Should().Be(McpConnectionState.Errored);
     }
+}
+
+/// <summary>The one tool the health fixture's server offers.</summary>
+[McpServerToolType]
+public sealed class McpHealthFixtureTools
+{
+    [McpServerTool(Name = "echo")]
+    public static string Echo(string message) => message;
 }
