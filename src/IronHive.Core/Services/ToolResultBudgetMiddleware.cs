@@ -17,6 +17,11 @@ namespace IronHive.Core.Services;
 /// <see cref="MessageGenerationRequest.ToolChoice"/>를 <see cref="ToolChoice.None"/>으로 두어 모델이 받은 결과로 답하게 합니다.
 /// </para>
 /// <para>
+/// 도구를 거두는 턴에는 모델이 이유를 알도록 <see cref="ExhaustedNotice"/>가 호출당 정확히 한 번 들어갑니다 — 대체된 결과가 없으면
+/// (예산을 넘긴 결과가 잘렸거나 결과가 예산을 정확히 채웠으면) 예산을 소진시킨 결과 뒤에 별도 텍스트 파트로 붙습니다.
+/// 도구 정의 없이 이유도 모르는 모델은 도구 호출을 평문으로 이어 쓸 수 있습니다.
+/// </para>
+/// <para>
 /// 텍스트 콘텐츠만 셉니다. 이미지 같은 비텍스트 콘텐츠는 그대로 보냅니다. 대체 문구는 예산에 포함되지 않습니다.
 /// 도구가 모두 끝난 뒤 턴마다 한 번 실행되므로 <c>ToolOptions.MaxParallel</c>과 무관하게 결과가 결정적으로 배분됩니다.
 /// 결과는 제자리에서 바뀌므로 최종 응답 메시지에도 줄어든 결과가 남습니다.
@@ -74,29 +79,61 @@ public sealed class ToolResultBudgetMiddleware : IMessageMiddleware
     }
 
     // 이미 예산 안에 맞춘 이전 턴의 결과는 같은 자리에서 같은 몫을 다시 받으므로 바뀌지 않는다(멱등).
+    // 덧붙인 공지는 매 턴 걷어낸 뒤 다시 정하므로, 뒤 턴에서 결과가 대체되면 앞 결과의 공지는 사라지고 한 번만 남는다.
     private void Apply(MessageContext context)
     {
         var remaining = MaxTotalChars;
+        ToolOutput? exhaustedBy = null;
+        var replaced = false;
 
         foreach (var tool in context.CurrentMessage?.Content.OfType<ToolMessageContent>() ?? [])
         {
             if (tool.Output is not { } output)
                 continue;
 
+            output.Content = WithoutAppendedNotice(output.Content);
+
             var length = TextLength(output);
             if (length <= remaining)
             {
                 remaining -= length;
+                if (remaining == 0 && length > 0)
+                    exhaustedBy ??= output;
                 continue;
             }
 
             output.Content = Fit(output.Content, remaining, length);
+            if (IsReplacement(output.Content))
+                replaced = true;
+            else
+                exhaustedBy ??= output;
             remaining = 0;
         }
 
-        if (remaining == 0)
-            context.Request.ToolChoice = ToolChoice.None;
+        if (remaining != 0)
+            return;
+
+        context.Request.ToolChoice = ToolChoice.None;
+        if (!replaced && exhaustedBy is not null)
+            exhaustedBy.Content = [.. exhaustedBy.Content, new TextMessageContent { Value = ExhaustedNotice }];
     }
+
+    // 다른 텍스트 뒤에 붙은 공지 파트만 걷어낸다. 공지가 유일한 텍스트면 결과를 대체한 것이므로 남긴다.
+    private IReadOnlyList<MessageContent> WithoutAppendedNotice(IReadOnlyList<MessageContent> content)
+    {
+        if (!content.OfType<TextMessageContent>().Any(t => t.Value != ExhaustedNotice))
+            return content;
+
+        return content.Any(IsNotice) ? [.. content.Where(c => !IsNotice(c))] : content;
+    }
+
+    private bool IsReplacement(IReadOnlyList<MessageContent> content)
+    {
+        var texts = content.OfType<TextMessageContent>().ToList();
+        return texts.Count == 1 && texts[0].Value == ExhaustedNotice;
+    }
+
+    private bool IsNotice(MessageContent content) => content is TextMessageContent { Value: var value } && value == ExhaustedNotice;
 
     private IReadOnlyList<MessageContent> Fit(IReadOnlyList<MessageContent> content, int remaining, int length)
     {

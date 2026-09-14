@@ -29,11 +29,60 @@ public class ToolResultBudgetMiddlewareTests
         turns.Should().HaveCount(4, "the fixture must run three tool rounds and an answer");
         turns[1].ResultChars.Should().Be(ResultChars, "the first result fits whole");
         turns[2].ResultChars.Should().Be(10_000, "the second result is cut to what is left");
+        turns[2].Notices.Should().Be(1, "the turn that loses its tools is told why, even though nothing was replaced yet");
         turns[3].ResultChars.Should().Be(10_000, "the third result gets nothing");
-        turns[3].Notices.Should().Be(1, "a result with no budget left is replaced by the notice");
+        turns[3].Notices.Should().Be(1, "a result with no budget left is replaced by the notice, and the notice appears once per call");
+        turns[3].PerResult[1].Should().Be(turns[2].PerResult[1], "re-applying the budget on a later turn leaves an already fitted result as it was");
         turns[1].ToolChoice.Should().BeNull("tools stay available while budget remains");
         turns[2].ToolChoice.Should().Be(ToolChoice.None, "once the budget is spent the model should answer");
         turns[3].ToolChoice.Should().Be(ToolChoice.None);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TruncatingTheLastResult_StillTellsTheModelWhyToolsWereWithdrawn(bool streaming)
+    {
+        // The common exhaustion: the result that crosses the budget is longer than the truncation marker, and it is
+        // the last one of its turn. Without the notice the model sees tools vanish with no instruction, and a local
+        // chat template continues its own tool-call pattern as plain text.
+        string[][] script = [["big"], ["big"], []];
+
+        var turns = await RunAsync(script, new ToolResultBudgetMiddleware(10_000), streaming);
+
+        turns[2].ToolChoice.Should().Be(ToolChoice.None);
+        turns[2].Notices.Should().Be(1);
+        turns[2].Outputs[1][^1].Should().Be(ToolResultBudgetMiddleware.DefaultExhaustedNotice,
+            "the notice follows the result that exhausted the budget");
+        turns[2].ResultChars.Should().Be(10_000, "the notice is not charged against the budget");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AResultThatExactlyFillsTheBudget_StillTellsTheModelWhyToolsWereWithdrawn(bool streaming)
+    {
+        string[][] script = [["big"], []];
+
+        var turns = await RunAsync(script, new ToolResultBudgetMiddleware(ResultChars), streaming);
+
+        turns[1].ToolChoice.Should().Be(ToolChoice.None, "nothing is left of the budget");
+        turns[1].PerResult.Should().Equal([ResultChars], "the result fits whole");
+        turns[1].Notices.Should().Be(1, "tools are withdrawn, so the model is told why");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ACustomNotice_IsTheOneSent(bool streaming)
+    {
+        const string notice = "[budget spent - answer now]";
+        string[][] script = [["big"], ["big"], []];
+
+        var turns = await RunAsync(script, new ToolResultBudgetMiddleware(10_000) { ExhaustedNotice = notice }, streaming);
+
+        turns[2].Outputs[1][^1].Should().Be(notice);
+        turns[2].Outputs.SelectMany(o => o).Count(p => p == notice).Should().Be(1);
     }
 
     [Theory]
@@ -124,13 +173,19 @@ public class ToolResultBudgetMiddlewareTests
         return generator.Requests;
     }
 
-    private sealed record TurnRequest(IReadOnlyList<string> Texts, ToolChoice? ToolChoice)
+    // Each output is kept as its text parts: the notice travels as a part of its own.
+    private sealed record TurnRequest(IReadOnlyList<IReadOnlyList<string>> Outputs, ToolChoice? ToolChoice)
     {
-        public int[] PerResult => [.. Texts.Select(t => t.Length)];
+        private static bool IsNotice(string part) => part == ToolResultBudgetMiddleware.DefaultExhaustedNotice;
 
-        public int Notices => Texts.Count(t => t == ToolResultBudgetMiddleware.DefaultExhaustedNotice);
+        public IReadOnlyList<string> Texts => [.. Outputs.Select(o => string.Concat(o))];
 
-        public int ResultChars => Texts.Where(t => t != ToolResultBudgetMiddleware.DefaultExhaustedNotice).Sum(t => t.Length);
+        // A result replaced by the notice counts as the notice's length; a notice following a result does not count.
+        public int[] PerResult => [.. Outputs.Select(o => o.All(IsNotice) ? o.Sum(p => p.Length) : o.Where(p => !IsNotice(p)).Sum(p => p.Length))];
+
+        public int Notices => Outputs.Sum(o => o.Count(IsNotice));
+
+        public int ResultChars => Outputs.Sum(o => o.Where(p => !IsNotice(p)).Sum(p => p.Length));
     }
 
     // Each turn calls the tools named in its script row; an empty row ends with an answer. Every
@@ -197,7 +252,7 @@ public class ToolResultBudgetMiddlewareTests
             var texts = request.Messages
                 .SelectMany(m => m.Content.OfType<ToolMessageContent>())
                 .Where(t => t.Output is not null)
-                .Select(t => string.Concat(t.Output!.Content.OfType<TextMessageContent>().Select(c => c.Value)))
+                .Select(t => (IReadOnlyList<string>)[.. t.Output!.Content.OfType<TextMessageContent>().Select(c => c.Value ?? string.Empty)])
                 .ToList();
             Requests.Add(new TurnRequest(texts, request.ToolChoice));
 

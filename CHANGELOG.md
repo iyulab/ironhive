@@ -6,6 +6,19 @@ changes are expected and used freely for structural correctness (see
 
 ## Unreleased
 
+## 0.26.3 — 2026-09-15
+
+### Fixed
+
+- `ToolResultBudgetMiddleware`: when the budget ran out because a result was truncated, or because a
+  result filled it exactly, the next request withdrew the tools (`ToolChoice.None`) without the
+  `ExhaustedNotice`. Only a result replaced outright carried it. A model then saw its tools vanish with
+  no instruction, and a local chat template could continue its own tool-call pattern as plain text in
+  the answer. The notice is now sent exactly once per call whenever tools are withdrawn: as its own text
+  part after the result that exhausted the budget, or as the replacement of a result that got nothing.
+  It is not charged against the budget, and re-applying the budget on a later turn moves it rather than
+  duplicating it.
+
 ## 0.26.2 — 2026-09-13
 
 ### Fixed
