@@ -15,6 +15,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
 {
     private readonly Client _client;
     private readonly bool _isVertex;
+    private readonly IReadOnlyDictionary<string, GoogleAIModelCapabilities>? _capabilityOverrides;
 
     public GoogleAIMessageGenerator(string apiKey)
         : this(new GoogleAIConfig { ApiKey = apiKey })
@@ -24,13 +25,21 @@ public class GoogleAIMessageGenerator : IMessageGenerator
     {
         _client = GoogleAIClientFactory.Create(config);
         _isVertex = false;
+        _capabilityOverrides = CopyOverrides(config.ModelCapabilities);
     }
 
     public GoogleAIMessageGenerator(VertexAIConfig config)
     {
         _client = GoogleAIClientFactory.Create(config);
         _isVertex = true;
+        _capabilityOverrides = CopyOverrides(config.ModelCapabilities);
     }
+
+    private static Dictionary<string, GoogleAIModelCapabilities>? CopyOverrides(
+        IDictionary<string, GoogleAIModelCapabilities>? overrides)
+        => overrides is { Count: > 0 }
+            ? new Dictionary<string, GoogleAIModelCapabilities>(overrides, StringComparer.Ordinal)
+            : null;
 
     /// <inheritdoc />
     public void Dispose()
@@ -399,9 +408,12 @@ public class GoogleAIMessageGenerator : IMessageGenerator
     /// <summary>
     /// IronHive의 MessageGenerationRequest를 Google GenAI SDK의 타입들로 변환합니다.
     /// </summary>
-    private static (List<Content> contents, GenerateContentConfig config) ToGoogleAIParams(
+    // Internal so that the request translation can be asserted without a network: the model-generation
+    // policy (GoogleAIModelCapabilities) decides what reaches the wire, and that is what the facts check.
+    internal (List<Content> contents, GenerateContentConfig config) ToGoogleAIParams(
         MessageGenerationRequest request)
     {
+        var capabilities = GoogleAIModelCapabilities.Resolve(request.Model, _capabilityOverrides);
         var contents = new List<Content>();
         foreach (var msg in request.Messages)
         {
@@ -598,23 +610,43 @@ public class GoogleAIMessageGenerator : IMessageGenerator
             ];
         }
 
-        // Thinking 설정, Gemini 3 이전 모델은 ThinkingLevel을 지원하지 않습니다.
+        // Thinking 설정 — 세대별 제어 형태는 GoogleAIModelCapabilities 가 정합니다.
+        // Gemini 3: thinkingLevel · Gemini 2.5: thinkingBudget · 그 이전: 없음.
         // https://ai.google.dev/api/generate-content?hl=ko#ThinkingConfig
         ThinkingConfig? thinkingConfig = null;
         if (request.ThinkingEffort is not null and not MessageThinkingEffort.None)
         {
-            thinkingConfig = new ThinkingConfig
+            thinkingConfig = capabilities.ThinkingControl switch
             {
-                IncludeThoughts = true,
-                ThinkingLevel = request.ThinkingEffort switch
+                GoogleAIThinkingControl.Level => new ThinkingConfig
                 {
-                    MessageThinkingEffort.Minimal => ThinkingLevel.Minimal,
-                    MessageThinkingEffort.Low => ThinkingLevel.Low,
-                    MessageThinkingEffort.Medium => ThinkingLevel.Medium,
-                    MessageThinkingEffort.High => ThinkingLevel.High,
-                    MessageThinkingEffort.XHigh => ThinkingLevel.High,
-                    _ => ThinkingLevel.ThinkingLevelUnspecified
-                }
+                    IncludeThoughts = true,
+                    ThinkingLevel = request.ThinkingEffort switch
+                    {
+                        // minimal 을 받지 않는 모델(Gemini 3.8 Flash)은 지원되는 최저 단계로 강등합니다.
+                        MessageThinkingEffort.Minimal => capabilities.SupportsMinimalThinking ? ThinkingLevel.Minimal : ThinkingLevel.Low,
+                        MessageThinkingEffort.Low => ThinkingLevel.Low,
+                        MessageThinkingEffort.Medium => ThinkingLevel.Medium,
+                        MessageThinkingEffort.High => ThinkingLevel.High,
+                        MessageThinkingEffort.XHigh => ThinkingLevel.High,
+                        _ => ThinkingLevel.ThinkingLevelUnspecified
+                    }
+                },
+                GoogleAIThinkingControl.Budget => new ThinkingConfig
+                {
+                    IncludeThoughts = true,
+                    // 토큰 예산은 Anthropic budget 매핑과 같은 커뮤니티 기준; 상한은 Gemini 2.5 Flash 의 최대(24,576).
+                    ThinkingBudget = request.ThinkingEffort switch
+                    {
+                        MessageThinkingEffort.Minimal => 1_024,
+                        MessageThinkingEffort.Low => 4_000,
+                        MessageThinkingEffort.Medium => 10_000,
+                        MessageThinkingEffort.High => 20_000,
+                        MessageThinkingEffort.XHigh => 24_576,
+                        _ => null
+                    }
+                },
+                _ => null
             };
         }
 
@@ -650,9 +682,10 @@ public class GoogleAIMessageGenerator : IMessageGenerator
             },
             CandidateCount = 1,
             MaxOutputTokens = request.MaxTokens,
-            Temperature = request.Temperature,
-            TopP = request.TopP,
-            TopK = request.TopK,
+            // 샘플링 파라미터를 받지 않는 모델(Gemini 3.8 Flash)에는 전달하지 않습니다.
+            Temperature = capabilities.SupportsSamplingParameters ? request.Temperature : null,
+            TopP = capabilities.SupportsSamplingParameters ? request.TopP : null,
+            TopK = capabilities.SupportsSamplingParameters ? request.TopK : null,
             StopSequences = request.StopSequences?.ToList(),
             ThinkingConfig = thinkingConfig,
             ResponseMimeType = request.OutputFormat != null ? "application/json" : null,

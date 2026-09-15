@@ -84,6 +84,20 @@ public class AnthropicConfig
     /// 물려받지 않도록 하기 위함입니다.
     /// </remarks>
     public HttpClient? HttpClient { get; set; }
+
+    /// <summary>
+    /// 모델(또는 모델 id 접두)별 능력 정책 덮어쓰기입니다. 내장 표(<see cref="AnthropicModelCapabilities.BuiltIn"/>)보다
+    /// 우선하며, 내장 표에 없는 새 모델을 코드 수정 없이 선언할 때 씁니다.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// ModelCapabilities = new Dictionary&lt;string, AnthropicModelCapabilities&gt;
+    /// {
+    ///     ["claude-fable-5-2"] = new() { SupportsForcedToolChoice = false },
+    /// }
+    /// </code>
+    /// </example>
+    public IDictionary<string, AnthropicModelCapabilities>? ModelCapabilities { get; set; }
     
     /// <summary>
     /// 설정 값의 유효성을 검증합니다.

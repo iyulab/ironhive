@@ -70,6 +70,12 @@ public class VertexAIConfig
     public Func<HttpClient>? HttpClientFactory { get; set; }
 
     /// <summary>
+    /// 모델(또는 모델 id 접두)별 능력 정책 덮어쓰기입니다. 내장 표(<see cref="GoogleAIModelCapabilities.BuiltIn"/>)보다
+    /// 우선하며, 내장 표에 없는 새 모델을 코드 수정 없이 선언할 때 씁니다.
+    /// </summary>
+    public IDictionary<string, GoogleAIModelCapabilities>? ModelCapabilities { get; set; }
+
+    /// <summary>
     /// 구성이 유효한지 검증합니다.
     /// </summary>
     /// <returns>

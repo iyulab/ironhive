@@ -6,6 +6,31 @@ changes are expected and used freely for structural correctness (see
 
 ## Unreleased
 
+## 0.27.0 — 2026-09-15
+
+### Added
+
+- `AnthropicModelCapabilities` / `GoogleAIModelCapabilities`: a per-model-generation policy inside each
+  provider that says what the target model accepts on the wire (forced tool choice, thinking parameter
+  shape, minimal thinking level, sampling parameters). The built-in table is matched by exact model id and
+  then by longest prefix, and `AnthropicConfig.ModelCapabilities` / `GoogleAIConfig.ModelCapabilities` /
+  `VertexAIConfig.ModelCapabilities` let a consumer declare a model the package has not heard of without a
+  code change; a consumer entry wins over the built-in table.
+
+### Changed
+
+- Anthropic: on a model that returns 400 for `tool_choice: any` / `tool_choice: tool` (Claude 5.1, per the
+  vendor migration guide), `RequiredToolChoice` and `FunctionToolChoice` now leave as `tool_choice: auto`
+  with an explicit tool-calling instruction appended to the system prompt, which is the vendor's prescribed
+  equivalent. Claude 4.x keeps the forced wire value. The thinking shape (budget vs adaptive) is decided by
+  the same policy instead of a separate model list.
+- GoogleAI: `MessageThinkingEffort.Minimal` on a model that rejects `thinkingLevel: minimal` (Gemini 3.8
+  Flash) leaves as `low`; `temperature` / `topP` / `topK` are not forwarded to a model the vendor says must
+  not receive them (Gemini 3.8 Flash). Gemini 2.5 models are now controlled by `thinkingBudget` rather than
+  `thinkingLevel` (the level parameter belongs to Gemini 3), and Gemini 2.0 and earlier get no thinking
+  parameter. Neither Claude 5.1 nor Gemini 3.8 has been exercised with a live key in this repository; the
+  policy follows the vendor documentation, and the request translation is pinned by unit facts.
+
 ## 0.26.3 — 2026-09-15
 
 ### Fixed

@@ -20,6 +20,7 @@ namespace IronHive.Providers.Anthropic;
 public class AnthropicMessageGenerator : IMessageGenerator
 {
     private readonly IAnthropicClient _client;
+    private readonly IReadOnlyDictionary<string, AnthropicModelCapabilities>? _capabilityOverrides;
 
     public AnthropicMessageGenerator(string apiKey)
         : this(new AnthropicConfig { ApiKey = apiKey })
@@ -28,6 +29,9 @@ public class AnthropicMessageGenerator : IMessageGenerator
     public AnthropicMessageGenerator(AnthropicConfig config)
     {
         _client = AnthropicClientFactory.Create(config);
+        _capabilityOverrides = config.ModelCapabilities is { Count: > 0 } overrides
+            ? new Dictionary<string, AnthropicModelCapabilities>(overrides, StringComparer.Ordinal)
+            : null;
     }
 
     /// <inheritdoc />
@@ -306,8 +310,12 @@ public class AnthropicMessageGenerator : IMessageGenerator
     /// <summary>
     /// IronHive의 MessageGenerationRequest를 Anthropic SDK의 MessageCreateParams로 변환합니다.
     /// </summary>
-    private static MessageCreateParams ToMessageCreateParams(MessageGenerationRequest request)
+    // Internal so that the request translation can be asserted without a network: the model-generation
+    // policy (AnthropicModelCapabilities) decides what reaches the wire, and that is what the facts check.
+    internal MessageCreateParams ToMessageCreateParams(MessageGenerationRequest request)
     {
+        var capabilities = AnthropicModelCapabilities.Resolve(request.Model, _capabilityOverrides);
+
         var messages = new List<MessageParam>();
         foreach (var message in request.Messages)
         {
@@ -508,7 +516,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
         ThinkingConfigParam? thinking = null;
         if (request.ThinkingEffort is not null and not MessageThinkingEffort.None)
         {
-            if (AnthropicHelper.LegacyModels.Any(m => request.Model.Equals(m, StringComparison.Ordinal)))
+            if (capabilities.ThinkingStyle == AnthropicThinkingStyle.Budget)
             {
                 // 구버전 모델들은 ThinkingConfigEnabled 방식으로 추론을 설정합니다.
                 // 토큰은 OpenAI o-series, Gemini thinking_budget 커뮤니티 기준을 참고.
@@ -530,10 +538,21 @@ public class AnthropicMessageGenerator : IMessageGenerator
             }
         }
 
+        // 도구 호출 강제(tool_choice any/tool)를 받지 않는 모델(Claude 5.1 계열)에서는 vendor 처방대로
+        // auto 로 강등하고 시스템 프롬프트 끝에 명시 지시를 덧붙입니다. 400 을 그대로 흘리지도, 아무 말 없이
+        // auto 로 바꾸지도 않습니다 — 강등은 wire 의 지시문으로 보입니다.
+        var system = request.System ?? string.Empty;
+        var toolChoice = request.ToolChoice;
+        if (!capabilities.SupportsForcedToolChoice && toolChoice is RequiredToolChoice or FunctionToolChoice)
+        {
+            system = AnthropicHelper.AppendForcedToolChoiceInstruction(system, toolChoice);
+            toolChoice = new AutoToolChoice();
+        }
+
         return new MessageCreateParams
         {
             Model = request.Model,
-            System = new MessageCreateParamsSystem(request.System ?? string.Empty),
+            System = new MessageCreateParamsSystem(system),
             Messages = messages,
             // 필수요청사항으로 64K로 기본값을 설정합니다.
             MaxTokens = request.MaxTokens ?? 64000,
@@ -544,7 +563,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
             Tools = tools?.Count > 0 ? tools : null,
             // 다중 함수명(FunctionToolChoice.Names.Count > 1)은 Anthropic wire에 "이 N개 중 하나 강제"에
             // 해당하는 값이 없어 ToolChoiceAny로 근사합니다 — 대신 위에서 도구 목록 자체를 필터링합니다.
-            ToolChoice = request.ToolChoice switch
+            ToolChoice = toolChoice switch
             {
                 null or AutoToolChoice => null,
                 NoneToolChoice => new ToolChoiceNone(),
@@ -571,6 +590,10 @@ public class AnthropicMessageGenerator : IMessageGenerator
 
 public static class AnthropicHelper
 {
+    /// <summary>
+    /// budget 방식 thinking 을 쓰는 Claude 4.x 모델 id — <see cref="AnthropicModelCapabilities.BuiltIn"/>의 재료입니다.
+    /// 세대 판정은 이 목록이 아니라 <see cref="AnthropicModelCapabilities.Resolve"/>를 통해 합니다.
+    /// </summary>
     public static readonly string[] LegacyModels =
     [
         "claude-haiku-4-5",
@@ -586,6 +609,23 @@ public static class AnthropicHelper
         "claude-opus-4-5",
         "claude-opus-4-5-20251101",
     ];
+
+    /// <summary>
+    /// 도구 호출 강제를 받지 않는 모델을 위해 시스템 프롬프트 끝에 명시 지시를 덧붙입니다
+    /// (vendor 마이그레이션 가이드: <c>tool_choice: auto</c> + 명시 지시). 원문은 변경하지 않고 빈 줄로 잇습니다.
+    /// </summary>
+    public static string AppendForcedToolChoiceInstruction(string system, IronHive.Abstractions.Messages.ToolChoice? toolChoice)
+    {
+        var instruction = toolChoice switch
+        {
+            FunctionToolChoice { Names.Count: 1 } single =>
+                $"You must respond by calling the tool named `{single.Names.First()}`. Do not answer in plain text.",
+            FunctionToolChoice multiple =>
+                $"You must respond by calling one of these tools: {string.Join(", ", multiple.Names.Select(n => $"`{n}`"))}. Do not answer in plain text.",
+            _ => "You must respond by calling one of the provided tools. Do not answer in plain text.",
+        };
+        return string.IsNullOrWhiteSpace(system) ? instruction : $"{system.TrimEnd()}\n\n{instruction}";
+    }
 
     /// <summary>
     /// Anthropic 구조화 출력이 지원하지 않는 스키마 구성을 Anthropic 호환 형태로 변환합니다.

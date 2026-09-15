@@ -139,6 +139,31 @@ public class AnthropicConfig
     public TimeSpan Timeout { get; set; }        // 요청 타임아웃. 기본 Timeout.InfiniteTimeSpan(무제한)
     public TimeSpan ConnectTimeout { get; set; } // TCP 연결 타임아웃. 기본 5초
     public HttpClient? HttpClient { get; set; }
+    public IDictionary<string, AnthropicModelCapabilities>? ModelCapabilities { get; set; } // 모델 세대별 능력 정책 덮어쓰기
+}
+```
+
+### 모델 세대별 능력 정책
+
+생성기는 「요청된 의도」를 「대상 모델이 받는 wire」로 번역한다. 무엇을 받는지는 세대마다 다르고 그 규칙은
+vendor 지식이라 provider 안의 `AnthropicModelCapabilities`가 갖는다 — 내장 표는 모델 id 의 정확 일치 →
+가장 긴 접두 일치로 찾고, 없는 모델은 최신 세대와 같다고 본다.
+
+| 세대 | `ThinkingStyle` | `SupportsForcedToolChoice` | 번역 |
+|---|---|---|---|
+| Claude 4.x (`claude-sonnet-4-5` 등) | `Budget` — `thinking: {type: enabled, budget_tokens}` | `true` | `RequiredToolChoice` → `tool_choice: any` |
+| Claude 5.1 (`claude-fable-5-1`, `claude-mythos-5-1`) | `Adaptive` | **`false`** — `any`/`tool`은 400 | `tool_choice: auto` + 시스템 프롬프트 끝에 도구 호출 지시(vendor 마이그레이션 가이드의 처방) |
+
+내장 표에 없는 새 모델은 `ModelCapabilities`로 코드 수정 없이 선언한다. 소비자 항목이 내장 표보다 우선한다.
+
+```csharp
+new AnthropicConfig
+{
+    ApiKey = "sk-ant-...",
+    ModelCapabilities = new Dictionary<string, AnthropicModelCapabilities>
+    {
+        ["claude-fable-5-2"] = new() { SupportsForcedToolChoice = false },   // 접두 일치 — 날짜 접미사 포함
+    }
 }
 ```
 
@@ -214,6 +239,19 @@ builder.AddVertexAIProviders("vertex", new VertexAIConfig
 `HttpOptions`로도 같은 값을 지정할 수 있으나(밀리초 단위) **둘을 동시에 설정하면
 `InvalidOperationException`을 던진다.** 어느 쪽이 이겼는지 알 수 없는 상태를 만들지 않기 위한 것이며,
 `HttpOptions`는 `BaseUrl` 등 나머지 설정에 계속 쓸 수 있다.
+
+### 모델 세대별 능력 정책
+
+Anthropic 과 같은 형태로 `GoogleAIModelCapabilities`가 세대별 wire 규칙을 갖는다(정확 일치 → 가장 긴 접두
+일치, 없는 모델은 최신 세대). `GoogleAIConfig.ModelCapabilities` / `VertexAIConfig.ModelCapabilities`로
+덮어쓴다.
+
+| 세대 | `ThinkingControl` | `SupportsMinimalThinking` | `SupportsSamplingParameters` |
+|---|---|---|---|
+| Gemini 1.5 / 2.0 | `None` — thinking 파라미터 없음 | — | `true` |
+| Gemini 2.5 | `Budget` — `thinkingBudget`(Minimal 1,024 · Low 4,000 · Medium 10,000 · High 20,000 · XHigh 24,576) | — | `true` |
+| Gemini 3 (기본) | `Level` — `thinkingLevel` | `true` | `true` |
+| Gemini 3.8 Flash | `Level` | **`false`** — `minimal`은 오류 → `low`로 강등 | **`false`** — `temperature`/`topP`/`topK`를 보내지 않음 |
 
 ### 지원 기능
 
