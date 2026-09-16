@@ -102,6 +102,13 @@ public class GpuStackConfig
     /// GPUStack's <c>/v1-openai/</c>, the resolvers, <see cref="ConnectTimeout"/> and
     /// <see cref="TokenLimitParameter"/> carried over — and should not have to re-derive it.
     /// </remarks>
+    /// <summary>
+    /// Extra request headers sent on every request — the uniform slot every IronHive provider config
+    /// has, passed through to the configurations this one converts to. <c>Authorization</c> is refused
+    /// and belongs to the API key.
+    /// </summary>
+    public IDictionary<string, string>? Headers { get; set; }
+
     public OpenAICompatibleConfig ToOpenAICompatible() => new()
     {
         // Baked in as the static fallback; BaseUrlResolver/ApiKeyResolver below still take
@@ -113,6 +120,7 @@ public class GpuStackConfig
         ApiKeyResolver = ApiKeyResolver,
         ConnectTimeout = ConnectTimeout,
         TokenLimitParameter = TokenLimitParameter,
+        Headers = Headers,
     };
 
     /// <summary>
@@ -126,6 +134,7 @@ public class GpuStackConfig
     {
         BaseUrl = ResolveBaseUrl().TrimEnd('/') + apiPath,
         ApiKey = ResolveApiKey(),
+        Headers = Headers,
         HttpClient = new HttpClient(new SocketsHttpHandler
         {
             ConnectTimeout = ConnectTimeout

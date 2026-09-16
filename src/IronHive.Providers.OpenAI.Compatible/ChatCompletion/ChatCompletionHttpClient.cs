@@ -1,3 +1,4 @@
+using IronHive.Abstractions.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
@@ -33,9 +34,12 @@ internal sealed class ChatCompletionHttpClient : IDisposable
     };
 
     private readonly HttpClient _http;
+    private readonly IReadOnlyDictionary<string, string>? _headers;
 
     public ChatCompletionHttpClient(OpenAIConfig config)
     {
+        // Per request, not DefaultRequestHeaders: the client may be the consumer's own (shared, IHttpClientFactory-managed).
+        _headers = ProviderRequestHeaders.Resolve(nameof(OpenAIConfig), nameof(OpenAIConfig.ApiKey), ["Authorization"], config.Headers);
         _http = config.HttpClient ?? new HttpClient(new SocketsHttpHandler
         {
             ConnectTimeout = config.ConnectTimeout
@@ -54,6 +58,18 @@ internal sealed class ChatCompletionHttpClient : IDisposable
 
     public void Dispose() => _http.Dispose();
 
+    /// <summary>A configured header replaces any default of the same name; the credential is never among them.</summary>
+    private void ApplyHeaders(HttpRequestMessage request)
+    {
+        if (_headers is null)
+            return;
+        foreach (var (name, value) in _headers)
+        {
+            request.Headers.Remove(name);
+            request.Headers.TryAddWithoutValidation(name, value);
+        }
+    }
+
     public async Task<ChatCompletionResponse> PostAsync(
         ChatCompletionRequest request,
         CancellationToken cancellationToken = default)
@@ -64,7 +80,9 @@ internal sealed class ChatCompletionHttpClient : IDisposable
         HttpResponseMessage response;
         try
         {
-            response = await _http.PostAsync(ChatCompletionsPath, content, cancellationToken).ConfigureAwait(false);
+            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, ChatCompletionsPath) { Content = content };
+            ApplyHeaders(httpRequest);
+            response = await _http.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
@@ -91,6 +109,7 @@ internal sealed class ChatCompletionHttpClient : IDisposable
 
         using var content = JsonContent.Create(request, options: JsonOptions);
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, ChatCompletionsPath) { Content = content };
+        ApplyHeaders(httpRequest);
 
         HttpResponseMessage response;
         try

@@ -70,6 +70,19 @@ public class VertexAIConfig
     public Func<HttpClient>? HttpClientFactory { get; set; }
 
     /// <summary>
+    /// Extra request headers sent on every request — the uniform slot every IronHive provider config
+    /// has; on this provider they are merged into the vendor <see cref="HttpOptions"/>' own
+    /// <c>Headers</c>, and both may be set as long as they agree. A gateway's subscription key or
+    /// routing header goes here.
+    /// </summary>
+    /// <remarks>
+    /// The credential is not a header: <c>x-goog-api-key</c> and <c>Authorization</c> are refused here and
+    /// belong to <see cref="Credential"/>. See <see cref="IronHive.Abstractions.Http.ProviderRequestHeaders"/>
+    /// for the rules.
+    /// </remarks>
+    public IDictionary<string, string>? Headers { get; set; }
+
+    /// <summary>
     /// 모델(또는 모델 id 접두)별 능력 정책 덮어쓰기입니다. 내장 표(<see cref="GoogleAIModelCapabilities.BuiltIn"/>)보다
     /// 우선하며, 내장 표에 없는 새 모델을 코드 수정 없이 선언할 때 씁니다.
     /// </summary>

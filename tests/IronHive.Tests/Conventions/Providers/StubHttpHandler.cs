@@ -28,8 +28,16 @@ internal sealed class StubHttpHandler : HttpMessageHandler
 
     public List<(bool Streaming, string Body)> Requests { get; } = [];
 
+    /// <summary>The request headers of each request, in order — what actually went over the wire (name → joined values).</summary>
+    public List<Dictionary<string, string>> Headers { get; } = [];
+
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
+        var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var h in request.Headers)
+            headers[h.Key] = string.Join(",", h.Value);
+        Headers.Add(headers);
+
         var body = request.Content is null ? string.Empty : await request.Content.ReadAsStringAsync(cancellationToken);
         var streaming = request.RequestUri?.AbsoluteUri.Contains("stream", StringComparison.OrdinalIgnoreCase) == true
             || body.Replace(" ", string.Empty).Contains("\"stream\":true", StringComparison.Ordinal);

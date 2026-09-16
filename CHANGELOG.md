@@ -6,6 +6,24 @@ changes are expected and used freely for structural correctness (see
 
 ## Unreleased
 
+## 0.28.0 — 2026-09-16
+
+### Added
+
+- **`Headers` on every provider config** — `OpenAIConfig`, `OpenAICompatibleConfig` (and `GpuStackConfig`),
+  `AnthropicConfig`, `GoogleAIConfig` / `VertexAIConfig`: extra request headers sent on every request the
+  provider makes, for an endpoint behind a gateway that wants its own subscription key, tenant id or routing
+  header. The seams existed before in three shapes (Anthropic's `ExtraHeaders`, Google's vendor
+  `HttpOptions.Headers`, a transport client or pipeline policy on OpenAI) with different precedence against
+  the credential; this is one slot with one rule, enforced in code by
+  `IronHive.Abstractions.Http.ProviderRequestHeaders`: the credential header (`Authorization`,
+  `x-api-key`, `x-goog-api-key`) is refused in `Headers` at client construction, naming the credential slot
+  it belongs to; the vendor slot and `Headers` are sent as a union and must agree on a shared name; anything
+  else is sent as given and wins over an SDK default of the same name. On the OpenAI SDK path the headers
+  ride a `BeforeTransport` policy (a policy at `PerCall` loses to the credential policy); on the
+  chat-completions and rerank clients they are set per request, never on a consumer-supplied client's
+  `DefaultRequestHeaders`. Wire-level facts per provider record what the vendor SDK actually sent.
+
 ## 0.27.0 — 2026-09-15
 
 ### Fixed

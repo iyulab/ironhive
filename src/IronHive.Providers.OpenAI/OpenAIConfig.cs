@@ -76,6 +76,18 @@ public class OpenAIConfig
     public HttpClient? HttpClient { get; set; }
 
     /// <summary>
+    /// Extra request headers sent on every request this provider makes — a gateway's subscription key,
+    /// a tenant or routing header. Applied at the transport, after the SDK has assembled the request,
+    /// so a configured value wins over an SDK default of the same name.
+    /// </summary>
+    /// <remarks>
+    /// The credential is not a header: <c>Authorization</c> is refused here and belongs to
+    /// <see cref="ApiKey"/>. See <see cref="IronHive.Abstractions.Http.ProviderRequestHeaders"/> for the
+    /// rules, which are the same for every provider.
+    /// </remarks>
+    public IDictionary<string, string>? Headers { get; set; }
+
+    /// <summary>
     /// API key가 설정되어 있는지 확인합니다.
     /// </summary>
     /// <remarks>

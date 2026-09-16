@@ -51,6 +51,18 @@ public class AnthropicConfig
     public IDictionary<string, string>? ExtraHeaders { get; set; }
 
     /// <summary>
+    /// Extra request headers sent on every request — the uniform slot every IronHive provider config
+    /// has; on this provider it is the same set as <see cref="ExtraHeaders"/> (the vendor's own name),
+    /// and both may be set as long as they agree. A gateway's subscription key or routing header goes here.
+    /// </summary>
+    /// <remarks>
+    /// The credential is not a header: <c>Authorization</c> and <c>x-api-key</c> are refused here and belong
+    /// to <see cref="ApiKey"/> / <see cref="AuthToken"/>. See
+    /// <see cref="IronHive.Abstractions.Http.ProviderRequestHeaders"/> for the rules.
+    /// </remarks>
+    public IDictionary<string, string>? Headers { get; set; }
+
+    /// <summary>
     /// API 호출 실패 시 재시도할 최대 횟수입니다.
     /// </summary>
     public int? MaxRetries { get; set; }

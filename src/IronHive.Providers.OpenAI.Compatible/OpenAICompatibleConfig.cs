@@ -52,6 +52,14 @@ public class OpenAICompatibleConfig
     public TimeSpan ConnectTimeout { get; set; } = TimeSpan.FromSeconds(2);
 
     /// <summary>
+    /// Extra request headers sent on every request — the uniform slot every IronHive provider config
+    /// has. Passed through to the <see cref="OpenAIConfig"/> this configuration converts to, so the
+    /// SDK path and the chat-completions path send the same set. <c>Authorization</c> is refused here
+    /// and belongs to <see cref="ApiKey"/>.
+    /// </summary>
+    public IDictionary<string, string>? Headers { get; set; }
+
+    /// <summary>
     /// Which output-length parameter to send. (Default: <c>max_completion_tokens</c>, the previous
     /// and only behaviour — existing configurations are unaffected.)
     /// </summary>
@@ -116,6 +124,7 @@ public class OpenAICompatibleConfig
         {
             BaseUrl = full,
             ApiKey = ResolveApiKey(),
+            Headers = Headers,
             HttpClient = new HttpClient(new SocketsHttpHandler
             {
                 ConnectTimeout = ConnectTimeout

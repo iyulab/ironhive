@@ -1,3 +1,4 @@
+using IronHive.Abstractions.Http;
 using Google.GenAI;
 using Google.GenAI.Types;
 
@@ -10,7 +11,7 @@ internal static class GoogleAIClientFactory
         return new Client(
             vertexAI: false,
             apiKey: config.ApiKey,
-            httpOptions: ResolveHttpOptions(config.HttpOptions, config.Timeout, nameof(GoogleAIConfig)),
+            httpOptions: ResolveHttpOptions(config.HttpOptions, config.Timeout, config.Headers, nameof(GoogleAIConfig), nameof(GoogleAIConfig.ApiKey)),
             clientOptions: new ClientOptions
             {
                 HttpClientFactory = ResolveHttpClientFactory(config.HttpClientFactory, config.ConnectTimeout)
@@ -24,7 +25,7 @@ internal static class GoogleAIClientFactory
             credential: config.Credential,
             project: config.Project,
             location: config.Location,
-            httpOptions: ResolveHttpOptions(config.HttpOptions, config.Timeout, nameof(VertexAIConfig)),
+            httpOptions: ResolveHttpOptions(config.HttpOptions, config.Timeout, config.Headers, nameof(VertexAIConfig), nameof(VertexAIConfig.Credential)),
             clientOptions: new ClientOptions
             {
                 HttpClientFactory = ResolveHttpClientFactory(config.HttpClientFactory, config.ConnectTimeout)
@@ -61,6 +62,27 @@ internal static class GoogleAIClientFactory
     /// never reaches the client.
     /// </summary>
     internal static HttpOptions ResolveHttpOptions(HttpOptions? options, TimeSpan timeout, string configName)
+        => ResolveHttpOptions(options, timeout, headers: null, configName, credentialSlot: "ApiKey");
+
+    /// <summary>
+    /// The overload the factories use: folds the timeout (above) and the configured
+    /// <see cref="GoogleAIConfig.Headers"/> into the vendor options. The vendor's own
+    /// <see cref="HttpOptions.Headers"/> and the uniform slot are merged under
+    /// <see cref="ProviderRequestHeaders"/>' rules — same name, different values is refused here, at
+    /// construction, and the credential header is not accepted from either.
+    /// </summary>
+    internal static HttpOptions ResolveHttpOptions(HttpOptions? options, TimeSpan timeout, IDictionary<string, string>? headers, string configName, string credentialSlot)
+    {
+        var resolved = ResolveTimeout(options, timeout, configName);
+        var merged = ProviderRequestHeaders.Resolve(
+            configName, credentialSlot, ["x-goog-api-key", "Authorization"],
+            resolved.Headers is null ? null : new Dictionary<string, string>(resolved.Headers), headers);
+        return merged is null
+            ? resolved
+            : resolved with { Headers = new Dictionary<string, string>(merged) };
+    }
+
+    private static HttpOptions ResolveTimeout(HttpOptions? options, TimeSpan timeout, string configName)
     {
         var isSet = timeout != System.Threading.Timeout.InfiniteTimeSpan;
 

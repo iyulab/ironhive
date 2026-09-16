@@ -1,3 +1,4 @@
+using IronHive.Abstractions.Http;
 using Anthropic;
 using Anthropic.Core;
 
@@ -15,8 +16,11 @@ internal static class AnthropicClientFactory
             options.ApiKey = config.ApiKey;
         if (!string.IsNullOrWhiteSpace(config.AuthToken))
             options.AuthToken = config.AuthToken;
-        if (config.ExtraHeaders != null)
-            options.ExtraHeaders = config.ExtraHeaders.AsReadOnly();
+        var headers = ProviderRequestHeaders.Resolve(
+            nameof(AnthropicConfig), nameof(AnthropicConfig.ApiKey), ["Authorization", "x-api-key"],
+            config.ExtraHeaders, config.Headers);
+        if (headers is not null)
+            options.ExtraHeaders = headers;
         if (config.MaxRetries.HasValue)
             options.MaxRetries = config.MaxRetries.Value;
         if (config.Timeout != System.Threading.Timeout.InfiniteTimeSpan)

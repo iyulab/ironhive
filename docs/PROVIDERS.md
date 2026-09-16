@@ -54,6 +54,7 @@ public class OpenAIConfig
     public TimeSpan Timeout { get; set; }        // 요청 타임아웃. 기본 Timeout.InfiniteTimeSpan(무제한)
     public TimeSpan ConnectTimeout { get; set; } // TCP 연결 타임아웃. 기본 5초
     public HttpClient? HttpClient { get; set; }
+    public IDictionary<string, string>? Headers { get; set; }   // 게이트웨이 헤더 — 「추가 요청 헤더」 절
 }
 ```
 
@@ -139,6 +140,7 @@ public class AnthropicConfig
     public TimeSpan Timeout { get; set; }        // 요청 타임아웃. 기본 Timeout.InfiniteTimeSpan(무제한)
     public TimeSpan ConnectTimeout { get; set; } // TCP 연결 타임아웃. 기본 5초
     public HttpClient? HttpClient { get; set; }
+    public IDictionary<string, string>? Headers { get; set; }   // ExtraHeaders와 같은 슬롯(합집합) — 「추가 요청 헤더」 절
     public IDictionary<string, AnthropicModelCapabilities>? ModelCapabilities { get; set; } // 모델 세대별 능력 정책 덮어쓰기
 }
 ```
@@ -240,6 +242,8 @@ builder.AddVertexAIProviders("vertex", new VertexAIConfig
 `InvalidOperationException`을 던진다.** 어느 쪽이 이겼는지 알 수 없는 상태를 만들지 않기 위한 것이며,
 `HttpOptions`는 `BaseUrl` 등 나머지 설정에 계속 쓸 수 있다.
 
+`GoogleAIConfig.Headers` / `VertexAIConfig.Headers`는 벤더 `HttpOptions.Headers`에 병합된다(둘 다 설정 가능, 같은 이름은 값이 같아야 한다) — 「추가 요청 헤더」 절.
+
 ### 모델 세대별 능력 정책
 
 Anthropic 과 같은 형태로 `GoogleAIModelCapabilities`가 세대별 wire 규칙을 갖는다(정확 일치 → 가장 긴 접두
@@ -280,6 +284,35 @@ public enum GoogleAIServiceType
 ```
 
 ---
+
+## 추가 요청 헤더 (`Headers`) — 네 provider 공통
+
+게이트웨이 뒤의 엔드포인트(API 관리 계층·사내 프록시·테넌트 라우팅)는 자기 헤더를 요구한다 — 구독 키, 테넌트
+id, 추적 헤더. 네 provider config(`OpenAIConfig`·`OpenAICompatibleConfig`·`AnthropicConfig`·`GoogleAIConfig`/
+`VertexAIConfig`)가 같은 이름·같은 타입의 `Headers`(`IDictionary<string, string>?`)를 갖고, 그 provider가 보내는
+**모든 요청**에 실린다. 소비자는 어느 벤더 SDK가 뒤에 있는지 보지 않고 설정한다.
+
+```csharp
+new AnthropicConfig
+{
+    ApiKey = "sk-ant-...",
+    Headers = new Dictionary<string, string> { ["Ocp-Apim-Subscription-Key"] = "…", ["X-Tenant-Id"] = "acme" }
+}
+```
+
+**우선순위 규칙은 문서가 아니라 코드가 강제한다** (`IronHive.Abstractions.Http.ProviderRequestHeaders`):
+
+- **자격증명은 헤더가 아니다.** `Headers`에 자격증명 헤더 이름(`Authorization`, `x-api-key`, `x-goog-api-key` —
+  provider별, 대소문자 무관)이 오면 클라이언트 생성 시 `ArgumentException`이 그 이름과 자격증명 슬롯
+  (`ApiKey`/`AuthToken`/`Credential`)을 댄다. bearer 토큰 자체를 바꾸는 게이트웨이는 그 키를 `ApiKey`에 준다.
+  「설정한 헤더가 자격증명을 덮는가, 덮이는가」가 SDK 파이프라인 위치에 따라 달라지던 상태를 애매한 경우를
+  거부해서 없앴다.
+- **같은 헤더의 두 출처는 값이 같아야 한다.** Anthropic의 `ExtraHeaders`, Google의 `HttpOptions.Headers`는
+  벤더 이름의 같은 슬롯이고 `Headers`와 합집합으로 보내진다. 같은 이름·다른 값은 생성 시 예외.
+- 그 외의 헤더는 준 그대로 보내지고, 같은 이름의 SDK 기본값을 이긴다(OpenAI SDK 경로는 `BeforeTransport`
+  policy — `PerCall`에 두면 credential policy가 덮는 함정이 있어 라이브러리가 그 위치를 소유한다).
+- 소비자가 준 `HttpClient`의 `DefaultRequestHeaders`는 건드리지 않는다 — 헤더는 요청 단위로 실린다(공유
+  `IHttpClientFactory` 클라이언트가 다른 provider와 섞이지 않게).
 
 ## OpenAI Compatible (범용 호환)
 

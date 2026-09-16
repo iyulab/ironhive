@@ -1,3 +1,4 @@
+using IronHive.Abstractions.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -38,9 +39,11 @@ public class CohereDocumentReranker : IDocumentReranker
     };
 
     private readonly HttpClient _http;
+    private readonly IReadOnlyDictionary<string, string>? _headers;
 
     public CohereDocumentReranker(OpenAIConfig config)
     {
+        _headers = ProviderRequestHeaders.Resolve(nameof(OpenAIConfig), nameof(OpenAIConfig.ApiKey), ["Authorization"], config.Headers);
         _http = config.HttpClient ?? new HttpClient(new SocketsHttpHandler
         {
             ConnectTimeout = config.ConnectTimeout
@@ -76,7 +79,16 @@ public class CohereDocumentReranker : IDocumentReranker
         };
 
         using var content = JsonContent.Create(request, options: JsonOptions);
-        using var response = await _http.PostAsync(RerankPath, content, cancellationToken).ConfigureAwait(false);
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, RerankPath) { Content = content };
+        if (_headers is not null)
+        {
+            foreach (var (name, value) in _headers)
+            {
+                httpRequest.Headers.Remove(name);
+                httpRequest.Headers.TryAddWithoutValidation(name, value);
+            }
+        }
+        using var response = await _http.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
 
         if (!response.IsSuccessStatusCode)
         {

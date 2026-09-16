@@ -1,3 +1,4 @@
+using IronHive.Abstractions.Http;
 using System.ClientModel;
 using System.ClientModel.Primitives;
 using OpenAI;
@@ -57,6 +58,13 @@ public static class OpenAIClientFactory
             Timeout = System.Threading.Timeout.InfiniteTimeSpan
         };
         options.Transport = new HttpClientPipelineTransport(httpClient);
+
+        // Gateway headers ride BeforeTransport: the SDK's credential policy runs after the per-call
+        // stage, so a header added there is overwritten by the bearer token. Here it is applied to the
+        // assembled request, and Authorization itself is refused at resolution (see ProviderRequestHeaders).
+        var headers = ProviderRequestHeaders.Resolve(nameof(OpenAIConfig), nameof(OpenAIConfig.ApiKey), ["Authorization"], config.Headers);
+        if (headers is not null)
+            options.AddPolicy(new ExtraRequestHeadersPolicy(headers), PipelinePosition.BeforeTransport);
 
         return options;
     }
