@@ -8,6 +8,18 @@ changes are expected and used freely for structural correctness (see
 
 ## 0.27.0 — 2026-09-15
 
+### Fixed
+
+- `ToolResultBudgetMiddleware`: the default `ExhaustedNotice` said "this result was not included", which was
+  true only for a result replaced outright and false after a truncated or exactly-fitting result — and since
+  0.26.3 the same sentence was appended on those paths too. What happened to a result is now said by the
+  result itself: a truncated result keeps its truncation marker, and a result that got nothing carries an
+  omission marker with its original length (`[... omitted by the tool result budget (N chars total) ...]`)
+  instead of the notice. The notice only says why the tools are gone, so one wording is true on every path,
+  and it is anchored on the result that first exhausted the budget rather than moving to a later omitted one
+  (earlier prompt bytes stay identical across turns). A custom `ExhaustedNotice` is still the one sent, once
+  per call, on all three paths.
+
 ### Added
 
 - `AnthropicModelCapabilities` / `GoogleAIModelCapabilities`: a per-model-generation policy inside each

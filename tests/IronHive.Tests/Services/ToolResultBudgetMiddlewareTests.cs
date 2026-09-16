@@ -31,7 +31,10 @@ public class ToolResultBudgetMiddlewareTests
         turns[2].ResultChars.Should().Be(10_000, "the second result is cut to what is left");
         turns[2].Notices.Should().Be(1, "the turn that loses its tools is told why, even though nothing was replaced yet");
         turns[3].ResultChars.Should().Be(10_000, "the third result gets nothing");
-        turns[3].Notices.Should().Be(1, "a result with no budget left is replaced by the notice, and the notice appears once per call");
+        turns[3].Omitted.Should().Be(1, "a result with no budget left is replaced by the omission marker");
+        turns[3].Notices.Should().Be(1, "the notice appears once per call");
+        turns[3].Outputs[1][^1].Should().Be(ToolResultBudgetMiddleware.DefaultExhaustedNotice,
+            "the notice stays on the result that first exhausted the budget, so earlier prompt bytes do not change between turns");
         turns[3].PerResult[1].Should().Be(turns[2].PerResult[1], "re-applying the budget on a later turn leaves an already fitted result as it was");
         turns[1].ToolChoice.Should().BeNull("tools stay available while budget remains");
         turns[2].ToolChoice.Should().Be(ToolChoice.None, "once the budget is spent the model should answer");
@@ -95,9 +98,37 @@ public class ToolResultBudgetMiddlewareTests
         var turns = await RunAsync(script, new ToolResultBudgetMiddleware(10_000), streaming, maxParallel: 3);
 
         turns[1].PerResult.Should().Equal(
-            [ResultChars, 10_000 - ResultChars, DefaultNoticeLength()],
+            [ResultChars, 10_000 - ResultChars, 0],
             "results are shared out in the order the model called them, whichever finished first");
+        turns[1].Omitted.Should().Be(1, "the third result gets nothing but its omission marker");
         turns[1].Notices.Should().Be(1);
+        turns[1].Outputs[1][^1].Should().Be(ToolResultBudgetMiddleware.DefaultExhaustedNotice,
+            "the notice follows the result that exhausted the budget, not the one omitted after it");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AnOmittedResult_TellsTheModelWhatWasLeftOut_AndTheNoticeMakesNoClaimAboutIt(bool streaming)
+    {
+        // The default notice used to say "this result was not included", which was true only when the result was
+        // replaced outright and false after a truncated or exactly-fitting result. What happened to a result is now said
+        // by the result itself -- the truncation marker or the omission marker with the original length -- and the notice
+        // only says why the tools are gone, so one wording is true on every path.
+        string[][] script = [["big"], ["big"], ["big"], ["big"], []];
+
+        var turns = await RunAsync(script, new ToolResultBudgetMiddleware(10_000), streaming);
+
+        var omitted = turns[3].Outputs[2];
+        omitted.Should().HaveCount(1, "an omitted result carries its marker and nothing else");
+        omitted[0].Should().Be("[... omitted by the tool result budget (6,000 chars total) ...]");
+        turns[3].Outputs[1][^2].Should().EndWith("[... truncated by the tool result budget (6,000 chars total) ...]");
+        turns[4].Outputs[2].Should().Equal(omitted, "an omitted result is not measured again on a later turn, so its marker keeps the original length");
+        turns[4].Omitted.Should().Be(2);
+        turns[4].Notices.Should().Be(1);
+        turns[4].Outputs[1][^1].Should().Be(ToolResultBudgetMiddleware.DefaultExhaustedNotice);
+        ToolResultBudgetMiddleware.DefaultExhaustedNotice.Should().NotContainAny("not included", "truncated", "omitted",
+            "the notice is shared by the truncated, exactly-fitting and omitted paths, so it must not describe the result");
     }
 
     [Theory]
@@ -137,8 +168,6 @@ public class ToolResultBudgetMiddlewareTests
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
-    private static int DefaultNoticeLength() => ToolResultBudgetMiddleware.DefaultExhaustedNotice.Length;
-
     private static async Task<List<TurnRequest>> RunAsync(
         string[][] script,
         IMessageMiddleware? middleware,
@@ -173,19 +202,25 @@ public class ToolResultBudgetMiddlewareTests
         return generator.Requests;
     }
 
-    // Each output is kept as its text parts: the notice travels as a part of its own.
+    // Each output is kept as its text parts: the notice travels as a part of its own, and an omitted result is its marker alone.
     private sealed record TurnRequest(IReadOnlyList<IReadOnlyList<string>> Outputs, ToolChoice? ToolChoice)
     {
         private static bool IsNotice(string part) => part == ToolResultBudgetMiddleware.DefaultExhaustedNotice;
 
+        private static bool IsOmission(string part) => part.StartsWith("[... omitted by the tool result budget (", StringComparison.Ordinal);
+
+        // Neither the notice nor the omission marker is charged against the budget; the truncation marker is part of the result text.
+        private static bool IsCharged(string part) => !IsNotice(part) && !IsOmission(part);
+
         public IReadOnlyList<string> Texts => [.. Outputs.Select(o => string.Concat(o))];
 
-        // A result replaced by the notice counts as the notice's length; a notice following a result does not count.
-        public int[] PerResult => [.. Outputs.Select(o => o.All(IsNotice) ? o.Sum(p => p.Length) : o.Where(p => !IsNotice(p)).Sum(p => p.Length))];
+        public int[] PerResult => [.. Outputs.Select(o => o.Where(IsCharged).Sum(p => p.Length))];
 
         public int Notices => Outputs.Sum(o => o.Count(IsNotice));
 
-        public int ResultChars => Outputs.Sum(o => o.Where(p => !IsNotice(p)).Sum(p => p.Length));
+        public int Omitted => Outputs.Count(o => o.Any(IsOmission));
+
+        public int ResultChars => PerResult.Sum();
     }
 
     // Each turn calls the tools named in its script row; an empty row ends with an answer. Every
