@@ -6,6 +6,12 @@ changes are expected and used freely for structural correctness (see
 
 ## Unreleased
 
+### Changed
+
+- Docs: the `Headers` precedence section states the per-provider vendor semantics for a name the SDK also
+  sets — OpenAI/Compatible replace the SDK default, Anthropic's SDK adds the extra header beside its own,
+  Google follows the vendor `HttpOptions.Headers`. Gateway headers are unaffected. No code change.
+
 ## 0.28.0 — 2026-09-16
 
 ### Added

@@ -309,8 +309,12 @@ new AnthropicConfig
   거부해서 없앴다.
 - **같은 헤더의 두 출처는 값이 같아야 한다.** Anthropic의 `ExtraHeaders`, Google의 `HttpOptions.Headers`는
   벤더 이름의 같은 슬롯이고 `Headers`와 합집합으로 보내진다. 같은 이름·다른 값은 생성 시 예외.
-- 그 외의 헤더는 준 그대로 보내지고, 같은 이름의 SDK 기본값을 이긴다(OpenAI SDK 경로는 `BeforeTransport`
-  policy — `PerCall`에 두면 credential policy가 덮는 함정이 있어 라이브러리가 그 위치를 소유한다).
+- 그 외의 헤더는 준 그대로 보내진다. 같은 이름의 SDK 기본값과 만나면 **provider마다 벤더 semantics가 다르다**:
+  OpenAI/Compatible은 설정값이 SDK 기본값을 **대체**한다(OpenAI SDK 경로는 `BeforeTransport` policy — `PerCall`에
+  두면 credential policy가 덮는 함정이 있어 라이브러리가 그 위치를 소유한다); Anthropic은 벤더 SDK가 `ExtraHeaders`를
+  자기 헤더 **뒤에 추가**(`TryAddWithoutValidation`)하므로 같은 이름이면 값이 둘이 간다; Google은 벤더
+  `HttpOptions.Headers` semantics를 따른다. 게이트웨이 헤더는 SDK가 스스로 두는 이름이 아니므로 실무에서는
+  차이가 없고, `User-Agent` 같은 SDK 이름을 덮으려 할 때만 드러난다.
 - 소비자가 준 `HttpClient`의 `DefaultRequestHeaders`는 건드리지 않는다 — 헤더는 요청 단위로 실린다(공유
   `IHttpClientFactory` 클라이언트가 다른 provider와 섞이지 않게).
 

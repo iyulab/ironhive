@@ -54,6 +54,8 @@ public class AnthropicConfig
     /// Extra request headers sent on every request — the uniform slot every IronHive provider config
     /// has; on this provider it is the same set as <see cref="ExtraHeaders"/> (the vendor's own name),
     /// and both may be set as long as they agree. A gateway's subscription key or routing header goes here.
+    /// The vendor SDK adds these after its own headers without replacing them, so a name the SDK sets
+    /// itself (e.g. <c>User-Agent</c>) arrives with two values on this provider rather than yours alone.
     /// </summary>
     /// <remarks>
     /// The credential is not a header: <c>Authorization</c> and <c>x-api-key</c> are refused here and belong
