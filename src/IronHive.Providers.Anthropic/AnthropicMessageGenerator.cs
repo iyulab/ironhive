@@ -19,6 +19,9 @@ namespace IronHive.Providers.Anthropic;
 /// <inheritdoc />
 public class AnthropicMessageGenerator : IMessageGenerator
 {
+    // Extended thinking's minimum budget_tokens (vendor docs, "budget_tokens ... minimum is 1,024").
+    private const int AnthropicMinThinkingBudget = 1_024;
+
     private readonly IAnthropicClient _client;
     private readonly IReadOnlyDictionary<string, AnthropicModelCapabilities>? _capabilityOverrides;
 
@@ -520,15 +523,29 @@ public class AnthropicMessageGenerator : IMessageGenerator
             {
                 // 구버전 모델들은 ThinkingConfigEnabled 방식으로 추론을 설정합니다.
                 // 토큰은 OpenAI o-series, Gemini thinking_budget 커뮤니티 기준을 참고.
-                thinking = request.ThinkingEffort switch
+                long? budget = request.ThinkingEffort switch
                 {
-                    MessageThinkingEffort.Minimal => (ThinkingConfigParam?)new ThinkingConfigEnabled(1_024),
-                    MessageThinkingEffort.Low => (ThinkingConfigParam?)new ThinkingConfigEnabled(4_000),
-                    MessageThinkingEffort.Medium => (ThinkingConfigParam?)new ThinkingConfigEnabled(10_000),
-                    MessageThinkingEffort.High => (ThinkingConfigParam?)new ThinkingConfigEnabled(20_000),
-                    MessageThinkingEffort.XHigh => (ThinkingConfigParam?)new ThinkingConfigEnabled(32_000),
+                    MessageThinkingEffort.Minimal => 1_024,
+                    MessageThinkingEffort.Low => 4_000,
+                    MessageThinkingEffort.Medium => 10_000,
+                    MessageThinkingEffort.High => 20_000,
+                    MessageThinkingEffort.XHigh => 32_000,
                     _ => null
                 };
+
+                // budget_tokens 는 max_tokens 보다 작아야 합니다(아니면 400 «max_tokens must be greater than
+                // thinking.budget_tokens»). 호출자가 작은 출력 한도를 주면 예산을 그 절반으로 줄여 답변 자리를
+                // 남기고, 그것이 vendor 최소 예산(1,024)에도 못 미치면 thinking 을 켜지 않습니다 — 그 한도 안에서는
+                // 생각과 답을 함께 담을 수 없습니다.
+                if (budget is not null && request.MaxTokens is { } maxTokens && budget >= maxTokens)
+                {
+                    budget = maxTokens / 2 >= AnthropicMinThinkingBudget ? maxTokens / 2 : null;
+                }
+
+                if (budget is { } b)
+                {
+                    thinking = new ThinkingConfigEnabled(b);
+                }
             }
             else
             {

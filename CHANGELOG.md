@@ -20,6 +20,13 @@ changes are expected and used freely for structural correctness (see
   with built-in rows for Gemini 2.5, 3 Pro, 3.1 Pro and 3.6/3.7/3.8 Flash; Gemini 3 Pro, 3.1 Pro and 3.7 Flash are
   now recorded as rejecting the `minimal` level. Measured against the live API: `gemini-2.5-flash` with
   `maxOutputTokens: 20` answered 3/5 unset and 5/5 with `Effort = None`; `gemini-3.8-flash` 0/5 → 5/5.
+- **Anthropic: a thinking request with a small `MaxTokens` failed with 400.** Budget-style models (Claude 4.x)
+  require `budget_tokens < max_tokens`, but the effort budget was sent unchanged, so `Low` (4,000) with
+  `MaxTokens = 3000` was rejected (`max_tokens must be greater than thinking.budget_tokens`). A budget at or above
+  the caller's cap is now halved to leave room for the answer, and thinking is not enabled when half the cap is
+  below the vendor minimum of 1,024. Measured on `claude-haiku-4-5`: 400 before, a thinking block and the answer
+  after. Also verified live through the `IChatClient` bridge: extended thinking plus a tool round trip (the thinking
+  block and its signature replayed on the second call) completes on `claude-haiku-4-5` and `claude-sonnet-5`.
 
 ## 0.28.4 — 2026-09-17
 

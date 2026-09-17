@@ -112,6 +112,37 @@ public class AnthropicModelCapabilitiesTests
         current.Thinking!.TryPickAdaptive(out _).Should().BeTrue();
     }
 
+    // Live 400 (claude-haiku-4-5, max_tokens 3000, effort Low → budget 4000): "`max_tokens` must be greater
+    // than `thinking.budget_tokens`". A caller's small output cap must not turn a thinking request into a failure.
+    [Theory]
+    [InlineData(null, 4_000L)]    // no cap: provider default max_tokens, full effort budget
+    [InlineData(8_000, 4_000L)]   // cap above the budget: unchanged
+    [InlineData(4_000, 2_000L)]   // cap equal to the budget: halved, leaving room for the answer
+    [InlineData(3_000, 1_500L)]   // the measured case
+    [InlineData(2_048, 1_024L)]   // halved lands exactly on the vendor minimum
+    public void BudgetThinking_StaysBelowMaxTokens(int? maxTokens, long expectedBudget)
+    {
+        var request = Request("claude-sonnet-4-5", effort: MessageThinkingEffort.Low);
+        request.MaxTokens = maxTokens;
+
+        var req = Generator().ToMessageCreateParams(request);
+
+        req.Thinking!.TryPickEnabled(out var enabled).Should().BeTrue();
+        enabled!.BudgetTokens.Should().Be(expectedBudget);
+        enabled.BudgetTokens.Should().BeLessThan(req.MaxTokens);
+    }
+
+    [Fact]
+    public void BudgetThinking_UnderACapTooSmallToThink_IsNotEnabled()
+    {
+        var request = Request("claude-sonnet-4-5", effort: MessageThinkingEffort.Minimal);
+        request.MaxTokens = 1_024;
+
+        var req = Generator().ToMessageCreateParams(request);
+
+        req.Thinking.Should().BeNull("half of 1,024 is below the vendor minimum budget, so no valid thinking request fits");
+    }
+
     private static string SystemTextOf(MessageCreateParams req)
     {
         if (req.System!.TryPickString(out var text)) return text;

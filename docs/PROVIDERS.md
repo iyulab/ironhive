@@ -156,6 +156,11 @@ vendor 지식이라 provider 안의 `AnthropicModelCapabilities`가 갖는다 �
 | Claude 4.x (`claude-sonnet-4-5` 등) | `Budget` — `thinking: {type: enabled, budget_tokens}` | `true` | `RequiredToolChoice` → `tool_choice: any` |
 | Claude 5.1 (`claude-fable-5-1`, `claude-mythos-5-1`) | `Adaptive` | **`false`** — `any`/`tool`은 400 | `tool_choice: auto` + 시스템 프롬프트 끝에 도구 호출 지시(vendor 마이그레이션 가이드의 처방) |
 
+`Budget` 세대의 예산(Minimal 1,024 · Low 4,000 · Medium 10,000 · High 20,000 · XHigh 32,000)은 `max_tokens` 보다
+작아야 한다(아니면 400 «`max_tokens` must be greater than `thinking.budget_tokens`»). 호출자의 `MaxTokens` 가 예산
+이하이면 예산을 그 절반으로 줄여 답변 자리를 남기고, 절반이 vendor 최소 예산 1,024 에 못 미치면 thinking 을 켜지
+않는다. `MaxTokens` 를 주지 않으면 `max_tokens` 는 64,000 이라 조정되지 않는다.
+
 내장 표에 없는 새 모델은 `ModelCapabilities`로 코드 수정 없이 선언한다. 소비자 항목이 내장 표보다 우선한다.
 
 ```csharp
