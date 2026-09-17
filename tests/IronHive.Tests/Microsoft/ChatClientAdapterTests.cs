@@ -903,6 +903,94 @@ public class ChatClientAdapterTests : IDisposable
         new(ChatRole.Tool, [result])
     ];
 
+    // #326 — a provider's tool-call signature (Gemini 3 thought_signature) must survive the IChatClient
+    // round trip: response → FunctionCallContent.AdditionalProperties → replayed ToolMessageContent.Signature.
+
+    [Fact]
+    public async Task GetResponseAsync_ToolCallSignature_IsCarriedOnTheFunctionCallContent()
+    {
+        SetupGeneratorReturns(new MessageResponse
+        {
+            ResponseId = "resp",
+            Message = new Message
+            {
+                Role = MessageRole.Assistant,
+                Content = { new ToolMessageContent { Id = "call-1", Name = "probe", Input = "{}", IsApproved = true, Signature = "sig-abc" } }
+            }
+        });
+
+        var response = await _adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "hi")], cancellationToken: TestContext.Current.CancellationToken);
+
+        var call = response.Messages.Single().Contents.OfType<FunctionCallContent>().Single();
+        call.AdditionalProperties.Should().NotBeNull();
+        call.AdditionalProperties![ChatClientAdapter.SignatureKey].Should().Be("sig-abc");
+    }
+
+    [Fact]
+    public async Task GetResponseAsync_ToolCallWithoutSignature_AddsNoAdditionalProperties()
+    {
+        SetupGeneratorReturns(new MessageResponse
+        {
+            ResponseId = "resp",
+            Message = new Message
+            {
+                Role = MessageRole.Assistant,
+                Content = { new ToolMessageContent { Id = "call-1", Name = "probe", Input = "{}", IsApproved = true } }
+            }
+        });
+
+        var response = await _adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "hi")], cancellationToken: TestContext.Current.CancellationToken);
+
+        var call = response.Messages.Single().Contents.OfType<FunctionCallContent>().Single();
+        (call.AdditionalProperties?.ContainsKey(ChatClientAdapter.SignatureKey) ?? false).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetResponseAsync_ReplayedFunctionCallWithSignature_RestoresToolMessageContentSignature()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+        var call = new FunctionCallContent("call-1", "probe")
+        {
+            AdditionalProperties = new AdditionalPropertiesDictionary { [ChatClientAdapter.SignatureKey] = "sig-abc" }
+        };
+        var messages = new List<ChatMessage>
+        {
+            new(ChatRole.Assistant, [call]),
+            new(ChatRole.Tool, [new FunctionResultContent("call-1", "done")])
+        };
+
+        await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
+
+        var toolContent = capturedRequest().Messages.Should().ContainSingle().Which.Should().BeOfType<Message>().Subject
+            .Content.OfType<ToolMessageContent>().Single();
+        toolContent.Signature.Should().Be("sig-abc");
+    }
+
+    [Fact]
+    public async Task GetStreamingResponseAsync_ToolCallSignature_AddedUpFrontOrAsALaterUpdate_IsCarried()
+    {
+        // Index 0: signature already on the added block (GoogleAI sets it at content_block_start).
+        // Index 1: signature arrives as a SignatureUpdatedContent after the block was added (Anthropic shape).
+        var chunks = new List<StreamingMessageResponse>
+        {
+            new StreamingMessageBeginResponse(),
+            new StreamingContentAddedResponse { Index = 0, Content = new ToolMessageContent { Id = "c0", Name = "a", Input = "{}", IsApproved = true, Signature = "sig-0" } },
+            new StreamingContentCompletedResponse { Index = 0 },
+            new StreamingContentAddedResponse { Index = 1, Content = new ToolMessageContent { Id = "c1", Name = "b", Input = "{}", IsApproved = true } },
+            new StreamingContentUpdatedResponse { Index = 1, Updated = new SignatureUpdatedContent { Signature = "sig-1" } },
+            new StreamingContentCompletedResponse { Index = 1 },
+        };
+        SetupStreamingGenerator(chunks);
+
+        var calls = new List<FunctionCallContent>();
+        await foreach (var update in _adapter.GetStreamingResponseAsync([new ChatMessage(ChatRole.User, "hi")], cancellationToken: TestContext.Current.CancellationToken))
+            calls.AddRange(update.Contents.OfType<FunctionCallContent>());
+
+        calls.Should().HaveCount(2);
+        calls[0].AdditionalProperties![ChatClientAdapter.SignatureKey].Should().Be("sig-0");
+        calls[1].AdditionalProperties![ChatClientAdapter.SignatureKey].Should().Be("sig-1");
+    }
+
     private static ToolOutput SingleToolOutput(MessageGenerationRequest request) =>
         request.Messages.Should().ContainSingle().Which.Should().BeOfType<Message>().Subject
             .Content.OfType<ToolMessageContent>().Single().Output!;

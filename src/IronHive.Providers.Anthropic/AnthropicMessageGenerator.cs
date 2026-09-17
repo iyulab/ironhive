@@ -495,10 +495,10 @@ public class AnthropicMessageGenerator : IMessageGenerator
             {
                 Name = t.UniqueName,
                 Description = t.Description,
-                InputSchema = t.Parameters is JsonObject jsonObj
-                    ? InputSchema.FromRawUnchecked(
-                        jsonObj.Deserialize<Dictionary<string, JsonElement>>() ?? new())
-                    : InputSchema.FromRawUnchecked(new Dictionary<string, JsonElement>())
+                // Every ITool.Parameters shape must reach the wire — a JsonObject (FunctionTool), a
+                // JsonElement (AIFunction / MCP tool schemas), a JsonNode, a JSON string or a POCO.
+                // Gating on JsonObject alone sent every bridge and MCP tool with an empty schema.
+                InputSchema = InputSchema.FromRawUnchecked(AnthropicHelper.ToInputSchema(t.Parameters))
             };
             return toolUnion;
         })?.ToList();
@@ -637,6 +637,41 @@ public static class AnthropicHelper
         var clone = schema.DeepClone();
         FlattenNullableAndRestrictProperties(clone);
         return clone;
+    }
+
+    /// <summary>
+    /// <see cref="ITool.Parameters"/>를 Anthropic <c>input_schema</c> 사전으로 정규화합니다.
+    /// 파라미터는 도구 출처에 따라 <see cref="JsonObject"/>(FunctionTool), <see cref="JsonElement"/>
+    /// (AIFunction·MCP 도구의 <c>JsonSchema</c>), 다른 <see cref="JsonNode"/>, JSON 문자열, POCO 중
+    /// 무엇이든 될 수 있고, 어느 형태든 같은 스키마로 나가야 합니다. Messages API는
+    /// <c>input_schema.type == "object"</c>를 요구하므로 <c>type</c>이 없으면 채우고, 파라미터가 없는
+    /// 도구는 <c>{"type":"object","properties":{}}</c>로 보냅니다.
+    /// </summary>
+    internal static Dictionary<string, JsonElement> ToInputSchema(object? parameters)
+    {
+        var node = parameters switch
+        {
+            null => null,
+            JsonObject obj => obj,
+            JsonNode other => other as JsonObject,
+            JsonElement { ValueKind: JsonValueKind.Object } element => JsonObject.Create(element),
+            JsonElement => null,
+            string json => TryParseObject(json),
+            _ => JsonSerializer.SerializeToNode(parameters) as JsonObject,
+        };
+
+        var dictionary = node?.Deserialize<Dictionary<string, JsonElement>>() ?? new Dictionary<string, JsonElement>();
+        if (!dictionary.ContainsKey("type"))
+            dictionary["type"] = JsonSerializer.SerializeToElement("object");
+        if (!dictionary.ContainsKey("properties"))
+            dictionary["properties"] = JsonSerializer.SerializeToElement(new JsonObject());
+        return dictionary;
+
+        static JsonObject? TryParseObject(string json)
+        {
+            try { return JsonNode.Parse(json) as JsonObject; }
+            catch (JsonException) { return null; }
+        }
     }
 
     // ToAnthropicCompatibleSchema가 최초 1회 호출하고, 아래에서 각 object/array 자식으로

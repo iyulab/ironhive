@@ -4,6 +4,25 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.28.2 — 2026-09-17
+
+### Fixed
+
+- **Anthropic: every tool reached the wire with an empty `input_schema` unless its `ITool.Parameters` was a
+  `JsonObject`.** Tools that arrive through the `IChatClient` bridge (`AIFunction`) and MCP tools carry their
+  schema as a `JsonElement`, so the Messages API answered `400 tools.N.custom.input_schema.type: Field required`
+  for any request with a tool — a consumer with tools could not use Anthropic at all. The provider now normalises
+  every parameter shape (`JsonObject`, `JsonElement`, other `JsonNode`, JSON string, POCO) into the schema it
+  sends, fills `type: "object"` when absent and sends `{"type":"object","properties":{}}` for a tool without
+  parameters. Wire-shape tests pin it for each shape.
+- **`IChatClient` bridge: a tool call's provider signature was dropped between the response and the replayed
+  history**, so a Gemini 3 turn failed on its second model call with `400 Function call is missing a
+  thought_signature`. `ChatClientAdapter` now carries `ToolMessageContent.Signature` on the
+  `FunctionCallContent` it produces (`AdditionalProperties[ChatClientAdapter.SignatureKey]`, buffered and
+  streaming — including a signature delivered as a later update) and restores it on the `ToolMessageContent` it
+  builds from a played-back `FunctionCallContent`. Providers already carried the signature on their own
+  message model; only the bridge lost it.
+
 ## 0.28.1 — 2026-09-17
 
 ### Changed

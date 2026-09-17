@@ -19,6 +19,14 @@ public class ChatClientAdapter : IChatClient
     private readonly string _providerName;
 
     /// <summary>
+    /// <c>FunctionCallContent.AdditionalProperties</c> 키 — provider가 멀티턴 연속성을 위해 tool call에
+    /// 붙인 서명(<c>MessageContent.Signature</c>, 예: Gemini 3의 <c>thought_signature</c>)을 IChatClient
+    /// 왕복 사이에 나릅니다. 이 어댑터가 만든 <see cref="FunctionCallContent"/>를 그대로 히스토리에 넣어 다시
+    /// 보내면 provider는 같은 서명을 돌려받습니다 — 값은 불투명하며 소비자가 해석할 것이 없습니다.
+    /// </summary>
+    public const string SignatureKey = "IronHive.Signature";
+
+    /// <summary>
     /// ChatClientAdapter의 새 인스턴스를 생성합니다.
     /// </summary>
     /// <param name="generator">IronHive 메시지 생성기</param>
@@ -61,7 +69,7 @@ public class ChatClientAdapter : IChatClient
         var request = ConvertToRequest(messageList, options);
 
         // Buffer tool calls: index -> (callId, name, argumentsJson)
-        var toolCallBuffers = new Dictionary<int, (string CallId, string Name, StringBuilder Arguments)>();
+        var toolCallBuffers = new Dictionary<int, (string CallId, string Name, StringBuilder Arguments, string? Signature)>();
 
         await foreach (var chunk in _generator.GenerateStreamingMessageAsync(request, cancellationToken)
             .ConfigureAwait(false))
@@ -75,7 +83,17 @@ public class ChatClientAdapter : IChatClient
                     toolCallBuffers[added.Index] = (
                         tool.Id ?? Guid.NewGuid().ToString(),
                         tool.Name ?? string.Empty,
-                        initialArguments);
+                        initialArguments,
+                        tool.Signature);
+                    break;
+
+                // A provider may attach the tool call's signature after the block was added (Anthropic
+                // delivers signatures as an update); keep it with the buffered call so the completed
+                // FunctionCallContent carries it.
+                case StreamingContentUpdatedResponse updated
+                    when updated.Updated is SignatureUpdatedContent signatureUpdated
+                         && toolCallBuffers.TryGetValue(updated.Index, out var signedBuffer):
+                    toolCallBuffers[updated.Index] = signedBuffer with { Signature = signatureUpdated.Signature };
                     break;
 
                 // The first text/thinking chunk arrives in StreamingContentAddedResponse.Content.Value,
@@ -120,10 +138,10 @@ public class ChatClientAdapter : IChatClient
                         yield return new ChatResponseUpdate
                         {
                             ResponseId = null,
-                            Contents = [new FunctionCallContent(
+                            Contents = [WithSignature(new FunctionCallContent(
                                 callId: completedTool.CallId,
                                 name: completedTool.Name,
-                                arguments: arguments)]
+                                arguments: arguments), completedTool.Signature)]
                         };
                         toolCallBuffers.Remove(completed.Index);
                     }
@@ -303,7 +321,12 @@ public class ChatClientAdapter : IChatClient
                             Input = functionCall.Arguments is not null
                                 ? JsonSerializer.Serialize(functionCall.Arguments)
                                 : "{}",
-                            IsApproved = true
+                            IsApproved = true,
+                            // Replay the provider's signature (Gemini 3 thought_signature and the like): the
+                            // provider refuses a played-back functionCall that lost it (#326).
+                            Signature = functionCall.AdditionalProperties?.TryGetValue(SignatureKey, out var signature) == true
+                                ? signature as string
+                                : null
                         };
 
                         if (toolResults.TryGetValue(callId, out var result))
@@ -344,10 +367,10 @@ public class ChatClientAdapter : IChatClient
             else if (content is ToolMessageContent toolContent)
             {
                 var args = ParseToolArguments(toolContent.Input);
-                contents.Add(new FunctionCallContent(
+                contents.Add(WithSignature(new FunctionCallContent(
                     toolContent.Id,
                     toolContent.Name,
-                    args));
+                    args), toolContent.Signature));
             }
         }
 
@@ -508,6 +531,20 @@ public class ChatClientAdapter : IChatClient
     // Some local LLMs (e.g. Gemma 4 E4B) emit non-object JSON for tool-call arguments
     // (`[]`, `[null]`, scalars). Treat any non-object root as "no args" rather than
     // throwing JsonException mid-stream. See Filer issue 2026-04-28.
+    /// <summary>
+    /// provider 서명을 <see cref="SignatureKey"/>로 <c>FunctionCallContent.AdditionalProperties</c>에
+    /// 실어, 소비자가 이 콘텐츠를 히스토리에 그대로 되돌려 보내면 요청 측(<see cref="ConvertToRequest"/>)이
+    /// <c>ToolMessageContent.Signature</c>로 복원합니다. 서명이 없으면 아무것도 붙이지 않습니다.
+    /// </summary>
+    private static FunctionCallContent WithSignature(FunctionCallContent call, string? signature)
+    {
+        if (string.IsNullOrEmpty(signature))
+            return call;
+
+        (call.AdditionalProperties ??= new AdditionalPropertiesDictionary())[SignatureKey] = signature;
+        return call;
+    }
+
     private static Dictionary<string, object?>? ParseToolArguments(string? json)
     {
         if (string.IsNullOrEmpty(json))
