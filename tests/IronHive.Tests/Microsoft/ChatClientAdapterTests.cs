@@ -1065,6 +1065,29 @@ public class ChatClientAdapterTests : IDisposable
             "the signature arrives after the text and must ride on a reasoning piece so the assembled message can be replayed");
     }
 
+    [Fact]
+    public async Task GetStreamingResponseAsync_ReasoningPieces_DoNotLeakIntoTheAssembledText()
+    {
+        var chunks = new List<StreamingMessageResponse>
+        {
+            new StreamingMessageBeginResponse(),
+            new StreamingContentAddedResponse { Index = 0, Content = new ThinkingMessageContent { Value = "thinking…" } },
+            new StreamingContentCompletedResponse { Index = 0 },
+            new StreamingContentAddedResponse { Index = 1, Content = new TextMessageContent { Value = "Hello" } },
+            new StreamingContentDeltaResponse { Index = 1, Delta = new TextDeltaContent { Value = " world" } },
+            new StreamingContentCompletedResponse { Index = 1 },
+        };
+        SetupStreamingGenerator(chunks);
+
+        var updates = new List<ChatResponseUpdate>();
+        await foreach (var update in _adapter.GetStreamingResponseAsync([new ChatMessage(ChatRole.User, "hi")], cancellationToken: TestContext.Current.CancellationToken))
+            updates.Add(update);
+        var assembled = updates.ToChatResponse();
+
+        assembled.Text.Should().Be("Hello world", "M.E.AI keeps TextReasoningContent out of Text; the thinking text must not read as the answer");
+        assembled.Messages.Single().Contents.OfType<TextReasoningContent>().Single().Text.Should().Be("thinking…");
+    }
+
     private static ToolOutput SingleToolOutput(MessageGenerationRequest request) =>
         request.Messages.Should().ContainSingle().Which.Should().BeOfType<Message>().Subject
             .Content.OfType<ToolMessageContent>().Single().Output!;
