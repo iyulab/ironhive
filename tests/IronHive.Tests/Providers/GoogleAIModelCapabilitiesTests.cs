@@ -35,7 +35,60 @@ public class GoogleAIModelCapabilitiesTests
         GoogleAIModelCapabilities.Resolve("gemini-3.8-flash-preview").SupportsMinimalThinking.Should().BeFalse();
         GoogleAIModelCapabilities.Resolve("gemini-2.5-flash").ThinkingControl.Should().Be(GoogleAIThinkingControl.Budget);
         GoogleAIModelCapabilities.Resolve("gemini-2.0-flash").ThinkingControl.Should().Be(GoogleAIThinkingControl.None);
-        GoogleAIModelCapabilities.Resolve("gemini-3-pro").Should().BeSameAs(GoogleAIModelCapabilities.Default);
+        GoogleAIModelCapabilities.Resolve("gemini-2.5-pro").SupportsZeroThinkingBudget.Should().BeFalse("the longer prefix wins over gemini-2.5");
+        GoogleAIModelCapabilities.Resolve("gemini-9-flash").Should().BeSameAs(GoogleAIModelCapabilities.Default);
+    }
+
+    // Effort None is "turn thinking off", not "send nothing": on a model that thinks by default the thought
+    // tokens are billed against maxOutputTokens and a short answer comes back empty (finishReason MAX_TOKENS).
+    [Theory]
+    [InlineData("gemini-2.5-flash")]
+    [InlineData("gemini-3.6-flash")]
+    [InlineData("gemini-3.7-flash")]
+    [InlineData("gemini-3.8-flash")]
+    public void NoThinking_OnAModelThatCanTurnItOff_IsAZeroBudget(string model)
+    {
+        var (_, config) = Generator().ToGoogleAIParams(Request(model, MessageThinkingEffort.None));
+
+        config.ThinkingConfig!.ThinkingBudget.Should().Be(0);
+        config.ThinkingConfig.ThinkingLevel.Should().BeNull();
+        config.ThinkingConfig.IncludeThoughts.Should().NotBe(true);
+    }
+
+    [Theory]
+    [InlineData("gemini-3.5-flash-lite", true)]
+    [InlineData("gemini-3.1-pro-preview", false)]
+    [InlineData("gemini-9-flash", true)]
+    public void NoThinking_OnAModelThatRejectsAZeroBudget_IsTheLowestLevelItTakes(string model, bool minimal)
+    {
+        var (_, config) = Generator().ToGoogleAIParams(Request(model, MessageThinkingEffort.None));
+
+        config.ThinkingConfig!.ThinkingLevel.Should().Be(minimal ? ThinkingLevel.Minimal : ThinkingLevel.Low);
+        config.ThinkingConfig.ThinkingBudget.Should().BeNull("budget 0 is a 400 on this model");
+    }
+
+    [Fact]
+    public void NoThinking_OnGemini25Pro_IsTheMinimumBudget()
+    {
+        var (_, config) = Generator().ToGoogleAIParams(Request("gemini-2.5-pro", MessageThinkingEffort.None));
+
+        config.ThinkingConfig!.ThinkingBudget.Should().Be(128);
+    }
+
+    [Fact]
+    public void NoThinking_OnGemini20_SendsNoThinkingConfig()
+    {
+        var (_, config) = Generator().ToGoogleAIParams(Request("gemini-2.0-flash", MessageThinkingEffort.None));
+
+        config.ThinkingConfig.Should().BeNull();
+    }
+
+    [Fact]
+    public void UnsetThinking_SendsNoThinkingConfig()
+    {
+        var (_, config) = Generator().ToGoogleAIParams(Request("gemini-2.5-flash"));
+
+        config.ThinkingConfig.Should().BeNull("unset means the model's own default");
     }
 
     [Fact]
@@ -48,9 +101,9 @@ public class GoogleAIModelCapabilitiesTests
     }
 
     [Fact]
-    public void MinimalThinking_OnGemini3Pro_StaysMinimal()
+    public void MinimalThinking_OnGemini36Flash_StaysMinimal()
     {
-        var (_, config) = Generator().ToGoogleAIParams(Request("gemini-3-pro", MessageThinkingEffort.Minimal));
+        var (_, config) = Generator().ToGoogleAIParams(Request("gemini-3.6-flash", MessageThinkingEffort.Minimal));
 
         config.ThinkingConfig!.ThinkingLevel.Should().Be(ThinkingLevel.Minimal);
     }

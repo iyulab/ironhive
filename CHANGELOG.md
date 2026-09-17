@@ -4,6 +4,23 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.28.5 — 2026-09-17
+
+### Fixed
+
+- **"No reasoning" never reached the model through `IChatClient`, and GoogleAI treated it as "unset".** Two layers
+  dropped the same request. `ChatClientAdapter` did not forward `ChatOptions.Reasoning.Effort` at all (the
+  option-reachability teeth only matched same-named knobs, and this pair is renamed); it now maps to
+  `MessageThinkingEffort` (`ExtraHigh` → `XHigh`, unset stays unset). And the GoogleAI provider sent no
+  `thinkingConfig` for `MessageThinkingEffort.None`, so a model that thinks by default kept thinking, the thought
+  tokens were billed against `maxOutputTokens`, and a short answer came back empty (`finishReason: MAX_TOKENS`).
+  `None` now turns thinking off: `thinkingBudget: 0` where the model accepts it, otherwise the lowest level it
+  takes (`minimal`, or `low`; budget 128 on Gemini 2.5 Pro). The capability policy gains
+  `SupportsZeroThinkingBudget` (default `false` — a zero budget is a 400 on models that cannot turn thinking off),
+  with built-in rows for Gemini 2.5, 3 Pro, 3.1 Pro and 3.6/3.7/3.8 Flash; Gemini 3 Pro, 3.1 Pro and 3.7 Flash are
+  now recorded as rejecting the `minimal` level. Measured against the live API: `gemini-2.5-flash` with
+  `maxOutputTokens: 20` answered 3/5 unset and 5/5 with `Effort = None`; `gemini-3.8-flash` 0/5 → 5/5.
+
 ## 0.28.4 — 2026-09-17
 
 ### Fixed

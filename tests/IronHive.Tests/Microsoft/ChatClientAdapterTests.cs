@@ -248,8 +248,35 @@ public class ChatClientAdapterTests : IDisposable
         ["TopK"] = "TopK",
         ["StopSequences"] = "StopSequences",
         ["Tools"] = "Tools",
-        ["ToolMode"] = "ToolChoice"
+        ["ToolMode"] = "ToolChoice",
+        ["Reasoning"] = "ThinkingEffort"
     };
+
+    [Theory]
+    [InlineData(ReasoningEffort.None, MessageThinkingEffort.None)]
+    [InlineData(ReasoningEffort.Low, MessageThinkingEffort.Low)]
+    [InlineData(ReasoningEffort.Medium, MessageThinkingEffort.Medium)]
+    [InlineData(ReasoningEffort.High, MessageThinkingEffort.High)]
+    [InlineData(ReasoningEffort.ExtraHigh, MessageThinkingEffort.XHigh)]
+    public async Task ReasoningEffort_ReachesThinkingEffort(ReasoningEffort effort, MessageThinkingEffort expected)
+    {
+        var capturedRequest = SetupGeneratorReturns();
+        var options = new ChatOptions { Reasoning = new ReasoningOptions { Effort = effort } };
+
+        await _adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "Hi")], options, TestContext.Current.CancellationToken);
+
+        capturedRequest().ThinkingEffort.Should().Be(expected);
+    }
+
+    [Fact]
+    public async Task UnsetReasoning_LeavesThinkingEffortUnset()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+
+        await _adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "Hi")], new ChatOptions { Reasoning = new ReasoningOptions() }, TestContext.Current.CancellationToken);
+
+        capturedRequest().ThinkingEffort.Should().BeNull("an unset effort is the model's default, not \"off\"");
+    }
 
     [Fact]
     public async Task EveryDeclaredOptionKnob_ReachesItsRequestSink()
@@ -302,6 +329,7 @@ public class ChatClientAdapterTests : IDisposable
             return new List<AITool> { AIFunctionFactory.Create(() => "result", "my_tool", "My tool") };
         }
         if (type == typeof(ChatToolMode)) return ChatToolMode.RequireAny;
+        if (type == typeof(ReasoningOptions)) return new ReasoningOptions { Effort = ReasoningEffort.None };
 
         throw new NotSupportedException(
             $"No sample value for {propertyType} — extend SampleValueFor when adding a knob of a new type");

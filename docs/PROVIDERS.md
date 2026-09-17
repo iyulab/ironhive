@@ -255,12 +255,24 @@ Anthropic 과 같은 형태로 `GoogleAIModelCapabilities`가 세대별 wire 규
 일치, 없는 모델은 최신 세대). `GoogleAIConfig.ModelCapabilities` / `VertexAIConfig.ModelCapabilities`로
 덮어쓴다.
 
-| 세대 | `ThinkingControl` | `SupportsMinimalThinking` | `SupportsSamplingParameters` | `SupportsMultimodalFunctionResponse` |
-|---|---|---|---|---|
-| Gemini 1.5 / 2.0 | `None` — thinking 파라미터 없음 | — | `true` | **`false`** — 이미지/오디오 도구 결과는 텍스트 자리표시자로 |
-| Gemini 2.5 | `Budget` — `thinkingBudget`(Minimal 1,024 · Low 4,000 · Medium 10,000 · High 20,000 · XHigh 24,576) | — | `true` | **`false`** — `inlineData` 는 `400 Multimodal function responses are not supported` |
-| Gemini 3 (기본) | `Level` — `thinkingLevel` | `true` | `true` | `true` — `functionResponse.parts[].inlineData` |
-| Gemini 3.8 Flash | `Level` | **`false`** — `minimal`은 오류 → `low`로 강등 | **`false`** — `temperature`/`topP`/`topK`를 보내지 않음 | `true` |
+| 세대 | `ThinkingControl` | `SupportsMinimalThinking` | `SupportsZeroThinkingBudget` | `SupportsSamplingParameters` | `SupportsMultimodalFunctionResponse` |
+|---|---|---|---|---|---|
+| Gemini 1.5 / 2.0 | `None` — thinking 파라미터 없음 | — | — | `true` | **`false`** — 이미지/오디오 도구 결과는 텍스트 자리표시자로 |
+| Gemini 2.5 | `Budget` — `thinkingBudget`(Minimal 1,024 · Low 4,000 · Medium 10,000 · High 20,000 · XHigh 24,576) | — | `true` | `true` | **`false`** — `inlineData` 는 `400 Multimodal function responses are not supported` |
+| Gemini 2.5 Pro | `Budget` | — | **`false`** — 끌 수 없음 → 최소 예산 128 | `true` | **`false`** |
+| Gemini 3 (기본) | `Level` — `thinkingLevel` | `true` | `false` | `true` | `true` — `functionResponse.parts[].inlineData` |
+| Gemini 3 Pro · 3.1 Pro | `Level` | **`false`** — `low`/`high` 만 | `false` — thinking 모드에서만 동작 | `true` | `true` |
+| Gemini 3.6 Flash | `Level` | `true` | **`true`** | `true` | `true` |
+| Gemini 3.7 Flash | `Level` | **`false`** | **`true`** | `true` | `true` |
+| Gemini 3.8 Flash | `Level` | **`false`** — `minimal`은 오류 → `low`로 강등 | **`true`** | **`false`** — `temperature`/`topP`/`topK`를 보내지 않음 | `true` |
+
+**`MessageThinkingEffort.None`(= `ChatOptions.Reasoning.Effort = None`)은 «보내지 않음»이 아니라 «꺼 달라»다.**
+Gemini 2.5·3 계열 대부분은 기본으로 생각하고 thinking 토큰이 `maxOutputTokens` 에 포함되므로, 끄지 않으면 짧은
+응답이 빈 문자열(`finishReason: MAX_TOKENS`)로 돌아온다. `SupportsZeroThinkingBudget` 이 `true` 인 모델에는
+`thinkingBudget: 0` 을, 아닌 모델에는 받는 가장 낮은 단계(`minimal`, 안 받으면 `low` · Budget 모델은 128)를
+보낸다 — 끌 수 없는 모델(Pro)은 여전히 생각하므로 출력 예산을 넉넉히 준다. 모르는 모델의 기본값이 `false` 인 것은
+예산 0 을 거부하는 모델(3.1 Pro · 3.5 Flash-Lite)에서 호출 자체가 400 이 되기 때문이다. 표의 끄기·`minimal` 행은
+2026-09-17 실키 실측.
 
 ### 지원 기능
 

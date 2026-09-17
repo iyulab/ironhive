@@ -633,7 +633,22 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         // Gemini 3: thinkingLevel · Gemini 2.5: thinkingBudget · 그 이전: 없음.
         // https://ai.google.dev/api/generate-content?hl=ko#ThinkingConfig
         ThinkingConfig? thinkingConfig = null;
-        if (request.ThinkingEffort is not null and not MessageThinkingEffort.None)
+        if (request.ThinkingEffort is MessageThinkingEffort.None)
+        {
+            // None 은 「보내지 않음」이 아니라 「꺼 달라」입니다 — 기본으로 생각하는 모델은 thinking 토큰이 출력 예산을
+            // 먹어 짧은 응답이 빈 문자열로 돌아옵니다. 끌 수 없는 모델에는 가장 낮은 단계를 보냅니다.
+            thinkingConfig = capabilities.ThinkingControl switch
+            {
+                GoogleAIThinkingControl.None => null,
+                _ when capabilities.SupportsZeroThinkingBudget => new ThinkingConfig { ThinkingBudget = 0 },
+                GoogleAIThinkingControl.Budget => new ThinkingConfig { ThinkingBudget = 128 },
+                _ => new ThinkingConfig
+                {
+                    ThinkingLevel = capabilities.SupportsMinimalThinking ? ThinkingLevel.Minimal : ThinkingLevel.Low
+                },
+            };
+        }
+        else if (request.ThinkingEffort is not null)
         {
             thinkingConfig = capabilities.ThinkingControl switch
             {

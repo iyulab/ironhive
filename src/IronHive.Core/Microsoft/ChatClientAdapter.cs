@@ -245,6 +245,18 @@ public class ChatClientAdapter : IChatClient
             request.TopP = options.TopP;
             request.TopK = options.TopK;
             request.StopSequences = options.StopSequences?.ToList();
+            // Reasoning.Effort is a request, not a hint: None asks the provider to turn thinking off, which
+            // on a model that thinks by default is the difference between an answer and an output budget
+            // spent on thoughts. Unset stays null so the provider sends nothing (the model's default).
+            request.ThinkingEffort = options.Reasoning?.Effort switch
+            {
+                ReasoningEffort.None => MessageThinkingEffort.None,
+                ReasoningEffort.Low => MessageThinkingEffort.Low,
+                ReasoningEffort.Medium => MessageThinkingEffort.Medium,
+                ReasoningEffort.High => MessageThinkingEffort.High,
+                ReasoningEffort.ExtraHigh => MessageThinkingEffort.XHigh,
+                _ => null
+            };
 
             if (options.Tools is { Count: > 0 })
             {

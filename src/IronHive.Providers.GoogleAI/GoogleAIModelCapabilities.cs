@@ -36,7 +36,8 @@ public enum GoogleAIThinkingControl
 /// <para>
 /// 근거(2026-09 vendor 문서): Gemini 3.8 Flash — <c>minimal</c> thinking level 은 오류를 반환하고,
 /// <c>temperature</c>/<c>topP</c>/<c>topK</c>는 설정하지 않도록 안내. Gemini 2.5 는 <c>thinkingLevel</c>이 아니라
-/// <c>thinkingBudget</c>으로 제어합니다. 이 트리는 Gemini 3.8 을 실키로 실측하지 않았습니다(문서 근거).
+/// <c>thinkingBudget</c>으로 제어합니다. thinking 끄기(<see cref="SupportsZeroThinkingBudget"/>)와 <c>minimal</c> 거부 행은
+/// 2026-09-17 실키 실측입니다(내장 표 주석 참조).
 /// </para>
 /// </remarks>
 public sealed record GoogleAIModelCapabilities
@@ -51,6 +52,17 @@ public sealed record GoogleAIModelCapabilities
     /// 때만 의미). <c>false</c>이면 지원되는 최저 단계 <c>low</c>로 강등합니다. 기본값 <c>true</c>.
     /// </summary>
     public bool SupportsMinimalThinking { get; init; } = true;
+
+    /// <summary>
+    /// <c>thinkingConfig.thinkingBudget: 0</c>이 이 모델에서 thinking 을 끄는지 여부 — 요청의
+    /// <see cref="IronHive.Abstractions.Messages.MessageThinkingEffort.None"/>을 번역할 때 참조합니다.
+    /// <c>true</c>이면 제어 형태와 무관하게 예산 0 을 보냅니다(Gemini 3 flash 도 호환 파라미터로 받음).
+    /// <c>false</c>이면 끌 수 없는 모델로 보고 가장 낮은 단계를 보냅니다 — <see cref="GoogleAIThinkingControl.Level"/>은
+    /// <c>minimal</c>(받지 않으면 <c>low</c>), <see cref="GoogleAIThinkingControl.Budget"/>은 문서상 최소 예산 128.
+    /// 기본값 <c>false</c> — 모르는 모델에 예산 0 을 보내면 호출이 400 으로 거부됩니다(Gemini 3.1 Pro: «only works in
+    /// thinking mode», Gemini 3.5 Flash-Lite: «invalid argument»).
+    /// </summary>
+    public bool SupportsZeroThinkingBudget { get; init; }
 
     /// <summary>
     /// <c>temperature</c>/<c>topP</c>/<c>topK</c>를 받는지 여부. <c>false</c>이면 요청의 값을 전달하지 않습니다
@@ -112,8 +124,12 @@ public sealed record GoogleAIModelCapabilities
     {
         // Pre-Gemini-3 generations reject inlineData inside functionResponse.parts.
         var noThinking = new GoogleAIModelCapabilities { ThinkingControl = GoogleAIThinkingControl.None, SupportsMultimodalFunctionResponse = false };
-        var budget = new GoogleAIModelCapabilities { ThinkingControl = GoogleAIThinkingControl.Budget, SupportsMultimodalFunctionResponse = false };
+        var budget = new GoogleAIModelCapabilities { ThinkingControl = GoogleAIThinkingControl.Budget, SupportsMultimodalFunctionResponse = false, SupportsZeroThinkingBudget = true };
 
+        // Thinking-off rows are live-measured (2026-09-17, generateContent, "Reply with the single word: pong",
+        // maxOutputTokens 20): thinkingBudget 0 → no thought tokens on 2.5/3.6/3.7/3.8 Flash; rejected by
+        // 3.1 Pro ("only works in thinking mode") and 3.5 Flash-Lite ("invalid argument"); thinkingLevel
+        // minimal rejected by 3.1 Pro, 3.7 Flash and 3.8 Flash.
         return new Dictionary<string, GoogleAIModelCapabilities>(StringComparer.Ordinal)
         {
             // Gemini 1.5 / 2.0 — no thinking parameter.
@@ -121,11 +137,19 @@ public sealed record GoogleAIModelCapabilities
             ["gemini-2.0"] = noThinking,
             // Gemini 2.5 — thinkingBudget; no multimodal function responses (400 on inlineData).
             ["gemini-2.5"] = budget,
+            // Gemini 2.5 Pro cannot disable thinking (vendor minimum budget 128).
+            ["gemini-2.5-pro"] = budget with { SupportsZeroThinkingBudget = false },
+            // Gemini 3 Pro — levels low/high only; always thinks.
+            ["gemini-3-pro"] = new GoogleAIModelCapabilities { SupportsMinimalThinking = false },
+            ["gemini-3.1-pro"] = new GoogleAIModelCapabilities { SupportsMinimalThinking = false },
+            ["gemini-3.6-flash"] = new GoogleAIModelCapabilities { SupportsZeroThinkingBudget = true },
+            ["gemini-3.7-flash"] = new GoogleAIModelCapabilities { SupportsMinimalThinking = false, SupportsZeroThinkingBudget = true },
             // Gemini 3.8 Flash — minimal level returns an error; sampling parameters must not be set.
             ["gemini-3.8-flash"] = new GoogleAIModelCapabilities
             {
                 SupportsMinimalThinking = false,
                 SupportsSamplingParameters = false,
+                SupportsZeroThinkingBudget = true,
             },
         };
     }

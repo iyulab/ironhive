@@ -203,6 +203,11 @@ var tool = new AIToolAdapter(mcpClientTool);
 문구는 invoker가 정한 `Result`이며, 오류 상세를 노출할지는 invoker 설정이 정한다. 그 밖의 값은 이전처럼 문자열 형태로 간다.
 Chat Completions 계열 wire는 도구 메시지에 이미지 자리가 없어 텍스트로 평탄화된다.
 
+`ChatOptions` 의 요청 knob 은 전부 `MessageGenerationRequest` 로 간다 — `MaxOutputTokens` → `MaxTokens`, 샘플링
+파라미터, `Tools`/`ToolMode`, 그리고 `Reasoning.Effort` → `ThinkingEffort`(`ExtraHigh` → `XHigh`). `Effort = None` 은
+«꺼 달라»로 전달되고(provider 가 모델별로 끄는 형태를 고른다 — [PROVIDERS.md](PROVIDERS.md) Google AI 절), 설정하지
+않으면 null 로 남아 모델 기본값을 쓴다.
+
 provider 가 멀티턴 연속성을 위해 붙이는 **서명**(Gemini 3 의 `thought_signature`, Anthropic thinking 블록의 `signature`)은
 브리지가 만든 `FunctionCallContent` / `TextReasoningContent` 의 `AdditionalProperties[ChatClientAdapter.SignatureKey]`
 (`"IronHive.Signature"`)에 실려 나가고, 그 콘텐츠를 히스토리에 그대로 되돌려 보내면 `ToolMessageContent.Signature` /
