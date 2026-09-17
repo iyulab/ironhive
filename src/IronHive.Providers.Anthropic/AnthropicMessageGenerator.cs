@@ -507,17 +507,33 @@ public class AnthropicMessageGenerator : IMessageGenerator
         })?.ToList();
 
         // 출력 구성 지원
-        OutputConfig? outputConfig = null;
+        JsonOutputFormat? format = null;
         if (request.OutputFormat is { } outputFormat)
         {
             var schemaDict = AnthropicHelper.ToAnthropicCompatibleSchema(outputFormat.Schema)
                 .Deserialize<IReadOnlyDictionary<string, JsonElement>>()!;
-            outputConfig = new OutputConfig { Format = JsonOutputFormat.FromRawUnchecked(schemaDict) };
+            format = JsonOutputFormat.FromRawUnchecked(schemaDict);
         }
 
         // 추론 구성 지원
         ThinkingConfigParam? thinking = null;
-        if (request.ThinkingEffort is not null and not MessageThinkingEffort.None)
+        Effort? effort = null;
+        if (request.ThinkingEffort is MessageThinkingEffort.None && capabilities.ThinkingStyle == AnthropicThinkingStyle.Adaptive)
+        {
+            // None 은 「보내지 않음」이 아니라 「꺼 달라」입니다 — Claude Sonnet 5 · Opus 5 · Fable 은 thinking 을
+            // 생략해도 adaptive 로 생각합니다. 끌 수 있는 모델에는 disabled 를, 끌 수 없는 모델(Fable: disabled 는 400)과
+            // vendor 가 끄기 대신 낮은 effort 를 권하는 모델(Opus 5)에는 가장 낮은 effort 를 보냅니다.
+            // Budget 세대는 생략이 곧 off 라 아무것도 보내지 않습니다.
+            if (capabilities.SupportsDisabledThinking)
+            {
+                thinking = new ThinkingConfigDisabled();
+            }
+            else
+            {
+                effort = Effort.Low;
+            }
+        }
+        else if (request.ThinkingEffort is not null and not MessageThinkingEffort.None)
         {
             if (capabilities.ThinkingStyle == AnthropicThinkingStyle.Budget)
             {
@@ -552,8 +568,22 @@ public class AnthropicMessageGenerator : IMessageGenerator
                 // 최신 모델들은 Adaptive 추론 전략을 사용합니다.
                 // https://platform.claude.com/docs/en/build-with-claude/adaptive-thinking
                 thinking = new ThinkingConfigAdaptive { };
+                // adaptive 의 깊이는 output_config.effort 가 정합니다(생략 = high). 요청의 단계를 옮기지 않으면
+                // Minimal 과 XHigh 가 같은 요청이 됩니다. Minimal 은 vendor 최저 low 로, xhigh 를 받지 않는 세대는 high 로.
+                effort = request.ThinkingEffort switch
+                {
+                    MessageThinkingEffort.Minimal or MessageThinkingEffort.Low => Effort.Low,
+                    MessageThinkingEffort.Medium => Effort.Medium,
+                    MessageThinkingEffort.High => Effort.High,
+                    MessageThinkingEffort.XHigh => capabilities.SupportsXHighEffort ? Effort.Xhigh : Effort.High,
+                    _ => null
+                };
             }
         }
+
+        OutputConfig? outputConfig = format is null && effort is null
+            ? null
+            : new OutputConfig { Format = format, Effort = effort };
 
         // 도구 호출 강제(tool_choice any/tool)를 받지 않는 모델(Claude 5.1 계열)에서는 vendor 처방대로
         // auto 로 강등하고 시스템 프롬프트 끝에 명시 지시를 덧붙입니다. 400 을 그대로 흘리지도, 아무 말 없이

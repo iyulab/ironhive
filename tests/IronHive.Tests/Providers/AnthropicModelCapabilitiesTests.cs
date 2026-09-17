@@ -143,6 +143,62 @@ public class AnthropicModelCapabilitiesTests
         req.Thinking.Should().BeNull("half of 1,024 is below the vendor minimum budget, so no valid thinking request fits");
     }
 
+    // Adaptive depth is output_config.effort; without it Minimal and XHigh were the same request.
+    [Theory]
+    [InlineData("claude-sonnet-5", MessageThinkingEffort.Minimal, "low")]
+    [InlineData("claude-sonnet-5", MessageThinkingEffort.Medium, "medium")]
+    [InlineData("claude-sonnet-5", MessageThinkingEffort.XHigh, "xhigh")]
+    [InlineData("claude-opus-4-6", MessageThinkingEffort.XHigh, "high")]
+    [InlineData("claude-opus-5", MessageThinkingEffort.High, "high")]
+    public void AdaptiveThinking_CarriesTheEffortLevel(string model, MessageThinkingEffort effort, string wireEffort)
+    {
+        var req = Generator().ToMessageCreateParams(Request(model, effort: effort));
+
+        req.Thinking!.TryPickAdaptive(out _).Should().BeTrue();
+        WireOf(req).Should().Contain($"\"effort\":\"{wireEffort}\"");
+    }
+
+    // Sonnet 5 / Opus 5 / Fable think when `thinking` is omitted, so None must say "off" on the wire.
+    [Fact]
+    public void NoThinking_OnAModelThatAcceptsDisabled_IsDisabled()
+    {
+        var req = Generator().ToMessageCreateParams(Request("claude-sonnet-5", effort: MessageThinkingEffort.None));
+
+        req.Thinking!.TryPickDisabled(out _).Should().BeTrue();
+        WireOf(req).Should().NotContain("\"effort\"");
+    }
+
+    [Theory]
+    [InlineData("claude-fable-5-1")]
+    [InlineData("claude-opus-5")]
+    public void NoThinking_OnAModelThatCannotDisable_IsTheLowestEffort(string model)
+    {
+        var req = Generator().ToMessageCreateParams(Request(model, effort: MessageThinkingEffort.None));
+
+        req.Thinking.Should().BeNull("disabled is a 400 on Fable and vendor-discouraged on Opus 5");
+        WireOf(req).Should().Contain("\"effort\":\"low\"");
+    }
+
+    [Fact]
+    public void NoThinking_OnABudgetModel_SendsNothing()
+    {
+        var req = Generator().ToMessageCreateParams(Request("claude-haiku-4-5", effort: MessageThinkingEffort.None));
+
+        req.Thinking.Should().BeNull();
+        req.OutputConfig.Should().BeNull("omitting thinking is already off here, and effort is a 400 on Haiku 4.5");
+    }
+
+    [Fact]
+    public void UnsetThinking_SendsNothing()
+    {
+        var req = Generator().ToMessageCreateParams(Request("claude-sonnet-5"));
+
+        req.Thinking.Should().BeNull();
+        req.OutputConfig.Should().BeNull();
+    }
+
+    private static string WireOf(MessageCreateParams req) => req.ToString().Replace(" ", string.Empty);
+
     private static string SystemTextOf(MessageCreateParams req)
     {
         if (req.System!.TryPickString(out var text)) return text;

@@ -50,6 +50,22 @@ public sealed record AnthropicModelCapabilities
     public AnthropicThinkingStyle ThinkingStyle { get; init; } = AnthropicThinkingStyle.Adaptive;
 
     /// <summary>
+    /// <c>thinking: {type: "disabled"}</c>을 받는지 여부(<see cref="AnthropicThinkingStyle.Adaptive"/> 세대에서만 의미) —
+    /// 요청의 <see cref="IronHive.Abstractions.Messages.MessageThinkingEffort.None"/>을 번역할 때 참조합니다.
+    /// <c>false</c>이면 끌 수 없는 모델로 보고 <c>output_config.effort: low</c>를 보냅니다(Claude Fable 은 disabled 가 400,
+    /// Claude Opus 5 는 disabled 에서 도구 호출이 본문 텍스트로 새는 실패 형태가 있어 vendor 가 낮은 effort 를 권함).
+    /// 기본값 <c>false</c> — 모르는 새 모델에 disabled 를 보내 400 이 되는 것보다 낮은 effort 가 안전합니다.
+    /// </summary>
+    public bool SupportsDisabledThinking { get; init; }
+
+    /// <summary>
+    /// <c>output_config.effort: xhigh</c>를 받는지 여부(<see cref="AnthropicThinkingStyle.Adaptive"/> 세대). <c>false</c>이면
+    /// <see cref="IronHive.Abstractions.Messages.MessageThinkingEffort.XHigh"/>를 <c>high</c>로 보냅니다 — <c>xhigh</c>는
+    /// Claude Opus 4.7 에서 도입돼 4.6 세대는 받지 않습니다. 기본값 <c>true</c>.
+    /// </summary>
+    public bool SupportsXHighEffort { get; init; } = true;
+
+    /// <summary>
     /// 내장 표에 없는 모델의 정책 — 최신 세대와 같다고 가정합니다.
     /// </summary>
     public static AnthropicModelCapabilities Default { get; } = new();
@@ -106,6 +122,17 @@ public sealed record AnthropicModelCapabilities
         var noForcedToolChoice = new AnthropicModelCapabilities { SupportsForcedToolChoice = false };
         table["claude-fable-5-1"] = noForcedToolChoice;
         table["claude-mythos-5-1"] = noForcedToolChoice;
+
+        // Adaptive thinking-off and effort rows (vendor docs 2026-09): disabled is accepted by Sonnet 5 and
+        // Opus 4.6/4.7/4.8; Fable rejects it (400) and Opus 5 is steered to low effort instead; xhigh arrived
+        // with Opus 4.7, so the 4.6 generation tops out at high.
+        var canDisable = new AnthropicModelCapabilities { SupportsDisabledThinking = true };
+        var canDisableNoXHigh = canDisable with { SupportsXHighEffort = false };
+        table["claude-sonnet-5"] = canDisable;
+        table["claude-opus-4-8"] = canDisable;
+        table["claude-opus-4-7"] = canDisable;
+        table["claude-opus-4-6"] = canDisableNoXHigh;
+        table["claude-sonnet-4-6"] = canDisableNoXHigh;
 
         return table;
     }

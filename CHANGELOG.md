@@ -27,6 +27,14 @@ changes are expected and used freely for structural correctness (see
   below the vendor minimum of 1,024. Measured on `claude-haiku-4-5`: 400 before, a thinking block and the answer
   after. Also verified live through the `IChatClient` bridge: extended thinking plus a tool round trip (the thinking
   block and its signature replayed on the second call) completes on `claude-haiku-4-5` and `claude-sonnet-5`.
+- **Anthropic: adaptive thinking ignored the requested effort, and "no reasoning" left Claude 5 thinking.** The
+  adaptive path sent `thinking: {type: "adaptive"}` for every level, so `Minimal` and `XHigh` were the same request;
+  the level now travels as `output_config.effort` (`low`/`medium`/`high`/`xhigh`, `high` on the 4.6 generation).
+  `MessageThinkingEffort.None` sent nothing, but Claude Sonnet 5, Opus 5 and Fable think when `thinking` is omitted;
+  it now sends `thinking: {type: "disabled"}` where accepted (Sonnet 5, Opus 4.6–4.8) and `output_config.effort: low`
+  otherwise (Fable rejects `disabled`; Opus 5 is steered to low effort). `AnthropicModelCapabilities` gains
+  `SupportsDisabledThinking` (default `false`) and `SupportsXHighEffort` (default `true`). Budget-style models are
+  unchanged. Measured live on `claude-sonnet-5`, `claude-opus-5` and `claude-haiku-4-5`: every level accepted.
 
 ## 0.28.4 — 2026-09-17
 
