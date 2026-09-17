@@ -4,7 +4,7 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
-## Unreleased
+## 0.28.1 — 2026-09-17
 
 ### Changed
 
