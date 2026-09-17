@@ -4,6 +4,17 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.28.4 — 2026-09-17
+
+### Fixed
+
+- **GoogleAI: an image or audio tool result sent to a model generation that cannot take one failed the whole
+  call.** Gemini 2.5 (and 1.5/2.0) answer `400 Multimodal function responses are not supported for this model`
+  when `functionResponse.parts` carries `inlineData`; Gemini 3 accepts it. The per-model capability policy gains
+  `SupportsMultimodalFunctionResponse` (false for the pre-3 generations, overridable via
+  `GoogleAIConfig.ModelCapabilities`), and on such a model the provider names the omitted block in the text result
+  instead of sending a part the vendor rejects — the same convention the Chat Completions path uses.
+
 ## 0.28.3 — 2026-09-17
 
 ### Fixed

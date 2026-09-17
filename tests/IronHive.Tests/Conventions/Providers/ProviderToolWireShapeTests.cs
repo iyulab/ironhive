@@ -177,16 +177,43 @@ public class ProviderToolWireShapeTests
     }
 
     [Fact]
-    public void GoogleAI_ImageToolResult_IsAnInlineDataPart()
+    public void GoogleAI_ImageToolResult_IsAnInlineDataPart_OnAGenerationThatTakesIt()
     {
         var generator = new GoogleAIMessageGenerator(new GoogleAIConfig { ApiKey = "test-key" });
         var image = new ImageMessageContent { Format = ImageFormat.Png, Base64 = Convert.ToBase64String([1, 2, 3]) };
         var history = new[] { Message.User("look"), Assistant(Call("call-1", ToolOutput.Success([image]))) };
 
-        var (contents, _) = generator.ToGoogleAIParams(Request("gemini-2.5-flash", Tool(null), history));
+        var (contents, _) = generator.ToGoogleAIParams(Request("gemini-3-pro", Tool(null), history));
 
         var response = contents.SelectMany(c => c.Parts ?? []).Single(p => p.FunctionResponse is not null).FunctionResponse!;
         response.Parts.Should().ContainSingle().Which.InlineData!.MimeType.Should().Be("image/png");
+    }
+
+    [Fact]
+    public void GoogleAI_ImageToolResult_IsNamedInText_OnAGenerationThatRejectsInlineData()
+    {
+        // #327 — Gemini 2.5 answers 400 "Multimodal function responses are not supported for this model" to inlineData.
+        var generator = new GoogleAIMessageGenerator(new GoogleAIConfig { ApiKey = "test-key" });
+        var image = new ImageMessageContent { Format = ImageFormat.Png, Base64 = Convert.ToBase64String([1, 2, 3]) };
+        var history = new[] { Message.User("look"), Assistant(Call("call-1", ToolOutput.Success([new TextMessageContent { Value = "front" }, image]))) };
+
+        var (contents, _) = generator.ToGoogleAIParams(Request("gemini-2.5-flash", Tool(null), history));
+
+        var response = contents.SelectMany(c => c.Parts ?? []).Single(p => p.FunctionResponse is not null).FunctionResponse!;
+        response.Parts.Should().BeNull("no inlineData may reach a model that rejects it");
+        var result = response.Response!["result"]!.ToString();
+        result.Should().Contain("front").And.Contain("image/png").And.Contain("omitted");
+    }
+
+    [Fact]
+    public void GoogleAI_MultimodalFunctionResponseCapability_FollowsTheGeneration_AndAnOverrideWins()
+    {
+        GoogleAIModelCapabilities.Resolve("gemini-2.5-flash").SupportsMultimodalFunctionResponse.Should().BeFalse();
+        GoogleAIModelCapabilities.Resolve("gemini-2.0-flash").SupportsMultimodalFunctionResponse.Should().BeFalse();
+        GoogleAIModelCapabilities.Resolve("gemini-3-pro").SupportsMultimodalFunctionResponse.Should().BeTrue();
+
+        var overrides = new Dictionary<string, GoogleAIModelCapabilities> { ["gemini-2.5-flash"] = new() { SupportsMultimodalFunctionResponse = true } };
+        GoogleAIModelCapabilities.Resolve("gemini-2.5-flash", overrides).SupportsMultimodalFunctionResponse.Should().BeTrue();
     }
 
     [Fact]

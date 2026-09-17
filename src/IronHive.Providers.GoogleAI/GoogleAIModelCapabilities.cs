@@ -59,6 +59,14 @@ public sealed record GoogleAIModelCapabilities
     public bool SupportsSamplingParameters { get; init; } = true;
 
     /// <summary>
+    /// <c>functionResponse.parts</c>에 <c>inlineData</c>(이미지·오디오 도구 결과)를 받는지 여부. <c>false</c>이면
+    /// 비텍스트 도구 결과 블록을 무엇이 빠졌는지 이름 붙인 텍스트 자리표시자로 바꿔 <c>result</c>에 싣습니다 —
+    /// Gemini 2.5 는 <c>400 Multimodal function responses are not supported for this model</c>로 호출 자체를
+    /// 거부하고, Gemini 3 계열은 받습니다. 기본값 <c>true</c>.
+    /// </summary>
+    public bool SupportsMultimodalFunctionResponse { get; init; } = true;
+
+    /// <summary>
     /// 내장 표에 없는 모델의 정책 — 최신 세대와 같다고 가정합니다.
     /// </summary>
     public static GoogleAIModelCapabilities Default { get; } = new();
@@ -102,15 +110,16 @@ public sealed record GoogleAIModelCapabilities
 
     private static Dictionary<string, GoogleAIModelCapabilities> BuildBuiltIn()
     {
-        var noThinking = new GoogleAIModelCapabilities { ThinkingControl = GoogleAIThinkingControl.None };
-        var budget = new GoogleAIModelCapabilities { ThinkingControl = GoogleAIThinkingControl.Budget };
+        // Pre-Gemini-3 generations reject inlineData inside functionResponse.parts.
+        var noThinking = new GoogleAIModelCapabilities { ThinkingControl = GoogleAIThinkingControl.None, SupportsMultimodalFunctionResponse = false };
+        var budget = new GoogleAIModelCapabilities { ThinkingControl = GoogleAIThinkingControl.Budget, SupportsMultimodalFunctionResponse = false };
 
         return new Dictionary<string, GoogleAIModelCapabilities>(StringComparer.Ordinal)
         {
             // Gemini 1.5 / 2.0 — no thinking parameter.
             ["gemini-1.5"] = noThinking,
             ["gemini-2.0"] = noThinking,
-            // Gemini 2.5 — thinkingBudget.
+            // Gemini 2.5 — thinkingBudget; no multimodal function responses (400 on inlineData).
             ["gemini-2.5"] = budget,
             // Gemini 3.8 Flash — minimal level returns an error; sampling parameters must not be set.
             ["gemini-3.8-flash"] = new GoogleAIModelCapabilities

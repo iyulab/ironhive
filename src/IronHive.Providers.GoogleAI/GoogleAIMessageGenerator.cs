@@ -406,6 +406,16 @@ public class GoogleAIMessageGenerator : IMessageGenerator
     }
 
     /// <summary>
+    /// 모델 세대가 받지 못하는 비텍스트 도구 결과 블록의 텍스트 자리표시자 — 무엇이 빠졌는지(미디어 타입 · 크기)를 말한다.
+    /// Chat Completions 경로가 도구 메시지에서 쓰는 것과 같은 규약.
+    /// </summary>
+    private static string OmittedBlockPlaceholder(string mimeType, string? base64)
+    {
+        var bytes = string.IsNullOrEmpty(base64) ? 0 : (int)Math.Round(base64.Length * 3.0 / 4.0);
+        return $"[{mimeType} content omitted - {bytes} bytes; this model does not accept multimodal function responses]";
+    }
+
+    /// <summary>
     /// IronHive의 MessageGenerationRequest를 Google GenAI SDK의 타입들로 변환합니다.
     /// </summary>
     // Internal so that the request translation can be asserted without a network: the model-generation
@@ -527,6 +537,15 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                                 {
                                     case TextMessageContent resultText:
                                         texts.Add(resultText.Value ?? string.Empty);
+                                        break;
+                                    // A model generation that rejects inlineData in functionResponse.parts
+                                    // (Gemini 2.5: 400 "Multimodal function responses are not supported") gets
+                                    // the block named in the text result instead of a call that fails (#327).
+                                    case ImageMessageContent resultImage when !capabilities.SupportsMultimodalFunctionResponse:
+                                        texts.Add(OmittedBlockPlaceholder(ToMimeType(resultImage.Format), resultImage.Base64));
+                                        break;
+                                    case AudioMessageContent resultAudio when !capabilities.SupportsMultimodalFunctionResponse:
+                                        texts.Add(OmittedBlockPlaceholder(ToMimeType(resultAudio.Format), resultAudio.Base64));
                                         break;
                                     case ImageMessageContent resultImage:
                                         (responseParts ??= []).Add(new FunctionResponsePart

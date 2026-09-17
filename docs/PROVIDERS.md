@@ -255,12 +255,12 @@ Anthropic 과 같은 형태로 `GoogleAIModelCapabilities`가 세대별 wire 규
 일치, 없는 모델은 최신 세대). `GoogleAIConfig.ModelCapabilities` / `VertexAIConfig.ModelCapabilities`로
 덮어쓴다.
 
-| 세대 | `ThinkingControl` | `SupportsMinimalThinking` | `SupportsSamplingParameters` |
-|---|---|---|---|
-| Gemini 1.5 / 2.0 | `None` — thinking 파라미터 없음 | — | `true` |
-| Gemini 2.5 | `Budget` — `thinkingBudget`(Minimal 1,024 · Low 4,000 · Medium 10,000 · High 20,000 · XHigh 24,576) | — | `true` |
-| Gemini 3 (기본) | `Level` — `thinkingLevel` | `true` | `true` |
-| Gemini 3.8 Flash | `Level` | **`false`** — `minimal`은 오류 → `low`로 강등 | **`false`** — `temperature`/`topP`/`topK`를 보내지 않음 |
+| 세대 | `ThinkingControl` | `SupportsMinimalThinking` | `SupportsSamplingParameters` | `SupportsMultimodalFunctionResponse` |
+|---|---|---|---|---|
+| Gemini 1.5 / 2.0 | `None` — thinking 파라미터 없음 | — | `true` | **`false`** — 이미지/오디오 도구 결과는 텍스트 자리표시자로 |
+| Gemini 2.5 | `Budget` — `thinkingBudget`(Minimal 1,024 · Low 4,000 · Medium 10,000 · High 20,000 · XHigh 24,576) | — | `true` | **`false`** — `inlineData` 는 `400 Multimodal function responses are not supported` |
+| Gemini 3 (기본) | `Level` — `thinkingLevel` | `true` | `true` | `true` — `functionResponse.parts[].inlineData` |
+| Gemini 3.8 Flash | `Level` | **`false`** — `minimal`은 오류 → `low`로 강등 | **`false`** — `temperature`/`topP`/`topK`를 보내지 않음 | `true` |
 
 ### 지원 기능
 
