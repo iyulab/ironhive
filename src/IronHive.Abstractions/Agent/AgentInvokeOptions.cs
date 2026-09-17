@@ -21,6 +21,11 @@ public class AgentInvokeOptions
     public MessageThinkingEffort? ThinkingEffort { get; set; }
 
     /// <summary>
+    /// 응답에 추론 내용을 얼마나 실을지입니다. null 이면 provider 기본 동작을 따릅니다.
+    /// </summary>
+    public MessageThinkingOutput? ThinkingOutput { get; set; }
+
+    /// <summary>
     /// 생성할 최대 토큰 수입니다. 설정 시 에이전트의 <see cref="IAgent.MaxTokens"/> 기본값을 override합니다.
     /// </summary>
     public int? MaxTokens { get; set; }

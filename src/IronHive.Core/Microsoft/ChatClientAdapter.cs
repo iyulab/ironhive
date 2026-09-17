@@ -257,6 +257,14 @@ public class ChatClientAdapter : IChatClient
                 ReasoningEffort.ExtraHigh => MessageThinkingEffort.XHigh,
                 _ => null
             };
+            // Reasoning.Output says whether the thinking is shown, not whether it happens.
+            request.ThinkingOutput = options.Reasoning?.Output switch
+            {
+                ReasoningOutput.None => MessageThinkingOutput.None,
+                ReasoningOutput.Summary => MessageThinkingOutput.Summary,
+                ReasoningOutput.Full => MessageThinkingOutput.Full,
+                _ => null
+            };
 
             if (options.Tools is { Count: > 0 })
             {

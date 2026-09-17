@@ -567,7 +567,15 @@ public class AnthropicMessageGenerator : IMessageGenerator
             {
                 // 최신 모델들은 Adaptive 추론 전략을 사용합니다.
                 // https://platform.claude.com/docs/en/build-with-claude/adaptive-thinking
-                thinking = new ThinkingConfigAdaptive { };
+                // display 는 보여 줄지만 정합니다(생각 자체와 과금은 같다). Claude 5 · Opus 4.7+ 의 기본은 omitted(빈
+                // thinking 텍스트), 4.6 은 summarized 라 요청이 없으면 모델 기본을 그대로 둡니다. Full 은 원문 사고를 주지 않는
+                // vendor 의 가장 자세한 형태인 summarized 입니다. Budget 세대에는 이 파라미터가 없습니다.
+                thinking = request.ThinkingOutput switch
+                {
+                    MessageThinkingOutput.None => new ThinkingConfigAdaptive { Display = Display.Omitted },
+                    MessageThinkingOutput.Summary or MessageThinkingOutput.Full => new ThinkingConfigAdaptive { Display = Display.Summarized },
+                    _ => new ThinkingConfigAdaptive(),
+                };
                 // adaptive 의 깊이는 output_config.effort 가 정합니다(생략 = high). 요청의 단계를 옮기지 않으면
                 // Minimal 과 XHigh 가 같은 요청이 됩니다. Minimal 은 vendor 최저 low 로, xhigh 를 받지 않는 세대는 high 로.
                 effort = request.ThinkingEffort switch

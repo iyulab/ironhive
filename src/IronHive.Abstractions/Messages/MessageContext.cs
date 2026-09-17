@@ -67,6 +67,7 @@ public class MessageContext
             PreviousId = request.PreviousId,
             Model = request.Model,
             ThinkingEffort = request.ThinkingEffort,
+            ThinkingOutput = request.ThinkingOutput,
             Messages = new List<Message>(request.Messages),
             System = request.System,
             Tools = request.Tools,

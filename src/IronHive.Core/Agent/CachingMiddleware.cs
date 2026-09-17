@@ -168,7 +168,7 @@ public class CachingMiddleware : IAgentMiddleware, IStreamingAgentMiddleware
         if (options is not null)
         {
             keyBuilder.Append(CultureInfo.InvariantCulture,
-                $"options:{options.PreviousId}:{options.ThinkingEffort}:{options.MaxTokens}:{options.MaxTurns}:");
+                $"options:{options.PreviousId}:{options.ThinkingEffort}:{options.ThinkingOutput}:{options.MaxTokens}:{options.MaxTurns}:");
 
             if (options.ToolOptions is { } toolOptions)
             {

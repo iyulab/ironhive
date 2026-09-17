@@ -497,6 +497,7 @@ var request = new MessageRequest
     Messages = messages,
     // 생성 파라미터
     ThinkingEffort = MessageThinkingEffort.High,  // 추론 노력도 (지원 모델)
+    ThinkingOutput = MessageThinkingOutput.Summary, // 추론 내용 노출 (None · Summary · Full, 미설정은 provider 기본)
     // AgentConfig.Parameters에서 설정
 };
 
@@ -510,6 +511,18 @@ config.Parameters = new AgentParametersConfig
     StopSequences = ["END", "STOP"]
 };
 ```
+
+`ThinkingOutput` 은 추론을 **보여 줄지만** 정한다 — 추론을 할지·얼마나 할지는 `ThinkingEffort` 다(`ChatOptions.Reasoning.Output`
+/ `.Effort` 와 같은 분리). 미설정이면 provider 기본을 그대로 둔다.
+
+| provider | `None` | `Summary` | `Full` |
+|---|---|---|---|
+| Google AI | `includeThoughts: false` | `includeThoughts: true`(노력도 없이도 — 기본으로 생각하는 모델의 요약) | `Summary` 와 같음 |
+| Anthropic (Adaptive 세대, 노력도와 함께) | `display: omitted` — thinking 블록은 빈 텍스트 + 서명으로 남는다 | `display: summarized` | `summarized`(원문 사고는 제공되지 않음) |
+| OpenAI (Responses) | 요약 미요청(`reasoning.encrypted_content` 는 멀티턴 연속성용으로 유지) | `summary: auto` | `summary: detailed` |
+
+Anthropic Budget 세대(Claude 4.x)와 Gemini 1.5/2.0 에는 노출 파라미터가 없어 무시된다. 2026-09-17 live 실측:
+gemini-2.5-flash Summary → 요약 861자 · None/미설정 → 0, claude-sonnet-5 None → 빈 thinking 블록 · Summary → 요약 텍스트.
 
 ---
 

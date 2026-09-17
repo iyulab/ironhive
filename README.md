@@ -74,6 +74,7 @@ var response = await agent.InvokeAsync("안녕하세요");
 var response2 = await agent.InvokeAsync("안녕하세요", new AgentInvokeOptions
 {
     ThinkingEffort = MessageThinkingEffort.High,
+    ThinkingOutput = MessageThinkingOutput.Summary,  // 추론 요약을 응답에 싣기 (None 이면 숨김)
     Suggestions = new SuggestionOptions(),  // 후속 질의 제안 활성화
     MaxTokens = 2048,
 });

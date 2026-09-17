@@ -268,6 +268,21 @@ public class ChatClientAdapterTests : IDisposable
         capturedRequest().ThinkingEffort.Should().Be(expected);
     }
 
+    [Theory]
+    [InlineData(ReasoningOutput.None, MessageThinkingOutput.None)]
+    [InlineData(ReasoningOutput.Summary, MessageThinkingOutput.Summary)]
+    [InlineData(ReasoningOutput.Full, MessageThinkingOutput.Full)]
+    public async Task ReasoningOutput_ReachesThinkingOutput(ReasoningOutput output, MessageThinkingOutput expected)
+    {
+        var capturedRequest = SetupGeneratorReturns();
+        var options = new ChatOptions { Reasoning = new ReasoningOptions { Output = output } };
+
+        await _adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "Hi")], options, TestContext.Current.CancellationToken);
+
+        capturedRequest().ThinkingOutput.Should().Be(expected);
+        capturedRequest().ThinkingEffort.Should().BeNull("output says whether thinking is shown, not whether it happens");
+    }
+
     [Fact]
     public async Task UnsetReasoning_LeavesThinkingEffortUnset()
     {

@@ -278,6 +278,7 @@ public class BasicAgentTests
         {
             PreviousId = "prev-1",
             ThinkingEffort = MessageThinkingEffort.High,
+            ThinkingOutput = MessageThinkingOutput.None,
             MaxTokens = 2000,
             Suggestions = new SuggestionOptions(),
             MaxTurns = 7,
@@ -305,6 +306,7 @@ public class BasicAgentTests
         capturedRequest.System.Should().Be("sys");
         capturedRequest.PreviousId.Should().Be("prev-1");          // options 반영
         capturedRequest.ThinkingEffort.Should().Be(MessageThinkingEffort.High);
+        capturedRequest.ThinkingOutput.Should().Be(MessageThinkingOutput.None);
         capturedRequest.MaxTokens.Should().Be(2000);               // 에이전트 기본값 1000 override
         capturedRequest.Suggestions.Should().BeSameAs(options.Suggestions);
         capturedRequest.MaxTurns.Should().Be(7);

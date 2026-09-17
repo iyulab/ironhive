@@ -684,6 +684,16 @@ public class GoogleAIMessageGenerator : IMessageGenerator
             };
         }
 
+        // ThinkingOutput 은 생각을 보여 줄지만 정합니다(includeThoughts) — 노력도를 주지 않았어도 기본으로 생각하는 모델의
+        // 요약을 받거나 숨길 수 있습니다. 생각을 끈 요청(None)에는 보여 줄 것이 없어 건드리지 않습니다.
+        if (request.ThinkingOutput is { } output
+            && capabilities.ThinkingControl != GoogleAIThinkingControl.None
+            && request.ThinkingEffort is not MessageThinkingEffort.None)
+        {
+            thinkingConfig ??= new ThinkingConfig();
+            thinkingConfig.IncludeThoughts = output != MessageThinkingOutput.None;
+        }
+
         var config = new GenerateContentConfig
         {
             SystemInstruction = string.IsNullOrWhiteSpace(request.System) ? null : new Content

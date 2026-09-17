@@ -83,6 +83,49 @@ public class GoogleAIModelCapabilitiesTests
         config.ThinkingConfig.Should().BeNull();
     }
 
+    [Theory]
+    [InlineData(MessageThinkingOutput.None, false)]
+    [InlineData(MessageThinkingOutput.Summary, true)]
+    [InlineData(MessageThinkingOutput.Full, true)]
+    public void ThinkingOutput_SetsIncludeThoughts(MessageThinkingOutput output, bool include)
+    {
+        var request = Request("gemini-3.6-flash", MessageThinkingEffort.Low);
+        request.ThinkingOutput = output;
+
+        var (_, config) = Generator().ToGoogleAIParams(request);
+
+        config.ThinkingConfig!.IncludeThoughts.Should().Be(include);
+        config.ThinkingConfig.ThinkingLevel.Should().Be(ThinkingLevel.Low, "output does not change the effort");
+    }
+
+    [Fact]
+    public void ThinkingOutput_WithoutEffort_AsksForThoughtsOnlyOnAThinkingModel()
+    {
+        var thinking = Request("gemini-2.5-flash");
+        thinking.ThinkingOutput = MessageThinkingOutput.Summary;
+        var legacy = Request("gemini-2.0-flash");
+        legacy.ThinkingOutput = MessageThinkingOutput.Summary;
+
+        var (_, config) = Generator().ToGoogleAIParams(thinking);
+        var (_, legacyConfig) = Generator().ToGoogleAIParams(legacy);
+
+        config.ThinkingConfig!.IncludeThoughts.Should().BeTrue();
+        config.ThinkingConfig.ThinkingBudget.Should().BeNull("the model's own budget stays");
+        legacyConfig.ThinkingConfig.Should().BeNull("Gemini 2.0 has no thinking parameter");
+    }
+
+    [Fact]
+    public void ThinkingOutput_OnThinkingOff_LeavesTheOffRequestAlone()
+    {
+        var request = Request("gemini-2.5-flash", MessageThinkingEffort.None);
+        request.ThinkingOutput = MessageThinkingOutput.Summary;
+
+        var (_, config) = Generator().ToGoogleAIParams(request);
+
+        config.ThinkingConfig!.ThinkingBudget.Should().Be(0);
+        config.ThinkingConfig.IncludeThoughts.Should().NotBe(true);
+    }
+
     [Fact]
     public void UnsetThinking_SendsNoThinkingConfig()
     {

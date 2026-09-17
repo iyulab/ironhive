@@ -248,6 +248,7 @@ public class MessageService : IMessageService
         {
             Model = request.Model,
             ThinkingEffort = request.ThinkingEffort,
+            ThinkingOutput = request.ThinkingOutput,
             Messages = request.Messages,
             System = request.System,
             Tools = request.Tools,

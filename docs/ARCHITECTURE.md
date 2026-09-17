@@ -204,7 +204,7 @@ var tool = new AIToolAdapter(mcpClientTool);
 Chat Completions 계열 wire는 도구 메시지에 이미지 자리가 없어 텍스트로 평탄화된다.
 
 `ChatOptions` 의 요청 knob 은 전부 `MessageGenerationRequest` 로 간다 — `MaxOutputTokens` → `MaxTokens`, 샘플링
-파라미터, `Tools`/`ToolMode`, 그리고 `Reasoning.Effort` → `ThinkingEffort`(`ExtraHigh` → `XHigh`). `Effort = None` 은
+파라미터, `Tools`/`ToolMode`, 그리고 `Reasoning.Effort` → `ThinkingEffort`(`ExtraHigh` → `XHigh`), `Reasoning.Output` → `ThinkingOutput`(노출만 — 추론 여부와 무관). `Effort = None` 은
 «꺼 달라»로 전달되고(provider 가 모델별로 끄는 형태를 고른다 — [PROVIDERS.md](PROVIDERS.md) Google AI 절), 설정하지
 않으면 null 로 남아 모델 기본값을 쓴다.
 

@@ -197,6 +197,25 @@ public class AnthropicModelCapabilitiesTests
         req.OutputConfig.Should().BeNull();
     }
 
+    [Theory]
+    [InlineData(MessageThinkingOutput.None, "omitted")]
+    [InlineData(MessageThinkingOutput.Summary, "summarized")]
+    [InlineData(MessageThinkingOutput.Full, "summarized")]
+    public void AdaptiveThinking_CarriesTheDisplay(MessageThinkingOutput output, string display)
+    {
+        var request = Request("claude-sonnet-5", effort: MessageThinkingEffort.Medium);
+        request.ThinkingOutput = output;
+
+        WireOf(Generator().ToMessageCreateParams(request)).Should().Contain($"\"display\":\"{display}\"");
+    }
+
+    [Fact]
+    public void AdaptiveThinking_WithoutOutput_LeavesTheModelDefaultDisplay()
+    {
+        WireOf(Generator().ToMessageCreateParams(Request("claude-sonnet-5", effort: MessageThinkingEffort.Medium)))
+            .Should().NotContain("\"display\"");
+    }
+
     private static string WireOf(MessageCreateParams req) => req.ToString().Replace(" ", string.Empty);
 
     private static string SystemTextOf(MessageCreateParams req)

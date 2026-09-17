@@ -4,7 +4,18 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
-## 0.28.5 — 2026-09-17
+## 0.29.0 — 2026-09-17
+
+### Added
+
+- **`MessageThinkingOutput` — whether the reasoning is shown, separate from whether it happens.** `MessageRequest`,
+  `MessageGenerationRequest` and `AgentInvokeOptions` gain `ThinkingOutput` (`None` / `Summary` / `Full`; unset keeps
+  the provider default), and the `IChatClient` bridge maps `ChatOptions.Reasoning.Output` to it. GoogleAI sets
+  `includeThoughts` (also without an effort, for models that think by default); Anthropic adaptive models send
+  `thinking.display` (`omitted` / `summarized`); OpenAI Responses requests no summary, `auto`, or `detailed` while
+  keeping encrypted reasoning for multi-turn continuity. The agent cache key includes it. Measured live:
+  `gemini-2.5-flash` returns an 861-character summary only for `Summary`; `claude-sonnet-5` returns empty thinking
+  blocks for `None` and summary text for `Summary`.
 
 ### Fixed
 

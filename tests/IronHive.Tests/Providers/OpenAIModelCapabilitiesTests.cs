@@ -73,6 +73,26 @@ public class OpenAIModelCapabilitiesTests
         options.IncludedProperties.Should().BeEmpty();
     }
 
+    [Theory]
+    [InlineData(null, "auto")]
+    [InlineData(MessageThinkingOutput.Summary, "auto")]
+    [InlineData(MessageThinkingOutput.Full, "detailed")]
+    [InlineData(MessageThinkingOutput.None, null)]
+    public void ThinkingOutput_SetsTheSummaryRequest(MessageThinkingOutput? output, string? summary)
+    {
+        var options = OpenAIMessageGenerator.BuildOptions(
+            new MessageGenerationRequest { Model = "gpt-5.5", ThinkingEffort = MessageThinkingEffort.Medium, ThinkingOutput = output, Messages = [Message.User("Hi")] },
+            null);
+
+        using var doc = System.Text.Json.JsonDocument.Parse(ModelReaderWriter.Write(options).ToString());
+        var reasoning = doc.RootElement.GetProperty("reasoning");
+        if (summary is null)
+            reasoning.TryGetProperty("summary", out _).Should().BeFalse();
+        else
+            reasoning.GetProperty("summary").GetString().Should().Be(summary);
+        options.IncludedProperties.Should().ContainSingle("encrypted reasoning is kept for multi-turn continuity regardless");
+    }
+
     [Fact]
     public void Override_WinsOverBuiltIn()
     {

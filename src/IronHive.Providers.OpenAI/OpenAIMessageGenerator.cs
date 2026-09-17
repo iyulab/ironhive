@@ -353,8 +353,15 @@ public class OpenAIMessageGenerator : IMessageGenerator
             };
             if (wireEffort != "none")
             {
+                // 암호화된 추론은 멀티턴 연속성용이라 노출 요청과 무관하게 받습니다. 요약은 ThinkingOutput 이 정합니다 —
+                // None 은 요약 미요청, Full 은 가장 자세한 요약(detailed; 원문 사고는 vendor 가 주지 않음), 미설정은 auto.
                 options.IncludedProperties.Add(new IncludedResponseProperty("reasoning.encrypted_content"));
-                options.ReasoningOptions.ReasoningSummaryVerbosity = ResponseReasoningSummaryVerbosity.Auto;
+                if (request.ThinkingOutput is not MessageThinkingOutput.None)
+                {
+                    options.ReasoningOptions.ReasoningSummaryVerbosity = request.ThinkingOutput is MessageThinkingOutput.Full
+                        ? ResponseReasoningSummaryVerbosity.Detailed
+                        : ResponseReasoningSummaryVerbosity.Auto;
+                }
             }
         }
 
