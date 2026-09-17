@@ -353,4 +353,54 @@ public class ChatCompletionMessageGeneratorTests
     {
         ChatCompletionMessageGenerator.MapFinishReason(input).Should().Be(expected);
     }
+
+    // === Reasoning on a compatible server ===
+    //
+    // A compatible endpoint serves arbitrary model families, so the only reasoning instruction this
+    // generator may put on the wire is one the caller actually gave. The vendor extensions below
+    // (vLLM's thinking_token_budget, the chat_template_kwargs flags Qwen/DeepSeek/Granite read) are
+    // how "no reasoning" is expressed to a model that reasons by default -- which is exactly why an
+    // unset ThinkingEffort must not reach them.
+
+    [Fact]
+    public void BuildRequest_NoThinkingEffort_SendsNoReasoningInstructionAtAll()
+    {
+        var chatRequest = ChatCompletionMessageGenerator.BuildRequest(Request(null, Message.User("hi")));
+
+        chatRequest.ReasoningEffort.Should().BeNull();
+        chatRequest.ExtraBody.Should().BeNull(
+            "a caller who never mentioned reasoning has not asked for it to be turned off");
+    }
+
+    [Fact]
+    public void BuildRequest_ThinkingEffortNone_TurnsReasoningOffExplicitly()
+    {
+        var request = Request(null, Message.User("hi"));
+        request.ThinkingEffort = MessageThinkingEffort.None;
+
+        var chatRequest = ChatCompletionMessageGenerator.BuildRequest(request);
+
+        chatRequest.ExtraBody.Should().NotBeNull();
+        chatRequest.ExtraBody!["thinking_token_budget"]!.GetValue<int>().Should().Be(0);
+        chatRequest.ExtraBody["chat_template_kwargs"]!["enable_thinking"]!.GetValue<bool>().Should().BeFalse();
+        chatRequest.ExtraBody["chat_template_kwargs"]!["thinking"]!.GetValue<bool>().Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(MessageThinkingEffort.Minimal, 256)]
+    [InlineData(MessageThinkingEffort.Low, 512)]
+    [InlineData(MessageThinkingEffort.Medium, 1024)]
+    [InlineData(MessageThinkingEffort.High, 2048)]
+    [InlineData(MessageThinkingEffort.XHigh, 4096)]
+    public void BuildRequest_ThinkingEffort_CarriesTheBudgetAndEnablesReasoning(
+        MessageThinkingEffort effort, int expectedBudget)
+    {
+        var request = Request(null, Message.User("hi"));
+        request.ThinkingEffort = effort;
+
+        var chatRequest = ChatCompletionMessageGenerator.BuildRequest(request);
+
+        chatRequest.ExtraBody!["thinking_token_budget"]!.GetValue<int>().Should().Be(expectedBudget);
+        chatRequest.ExtraBody["chat_template_kwargs"]!["enable_thinking"]!.GetValue<bool>().Should().BeTrue();
+    }
 }

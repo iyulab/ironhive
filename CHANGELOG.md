@@ -4,6 +4,24 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.29.1 — 2026-09-18
+
+### Fixed
+
+- **OpenAI-compatible: a request that says nothing about reasoning no longer tells the server to stop reasoning.**
+  `ChatCompletionMessageGenerator` attached the hybrid-reasoning vendor extensions (vLLM's `thinking_token_budget`,
+  the `chat_template_kwargs` flags Qwen/DeepSeek/Granite read) to **every** request, spelling an unset
+  `ThinkingEffort` as an explicit off — so a model that reasons by default was silenced for every caller who had
+  never heard of the setting. The block is now sent only when the caller expressed an intent; `ThinkingEffort.None`
+  still turns reasoning off explicitly, which is what that value means. Wire-shape tests now cover the path (it had
+  none).
+
+- **GoogleAI: a 401/403 on a key in the retired format points at re-issuing it.** Gemini stopped accepting the
+  long-standing key format in September 2026, and such a key now fails as an ordinary authentication error — which
+  reads as "wrong key" and sends the caller hunting for a typo in a key that is correct and simply no longer
+  accepted. The hint is attached only when the configured key is in that format; with a re-issued key a 401/403
+  keeps its own exception unchanged. The generator stores whether the key has that shape, never the key.
+
 ## 0.29.0 — 2026-09-17
 
 ### Added

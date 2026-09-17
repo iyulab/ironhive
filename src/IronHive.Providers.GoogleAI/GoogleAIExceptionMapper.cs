@@ -16,9 +16,23 @@ internal static partial class GoogleAIExceptionMapper
     /// <summary>Returns the normalized exception when <paramref name="exception"/> matches a
     /// known error shape; otherwise null (leaving the original exception to propagate).</summary>
     public static Exception? Map(Exception exception, CancellationToken cancellationToken = default)
+        => Map(exception, keyUsesRetiredFormat: false, cancellationToken);
+
+    /// <inheritdoc cref="Map(Exception, CancellationToken)"/>
+    /// <param name="keyUsesRetiredFormat">
+    /// Whether the configured API key is in the format Gemini retired in 2026-09 — the caller knows this,
+    /// the mapper cannot, and it decides whether a 401/403 carries the re-issue hint.
+    /// </param>
+    public static Exception? Map(
+        Exception exception,
+        bool keyUsesRetiredFormat,
+        CancellationToken cancellationToken = default)
     {
         if (IsTimeout(exception, cancellationToken, out var timeout))
             return timeout;
+
+        if (IsRetiredKeyFormatRejected(exception, keyUsesRetiredFormat, out var retiredKey))
+            return retiredKey;
 
         if (IsContextOverflow(exception, out var overflow))
             return overflow;
@@ -43,6 +57,27 @@ internal static partial class GoogleAIExceptionMapper
             return false;
 
         result = new TimeoutException("The Gemini request timed out.", exception);
+        return true;
+    }
+
+    /// <summary>
+    /// Gemini stopped accepting the long-standing <c>AIza</c> key format in 2026-09, and a key in that
+    /// format now fails as an ordinary 401/403 — which reads as "wrong key" and sends the caller looking
+    /// for a typo in a key that is correct, just retired. Only raised when the configured key is in that
+    /// format: with a re-issued key a 401/403 is an ordinary authentication failure and is left alone.
+    /// </summary>
+    private static bool IsRetiredKeyFormatRejected(
+        Exception exception, bool keyUsesRetiredFormat, out HiveException? result)
+    {
+        result = null;
+        if (!keyUsesRetiredFormat || exception is not ClientError { StatusCode: 401 or 403 } rejected)
+            return false;
+
+        result = new HiveException(
+            $"{rejected.Message} The configured API key is in the retired key format, which Gemini stopped " +
+            "accepting in September 2026; re-issue the key in Google AI Studio. The library does not check " +
+            "the key format, so this is a hint rather than a verdict.",
+            rejected);
         return true;
     }
 

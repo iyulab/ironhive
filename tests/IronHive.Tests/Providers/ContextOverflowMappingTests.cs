@@ -156,4 +156,36 @@ public class ContextOverflowMappingTests
 
         GoogleAIMapper.Map(clientError, TestContext.Current.CancellationToken).Should().BeNull();
     }
+
+    // ---- Google: a key in the format Gemini retired in 2026-09 ----
+    //
+    // Such a key fails as a plain 401/403, which reads as "wrong key" and sends the caller hunting for a
+    // typo in a key that is correct and simply no longer accepted. The hint is attached only when the
+    // configured key is in that format — otherwise a 401/403 is an ordinary authentication failure and
+    // must keep its own exception.
+
+    [Theory]
+    [InlineData(401)]
+    [InlineData(403)]
+    public void Google_Map_RetiredKeyFormat_PointsAtReissuing(int status)
+    {
+        var clientError = new ClientError("API key not valid. Please pass a valid API key.", status, "UNAUTHENTICATED");
+
+        var mapped = GoogleAIMapper.Map(
+            clientError, keyUsesRetiredFormat: true, TestContext.Current.CancellationToken);
+
+        mapped.Should().BeOfType<HiveException>()
+            .Which.Message.Should().Contain("re-issue the key");
+    }
+
+    [Theory]
+    [InlineData(401)]
+    [InlineData(403)]
+    public void Google_Map_CurrentKeyFormat_LeavesAuthFailuresAlone(int status)
+    {
+        var clientError = new ClientError("API key not valid. Please pass a valid API key.", status, "UNAUTHENTICATED");
+
+        GoogleAIMapper.Map(clientError, keyUsesRetiredFormat: false, TestContext.Current.CancellationToken)
+            .Should().BeNull();
+    }
 }

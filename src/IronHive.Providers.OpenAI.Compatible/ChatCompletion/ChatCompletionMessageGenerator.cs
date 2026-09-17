@@ -349,7 +349,13 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
             },
             // Vendor extensions for hybrid-reasoning open-weight models served over Chat Completions.
             // https://docs.vllm.ai/en/latest/features/reasoning_outputs/
-            ExtraBody = new JsonObject
+            //
+            // Sent only when the caller said something about reasoning. A request that leaves
+            // ThinkingEffort unset is not a request to disable reasoning — but this block spelled it as
+            // one (budget 0, enable_thinking false), so a server whose model reasons by default was told
+            // to stop by every caller who had never heard of the setting. "Said nothing" and "said no"
+            // are different instructions, and only the second belongs on the wire.
+            ExtraBody = request.ThinkingEffort is null ? null : new JsonObject
             {
                 ["thinking_token_budget"] = request.ThinkingEffort switch
                 {

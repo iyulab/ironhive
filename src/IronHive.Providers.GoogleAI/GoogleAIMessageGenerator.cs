@@ -17,6 +17,13 @@ public class GoogleAIMessageGenerator : IMessageGenerator
     private readonly bool _isVertex;
     private readonly IReadOnlyDictionary<string, GoogleAIModelCapabilities>? _capabilityOverrides;
 
+    /// <summary>
+    /// Whether the configured key is in the format Gemini retired in 2026-09. Only the answer is kept —
+    /// never the key — so the diagnostic in <see cref="GoogleAIExceptionMapper"/> can be raised without
+    /// this type holding a credential.
+    /// </summary>
+    private readonly bool _keyUsesRetiredFormat;
+
     public GoogleAIMessageGenerator(string apiKey)
         : this(new GoogleAIConfig { ApiKey = apiKey })
     { }
@@ -26,12 +33,14 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         _client = GoogleAIClientFactory.Create(config);
         _isVertex = false;
         _capabilityOverrides = CopyOverrides(config.ModelCapabilities);
+        _keyUsesRetiredFormat = config.ApiKey?.StartsWith("AIza", StringComparison.Ordinal) == true;
     }
 
     public GoogleAIMessageGenerator(VertexAIConfig config)
     {
         _client = GoogleAIClientFactory.Create(config);
         _isVertex = true;
+        // Vertex authenticates with application default credentials, not a Gemini API key.
         _capabilityOverrides = CopyOverrides(config.ModelCapabilities);
     }
 
@@ -56,7 +65,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         var (contents, config) = ToGoogleAIParams(request);
         var response = await _client.Models.GenerateContentAsync(
             request.Model, contents, config, cancellationToken)
-            .MapException(ex => GoogleAIExceptionMapper.Map(ex, cancellationToken));
+            .MapException(ex => GoogleAIExceptionMapper.Map(ex, _keyUsesRetiredFormat, cancellationToken));
 
         MessageDoneReason? reason = null;
         var usage = new MessageTokenUsage();
@@ -156,7 +165,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
 
         await foreach (var res in _client.Models.GenerateContentStreamAsync(
             request.Model, contents, config, cancellationToken)
-            .MapException(ex => GoogleAIExceptionMapper.Map(ex, cancellationToken), cancellationToken))
+            .MapException(ex => GoogleAIExceptionMapper.Map(ex, _keyUsesRetiredFormat, cancellationToken), cancellationToken))
         {
             // 메시지 시작
             if (current == null)
