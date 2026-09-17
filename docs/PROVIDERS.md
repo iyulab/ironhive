@@ -217,7 +217,7 @@ public enum AnthropicServiceType
 // Google AI Studio
 builder.AddGoogleAIProviders("google", new GoogleAIConfig
 {
-    ApiKey = "AIza...",
+    ApiKey = "AQ....",   // AI Studio auth key (서비스 계정 바인딩) — 2026-09부터 표준 키(AIza…)는 거부된다
     Timeout = TimeSpan.FromMinutes(10)   // 생략 시 무제한 (ConnectTimeout만 적용)
 });
 
@@ -229,6 +229,11 @@ builder.AddVertexAIProviders("vertex", new VertexAIConfig
     // 자격증명은 Application Default Credentials 사용
 });
 ```
+
+> **키 형식**: Gemini API는 2026-09부터 «표준» API 키(`AIza…`)를 전부 거부하고, Google Cloud 서비스 계정에
+> 바인딩된 **auth key**(`AQ.` 접두 — AI Studio에서 새로 발급하면 기본값)만 받는다. 2026년 중반 이전에 만든 키가
+> `401`/`403`을 내면 AI Studio API Keys 페이지에서 «Standard»인지 확인하고 재발급한다. 라이브러리는 키 형식을
+> 검사하지 않는다 — 값을 그대로 전달한다.
 
 ### 타임아웃
 

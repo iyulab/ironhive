@@ -71,7 +71,7 @@ builder.AddAnthropicProviders("anthropic", new AnthropicConfig
 // Google AI (Messages + Embeddings + Images + Videos + Audio + Models)
 builder.AddGoogleAIProviders("google", new GoogleAIConfig
 {
-    ApiKey = "AIza..."
+    ApiKey = "AQ...."   // AI Studio auth key — 표준 키(AIza…)는 2026-09부터 Gemini API가 거부
 }, GoogleAIServiceType.All);
 
 // Vertex AI
