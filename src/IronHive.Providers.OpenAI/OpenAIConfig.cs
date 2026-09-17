@@ -25,6 +25,12 @@ public class OpenAIConfig
     public string BaseUrl { get; set; } = string.Empty;
 
     /// <summary>
+    /// 모델(또는 모델 id 접두)별 능력 정책 덮어쓰기입니다. 내장 표(<see cref="OpenAIModelCapabilities.BuiltIn"/>)보다
+    /// 우선하며, 내장 표에 없는 새 모델을 코드 수정 없이 선언할 때 씁니다.
+    /// </summary>
+    public IDictionary<string, OpenAIModelCapabilities>? ModelCapabilities { get; set; }
+
+    /// <summary>
     /// OpenAI API 키를 가져오거나 설정합니다.
     /// </summary>
     public string ApiKey { get; set; } = string.Empty;

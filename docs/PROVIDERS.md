@@ -80,6 +80,24 @@ public class OpenAIConfig
 위해 키가 비면 placeholder 자격증명이 쓰인다. 실제 OpenAI를 상대로 키를 빠뜨리면 요청 시점에 인증
 오류로 드러난다. `OpenAIConfig.Validate()`는 «키가 있는가»에만 답하며 등록 게이트가 아니다.
 
+### 모델 세대별 능력 정책
+
+`reasoning.effort` 가 받는 값은 모델마다 다르고 범위 밖 값은 400(«Unsupported value») 이다.
+`OpenAIModelCapabilities.ReasoningEfforts` 가 모델(가장 긴 접두 일치)별 허용 값을 갖고, `OpenAIConfig.ModelCapabilities` 로
+덮어쓴다. 요청의 노력도는 받는 값이면 그대로, 아니면 가장 가까운 값(`none` 제외, 동률이면 높은 쪽)으로 간다.
+`MessageThinkingEffort.None` 은 «꺼 달라» — `none`, 없으면 그 모델의 최저 값.
+
+| 모델 | `ReasoningEfforts` | 예 |
+|---|---|---|
+| gpt-4o · gpt-4.1 | `null` — `reasoning` 을 보내지 않음 | 어떤 노력도든 미전송 |
+| gpt-5 · -mini · -nano | minimal · low · medium · high | None → `minimal` · XHigh → `high` |
+| gpt-5.1 | none · low · medium · high | Minimal → `low` · XHigh → `high` |
+| gpt-5.x (기본 · 모르는 모델) | none · low · medium · high · xhigh | Minimal → `low` |
+| gpt-5.6 | none · … · xhigh · max | |
+| o1 · o3 · o4 | low · medium · high | None → `low` · XHigh → `high` |
+
+표는 2026-09-17 `POST /v1/responses` 값 검증 오류 원문으로 실측했다.
+
 ### 지원 기능
 
 - Responses API

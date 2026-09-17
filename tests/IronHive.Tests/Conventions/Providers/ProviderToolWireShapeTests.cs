@@ -117,7 +117,7 @@ public class ProviderToolWireShapeTests
     {
         var build = typeof(OpenAIMessageGenerator).GetMethod("BuildOptions", BindingFlags.NonPublic | BindingFlags.Static)!;
 
-        var options = (CreateResponseOptions)build.Invoke(null, [Request("gpt-5", Tool(parameters))])!;
+        var options = (CreateResponseOptions)build.Invoke(null, [Request("gpt-5", Tool(parameters)), null])!;
 
         var wire = ModelReaderWriter.Write(options.Tools.Single()).ToString();
         var schema = JsonDocument.Parse(wire).RootElement.GetProperty("parameters");

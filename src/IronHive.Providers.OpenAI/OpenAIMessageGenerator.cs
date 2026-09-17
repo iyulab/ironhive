@@ -24,6 +24,7 @@ namespace IronHive.Providers.OpenAI;
 public class OpenAIMessageGenerator : IMessageGenerator
 {
     private readonly ResponsesClient _client;
+    private readonly IReadOnlyDictionary<string, OpenAIModelCapabilities>? _capabilityOverrides;
 
     public OpenAIMessageGenerator(string apiKey)
         : this(new OpenAIConfig { ApiKey = apiKey })
@@ -32,6 +33,9 @@ public class OpenAIMessageGenerator : IMessageGenerator
     public OpenAIMessageGenerator(OpenAIConfig config)
     {
         _client = OpenAIClientFactory.Create(config).GetResponsesClient();
+        _capabilityOverrides = config.ModelCapabilities is { Count: > 0 } overrides
+            ? new Dictionary<string, OpenAIModelCapabilities>(overrides, StringComparer.Ordinal)
+            : null;
     }
 
     /// <inheritdoc />
@@ -45,7 +49,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var options = BuildOptions(request);
+        var options = BuildOptions(request, _capabilityOverrides);
         var result = await _client.CreateResponseAsync(options, cancellationToken)
             .MapException(ex => OpenAIExceptionMapper.Map(ex, cancellationToken));
         var response = result.Value;
@@ -135,7 +139,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var options = BuildOptions(request);
+        var options = BuildOptions(request, _capabilityOverrides);
         options.StreamingEnabled = true;
 
         int pIndex = 0;
@@ -304,7 +308,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var options = BuildOptions(request);
+        var options = BuildOptions(request, _capabilityOverrides);
         var serialized = ModelReaderWriter.Write(options);
 
         // token count endpoint rejects fields like 'include', 'stream', 'store', 'background'
@@ -319,7 +323,9 @@ public class OpenAIMessageGenerator : IMessageGenerator
         return doc.RootElement.GetProperty("input_tokens").GetInt32();
     }
 
-    private static CreateResponseOptions BuildOptions(MessageGenerationRequest request)
+    internal static CreateResponseOptions BuildOptions(
+        MessageGenerationRequest request,
+        IReadOnlyDictionary<string, OpenAIModelCapabilities>? capabilityOverrides)
     {
         var options = new CreateResponseOptions
         {
@@ -336,23 +342,20 @@ public class OpenAIMessageGenerator : IMessageGenerator
         if (request.TopP.HasValue)
             options.TopP = request.TopP.Value;
 
-        if (request.ThinkingEffort is not null and not MessageThinkingEffort.None)
+        // 노력도는 모델이 받는 값으로 번역합니다 — gpt-5.1+ 는 minimal 을, gpt-5/5.1/o 계열은 xhigh 를, gpt-4 계열은
+        // reasoning 자체를 400 으로 거부합니다. None 은 「보내지 않음」이 아니라 「꺼 달라」(none, 없으면 최저)입니다.
+        var wireEffort = OpenAIModelCapabilities.Resolve(request.Model, capabilityOverrides).ToWireEffort(request.ThinkingEffort);
+        if (wireEffort is not null)
         {
-            options.IncludedProperties.Add(
-                new IncludedResponseProperty("reasoning.encrypted_content"));
             options.ReasoningOptions = new ResponseReasoningOptions
             {
-                ReasoningEffortLevel = request.ThinkingEffort switch
-                {
-                    MessageThinkingEffort.Minimal => ResponseReasoningEffortLevel.Minimal,
-                    MessageThinkingEffort.Low => ResponseReasoningEffortLevel.Low,
-                    MessageThinkingEffort.Medium => ResponseReasoningEffortLevel.Medium,
-                    MessageThinkingEffort.High => ResponseReasoningEffortLevel.High,
-                    MessageThinkingEffort.XHigh => new ResponseReasoningEffortLevel("xhigh"),
-                    _ => ResponseReasoningEffortLevel.None
-                },
-                ReasoningSummaryVerbosity = ResponseReasoningSummaryVerbosity.Auto
+                ReasoningEffortLevel = new ResponseReasoningEffortLevel(wireEffort),
             };
+            if (wireEffort != "none")
+            {
+                options.IncludedProperties.Add(new IncludedResponseProperty("reasoning.encrypted_content"));
+                options.ReasoningOptions.ReasoningSummaryVerbosity = ResponseReasoningSummaryVerbosity.Auto;
+            }
         }
 
         if (request.OutputFormat is { } outputFormat)

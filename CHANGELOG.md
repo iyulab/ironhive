@@ -35,6 +35,13 @@ changes are expected and used freely for structural correctness (see
   otherwise (Fable rejects `disabled`; Opus 5 is steered to low effort). `AnthropicModelCapabilities` gains
   `SupportsDisabledThinking` (default `false`) and `SupportsXHighEffort` (default `true`). Budget-style models are
   unchanged. Measured live on `claude-sonnet-5`, `claude-opus-5` and `claude-haiku-4-5`: every level accepted.
+- **OpenAI (Responses): reasoning effort values the model does not accept failed the call.** The requested level
+  was sent as-is, but the accepted set differs by model and anything outside it is a 400: `minimal` is rejected from
+  gpt-5.1 on, `xhigh` by gpt-5, gpt-5.1 and the o-series, and gpt-4o/gpt-4.1 take no `reasoning.effort` at all.
+  `MessageThinkingEffort.None` also sent nothing, leaving the model's default. The new `OpenAIModelCapabilities`
+  (per-model `ReasoningEfforts`, overridable via `OpenAIConfig.ModelCapabilities`) sends the requested value when
+  accepted and otherwise the nearest one; `None` sends `none`, or the model's lowest value where it has no `none`.
+  The accepted sets are the vendor's own validation messages (2026-09-17).
 
 ## 0.28.4 — 2026-09-17
 
