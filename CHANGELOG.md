@@ -4,6 +4,18 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.28.3 — 2026-09-17
+
+### Fixed
+
+- **`IChatClient` bridge: an assistant thinking block was dropped on replay.** `ChatClientAdapter` now returns a
+  provider's thinking block as `TextReasoningContent` (buffered and streamed, the signature riding on
+  `AdditionalProperties[ChatClientAdapter.SignatureKey]` — including a signature delivered as a later update) and
+  folds the reasoning pieces of a played-back assistant message into one `ThinkingMessageContent` with that
+  signature. Anthropic requires the thinking block, signed, ahead of a replayed `tool_use` in the same turn;
+  without it, extended thinking combined with tools failed on the second model call over the bridge. The
+  `IndexThinking.ThinkingContent` entry on `AdditionalProperties` is unchanged for consumers that read it.
+
 ## 0.28.2 — 2026-09-17
 
 ### Fixed

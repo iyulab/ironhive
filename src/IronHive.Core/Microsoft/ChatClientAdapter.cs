@@ -70,6 +70,10 @@ public class ChatClientAdapter : IChatClient
 
         // Buffer tool calls: index -> (callId, name, argumentsJson)
         var toolCallBuffers = new Dictionary<int, (string CallId, string Name, StringBuilder Arguments, string? Signature)>();
+        // Content indexes that are thinking blocks: a signature update on one of them (Anthropic delivers
+        // the thinking signature at the end of the block) is emitted as an empty TextReasoningContent that
+        // carries the signature, so the assembled message can be replayed with it (see ConvertToRequest).
+        var thinkingIndexes = new HashSet<int>();
 
         await foreach (var chunk in _generator.GenerateStreamingMessageAsync(request, cancellationToken)
             .ConfigureAwait(false))
@@ -110,17 +114,32 @@ public class ChatClientAdapter : IChatClient
                     break;
 
                 case StreamingContentAddedResponse added when added.Content is ThinkingMessageContent thinkingAdded:
-                    if (!string.IsNullOrEmpty(thinkingAdded.Value))
+                    thinkingIndexes.Add(added.Index);
+                    if (!string.IsNullOrEmpty(thinkingAdded.Value) || !string.IsNullOrEmpty(thinkingAdded.Signature))
                     {
                         yield return new ChatResponseUpdate
                         {
                             ResponseId = null,
-                            AdditionalProperties = new AdditionalPropertiesDictionary
+                            // The reasoning text as content, so a consumer that plays the assembled message
+                            // back returns the thinking block; the AdditionalProperties key stays for the
+                            // consumers that read thinking from there (IndexThinking.ThinkingChatClient).
+                            Contents = [WithSignature(new TextReasoningContent(thinkingAdded.Value ?? string.Empty), thinkingAdded.Signature)],
+                            AdditionalProperties = string.IsNullOrEmpty(thinkingAdded.Value) ? null : new AdditionalPropertiesDictionary
                             {
                                 ["IndexThinking.ThinkingContent"] = thinkingAdded.Value
                             }
                         };
                     }
+                    break;
+
+                case StreamingContentUpdatedResponse updated
+                    when updated.Updated is SignatureUpdatedContent thinkingSignature
+                         && thinkingIndexes.Contains(updated.Index):
+                    yield return new ChatResponseUpdate
+                    {
+                        ResponseId = null,
+                        Contents = [WithSignature(new TextReasoningContent(string.Empty), thinkingSignature.Signature)]
+                    };
                     break;
 
                 case StreamingContentDeltaResponse delta when delta.Delta is ToolDeltaContent toolDelta:
@@ -300,6 +319,7 @@ public class ChatClientAdapter : IChatClient
         else if (message.Role == ChatRole.Assistant)
         {
             var Message = new Message { Role = MessageRole.Assistant };
+            ThinkingMessageContent? thinking = null;
 
             foreach (var content in message.Contents)
             {
@@ -310,6 +330,23 @@ public class ChatClientAdapter : IChatClient
                         {
                             Value = textContent.Text ?? string.Empty
                         });
+                        break;
+
+                    // Reasoning pieces (this adapter emits one per streamed delta, plus an empty one that
+                    // carries the signature) are folded back into the single thinking block the provider
+                    // produced, in the position of the first piece.
+                    case TextReasoningContent reasoning:
+                        if (thinking is null)
+                        {
+                            thinking = new ThinkingMessageContent();
+                            Message.Content.Add(thinking);
+                        }
+                        thinking.Value += reasoning.Text ?? string.Empty;
+                        if (reasoning.AdditionalProperties?.TryGetValue(SignatureKey, out var reasoningSignature) == true
+                            && reasoningSignature is string { Length: > 0 } signatureText)
+                        {
+                            thinking.Signature = signatureText;
+                        }
                         break;
 
                     case FunctionCallContent functionCall:
@@ -372,6 +409,12 @@ public class ChatClientAdapter : IChatClient
                     toolContent.Name,
                     args), toolContent.Signature));
             }
+            else if (content is ThinkingMessageContent thinkingContent)
+            {
+                // Kept as content so the consumer can replay it: Anthropic requires the assistant's thinking
+                // block (with its signature) ahead of a replayed tool_use in the same turn.
+                contents.Add(WithSignature(new TextReasoningContent(thinkingContent.Value), thinkingContent.Signature));
+            }
         }
 
         var chatMessage = new ChatMessage(ChatRole.Assistant, contents);
@@ -407,8 +450,9 @@ public class ChatClientAdapter : IChatClient
                 }
                 else if (delta.Delta is ThinkingDeltaContent thinkingDelta)
                 {
-                    // Signal thinking content via AdditionalProperties so ThinkingAgentLoop picks it up.
-                    // Key matches IndexThinking.Client.ThinkingChatClient.ThinkingContentKey.
+                    // Reasoning text as content (replayable) and via AdditionalProperties (the key
+                    // IndexThinking.Client.ThinkingChatClient.ThinkingContentKey reads) - both.
+                    contents.Add(new TextReasoningContent(thinkingDelta.Data));
                     updateProps = new AdditionalPropertiesDictionary
                     {
                         ["IndexThinking.ThinkingContent"] = thinkingDelta.Data
@@ -536,13 +580,13 @@ public class ChatClientAdapter : IChatClient
     /// 실어, 소비자가 이 콘텐츠를 히스토리에 그대로 되돌려 보내면 요청 측(<see cref="ConvertToRequest"/>)이
     /// <c>ToolMessageContent.Signature</c>로 복원합니다. 서명이 없으면 아무것도 붙이지 않습니다.
     /// </summary>
-    private static FunctionCallContent WithSignature(FunctionCallContent call, string? signature)
+    private static T WithSignature<T>(T content, string? signature) where T : AIContent
     {
         if (string.IsNullOrEmpty(signature))
-            return call;
+            return content;
 
-        (call.AdditionalProperties ??= new AdditionalPropertiesDictionary())[SignatureKey] = signature;
-        return call;
+        (content.AdditionalProperties ??= new AdditionalPropertiesDictionary())[SignatureKey] = signature;
+        return content;
     }
 
     private static Dictionary<string, object?>? ParseToolArguments(string? json)

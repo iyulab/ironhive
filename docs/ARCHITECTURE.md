@@ -203,6 +203,14 @@ var tool = new AIToolAdapter(mcpClientTool);
 문구는 invoker가 정한 `Result`이며, 오류 상세를 노출할지는 invoker 설정이 정한다. 그 밖의 값은 이전처럼 문자열 형태로 간다.
 Chat Completions 계열 wire는 도구 메시지에 이미지 자리가 없어 텍스트로 평탄화된다.
 
+provider 가 멀티턴 연속성을 위해 붙이는 **서명**(Gemini 3 의 `thought_signature`, Anthropic thinking 블록의 `signature`)은
+브리지가 만든 `FunctionCallContent` / `TextReasoningContent` 의 `AdditionalProperties[ChatClientAdapter.SignatureKey]`
+(`"IronHive.Signature"`)에 실려 나가고, 그 콘텐츠를 히스토리에 그대로 되돌려 보내면 `ToolMessageContent.Signature` /
+`ThinkingMessageContent.Signature` 로 복원된다 — 값은 불투명하며 소비자가 해석할 것이 없다. thinking 블록은
+`TextReasoningContent` 로 나가며(스트리밍은 델타마다 한 조각 + 서명을 실은 빈 조각), 재생 시 한 블록으로 접힌다;
+`AdditionalProperties["IndexThinking.ThinkingContent"]` 는 그것을 읽는 소비자를 위해 그대로 남는다. 히스토리를
+자체 형식으로 저장했다가 되살리는 소비자는 그 `AdditionalProperties` 항목도 함께 보존해야 서명이 살아남는다.
+
 ---
 
 ## 관측성 (Observability)

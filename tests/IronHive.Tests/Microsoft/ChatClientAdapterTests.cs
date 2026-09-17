@@ -991,6 +991,80 @@ public class ChatClientAdapterTests : IDisposable
         calls[1].AdditionalProperties![ChatClientAdapter.SignatureKey].Should().Be("sig-1");
     }
 
+    // 0.28.3 — an assistant thinking block must survive the round trip too: Anthropic requires it, signed,
+    // ahead of a replayed tool_use in the same turn (extended thinking + tools over the bridge).
+
+    [Fact]
+    public async Task GetResponseAsync_ThinkingBlock_IsReturnedAsReasoningContentWithItsSignature()
+    {
+        SetupGeneratorReturns(new MessageResponse
+        {
+            ResponseId = "resp",
+            Message = new Message
+            {
+                Role = MessageRole.Assistant,
+                Content =
+                {
+                    new ThinkingMessageContent { Value = "let me read it", Signature = "sig-think" },
+                    new ToolMessageContent { Id = "call-1", Name = "probe", Input = "{}", IsApproved = true }
+                }
+            }
+        });
+
+        var response = await _adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "hi")], cancellationToken: TestContext.Current.CancellationToken);
+
+        var contents = response.Messages.Single().Contents;
+        var reasoning = contents.OfType<TextReasoningContent>().Single();
+        reasoning.Text.Should().Be("let me read it");
+        reasoning.AdditionalProperties![ChatClientAdapter.SignatureKey].Should().Be("sig-think");
+        contents.IndexOf(reasoning).Should().BeLessThan(contents.IndexOf(contents.OfType<FunctionCallContent>().Single()), "the thinking block comes first, as the provider produced it");
+    }
+
+    [Fact]
+    public async Task GetResponseAsync_ReplayedReasoningPieces_FoldIntoOneSignedThinkingBlock()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+        var signed = new TextReasoningContent(string.Empty)
+        {
+            AdditionalProperties = new AdditionalPropertiesDictionary { [ChatClientAdapter.SignatureKey] = "sig-think" }
+        };
+        var messages = new List<ChatMessage>
+        {
+            new(ChatRole.Assistant, [new TextReasoningContent("let me "), new TextReasoningContent("read it"), signed, new FunctionCallContent("call-1", "probe")]),
+            new(ChatRole.Tool, [new FunctionResultContent("call-1", "done")])
+        };
+
+        await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
+
+        var assistant = capturedRequest().Messages.Should().ContainSingle().Which.Should().BeOfType<Message>().Subject;
+        var thinking = assistant.Content.OfType<ThinkingMessageContent>().Single();
+        thinking.Value.Should().Be("let me read it");
+        thinking.Signature.Should().Be("sig-think");
+        assistant.Content.First().Should().BeSameAs(thinking, "the thinking block keeps its place ahead of the tool call");
+    }
+
+    [Fact]
+    public async Task GetStreamingResponseAsync_ThinkingBlock_StreamsReasoningAndCarriesALateSignature()
+    {
+        var chunks = new List<StreamingMessageResponse>
+        {
+            new StreamingMessageBeginResponse(),
+            new StreamingContentAddedResponse { Index = 0, Content = new ThinkingMessageContent { Value = "let " } },
+            new StreamingContentDeltaResponse { Index = 0, Delta = new ThinkingDeltaContent { Data = "me read it" } },
+            new StreamingContentUpdatedResponse { Index = 0, Updated = new SignatureUpdatedContent { Signature = "sig-think" } },
+            new StreamingContentCompletedResponse { Index = 0 },
+        };
+        SetupStreamingGenerator(chunks);
+
+        var reasoning = new List<TextReasoningContent>();
+        await foreach (var update in _adapter.GetStreamingResponseAsync([new ChatMessage(ChatRole.User, "hi")], cancellationToken: TestContext.Current.CancellationToken))
+            reasoning.AddRange(update.Contents.OfType<TextReasoningContent>());
+
+        string.Concat(reasoning.Select(r => r.Text)).Should().Be("let me read it");
+        reasoning.Should().Contain(r => r.AdditionalProperties != null && Equals(r.AdditionalProperties[ChatClientAdapter.SignatureKey], "sig-think"),
+            "the signature arrives after the text and must ride on a reasoning piece so the assembled message can be replayed");
+    }
+
     private static ToolOutput SingleToolOutput(MessageGenerationRequest request) =>
         request.Messages.Should().ContainSingle().Which.Should().BeOfType<Message>().Subject
             .Content.OfType<ToolMessageContent>().Single().Output!;
