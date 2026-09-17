@@ -16,6 +16,22 @@ changes are expected and used freely for structural correctness (see
   still turns reasoning off explicitly, which is what that value means. Wire-shape tests now cover the path (it had
   none).
 
+- **The `IChatClient` bridge dropped `ResponseFormat` and `Instructions`.** Both had a sink waiting under a
+  different name (`MessageGenerationRequest.OutputFormat` and `.System`), and the reachability test scanned from
+  the sink side — so it could only notice a knob whose sink happened to share its name, and a renamed pair was
+  invisible to it. A caller asking for JSON through the standard knob received free text, and options-level
+  instructions never became a system prompt. `ChatResponseFormat.Json` now maps to the schema it carries (or to
+  the permissive "an object" schema when it names none), `Text` leaves the output unconstrained, and
+  `Instructions` becomes the system prompt — joined with a system message in the conversation when both arrive,
+  since both are the caller asking for one.
+
+### Changed
+
+- **The bridge's option roster is now counted from the option surface, not the sink.** Every `ChatOptions` knob
+  must be either wired or recorded as deliberately not carried, with the reason; a knob in neither turns the
+  suite red. This is the check that would have caught `Reasoning` going unmapped, and it is what named the two
+  fixes above. `docs/ARCHITECTURE.md` lists what is not carried.
+
 - **GoogleAI: a 401/403 on a key in the retired format points at re-issuing it.** Gemini stopped accepting the
   long-standing key format in September 2026, and such a key now fails as an ordinary authentication error — which
   reads as "wrong key" and sends the caller hunting for a typo in a key that is correct and simply no longer

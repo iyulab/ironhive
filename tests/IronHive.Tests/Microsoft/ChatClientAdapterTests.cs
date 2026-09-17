@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AwesomeAssertions;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
@@ -249,7 +250,28 @@ public class ChatClientAdapterTests : IDisposable
         ["StopSequences"] = "StopSequences",
         ["Tools"] = "Tools",
         ["ToolMode"] = "ToolChoice",
-        ["Reasoning"] = "ThinkingEffort"
+        ["Reasoning"] = "ThinkingEffort",
+        ["ResponseFormat"] = "OutputFormat",
+        ["Instructions"] = "System"
+    };
+
+    /// <summary>
+    /// ChatOptions knobs this bridge deliberately does not carry, each with the reason it is not a
+    /// defect. Everything on <see cref="ChatOptions"/> is in exactly one of these two tables — that
+    /// total is what <see cref="EveryOptionKnob_IsEitherMappedOrDeliberatelyNot"/> enforces.
+    /// </summary>
+    private static readonly Dictionary<string, string> DeliberatelyUnmapped = new()
+    {
+        ["ModelId"] = "covered by its own tests: it is not a pass-through knob but falls back to the adapter's default model",
+        ["ConversationId"] = "provider-side conversation state; IronHive replays the history itself and has no id to hand over",
+        ["FrequencyPenalty"] = "no sink on MessageGenerationRequest — IronHive does not carry the penalty family",
+        ["PresencePenalty"] = "no sink on MessageGenerationRequest — IronHive does not carry the penalty family",
+        ["Seed"] = "no sink on MessageGenerationRequest — determinism is not part of the request contract",
+        ["AllowMultipleToolCalls"] = "no sink: parallel tool calls are a provider default IronHive does not constrain",
+        ["AllowBackgroundResponses"] = "no sink: IronHive has no deferred-response surface",
+        ["ContinuationToken"] = "pairs with AllowBackgroundResponses; nothing to continue without it",
+        ["RawRepresentationFactory"] = "escape hatch into the caller's own SDK object — by definition not translatable",
+        ["AdditionalProperties"] = "untyped bag with no agreed meaning; forwarding it would invent one"
     };
 
     [Theory]
@@ -293,6 +315,72 @@ public class ChatClientAdapterTests : IDisposable
         capturedRequest().ThinkingEffort.Should().BeNull("an unset effort is the model's default, not \"off\"");
     }
 
+    // === The two knobs the reverse roster named ===
+    //
+    // Both had a sink waiting under a different name, which is why the sink-side scan never saw them.
+    // These fix what each one has to do, not merely that it arrives somewhere.
+
+    [Fact]
+    public async Task JsonResponseFormat_WithSchema_CarriesThatSchema()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+        var schema = JsonDocument.Parse("""{"type":"object","properties":{"city":{"type":"string"}}}""").RootElement;
+        var options = new ChatOptions { ResponseFormat = ChatResponseFormat.ForJsonSchema(schema) };
+
+        await _adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "Hi")], options, TestContext.Current.CancellationToken);
+
+        capturedRequest().OutputFormat!.Schema.ToJsonString().Should().Contain("city");
+    }
+
+    [Fact]
+    public async Task JsonResponseFormat_WithoutSchema_StillAsksForAnObject()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+        var options = new ChatOptions { ResponseFormat = ChatResponseFormat.Json };
+
+        await _adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "Hi")], options, TestContext.Current.CancellationToken);
+
+        capturedRequest().OutputFormat!.Schema.ToJsonString().Should().Contain("\"object\"");
+    }
+
+    [Fact]
+    public async Task TextResponseFormat_LeavesTheOutputUnconstrained()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+        var options = new ChatOptions { ResponseFormat = ChatResponseFormat.Text };
+
+        await _adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "Hi")], options, TestContext.Current.CancellationToken);
+
+        capturedRequest().OutputFormat.Should().BeNull("free text is the default, not a structured request");
+    }
+
+    [Fact]
+    public async Task Instructions_BecomeTheSystemPrompt()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+        var options = new ChatOptions { Instructions = "Answer in one sentence." };
+
+        await _adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "Hi")], options, TestContext.Current.CancellationToken);
+
+        capturedRequest().System.Should().Be("Answer in one sentence.");
+    }
+
+    [Fact]
+    public async Task Instructions_AndASystemMessage_BothSurvive()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+        var options = new ChatOptions { Instructions = "Answer in one sentence." };
+
+        await _adapter.GetResponseAsync(
+            [new ChatMessage(ChatRole.System, "You are a travel guide."), new ChatMessage(ChatRole.User, "Hi")],
+            options,
+            TestContext.Current.CancellationToken);
+
+        var system = capturedRequest().System!;
+        system.Should().Contain("Answer in one sentence.").And.Contain("You are a travel guide.",
+            "both are the caller asking for a system prompt; dropping either is the silent loss this fixes");
+    }
+
     [Fact]
     public async Task EveryDeclaredOptionKnob_ReachesItsRequestSink()
     {
@@ -311,6 +399,33 @@ public class ChatClientAdapterTests : IDisposable
                 .Should().NotBeNull($"ChatOptions.{optionName} must reach MessageGenerationRequest.{sinkName} — " +
                     "a dropped knob is silent: the caller sees no error, only provider-default behavior");
         }
+    }
+
+    /// <summary>
+    /// The reverse direction of <see cref="NoRequestSink_IsLeftUnmapped"/>, and the one that matters more.
+    /// That test scans from the sink side, so it can only see a knob whose sink happens to carry the same
+    /// name — a renamed pair is invisible to it. That is exactly how ChatOptions.Reasoning reached
+    /// ThinkingEffort only after going unmapped for an unknown number of releases: nothing on
+    /// MessageGenerationRequest is called "Reasoning", so there was nothing for the sink-side scan to miss.
+    /// Here every knob the option surface declares has to be accounted for by name — mapped, or excluded
+    /// on the record. A knob M.E.AI adds, or one we never wired, turns this red until someone decides
+    /// which it is.
+    /// </summary>
+    [Fact]
+    public void EveryOptionKnob_IsEitherMappedOrDeliberatelyNot()
+    {
+        var unaccounted = typeof(ChatOptions).GetProperties()
+            .Select(p => p.Name)
+            .Where(knob => !OptionSinks.ContainsKey(knob) && !DeliberatelyUnmapped.ContainsKey(knob))
+            .ToList();
+
+        unaccounted.Should().BeEmpty(
+            "every ChatOptions knob must be wired in ConvertToRequest (and listed in OptionSinks) or " +
+            "recorded in DeliberatelyUnmapped with the reason it is not carried — a knob in neither table " +
+            "is silently dropped, and the caller sees provider-default behavior rather than an error");
+
+        OptionSinks.Keys.Should().NotIntersectWith(DeliberatelyUnmapped.Keys,
+            "a knob cannot be both mapped and deliberately unmapped");
     }
 
     [Fact]
@@ -338,6 +453,7 @@ public class ChatClientAdapterTests : IDisposable
         if (type == typeof(float)) return 0.5f;
         if (type == typeof(int)) return 7;
         if (type == typeof(long)) return 7L;
+        if (type == typeof(string)) return "Answer in one sentence.";
         if (typeof(IEnumerable<string>).IsAssignableFrom(type)) return new List<string> { "STOP" };
         if (typeof(IEnumerable<AITool>).IsAssignableFrom(type))
         {
@@ -345,6 +461,9 @@ public class ChatClientAdapterTests : IDisposable
         }
         if (type == typeof(ChatToolMode)) return ChatToolMode.RequireAny;
         if (type == typeof(ReasoningOptions)) return new ReasoningOptions { Effort = ReasoningEffort.None };
+        // The schema-less JSON format on purpose: it is the weaker of the two shapes, so a bridge that
+        // only handled the schema-carrying one would still fail here.
+        if (type == typeof(ChatResponseFormat)) return ChatResponseFormat.Json;
 
         throw new NotSupportedException(
             $"No sample value for {propertyType} — extend SampleValueFor when adding a knob of a new type");
