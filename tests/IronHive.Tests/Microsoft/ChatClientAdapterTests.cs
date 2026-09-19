@@ -802,6 +802,36 @@ public class ChatClientAdapterTests : IDisposable
     }
 
     [Fact]
+    public async Task GetStreamingResponseAsync_DoneChunkUsage_ReachesTheResponse_LikeTheBufferedCall()
+    {
+        // The done frame carries the streamed turn's usage. It used to be dropped, so a streamed turn reported no usage
+        // while the buffered call for the same exchange reported it in full.
+        var usage = new MessageTokenUsage { InputTokens = 7, OutputTokens = 3 };
+        SetupStreamingGenerator(
+        [
+            new StreamingMessageBeginResponse(),
+            new StreamingMessageDoneResponse { DoneReason = MessageDoneReason.EndTurn, TokenUsage = usage },
+        ]);
+        _mockGenerator.GenerateMessageAsync(Arg.Any<MessageGenerationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new MessageResponse
+            {
+                Message = new Message { Role = MessageRole.Assistant, Content = [new TextMessageContent { Value = "ok" }] },
+                DoneReason = MessageDoneReason.EndTurn,
+                TokenUsage = usage,
+            });
+
+        var messages = new List<ChatMessage> { new(ChatRole.User, "Hi") };
+        var buffered = await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
+        var streamed = await _adapter.GetStreamingResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken)
+            .ToChatResponseAsync(TestContext.Current.CancellationToken);
+
+        streamed.Usage.Should().NotBeNull();
+        streamed.Usage!.InputTokenCount.Should().Be(buffered.Usage!.InputTokenCount).And.Be(7);
+        streamed.Usage.OutputTokenCount.Should().Be(buffered.Usage.OutputTokenCount).And.Be(3);
+        streamed.Usage.TotalTokenCount.Should().Be(buffered.Usage.TotalTokenCount).And.Be(10);
+    }
+
+    [Fact]
     public async Task GetStreamingResponseAsync_ToolDeltaWithoutCompletion_ProducesNoOutput()
     {
         var chunks = new List<StreamingMessageResponse>

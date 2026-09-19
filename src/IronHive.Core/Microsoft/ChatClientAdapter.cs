@@ -513,7 +513,17 @@ public class ChatClientAdapter : IChatClient
                     ResponseId = done.ResponseId,
                     CreatedAt = done.Timestamp,
                     FinishReason = ConvertDoneReason(done.DoneReason),
-                    ModelId = done.Model
+                    ModelId = done.Model,
+                    // The done frame is where a streamed turn reports its usage. Without carrying it as UsageContent the
+                    // streamed half reported none at all, while the buffered half of the same turn reported it in full.
+                    Contents = done.TokenUsage is { } usage
+                        ? [new UsageContent(new UsageDetails
+                        {
+                            InputTokenCount = usage.InputTokens,
+                            OutputTokenCount = usage.OutputTokens,
+                            TotalTokenCount = usage.TotalTokens
+                        })]
+                        : []
                 };
 
             default:

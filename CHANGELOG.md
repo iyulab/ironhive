@@ -4,6 +4,16 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.29.2 — 2026-09-19
+
+### Fixed
+
+- **A streamed response now reports its token usage through the `IChatClient` bridge.** The provider's final
+  stream frame carries the turn's usage, and `ChatClientAdapter` dropped it when turning that frame into a
+  `ChatResponseUpdate` — so every streaming consumer (session totals, usage limits, a server's end-of-turn event)
+  saw no usage, while the buffered call for the same exchange reported it in full. The frame now carries it as
+  `UsageContent`; a test checks the streamed and buffered usage agree.
+
 ## 0.29.1 — 2026-09-18
 
 ### Fixed
