@@ -6,7 +6,7 @@ changes are expected and used freely for structural correctness (see
 
 ## 0.31.0 — 2026-09-19
 
-### Fixed
+### Added
 
 - **The Handoff and GroupChat builders can set every common orchestrator option.** They built their options field by
   field and had no way to pass `StopOnAgentFailure`, `AgentMiddlewares`, `ContextScope`, `ResultDistiller` or
