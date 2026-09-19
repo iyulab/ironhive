@@ -292,12 +292,25 @@ public class AnthropicMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
+        var result = await _client.Messages.CountTokens(ToMessageCountTokensParams(request), cancellationToken);
+        return (int)result.InputTokens;
+    }
+
+    /// <summary>
+    /// The count-tokens request for what <see cref="ToMessageCreateParams"/> would send — same model, messages,
+    /// system prompt, tools, thinking and output config.
+    /// </summary>
+    internal MessageCountTokensParams ToMessageCountTokensParams(MessageGenerationRequest request)
+    {
         var createParams = ToMessageCreateParams(request);
-        var countParams = new MessageCountTokensParams
+        return new MessageCountTokensParams
         {
             Model = createParams.Model,
             Messages = createParams.Messages,
-            System = new MessageCountTokensParamsSystem(request.System ?? string.Empty),
+            // The system prompt the create call actually sends — it can carry instructions the translation adds
+            // (JSON mode, forced-tool-choice emulation), and those tokens are part of what the request costs.
+            System = new MessageCountTokensParamsSystem(
+                createParams.System is { } system && system.TryPickString(out var systemText) ? systemText : request.System ?? string.Empty),
             Tools = createParams.Tools?.Select(t =>
             {
                 t.TryPickTool(out var tool);
@@ -306,8 +319,6 @@ public class AnthropicMessageGenerator : IMessageGenerator
             Thinking = createParams.Thinking,
             OutputConfig = createParams.OutputConfig,
         };
-        var result = await _client.Messages.CountTokens(countParams, cancellationToken);
-        return (int)result.InputTokens;
     }
 
     /// <summary>

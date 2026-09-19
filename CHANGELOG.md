@@ -18,6 +18,8 @@ changes are expected and used freely for structural correctness (see
   `{"type":"json_schema","schema":{...}}` envelope belongs, so its `"type":"object"` became the format type and the
   Messages API rejected the call (400, `output_config.format.type: Input should be 'json_schema'`). It now sends the
   envelope. Wire-shape tests cover both forms on all four providers.
+- **Anthropic: `CountTokensAsync` counts the system prompt the request actually sends.** It counted the caller's raw
+  system prompt, so an instruction the translation adds (JSON mode, forced-tool-choice emulation) was missing from the count.
 - **A streamed response now reports its token usage through the `IChatClient` bridge.** The provider's final
   stream frame carries the turn's usage, and `ChatClientAdapter` dropped it when turning that frame into a
   `ChatResponseUpdate` — so every streaming consumer (session totals, usage limits, a server's end-of-turn event)

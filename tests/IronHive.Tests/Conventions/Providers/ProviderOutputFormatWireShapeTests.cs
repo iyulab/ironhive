@@ -70,6 +70,19 @@ public class ProviderOutputFormatWireShapeTests
     }
 
     [Fact]
+    public void Anthropic_CountTokens_CountsTheJsonModeInstructionToo()
+    {
+        var generator = new AnthropicMessageGenerator(new AnthropicConfig { ApiKey = "test-key" });
+        var request = Request("claude-sonnet-5", OutputFormat.Json);
+        request.System = "You are terse.";
+
+        var wire = generator.ToMessageCountTokensParams(request).ToString();
+
+        wire.Should().Contain("You are terse.").And.Contain("single JSON object",
+            "the count must cover the system prompt the create call actually sends");
+    }
+
+    [Fact]
     public void Anthropic_Schema_SendsThatSchemaAndNoInstruction()
     {
         var generator = new AnthropicMessageGenerator(new AnthropicConfig { ApiKey = "test-key" });
