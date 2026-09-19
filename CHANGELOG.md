@@ -28,6 +28,9 @@ changes are expected and used freely for structural correctness (see
 
 - **Breaking: `OutputFormat.Schema` is nullable.** `null` means schemaless JSON mode (`OutputFormat.Json`). Code that
   reads `Schema` must handle it; code that only builds formats with `OutputFormat.For(...)` is unaffected.
+- **Breaking: OpenAI-compatible `ChatResponseFormat` (wire payload) is built with `ChatResponseFormat.JsonObject()` or
+  `ChatResponseFormat.ForJsonSchema(...)`.** Its `Type` was a constant `json_schema`; `JsonSchema` is now get-only and
+  null for JSON-object mode.
 
 ## 0.29.1 — 2026-09-18
 
