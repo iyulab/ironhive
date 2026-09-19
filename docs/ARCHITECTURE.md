@@ -218,13 +218,17 @@ IronHive 는 히스토리를 직접 재생한다) · `FrequencyPenalty`/`Presenc
 «의도적 제외(사유)» 중 정확히 하나에 들어가야 하며, 그렇지 않으면 테스트가 실패한다 — 이름이 바뀐 쌍
 (`Reasoning` → `ThinkingEffort`)이 조용히 누락됐던 적이 있어, 싱크 쪽이 아니라 **옵션 쪽에서 전수로** 센다.
 
-provider 가 멀티턴 연속성을 위해 붙이는 **서명**(Gemini 3 의 `thought_signature`, Anthropic thinking 블록의 `signature`)은
-브리지가 만든 `FunctionCallContent` / `TextReasoningContent` 의 `AdditionalProperties[ChatClientAdapter.SignatureKey]`
-(`"IronHive.Signature"`)에 실려 나가고, 그 콘텐츠를 히스토리에 그대로 되돌려 보내면 `ToolMessageContent.Signature` /
-`ThinkingMessageContent.Signature` 로 복원된다 — 값은 불투명하며 소비자가 해석할 것이 없다. thinking 블록은
-`TextReasoningContent` 로 나가며(스트리밍은 델타마다 한 조각 + 서명을 실은 빈 조각), 재생 시 한 블록으로 접힌다;
-`AdditionalProperties["IndexThinking.ThinkingContent"]` 는 그것을 읽는 소비자를 위해 그대로 남는다. 히스토리를
-자체 형식으로 저장했다가 되살리는 소비자는 그 `AdditionalProperties` 항목도 함께 보존해야 서명이 살아남는다.
+provider 가 멀티턴 연속성을 위해 붙이는 **서명**은 두 자리로 나간다 — tool call 의 서명(Gemini 3 의 `thought_signature`)은
+`FunctionCallContent.AdditionalProperties[ChatClientAdapter.SignatureKey]`(`"IronHive.Signature"`)에, thinking 블록의 서명
+(Anthropic `signature`)은 M.E.AI 표준 슬롯 `TextReasoningContent.ProtectedData` 에 실린다. 그 콘텐츠를 히스토리에 그대로
+되돌려 보내면 `ToolMessageContent.Signature` / `ThinkingMessageContent.Signature` 로 복원된다 — 값은 불투명하며 소비자가
+해석할 것이 없다. thinking 블록은 `TextReasoningContent` 로 나가며(스트리밍은 델타마다 한 조각 + 서명을 `ProtectedData` 에
+실은 빈 조각), `ToChatResponse` 가 그 조각들을 한 블록으로 합친다 — `ProtectedData` 는 합쳐도 남고 블록 경계를 가른다.
+`AdditionalProperties` 는 합칠 때 첫 조각 것만 남으므로 서명을 거기 두면 사라진다(0.32.0 이전 결함).
+가려진 추론(Anthropic `redacted_thinking`)은 빈 텍스트 + `ProtectedData` 원문 + `AdditionalProperties[ChatClientAdapter.RedactedReasoningKey] = true`
+로 나간다. Anthropic 번역은 서명 없는 thinking 블록을 재전송하지 않는다(API 가 요청 전체를 거절하고, 블록이 없는 턴은 받는다).
+`AdditionalProperties["IndexThinking.ThinkingContent"]` 는 그것을 읽는 소비자를 위해 그대로 남는다. 히스토리를 자체 형식으로
+저장했다가 되살리는 소비자는 `ProtectedData` 와 위 두 `AdditionalProperties` 항목을 함께 보존해야 서명이 살아남는다.
 
 ---
 

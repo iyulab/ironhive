@@ -1209,7 +1209,7 @@ public class ChatClientAdapterTests : IDisposable
         var contents = response.Messages.Single().Contents;
         var reasoning = contents.OfType<TextReasoningContent>().Single();
         reasoning.Text.Should().Be("let me read it");
-        reasoning.AdditionalProperties![ChatClientAdapter.SignatureKey].Should().Be("sig-think");
+        reasoning.ProtectedData.Should().Be("sig-think");
         contents.IndexOf(reasoning).Should().BeLessThan(contents.IndexOf(contents.OfType<FunctionCallContent>().Single()), "the thinking block comes first, as the provider produced it");
     }
 
@@ -1217,10 +1217,7 @@ public class ChatClientAdapterTests : IDisposable
     public async Task GetResponseAsync_ReplayedReasoningPieces_FoldIntoOneSignedThinkingBlock()
     {
         var capturedRequest = SetupGeneratorReturns();
-        var signed = new TextReasoningContent(string.Empty)
-        {
-            AdditionalProperties = new AdditionalPropertiesDictionary { [ChatClientAdapter.SignatureKey] = "sig-think" }
-        };
+        var signed = new TextReasoningContent(string.Empty) { ProtectedData = "sig-think" };
         var messages = new List<ChatMessage>
         {
             new(ChatRole.Assistant, [new TextReasoningContent("let me "), new TextReasoningContent("read it"), signed, new FunctionCallContent("call-1", "probe")]),
@@ -1254,7 +1251,7 @@ public class ChatClientAdapterTests : IDisposable
             reasoning.AddRange(update.Contents.OfType<TextReasoningContent>());
 
         string.Concat(reasoning.Select(r => r.Text)).Should().Be("let me read it");
-        reasoning.Should().Contain(r => r.AdditionalProperties != null && Equals(r.AdditionalProperties[ChatClientAdapter.SignatureKey], "sig-think"),
+        reasoning.Should().Contain(r => r.ProtectedData == "sig-think",
             "the signature arrives after the text and must ride on a reasoning piece so the assembled message can be replayed");
     }
 
@@ -1279,6 +1276,125 @@ public class ChatClientAdapterTests : IDisposable
 
         assembled.Text.Should().Be("Hello world", "M.E.AI keeps TextReasoningContent out of Text; the thinking text must not read as the answer");
         assembled.Messages.Single().Contents.OfType<TextReasoningContent>().Single().Text.Should().Be("thinking…");
+    }
+
+    // The round trip a consumer actually runs: stream → ToChatResponse (M.E.AI coalesces a block's
+    // reasoning pieces into the first one, keeping only that piece's AdditionalProperties) → history →
+    // next request. A test that hand-builds the replayed message skips the coalescing, which is where the
+    // signature used to be lost.
+
+    private async Task<Message> StreamThenReplay(List<StreamingMessageResponse> chunks)
+    {
+        SetupStreamingGenerator(chunks);
+        var updates = new List<ChatResponseUpdate>();
+        await foreach (var update in _adapter.GetStreamingResponseAsync([new ChatMessage(ChatRole.User, "hi")], cancellationToken: TestContext.Current.CancellationToken))
+            updates.Add(update);
+        var assembled = updates.ToChatResponse().Messages.Single();
+
+        var capturedRequest = SetupGeneratorReturns();
+        await _adapter.GetResponseAsync(
+            [new ChatMessage(ChatRole.User, "hi"), assembled, new ChatMessage(ChatRole.Tool, [new FunctionResultContent("call-1", "done")])],
+            cancellationToken: TestContext.Current.CancellationToken);
+        return capturedRequest().Messages.OfType<Message>().Single(m => m.Role == MessageRole.Assistant);
+    }
+
+    private static StreamingContentAddedResponse ToolCallAdded(int index) =>
+        new() { Index = index, Content = new ToolMessageContent { Id = "call-1", Name = "probe", Input = "{}", IsApproved = true } };
+
+    [Fact]
+    public async Task StreamedOmittedDisplayThinking_ReplaysWithItsSignature()
+    {
+        // The exact event order claude-sonnet-5 sends for its default (omitted) display, live-captured:
+        // an empty block start, an empty thinking delta, then the signature.
+        var assistant = await StreamThenReplay(
+        [
+            new StreamingMessageBeginResponse(),
+            new StreamingContentAddedResponse { Index = 0, Content = new ThinkingMessageContent { Value = "", Signature = "" } },
+            new StreamingContentDeltaResponse { Index = 0, Delta = new ThinkingDeltaContent { Data = "" } },
+            new StreamingContentUpdatedResponse { Index = 0, Updated = new SignatureUpdatedContent { Signature = "sig-omitted" } },
+            new StreamingContentCompletedResponse { Index = 0 },
+            ToolCallAdded(1),
+            new StreamingContentCompletedResponse { Index = 1 },
+        ]);
+
+        var thinking = assistant.Content.OfType<ThinkingMessageContent>().Single();
+        thinking.Signature.Should().Be("sig-omitted", "the signature must survive ToChatResponse — without it the replay is a 400");
+        thinking.Value.Should().BeEmpty();
+        assistant.Content.First().Should().BeSameAs(thinking);
+    }
+
+    [Fact]
+    public async Task StreamedSummarizedThinking_ReplaysItsTextAndSignature()
+    {
+        var assistant = await StreamThenReplay(
+        [
+            new StreamingMessageBeginResponse(),
+            new StreamingContentAddedResponse { Index = 0, Content = new ThinkingMessageContent { Value = "let " } },
+            new StreamingContentDeltaResponse { Index = 0, Delta = new ThinkingDeltaContent { Data = "me read it" } },
+            new StreamingContentUpdatedResponse { Index = 0, Updated = new SignatureUpdatedContent { Signature = "sig-think" } },
+            new StreamingContentCompletedResponse { Index = 0 },
+            ToolCallAdded(1),
+            new StreamingContentCompletedResponse { Index = 1 },
+        ]);
+
+        var thinking = assistant.Content.OfType<ThinkingMessageContent>().Single();
+        thinking.Value.Should().Be("let me read it");
+        thinking.Signature.Should().Be("sig-think");
+    }
+
+    [Fact]
+    public async Task StreamedThinkingBlocks_ReplayAsSeparateSignedBlocks()
+    {
+        var assistant = await StreamThenReplay(
+        [
+            new StreamingMessageBeginResponse(),
+            new StreamingContentAddedResponse { Index = 0, Content = new ThinkingMessageContent { Value = "first" } },
+            new StreamingContentUpdatedResponse { Index = 0, Updated = new SignatureUpdatedContent { Signature = "sig-1" } },
+            new StreamingContentCompletedResponse { Index = 0 },
+            new StreamingContentAddedResponse { Index = 1, Content = new ThinkingMessageContent { Value = "second" } },
+            new StreamingContentUpdatedResponse { Index = 1, Updated = new SignatureUpdatedContent { Signature = "sig-2" } },
+            new StreamingContentCompletedResponse { Index = 1 },
+            ToolCallAdded(2),
+            new StreamingContentCompletedResponse { Index = 2 },
+        ]);
+
+        assistant.Content.OfType<ThinkingMessageContent>().Select(t => (t.Value, t.Signature))
+            .Should().Equal([("first", "sig-1"), ("second", "sig-2")], "each block is verified by its own signature");
+    }
+
+    [Fact]
+    public async Task StreamedRedactedThinking_ReplaysAsSecureBlocksAndNeverAsText()
+    {
+        // redacted_thinking (live on claude-sonnet-4-5 with the vendor's test string): opaque data, one block each.
+        SetupStreamingGenerator(
+        [
+            new StreamingMessageBeginResponse(),
+            new StreamingContentAddedResponse { Index = 0, Content = new ThinkingMessageContent { Format = ThinkingFormat.Secure, Value = "blob-1" } },
+            new StreamingContentCompletedResponse { Index = 0 },
+            new StreamingContentAddedResponse { Index = 1, Content = new ThinkingMessageContent { Format = ThinkingFormat.Secure, Value = "blob-2" } },
+            new StreamingContentCompletedResponse { Index = 1 },
+        ]);
+        var updates = new List<ChatResponseUpdate>();
+        await foreach (var update in _adapter.GetStreamingResponseAsync([new ChatMessage(ChatRole.User, "hi")], cancellationToken: TestContext.Current.CancellationToken))
+            updates.Add(update);
+
+        updates.SelectMany(u => u.Contents.OfType<TextReasoningContent>()).Should().OnlyContain(r => r.Text.Length == 0,
+            "a redacted block has no readable text — its data is not reasoning to show");
+        updates.Should().NotContain(u => u.AdditionalProperties != null && u.AdditionalProperties.ContainsKey("IndexThinking.ThinkingContent"));
+
+        var assistant = await StreamThenReplay(
+        [
+            new StreamingMessageBeginResponse(),
+            new StreamingContentAddedResponse { Index = 0, Content = new ThinkingMessageContent { Format = ThinkingFormat.Secure, Value = "blob-1" } },
+            new StreamingContentCompletedResponse { Index = 0 },
+            new StreamingContentAddedResponse { Index = 1, Content = new ThinkingMessageContent { Format = ThinkingFormat.Secure, Value = "blob-2" } },
+            new StreamingContentCompletedResponse { Index = 1 },
+            ToolCallAdded(2),
+            new StreamingContentCompletedResponse { Index = 2 },
+        ]);
+
+        assistant.Content.OfType<ThinkingMessageContent>().Select(t => (t.Format, t.Value))
+            .Should().Equal([(ThinkingFormat.Secure, "blob-1"), (ThinkingFormat.Secure, "blob-2")]);
     }
 
     private static ToolOutput SingleToolOutput(MessageGenerationRequest request) =>

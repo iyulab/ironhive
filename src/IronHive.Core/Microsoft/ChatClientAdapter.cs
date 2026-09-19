@@ -28,6 +28,14 @@ public class ChatClientAdapter : IChatClient
     public const string SignatureKey = "IronHive.Signature";
 
     /// <summary>
+    /// <see cref="AIContent.AdditionalProperties"/> 키(<see cref="TextReasoningContent"/>) — 값이 <c>true</c>면 그 추론 조각은 provider가 내용을
+    /// 가린 추론 블록(Anthropic <c>redacted_thinking</c>)이고, 불투명한 원문은 <see cref="TextReasoningContent.ProtectedData"/>에
+    /// 있습니다. 일반 추론 블록의 서명도 같은 <c>ProtectedData</c>에 실리므로(M.E.AI 표준 슬롯 — 스트리밍 조각을 합쳐도
+    /// 보존됩니다), 되돌려 받을 때 둘을 가르는 것이 이 표식입니다.
+    /// </summary>
+    public const string RedactedReasoningKey = "IronHive.RedactedReasoning";
+
+    /// <summary>
     /// ChatClientAdapter의 새 인스턴스를 생성합니다.
     /// </summary>
     /// <param name="generator">IronHive 메시지 생성기</param>
@@ -72,8 +80,11 @@ public class ChatClientAdapter : IChatClient
         // Buffer tool calls: index -> (callId, name, argumentsJson)
         var toolCallBuffers = new Dictionary<int, (string CallId, string Name, StringBuilder Arguments, string? Signature)>();
         // Content indexes that are thinking blocks: a signature update on one of them (Anthropic delivers
-        // the thinking signature at the end of the block) is emitted as an empty TextReasoningContent that
-        // carries the signature, so the assembled message can be replayed with it (see ConvertToRequest).
+        // the thinking signature at the end of the block) is emitted as an empty TextReasoningContent whose
+        // ProtectedData carries the signature, so the assembled message can be replayed with it (see
+        // ConvertToRequest). ProtectedData, not AdditionalProperties: ToChatResponse coalesces a block's
+        // reasoning pieces into the first one and keeps only that piece's AdditionalProperties, while it
+        // keeps ProtectedData and splits blocks at it.
         var thinkingIndexes = new HashSet<int>();
 
         await foreach (var chunk in _generator.GenerateStreamingMessageAsync(request, cancellationToken)
@@ -116,16 +127,18 @@ public class ChatClientAdapter : IChatClient
 
                 case StreamingContentAddedResponse added when added.Content is ThinkingMessageContent thinkingAdded:
                     thinkingIndexes.Add(added.Index);
-                    if (!string.IsNullOrEmpty(thinkingAdded.Value) || !string.IsNullOrEmpty(thinkingAdded.Signature))
+                    if (ToReasoningContent(thinkingAdded) is { } addedReasoning)
                     {
+                        var isRedacted = thinkingAdded.Format == ThinkingFormat.Secure;
                         yield return new ChatResponseUpdate
                         {
                             ResponseId = null,
                             // The reasoning text as content, so a consumer that plays the assembled message
                             // back returns the thinking block; the AdditionalProperties key stays for the
-                            // consumers that read thinking from there (IndexThinking.ThinkingChatClient).
-                            Contents = [WithSignature(new TextReasoningContent(thinkingAdded.Value ?? string.Empty), thinkingAdded.Signature)],
-                            AdditionalProperties = string.IsNullOrEmpty(thinkingAdded.Value) ? null : new AdditionalPropertiesDictionary
+                            // consumers that read thinking from there (IndexThinking.ThinkingChatClient). A
+                            // redacted block has no readable text, so it offers that key nothing.
+                            Contents = [addedReasoning],
+                            AdditionalProperties = isRedacted || string.IsNullOrEmpty(thinkingAdded.Value) ? null : new AdditionalPropertiesDictionary
                             {
                                 ["IndexThinking.ThinkingContent"] = thinkingAdded.Value
                             }
@@ -136,11 +149,14 @@ public class ChatClientAdapter : IChatClient
                 case StreamingContentUpdatedResponse updated
                     when updated.Updated is SignatureUpdatedContent thinkingSignature
                          && thinkingIndexes.Contains(updated.Index):
-                    yield return new ChatResponseUpdate
+                    if (!string.IsNullOrEmpty(thinkingSignature.Signature))
                     {
-                        ResponseId = null,
-                        Contents = [WithSignature(new TextReasoningContent(string.Empty), thinkingSignature.Signature)]
-                    };
+                        yield return new ChatResponseUpdate
+                        {
+                            ResponseId = null,
+                            Contents = [new TextReasoningContent(string.Empty) { ProtectedData = thinkingSignature.Signature }]
+                        };
+                    }
                     break;
 
                 case StreamingContentDeltaResponse delta when delta.Delta is ToolDeltaContent toolDelta:
@@ -375,20 +391,36 @@ public class ChatClientAdapter : IChatClient
                         });
                         break;
 
-                    // Reasoning pieces (this adapter emits one per streamed delta, plus an empty one that
-                    // carries the signature) are folded back into the single thinking block the provider
-                    // produced, in the position of the first piece.
+                    // Reasoning pieces (this adapter emits one per streamed delta, plus an empty one whose
+                    // ProtectedData is the signature) are folded back into the thinking block the provider
+                    // produced, in the position of the first piece. The signature closes a block: a piece
+                    // after it starts the next one (a turn can carry several). A redacted block is opaque
+                    // data, never text, and stands on its own.
                     case TextReasoningContent reasoning:
-                        if (thinking is null)
+                        if (reasoning.AdditionalProperties?.TryGetValue(RedactedReasoningKey, out var redacted) == true
+                            && redacted is true)
                         {
-                            thinking = new ThinkingMessageContent();
+                            if (!string.IsNullOrEmpty(reasoning.ProtectedData))
+                            {
+                                Message.Content.Add(new ThinkingMessageContent
+                                {
+                                    Format = ThinkingFormat.Secure,
+                                    Value = reasoning.ProtectedData
+                                });
+                            }
+                            thinking = null;
+                            break;
+                        }
+
+                        if (thinking is null || !string.IsNullOrEmpty(thinking.Signature))
+                        {
+                            thinking = new ThinkingMessageContent { Format = ThinkingFormat.Detailed };
                             Message.Content.Add(thinking);
                         }
                         thinking.Value += reasoning.Text ?? string.Empty;
-                        if (reasoning.AdditionalProperties?.TryGetValue(SignatureKey, out var reasoningSignature) == true
-                            && reasoningSignature is string { Length: > 0 } signatureText)
+                        if (!string.IsNullOrEmpty(reasoning.ProtectedData))
                         {
-                            thinking.Signature = signatureText;
+                            thinking.Signature = reasoning.ProtectedData;
                         }
                         break;
 
@@ -456,7 +488,10 @@ public class ChatClientAdapter : IChatClient
             {
                 // Kept as content so the consumer can replay it: Anthropic requires the assistant's thinking
                 // block (with its signature) ahead of a replayed tool_use in the same turn.
-                contents.Add(WithSignature(new TextReasoningContent(thinkingContent.Value), thinkingContent.Signature));
+                if (ToReasoningContent(thinkingContent) is { } reasoning)
+                {
+                    contents.Add(reasoning);
+                }
             }
         }
 
@@ -493,6 +528,10 @@ public class ChatClientAdapter : IChatClient
                 }
                 else if (delta.Delta is ThinkingDeltaContent thinkingDelta)
                 {
+                    // An empty delta carries nothing (Anthropic sends one ahead of the signature when the
+                    // thinking display is omitted — the Claude 5 default).
+                    if (string.IsNullOrEmpty(thinkingDelta.Data))
+                        return null;
                     // Reasoning text as content (replayable) and via AdditionalProperties (the key
                     // IndexThinking.Client.ThinkingChatClient.ThinkingContentKey reads) - both.
                     contents.Add(new TextReasoningContent(thinkingDelta.Data));
@@ -633,6 +672,33 @@ public class ChatClientAdapter : IChatClient
     /// 실어, 소비자가 이 콘텐츠를 히스토리에 그대로 되돌려 보내면 요청 측(<see cref="ConvertToRequest"/>)이
     /// <c>ToolMessageContent.Signature</c>로 복원합니다. 서명이 없으면 아무것도 붙이지 않습니다.
     /// </summary>
+    /// <summary>
+    /// 추론 블록 하나를 <see cref="TextReasoningContent"/>로 옮깁니다 — 서명은 <c>ProtectedData</c>에, 가려진 블록
+    /// (<see cref="ThinkingFormat.Secure"/>)은 불투명 원문을 <c>ProtectedData</c>에 두고 <see cref="RedactedReasoningKey"/>로
+    /// 표시합니다. 되돌려 보낼 것이 없는 블록(텍스트·서명·원문이 모두 비었음)은 <c>null</c>입니다.
+    /// </summary>
+    private static TextReasoningContent? ToReasoningContent(ThinkingMessageContent thinking)
+    {
+        if (thinking.Format == ThinkingFormat.Secure)
+        {
+            return string.IsNullOrEmpty(thinking.Value)
+                ? null
+                : new TextReasoningContent(string.Empty)
+                {
+                    ProtectedData = thinking.Value,
+                    AdditionalProperties = new AdditionalPropertiesDictionary { [RedactedReasoningKey] = true }
+                };
+        }
+
+        if (string.IsNullOrEmpty(thinking.Value) && string.IsNullOrEmpty(thinking.Signature))
+            return null;
+
+        return new TextReasoningContent(thinking.Value ?? string.Empty)
+        {
+            ProtectedData = string.IsNullOrEmpty(thinking.Signature) ? null : thinking.Signature
+        };
+    }
+
     private static T WithSignature<T>(T content, string? signature) where T : AIContent
     {
         if (string.IsNullOrEmpty(signature))

@@ -4,6 +4,32 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.32.0 — unreleased
+
+### Fixed
+
+- **Anthropic: a tool round no longer fails on its second call when Claude thought first.** Claude 5 thinks
+  adaptively when a request says nothing about thinking, and by default it returns that thinking with empty text and
+  only a signature. Streamed through `ChatClientAdapter`, the signature rode on a separate reasoning piece that
+  `ToChatResponse` merged away, so the next request replayed `{"thinking":"","signature":""}` and the Messages API
+  rejected it (400, `each thinking block must contain thinking`). Only a fallback retry recovered the turn. The
+  signature now travels in `TextReasoningContent.ProtectedData`, which `ToChatResponse` keeps. Each signed block stays
+  its own block, so a turn with several thinking blocks replays each one with its own signature.
+- **Anthropic: an unsigned thinking block is left out of a replayed turn instead of failing the request.** The API only
+  accepts a replayed thinking block that carries its signature, and it accepts a turn without the block. A block with no
+  signature (reasoning from another provider, or history saved before this release) is now dropped. An empty
+  `redacted_thinking` block is dropped too.
+- **Redacted thinking (`redacted_thinking`) no longer shows up as reasoning text.** Through the bridge its opaque data
+  was emitted as `TextReasoningContent.Text` and replayed as an unsigned thinking block. It is now a
+  `TextReasoningContent` with empty text, its data in `ProtectedData`, and
+  `AdditionalProperties[ChatClientAdapter.RedactedReasoningKey] = true`. It replays as `redacted_thinking`.
+
+### Changed
+
+- **Breaking: `ChatClientAdapter.SignatureKey` now applies to `FunctionCallContent` only.** Reasoning signatures moved to
+  the standard `TextReasoningContent.ProtectedData`. A consumer that read a thinking signature from
+  `AdditionalProperties[SignatureKey]` should read `ProtectedData` instead.
+
 ## 0.31.0 — 2026-09-19
 
 ### Added

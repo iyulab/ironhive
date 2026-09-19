@@ -161,6 +161,60 @@ public class ProviderToolWireShapeTests
             "Anthropic requires the assistant's thinking block, with its signature, ahead of a replayed tool_use");
     }
 
+    // Claude 5 thinks adaptively when the request says nothing, and its default display is omitted:
+    // the block comes back with empty text and only a signature. Live-measured (claude-sonnet-5): replaying
+    // it with the signature is accepted, replaying it without one is a 400 ("each thinking block must
+    // contain thinking"), and leaving it out is accepted.
+
+    private static JsonElement[] ReplayedAssistantBlocks(MessageGenerationRequest request)
+    {
+        var generator = new AnthropicMessageGenerator(new AnthropicConfig { ApiKey = "test-key" });
+        using var wire = JsonDocument.Parse(generator.ToMessageCreateParams(request).ToString());
+        var root = wire.RootElement.TryGetProperty("messages", out _) ? wire.RootElement : wire.RootElement.EnumerateObject().Select(p => p.Value).First(v => v.ValueKind == JsonValueKind.Object && v.TryGetProperty("messages", out _));
+        return [.. root.GetProperty("messages").EnumerateArray()
+            .Single(m => m.GetProperty("role").GetString() == "assistant")
+            .GetProperty("content").EnumerateArray().Select(b => b.Clone())];
+    }
+
+    [Fact]
+    public void Anthropic_ReplayedOmittedDisplayThinking_KeepsItsSignatureWithEmptyText()
+    {
+        var blocks = ReplayedAssistantBlocks(Request("claude-sonnet-5", Tool(null),
+            Message.User("read a.txt"),
+            Assistant(new ThinkingMessageContent { Value = "", Signature = "sig-omitted" }, Call("call-1", ToolOutput.Success("contents")))));
+
+        blocks[0].GetProperty("type").GetString().Should().Be("thinking");
+        blocks[0].GetProperty("signature").GetString().Should().Be("sig-omitted", "an omitted-display block is replayable by its signature alone");
+        blocks[0].GetProperty("thinking").GetString().Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("reasoning from another provider")]
+    public void Anthropic_ReplayedThinkingWithoutSignature_IsLeftOut(string text)
+    {
+        var blocks = ReplayedAssistantBlocks(Request("claude-sonnet-5", Tool(null),
+            Message.User("read a.txt"),
+            Assistant(new ThinkingMessageContent { Value = text }, Call("call-1", ToolOutput.Success("contents")))));
+
+        blocks.Select(b => b.GetProperty("type").GetString()).Should().Equal(["tool_use"],
+            "an unsigned thinking block makes the API refuse the whole request, while a turn without it is accepted");
+    }
+
+    [Fact]
+    public void Anthropic_ReplayedRedactedThinking_IsARedactedBlockWithItsData()
+    {
+        var blocks = ReplayedAssistantBlocks(Request("claude-sonnet-4-5", Tool(null),
+            Message.User("read a.txt"),
+            Assistant(
+                new ThinkingMessageContent { Format = ThinkingFormat.Secure, Value = "opaque-1" },
+                new ThinkingMessageContent { Format = ThinkingFormat.Secure, Value = "" },
+                Call("call-1", ToolOutput.Success("contents")))));
+
+        blocks.Select(b => b.GetProperty("type").GetString()).Should().Equal(["redacted_thinking", "tool_use"], "an empty redacted block has nothing to replay");
+        blocks[0].GetProperty("data").GetString().Should().Be("opaque-1");
+    }
+
     // ── (c) non-text tool results ────────────────────────────────────────────────────────────────
 
     [Fact]

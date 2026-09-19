@@ -390,16 +390,27 @@ public class AnthropicMessageGenerator : IMessageGenerator
                         {
                             if (thinkingItem.Format == ThinkingFormat.Secure)
                             {
+                                if (string.IsNullOrEmpty(thinkingItem.Value))
+                                    continue;
+
                                 assistantBlocks.Add(new RedactedThinkingBlockParam
                                 {
-                                    Data = thinkingItem.Value ?? string.Empty,
+                                    Data = thinkingItem.Value,
                                 });
                             }
                             else
                             {
+                                // The API verifies a replayed thinking block by its signature: without one it
+                                // refuses the whole request (400 "each thinking block must contain thinking" when
+                                // the text is empty too — the omitted-display default of Claude 5). Such a block
+                                // is not Anthropic's own (another provider's reasoning, or a signature lost in
+                                // transit), and a turn without it is accepted, so it is left out.
+                                if (string.IsNullOrEmpty(thinkingItem.Signature))
+                                    continue;
+
                                 assistantBlocks.Add(new ThinkingBlockParam
                                 {
-                                    Signature = thinkingItem.Signature ?? string.Empty,
+                                    Signature = thinkingItem.Signature,
                                     Thinking = thinkingItem.Value ?? string.Empty
                                 });
                             }
