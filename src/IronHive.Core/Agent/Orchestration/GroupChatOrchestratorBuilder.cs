@@ -19,6 +19,11 @@ public class GroupChatOrchestratorBuilder
     private string? _orchestrationId;
     private Func<string, AgentStepResult?, Task<bool>>? _approvalHandler;
     private HashSet<string>? _requireApprovalForAgents;
+    private bool _stopOnAgentFailure = true;
+    private IList<IAgentMiddleware>? _agentMiddlewares;
+    private IContextScope? _contextScope;
+    private IResultDistiller? _resultDistiller;
+    private ResultDistillationOptions? _resultDistillationOptions;
 
     /// <summary>
     /// 에이전트를 추가합니다.
@@ -180,6 +185,51 @@ public class GroupChatOrchestratorBuilder
     }
 
     /// <summary>
+    /// 에이전트가 실패하면 오케스트레이션을 멈출지 설정합니다(기본 <see langword="true"/>).
+    /// </summary>
+    public GroupChatOrchestratorBuilder SetStopOnAgentFailure(bool stopOnAgentFailure)
+    {
+        _stopOnAgentFailure = stopOnAgentFailure;
+        return this;
+    }
+
+    /// <summary>
+    /// 각 에이전트 실행을 감싸는 미들웨어를 설정합니다.
+    /// </summary>
+    public GroupChatOrchestratorBuilder SetAgentMiddlewares(IList<IAgentMiddleware>? middlewares)
+    {
+        _agentMiddlewares = middlewares;
+        return this;
+    }
+
+    /// <summary>
+    /// 에이전트에 넘길 메시지 범위를 정하는 스코프를 설정합니다.
+    /// </summary>
+    public GroupChatOrchestratorBuilder SetContextScope(IContextScope? scope)
+    {
+        _contextScope = scope;
+        return this;
+    }
+
+    /// <summary>
+    /// 에이전트 결과를 다음 단계로 넘기기 전에 줄이는 distiller 를 설정합니다.
+    /// </summary>
+    public GroupChatOrchestratorBuilder SetResultDistiller(IResultDistiller? distiller)
+    {
+        _resultDistiller = distiller;
+        return this;
+    }
+
+    /// <summary>
+    /// <see cref="SetResultDistiller"/> 에 넘길 옵션을 설정합니다.
+    /// </summary>
+    public GroupChatOrchestratorBuilder SetResultDistillationOptions(ResultDistillationOptions? options)
+    {
+        _resultDistillationOptions = options;
+        return this;
+    }
+
+    /// <summary>
     /// GroupChat 오케스트레이터를 빌드합니다.
     /// </summary>
     public GroupChatOrchestrator Build()
@@ -205,6 +255,11 @@ public class GroupChatOrchestratorBuilder
             OrchestrationId = _orchestrationId,
             ApprovalHandler = _approvalHandler,
             RequireApprovalForAgents = _requireApprovalForAgents,
+            StopOnAgentFailure = _stopOnAgentFailure,
+            AgentMiddlewares = _agentMiddlewares,
+            ContextScope = _contextScope,
+            ResultDistiller = _resultDistiller,
+            ResultDistillationOptions = _resultDistillationOptions,
         };
 
         return new GroupChatOrchestrator(options, new Dictionary<string, IAgent>(_agentMap));

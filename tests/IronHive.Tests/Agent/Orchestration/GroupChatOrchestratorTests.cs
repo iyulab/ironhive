@@ -380,6 +380,60 @@ public class GroupChatOrchestratorTests
 
     #endregion
 
+    #region Builder reaches the base options
+
+    [Fact]
+    public async Task Builder_AgentMiddlewares_WrapEveryStep()
+    {
+        // The builder had no way to pass middlewares, so a group chat built through it ran unwrapped.
+        var calls = new List<string>();
+        var orch = new GroupChatOrchestratorBuilder()
+            .AddAgent(CreateMockAgent("a", new List<string>()))
+            .AddAgent(CreateMockAgent("b", new List<string>()))
+            .WithRoundRobin()
+            .TerminateAfterRounds(2)
+            .SetAgentMiddlewares([new RecordingMiddleware(calls)])
+            .Build();
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken);
+
+        result.IsSuccess.Should().BeTrue();
+        calls.Should().Equal("a", "b");
+    }
+
+    [Theory]
+    [InlineData(true, 1)]
+    [InlineData(false, 3)]
+    public async Task Builder_StopOnAgentFailure_DecidesWhetherAFailureEndsTheChat(bool stop, int expectedSteps)
+    {
+        var failing = new MockAgent("broken") { ResponseFunc = _ => throw new InvalidOperationException("boom") };
+        var orch = new GroupChatOrchestratorBuilder()
+            .AddAgent(failing)
+            .WithRoundRobin()
+            .TerminateAfterRounds(3)
+            .SetMaxRounds(3) // failed steps do not count toward the termination condition; the safety limit ends the run
+            .SetStopOnAgentFailure(stop)
+            .Build();
+
+        var result = await orch.ExecuteAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken);
+
+        result.Steps.Should().HaveCount(expectedSteps);
+    }
+
+    private sealed class RecordingMiddleware(List<string> calls) : IAgentMiddleware
+    {
+        public Task<MessageResponse> InvokeAsync(
+            IAgent agent, IEnumerable<Message> messages,
+            AgentInvokeOptions? options, Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next,
+            CancellationToken ct = default)
+        {
+            calls.Add(agent.Name);
+            return next(messages, options);
+        }
+    }
+
+    #endregion
+
     #region Helpers
 
     private static IEnumerable<Message> MakeUserMessages(string text)

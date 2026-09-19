@@ -206,6 +206,11 @@ builder
 var orch = builder.Build();
 ```
 
+두 빌더(Handoff · GroupChat)는 `OrchestratorOptions` 의 공통 옵션을 전부 `Set{옵션}` 으로 받는다 — `SetStopOnAgentFailure` ·
+`SetAgentMiddlewares` · `SetContextScope` · `SetResultDistiller`/`SetResultDistillationOptions` · `SetApprovalHandler` ·
+`SetCheckpointStore` 등(0.31.0 부터 — 그 전엔 앞의 다섯을 빌더로 줄 수 없었다). 실패한 스텝은 `TerminateAfterRounds` 에 세지 않으므로
+`SetStopOnAgentFailure(false)` 로 계속 도는 대화는 `SetMaxRounds` 가 끝낸다.
+
 ### GroupChatOrchestratorOptions
 
 ```csharp

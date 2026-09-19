@@ -4,6 +4,17 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.31.0 — 2026-09-19
+
+### Fixed
+
+- **The Handoff and GroupChat builders can set every common orchestrator option.** They built their options field by
+  field and had no way to pass `StopOnAgentFailure`, `AgentMiddlewares`, `ContextScope`, `ResultDistiller` or
+  `ResultDistillationOptions`, all of which the orchestrators read. So an orchestrator built this way always stopped on
+  the first failure and ran without middleware, context scoping or result distillation. Five setters of the builders'
+  own `Set…` form were added: `SetStopOnAgentFailure`, `SetAgentMiddlewares`, `SetContextScope`, `SetResultDistiller`
+  and `SetResultDistillationOptions`. A roster test holds both builders to a setter for every common option.
+
 ## 0.30.0 — 2026-09-19
 
 ### Fixed
