@@ -617,4 +617,63 @@ public class SequentialOrchestratorTests
         var orch = new SequentialOrchestrator();
         orch.SupportsRealTimeStreaming.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task ExecuteStreaming_EmitsApprovalRequiredWhileTheHandlerWaits_ThenGranted()
+    {
+        var release = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var orch = new SequentialOrchestrator(new SequentialOrchestratorOptions
+        {
+            ApprovalHandler = (_, _) => release.Task,
+            RequireApprovalForAgents = ["b"]
+        });
+        orch.AddAgent(new MockAgent("a") { ResponseFunc = _ => "from-a" });
+        orch.AddAgent(new MockAgent("b") { ResponseFunc = _ => "from-b" });
+
+        var events = new List<OrchestrationStreamEvent>();
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken))
+        {
+            events.Add(evt);
+            if (evt.EventType == OrchestrationEventType.ApprovalRequired)
+            {
+                // The consumer sees the request while the handler is still pending — that is the point of the event.
+                release.Task.IsCompleted.Should().BeFalse();
+                evt.AgentName.Should().Be("b");
+                release.SetResult(true);
+            }
+        }
+
+        var approvals = events
+            .Where(e => e.EventType is OrchestrationEventType.ApprovalRequired or OrchestrationEventType.ApprovalGranted)
+            .Select(e => (e.EventType, e.AgentName))
+            .ToList();
+        approvals.Should().Equal(
+            (OrchestrationEventType.ApprovalRequired, "b"),
+            (OrchestrationEventType.ApprovalGranted, "b"));
+
+        var granted = events.FindIndex(e => e.EventType == OrchestrationEventType.ApprovalGranted);
+        var started = events.FindIndex(e => e.EventType == OrchestrationEventType.AgentStarted && e.AgentName == "b");
+        started.Should().BeGreaterThan(granted, "the agent starts only after approval");
+        events.Should().Contain(e => e.EventType == OrchestrationEventType.Completed);
+    }
+
+    [Fact]
+    public async Task ExecuteStreaming_Denied_EmitsRequiredThenDenied_AndNeverGranted()
+    {
+        var orch = new SequentialOrchestrator(new SequentialOrchestratorOptions
+        {
+            ApprovalHandler = (_, _) => Task.FromResult(false)
+        });
+        orch.AddAgent(new MockAgent("a") { ResponseFunc = _ => "from-a" });
+
+        var events = new List<OrchestrationStreamEvent>();
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken))
+        {
+            events.Add(evt);
+        }
+
+        events.Select(e => e.EventType).Should().ContainInOrder(
+            OrchestrationEventType.ApprovalRequired, OrchestrationEventType.ApprovalDenied, OrchestrationEventType.Failed);
+        events.Should().NotContain(e => e.EventType == OrchestrationEventType.ApprovalGranted);
+    }
 }

@@ -755,4 +755,55 @@ public class GraphOrchestratorTests
 
         orch.SupportsRealTimeStreaming.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task ExecuteStreaming_EmitsApprovalRequiredAndGranted_ForTheGatedNodeOnly()
+    {
+        var orch = new GraphOrchestratorBuilder()
+            .WithOptions(new GraphOrchestratorOptions
+            {
+                ApprovalHandler = (_, _) => Task.FromResult(true),
+                RequireApprovalForAgents = ["b"]
+            })
+            .AddNode("a", new MockAgent("a"))
+            .AddNode("b", new MockAgent("b"))
+            .AddEdge("a", "b")
+            .SetStartNode("a")
+            .SetOutputNode("b")
+            .Build();
+
+        var events = new List<OrchestrationStreamEvent>();
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken))
+        {
+            events.Add(evt);
+        }
+
+        events
+            .Where(e => e.EventType is OrchestrationEventType.ApprovalRequired or OrchestrationEventType.ApprovalGranted)
+            .Select(e => (e.EventType, e.AgentName))
+            .Should().Equal(
+                (OrchestrationEventType.ApprovalRequired, "b"),
+                (OrchestrationEventType.ApprovalGranted, "b"));
+        events.Should().Contain(e => e.EventType == OrchestrationEventType.Completed);
+    }
+
+    [Fact]
+    public async Task ExecuteStreaming_Denied_EmitsApprovalDenied_LikeTheSequentialStream()
+    {
+        var orch = new GraphOrchestratorBuilder()
+            .WithOptions(new GraphOrchestratorOptions { ApprovalHandler = (_, _) => Task.FromResult(false) })
+            .AddNode("a", new MockAgent("a"))
+            .SetStartNode("a")
+            .SetOutputNode("a")
+            .Build();
+
+        var events = new List<OrchestrationStreamEvent>();
+        await foreach (var evt in orch.ExecuteStreamingAsync(MakeUserMessages("go"), TestContext.Current.CancellationToken))
+        {
+            events.Add(evt);
+        }
+
+        events.Select(e => e.EventType).Should().ContainInOrder(
+            OrchestrationEventType.ApprovalRequired, OrchestrationEventType.ApprovalDenied, OrchestrationEventType.Failed);
+    }
 }

@@ -385,9 +385,9 @@ await foreach (var evt in orch.ExecuteStreamingAsync(messages))
 | `AgentFailed` | 에이전트 실행 실패 |
 | `Handoff` | 핸드오프 발생 |
 | `SpeakerSelected` | GroupChat 발언자 선택 |
-| `ApprovalRequired` | 승인 대기 |
-| `ApprovalGranted` | 승인됨 |
-| `ApprovalDenied` | 승인 거부됨 |
+| `ApprovalRequired` | 승인 대기 — `ApprovalHandler` 를 기다리기 **전에** 방출(Sequential · Graph 스트림, 핸들러가 적용되는 에이전트만) |
+| `ApprovalGranted` | 승인됨 — 핸들러가 true 를 돌려준 직후, 해당 에이전트의 `AgentStarted` 전(Sequential · Graph 스트림) |
+| `ApprovalDenied` | 승인 거부됨 — 체크포인트 저장 뒤, `Failed` 앞(Sequential · Graph 스트림) |
 | `HumanInputRequired` | 사람 입력 필요 |
 | `Completed` | 오케스트레이션 완료 |
 | `Failed` | 오케스트레이션 실패 |

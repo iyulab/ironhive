@@ -4,7 +4,22 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
-## 0.32.0 — unreleased
+## 0.33.0 — unreleased
+
+### Added
+
+- **Streaming orchestrations say when they are waiting for approval.** `OrchestrationEventType.ApprovalRequired` and
+  `ApprovalGranted` were declared and never emitted, so an approval UI learned of a gate only when it was denied.
+  `SequentialOrchestrator` and `GraphOrchestrator` now emit `ApprovalRequired` (with the agent's name) before they
+  await `ApprovalHandler`, and `ApprovalGranted` once it returns true — for agents the handler applies to only. The
+  other orchestrators' streams are replays of a finished run, where "waiting" has no meaning, and emit neither.
+
+### Fixed
+
+- **`GraphOrchestrator`'s stream emits `ApprovalDenied` before `Failed`,** as `SequentialOrchestrator`'s always did.
+  It went straight to `Failed`, so a consumer could tell a denial from another failure only by the error text.
+
+## 0.32.0 — 2026-09-19
 
 ### Fixed
 

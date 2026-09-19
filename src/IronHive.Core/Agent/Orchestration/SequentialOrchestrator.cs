@@ -199,7 +199,8 @@ public class SequentialOrchestrator : OrchestratorBase
                     var agent = agentList[i];
 
                     // 승인 체크
-                    if (!await CheckApprovalAsync(agent, steps.LastOrDefault(), cts.Token).ConfigureAwait(false))
+                    if (!await CheckApprovalAsync(
+                            agent, steps.LastOrDefault(), cts.Token, evt => writer.WriteAsync(evt, cancellationToken)).ConfigureAwait(false))
                     {
                         await SaveCheckpointAsync(steps, currentMessages, cts.Token).ConfigureAwait(false);
 

@@ -123,10 +123,21 @@ public abstract class OrchestratorBase : IAgentOrchestrator
     /// 에이전트 실행 전 승인을 확인합니다.
     /// ApprovalHandler가 없으면 항상 true를 반환합니다.
     /// </summary>
+    /// <param name="agent">실행하려는 에이전트</param>
+    /// <param name="previousStep">직전 단계 결과</param>
+    /// <param name="ct">취소 토큰</param>
+    /// <param name="emit">
+    /// 실시간 스트림의 쓰기 함수. 주어지면 핸들러를 기다리기 <b>전에</b>
+    /// <see cref="OrchestrationEventType.ApprovalRequired"/> 를, 승인되면
+    /// <see cref="OrchestrationEventType.ApprovalGranted"/> 를 내보낸다 — 승인 UI 는 핸들러가
+    /// 대기하는 동안 그 사실을 알아야 한다. 승인이 필요 없는 에이전트에는 아무것도 내보내지 않는다.
+    /// 거부 이벤트는 호출자가 체크포인트 저장 뒤에 내보낸다.
+    /// </param>
     protected async Task<bool> CheckApprovalAsync(
         IAgent agent,
         AgentStepResult? previousStep,
-        CancellationToken ct)
+        CancellationToken ct,
+        Func<OrchestrationStreamEvent, ValueTask>? emit = null)
     {
         if (Options.ApprovalHandler == null) return true;
 
@@ -137,7 +148,27 @@ public abstract class OrchestratorBase : IAgentOrchestrator
             return true;
         }
 
-        return await Options.ApprovalHandler(agent.Name, previousStep).ConfigureAwait(false);
+        if (emit != null)
+        {
+            await emit(new OrchestrationStreamEvent
+            {
+                EventType = OrchestrationEventType.ApprovalRequired,
+                AgentName = agent.Name
+            }).ConfigureAwait(false);
+        }
+
+        var approved = await Options.ApprovalHandler(agent.Name, previousStep).ConfigureAwait(false);
+
+        if (approved && emit != null)
+        {
+            await emit(new OrchestrationStreamEvent
+            {
+                EventType = OrchestrationEventType.ApprovalGranted,
+                AgentName = agent.Name
+            }).ConfigureAwait(false);
+        }
+
+        return approved;
     }
 
     /// <summary>

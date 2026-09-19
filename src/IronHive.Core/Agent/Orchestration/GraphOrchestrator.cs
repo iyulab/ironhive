@@ -188,12 +188,22 @@ public class GraphOrchestrator : OrchestratorBase
 
                 foreach (var level in GetTopologicalLevels())
                 {
-                    var plan = await PlanLevelAsync(level, completedNodeIds, nodeResults, inputMessages, steps, cts.Token)
+                    var plan = await PlanLevelAsync(
+                            level, completedNodeIds, nodeResults, inputMessages, steps, cts.Token,
+                            evt => writer.WriteAsync(evt, cancellationToken))
                         .ConfigureAwait(false);
 
                     if (plan.DeniedAgent is { } denied)
                     {
                         await SaveCheckpointAsync(steps, inputMessages, cts.Token).ConfigureAwait(false);
+
+                        await writer.WriteAsync(new OrchestrationStreamEvent
+                        {
+                            EventType = OrchestrationEventType.ApprovalDenied,
+                            AgentName = denied,
+                            Error = ApprovalDenied(denied)
+                        }, cancellationToken).ConfigureAwait(false);
+
                         stopwatch.Stop();
                         await WriteFailedAsync(writer, ApprovalDenied(denied), steps, stopwatch.Elapsed, cancellationToken)
                             .ConfigureAwait(false);
@@ -332,7 +342,8 @@ public class GraphOrchestrator : OrchestratorBase
         Dictionary<string, AgentStepResult> nodeResults,
         List<Message> inputMessages,
         List<AgentStepResult> steps,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Func<OrchestrationStreamEvent, ValueTask>? emit = null)
     {
         var nodes = new List<(string NodeId, IEnumerable<Message> Input)>();
 
@@ -344,7 +355,7 @@ public class GraphOrchestrator : OrchestratorBase
             if (nodeInput == null) continue;
 
             var agent = _nodes[nodeId].Agent;
-            if (!await CheckApprovalAsync(agent, steps.LastOrDefault(), cancellationToken).ConfigureAwait(false))
+            if (!await CheckApprovalAsync(agent, steps.LastOrDefault(), cancellationToken, emit).ConfigureAwait(false))
             {
                 return new LevelPlan(nodes, agent.Name);
             }
