@@ -5,7 +5,7 @@ namespace IronHive.Providers.OpenAI.Compatible.Reranking;
 /// <summary>
 /// <c>POST /rerank</c> request body, Cohere-shaped (<see href="https://docs.cohere.com/reference/rerank"/>).
 /// </summary>
-public class CohereRerankRequest
+internal class CohereRerankRequest
 {
     [JsonPropertyName("model")]
     public required string Model { get; set; }
@@ -23,7 +23,7 @@ public class CohereRerankRequest
 /// <summary>
 /// <c>POST /rerank</c> response body, Cohere-shaped.
 /// </summary>
-public class CohereRerankResponse
+internal class CohereRerankResponse
 {
     [JsonPropertyName("results")]
     public required List<CohereRerankResultItem> Results { get; set; }
@@ -32,7 +32,7 @@ public class CohereRerankResponse
 /// <summary>
 /// One entry of <see cref="CohereRerankResponse.Results"/>.
 /// </summary>
-public class CohereRerankResultItem
+internal class CohereRerankResultItem
 {
     [JsonPropertyName("index")]
     public required int Index { get; set; }

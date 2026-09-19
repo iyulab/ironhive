@@ -345,13 +345,14 @@ public class ChatCompletionMessageGeneratorTests
     }
 
     [Theory]
-    [InlineData(ChatFinishReason.ToolCalls, MessageDoneReason.ToolCall)]
-    [InlineData(ChatFinishReason.Stop, MessageDoneReason.EndTurn)]
-    [InlineData(ChatFinishReason.Length, MessageDoneReason.MaxTokens)]
-    [InlineData(ChatFinishReason.ContentFilter, MessageDoneReason.ContentFilter)]
-    public void MapFinishReason_MapsToIronHiveReason(ChatFinishReason input, MessageDoneReason expected)
+    [InlineData(nameof(ChatFinishReason.ToolCalls), MessageDoneReason.ToolCall)]
+    [InlineData(nameof(ChatFinishReason.Stop), MessageDoneReason.EndTurn)]
+    [InlineData(nameof(ChatFinishReason.Length), MessageDoneReason.MaxTokens)]
+    [InlineData(nameof(ChatFinishReason.ContentFilter), MessageDoneReason.ContentFilter)]
+    public void MapFinishReason_MapsToIronHiveReason(string input, MessageDoneReason expected)
     {
-        ChatCompletionMessageGenerator.MapFinishReason(input).Should().Be(expected);
+        // The wire enum is internal (a public test method cannot take it), so the row names it.
+        ChatCompletionMessageGenerator.MapFinishReason(Enum.Parse<ChatFinishReason>(input)).Should().Be(expected);
     }
 
     // === Reasoning on a compatible server ===

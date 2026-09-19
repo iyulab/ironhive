@@ -8,7 +8,7 @@ namespace IronHive.Providers.OpenAI.Compatible.ChatCompletion;
 /// hatch. Requires <see cref="ExtraBodyJsonConverterFactory"/> to be registered on the
 /// <c>JsonSerializerOptions</c> used to (de)serialize the payload.
 /// </summary>
-public abstract class ChatCompletionPayloadBase
+internal abstract class ChatCompletionPayloadBase
 {
     /// <summary>
     /// On write, deep-merged into the root JSON (vendor extensions such as vLLM's <c>thinking_token_budget</c>).
@@ -24,7 +24,7 @@ public abstract class ChatCompletionPayloadBase
 /// Serializes lowercase via the snake_case <c>JsonStringEnumConverter</c> registered on the client's
 /// JSON options (e.g. <see cref="Xhigh"/> → <c>"xhigh"</c>).
 /// </summary>
-public enum ChatReasoningEffort
+internal enum ChatReasoningEffort
 {
     None,
     Minimal,
@@ -34,7 +34,7 @@ public enum ChatReasoningEffort
     Xhigh
 }
 
-public enum ChatFinishReason
+internal enum ChatFinishReason
 {
     Stop,
     Length,
@@ -42,7 +42,7 @@ public enum ChatFinishReason
     ToolCalls
 }
 
-public class ChatTokenUsage
+internal class ChatTokenUsage
 {
     [JsonPropertyName("completion_tokens")]
     public int CompletionTokens { get; set; }
@@ -59,7 +59,7 @@ public class ChatTokenUsage
 /// is always sent as <c>false</c>: OpenAI's strict-mode constraints (all properties required,
 /// <c>additionalProperties: false</c>) are not honored consistently across compatible servers.
 /// </summary>
-public class ChatResponseFormat
+internal class ChatResponseFormat
 {
     private ChatResponseFormat(string type, JsonSchemaFormat? jsonSchema)
     {
@@ -94,7 +94,7 @@ public class ChatResponseFormat
 }
 
 /// <summary>Only the <c>function</c> tool type is modeled — the only one this provider ever declares.</summary>
-public class ChatTool
+internal class ChatTool
 {
     [JsonPropertyName("type")]
     public string Type { get; } = "function";
@@ -125,7 +125,7 @@ public class ChatTool
 /// history in a request. Only <c>function</c> calls are modeled. <see cref="Type"/> must serialize on the
 /// request side too — compatible servers reject assistant tool-call history that omits it.
 /// </summary>
-public class ChatToolCall
+internal class ChatToolCall
 {
     [JsonPropertyName("type")]
     public string Type { get; } = "function";
@@ -148,7 +148,7 @@ public class ChatToolCall
 
 /// <summary>An incremental tool-call fragment on a streaming delta, keyed by <see cref="Index"/> since a
 /// single chunk's arguments arrive split across many chunks.</summary>
-public class ChatToolCallDelta
+internal class ChatToolCallDelta
 {
     [JsonPropertyName("index")]
     public int? Index { get; set; }
@@ -173,16 +173,16 @@ public class ChatToolCallDelta
 [JsonDerivedType(typeof(TextChatMessageContent), "text")]
 [JsonDerivedType(typeof(ImageChatMessageContent), "image_url")]
 [JsonDerivedType(typeof(AudioChatMessageContent), "input_audio")]
-public abstract class ChatMessageContent
+internal abstract class ChatMessageContent
 { }
 
-public class TextChatMessageContent : ChatMessageContent
+internal class TextChatMessageContent : ChatMessageContent
 {
     [JsonPropertyName("text")]
     public required string Text { get; set; }
 }
 
-public class ImageChatMessageContent : ChatMessageContent
+internal class ImageChatMessageContent : ChatMessageContent
 {
     [JsonPropertyName("image_url")]
     public required ImageSource ImageUrl { get; set; }
@@ -198,7 +198,7 @@ public class ImageChatMessageContent : ChatMessageContent
     }
 }
 
-public class AudioChatMessageContent : ChatMessageContent
+internal class AudioChatMessageContent : ChatMessageContent
 {
     [JsonPropertyName("input_audio")]
     public required AudioSource InputAudio { get; set; }
@@ -221,23 +221,23 @@ public class AudioChatMessageContent : ChatMessageContent
 [JsonDerivedType(typeof(UserChatMessage), "user")]
 [JsonDerivedType(typeof(AssistantChatMessage), "assistant")]
 [JsonDerivedType(typeof(ToolChatMessage), "tool")]
-public abstract class ChatMessage
+internal abstract class ChatMessage
 { }
 
-public class SystemChatMessage : ChatMessage
+internal class SystemChatMessage : ChatMessage
 {
     [JsonPropertyName("content")]
     public required string Content { get; set; }
 }
 
-public class UserChatMessage : ChatMessage
+internal class UserChatMessage : ChatMessage
 {
     [JsonPropertyName("content")]
     [JsonConverter(typeof(ChatMessageContentJsonConverter))]
     public ICollection<ChatMessageContent> Content { get; set; } = new List<ChatMessageContent>();
 }
 
-public class AssistantChatMessage : ChatMessage
+internal class AssistantChatMessage : ChatMessage
 {
     /// <summary>Required alongside <see cref="ToolCalls"/> by some compatible servers even when empty.</summary>
     [JsonPropertyName("content")]
@@ -248,7 +248,7 @@ public class AssistantChatMessage : ChatMessage
 }
 
 /// <summary>The result message of a tool call.</summary>
-public class ToolChatMessage : ChatMessage
+internal class ToolChatMessage : ChatMessage
 {
     [JsonPropertyName("tool_call_id")]
     public required string ToolCallId { get; set; }
@@ -257,7 +257,7 @@ public class ToolChatMessage : ChatMessage
     public required string Content { get; set; }
 }
 
-public class ChatChoiceMessage
+internal class ChatChoiceMessage
 {
     [JsonPropertyName("content")]
     public string? Content { get; set; }
@@ -266,7 +266,7 @@ public class ChatChoiceMessage
     public ICollection<ChatToolCall>? ToolCalls { get; set; }
 }
 
-public class ChatChoiceMessageDelta
+internal class ChatChoiceMessageDelta
 {
     [JsonPropertyName("content")]
     public string? Content { get; set; }
@@ -275,7 +275,7 @@ public class ChatChoiceMessageDelta
     public ICollection<ChatToolCallDelta>? ToolCalls { get; set; }
 }
 
-public class ChatChoice
+internal class ChatChoice
 {
     [JsonPropertyName("finish_reason")]
     public ChatFinishReason? FinishReason { get; set; }
@@ -284,7 +284,7 @@ public class ChatChoice
     public ChatChoiceMessage? Message { get; set; }
 }
 
-public class ChatChoiceDelta
+internal class ChatChoiceDelta
 {
     [JsonPropertyName("delta")]
     public ChatChoiceMessageDelta? Delta { get; set; }
@@ -293,7 +293,7 @@ public class ChatChoiceDelta
     public ChatFinishReason? FinishReason { get; set; }
 }
 
-public class ChatCompletionRequest : ChatCompletionPayloadBase
+internal class ChatCompletionRequest : ChatCompletionPayloadBase
 {
     [JsonPropertyName("model")]
     public required string Model { get; set; }
@@ -352,13 +352,13 @@ public class ChatCompletionRequest : ChatCompletionPayloadBase
     public ChatCompletionStreamOptions? StreamOptions { get; set; }
 }
 
-public class ChatCompletionStreamOptions
+internal class ChatCompletionStreamOptions
 {
     [JsonPropertyName("include_usage")]
     public bool? IncludeUsage { get; set; }
 }
 
-public class ChatCompletionResponse : ChatCompletionPayloadBase
+internal class ChatCompletionResponse : ChatCompletionPayloadBase
 {
     [JsonPropertyName("id")]
     public string? Id { get; set; }
@@ -373,7 +373,7 @@ public class ChatCompletionResponse : ChatCompletionPayloadBase
     public ChatTokenUsage? Usage { get; set; }
 }
 
-public class StreamingChatCompletionResponse : ChatCompletionPayloadBase
+internal class StreamingChatCompletionResponse : ChatCompletionPayloadBase
 {
     [JsonPropertyName("id")]
     public string? Id { get; set; }

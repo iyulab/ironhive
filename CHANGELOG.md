@@ -29,6 +29,13 @@ changes are expected and used freely for structural correctness (see
 - **Breaking: `ChatClientAdapter.SignatureKey` now applies to `FunctionCallContent` only.** Reasoning signatures moved to
   the standard `TextReasoningContent.ProtectedData`. A consumer that read a thinking signature from
   `AdditionalProperties[SignatureKey]` should read `ProtectedData` instead.
+- **Breaking: the OpenAI-compatible provider's wire payloads are internal.** `ChatCompletionRequest`,
+  `ChatCompletionResponse`, `ChatMessage`, `ChatResponseFormat`, `ChatTool` and the other Chat Completions payload
+  types, plus the Cohere rerank payloads, were public. Consumers had no use for them, every wire-shape fix became a
+  breaking change, and names like `ChatMessage` and `ChatResponseFormat` were ambiguous next to
+  `Microsoft.Extensions.AI` for any code that imports both namespaces. The generators, `OpenAICompatibleConfig`,
+  the service types and `TokenLimitParameter` stay public. A convention test keeps the payloads unexported and the
+  exported names clear of Microsoft.Extensions.AI's.
 
 ## 0.31.0 — 2026-09-19
 
