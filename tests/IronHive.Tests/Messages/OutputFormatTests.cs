@@ -17,7 +17,7 @@ public class OutputFormatTests
     {
         var format = OutputFormat.For<Answer>();
 
-        format.Schema["properties"]!["Value"].Should().NotBeNull();
+        format.Schema!["properties"]!["Value"].Should().NotBeNull();
     }
 
     [Fact]
@@ -25,7 +25,7 @@ public class OutputFormatTests
     {
         var format = OutputFormat.For("""{"type":"object"}""");
 
-        format.Schema["type"]!.GetValue<string>().Should().Be("object");
+        format.Schema!["type"]!.GetValue<string>().Should().Be("object");
     }
 
     [Fact]
@@ -55,6 +55,6 @@ public class OutputFormatTests
 
         var format = OutputFormat.For(element);
 
-        format.Schema["type"]!.GetValue<string>().Should().Be("object");
+        format.Schema!["type"]!.GetValue<string>().Should().Be("object");
     }
 }

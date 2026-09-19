@@ -741,6 +741,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
             TopK = capabilities.SupportsSamplingParameters ? request.TopK : null,
             StopSequences = request.StopSequences?.ToList(),
             ThinkingConfig = thinkingConfig,
+            // 스키마 없는 JSON 모드는 responseMimeType 만 보냅니다 — Gemini 는 속성 없는 object 스키마를 「빈 객체」로 읽습니다.
             ResponseMimeType = request.OutputFormat != null ? "application/json" : null,
             ResponseJsonSchema = request.OutputFormat?.Schema,
         };

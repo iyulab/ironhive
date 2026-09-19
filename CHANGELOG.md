@@ -4,15 +4,30 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
-## 0.29.2 — 2026-09-19
+## 0.30.0 — 2026-09-19
 
 ### Fixed
 
+- **JSON mode without a schema returns the answer again, instead of `{}`.** Since 0.29.1 the `IChatClient` bridge turned
+  `ChatResponseFormat.Json` (no schema) into a property-less `{"type":"object"}` schema. Gemini and Anthropic enforce the
+  schema and read that one as "an empty object", so every JSON-mode call on those routes came back as exactly `{}`.
+  Schemaless JSON is now its own form, `OutputFormat.Json`, and each provider sends its native JSON mode: Gemini
+  `responseMimeType: application/json` with no schema, OpenAI and OpenAI-compatible `json_object`, and Anthropic — which
+  has no schemaless JSON mode — a system-prompt instruction to answer with a single JSON object.
+- **Anthropic: structured output with a schema no longer fails every request.** The schema was placed where the
+  `{"type":"json_schema","schema":{...}}` envelope belongs, so its `"type":"object"` became the format type and the
+  Messages API rejected the call (400, `output_config.format.type: Input should be 'json_schema'`). It now sends the
+  envelope. Wire-shape tests cover both forms on all four providers.
 - **A streamed response now reports its token usage through the `IChatClient` bridge.** The provider's final
   stream frame carries the turn's usage, and `ChatClientAdapter` dropped it when turning that frame into a
   `ChatResponseUpdate` — so every streaming consumer (session totals, usage limits, a server's end-of-turn event)
   saw no usage, while the buffered call for the same exchange reported it in full. The frame now carries it as
   `UsageContent`; a test checks the streamed and buffered usage agree.
+
+### Changed
+
+- **Breaking: `OutputFormat.Schema` is nullable.** `null` means schemaless JSON mode (`OutputFormat.Json`). Code that
+  reads `Schema` must handle it; code that only builds formats with `OutputFormat.For(...)` is unaffected.
 
 ## 0.29.1 — 2026-09-18
 

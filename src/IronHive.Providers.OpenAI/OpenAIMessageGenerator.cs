@@ -369,10 +369,12 @@ public class OpenAIMessageGenerator : IMessageGenerator
         {
             options.TextOptions = new ResponseTextOptions
             {
-                TextFormat = ResponseTextFormat.CreateJsonSchemaFormat(
-                    "output",
-                    BinaryData.FromObjectAsJson(outputFormat.Schema),
-                    jsonSchemaIsStrict: false)
+                TextFormat = outputFormat.Schema is { } schema
+                    ? ResponseTextFormat.CreateJsonSchemaFormat(
+                        "output",
+                        BinaryData.FromObjectAsJson(schema),
+                        jsonSchemaIsStrict: false)
+                    : ResponseTextFormat.CreateJsonObjectFormat()
             };
         }
 

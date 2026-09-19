@@ -61,11 +61,24 @@ public class ChatTokenUsage
 /// </summary>
 public class ChatResponseFormat
 {
+    private ChatResponseFormat(string type, JsonSchemaFormat? jsonSchema)
+    {
+        Type = type;
+        JsonSchema = jsonSchema;
+    }
+
+    /// <summary>스키마 없는 JSON 모드(<c>{"type":"json_object"}</c>).</summary>
+    public static ChatResponseFormat JsonObject() => new("json_object", null);
+
+    /// <summary>스키마로 구속하는 구조화 출력(<c>{"type":"json_schema", ...}</c>).</summary>
+    public static ChatResponseFormat ForJsonSchema(JsonSchemaFormat jsonSchema) => new("json_schema", jsonSchema);
+
     [JsonPropertyName("type")]
-    public string Type { get; } = "json_schema";
+    public string Type { get; }
 
     [JsonPropertyName("json_schema")]
-    public required JsonSchemaFormat JsonSchema { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public JsonSchemaFormat? JsonSchema { get; }
 
     public class JsonSchemaFormat
     {

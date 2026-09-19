@@ -287,12 +287,13 @@ public class ChatClientAdapter : IChatClient
             }
 
             // ResponseFormat is a request for structured output, not a hint: dropping it hands free text
-            // to a caller who asked for JSON and is about to parse it. A JSON format that names no schema
-            // still says "an object", so it maps to the most permissive schema that keeps that intent.
+            // to a caller who asked for JSON and is about to parse it. A JSON format that names no schema is
+            // JSON mode, not a schema: synthesizing a property-less {"type":"object"} made Gemini and Anthropic,
+            // which enforce the schema, answer exactly {}.
             request.OutputFormat = options.ResponseFormat switch
             {
                 ChatResponseFormatJson { Schema: { } schema } => OutputFormat.For(schema),
-                ChatResponseFormatJson => OutputFormat.For(new JsonObject { ["type"] = "object" }),
+                ChatResponseFormatJson => OutputFormat.Json,
                 _ => null
             };
         }

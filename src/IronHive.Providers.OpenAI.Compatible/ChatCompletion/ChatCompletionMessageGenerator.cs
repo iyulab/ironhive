@@ -404,15 +404,15 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         if (request.OutputFormat is not { } outputFormat)
             return null;
 
-        return new ChatResponseFormat
+        if (outputFormat.Schema is not { } schema)
+            return ChatResponseFormat.JsonObject();
+
+        return ChatResponseFormat.ForJsonSchema(new ChatResponseFormat.JsonSchemaFormat
         {
-            JsonSchema = new ChatResponseFormat.JsonSchemaFormat
-            {
-                Name = "output",
-                Schema = outputFormat.Schema,
-                Strict = false,
-            }
-        };
+            Name = "output",
+            Schema = schema,
+            Strict = false,
+        });
     }
 
     internal static List<ChatMessage> BuildMessages(MessageGenerationRequest request)

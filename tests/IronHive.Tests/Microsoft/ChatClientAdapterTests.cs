@@ -329,18 +329,19 @@ public class ChatClientAdapterTests : IDisposable
 
         await _adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "Hi")], options, TestContext.Current.CancellationToken);
 
-        capturedRequest().OutputFormat!.Schema.ToJsonString().Should().Contain("city");
+        capturedRequest().OutputFormat!.Schema!.ToJsonString().Should().Contain("city");
     }
 
     [Fact]
-    public async Task JsonResponseFormat_WithoutSchema_StillAsksForAnObject()
+    public async Task JsonResponseFormat_WithoutSchema_IsJsonModeNotASynthesizedSchema()
     {
         var capturedRequest = SetupGeneratorReturns();
         var options = new ChatOptions { ResponseFormat = ChatResponseFormat.Json };
 
         await _adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "Hi")], options, TestContext.Current.CancellationToken);
 
-        capturedRequest().OutputFormat!.Schema.ToJsonString().Should().Contain("\"object\"");
+        capturedRequest().OutputFormat.Should().BeSameAs(OutputFormat.Json,
+            "a property-less object schema is read as an empty object by Gemini and Anthropic");
     }
 
     [Fact]

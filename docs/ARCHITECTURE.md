@@ -205,8 +205,8 @@ Chat Completions 계열 wire는 도구 메시지에 이미지 자리가 없어 �
 
 `ChatOptions` 의 요청 knob 은 `MessageGenerationRequest` 로 간다 — `MaxOutputTokens` → `MaxTokens`, 샘플링
 파라미터, `Tools`/`ToolMode`, `Instructions` → `System`(대화 안의 system 메시지와 둘 다 오면 합쳐진다 — 어느 쪽도
-버리지 않는다), `ResponseFormat` → `OutputFormat`(스키마를 실은 JSON 은 그 스키마로, 스키마 없는 JSON 은 «객체»
-라는 가장 느슨한 스키마로, `Text` 는 null), 그리고 `Reasoning.Effort` → `ThinkingEffort`(`ExtraHigh` → `XHigh`),
+버리지 않는다), `ResponseFormat` → `OutputFormat`(스키마를 실은 JSON 은 그 스키마로, 스키마 없는 JSON 은
+`OutputFormat.Json` — 스키마를 지어내지 않는다: 속성 없는 object 스키마는 Gemini·Anthropic 이 «빈 객체»로 읽어 `{}` 만 답한다, `Text` 는 null), 그리고 `Reasoning.Effort` → `ThinkingEffort`(`ExtraHigh` → `XHigh`),
 `Reasoning.Output` → `ThinkingOutput`(노출만 — 추론 여부와 무관). `Effort = None` 은
 «꺼 달라»로 전달되고(provider 가 모델별로 끄는 형태를 고른다 — [PROVIDERS.md](PROVIDERS.md) Google AI 절), 설정하지
 않으면 null 로 남아 모델 기본값을 쓴다.

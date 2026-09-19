@@ -179,7 +179,7 @@ public class CachingMiddleware : IAgentMiddleware, IStreamingAgentMiddleware
             if (options.OutputFormat is { } outputFormat)
             {
                 keyBuilder.Append(CultureInfo.InvariantCulture,
-                    $"format:{outputFormat.Schema.ToJsonString()}:");
+                    $"format:{outputFormat.Schema?.ToJsonString() ?? "json"}:");
             }
 
             if (options.Suggestions is { } suggestions)

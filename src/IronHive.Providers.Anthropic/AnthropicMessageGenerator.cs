@@ -507,12 +507,17 @@ public class AnthropicMessageGenerator : IMessageGenerator
         })?.ToList();
 
         // 출력 구성 지원
+        // 스키마 없는 JSON 모드는 Messages API 에 네이티브 대응이 없습니다 — 구조화 출력은 모든 object 에
+        // additionalProperties:false 를 강제하므로 속성 없는 object 스키마는 「빈 객체」가 되어 {} 만 옵니다.
+        // 그래서 스키마가 없으면 output_config.format 을 보내지 않고 시스템 지시로 요구합니다(아래).
         JsonOutputFormat? format = null;
-        if (request.OutputFormat is { } outputFormat)
+        if (request.OutputFormat is { Schema: { } outputSchema })
         {
-            var schemaDict = AnthropicHelper.ToAnthropicCompatibleSchema(outputFormat.Schema)
+            var schemaDict = AnthropicHelper.ToAnthropicCompatibleSchema(outputSchema)
                 .Deserialize<IReadOnlyDictionary<string, JsonElement>>()!;
-            format = JsonOutputFormat.FromRawUnchecked(schemaDict);
+            // format 은 {"type":"json_schema","schema":{...}} 봉투입니다 — 스키마 사전을 FromRawUnchecked 로 봉투 자리에 넣으면
+            // 스키마의 "type":"object" 가 format.type 이 되어 API 가 400 으로 거절합니다(모든 구조화 출력 요청).
+            format = new JsonOutputFormat { Schema = schemaDict };
         }
 
         // 추론 구성 지원
@@ -603,6 +608,8 @@ public class AnthropicMessageGenerator : IMessageGenerator
             system = AnthropicHelper.AppendForcedToolChoiceInstruction(system, toolChoice);
             toolChoice = new AutoToolChoice();
         }
+        if (request.OutputFormat is { Schema: null })
+            system = AnthropicHelper.AppendJsonModeInstruction(system);
 
         return new MessageCreateParams
         {
@@ -664,6 +671,16 @@ public static class AnthropicHelper
         "claude-opus-4-5",
         "claude-opus-4-5-20251101",
     ];
+
+    /// <summary>
+    /// 스키마 없는 JSON 모드(<see cref="IronHive.Abstractions.Messages.OutputFormat.Json"/>)를 시스템 프롬프트 끝의
+    /// 명시 지시로 요구합니다 — Messages API 에는 스키마 없는 JSON 모드가 없습니다. 원문은 변경하지 않고 빈 줄로 잇습니다.
+    /// </summary>
+    public static string AppendJsonModeInstruction(string system)
+    {
+        const string instruction = "Respond with a single JSON object only: no text before or after it, and no code fence.";
+        return string.IsNullOrWhiteSpace(system) ? instruction : $"{system.TrimEnd()}\n\n{instruction}";
+    }
 
     /// <summary>
     /// 도구 호출 강제를 받지 않는 모델을 위해 시스템 프롬프트 끝에 명시 지시를 덧붙입니다
