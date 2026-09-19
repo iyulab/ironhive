@@ -21,10 +21,10 @@
 ## 주요 기능
 
 - **멀티 Provider LLM** — OpenAI, Anthropic, Google AI (Gemini/Vertex AI), OpenAI Compatible (Ollama, LM Studio, GPUStack 등)
-- **멀티에이전트 오케스트레이션** — Sequential, Parallel, Handoff, GroupChat, HubSpoke, Graph (DAG)
+- **멀티에이전트 오케스트레이션** — `SequentialOrchestrator` · `ParallelOrchestrator` · `HubSpokeOrchestrator`(각자의 `…OrchestratorOptions` 로 생성), `HandoffOrchestratorBuilder` · `GroupChatOrchestratorBuilder` · `GraphOrchestratorBuilder`(DAG). 공통 옵션 — 타임아웃 · `StopOnAgentFailure` · 에이전트 미들웨어 · 승인 핸들러 · 컨텍스트 스코프 · 결과 distiller — 은 옵션 객체 또는 빌더의 `Set…` 으로 준다([docs/ORCHESTRATION.md](docs/ORCHESTRATION.md))
 - **RAG 파이프라인** — 텍스트 추출, 청킹, 임베딩, 벡터 검색
 - **다중 모달리티** — 이미지 생성, 음성 TTS/STT, 비디오 생성
-- **플러그인** — MCP (HTTP/Stdio/OAuth), OpenAPI 자동 도구 생성
+- **플러그인** — MCP: `McpClientManager.AddOrUpdate(new McpHttpClientConfig{…}` / `McpStdioClientConfig{…})` 로 서버를 붙이고 세션의 도구를 에이전트 도구에 더한다(HTTP/Stdio/OAuth). OpenAPI: `new OpenApiClientManager(tools)` 에 `OpenApiClient` 를 등록하면 스펙의 연산이 그 `IToolCollection` 에 도구로 들어간다([docs/PLUGINS.md](docs/PLUGINS.md))
 - **M.E.AI 호환** — `ChatClientAdapter` / `EmbeddingGeneratorAdapter` / `AIToolAdapter`(임의의 `AITool`을 `ITool`로 래핑·실행 — MCP `McpClientTool` 등)
 - **워크플로우** — 코드 기반 타입 안전 워크플로우 엔진
 - **구조화 출력** — `OutputFormat.For<T>()`/`For(schema)` 는 스키마로 구속, `OutputFormat.Json` 은 스키마 없는 JSON 모드(provider 네이티브 JSON 모드로 번역 — OpenAI `json_object`, Gemini `responseMimeType`, Anthropic 은 시스템 지시). `AgentInvokeOptions.OutputFormat` 또는 `IChatClient` 의 `ChatOptions.ResponseFormat` 으로 켠다
@@ -127,6 +127,12 @@ public class ChatService(IHiveService hive)
 | `IronHive.Providers.Anthropic` | Anthropic Claude |
 | `IronHive.Providers.GoogleAI` | Google Gemini + Vertex AI (이미지, 비디오, 오디오 포함) |
 | `IronHive.Providers.OpenAI.Compatible` | Ollama, LM Studio, vLLM, llama.cpp, GPUStack 등 — Chat Completions 표면 |
+| `IronHive.Storages.Qdrant` | Qdrant 벡터 데이터베이스 |
+| `IronHive.Storages.Amazon` | Amazon S3 파일 저장소 |
+| `IronHive.Storages.Azure` | Azure Blob / File Share |
+| `IronHive.Storages.RabbitMQ` | RabbitMQ 큐 |
+| `IronHive.Plugins.MCP` | Model Context Protocol (HTTP/Stdio/OAuth) |
+| `IronHive.Plugins.OpenAPI` | OpenAPI 도구 자동 생성 |
 
 > **출력 길이 파라미터 선택 (0.16.0~)** — OpenAI 가 `max_tokens` 를 `max_completion_tokens` 로
 > 개명하면서 생태계가 갈렸다. 최신 OpenAI 모델은 구 이름을 **거부**하고, 다수의 self-hosted 서버는
@@ -144,12 +150,6 @@ public class ChatService(IHiveService hive)
 > 기본값은 `MaxCompletionTokens` — 종전 동작 그대로라 기존 설정은 영향받지 않는다. `Both` 는 둘 다
 > 받아들이는 엔드포인트에서만 쓴다(구 이름을 거부하는 곳에서는 요청 전체가 실패한다).
 > `MaxTokens` 를 지정하지 않으면 어느 설정에서도 두 필드 모두 전송되지 않는다.
-| `IronHive.Storages.Qdrant` | Qdrant 벡터 데이터베이스 |
-| `IronHive.Storages.Amazon` | Amazon S3 파일 저장소 |
-| `IronHive.Storages.Azure` | Azure Blob / File Share |
-| `IronHive.Storages.RabbitMQ` | RabbitMQ 큐 |
-| `IronHive.Plugins.MCP` | Model Context Protocol (HTTP/Stdio/OAuth) |
-| `IronHive.Plugins.OpenAPI` | OpenAPI 도구 자동 생성 |
 
 ## 문서
 
