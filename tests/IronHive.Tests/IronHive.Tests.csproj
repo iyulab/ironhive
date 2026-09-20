@@ -17,6 +17,7 @@
     <!-- A real MCP server, hosted in-process on loopback, so McpSession is exercised through the
          SDK handshake it actually negotiates, not through a transport the test supplied. -->
     <PackageReference Include="ModelContextProtocol.AspNetCore" />
+    <PackageReference Include="Iyu.Conventions.Testing" />
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
