@@ -37,8 +37,19 @@ public static class FunctionToolFactory
     /// 인스턴스의 FunctionToolAttribute가 붙은 메서드를 찾아 툴 모음으로 만듭니다.
     /// 인스턴스가 직접 바인딩되므로 DI 없이 호출됩니다.
     /// </summary>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="instance"/> 가 <see cref="Type"/> 인 경우 — 타입에서 툴을 만들려면 <see cref="CreateFrom{T}(IServiceProvider?)"/> 를 쓴다.
+    /// 그대로 받으면 <see cref="Type"/> 자신의 메서드를 뒤져 항상 빈 목록을 돌려주므로, 조용히 툴 0 개가 되는 대신 거부한다.
+    /// </exception>
     public static IEnumerable<ITool> CreateFrom(object instance, IServiceProvider? services = null)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+        if (instance is Type type)
+            throw new ArgumentException(
+                $"CreateFrom(object) expects a tool instance, but received the Type '{type.FullName}'. " +
+                "Use CreateFrom<T>(services) to create tools from a type.",
+                nameof(instance));
+
         return CreateFromObject(instance.GetType(), instance, services);
     }
 

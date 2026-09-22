@@ -4,7 +4,15 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
-## 0.33.0 — unreleased
+## 0.33.1 — unreleased
+
+### Fixed
+
+- **`FunctionToolFactory.CreateFrom(object)` rejects a `Type`.** Passing `obj.GetType()` where the tool instance belongs
+  made the factory search `System.Type`'s own methods and return an empty list — the caller's tools silently never
+  registered. It now throws `ArgumentException` pointing to `CreateFrom<T>(services)`. Correct calls are unaffected.
+
+## 0.33.0 — 2026-09-20
 
 ### Added
 

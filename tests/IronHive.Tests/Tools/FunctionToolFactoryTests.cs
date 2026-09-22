@@ -88,6 +88,38 @@ public class FunctionToolFactoryTests
 
     #endregion
 
+    #region CreateFrom(object)
+
+    [Fact]
+    public void CreateFromInstance_FindsAttributedMethods()
+    {
+        var tools = FunctionToolFactory.CreateFrom(new SampleToolClass()).ToList();
+
+        tools.Select(t => t.UniqueName).Should().BeEquivalentTo(["func_custom_name", "func_MethodWithDefaults"]);
+    }
+
+    [Fact]
+    public void CreateFromInstance_GivenAType_Throws()
+    {
+        // Passing obj.GetType() where the instance belongs used to search System.Type's own methods and return
+        // nothing — two public tool-registration APIs downstream shipped that way without anyone noticing.
+        var act = () => FunctionToolFactory.CreateFrom(typeof(SampleToolClass));
+
+        act.Should().Throw<ArgumentException>()
+            .WithParameterName("instance")
+            .WithMessage("*CreateFrom<T>*");
+    }
+
+    [Fact]
+    public void CreateFromInstance_GivenNull_Throws()
+    {
+        var act = () => FunctionToolFactory.CreateFrom((object)null!);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    #endregion
+
     #region CreateFrom(Delegate)
 
     [Fact]
