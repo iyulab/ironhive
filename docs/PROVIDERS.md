@@ -172,14 +172,19 @@ vendor 지식이라 provider 안의 `AnthropicModelCapabilities`가 갖는다 �
 | 세대 | `ThinkingStyle` | `SupportsForcedToolChoice` | 번역 |
 |---|---|---|---|
 | Claude 4.x (`claude-sonnet-4-5` 등) | `Budget` — `thinking: {type: enabled, budget_tokens}` | `true` | `RequiredToolChoice` → `tool_choice: any` |
-| Claude 5.1 (`claude-fable-5-1`, `claude-mythos-5-1`) | `Adaptive` | **`false`** — `any`/`tool`은 400 | `tool_choice: auto` + 시스템 프롬프트 끝에 도구 호출 지시(vendor 마이그레이션 가이드의 처방) |
+| Claude 5.1 (`claude-fable-5-1`, `claude-mythos-5-1`) · Opus 5.5 (`claude-opus-5-5`) | `Adaptive` | **`false`** — `any`/`tool`은 400 | `tool_choice: auto` + 시스템 프롬프트 끝에 도구 호출 지시(vendor 마이그레이션 가이드의 처방) |
 
 `Adaptive` 세대는 요청의 노력도를 `output_config.effort` 로 싣는다(Minimal·Low → `low` · Medium → `medium` · High →
 `high` · XHigh → `xhigh`, `SupportsXHighEffort=false`(4.6 세대)는 `high`). `MessageThinkingEffort.None` 은 «꺼 달라»다 —
 Claude Sonnet 5 · Opus 5 · Fable 은 `thinking` 을 생략해도 생각한다. `SupportsDisabledThinking=true`(Sonnet 5 · Opus
-4.6~4.8)는 `thinking: {type: "disabled"}`, 아니면(Fable: disabled 는 400 · Opus 5: vendor 가 끄기 대신 낮은 effort 를 권함 ·
+4.6~4.8)는 `thinking: {type: "disabled"}`, 아니면(Fable · Opus 5.5: disabled 는 400 · Opus 5: vendor 가 끄기 대신 낮은 effort 를 권함 ·
 모르는 모델) `output_config.effort: low` 를 보낸다. `Budget` 세대는 생략이 곧 off 이고 `effort` 를 받지 않는다(Haiku 4.5 는
 400) — 아무것도 보내지 않는다. 2026-09-17 실키 실측(sonnet-5 · opus-5 · haiku-4-5, None/Low/XHigh 전부 400 없음).
+2026-09-24 실키 실측(opus-5-5): `tool_choice: any` 400 · `thinking: disabled` 400 · `effort: low` 정상.
+
+노력도를 지정하지 않으면(`ThinkingEffort = null`) `output_config.effort` 를 보내지 않으므로 vendor 기본값이 적용된다 —
+Opus 5.5 의 기본값은 `medium` 으로 Opus 5(`high`)보다 한 단계 낮다. 모델 id 만 바꿔 옮기는 호출자는 생각 깊이가 조용히
+줄어드니, 이전과 같은 깊이가 필요하면 `ThinkingEffort` 를 명시한다.
 
 `Budget` 세대의 예산(Minimal 1,024 · Low 4,000 · Medium 10,000 · High 20,000 · XHigh 32,000)은 `max_tokens` 보다
 작아야 한다(아니면 400 «`max_tokens` must be greater than `thinking.budget_tokens`»). 호출자의 `MaxTokens` 가 예산

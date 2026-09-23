@@ -17,6 +17,10 @@ changes are expected and used freely for structural correctness (see
 
 ### Fixed
 
+- **Anthropic: a forced tool choice on Claude Opus 5.5 no longer fails with a 400.** The model had no row in the
+  built-in capability table, so it was treated as accepting `tool_choice: any`/`tool`, which it rejects. It now gets
+  the same translation as Claude Fable 5.1 (`auto` plus an instruction to call the tool). Note that Opus 5.5's default
+  effort is `medium`, one step below Opus 5 — set `ThinkingEffort` explicitly to keep the previous depth.
 - `OpenApiClient.Dispose()` releases the `HttpClient` it created (it only suppressed finalization before).
 - **An OpenAPI spec with no absolute server URL fails when it is registered**, not on the first tool call. The base URLs
   were resolved lazily, so a spec without `servers` (or with a relative one) registered fine and every call failed; the

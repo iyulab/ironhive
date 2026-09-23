@@ -118,13 +118,15 @@ public sealed record AnthropicModelCapabilities
             table[legacy] = budget;
         }
 
-        // Claude 5.1 (Fable / Mythos) — adaptive thinking; tool_choice any/tool return 400.
+        // Claude 5.1 (Fable / Mythos) and Opus 5.5 — adaptive thinking; tool_choice any/tool return 400.
+        // Opus 5.5 also rejects disabled thinking at every effort level, which the default already covers.
         var noForcedToolChoice = new AnthropicModelCapabilities { SupportsForcedToolChoice = false };
         table["claude-fable-5-1"] = noForcedToolChoice;
         table["claude-mythos-5-1"] = noForcedToolChoice;
+        table["claude-opus-5-5"] = noForcedToolChoice;
 
         // Adaptive thinking-off and effort rows (vendor docs 2026-09): disabled is accepted by Sonnet 5 and
-        // Opus 4.6/4.7/4.8; Fable rejects it (400) and Opus 5 is steered to low effort instead; xhigh arrived
+        // Opus 4.6/4.7/4.8; Fable and Opus 5.5 reject it (400) and Opus 5 is steered to low effort instead; xhigh arrived
         // with Opus 4.7, so the 4.6 generation tops out at high.
         var canDisable = new AnthropicModelCapabilities { SupportsDisabledThinking = true };
         var canDisableNoXHigh = canDisable with { SupportsXHighEffort = false };

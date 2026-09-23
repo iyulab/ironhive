@@ -55,10 +55,14 @@ public class AnthropicModelCapabilitiesTests
         AnthropicModelCapabilities.Resolve("claude-opus-5-20261001", overrides).SupportsForcedToolChoice.Should().BeFalse();
     }
 
-    [Fact]
-    public void RequiredToolChoice_OnClaude51_LeavesAsAutoWithInstruction()
+    // Opus 5.5 rejects forced tool choice like Fable 5.1 (live 2026-09-24: 400 "tool_choice: type \"tool\" and
+    // \"any\" are not supported for this model"); with no row it fell to Default and sent `any`.
+    [Theory]
+    [InlineData("claude-fable-5-1")]
+    [InlineData("claude-opus-5-5")]
+    public void RequiredToolChoice_OnAModelWithoutForcedChoice_LeavesAsAutoWithInstruction(string model)
     {
-        var req = Generator().ToMessageCreateParams(Request("claude-fable-5-1", new RequiredToolChoice(), system: "Be brief."));
+        var req = Generator().ToMessageCreateParams(Request(model, new RequiredToolChoice(), system: "Be brief."));
 
         req.ToolChoice.Should().BeNull("tool_choice any returns 400 on this model, so the wire must carry auto");
         var system = SystemTextOf(req);
@@ -75,10 +79,12 @@ public class AnthropicModelCapabilitiesTests
         SystemTextOf(req).Should().Contain("`get_weather`");
     }
 
-    [Fact]
-    public void RequiredToolChoice_OnClaude4x_KeepsTheForcedWireValue()
+    [Theory]
+    [InlineData("claude-sonnet-4-5")]
+    [InlineData("claude-opus-5")]   // the 5.5 row is a longer prefix; Opus 5 itself still takes `any`
+    public void RequiredToolChoice_OnAModelThatAcceptsIt_KeepsTheForcedWireValue(string model)
     {
-        var req = Generator().ToMessageCreateParams(Request("claude-sonnet-4-5", new RequiredToolChoice(), system: "Be brief."));
+        var req = Generator().ToMessageCreateParams(Request(model, new RequiredToolChoice(), system: "Be brief."));
 
         req.ToolChoice.Should().NotBeNull();
         req.ToolChoice!.TryPickAny(out _).Should().BeTrue();
@@ -171,6 +177,7 @@ public class AnthropicModelCapabilitiesTests
     [Theory]
     [InlineData("claude-fable-5-1")]
     [InlineData("claude-opus-5")]
+    [InlineData("claude-opus-5-5")]   // live 2026-09-24: disabled is a 400 at every effort level
     public void NoThinking_OnAModelThatCannotDisable_IsTheLowestEffort(string model)
     {
         var req = Generator().ToMessageCreateParams(Request(model, effort: MessageThinkingEffort.None));
