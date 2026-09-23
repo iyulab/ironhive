@@ -8,7 +8,7 @@ namespace IronHive.Storages.RabbitMQ;
 public class RabbitMQConfig
 {
     /// <summary>
-    /// RabbitMQ 호스트 이름, Default: "127.0.0.1"
+    /// RabbitMQ 호스트 이름, Default: "localhost"
     /// </summary>
     public string Host { get; set; } = "localhost";
 

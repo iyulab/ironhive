@@ -23,6 +23,29 @@ public class OpenApiClientManagerTests
         }
         """;
 
+    private const string WithoutServers = """
+        {
+          "openapi": "3.0.1",
+          "info": { "title": "pets", "version": "1" },
+          "paths": {
+            "/pets": { "get": { "operationId": "listPets", "responses": { "200": { "description": "ok" } } } }
+          }
+        }
+        """;
+
+    // A spec without servers used to register fine and fail on the first tool call; it now fails at registration.
+    [Fact]
+    public async Task AddOrUpdateAsync_ASpecWithNoAbsoluteServerUrl_FailsAtRegistration()
+    {
+        var tools = new ToolCollection();
+        var manager = new OpenApiClientManager(tools);
+
+        var act = () => manager.AddOrUpdateAsync(OpenApiClientFactory.CreateFromString("pets", WithoutServers), TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message.Should().Contain("listPets");
+        manager.TryGetClient("pets", out _).Should().BeFalse();
+    }
+
     private static CancellationToken Cancelled() => new(canceled: true);
 
     private static int ToolsOf(IToolCollection tools, string client) =>

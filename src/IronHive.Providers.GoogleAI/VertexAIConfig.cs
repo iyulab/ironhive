@@ -10,19 +10,20 @@ public class VertexAIConfig
 {
     /// <summary>
     /// Google Cloud 인증 정보를 가져오거나 설정합니다.
-    /// 이 속성은 필수이며 객체 초기화 시 반드시 제공되어야 합니다.
+    /// 비워 두면 Google GenAI SDK 가 Application Default Credentials(ADC — <c>gcloud auth application-default login</c>
+    /// 또는 <c>GOOGLE_APPLICATION_CREDENTIALS</c>)를 쓴다. ADC 도 없으면 첫 요청에서 실패한다.
     /// </summary>
     public ICredential? Credential { get; set; }
 
     /// <summary>
     /// Google Cloud 프로젝트 ID를 가져오거나 설정합니다.
-    /// Vertex AI 리소스가 속한 프로젝트를 식별하는 데 사용됩니다.
+    /// Vertex AI 리소스가 속한 프로젝트를 식별하는 데 사용됩니다. 비워 두면 환경 변수 <c>GOOGLE_CLOUD_PROJECT</c> 를 쓴다.
     /// </summary>
     public string? Project { get; set; }
     
     /// <summary>
     /// Vertex AI 서비스 리전(예: "us-central1", "asia-northeast3")을 가져오거나 설정합니다.
-    /// 서비스가 실행될 지리적 위치를 지정합니다.
+    /// 서비스가 실행될 지리적 위치를 지정합니다. 비워 두면 환경 변수 <c>GOOGLE_CLOUD_LOCATION</c> 을 쓴다.
     /// </summary>
     public string? Location { get; set; }
 
@@ -87,18 +88,4 @@ public class VertexAIConfig
     /// 우선하며, 내장 표에 없는 새 모델을 코드 수정 없이 선언할 때 씁니다.
     /// </summary>
     public IDictionary<string, GoogleAIModelCapabilities>? ModelCapabilities { get; set; }
-
-    /// <summary>
-    /// 구성이 유효한지 검증합니다.
-    /// </summary>
-    /// <returns>
-    /// 모든 필수 속성(Credential, Project, Location)이 올바르게 설정되어 있으면 true,
-    /// 그렇지 않으면 false를 반환합니다.
-    /// </returns>
-    public bool Validate()
-    {
-        return Credential != null 
-            && !string.IsNullOrEmpty(Project) 
-            && !string.IsNullOrEmpty(Location);
-    }
 }

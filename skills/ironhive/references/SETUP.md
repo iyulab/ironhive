@@ -64,7 +64,7 @@ public class MyService(IHiveService hive) { ... }
 {
     Project    = "my-project",
     Location   = "us-central1",
-    Credential = GoogleCredential.GetApplicationDefault()   // required (Google.Apis.Auth ICredential)
+    Credential = GoogleCredential.GetApplicationDefault()   // optional: left null, the SDK uses ADC itself
 })
 
 // OpenAI-compatible (Ollama, LM Studio, vLLM, DeepSeek, Groq…)

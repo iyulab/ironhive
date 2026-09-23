@@ -18,6 +18,17 @@ changes are expected and used freely for structural correctness (see
 ### Fixed
 
 - `OpenApiClient.Dispose()` releases the `HttpClient` it created (it only suppressed finalization before).
+- **An OpenAPI spec with no absolute server URL fails when it is registered**, not on the first tool call. The base URLs
+  were resolved lazily, so a spec without `servers` (or with a relative one) registered fine and every call failed; the
+  error now names the operation and comes from `AddOrUpdateAsync` / `ListToolsAsync`.
+- `RabbitMQConfig.Host`'s documented default now matches the code (`"localhost"`).
+
+### Removed
+
+- **`VertexAIConfig.Validate()`.** Nothing called it, and it answered `false` for a configuration that works: the
+  Google GenAI SDK falls back to Application Default Credentials for a null `Credential` and to `GOOGLE_CLOUD_PROJECT` /
+  `GOOGLE_CLOUD_LOCATION` for a null `Project` / `Location`. The property docs now say so (they called `Credential`
+  required). **Breaking** for code that called it — delete the call.
 
 - **A workflow `Switch` without a default path fails on a key it has no branch for.** The builder always gave the
   condition node an empty default path, so an unmatched key silently skipped the branch and the workflow carried on to

@@ -71,9 +71,13 @@ public sealed class OpenApiClient : IDisposable
                 // 서버 목록 추출
                 var servers = op.Servers?.Count > 0 ? op.Servers.ToList()
                     : pathItem.Servers?.Count > 0 ? pathItem.Servers.ToList()
-                    : _doc.Servers?.ToList()
-                    ?? throw new InvalidOperationException("not have server");
-                var baseUris = servers.SelectMany(s => s.ExtractServerUrls());
+                    : _doc.Servers?.ToList() ?? [];
+                // Resolved now, not on the first call: a spec whose servers give no absolute URL (none declared, or a
+                // relative one such as the implicit "/") cannot be called, and registering it should say so.
+                var baseUris = servers.SelectMany(s => s.ExtractServerUrls()).ToList();
+                if (baseUris.Count == 0)
+                    throw new InvalidOperationException(
+                        $"Operation '{oid}' has no absolute server URL; declare 'servers' in the OpenAPI document.");
 
                 // 보안 인증 추출
                 var requires = op.Security?.Count > 0 ? op.Security

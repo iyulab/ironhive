@@ -62,7 +62,7 @@ public enum OpenAIServiceType
 {
     Project    = "my-gcp-project",
     Location   = "us-central1",
-    Credential = GoogleCredential.GetApplicationDefault()   // required (Google.Apis.Auth ICredential)
+    Credential = GoogleCredential.GetApplicationDefault()   // optional: left null, the SDK uses ADC itself
 })
 ```
 
