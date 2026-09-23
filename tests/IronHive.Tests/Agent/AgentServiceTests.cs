@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Messages;
 using IronHive.Core.Agent;
 using NSubstitute;
@@ -53,8 +54,8 @@ agent:
     [Fact]
     public void CreateAgentFromYaml_WithTools_ShouldThrowNotSupportedException()
     {
-        // AgentConfig.Tools is parsed but never resolved into IAgent.Tools by this service — see
-        // AgentConfigExtensions.Validate. A declared tool must fail loud, not silently never execute.
+        // A config file has no name-to-ITool registry behind it (AgentConfigKeys). A declared tool
+        // must fail loud at load, not silently never execute.
         var yaml = @"
 agent:
   name: TestBot
@@ -312,4 +313,50 @@ provider = ""openai""
     }
 
     #endregion
+
+    [Theory]
+    [InlineData("yaml", "agent:\n  model: gpt-4o-mini\n  maxToken: 100\n", "maxToken")]
+    [InlineData("yaml", "model: gpt-4o-mini\nparameters:\n  temprature: 0.2\n", "parameters.temprature")]
+    [InlineData("yaml", "agent:\n  model: gpt-4o-mini\nextra: 1\n", "extra")]
+    [InlineData("json", "{\"model\":\"gpt-4o-mini\",\"instruction\":\"x\"}", "instruction")]
+    [InlineData("json", "{\"agent\":{\"model\":\"gpt-4o-mini\",\"parameters\":{\"top_p\":1}}}", "parameters.top_p")]
+    [InlineData("toml", "[agent]\nmodel = \"gpt-4o-mini\"\nprovder = \"openai\"\n", "provder")]
+    public void CreateAgentFrom_UnknownKey_ShouldThrowNamingTheKey(string format, string text, string key)
+    {
+        // The deserializers drop unknown keys; before this check a typo produced an agent that
+        // silently ran without the setting.
+        var act = () => Create(format, text);
+
+        act.Should().Throw<ArgumentException>().WithMessage($"*'{key}'*");
+    }
+
+    [Theory]
+    [InlineData("yaml", "model: gpt-4o-mini\ntoolOptions:\n  web-search:\n    maxResults: 5\n")]
+    [InlineData("json", "{\"Model\":\"gpt-4o-mini\",\"ToolOptions\":{}}")]
+    [InlineData("toml", "model = \"gpt-4o-mini\"\n[toolOptions.web-search]\nmaxResults = 5\n")]
+    public void CreateAgentFrom_ToolOptionsKey_ShouldThrowNotSupportedException(string format, string text)
+    {
+        var act = () => Create(format, text);
+
+        act.Should().Throw<NotSupportedException>().WithMessage("*IAgent.Tools*");
+    }
+
+    [Theory]
+    [InlineData("json", "{\"MODEL\":\"gpt-4o-mini\",\"Parameters\":{\"MaxTokens\":64}}")]
+    [InlineData("toml", "[agent]\ndefaultModel = \"gpt-4o-mini\"\n[agent.parameters]\nstopSequences = [\"x\"]\n")]
+    [InlineData("yaml", "agent:\n  model: gpt-4o-mini\n  parameters:\n    topK: 5\n")]
+    public void CreateAgentFrom_EveryKnownKeySpelling_ShouldLoad(string format, string text)
+    {
+        var agent = Create(format, text);
+
+        agent.Model.Should().Be("gpt-4o-mini");
+    }
+
+    private IAgent Create(string format, string text) => format switch
+    {
+        "yaml" => _service.CreateAgentFromYaml(text),
+        "json" => _service.CreateAgentFromJson(text),
+        "toml" => _service.CreateAgentFromToml(text),
+        _ => throw new ArgumentOutOfRangeException(nameof(format)),
+    };
 }

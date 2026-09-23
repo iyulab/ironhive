@@ -103,8 +103,6 @@ public class AgentConfig
     public string Provider { get; set; }                      // 프로바이더 이름
     public string Model { get; set; }                          // 모델 ID
     public string? Instructions { get; set; }
-    public List<string>? Tools { get; set; }                  // 도구 이름 목록 (등록된 도구 참조)
-    public Dictionary<string, object?>? ToolOptions { get; set; } // 도구별 설정 옵션
     public AgentParametersConfig? Parameters { get; set; }
 }
 
@@ -128,9 +126,6 @@ model: "claude-3-5-sonnet-20241022"
 instructions: |
   You are a research assistant.
   Always cite your sources.
-tools:
-  - web_search
-  - calculator
 parameters:
   maxTokens: 8192
   temperature: 0.3
@@ -138,7 +133,13 @@ parameters:
 
 ```csharp
 var agent = hive.CreateAgentFromYaml(File.ReadAllText("agent.yaml"));
+agent.Tools = tools.FilterBy(["web_search", "calculator"]); // 도구는 설정 파일이 아니라 에이전트에 지정
 ```
+
+설정 파일의 키는 위 목록(`name` · `description` · `provider` · `model` · `instructions` · `parameters`,
+TOML 은 `defaultProvider`/`defaultModel` 별칭도)만 읽는다. 모르는 키(오타 포함)는 로드 시 그 키 이름과 함께
+`ArgumentException` 으로 거부되고, `tools`/`toolOptions` 는 `NotSupportedException` 이다 — 이름으로 도구를 찾는
+레지스트리가 없기 때문이다.
 
 TOML / JSON 형식도 동일 구조로 지원:
 

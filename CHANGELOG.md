@@ -14,6 +14,14 @@ changes are expected and used freely for structural correctness (see
   the previous client's tools. Now the tools are listed first; a failure throws to the caller and nothing changes —
   the previous client and its tools stay. On success the old tools are swapped for the new ones in one step and the
   previous client is disposed. **Breaking**: `manager.AddOrUpdate(client)` → `await manager.AddOrUpdateAsync(client)`.
+- **Agent config files (`CreateAgentFromYaml` / `CreateAgentFromJson` / `CreateAgentFromToml`) reject keys they do
+  not read.** The deserializers dropped unknown keys, so a typo (`maxToken`, `temprature`) produced an agent that ran
+  without the setting. The error names the key and lists the allowed ones. **Breaking** for a config file that carries
+  a key IronHive never read — delete it.
+- **A workflow `Switch` without a default path fails on a key it has no branch for.** The builder always gave the
+  condition node an empty default path, so an unmatched key silently skipped the branch and the workflow carried on to
+  the next step. It now reports `Failed` (through `Progressed`, like any failed step) with the unmatched key in the
+  message, as the engine was written to. Pass `defaultBuildAction` to keep a fallback path.
 
 ### Fixed
 
@@ -29,15 +37,15 @@ changes are expected and used freely for structural correctness (see
 
 ### Removed
 
+- **`AgentConfig.Tools` and `AgentConfig.ToolOptions`.** Their docs described a list of tool names for the agent, but
+  building an agent from a config threw `NotSupportedException` when either was set: there is no name-to-tool registry
+  behind a config. Set `IAgent.Tools` on the constructed agent (e.g. `tools.FilterBy(names)`). In a config file the
+  `tools` / `toolOptions` keys now fail at load with the same guidance. **Breaking** for code that assigned them (it
+  already failed at build time unless the list was empty).
 - **`VertexAIConfig.Validate()`.** Nothing called it, and it answered `false` for a configuration that works: the
   Google GenAI SDK falls back to Application Default Credentials for a null `Credential` and to `GOOGLE_CLOUD_PROJECT` /
   `GOOGLE_CLOUD_LOCATION` for a null `Project` / `Location`. The property docs now say so (they called `Credential`
   required). **Breaking** for code that called it — delete the call.
-
-- **A workflow `Switch` without a default path fails on a key it has no branch for.** The builder always gave the
-  condition node an empty default path, so an unmatched key silently skipped the branch and the workflow carried on to
-  the next step. It now reports `Failed` (through `Progressed`, like any failed step) with the unmatched key in the
-  message, as the engine was written to. Pass `defaultBuildAction` to keep a fallback path.
 
 ### Documentation
 

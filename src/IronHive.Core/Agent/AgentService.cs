@@ -18,6 +18,9 @@ public class AgentService : IAgentService
         .IgnoreUnmatchedProperties()
         .Build();
 
+    /// <summary>키 검사용 — 맵으로만 읽는다(네이밍 규칙 없이 원래 키 그대로).</summary>
+    private static readonly IDeserializer YamlMapDeserializer = new DeserializerBuilder().Build();
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -42,6 +45,8 @@ public class AgentService : IAgentService
     {
         if (string.IsNullOrWhiteSpace(json))
             throw new ArgumentException("JSON string cannot be null or empty.", nameof(json));
+
+        CheckJsonKeys(json);
 
         AgentConfig? config;
 
@@ -81,6 +86,17 @@ public class AgentService : IAgentService
 
         var tomlModel = TomlSerializer.Deserialize<TomlTable>(toml)
             ?? throw new ArgumentException("Failed to parse TOML string.", nameof(toml));
+        var agentTable = tomlModel.TryGetValue("agent", out var agentValue) && agentValue is TomlTable nested
+            ? nested
+            : tomlModel;
+        if (!ReferenceEquals(agentTable, tomlModel))
+            AgentConfigKeys.Check(tomlModel.Keys.Where(k => k != "agent"), null, "TOML");
+        AgentConfigKeys.Check(
+            agentTable.Keys,
+            agentTable.TryGetValue("parameters", out var p) && p is TomlTable pt ? pt.Keys : null,
+            "TOML",
+            allowTomlAliases: true);
+
         var config = ParseTomlToConfig(tomlModel);
 
         return CreateAgentFromConfig(config);
@@ -91,6 +107,8 @@ public class AgentService : IAgentService
     {
         if (string.IsNullOrWhiteSpace(yaml))
             throw new ArgumentException("YAML string cannot be null or empty.", nameof(yaml));
+
+        CheckYamlKeys(yaml);
 
         AgentConfig? config;
 
@@ -120,6 +138,56 @@ public class AgentService : IAgentService
             throw new ArgumentException("Failed to parse YAML as AgentConfig.", nameof(yaml));
 
         return CreateAgentFromConfig(config);
+    }
+
+    private static void CheckJsonKeys(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        if (document.RootElement.ValueKind != JsonValueKind.Object)
+            return;
+
+        var root = document.RootElement;
+        var agent = root.EnumerateObject()
+            .FirstOrDefault(p => string.Equals(p.Name, "agent", StringComparison.OrdinalIgnoreCase));
+        var nested = agent.Value.ValueKind == JsonValueKind.Object;
+        var agentElement = nested ? agent.Value : root;
+        var comparer = StringComparer.OrdinalIgnoreCase;
+
+        if (nested)
+        {
+            AgentConfigKeys.Check(
+                root.EnumerateObject().Select(p => p.Name).Where(n => !comparer.Equals(n, "agent")),
+                null, "JSON", comparer: comparer);
+        }
+
+        var parameters = agentElement.EnumerateObject()
+            .FirstOrDefault(p => comparer.Equals(p.Name, "parameters"));
+        AgentConfigKeys.Check(
+            agentElement.EnumerateObject().Select(p => p.Name),
+            parameters.Value.ValueKind == JsonValueKind.Object
+                ? parameters.Value.EnumerateObject().Select(p => p.Name)
+                : null,
+            "JSON",
+            comparer: comparer);
+    }
+
+    private static void CheckYamlKeys(string yaml)
+    {
+        if (YamlMapDeserializer.Deserialize<Dictionary<object, object?>>(yaml) is not { } root)
+            return;
+
+        var agent = root.TryGetValue("agent", out var nested) && nested is Dictionary<object, object?> map
+            ? map
+            : root;
+        if (!ReferenceEquals(agent, root))
+            AgentConfigKeys.Check(root.Keys.Select(k => k.ToString()!).Where(k => k != "agent"), null, "YAML");
+
+        AgentConfigKeys.Check(
+            agent.Keys.Select(k => k.ToString()!),
+            agent.TryGetValue("parameters", out var p) && p is Dictionary<object, object?> parameters
+                ? parameters.Keys.Select(k => k.ToString()!)
+                : null,
+            "YAML");
     }
 
     /// <summary>
@@ -162,8 +230,6 @@ public class AgentService : IAgentService
             Model = GetTomlString(agentTable, "model")
                     ?? GetTomlString(agentTable, "defaultModel") ?? string.Empty,
             Instructions = GetTomlString(agentTable, "instructions"),
-            Tools = GetTomlStringList(agentTable, "tools"),
-            ToolOptions = GetTomlToolOptions(agentTable),
             Parameters = GetTomlParameters(agentTable)
         };
 
@@ -183,14 +249,6 @@ public class AgentService : IAgentService
         return array.Select(item => item?.ToString() ?? string.Empty)
                     .Where(s => !string.IsNullOrEmpty(s))
                     .ToList();
-    }
-
-    private static Dictionary<string, object?>? GetTomlToolOptions(TomlTable table)
-    {
-        if (!table.TryGetValue("toolOptions", out var value) || value is not TomlTable optionsTable)
-            return null;
-
-        return optionsTable.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) as Dictionary<string, object?>;
     }
 
     private static AgentParametersConfig? GetTomlParameters(TomlTable table)

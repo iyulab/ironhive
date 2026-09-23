@@ -3,6 +3,8 @@ namespace IronHive.Abstractions.Agent;
 /// <summary>
 /// Agent 설정을 위한 DTO 클래스입니다.
 /// YAML, TOML, JSON에서 역직렬화하거나 프로그래밍 방식으로 구성할 때 사용됩니다.
+/// 도구는 설정이 아니라 생성된 에이전트의 <c>IAgent.Tools</c>에 직접 지정합니다 — 이름으로 도구를 찾는
+/// 레지스트리가 없으므로, 설정 파일의 <c>tools</c>/<c>toolOptions</c> 키는 로드 시 거부됩니다.
 /// </summary>
 public class AgentConfig
 {
@@ -30,16 +32,6 @@ public class AgentConfig
     /// 에이전트 동작을 안내하는 지침(시스템 프롬프트)입니다.
     /// </summary>
     public string? Instructions { get; set; }
-
-    /// <summary>
-    /// 에이전트가 사용할 도구 이름 목록입니다.
-    /// </summary>
-    public List<string>? Tools { get; set; }
-
-    /// <summary>
-    /// 도구별 옵션 설정입니다.
-    /// </summary>
-    public Dictionary<string, object?>? ToolOptions { get; set; }
 
     /// <summary>
     /// 텍스트 생성 매개변수입니다.
