@@ -176,7 +176,7 @@ var openApiManager = new OpenApiClientManager(agent.Tools);
 var client = await OpenApiClientFactory.CreateFromUrlAsync(
     "petstore", "https://petstore.swagger.io/v2/swagger.json");
 
-openApiManager.AddOrUpdate(client);   // the spec's operations are registered in agent.Tools
+await openApiManager.AddOrUpdateAsync(client);   // on return the spec's operations are in agent.Tools; a failure throws and registers nothing
 ```
 
 Credentials and default headers go in `OpenApiClientOptions` (`Credentials` keyed by security scheme name,

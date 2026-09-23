@@ -35,8 +35,12 @@ public sealed class OpenApiClient : IDisposable
     public IEnumerable<OpenApiTag>? Tags => _doc.Tags;
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Releases the HTTP client this instance created; the tools it listed share that client and stop working.
+    /// </remarks>
     public void Dispose()
     {
+        _http.Dispose();
         GC.SuppressFinalize(this);
     }
 

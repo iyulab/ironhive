@@ -142,7 +142,8 @@ var client = new OpenApiClient(result.Document!, new OpenApiClientOptions
     ClientName = "petstore"   // required
 };
 
-apiManager.AddOrUpdate(client);   // tools 컬렉션에 도구가 등록된다
+await apiManager.AddOrUpdateAsync(client);   // 반환되면 tools 컬렉션에 도구가 등록돼 있다
+// 도구 목록을 만들지 못하면 예외 — 아무것도 등록되지 않고, 같은 이름의 기존 클라이언트는 그대로 남는다
 ```
 
 요청을 보낼 base URL은 옵션이 아니라 **스펙의 `servers`** 에서 온다 — operation → path item →

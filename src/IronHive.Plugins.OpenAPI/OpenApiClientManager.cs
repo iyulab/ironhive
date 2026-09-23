@@ -13,6 +13,9 @@ public sealed class OpenApiClientManager
 {
     private readonly ConcurrentDictionary<string, OpenApiClient> _clients = new();
     private readonly IToolCollection _tools;
+    // Replacing a client swaps its tools as one step, so a concurrent update or removal of the same name
+    // cannot interleave between removing the old tools and adding the new ones.
+    private readonly Lock _gate = new();
 
     public OpenApiClientManager(IToolCollection tools)
     {
@@ -43,35 +46,34 @@ public sealed class OpenApiClientManager
     }
 
     /// <summary>
-    /// OpenAPI 클라이언트를 추가하거나 기존 클라이언트를 갱신합니다.
-    /// 클라이언트에 연결된 도구들도 함께 갱신됩니다.
+    /// OpenAPI 클라이언트를 추가하거나 같은 이름의 기존 클라이언트를 교체하고, 그 클라이언트의 도구를
+    /// 도구 컬렉션에 반영합니다.
     /// </summary>
+    /// <remarks>
+    /// 도구 목록을 먼저 만든 뒤에 등록한다. 목록을 만들지 못하면(예: 스펙에 <c>servers</c> 가 없다) 예외가
+    /// 호출자에게 전달되고 아무것도 바뀌지 않는다 — 기존 클라이언트와 그 도구가 그대로 남고, 넘겨받은
+    /// <paramref name="client"/> 는 등록되지 않는다(해제는 호출자의 몫). 교체에 성공하면 이전 클라이언트의 도구를
+    /// 새 도구로 바꾼 뒤 이전 클라이언트를 해제한다.
+    /// </remarks>
     /// <param name="client">OpenApi의 클라이언트 객체입니다.</param>
-    public void AddOrUpdate(OpenApiClient client, CancellationToken cancellationToken = default)
+    /// <param name="cancellationToken">취소 토큰입니다.</param>
+    public async Task AddOrUpdateAsync(OpenApiClient client, CancellationToken cancellationToken = default)
     {
-        _clients.AddOrUpdate(client.ClientName,
-            (_) =>
-            {
-                // 새 클라이언트의 도구 등록
-                client.ListToolsAsync(cancellationToken).ContinueWith(task =>
-                {
-                    _tools.SetRange(task.Result);
-                });
-                return client;
-            },
-            (_, oc) =>
-            {
-                // 새 도구 등록
-                client.ListToolsAsync(cancellationToken).ContinueWith(task =>
-                {
-                    _tools.RemoveAll(t => t is OpenApiTool ot && ot.ClientName.Equals(client.ClientName, StringComparison.Ordinal));
-                    _tools.SetRange(task.Result);
-                });
+        ArgumentNullException.ThrowIfNull(client);
 
-                // 기존 클라이언트 리소스 해제
-                oc.Dispose();
-                return client;
-            });
+        var tools = (await client.ListToolsAsync(cancellationToken).ConfigureAwait(false)).ToList();
+
+        OpenApiClient? previous;
+        lock (_gate)
+        {
+            _clients.TryGetValue(client.ClientName, out previous);
+            _clients[client.ClientName] = client;
+            _tools.RemoveAll(t => t is OpenApiTool ot && ot.ClientName.Equals(client.ClientName, StringComparison.Ordinal));
+            _tools.SetRange(tools);
+        }
+
+        if (previous is not null && !ReferenceEquals(previous, client))
+            previous.Dispose();
     }
 
     /// <summary>
@@ -81,12 +83,15 @@ public sealed class OpenApiClientManager
     /// <param name="clientName">제거할 클라이언트 이름</param>
     public void Remove(string clientName)
     {
-        if (_clients.TryRemove(clientName, out var client))
+        OpenApiClient? client;
+        lock (_gate)
         {
+            if (!_clients.TryRemove(clientName, out client))
+                return;
             // 클라이언트의 도구 제거
             _tools.RemoveAll(t => t is OpenApiTool ot && ot.ClientName.Equals(clientName, StringComparison.Ordinal));
-            // 리소스 해제
-            client.Dispose();
         }
+        // 리소스 해제
+        client.Dispose();
     }
 }

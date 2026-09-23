@@ -4,9 +4,20 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
-## 0.33.2 — unreleased
+## 0.34.0 — unreleased
+
+### Changed
+
+- **`OpenApiClientManager.AddOrUpdate` is now `AddOrUpdateAsync`, and a client whose tools cannot be listed is not
+  registered.** The old method listed the tools in a fire-and-forget continuation that never checked for a failure: a
+  failed (or cancelled) listing left the client registered with no tools, and on a replacement it had already removed
+  the previous client's tools. Now the tools are listed first; a failure throws to the caller and nothing changes —
+  the previous client and its tools stay. On success the old tools are swapped for the new ones in one step and the
+  previous client is disposed. **Breaking**: `manager.AddOrUpdate(client)` → `await manager.AddOrUpdateAsync(client)`.
 
 ### Fixed
+
+- `OpenApiClient.Dispose()` releases the `HttpClient` it created (it only suppressed finalization before).
 
 - **A workflow `Switch` without a default path fails on a key it has no branch for.** The builder always gave the
   condition node an empty default path, so an unmatched key silently skipped the branch and the workflow carried on to
