@@ -42,6 +42,12 @@ changes are expected and used freely for structural correctness (see
   (`WithLlmManager`), `GetToolsAsync` (`ListToolsAsync`), a queue `ConsumeAsync` loop (consumers are callback-based:
   `CreateConsumerAsync(onReceived)` + `StartAsync`) and a `WorkflowStepResult` type (steps return `TaskStepResult`;
   branching is a condition step plus `Switch`). Each is corrected, and a test now checks every name a guide uses.
+- The guides' samples also had the wrong shapes where the names were right: `new McpClientManager()` (it takes the tool
+  collection), `await` on the void `AddOrUpdate`, `.Hits`/`h.Record` on search results (`.Results`/`.Payload`), memory
+  worker lambdas ending in `.Build()` (the method builds; none of those samples compiled), `StartAsync(token)`,
+  `ToolInput.GetValue<T>`/`ToolOutput.Success(object)`, image/video size types that do not exist, and
+  `FunctionToolAttribute.Timeout` documented as 60 (the default is 0, no limit). The agent skill references were
+  rewritten against the current API the same way.
 
 ## 0.33.1 — 2026-09-23
 
