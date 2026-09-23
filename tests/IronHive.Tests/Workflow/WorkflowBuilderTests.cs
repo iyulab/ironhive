@@ -152,6 +152,52 @@ public class WorkflowBuilderTests
         node.DefaultBranch.Should().NotBeEmpty();
     }
 
+    [Fact]
+    public async Task Switch_KeyWithNoBranch_AndNoDefault_Fails_InsteadOfSkipping()
+    {
+        // NoOpCondition answers "default", which neither branch handles.
+        var workflow = new WorkflowBuilder()
+            .StartWith<TestContext>()
+            .Switch<NoOpCondition>("cond", new Dictionary<string, Action<WorkflowStepBuilder<TestContext>>>
+            {
+                ["yes"] = b => b.Then<CountStep>("yes-step")
+            })
+            .Then<CountStep>("after")
+            .Build();
+
+        var context = new TestContext();
+        var events = new List<WorkflowEventArgs<TestContext>>();
+        workflow.Progressed += (_, e) => events.Add(e);
+
+        await workflow.RunAsync(context, Xunit.TestContext.Current.CancellationToken);
+
+        // RunAsync reports a failure through Progressed rather than throwing.
+        var failed = events.Should().ContainSingle(e => e.Type == WorkflowProgressType.Failed).Subject;
+        failed.Exception.Should().BeOfType<InvalidOperationException>().Which.Message.Should().Contain("'default'");
+        events.Should().NotContain(e => e.Type == WorkflowProgressType.Completed);
+        context.Log.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Switch_KeyWithNoBranch_RunsTheDefaultBranch()
+    {
+        var workflow = new WorkflowBuilder()
+            .StartWith<TestContext>()
+            .Switch<NoOpCondition>(
+                "cond",
+                new Dictionary<string, Action<WorkflowStepBuilder<TestContext>>>
+                {
+                    ["yes"] = b => b.Then<NoOpStep>("yes-step")
+                },
+                defaultBuildAction: b => b.Then<CountStep>("default-step"))
+            .Build();
+
+        var context = new TestContext();
+        await workflow.RunAsync(context, Xunit.TestContext.Current.CancellationToken);
+
+        context.Log.Should().ContainSingle();
+    }
+
     #endregion
 
     #region WorkflowStepBuilder — Split

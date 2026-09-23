@@ -13,7 +13,7 @@ namespace IronHive.Tests;
 /// whether a declared option is read; this one asks whether a documented name is declared.
 /// </summary>
 /// <remarks>
-/// Two checks over the C# blocks of <c>README.md</c> and <c>docs/*.md</c>:
+/// Two checks over the C# blocks of <c>README.md</c>, <c>docs/*.md</c> and the agent skill under <c>skills/</c>:
 /// <list type="number">
 /// <item>Object initializers <c>new &lt;Type&gt;{Options|Config|Configuration|Defaults} { Name = … }</c> — the type
 /// must exist in the library assemblies and every assigned name must be a public settable property.</item>
@@ -44,17 +44,17 @@ public class DocsSnippetRosterTests
     /// </summary>
     private static readonly Dictionary<string, string[]> KnownDrift = new(StringComparer.Ordinal)
     {
-        // The chunking step's options are the nested TextChunkingPipeline.Options; no top-level type has this name.
-        ["docs/MEMORY.md"] = ["TextChunkingOptions (no such type in the library assemblies)"],
-        // Hub-spoke: SetHubAgent / AddSpokeAgent; group chat: WithLlmManager.
-        ["docs/ORCHESTRATION.md"] = ["AddHub", "AddSpoke", "WithLlmSpeakerSelection"],
-        // McpSession lists tools with ListToolsAsync.
-        ["docs/PLUGINS.md"] = ["GetToolsAsync"],
-        ["docs/SERVICES.md"] = ["TextChunkingOptions (no such type in the library assemblies)"],
-        // The queue storage has no consumer loop of this name.
-        ["docs/STORAGES.md"] = ["ConsumeAsync"],
-        // No WorkflowStepResult type in the library.
-        ["docs/WORKFLOW.md"] = ["Goto"],
+        // The agent skill references (skills/ironhive/references) were written against an earlier API:
+        // storage and provider config members, middleware option types and several builder names that no
+        // longer exist. Pinned when the scan was widened to them; repaired file by file.
+        ["skills/ironhive/references/MEMORY.md"] = ["SearchOptions.TopK", "TextChunkingOptions (no such type in the library assemblies)"],
+        ["skills/ironhive/references/MIDDLEWARE.md"] = ["BulkheadOptions (no such type in the library assemblies)", "CachingOptions (no such type in the library assemblies)", "CircuitBreakerOptions (no such type in the library assemblies)", "FallbackOptions (no such type in the library assemblies)", "GetText", "LoggingOptions (no such type in the library assemblies)", "RateLimitOptions (no such type in the library assemblies)", "RetryOptions (no such type in the library assemblies)", "TimeoutOptions (no such type in the library assemblies)"],
+        ["skills/ironhive/references/ORCHESTRATION.md"] = ["HubSpokeOrchestratorOptions.MaxIterations", "SequentialOrchestratorOptions.PassResultToNext", "WithCheckpointStore"],
+        ["skills/ironhive/references/PROVIDERS.md"] = ["OpenAIConfig.OrgId", "VertexAIConfig.Credentials", "VertexAIConfig.ProjectId"],
+        ["skills/ironhive/references/SERVICES.md"] = ["AddMeter", "AddOpenTelemetry", "AddSource", "SearchOptions.TopK", "SpeechToTextAsync", "TextToSpeechAsync", "WithMetrics", "WithTracing"],
+        ["skills/ironhive/references/SETUP.md"] = ["AddQdrantVectorStorage", "AddRabbitMQQueueStorage", "AmazonS3Config.AccessKeyId", "AmazonS3Config.Region", "AzureBlobConfig (no such type in the library assemblies)", "AzureFilesConfig (no such type in the library assemblies)", "LocalFileConfig (no such type in the library assemblies)", "LocalQueueConfig.Path", "LocalVectorConfig.Path", "OpenAIConfig.OrgId", "QdrantConfig.Endpoint", "RabbitMQConfig.ConnectionString", "VertexAIConfig.Credentials", "VertexAIConfig.ProjectId"],
+        ["skills/ironhive/references/STORAGES.md"] = ["AddQdrantVectorStorage", "AddRabbitMQQueueStorage", "AmazonS3Config.AccessKeyId", "AmazonS3Config.Region", "AzureBlobConfig (no such type in the library assemblies)", "AzureFilesConfig (no such type in the library assemblies)", "LocalFileConfig (no such type in the library assemblies)", "LocalQueueConfig.Path", "LocalVectorConfig.Path", "QdrantConfig.Endpoint", "RabbitMQConfig.ConnectionString", "TextChunkingOptions (no such type in the library assemblies)"],
+        ["skills/ironhive/references/TOOLS.md"] = ["AddClientAsync", "GetToolsAsync", "McpHttpOAuthConfig.TokenEndpoint", "McpStdioClientConfig.Args", "OpenApiClientConfig (no such type in the library assemblies)"],
     };
 
     /// <summary>Option-shaped types from other SDKs that a document legitimately shows (not ours to declare).</summary>
@@ -68,6 +68,8 @@ public class DocsSnippetRosterTests
         var root = RepositoryRoot();
         var files = new[] { Path.Combine(root, "README.md") }
             .Concat(Directory.EnumerateFiles(Path.Combine(root, "docs"), "*.md"))
+            // The agent skill's references are guides too: an agent following them writes this code.
+            .Concat(Directory.EnumerateFiles(Path.Combine(root, "skills"), "*.md", SearchOption.AllDirectories))
             .Where(File.Exists)
             .Order(StringComparer.Ordinal)
             .ToList();
@@ -165,7 +167,8 @@ public class DocsSnippetRosterTests
         var calls = RegistrationCalls(
             "services.AddHiveService().ToString().UseImaginaryThing();\n" +
             "var r = await processor.NoSuchProcessAsync(url); // .NotACall( in a comment\n" +
-            "var s = \"text with .NotACallEither( inside\".ToUpperInvariant();").ToList();
+            "var s = \"text with .NotACallEither( inside\".ToUpperInvariant();\n" +
+            "var o = new TextChunkingPipeline.Options(ChunkSize: 1);").ToList();
 
         calls.Should().BeEquivalentTo(["AddHiveService", "ToString", "UseImaginaryThing", "NoSuchProcessAsync", "ToUpperInvariant"]);
         calls.Where(n => !methods.Contains(n)).Should().BeEquivalentTo(["UseImaginaryThing", "NoSuchProcessAsync"]);
@@ -211,8 +214,12 @@ public class DocsSnippetRosterTests
         blocks.SelectMany(b => TypeDefinition.Matches(StripCommentsAndStrings(b)).Select(m => m.Groups[1].Value))
             .ToHashSet(StringComparer.Ordinal);
 
+    // `new Outer.Inner(` constructs a nested type; collapse the qualified name so `.Inner(` is not read as a call.
+    private static readonly Regex QualifiedConstruction = new(@"\bnew\s+[A-Za-z_][\w.]*", RegexOptions.Compiled);
+
     internal static IEnumerable<string> RegistrationCalls(string code) =>
-        Registration.Matches(StripCommentsAndStrings(code)).Select(m => m.Groups[1].Value).Distinct(StringComparer.Ordinal);
+        Registration.Matches(QualifiedConstruction.Replace(StripCommentsAndStrings(code), "new T"))
+            .Select(m => m.Groups[1].Value).Distinct(StringComparer.Ordinal);
 
     /// <summary>Blank out string literals and comments so a `.Name(` inside them is not read as a call.</summary>
     private static string StripCommentsAndStrings(string code)

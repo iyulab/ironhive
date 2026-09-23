@@ -246,15 +246,17 @@ await queueStorage.EnqueueAsync(new MemoryContext
     }
 });
 
-// 소비자 생성
-var consumer = await queueStorage.CreateConsumerAsync<MemoryContext>();
-await foreach (var message in consumer.ConsumeAsync(cancellationToken))
+// 소비자 생성 — 메시지가 도착할 때마다 콜백이 불린다
+using var consumer = await queueStorage.CreateConsumerAsync<MemoryContext>(async message =>
 {
-    // 처리
-    await ProcessAsync(message.Payload);
-    await message.CompleteAsync();   // 처리 완료
-    // 또는: await message.RequeueAsync();  // 재큐잉
-}
+    await ProcessAsync(message.Body);   // 처리
+    await message.CompleteAsync();      // 처리 완료
+    // 또는: await message.RequeueAsync();          // 재큐잉
+    // 또는: await message.DeadAsync("reason");     // 폐기
+});
+await consumer.StartAsync(cancellationToken);
+// ...
+await consumer.StopAsync();
 ```
 
 ---

@@ -50,12 +50,10 @@ var worker = hive.CreateMemoryWorkerFrom(builder =>
     builder
         .UseQueue("local-queue")                     // 작업 큐
         .Then<TextExtractionPipeline>("extract")     // 텍스트 추출
-        .Then<TextChunkingPipeline, TextChunkingOptions>("chunk",
-            new TextChunkingOptions
-            {
-                ChunkSize = 512,   // 청크 크기 (토큰 기준)
-                ChunkOverlap = 50  // 겹침 크기
-            })
+        .Then<TextChunkingPipeline, TextChunkingPipeline.Options>("chunk",
+            new TextChunkingPipeline.Options(
+                ChunkSize: 512,    // 청크 크기 (토큰 기준)
+                ChunkOverlap: 50)) // 겹침 크기
         .Then<CreateVectorsPipeline>("embed")        // 임베딩 생성
         .Then<StoreVectorsPipeline>("store")         // 벡터 저장
         .Build());
@@ -305,8 +303,8 @@ public class MemoryWorkerHostedService(IHiveService hive) : BackgroundService
             builder
                 .UseQueue("tasks")
                 .Then<TextExtractionPipeline>("extract")
-                .Then<TextChunkingPipeline, TextChunkingOptions>("chunk",
-                    new TextChunkingOptions { ChunkSize = 512, ChunkOverlap = 50 })
+                .Then<TextChunkingPipeline, TextChunkingPipeline.Options>("chunk",
+                    new TextChunkingPipeline.Options(ChunkSize: 512, ChunkOverlap: 50))
                 .Then<CreateVectorsPipeline>("embed")
                 .Then<StoreVectorsPipeline>("store")
                 .Build());

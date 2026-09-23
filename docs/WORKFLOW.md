@@ -46,15 +46,15 @@ var workflow = factory.CreateBuilder()
 ```csharp
 public class ValidateStep : IWorkflowTask<MyContext>
 {
-    public async Task<WorkflowStepResult> ExecuteAsync(
+    public Task<TaskStepResult> ExecuteAsync(
         MyContext context,
         CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(context.DocumentPath))
-            return WorkflowStepResult.Failure("DocumentPath is required");
+            return Task.FromResult(TaskStepResult.Fail(new ArgumentException("DocumentPath is required")));
 
         context.IsValid = true;
-        return WorkflowStepResult.Success();
+        return Task.FromResult(TaskStepResult.Success());
     }
 }
 ```
@@ -69,14 +69,14 @@ public class ProcessOptions
 
 public class ProcessStep : IWorkflowTask<MyContext, ProcessOptions>
 {
-    public async Task<WorkflowStepResult> ExecuteAsync(
+    public Task<TaskStepResult> ExecuteAsync(
         MyContext context,
         ProcessOptions options,
         CancellationToken ct = default)
     {
         // options.BatchSize 사용
         context.ProcessedCount = options.BatchSize;
-        return WorkflowStepResult.Success();
+        return Task.FromResult(TaskStepResult.Success());
     }
 }
 ```
@@ -97,7 +97,7 @@ await workflow.RunFromAsync("process", context, cancellationToken);
 // 진행 이벤트 구독
 workflow.Progressed += (_, args) =>
 {
-    Console.WriteLine($"[{args.NodeId}] {args.Status}");
+    Console.WriteLine($"[{args.NodeId}] {args.Type}");
 };
 ```
 
@@ -113,7 +113,7 @@ var worker = hive.CreateMemoryWorkerFrom(builder =>
     builder
         .UseQueue("tasks")                           // IQueueStorage 지정
         .Then<TextExtractionPipeline>("extract")     // IMemoryPipeline 스텝
-        .Then<TextChunkingPipeline, TextChunkingOptions>("chunk", opts)
+        .Then<TextChunkingPipeline, TextChunkingPipeline.Options>("chunk", new TextChunkingPipeline.Options())
         .Build());
 
 // IMemoryPipeline은 IWorkflowTask<MemoryContext>와 동등
@@ -154,18 +154,39 @@ public class MyService(WorkflowFactory factory)
 
 ---
 
-## WorkflowStepResult
+## 스텝 결과와 분기
+
+작업 스텝(`IWorkflowTask`)은 `TaskStepResult` 를 돌려준다:
 
 ```csharp
-// 성공
-return WorkflowStepResult.Success();
+// 성공 (메시지는 선택)
+return TaskStepResult.Success("processed 10 items");
 
-// 실패 (워크플로우 중단)
-return WorkflowStepResult.Failure("오류 메시지");
-
-// 특정 노드로 분기
-return WorkflowStepResult.Goto("node-id");
+// 실패 — 워크플로우가 중단된다. 예외를 던져도 같다.
+return TaskStepResult.Fail(new InvalidOperationException("오류 메시지"));
 ```
+
+분기는 조건 스텝(`IWorkflowCondition<TContext>`)이 키를 고르고 `Switch` 가 그 키로 다음 경로를 정한다:
+
+```csharp
+public class ReviewCondition : IWorkflowCondition<MyContext>
+{
+    public Task<ConditionStepResult> EvaluateAsync(MyContext context, CancellationToken ct = default)
+        => Task.FromResult(ConditionStepResult.Select(context.IsValid ? "approved" : "rejected"));
+}
+
+var workflow = factory.CreateBuilder()
+    .StartWith<MyContext>()
+        .Then<ValidateStep>("validate")
+        .Switch<ReviewCondition>("review", new Dictionary<string, Action<WorkflowStepBuilder<MyContext>>>
+        {
+            ["approved"] = b => b.Then<ProcessStep, ProcessOptions>("process", new ProcessOptions()),
+            ["rejected"] = b => b.Then<NotifyStep>("notify"),
+        })
+    .Build();
+```
+
+정의되지 않은 키는 `Switch` 의 세 번째 인자(기본 경로)로 간다.
 
 ---
 

@@ -84,7 +84,7 @@ await mcpManager.AddOrUpdate(new McpStdioClientConfig
 var session = mcpManager.GetSession("weather-server");
 
 // 도구 목록 조회
-var tools = await session.GetToolsAsync();
+var tools = await session.ListToolsAsync();
 
 // 에이전트에 도구 추가
 foreach (var tool in tools)

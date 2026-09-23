@@ -198,7 +198,7 @@ builder
     .AddAgent(expertB)
     .AddAgent(moderator)
     .WithRoundRobin()                          // 순환 발언
-    // 또는: .WithLlmSpeakerSelection(selector)  // LLM 기반 선택
+    // 또는: .WithLlmManager(managerAgent)       // LLM 기반 선택
     .TerminateAfterRounds(10)                  // 최대 10라운드
     // 또는: .TerminateOnKeyword("APPROVED")    // 키워드 종료
     .SetMaxRounds(50);                         // 안전 상한선 (기본값: 50)
@@ -228,8 +228,8 @@ public class GroupChatOrchestratorOptions : OrchestratorOptions
 // 순환 (Round Robin)
 .WithRoundRobin()
 
-// LLM 기반 선택
-.WithLlmSpeakerSelection(selectorAgent)
+// LLM 기반 선택 — 매니저 에이전트가 다음 발언자를 고른다
+.WithLlmManager(managerAgent)
 
 // 랜덤 선택
 .WithRandom()
@@ -270,10 +270,10 @@ var options = new HubSpokeOrchestratorOptions
 };
 
 var orch = new HubSpokeOrchestrator(options);
-orch.AddHub(coordinatorAgent);
-orch.AddSpoke(researchAgent);
-orch.AddSpoke(writerAgent);
-orch.AddSpoke(reviewerAgent);
+orch.SetHubAgent(coordinatorAgent);
+orch.AddSpokeAgent(researchAgent);
+orch.AddSpokeAgent(writerAgent);
+orch.AddSpokeAgent(reviewerAgent);
 ```
 
 작동 방식:

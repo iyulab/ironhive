@@ -419,11 +419,8 @@ var worker = hive.CreateMemoryWorkerFrom(builder =>
     builder
         .UseQueue("local-queue")
         .Then<TextExtractionPipeline>("extract")
-        .Then<TextChunkingPipeline, TextChunkingOptions>("chunk", new TextChunkingOptions
-        {
-            ChunkSize = 512,
-            ChunkOverlap = 50
-        })
+        .Then<TextChunkingPipeline, TextChunkingPipeline.Options>("chunk",
+            new TextChunkingPipeline.Options(ChunkSize: 512, ChunkOverlap: 50))
         .Then<CreateVectorsPipeline>("embed")
         .Then<StoreVectorsPipeline>("store")
         .Build());

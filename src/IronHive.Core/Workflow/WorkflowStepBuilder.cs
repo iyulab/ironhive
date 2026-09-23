@@ -73,7 +73,9 @@ public class WorkflowStepBuilder<TContext>
                 return builder._definition.Steps.AsEnumerable();
             });
 
-        var defaultBranch = Enumerable.Empty<WorkflowNode>();
+        // No default path means a key without a branch is an error (the engine throws) — not an empty path
+        // that silently skips the branch and carries on.
+        IEnumerable<WorkflowNode>? defaultBranch = null;
         if (defaultBuildAction != null)
         {
             var builder = CreateBranchBuilder();

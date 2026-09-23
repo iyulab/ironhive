@@ -4,7 +4,24 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
-## 0.33.1 — unreleased
+## 0.33.2 — unreleased
+
+### Fixed
+
+- **A workflow `Switch` without a default path fails on a key it has no branch for.** The builder always gave the
+  condition node an empty default path, so an unmatched key silently skipped the branch and the workflow carried on to
+  the next step. It now reports `Failed` (through `Progressed`, like any failed step) with the unmatched key in the
+  message, as the engine was written to. Pass `defaultBuildAction` to keep a fallback path.
+
+### Documentation
+
+- The guides in `docs/` used names the library does not have: `TextChunkingOptions` (the options are
+  `TextChunkingPipeline.Options`), `AddHub`/`AddSpoke` (`SetHubAgent`/`AddSpokeAgent`), `WithLlmSpeakerSelection`
+  (`WithLlmManager`), `GetToolsAsync` (`ListToolsAsync`), a queue `ConsumeAsync` loop (consumers are callback-based:
+  `CreateConsumerAsync(onReceived)` + `StartAsync`) and a `WorkflowStepResult` type (steps return `TaskStepResult`;
+  branching is a condition step plus `Switch`). Each is corrected, and a test now checks every name a guide uses.
+
+## 0.33.1 — 2026-09-23
 
 ### Fixed
 
