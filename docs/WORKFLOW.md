@@ -113,8 +113,8 @@ var worker = hive.CreateMemoryWorkerFrom(builder =>
     builder
         .UseQueue("tasks")                           // IQueueStorage 지정
         .Then<TextExtractionPipeline>("extract")     // IMemoryPipeline 스텝
-        .Then<TextChunkingPipeline, TextChunkingPipeline.Options>("chunk", new TextChunkingPipeline.Options())
-        .Build());
+        .Then<TextChunkingPipeline, TextChunkingPipeline.Options>("chunk", new TextChunkingPipeline.Options()));
+        // Build()는 CreateMemoryWorkerFrom이 호출한다 — 람다는 MemoryPipelineBuilder를 돌려준다
 
 // IMemoryPipeline은 IWorkflowTask<MemoryContext>와 동등
 ```

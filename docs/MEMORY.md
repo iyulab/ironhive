@@ -55,8 +55,7 @@ var worker = hive.CreateMemoryWorkerFrom(builder =>
                 ChunkSize: 512,    // 청크 크기 (토큰 기준)
                 ChunkOverlap: 50)) // 겹침 크기
         .Then<CreateVectorsPipeline>("embed")        // 임베딩 생성
-        .Then<StoreVectorsPipeline>("store")         // 벡터 저장
-        .Build());
+        .Then<StoreVectorsPipeline>("store"));       // 벡터 저장 — Build()는 CreateMemoryWorkerFrom이 호출한다
 
 // 워커 시작
 await worker.StartAsync();
@@ -120,7 +119,7 @@ var collection = await hive.Memory.GetCollectionAsync("qdrant", "documents");
 var results = await collection.SemanticSearchAsync("인공지능의 역사");
 
 // 옵션 지정 검색
-var results = await collection.SemanticSearchAsync(
+results = await collection.SemanticSearchAsync(
     "machine learning applications",
     new SearchOptions
     {
@@ -272,8 +271,9 @@ var collection = await hive.Memory.GetCollectionAsync("qdrant", "docs");
 var searchResults = await collection.SemanticSearchAsync("사용자 질문");
 
 // 2. 검색 결과를 프롬프트에 포함
-var context = string.Join("\n\n", searchResults.Hits.Select(h =>
-    $"[소스: {h.Record.Metadata?["source"]}]\n{h.Record.Content}"));
+//    본문은 Payload에 있다 — 키는 적재한 파이프라인이 정한다(청크 경로는 "text", 위 「의미적 검색」 참조)
+var context = string.Join("\n\n", searchResults.Results.Select(h =>
+    $"[소스: {h.SourceId}]\n{(h.Payload.TryGetValue("text", out var text) ? text : null)}"));
 
 // 3. 에이전트에 컨텍스트와 함께 질문 전달
 var agent = hive.CreateAgentFrom(cfg =>
@@ -299,17 +299,20 @@ public class MemoryWorkerHostedService(IHiveService hive) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var worker = hive.CreateMemoryWorkerFrom(builder =>
+        using var worker = hive.CreateMemoryWorkerFrom(builder =>
             builder
                 .UseQueue("tasks")
                 .Then<TextExtractionPipeline>("extract")
                 .Then<TextChunkingPipeline, TextChunkingPipeline.Options>("chunk",
                     new TextChunkingPipeline.Options(ChunkSize: 512, ChunkOverlap: 50))
                 .Then<CreateVectorsPipeline>("embed")
-                .Then<StoreVectorsPipeline>("store")
-                .Build());
+                .Then<StoreVectorsPipeline>("store"));
 
-        await worker.StartAsync(stoppingToken);
+        // StartAsync는 큐 소비를 시작하고 곧바로 돌아온다 — 호스트 종료까지 기다렸다가 정지한다
+        await worker.StartAsync();
+        try { await Task.Delay(Timeout.Infinite, stoppingToken); }
+        catch (OperationCanceledException) { }
+        await worker.StopAsync();
     }
 }
 ```

@@ -250,7 +250,7 @@ var condition = new CompositeTermination(requireAll: false,
     new MaxRoundsTermination(5));
 
 // 복합 조건 (AND — 모두 만족해야 종료)
-var condition = new CompositeTermination(requireAll: true,
+var allOf = new CompositeTermination(requireAll: true,
     new KeywordTermination("APPROVED"),
     new KeywordTermination("VERIFIED"));
 ```
@@ -296,10 +296,13 @@ builder
     .AddNode("billing", billingAgent)
     .AddNode("general", generalAgent)
     .AddNode("merge", mergeAgent)
-    // 조건부 엣지: ctx.LastOutput 기반
-    .AddEdge("start", "billing", ctx => ctx.LastOutput.Contains("billing"))
-    .AddEdge("start", "general")
-    // Fan-In
+    // 조건부 엣지: 조건은 소스 노드("start")의 AgentStepResult를 받는다
+    .AddEdge("start", "billing", step =>
+        step.Response?.Message?.Content.OfType<TextMessageContent>()
+            .Any(t => t.Value.Contains("billing", StringComparison.OrdinalIgnoreCase)) == true)
+    .AddEdge("start", "general")   // 조건 없음 = 항상 진행
+    // Fan-In — 노드는 인입 엣지의 소스가 모두 실행되고 조건이 모두 참일 때만 실행된다.
+    // billing이 건너뛰어지면 merge도 건너뛰고, 최종 출력은 마지막으로 성공한 단계(general)의 출력이 된다.
     .AddEdge("billing", "merge")
     .AddEdge("general", "merge")
     .SetStartNode("start")
@@ -398,10 +401,10 @@ await foreach (var evt in orch.ExecuteStreamingAsync(messages))
 
 ```csharp
 // 인메모리 체크포인트 (테스트용)
-var store = new InMemoryCheckpointStore();
+ICheckpointStore store = new InMemoryCheckpointStore();
 
 // 파일 기반 체크포인트 (영속성)
-var store = new FileCheckpointStore("./checkpoints");
+store = new FileCheckpointStore("./checkpoints");
 
 var options = new SequentialOrchestratorOptions
 {
@@ -436,10 +439,14 @@ var options = new SequentialOrchestratorOptions
 
 ```csharp
 // 마지막 N개 메시지만 전달
-options.ContextScope = new LastNMessagesScope(n: 5);
+options.ContextScope = new LastNMessagesScope(maxMessages: 5);
 
-// 요약 프롬프트로 컨텍스트 압축
-options.ContextScope = new SummaryContextScope(summaryAgent);
+// 대화 이력을 구조화된 요약(목표·도구 작업·파일 경로·오류 코드) + 현재 작업으로 압축 (LLM 호출 없음)
+options.ContextScope = new SummaryContextScope(new SummaryContextScopeOptions
+{
+    MinMessagesForSummary = 4,   // 이 개수 이하면 그대로 전달 (기본값 4)
+    MaxGoalLength = 200,         // 요약 속 목표 최대 길이 (기본값 200)
+});
 
 // 현재 작업만 전달
 options.ContextScope = new TaskOnlyScope();

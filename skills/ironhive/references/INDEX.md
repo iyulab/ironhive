@@ -5,7 +5,6 @@ Quick lookup for IronHive APIs. Each file covers one area of the framework.
 | File | Contents |
 |------|----------|
 | [SETUP.md](SETUP.md) | HiveServiceBuilder, provider registration, storage registration, DI integration |
-| [AGENTS.md](AGENTS.md) | IAgent interface, CreateAgentFrom, YAML/TOML/JSON config, InvokeAsync, streaming |
 | [MIDDLEWARE.md](MIDDLEWARE.md) | WithMiddleware(), Retry, Timeout, RateLimit, CircuitBreaker, Bulkhead, Caching, Logging, Fallback |
 | [ORCHESTRATION.md](ORCHESTRATION.md) | Sequential, Parallel, Handoff, GroupChat, HubSpoke, Graph orchestrators; AsAgent(); checkpoints |
 | [TOOLS.md](TOOLS.md) | [FunctionTool] attribute, IToolCollection, ToolOptions (OnBeforeInvoke/OnAfterInvoke), TextCompactor, MCP tools, OpenAPI tools, custom ITool |

@@ -183,6 +183,5 @@ var worker = hive.CreateMemoryWorkerFrom(b =>
      .Then<TextChunkingPipeline, TextChunkingPipeline.Options>("chunk",
          new TextChunkingPipeline.Options(ChunkSize: 512, ChunkOverlap: 50))
      .Then<CreateVectorsPipeline>("embed")
-     .Then<StoreVectorsPipeline>("store")
-     .Build());
+     .Then<StoreVectorsPipeline>("store"));   // CreateMemoryWorkerFrom calls Build()
 ```

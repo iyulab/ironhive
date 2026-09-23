@@ -10,6 +10,7 @@ public interface IHiveService : IDisposable
     IModelService Models { get; }
     IMessageService Messages { get; }
     IEmbeddingService Embeddings { get; }
+    IRerankService Rerank { get; }
     IImageService Images { get; }
     IVideoService Videos { get; }
     IAudioService Audio { get; }
@@ -98,7 +99,7 @@ public interface IMessageMiddleware
 | 멤버 | 설명 |
 |------|------|
 | `Request` | 이번 턴에 generator로 나가는 요청(`MessageGenerationRequest`). 턴을 거치며 `Messages`가 누적됩니다. |
-| `CurrentTurn` / `MaxTurn` | 현재 턴 번호(0부터)와 이번 호출의 최대 턴 수. |
+| `CurrentTurn` / `MaxTurns` | 현재 턴 번호(0부터)와 이번 호출의 최대 턴 수. |
 | `CurrentMessage` | 턴을 거치며 계속 채워지는 assistant 메시지. 아직 아무 컨텐츠도 안 나왔다면 null. |
 | `TrackedId` / `TurnReason` / `TokenUsage` | 가장 최근 턴의 응답 ID(prefix 없음) / 종료 사유 / 토큰 사용량. |
 | `Items` | 파이프라인 단계 간 공유 데이터. `MessageRequest.Items`로 시작해 `MessageResponse.Items`(스트리밍은 `StreamingMessageDoneResponse.Items`)로 흘러나갑니다. |
@@ -187,7 +188,7 @@ float[] vector = await hive.Embeddings.EmbedAsync("openai", "text-embedding-3-sm
 
 var batch = await hive.Embeddings.EmbedBatchAsync("openai", "text-embedding-3-small", texts);
 foreach (var r in batch)
-    Console.WriteLine(r.Vector.Length); // 임베딩 차원
+    Console.WriteLine(r.Embedding?.Length); // 임베딩 차원
 ```
 
 ---
@@ -215,7 +216,7 @@ var response = await hive.Images.GenerateImageAsync("openai", new ImageGeneratio
 {
     Model = "dall-e-3",
     Prompt = "A futuristic city at sunset",
-    Size = GeneratedImageSize.Square1024,
+    Size = new GeneratedImagePixelSize { Width = 1024, Height = 1024 },   // OpenAI는 픽셀 크기를 읽는다
     // N = 2,
 });
 
@@ -248,7 +249,7 @@ var response = await hive.Videos.GenerateVideoAsync("google", new VideoGeneratio
 {
     Model = "veo-2.0-generate-001",
     Prompt = "A serene mountain lake at dawn",
-    Size = GeneratedVideoSize.Landscape720p,
+    Size = new GeneratedVideoPresetSize { Resolution = "720p", AspectRatio = "16:9" },
     // DurationSeconds = 8,
     // PollInterval = TimeSpan.FromSeconds(10),   // 기본값
 });
@@ -306,21 +307,30 @@ foreach (var seg in sttResponse.Segments ?? [])
 ```csharp
 public interface IModelService
 {
-    Task<ModelCardList> ListModelsAsync(
+    IReadOnlyDictionary<string, IModelFinder> Finders { get; }
+
+    // 등록된 전체 프로바이더
+    Task<IEnumerable<ModelCardList>> ListModelsAsync(
+        CancellationToken cancellationToken = default);
+
+    // 지정한 프로바이더 (등록되지 않았으면 null)
+    Task<ModelCardList?> ListModelsAsync(
         string provider,
         CancellationToken cancellationToken = default);
 
     Task<IModelCard?> FindModelAsync(
         string provider,
-        string model,
+        string modelId,
         CancellationToken cancellationToken = default);
+
+    // 위 세 메서드의 제네릭 버전(ListModelsAsync<T> / FindModelAsync<T>)은 T 타입 카드만 돌려준다
 }
 
-// 사용 예시
-var models = await hive.Models.ListModelsAsync("openai");
-foreach (var model in models)
+// 사용 예시 — ModelCardList는 { Provider, Models } 묶음이다
+var list = await hive.Models.ListModelsAsync("openai");
+foreach (var model in list?.Models ?? [])
 {
-    Console.WriteLine($"{model.Id} — {model.Description}");
+    Console.WriteLine($"{model.ModelId} — {model.Description}");
 }
 ```
 
@@ -422,10 +432,9 @@ var worker = hive.CreateMemoryWorkerFrom(builder =>
         .Then<TextChunkingPipeline, TextChunkingPipeline.Options>("chunk",
             new TextChunkingPipeline.Options(ChunkSize: 512, ChunkOverlap: 50))
         .Then<CreateVectorsPipeline>("embed")
-        .Then<StoreVectorsPipeline>("store")
-        .Build());
+        .Then<StoreVectorsPipeline>("store"));   // Build()는 CreateMemoryWorkerFrom이 호출한다
 
-await worker.StartAsync(cancellationToken);
+await worker.StartAsync();   // 큐 소비 시작 — 중지는 StopAsync(force)
 ```
 
 자세한 내용은 [MEMORY.md](MEMORY.md)를 참조하세요.
@@ -446,7 +455,8 @@ public class ParseService(IFileParserService parser)
     public async Task<string> ExtractTextAsync(string fileName, Stream data)
     {
         var blocks = await parser.ParseAsync(fileName, data);
-        return string.Join("\n", blocks.Select(b => b.Text));
+        // 결과는 TextBlock / ImageBlock / BinaryBlock — 텍스트는 TextBlock에만 있다
+        return string.Join("\n", blocks.OfType<TextBlock>().Select(b => b.Text));
     }
 }
 ```
@@ -463,8 +473,10 @@ public class ParseService(IFileParserService parser)
 public class Message
 {
     public MessageRole Role { get; set; }          // User / Assistant
-    public List<MessageContent> Content { get; set; }
+    public ICollection<MessageContent> Content { get; set; } = [];
 }
+
+// 단축 팩토리: Message.User("..."), Message.Assistant("...")
 
 public enum MessageRole { User, Assistant }
 ```
@@ -472,11 +484,12 @@ public enum MessageRole { User, Assistant }
 ### MessageContent 타입 (폴리모픽)
 
 ```csharp
-// 타입 식별자: "text", "image", "tool", "thinking"
+// 타입 식별자: "text", "image", "audio", "tool", "thinking"
 TextMessageContent { Value: string }
-ImageMessageContent { MediaType: string, Data: string (base64) | Url: string }
-ToolMessageContent  { /* 도구 호출/결과 */ }
-ThinkingMessageContent { Thinking: string }  // Anthropic Extended Thinking
+ImageMessageContent { Format: ImageFormat, Base64: string }
+AudioMessageContent { /* 오디오 입력 */ }
+ToolMessageContent  { Id, Name, Input, Output: ToolOutput?, IsApproved }  // 도구 호출/결과
+ThinkingMessageContent { Value: string, Format: ThinkingFormat? }  // 추론(thinking) 블록
 ```
 
 ### 메시지 구성 예시

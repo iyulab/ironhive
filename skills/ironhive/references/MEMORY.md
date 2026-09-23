@@ -108,8 +108,7 @@ var worker = hive.CreateMemoryWorkerFrom(builder =>
                 ChunkSize:    512,     // token-based chunk size
                 ChunkOverlap: 50))     // overlap between chunks
         .Then<CreateVectorsPipeline>("embed")                  // generate embeddings
-        .Then<StoreVectorsPipeline>("store")                   // save to vector storage
-        .Build());
+        .Then<StoreVectorsPipeline>("store"));                 // save to vector storage — CreateMemoryWorkerFrom calls Build()
 
 // Start background processing
 await worker.StartAsync();
@@ -142,8 +141,7 @@ public class MemoryIngestionService(IHiveService hive) : BackgroundService
              .Then<TextChunkingPipeline, TextChunkingPipeline.Options>("chunk",
                  new TextChunkingPipeline.Options(ChunkSize: 512, ChunkOverlap: 50))
              .Then<CreateVectorsPipeline>("embed")
-             .Then<StoreVectorsPipeline>("store")
-             .Build());
+             .Then<StoreVectorsPipeline>("store"));
 
         await worker.StartAsync();
         try

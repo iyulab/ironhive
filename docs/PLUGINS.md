@@ -26,10 +26,15 @@
 
 HTTP 기반 원격 MCP 서버. SSE와 Streamable HTTP를 자동으로 감지하여 연결합니다.
 
-```csharp
-var mcpManager = new McpClientManager();
+`McpClientManager`는 연결된 서버의 도구를 **생성자로 받은 `IToolCollection`에 자동 반영**한다.
+`AddOrUpdate`는 기다릴 것 없이(void) 돌아오고 연결은 백그라운드에서 진행된다 — 연결되면 그 서버의 도구가
+컬렉션에 등록되고, 연결이 끊기거나 오류가 나면 제거된다.
 
-await mcpManager.AddOrUpdate(new McpHttpClientConfig
+```csharp
+var tools = new ToolCollection();
+var mcpManager = new McpClientManager(tools);
+
+mcpManager.AddOrUpdate(new McpHttpClientConfig
 {
     ServerName = "weather-server",
     Endpoint = new Uri("https://mcp.example.com/mcp"),
@@ -44,7 +49,7 @@ await mcpManager.AddOrUpdate(new McpHttpClientConfig
 #### OAuth 2.0 인증 (HTTP)
 
 ```csharp
-await mcpManager.AddOrUpdate(new McpHttpClientConfig
+mcpManager.AddOrUpdate(new McpHttpClientConfig
 {
     ServerName = "secure-server",
     Endpoint = new Uri("https://mcp.example.com/mcp"),
@@ -63,13 +68,13 @@ await mcpManager.AddOrUpdate(new McpHttpClientConfig
 로컬 프로세스로 MCP 서버를 실행합니다:
 
 ```csharp
-await mcpManager.AddOrUpdate(new McpStdioClientConfig
+mcpManager.AddOrUpdate(new McpStdioClientConfig
 {
     ServerName = "file-server",
     Command = "npx",
     Arguments = ["-y", "@modelcontextprotocol/server-filesystem", "/data"],
     WorkingDirectory = "/app",
-    EnvironmentVariables = new Dictionary<string, string>
+    EnvironmentVariables = new Dictionary<string, string?>
     {
         ["NODE_ENV"] = "production"
     },
@@ -80,14 +85,15 @@ await mcpManager.AddOrUpdate(new McpStdioClientConfig
 ### 세션 및 도구 관리
 
 ```csharp
-// 세션 조회
-var session = mcpManager.GetSession("weather-server");
+// 세션 조회 (등록되지 않은 이름이면 false)
+if (!mcpManager.TryGetSession("weather-server", out var session))
+    return;
 
-// 도구 목록 조회
-var tools = await session.ListToolsAsync();
+// 도구 목록 조회 — 아직 연결 전이면 빈 목록이다
+var mcpTools = await session.ListToolsAsync();
 
-// 에이전트에 도구 추가
-foreach (var tool in tools)
+// 에이전트에 도구 추가 (연결 상태를 따라가게 하려면 매니저의 컬렉션을 그대로 준다: agent.Tools = tools;)
+foreach (var tool in mcpTools)
 {
     agent.Tools?.Add(tool);
 }
@@ -235,8 +241,9 @@ public class CustomTool : ITool
         ToolInput input,
         CancellationToken cancellationToken = default)
     {
-        var value = input.GetValue<string>("input");
-        return ToolOutput.Success(new { result = "처리 완료" });
+        if (!input.TryGetValue<string>("input", out var value))
+            return ToolOutput.Failure("'input' 인자가 필요합니다");
+        return ToolOutput.Success($"처리 완료: {value}");
     }
 }
 ```
@@ -251,7 +258,7 @@ public class CustomTool : ITool
 LLM 응답 (tool_use)
        │
        ▼
-IToolCollection.GetTool(name)
+IToolCollection.TryGet(name, out tool)
        │
        ▼
 ITool.InvokeAsync(input)

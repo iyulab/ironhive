@@ -56,7 +56,7 @@ public class FunctionToolAttribute : Attribute
     public string? Name { get; set; }           // null이면 메서드 이름 사용
     public string? Description { get; set; }
     public bool RequiresApproval { get; set; }  // 기본값: false
-    public long Timeout { get; set; } = 60;     // 초 단위 (기본값: 60초)
+    public long Timeout { get; set; }           // 초 단위, 0 이하이면 무제한 (기본값: 0)
 }
 ```
 
@@ -125,7 +125,7 @@ tools.AddFunctionTool(
 var functionTools = FunctionToolFactory.CreateFrom<MyTools>(serviceProvider);
 
 // 인스턴스에서 생성
-var functionTools = FunctionToolFactory.CreateFrom(myToolsInstance);
+var instanceTools = FunctionToolFactory.CreateFrom(myToolsInstance);
 
 // Delegate에서 생성
 var tool = FunctionToolFactory.CreateFrom(myDelegate, descriptor, serviceProvider);
@@ -139,7 +139,7 @@ var tool = FunctionToolFactory.CreateFrom(myDelegate, descriptor, serviceProvide
 public interface IToolCollection : ICollection<ITool>
 {
     IReadOnlyCollection<string> Keys { get; }
-    bool TryGet(string key, out ITool? item);
+    bool TryGet(string key, [MaybeNullWhen(false)] out ITool item);
     bool ContainsKey(string key);
     void AddRange(IEnumerable<ITool> items);
     void Set(ITool item);                                  // 교체
@@ -165,11 +165,11 @@ var agent = hive.CreateAgentFrom(cfg =>
     cfg.Provider = "openai";
     cfg.Model = "gpt-4o";
     cfg.Instructions = "도구를 적극적으로 활용하세요.";
-    cfg.Tools = tools.Select(t => t.UniqueName).ToList(); // 도구 이름 목록
+    // cfg.Tools(도구 이름 목록)는 여기서 해석되지 않는다 — 값을 넣으면 NotSupportedException
 });
 
-// BasicAgent에 직접 설정
-((BasicAgent)agent).Tools = tools;
+// 도구는 만들어진 에이전트에 직접 설정한다 (일부만 노출하려면 tools.FilterBy(names))
+agent.Tools = tools;
 ```
 
 ---
@@ -203,11 +203,11 @@ public class DatabaseQueryTool : ITool
         ToolInput input,
         CancellationToken cancellationToken = default)
     {
-        var query = input.GetValue<string>("query")
-            ?? throw new ArgumentException("query is required");
+        if (!input.TryGetValue<string>("query", out var query))
+            return ToolOutput.Failure("query is required");
 
         var results = await _db.QueryAsync(query);
-        return ToolOutput.Success(results);
+        return ToolOutput.Success(JsonSerializer.Serialize(results));   // 결과는 텍스트(또는 MessageContent 목록)
     }
 }
 ```
@@ -215,14 +215,16 @@ public class DatabaseQueryTool : ITool
 ### ToolInput / ToolOutput
 
 ```csharp
-// ToolInput — LLM이 전달한 파라미터 접근
-var name = input.GetValue<string>("name");
-var count = input.GetValue<int>("count");
-var options = input.GetValue<MyOptions>("options");
+// ToolInput — LLM이 전달한 파라미터 접근 (IReadOnlyDictionary<string, object?>)
+input.TryGetValue<string>("name", out var name);        // 없거나 변환 실패면 false
+input.TryGetValue<int>("count", out var count);
+input.TryGetValue<MyOptions>("options", out var options);
+var raw = input["name"];                                 // 원시 값 (없으면 null)
 
 // ToolOutput — 결과 반환
 return ToolOutput.Success("처리 완료");
-return ToolOutput.Success(new { id = 42, name = "item" });
+return ToolOutput.Success(JsonSerializer.Serialize(new { id = 42, name = "item" }));
+return ToolOutput.Success([new TextMessageContent { Value = "..." }]);   // MessageContent 목록
 return ToolOutput.Failure("오류가 발생했습니다");
 ```
 

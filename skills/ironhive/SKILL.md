@@ -17,7 +17,7 @@ A .NET 10 AI pipeline framework built on a **Named Registry + Builder** pattern.
 | Topic | Reference File |
 |-------|---------------|
 | Setup & DI registration | [references/SETUP.md](references/SETUP.md) |
-| Agent creation & invocation | [references/AGENTS.md](references/AGENTS.md) |
+| Agent creation & invocation | [Minimal Example](#minimal-example) (below) |
 | Middleware (Retry, Timeout, etc.) | [references/MIDDLEWARE.md](references/MIDDLEWARE.md) |
 | Multi-agent orchestration | [references/ORCHESTRATION.md](references/ORCHESTRATION.md) |
 | Function tools & tool collection | [references/TOOLS.md](references/TOOLS.md) |
@@ -52,4 +52,4 @@ var response = await agent.InvokeAsync("Hello!");
 - Agents are created from `IHiveService`, not from DI
 - Tools live on `IAgent.Tools` (`IToolCollection`), not on the builder
 - Storage and provider names are arbitrary strings — you choose them and reference them later
-- All services accessed via `hive.Models`, `hive.Messages`, `hive.Embeddings`, `hive.Images`, `hive.Videos`, `hive.Audio`, `hive.Files`, `hive.Memory`
+- All services accessed via `hive.Models`, `hive.Messages`, `hive.Embeddings`, `hive.Rerank`, `hive.Images`, `hive.Videos`, `hive.Audio`, `hive.Files`, `hive.Memory`
