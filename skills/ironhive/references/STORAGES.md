@@ -2,30 +2,34 @@
 
 IronHive has three storage abstractions: **IFileStorage**, **IVectorStorage**, and **IQueueStorage**.  
 All are registered by name on `HiveServiceBuilder` and referenced by that name at runtime.
+Any implementation can be registered with `AddFileStorage` / `AddVectorStorage` / `AddQueueStorage`;
+some packages add a shortcut extension on top.
 
 ## IFileStorage (File Storage)
 
 ```csharp
-public interface IFileStorage
+public interface IFileStorage : IDisposable
 {
-    Task UploadAsync(string path, Stream data, CancellationToken ct = default);
-    Task<Stream> DownloadAsync(string path, CancellationToken ct = default);
-    Task DeleteAsync(string path, CancellationToken ct = default);
-    Task<IEnumerable<string>> ListAsync(string? prefix = null, CancellationToken ct = default);
+    Task<IEnumerable<string>> ListAsync(string? prefix = null, int depth = 1, CancellationToken ct = default);
+    Task<bool> ExistsFileAsync(string filePath, CancellationToken ct = default);
+    Task<Stream> ReadFileAsync(string filePath, CancellationToken ct = default);
+    Task WriteFileAsync(string filePath, Stream data, bool overwrite = true, CancellationToken ct = default);
+    Task DeleteFileAsync(string filePath, CancellationToken ct = default);
+    Task DeleteDirectoryAsync(string directoryPath, CancellationToken ct = default);
 }
 ```
 
-Accessed via `hive.Files`:
+Accessed via `hive.Files` (same methods with the storage name first):
 
 ```csharp
-await hive.Files.UploadAsync("my-storage", "path/to/file.pdf", stream);
-var s = await hive.Files.DownloadAsync("my-storage", "path/to/file.pdf");
+await hive.Files.WriteFileAsync("my-storage", "path/to/file.pdf", stream);
+var s = await hive.Files.ReadFileAsync("my-storage", "path/to/file.pdf");
 ```
 
 ### Local File Storage
 
 ```csharp
-.AddLocalFileStorage("local", new LocalFileConfig { Path = "./storage" })
+.AddLocalFileStorage("local")    // no config — file paths are used as given
 ```
 
 ### Amazon S3
@@ -35,8 +39,8 @@ var s = await hive.Files.DownloadAsync("my-storage", "path/to/file.pdf");
 .AddAmazonS3Storage("s3", new AmazonS3Config
 {
     BucketName      = "my-bucket",
-    Region          = "us-east-1",
-    AccessKeyId     = "AKIA...",
+    RegionCode      = "us-east-1",
+    AccessKey       = "AKIA...",
     SecretAccessKey = "..."
 })
 ```
@@ -45,20 +49,21 @@ var s = await hive.Files.DownloadAsync("my-storage", "path/to/file.pdf");
 
 ```csharp
 // dotnet add package IronHive.Storages.Azure
-.AddAzureBlobStorage("azure-blob", new AzureBlobConfig
+.AddAzureBlobStorage("azure-blob", new AzureStorageConfig
 {
+    AuthType         = AzureStorageAuthTypes.ConnectionString,   // default; also AccountKey | SASToken | AzureIdentity
     ConnectionString = "DefaultEndpointsProtocol=https;AccountName=...;",
-    ContainerName    = "hive-files"
+    StorageName      = "hive-files"                              // container name
 })
 ```
 
 ### Azure File Share
 
 ```csharp
-.AddAzureFilesStorage("azure-files", new AzureFilesConfig
+.AddAzureFilesStorage("azure-files", new AzureStorageConfig
 {
     ConnectionString = "DefaultEndpointsProtocol=https;AccountName=...;",
-    ShareName        = "hive-share"
+    StorageName      = "hive-share"                              // file share name
 })
 ```
 
@@ -67,16 +72,18 @@ var s = await hive.Files.DownloadAsync("my-storage", "path/to/file.pdf");
 ## IVectorStorage (Vector DB)
 
 ```csharp
-public interface IVectorStorage
+public interface IVectorStorage : IDisposable
 {
-    Task CreateCollectionAsync(string name, int dimensions, CancellationToken ct = default);
-    Task DeleteCollectionAsync(string name, CancellationToken ct = default);
-    Task<bool> CollectionExistsAsync(string name, CancellationToken ct = default);
-    Task<IEnumerable<string>> ListCollectionsAsync(string? prefix = null, CancellationToken ct = default);
+    Task<IEnumerable<VectorCollectionInfo>> ListCollectionsAsync(CancellationToken ct = default);
+    Task<bool> CollectionExistsAsync(string collectionName, CancellationToken ct = default);
+    Task<VectorCollectionInfo?> GetCollectionInfoAsync(string collectionName, CancellationToken ct = default);
+    Task CreateCollectionAsync(VectorCollectionInfo collection, CancellationToken ct = default);
+    Task DeleteCollectionAsync(string collectionName, CancellationToken ct = default);
 
-    Task UpsertAsync(string collection, IEnumerable<VectorRecord> records, CancellationToken ct = default);
-    Task DeleteBySourceAsync(string collection, string sourceId, CancellationToken ct = default);
-    Task<VectorSearchResult> SearchAsync(string collection, ReadOnlyMemory<float> vector, SearchOptions? options = null, CancellationToken ct = default);
+    Task<IEnumerable<VectorRecord>> FindVectorsAsync(string collectionName, int limit = 20, VectorRecordFilter? filter = null, CancellationToken ct = default);
+    Task UpsertVectorsAsync(string collectionName, IEnumerable<VectorRecord> vectors, CancellationToken ct = default);
+    Task DeleteVectorsAsync(string collectionName, VectorRecordFilter filter, CancellationToken ct = default);
+    Task<IEnumerable<ScoredVectorRecord>> SearchVectorsAsync(string collectionName, float[] vector, float minScore = 0.0f, int limit = 5, VectorRecordFilter? filter = null, CancellationToken ct = default);
 }
 ```
 
@@ -85,32 +92,36 @@ Used internally by `IMemoryService`. Access via `hive.Memory`.
 ### Local Vector Storage (SQLite + sqlite-vec)
 
 ```csharp
-.AddLocalVectorStorage("local-vec", new LocalVectorConfig { Path = "./vectors" })
+.AddLocalVectorStorage("local-vec", new LocalVectorConfig { DatabasePath = "./data/vectors.db" })
 ```
 
 ### Qdrant
 
 ```csharp
-// dotnet add package IronHive.Storages.Qdrant
-.AddQdrantVectorStorage("qdrant", new QdrantConfig
+// dotnet add package IronHive.Storages.Qdrant — no shortcut extension; register the storage instance
+.AddVectorStorage("qdrant", new QdrantVectorStorage(new QdrantConfig
 {
-    Endpoint = "http://localhost:6333",
-    ApiKey   = "..."                    // optional
-})
+    Host   = "localhost",
+    Port   = 6334,                 // gRPC port (default)
+    Https  = false,
+    ApiKey = "..."                 // optional
+}))
 ```
 
 ---
 
 ## IQueueStorage (Task Queue)
 
+Each `IQueueStorage` instance is one queue.
+
 ```csharp
-public interface IQueueStorage
+public interface IQueueStorage : IDisposable
 {
-    Task EnqueueAsync<T>(string queueName, T item, CancellationToken ct = default);
-    Task<T?> DequeueAsync<T>(string queueName, CancellationToken ct = default);
-    Task<int> CountAsync(string queueName, CancellationToken ct = default);
-    Task AckAsync(string queueName, string messageId, CancellationToken ct = default);
-    Task NackAsync(string queueName, string messageId, CancellationToken ct = default);
+    Task<IQueueConsumer> CreateConsumerAsync<T>(Func<IQueueMessage<T>, Task> onReceived, CancellationToken ct = default);
+    Task<int> CountAsync(CancellationToken ct = default);
+    Task ClearAsync(CancellationToken ct = default);
+    Task EnqueueAsync<T>(T message, CancellationToken ct = default);
+    Task<IQueueMessage<T>?> DequeueAsync<T>(CancellationToken ct = default);
 }
 ```
 
@@ -119,18 +130,22 @@ Used internally by `MemoryWorker` pipeline. Specify name in `UseQueue("name")`.
 ### Local Queue Storage (file-based: .qmsg / .qlock / .qdead)
 
 ```csharp
-.AddLocalQueueStorage("local-queue", new LocalQueueConfig { Path = "./queues" })
+.AddLocalQueueStorage("local-queue", new LocalQueueConfig { DirectoryPath = "./data/queue" })
 ```
 
 ### RabbitMQ
 
 ```csharp
-// dotnet add package IronHive.Storages.RabbitMQ
-.AddRabbitMQQueueStorage("rabbit", new RabbitMQConfig
+// dotnet add package IronHive.Storages.RabbitMQ — no shortcut extension; register the storage instance
+.AddQueueStorage("rabbit", new RabbitMQueueStorage(new RabbitMQConfig
 {
-    ConnectionString = "amqp://user:pass@localhost:5672",
-    VirtualHost      = "/"
-})
+    Host        = "localhost",
+    Port        = 5672,
+    UserName    = "user",
+    Password    = "pass",
+    VirtualHost = "/",
+    QueueName   = "hive-tasks"     // required
+}))
 ```
 
 ---
@@ -142,9 +157,9 @@ Used internally by `MemoryWorker` pipeline. Specify name in `UseQueue("name")`.
 ```csharp
 var hive = new HiveServiceBuilder()
     .AddOpenAIProviders("openai", new OpenAIConfig { ApiKey = "sk-..." })
-    .AddLocalFileStorage("files", new LocalFileConfig { Path = "./data/files" })
-    .AddLocalVectorStorage("vectors", new LocalVectorConfig { Path = "./data/vectors" })
-    .AddLocalQueueStorage("queue", new LocalQueueConfig { Path = "./data/queue" })
+    .AddLocalFileStorage("files")
+    .AddLocalVectorStorage("vectors", new LocalVectorConfig { DatabasePath = "./data/vectors.db" })
+    .AddLocalQueueStorage("queue", new LocalQueueConfig { DirectoryPath = "./data/queue" })
     .Build();
 ```
 
@@ -154,8 +169,8 @@ var hive = new HiveServiceBuilder()
 var hive = new HiveServiceBuilder()
     .AddOpenAIProviders("openai", config)
     .AddAmazonS3Storage("s3", s3Config)
-    .AddQdrantVectorStorage("qdrant", qdrantConfig)
-    .AddRabbitMQQueueStorage("rabbit", rabbitConfig)
+    .AddVectorStorage("qdrant", new QdrantVectorStorage(qdrantConfig))
+    .AddQueueStorage("rabbit", new RabbitMQueueStorage(rabbitConfig))
     .Build();
 
 // Create RAG collection using cloud stack
@@ -165,8 +180,8 @@ await hive.Memory.CreateCollectionAsync("qdrant", "documents", "openai", "text-e
 var worker = hive.CreateMemoryWorkerFrom(b =>
     b.UseQueue("rabbit")
      .Then<TextExtractionPipeline>("extract")
-     .Then<TextChunkingPipeline, TextChunkingOptions>("chunk",
-         new TextChunkingOptions { ChunkSize = 512, ChunkOverlap = 50 })
+     .Then<TextChunkingPipeline, TextChunkingPipeline.Options>("chunk",
+         new TextChunkingPipeline.Options(ChunkSize: 512, ChunkOverlap: 50))
      .Then<CreateVectorsPipeline>("embed")
      .Then<StoreVectorsPipeline>("store")
      .Build());

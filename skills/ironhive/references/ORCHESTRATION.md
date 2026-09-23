@@ -8,19 +8,30 @@ All orchestrators implement `IAgentOrchestrator` and can be wrapped as `IAgent` 
 |---------|-------|-------------|
 | Sequential | `SequentialOrchestrator` | Chain agents in order, output passes to next |
 | Parallel | `ParallelOrchestrator` | Run agents concurrently, collect all results |
-| Handoff | `HandoffOrchestrator` | Dynamic routing — agent decides who handles next |
-| GroupChat | `GroupChatOrchestrator` | Multi-turn discussion with speaker selection |
+| Handoff | `HandoffOrchestrator` (via `HandoffOrchestratorBuilder`) | Dynamic routing — agent decides who handles next |
+| GroupChat | `GroupChatOrchestrator` (via `GroupChatOrchestratorBuilder`) | Multi-turn discussion with speaker selection |
 | HubSpoke | `HubSpokeOrchestrator` | Central coordinator dispatches to specialist agents |
-| Graph (DAG) | `GraphOrchestrator` | Conditional branching, complex workflows |
+| Graph (DAG) | `GraphOrchestrator` (via `GraphOrchestratorBuilder`) | Conditional branching, complex workflows |
 
 ## Core Interface
 
 ```csharp
 public interface IAgentOrchestrator
 {
-    IAsyncEnumerable<OrchestrationStreamEvent> ExecuteAsync(
+    string Name { get; }
+    IReadOnlyList<IAgent> Agents { get; }
+    bool SupportsRealTimeStreaming { get; }
+
+    void AddAgent(IAgent agent);
+    void AddAgents(IEnumerable<IAgent> agents);
+
+    Task<OrchestrationResult> ExecuteAsync(
         IEnumerable<Message> messages,
-        CancellationToken ct = default);
+        CancellationToken cancellationToken = default);
+
+    IAsyncEnumerable<OrchestrationStreamEvent> ExecuteStreamingAsync(
+        IEnumerable<Message> messages,
+        CancellationToken cancellationToken = default);
 }
 
 // Wrap as IAgent
@@ -30,95 +41,104 @@ IAgent agent = orchestrator.AsAgent();
 ## OrchestrationStreamEvent
 
 ```csharp
-public class OrchestrationStreamEvent
+public sealed class OrchestrationStreamEvent
 {
-    public OrchestrationEventType Type { get; }
-    public string? AgentName { get; }
-    public IEnumerable<MessageContent>? Content { get; }
-    public OrchestrationResult? Result { get; }     // on Completed
+    public required OrchestrationEventType EventType { get; init; }
+    public string? AgentName { get; init; }
+    public StreamingMessageResponse? StreamingResponse { get; init; }  // on MessageDelta
+    public MessageResponse? CompletedResponse { get; init; }           // on AgentCompleted
+    public OrchestrationResult? Result { get; init; }                  // on Completed
+    public string? Error { get; init; }
 }
 
 public enum OrchestrationEventType
 {
     Started,
     AgentStarted,
-    MessageDelta,         // streaming text chunk from agent
+    MessageDelta,         // streaming chunk from agent
     AgentCompleted,
     AgentFailed,
-    Handoff,
-    SpeakerSelected,
+    Completed,
+    Failed,
     ApprovalRequired,
     ApprovalGranted,
     ApprovalDenied,
-    HumanInputRequired,
-    Completed,
-    Failed
+    Handoff,
+    SpeakerSelected,
+    HumanInputRequired
 }
 ```
+
+## Common Options
+
+Every orchestrator's options derive from `OrchestratorOptions`: `Name`, `Timeout` (default 5 min),
+`AgentTimeout` (default 2 min), `StopOnAgentFailure` (default true), `CheckpointStore`, `OrchestrationId`,
+`ApprovalHandler`, `RequireApprovalForAgents`, `AgentMiddlewares`, `ContextScope`, `ResultDistiller`,
+`ResultDistillationOptions`.
 
 ## Sequential Orchestrator
 
 ```csharp
-var orchestrator = new SequentialOrchestrator(
-    new[] { researchAgent, summaryAgent, reviewAgent },
-    new SequentialOrchestratorOptions
-    {
-        PassResultToNext = true    // each agent receives previous output
-    });
+var orchestrator = new SequentialOrchestrator(new SequentialOrchestratorOptions
+{
+    PassOutputAsInput = true,    // each agent receives previous output (default: true)
+    AccumulateHistory = false    // pass the full accumulated history instead (default: false)
+});
+orchestrator.AddAgents([researchAgent, summaryAgent, reviewAgent]);
 
 // Stream results
-await foreach (var evt in orchestrator.ExecuteAsync(messages))
+await foreach (var evt in orchestrator.ExecuteStreamingAsync(messages))
 {
-    if (evt.Type == OrchestrationEventType.MessageDelta)
-        Console.Write(evt.Content?.OfType<TextMessageContent>().FirstOrDefault()?.Value);
+    if (evt.EventType == OrchestrationEventType.MessageDelta
+        && evt.StreamingResponse is StreamingContentDeltaResponse { Delta: TextDeltaContent text })
+        Console.Write(text.Value);
 }
 ```
 
 ## Parallel Orchestrator
 
 ```csharp
-var orchestrator = new ParallelOrchestrator(
-    new[] { agentA, agentB, agentC },
-    new ParallelOrchestratorOptions
-    {
-        MaxConcurrency = 3
-    });
-
-await foreach (var evt in orchestrator.ExecuteAsync(messages))
+var orchestrator = new ParallelOrchestrator(new ParallelOrchestratorOptions
 {
-    if (evt.Type == OrchestrationEventType.AgentCompleted)
+    MaxConcurrency    = 3,                                // null = unlimited (default)
+    ResultAggregation = ParallelResultAggregation.All     // All | FirstSuccess | Fastest | Merge
+});
+orchestrator.AddAgents([agentA, agentB, agentC]);
+
+await foreach (var evt in orchestrator.ExecuteStreamingAsync(messages))
+{
+    if (evt.EventType == OrchestrationEventType.AgentCompleted)
         Console.WriteLine($"{evt.AgentName} finished");
 }
 ```
 
 ## Handoff Orchestrator
 
+An agent hands off by emitting JSON such as `{"handoff_to": "billing", "context": "..."}`.
+
 ```csharp
 var orchestrator = new HandoffOrchestratorBuilder()
+    // Description is put into the prompt; the model picks a target from it
     .AddAgent(triageAgent,
-        new HandoffTarget { Name = "Billing", Condition = "billing-related question" },
-        new HandoffTarget { Name = "Technical", Condition = "technical issue" })
+        new HandoffTarget { AgentName = "billing",   Description = "billing-related question" },
+        new HandoffTarget { AgentName = "technical", Description = "technical issue" })
     .AddAgent(billingAgent)
     .AddAgent(technicalAgent)
-    .SetInitialAgent("Triage")
-    .WithOptions(new HandoffOrchestratorOptions
-    {
-        MaxTransitions     = 20,
-        ApprovalHandler    = async (agent, msgs, ct) => true,   // auto-approve
-        ContextScope       = new LastNMessagesScope(20)
-    })
+    .SetInitialAgent("triage")
+    .SetMaxTransitions(20)
+    .SetApprovalHandler((agentName, previousStep) => Task.FromResult(true))   // auto-approve
+    .SetContextScope(new LastNMessagesScope(20))
     .Build();
 ```
 
 ### HandoffOrchestratorOptions
 
 ```csharp
-public class HandoffOrchestratorOptions
+public class HandoffOrchestratorOptions : OrchestratorOptions
 {
-    public int MaxTransitions { get; set; } = 10;
-    public Func<IAgent, IEnumerable<Message>, CancellationToken, Task<bool>>? ApprovalHandler { get; set; }
-    public IContextScope? ContextScope { get; set; }
-    public IResultDistiller? ResultDistiller { get; set; }
+    public required string InitialAgentName { get; set; }
+    public int MaxTransitions { get; set; } = 20;
+    public Func<string, AgentStepResult, Task<Message?>>? NoHandoffHandler { get; set; }
 }
 ```
 
@@ -129,13 +149,10 @@ var orchestrator = new GroupChatOrchestratorBuilder()
     .AddAgent(agentA)
     .AddAgent(agentB)
     .AddAgent(agentC)
-    .WithOptions(new GroupChatOrchestratorOptions
-    {
-        SpeakerSelector      = new LlmSpeakerSelector(managerAgent),   // or RoundRobinSpeakerSelector / RandomSpeakerSelector
-        TerminationCondition = new KeywordTerminationCondition("TERMINATE"),  // or MaxRoundsTerminationCondition(10)
-        MaxRounds            = 20,
-        ContextScope         = new LastNMessagesScope(30)
-    })
+    .WithLlmManager(managerAgent)          // or .WithRoundRobin() / .WithRandom() / .WithSpeakerSelector(...)
+    .TerminateOnKeyword("TERMINATE")       // or .TerminateAfterRounds(10) / .TerminateOnTokenBudget(...) / .WithTerminationCondition(...)
+    .SetMaxRounds(20)                      // safety cap (default: 50)
+    .SetContextScope(new LastNMessagesScope(30))
     .Build();
 ```
 
@@ -150,8 +167,12 @@ new RandomSpeakerSelector()               // random
 ### Termination Conditions
 
 ```csharp
-new KeywordTerminationCondition("TERMINATE")   // stop when keyword appears
-new MaxRoundsTerminationCondition(10)          // stop after N rounds
+new KeywordTermination("TERMINATE")       // stop when keyword appears
+new MaxRoundsTermination(10)              // stop after N rounds
+new TokenBudgetTermination(50_000)        // stop after a token budget
+new CompositeTermination(requireAll: false,
+    new KeywordTermination("DONE"),
+    new MaxRoundsTermination(5))          // OR (requireAll: true = AND)
 ```
 
 ## Graph Orchestrator (DAG)
@@ -161,24 +182,29 @@ var orchestrator = new GraphOrchestratorBuilder()
     .AddNode("classify", classifyAgent)
     .AddNode("billing",  billingAgent)
     .AddNode("general",  generalAgent)
-    .AddEdge("classify", "billing", result =>
-        result.Text?.Contains("billing", StringComparison.OrdinalIgnoreCase) == true)
-    .AddEdge("classify", "general")   // default (no condition = fallthrough)
+    .AddEdge("classify", "billing", step =>
+        step.Response?.Message?.Content.OfType<TextMessageContent>()
+            .Any(t => t.Value.Contains("billing", StringComparison.OrdinalIgnoreCase)) == true)
+    .AddEdge("classify", "general")   // no condition = always taken
     .SetStartNode("classify")
-    .SetOutputNode("billing", "general")   // terminal nodes
+    .SetOutputNode("billing")
     .Build();
 ```
+
+Cycles are rejected at `Build()` — for retry loops use HubSpoke (`MaxRounds`) or GroupChat (termination conditions).
 
 ## HubSpoke Orchestrator
 
 ```csharp
-var orchestrator = new HubSpokeOrchestrator(
-    hubAgent,
-    new[] { specialistA, specialistB, specialistC },
-    new HubSpokeOrchestratorOptions
-    {
-        MaxIterations = 5
-    });
+var orchestrator = new HubSpokeOrchestrator(new HubSpokeOrchestratorOptions
+{
+    MaxRounds      = 5,        // default: 10
+    ParallelSpokes = false
+});
+orchestrator.SetHubAgent(hubAgent);
+orchestrator.AddSpokeAgent(specialistA);
+orchestrator.AddSpokeAgent(specialistB);
+orchestrator.AddSpokeAgent(specialistC);
 ```
 
 ## Checkpoint / Resume
@@ -192,8 +218,16 @@ var store = new FileCheckpointStore("./checkpoints");
 
 var orchestrator = new HandoffOrchestratorBuilder()
     // ...
-    .WithCheckpointStore(store, orchestrationId: "session-abc-123")
+    .SetCheckpointStore(store)
+    .SetOrchestrationId("session-abc-123")   // re-running with the same id resumes from the checkpoint
     .Build();
+
+// Options-based orchestrators take the same two settings as options
+var sequential = new SequentialOrchestrator(new SequentialOrchestratorOptions
+{
+    CheckpointStore = store,
+    OrchestrationId = "session-abc-123"
+});
 ```
 
 ## Context Scopes
@@ -201,26 +235,32 @@ var orchestrator = new HandoffOrchestratorBuilder()
 Controls how much conversation history each agent receives:
 
 ```csharp
-new LastNMessagesScope(20)       // last N messages only
-new SummaryContextScope(agent)   // summarize older history via agent
-new TaskOnlyScope()              // only the original task message
+new LastNMessagesScope(20)          // last N messages only (default 5)
+new SummaryContextScope()           // compress older history into a structured summary (SummaryContextScopeOptions)
+new TaskOnlyScope()                 // only the original task message
 ```
 
 ## OrchestrationResult
 
 ```csharp
-public class OrchestrationResult
+public sealed class OrchestrationResult
 {
-    public IEnumerable<AgentStepResult> Steps { get; }  // per-agent results
-    public TokenUsageSummary Usage { get; }             // aggregated token usage
-    public Message? FinalMessage { get; }               // last agent output
+    public bool IsSuccess { get; init; }
+    public Message? FinalOutput { get; init; }                  // last agent output
+    public IReadOnlyList<AgentStepResult> Steps { get; init; }  // per-agent results
+    public TimeSpan TotalDuration { get; init; }
+    public TokenUsageSummary? TokenUsage { get; init; }         // aggregated token usage
+    public string? Error { get; init; }
 }
 
-public class AgentStepResult
+public sealed class AgentStepResult
 {
-    public string AgentName { get; }
-    public MessageResponse Response { get; }
-    public TimeSpan Duration { get; }
+    public required string AgentName { get; init; }
+    public IReadOnlyList<Message> Input { get; init; }
+    public MessageResponse? Response { get; init; }
+    public TimeSpan Duration { get; init; }
+    public bool IsSuccess { get; init; }
+    public string? Error { get; init; }
 }
 ```
 
@@ -234,7 +274,9 @@ IAgent orchestratorAgent = orchestrator.AsAgent(
 );
 
 // Can then be used in another orchestrator
-var outer = new SequentialOrchestrator(new[] { orchestratorAgent, reviewAgent });
+var outer = new SequentialOrchestrator();
+outer.AddAgent(orchestratorAgent);
+outer.AddAgent(reviewAgent);
 ```
 
 Orchestrator-wrapped agents do not support per-request `AgentInvokeOptions` —

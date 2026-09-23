@@ -5,32 +5,35 @@
 ```csharp
 public interface ITool
 {
-    string UniqueName { get; }
-    string Name { get; }
+    string UniqueName { get; }      // the name the LLM calls the tool by
     string? Description { get; }
+    object? Parameters { get; }     // JSON Schema of the input
     bool RequiresApproval { get; }  // default: false (true for MCP/OpenAPI tools)
+
+    Task<ToolOutput> InvokeAsync(ToolInput input, CancellationToken cancellationToken = default);
 }
 ```
 
 ## IToolCollection
 
 ```csharp
-public interface IToolCollection : IEnumerable<ITool>
+public interface IToolCollection : ICollection<ITool>
 {
-    // Add function tools
-    void AddFunctionTool<T>() where T : class;                          // from type (DI-resolved)
-    void AddFunctionTool<T>(T instance) where T : class;               // from instance
-    void AddFunctionTool(string name, string description,
-        Func<string, Task<string>> handler);                           // delegate (single param)
-
-    // Filter / set
-    IToolCollection FilterBy(Func<ITool, bool> predicate);
-    void Set(ITool tool);
-    void SetRange(IEnumerable<ITool> tools);
-
-    // Lookup
-    ITool? Get(string uniqueName);
+    IReadOnlyCollection<string> Keys { get; }
+    bool TryGet(string key, [MaybeNullWhen(false)] out ITool item);
+    bool ContainsKey(string key);
+    void AddRange(IEnumerable<ITool> items);
+    void Set(ITool item);                                  // add or replace
+    void SetRange(IEnumerable<ITool> items);
+    bool Remove(string key);
+    int RemoveAll(Predicate<ITool>? match = null);
+    IToolCollection FilterBy(IEnumerable<string> names);
 }
+
+// Function-tool registration (extension methods, IronHive.Core)
+tools.AddFunctionTool<MyTools>(serviceProvider);                 // from type ([FunctionTool] methods; optional DI)
+tools.AddFunctionTool(new MyTools());                             // from instance
+tools.AddFunctionTool(delegateFn, new DelegateDescriptor { Name = "...", Description = "..." });
 ```
 
 ## [FunctionTool] Attribute
@@ -41,7 +44,7 @@ public class FunctionToolAttribute : Attribute
     public string? Name { get; set; }           // defaults to method name
     public string? Description { get; set; }    // required for LLM to use the tool
     public bool RequiresApproval { get; set; }  // default: false
-    public int Timeout { get; set; }            // seconds, default: 60
+    public long Timeout { get; set; }           // seconds, default: 60
 }
 ```
 
@@ -103,7 +106,7 @@ var agent = hive.CreateAgentFrom(cfg =>
 
 agent.Tools ??= new ToolCollection();
 
-// From type (uses DI if ServiceProvider available)
+// From type (pass an IServiceProvider for [FromServices] parameters)
 agent.Tools.AddFunctionTool<MyTools>();
 
 // From instance
@@ -111,47 +114,52 @@ agent.Tools.AddFunctionTool(new MyTools());
 
 // Single delegate
 agent.Tools.AddFunctionTool(
-    "calculator",
-    "Evaluate a math expression",
-    async (string expr) => Evaluate(expr).ToString()
-);
+    (string expr) => Evaluate(expr).ToString(),
+    new DelegateDescriptor { Name = "calculator", Description = "Evaluate a math expression" });
 ```
 
 ## MCP Tools
 
+`McpClientManager` keeps the tools of every connected server in the `IToolCollection` it was
+constructed with: they are added when a session connects and removed when it disconnects or errors.
+
 ```csharp
 using IronHive.Plugins.MCP;
 
-// HTTP transport
-var mcpManager = new McpClientManager();
-await mcpManager.AddClientAsync("my-server", new McpHttpClientConfig
+agent.Tools ??= new ToolCollection();
+var mcpManager = new McpClientManager(agent.Tools);
+
+// HTTP transport (SSE / Streamable HTTP) — AddOrUpdate is synchronous; the session connects in the background
+mcpManager.AddOrUpdate(new McpHttpClientConfig
 {
-    Endpoint = new Uri("https://mcp.example.com/sse")
+    ServerName = "my-server",
+    Endpoint   = new Uri("https://mcp.example.com/mcp")
 });
 
 // Stdio transport
-await mcpManager.AddClientAsync("local-server", new McpStdioClientConfig
+mcpManager.AddOrUpdate(new McpStdioClientConfig
 {
-    Command = "npx",
-    Args    = ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/files"]
+    ServerName = "local-server",
+    Command    = "npx",
+    Arguments  = ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/files"]
 });
 
-// HTTP with OAuth 2.0
-await mcpManager.AddClientAsync("oauth-server", new McpHttpClientConfig
+// HTTP with OAuth 2.0 (endpoints are discovered from the server's metadata)
+mcpManager.AddOrUpdate(new McpHttpClientConfig
 {
-    Endpoint = new Uri("https://mcp.example.com/sse"),
-    OAuth    = new McpHttpOAuthConfig
+    ServerName = "oauth-server",
+    Endpoint   = new Uri("https://mcp.example.com/mcp"),
+    OAuth      = new McpHttpOAuthConfig
     {
-        ClientId     = "client-id",
-        ClientSecret = "client-secret",
-        TokenEndpoint = new Uri("https://auth.example.com/token")
+        RedirectUri  = new Uri("http://localhost:8080/callback"),   // required
+        ClientId     = "client-id",        // null = Dynamic Client Registration
+        ClientSecret = "client-secret"     // optional with PKCE
     }
 });
 
-// Get tools and add to agent
-var tools = await mcpManager.GetToolsAsync("my-server");
-agent.Tools ??= new ToolCollection();
-agent.Tools.SetRange(tools);
+// One server's tools, read directly from its session
+var session = mcpManager.GetSession("my-server");
+IEnumerable<McpTool> tools = session is null ? [] : await session.ListToolsAsync();
 ```
 
 MCP tool `UniqueName` format: `"mcp_{ServerName}_{ToolName}"`, `RequiresApproval = true`
@@ -161,17 +169,18 @@ MCP tool `UniqueName` format: `"mcp_{ServerName}_{ToolName}"`, `RequiresApproval
 ```csharp
 using IronHive.Plugins.OpenAPI;
 
-var openApiManager = new OpenApiClientManager();
-await openApiManager.AddClientAsync("petstore", new OpenApiClientConfig
-{
-    SpecUrl   = new Uri("https://petstore.swagger.io/v2/swagger.json"),
-    BaseUrl   = "https://petstore.swagger.io/v2"
-});
-
-var tools = await openApiManager.GetToolsAsync("petstore");
 agent.Tools ??= new ToolCollection();
-agent.Tools.SetRange(tools);
+var openApiManager = new OpenApiClientManager(agent.Tools);
+
+// The request base URL comes from the spec's `servers`, not from an option
+var client = await OpenApiClientFactory.CreateFromUrlAsync(
+    "petstore", "https://petstore.swagger.io/v2/swagger.json");
+
+openApiManager.AddOrUpdate(client);   // the spec's operations are registered in agent.Tools
 ```
+
+Credentials and default headers go in `OpenApiClientOptions` (`Credentials` keyed by security scheme name,
+`DefaultHeaders`, `TimeoutSeconds`), passed as the factory's `options` argument.
 
 OpenAPI tool `UniqueName` format: `"openapi_{ClientName}_{OperationId}"`, `RequiresApproval = true`
 
@@ -229,38 +238,55 @@ Before every turn it shares the budget out over this call's tool results in call
 result longer than what is left is cut, one with nothing left becomes `ExhaustedNotice` — and
 once the budget is spent it requests `ToolChoice.None`. Text only; buffered and streaming.
 
-## Approval Handler
+## Approval
 
-Tools with `RequiresApproval = true` pause execution for human confirmation:
+Calls to a tool with `RequiresApproval = true` come back as a `ToolMessageContent` with
+`IsApproved = false`. `MessageService` does not run unapproved calls; it ends the loop and returns
+the assistant message with the pending call. To continue, set `IsApproved = true` on the calls you
+approve, append that assistant message to `Messages`, and call again — the next call runs the
+approved tools before generating.
 
 ```csharp
-// In orchestrator options
-WithOptions(new HandoffOrchestratorOptions
+var response = await hive.Messages.GenerateMessageAsync(request);
+
+var pending = response.Message?.Content.OfType<ToolMessageContent>().Where(t => !t.IsApproved).ToList() ?? [];
+if (pending.Count > 0)
 {
-    ApprovalHandler = async (agent, messages, ct) =>
+    foreach (var call in pending)
     {
-        Console.Write("Approve tool execution? [y/n]: ");
-        return Console.ReadLine() == "y";
+        Console.Write($"Approve {call.Name}({call.Input})? [y/n]: ");
+        call.IsApproved = Console.ReadLine() == "y";
     }
-})
+    request.Messages.Add(response.Message!);
+    response = await hive.Messages.GenerateMessageAsync(request);
+}
 ```
 
-Events emitted: `ApprovalRequired` → `ApprovalGranted` / `ApprovalDenied`
+Orchestrators have a separate, per-agent gate — `ApprovalHandler` on the options, or
+`SetApprovalHandler((agentName, previousStep) => ...)` on the Handoff/GroupChat builders — which emits
+`ApprovalRequired` → `ApprovalGranted` / `ApprovalDenied` (see [ORCHESTRATION.md](ORCHESTRATION.md)).
 
 ## Custom ITool Implementation
 
 ```csharp
 public class MyCustomTool : ITool
 {
-    public string UniqueName    => "my_custom_tool";
-    public string Name          => "Custom Tool";
-    public string? Description  => "Does something custom";
+    public string UniqueName     => "my_custom_tool";
+    public string? Description   => "Does something custom";
     public bool RequiresApproval => false;
 
-    public async Task<string> ExecuteAsync(JsonElement arguments)
+    public object? Parameters => new
     {
-        var input = arguments.GetProperty("input").GetString();
-        return $"Result: {input}";
+        type = "object",
+        properties = new { input = new { type = "string" } },
+        required = new[] { "input" }
+    };
+
+    public Task<ToolOutput> InvokeAsync(ToolInput input, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(input.TryGetValue<string>("input", out var value)
+            ? ToolOutput.Success($"Result: {value}")
+            : ToolOutput.Failure("input is required"));
     }
 }
 ```

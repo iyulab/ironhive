@@ -36,6 +36,9 @@ public class DocsSnippetRosterTests
     {
         // A sample's own services (its database, its search backend) that a tool example wraps
         "QueryAsync", "SearchAsync",
+        // OpenTelemetry SDK (OpenTelemetry.Extensions.Hosting / OpenTelemetry): the telemetry guide subscribes to
+        // HiveTelemetry.SourceName, the ActivitySource and Meter IronHive.Core emits
+        "AddOpenTelemetry", "WithTracing", "WithMetrics", "AddSource", "AddMeter",
     };
 
     /// <summary>
@@ -44,17 +47,6 @@ public class DocsSnippetRosterTests
     /// </summary>
     private static readonly Dictionary<string, string[]> KnownDrift = new(StringComparer.Ordinal)
     {
-        // The agent skill references (skills/ironhive/references) were written against an earlier API:
-        // storage and provider config members, middleware option types and several builder names that no
-        // longer exist. Pinned when the scan was widened to them; repaired file by file.
-        ["skills/ironhive/references/MEMORY.md"] = ["SearchOptions.TopK", "TextChunkingOptions (no such type in the library assemblies)"],
-        ["skills/ironhive/references/MIDDLEWARE.md"] = ["BulkheadOptions (no such type in the library assemblies)", "CachingOptions (no such type in the library assemblies)", "CircuitBreakerOptions (no such type in the library assemblies)", "FallbackOptions (no such type in the library assemblies)", "GetText", "LoggingOptions (no such type in the library assemblies)", "RateLimitOptions (no such type in the library assemblies)", "RetryOptions (no such type in the library assemblies)", "TimeoutOptions (no such type in the library assemblies)"],
-        ["skills/ironhive/references/ORCHESTRATION.md"] = ["HubSpokeOrchestratorOptions.MaxIterations", "SequentialOrchestratorOptions.PassResultToNext", "WithCheckpointStore"],
-        ["skills/ironhive/references/PROVIDERS.md"] = ["OpenAIConfig.OrgId", "VertexAIConfig.Credentials", "VertexAIConfig.ProjectId"],
-        ["skills/ironhive/references/SERVICES.md"] = ["AddMeter", "AddOpenTelemetry", "AddSource", "SearchOptions.TopK", "SpeechToTextAsync", "TextToSpeechAsync", "WithMetrics", "WithTracing"],
-        ["skills/ironhive/references/SETUP.md"] = ["AddQdrantVectorStorage", "AddRabbitMQQueueStorage", "AmazonS3Config.AccessKeyId", "AmazonS3Config.Region", "AzureBlobConfig (no such type in the library assemblies)", "AzureFilesConfig (no such type in the library assemblies)", "LocalFileConfig (no such type in the library assemblies)", "LocalQueueConfig.Path", "LocalVectorConfig.Path", "OpenAIConfig.OrgId", "QdrantConfig.Endpoint", "RabbitMQConfig.ConnectionString", "VertexAIConfig.Credentials", "VertexAIConfig.ProjectId"],
-        ["skills/ironhive/references/STORAGES.md"] = ["AddQdrantVectorStorage", "AddRabbitMQQueueStorage", "AmazonS3Config.AccessKeyId", "AmazonS3Config.Region", "AzureBlobConfig (no such type in the library assemblies)", "AzureFilesConfig (no such type in the library assemblies)", "LocalFileConfig (no such type in the library assemblies)", "LocalQueueConfig.Path", "LocalVectorConfig.Path", "QdrantConfig.Endpoint", "RabbitMQConfig.ConnectionString", "TextChunkingOptions (no such type in the library assemblies)"],
-        ["skills/ironhive/references/TOOLS.md"] = ["AddClientAsync", "GetToolsAsync", "McpHttpOAuthConfig.TokenEndpoint", "McpStdioClientConfig.Args", "OpenApiClientConfig (no such type in the library assemblies)"],
     };
 
     /// <summary>Option-shaped types from other SDKs that a document legitimately shows (not ours to declare).</summary>

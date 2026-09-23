@@ -7,9 +7,10 @@ All providers are registered on `HiveServiceBuilder` by name. The name string is
 ```csharp
 .AddOpenAIProviders("openai", new OpenAIConfig
 {
-    ApiKey  = "sk-...",
-    OrgId   = "org-...",            // optional
-    BaseUrl = "https://..."         // optional — for Azure OpenAI or proxy
+    ApiKey       = "sk-...",
+    Organization = "org-...",       // optional
+    Project      = "proj_...",      // optional
+    BaseUrl      = "https://.../v1" // optional — full endpoint incl. the version segment (proxy/gateway)
 }, OpenAIServiceType.All)           // optional flag — see below
 ```
 
@@ -19,12 +20,12 @@ All providers are registered on `HiveServiceBuilder` by name. The name string is
 [Flags]
 public enum OpenAIServiceType
 {
-    Messages    = 1,    // Chat completions
-    Embeddings  = 2,    // Embeddings
-    Images      = 4,    // DALL-E image generation
-    Audio       = 8,    // TTS + STT
-    Models      = 16,   // Model listing
-    All         = Messages | Embeddings | Images | Audio | Models
+    Models      = 1 << 0,   // Model listing
+    Messages    = 1 << 1,   // Chat
+    Embeddings  = 1 << 2,   // Embeddings
+    Images      = 1 << 3,   // Image generation
+    Audio       = 1 << 4,   // TTS + STT
+    All         = Models | Messages | Embeddings | Images | Audio
 }
 ```
 
@@ -59,9 +60,9 @@ public enum OpenAIServiceType
 ```csharp
 .AddVertexAIProviders("vertex", new VertexAIConfig
 {
-    ProjectId   = "my-gcp-project",
-    Location    = "us-central1",
-    Credentials = "path/to/service-account.json"   // optional; uses ADC if omitted
+    Project    = "my-gcp-project",
+    Location   = "us-central1",
+    Credential = GoogleCredential.GetApplicationDefault()   // required (Google.Apis.Auth ICredential)
 })
 ```
 
@@ -74,8 +75,8 @@ Supports any provider with OpenAI-compatible API:
 ```csharp
 .AddOpenAICompatibleProviders("provider-name", new OpenAICompatibleConfig
 {
-    BaseUrl = "http://localhost:11434/v1",
-    ApiKey  = "ollama"     // required by spec even if not validated
+    BaseUrl = "http://localhost:11434",   // server address without the API path; Path (default "/v1") is appended
+    ApiKey  = "ollama"                    // optional — LAN services often accept no key
 })
 ```
 
@@ -110,7 +111,7 @@ var req = new MessageRequest
 };
 
 // In EmbeddingService
-var emb = await hive.Embeddings.GenerateEmbeddingAsync("google", "text-embedding-004", text);
+float[] emb = await hive.Embeddings.EmbedAsync("google", "text-embedding-004", text);
 
 // In Memory collection
 await hive.Memory.CreateCollectionAsync("qdrant", "docs", "openai", "text-embedding-3-small");

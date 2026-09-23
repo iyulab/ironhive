@@ -12,33 +12,40 @@ Middleware wraps an `IAgent` and intercepts `InvokeAsync` / `InvokeStreamingAsyn
 IAgent agent = hive.CreateAgentFrom(cfg => { ... });
 
 // Single middleware
-agent = agent.WithMiddleware(new RetryMiddleware(new RetryOptions { MaxAttempts = 3 }));
+agent = agent.WithMiddleware(new RetryMiddleware(maxRetries: 3));
 
-// Chained (applied inner-first)
-agent = agent
-    .WithMiddleware(new RetryMiddleware(new RetryOptions { MaxAttempts = 3 }))
-    .WithMiddleware(new TimeoutMiddleware(new TimeoutOptions { Timeout = TimeSpan.FromSeconds(30) }))
-    .WithMiddleware(new LoggingMiddleware(logger));
+// Several at once — executed left to right (the first one is outermost)
+agent = agent.WithMiddleware(
+    new LoggingMiddleware(Console.WriteLine),
+    new RetryMiddleware(new RetryMiddlewareOptions { MaxRetries = 3 }),
+    new TimeoutMiddleware(new TimeoutMiddlewareOptions { Timeout = TimeSpan.FromSeconds(30) }));
 ```
+
+Every built-in middleware takes a `<Name>MiddlewareOptions` object; most also have a shorthand
+constructor (`RetryMiddleware(int maxRetries)`, `TimeoutMiddleware(TimeSpan)`, `RateLimitMiddleware(int, TimeSpan)`,
+`CircuitBreakerMiddleware(int, TimeSpan)`, `BulkheadMiddleware(int[, int])`, `CachingMiddleware(TimeSpan)`,
+`LoggingMiddleware(Action<string>)`, `FallbackMiddleware(IAgent)`).
 
 ## Built-in Middleware Types
 
 ### Retry
 
 ```csharp
-agent.WithMiddleware(new RetryMiddleware(new RetryOptions
+agent.WithMiddleware(new RetryMiddleware(new RetryMiddlewareOptions
 {
-    MaxAttempts  = 3,
-    Delay        = TimeSpan.FromSeconds(1),
-    BackoffType  = RetryBackoffType.Exponential,   // Linear | Exponential | Constant
-    RetryOn      = ex => ex is HttpRequestException
+    MaxRetries        = 3,
+    InitialDelay      = TimeSpan.FromSeconds(1),
+    MaxDelay          = TimeSpan.FromSeconds(30),
+    BackoffMultiplier = 2.0,                              // exponential backoff
+    JitterFactor      = 0.2,
+    ShouldRetry       = ex => ex is HttpRequestException
 }));
 ```
 
 ### Timeout
 
 ```csharp
-agent.WithMiddleware(new TimeoutMiddleware(new TimeoutOptions
+agent.WithMiddleware(new TimeoutMiddleware(new TimeoutMiddlewareOptions
 {
     Timeout = TimeSpan.FromSeconds(30)
 }));
@@ -47,7 +54,7 @@ agent.WithMiddleware(new TimeoutMiddleware(new TimeoutOptions
 ### Rate Limit
 
 ```csharp
-agent.WithMiddleware(new RateLimitMiddleware(new RateLimitOptions
+agent.WithMiddleware(new RateLimitMiddleware(new RateLimitMiddlewareOptions
 {
     MaxRequests = 10,
     Window      = TimeSpan.FromMinutes(1)
@@ -57,10 +64,10 @@ agent.WithMiddleware(new RateLimitMiddleware(new RateLimitOptions
 ### Circuit Breaker
 
 ```csharp
-agent.WithMiddleware(new CircuitBreakerMiddleware(new CircuitBreakerOptions
+agent.WithMiddleware(new CircuitBreakerMiddleware(new CircuitBreakerMiddlewareOptions
 {
     FailureThreshold = 5,
-    SamplingDuration = TimeSpan.FromSeconds(30),
+    FailureWindow    = TimeSpan.FromSeconds(30),
     BreakDuration    = TimeSpan.FromSeconds(60)
 }));
 ```
@@ -68,40 +75,42 @@ agent.WithMiddleware(new CircuitBreakerMiddleware(new CircuitBreakerOptions
 ### Bulkhead (Concurrency Limit)
 
 ```csharp
-agent.WithMiddleware(new BulkheadMiddleware(new BulkheadOptions
+agent.WithMiddleware(new BulkheadMiddleware(new BulkheadMiddlewareOptions
 {
     MaxConcurrency = 4,
-    MaxQueue       = 10
+    MaxQueueSize   = 10
 }));
 ```
 
 ### Caching
 
 ```csharp
-agent.WithMiddleware(new CachingMiddleware(new CachingOptions
+agent.WithMiddleware(new CachingMiddleware(new CachingMiddlewareOptions
 {
-    Duration   = TimeSpan.FromMinutes(5),
-    KeyBuilder = messages => string.Join("|", messages.Select(m => m.GetText()))
+    Expiration               = TimeSpan.FromMinutes(5),
+    MaxCacheSize             = 1000,
+    IncludeInstructionsInKey = true    // the key is computed from the messages (and options); there is no custom key builder
 }));
 ```
 
 ### Logging
 
 ```csharp
-agent.WithMiddleware(new LoggingMiddleware(logger, new LoggingOptions
+agent.WithMiddleware(new LoggingMiddleware(new LoggingMiddlewareOptions
 {
-    LogRequests  = true,
-    LogResponses = true,
-    LogLevel     = LogLevel.Debug
+    LogAction              = Console.WriteLine,        // any Action<string> sink (default: none)
+    IncludeMessagePreview  = true,
+    IncludeResponsePreview = true,
+    MaxPreviewLength       = 100
 }));
 ```
 
 ### Fallback
 
 ```csharp
-agent.WithMiddleware(new FallbackMiddleware(new FallbackOptions
+agent.WithMiddleware(new FallbackMiddleware(new FallbackMiddlewareOptions
 {
-    FallbackAgent = backupAgent,
+    FallbackAgent  = backupAgent,
     ShouldFallback = ex => ex is not OperationCanceledException
 }));
 ```
@@ -109,12 +118,14 @@ agent.WithMiddleware(new FallbackMiddleware(new FallbackOptions
 ### Composite
 
 ```csharp
-// Group multiple middleware as a single unit
-var composite = new CompositeMiddleware(
-    new RetryMiddleware(...),
-    new TimeoutMiddleware(...)
-);
+// Group multiple middleware as a single named unit
+var composite = new CompositeMiddleware("resilience",
+    new RetryMiddleware(maxRetries: 3),
+    new TimeoutMiddleware(TimeSpan.FromSeconds(30)));
 agent.WithMiddleware(composite);
+
+// Or use a ready-made pack
+agent.WithMiddleware(MiddlewarePacks.Resilience(maxRetries: 3, timeout: TimeSpan.FromSeconds(30)));
 ```
 
 ## Custom Middleware

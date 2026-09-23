@@ -48,9 +48,9 @@ public class MyService(IHiveService hive) { ... }
 // OpenAI — Chat, Embeddings, Images, Audio (TTS/STT)
 .AddOpenAIProviders("openai", new OpenAIConfig
 {
-    ApiKey  = "sk-...",
-    OrgId   = "org-...",        // optional
-    BaseUrl = "https://..."     // optional override
+    ApiKey       = "sk-...",
+    Organization = "org-...",       // optional
+    BaseUrl      = "https://.../v1" // optional override — full endpoint incl. version segment
 })
 
 // Anthropic — Chat only
@@ -62,16 +62,16 @@ public class MyService(IHiveService hive) { ... }
 // Vertex AI — same services via GCP
 .AddVertexAIProviders("vertex", new VertexAIConfig
 {
-    ProjectId = "my-project",
-    Location  = "us-central1",
-    Credentials = "path/to/sa.json"   // optional
+    Project    = "my-project",
+    Location   = "us-central1",
+    Credential = GoogleCredential.GetApplicationDefault()   // required (Google.Apis.Auth ICredential)
 })
 
 // OpenAI-compatible (Ollama, LM Studio, vLLM, DeepSeek, Groq…)
 .AddOpenAICompatibleProviders("ollama", new OpenAICompatibleConfig
 {
-    BaseUrl = "http://localhost:11434/v1",
-    ApiKey  = "ollama"
+    BaseUrl = "http://localhost:11434",   // "/v1" (Path) is appended
+    ApiKey  = "ollama"                    // optional
 })
 
 // GPUStack shortcut
@@ -85,14 +85,14 @@ public class MyService(IHiveService hive) { ... }
 ## Local Storage Extension Methods
 
 ```csharp
-// File storage (local filesystem)
-.AddLocalFileStorage("local-files", new LocalFileConfig { Path = "./storage" })
+// File storage (local filesystem — file paths are used as given; no config)
+.AddLocalFileStorage("local-files")
 
-// Vector storage (SQLite + sqlite-vec)
-.AddLocalVectorStorage("local-vec", new LocalVectorConfig { Path = "./vectors" })
+// Vector storage (SQLite + sqlite-vec) — DatabasePath is the SQLite file
+.AddLocalVectorStorage("local-vec", new LocalVectorConfig { DatabasePath = "./data/vectors.db" })
 
-// Queue storage (file-based .qmsg/.qlock/.qdead)
-.AddLocalQueueStorage("local-queue", new LocalQueueConfig { Path = "./queues" })
+// Queue storage (file-based .qmsg/.qlock/.qdead) — one directory per queue
+.AddLocalQueueStorage("local-queue", new LocalQueueConfig { DirectoryPath = "./data/queue" })
 ```
 
 ## External Storage
@@ -102,30 +102,36 @@ public class MyService(IHiveService hive) { ... }
 .AddAmazonS3Storage("s3", new AmazonS3Config
 {
     BucketName      = "my-bucket",
-    Region          = "us-east-1",
-    AccessKeyId     = "...",
+    RegionCode      = "us-east-1",
+    AccessKey       = "...",
     SecretAccessKey = "..."
 })
 
-// Azure Blob
-.AddAzureBlobStorage("azure-blob", new AzureBlobConfig
+// Azure Blob — StorageName is the container name
+.AddAzureBlobStorage("azure-blob", new AzureStorageConfig
 {
     ConnectionString = "DefaultEndpointsProtocol=...",
-    ContainerName    = "hive-files"
+    StorageName      = "hive-files"
 })
 
-// Azure File Share
-.AddAzureFilesStorage("azure-files", new AzureFilesConfig
+// Azure File Share — StorageName is the share name
+.AddAzureFilesStorage("azure-files", new AzureStorageConfig
 {
     ConnectionString = "...",
-    ShareName        = "hive-share"
+    StorageName      = "hive-share"
 })
 
-// Qdrant vector DB
-.AddQdrantVectorStorage("qdrant", new QdrantConfig { Endpoint = "http://localhost:6333" })
+// Qdrant vector DB (gRPC, default port 6334) — no shortcut extension; register the storage instance
+.AddVectorStorage("qdrant", new QdrantVectorStorage(new QdrantConfig { Host = "localhost", Port = 6334 }))
 
-// RabbitMQ queue
-.AddRabbitMQQueueStorage("rabbit", new RabbitMQConfig { ConnectionString = "amqp://..." })
+// RabbitMQ queue — one IQueueStorage per queue
+.AddQueueStorage("rabbit", new RabbitMQueueStorage(new RabbitMQConfig
+{
+    Host      = "localhost",
+    UserName  = "guest",
+    Password  = "guest",
+    QueueName = "hive-tasks"
+}))
 ```
 
 ## HiveServiceBuilder Full Signature (key methods)
@@ -134,17 +140,23 @@ public class MyService(IHiveService hive) { ... }
 public class HiveServiceBuilder
 {
     // Providers
-    IHiveServiceBuilder AddOpenAIProviders(string name, OpenAIConfig config, OpenAIServiceType types = All);
-    IHiveServiceBuilder AddAnthropicProviders(string name, AnthropicConfig config);
-    IHiveServiceBuilder AddGoogleAIProviders(string name, GoogleAIConfig config);
-    IHiveServiceBuilder AddVertexAIProviders(string name, VertexAIConfig config);
-    IHiveServiceBuilder AddOpenAICompatibleProviders(string name, OpenAICompatibleConfig config);
-    IHiveServiceBuilder AddGpuStackProviders(string name, GpuStackConfig config);
+    // (extension methods from the provider packages)
+    IHiveServiceBuilder AddOpenAIProviders(string name, OpenAIConfig config, OpenAIServiceType serviceType = OpenAIServiceType.All);
+    IHiveServiceBuilder AddAnthropicProviders(string name, AnthropicConfig config, AnthropicServiceType serviceType = AnthropicServiceType.All);
+    IHiveServiceBuilder AddGoogleAIProviders(string name, GoogleAIConfig config, GoogleAIServiceType serviceType = GoogleAIServiceType.All);
+    IHiveServiceBuilder AddVertexAIProviders(string name, VertexAIConfig config, GoogleAIServiceType serviceType = GoogleAIServiceType.All);
+    IHiveServiceBuilder AddOpenAICompatibleProviders(string name, OpenAICompatibleConfig config, OpenAICompatibleServiceType serviceType = OpenAICompatibleServiceType.All);
+    IHiveServiceBuilder AddGpuStackProviders(string name, GpuStackConfig config, GpuStackServiceType serviceType = GpuStackServiceType.All);
 
-    // Storage
-    IHiveServiceBuilder AddLocalFileStorage(string name, LocalFileConfig config);
+    // Storage (IronHive.Core extensions)
+    IHiveServiceBuilder AddLocalFileStorage(string name);
     IHiveServiceBuilder AddLocalVectorStorage(string name, LocalVectorConfig config);
     IHiveServiceBuilder AddLocalQueueStorage(string name, LocalQueueConfig config);
+
+    // Any storage instance (IHiveServiceBuilder members)
+    IHiveServiceBuilder AddFileStorage(string name, IFileStorage storage);
+    IHiveServiceBuilder AddVectorStorage(string name, IVectorStorage storage);
+    IHiveServiceBuilder AddQueueStorage(string name, IQueueStorage storage);
 
     // Build
     IHiveService Build();

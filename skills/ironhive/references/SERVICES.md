@@ -8,6 +8,7 @@ public interface IHiveService : IDisposable
     IModelService       Models      { get; }
     IMessageService     Messages    { get; }
     IEmbeddingService   Embeddings  { get; }
+    IRerankService      Rerank      { get; }
     IImageService       Images      { get; }
     IVideoService       Videos      { get; }
     IAudioService       Audio       { get; }
@@ -19,8 +20,8 @@ public interface IHiveService : IDisposable
     IAgent CreateAgentFromYaml(string yaml);
 }
 
-// Extension method (from HiveService)
-IMemoryWorker CreateMemoryWorkerFrom(Func<MemoryWorkerBuilder, IMemoryWorker> configure);
+// Extension method (IronHive.Core)
+IMemoryWorker CreateMemoryWorkerFrom(this IHiveService service, Func<MemoryWorkerBuilder, MemoryPipelineBuilder> configure, IServiceProvider? sp = null);
 ```
 
 ## IMessageService — LLM Chat
@@ -43,7 +44,7 @@ var request = new MessageRequest
     Provider        = "openai",
     Model           = "gpt-4o-mini",
     System          = "You are helpful.",
-    Messages        = messages,           // List<Message>
+    Messages        = messages,           // ICollection<Message>
     Tools           = toolCollection,     // optional IToolCollection
     ThinkingEffort  = MessageThinkingEffort.High,   // Extended thinking
     PreviousId      = "prev-response-id"            // Responses API continuity
@@ -91,7 +92,7 @@ var hive = new HiveServiceBuilder()
 | Member | Description |
 |--------|-------------|
 | `Request` | Outgoing `MessageGenerationRequest` for this turn; `Messages` accumulates across turns. |
-| `CurrentTurn` / `MaxTurn` | Current turn index (0-based) and the max turns allowed this call. |
+| `CurrentTurn` / `MaxTurns` | Current turn index (0-based) and the max turns allowed this call. |
 | `CurrentMessage` | Assistant message accumulated across turns; null until the first content arrives. |
 | `TrackedId` / `TurnReason` / `TokenUsage` | Most recent turn's raw (unprefixed) response ID / stop reason / token usage. |
 | `Items` | Shared data across pipeline stages. Seeded from `MessageRequest.Items`, flows out via `MessageResponse.Items` (or `StreamingMessageDoneResponse.Items` when streaming). |
@@ -118,18 +119,27 @@ catch (ContextOverflowException ex)
 ```csharp
 public interface IEmbeddingService
 {
-    Task<EmbeddingResult> GenerateEmbeddingAsync(
-        string provider, string model, string text,
+    IReadOnlyDictionary<string, IEmbeddingGenerator> Generators { get; }
+
+    Task<float[]> EmbedAsync(
+        string provider, string modelId, string input,
         CancellationToken ct = default);
 
-    Task<IEnumerable<EmbeddingResult>> GenerateEmbeddingsAsync(
-        string provider, string model, IEnumerable<string> texts,
+    Task<IEnumerable<EmbeddingResult>> EmbedBatchAsync(
+        string provider, string modelId, IEnumerable<string> inputs,
+        CancellationToken ct = default);
+
+    Task<int> CountTokensAsync(
+        string provider, string modelId, string input,
         CancellationToken ct = default);
 }
 
 // Usage
-var result = await hive.Embeddings.GenerateEmbeddingAsync("openai", "text-embedding-3-small", "hello");
-ReadOnlyMemory<float> vector = result.Vector;
+float[] vector = await hive.Embeddings.EmbedAsync("openai", "text-embedding-3-small", "hello");
+
+var batch = await hive.Embeddings.EmbedBatchAsync("openai", "text-embedding-3-small", texts);
+foreach (var r in batch)
+    Console.WriteLine($"{r.Index}: {r.Embedding?.Length}");
 ```
 
 ## IImageService — Image Generation
@@ -137,21 +147,21 @@ ReadOnlyMemory<float> vector = result.Vector;
 ```csharp
 public interface IImageService
 {
-    Task<ImageGenerationResponse> GenerateAsync(ImageGenerationRequest request, CancellationToken ct = default);
-    Task<ImageGenerationResponse> EditAsync(ImageEditRequest request, CancellationToken ct = default);
+    Task<ImageGenerationResponse> GenerateImageAsync(string provider, ImageGenerationRequest request, CancellationToken ct = default);
+    Task<ImageGenerationResponse> EditImageAsync(string provider, ImageEditRequest request, CancellationToken ct = default);
 }
 
-// Generate
-var response = await hive.Images.GenerateAsync(new ImageGenerationRequest
+// Generate — the provider is a method argument, not a request field
+var response = await hive.Images.GenerateImageAsync("openai", new ImageGenerationRequest
 {
-    Provider = "openai",
-    Model    = "dall-e-3",
-    Prompt   = "A futuristic city at sunset",
-    Size     = GeneratedImageSize.Square1024
+    Model  = "dall-e-3",
+    Prompt = "A futuristic city at sunset",
+    Size   = new GeneratedImagePixelSize { Width = 1024, Height = 1024 }
+    // or: new GeneratedImageScaleSize { Resolution = "1k", AspectRatio = "1:1" }
 });
 
 foreach (var image in response.Images)
-    Console.WriteLine(image.Url ?? Convert.ToBase64String(image.Data ?? []));
+    File.WriteAllBytes("out.png", image.Data);   // results are bytes (image.ToBase64() for text)
 ```
 
 ## IVideoService — Video Generation
@@ -159,20 +169,20 @@ foreach (var image in response.Images)
 ```csharp
 public interface IVideoService
 {
-    Task<VideoGenerationResponse> GenerateAsync(VideoGenerationRequest request, CancellationToken ct = default);
+    Task<VideoGenerationResponse> GenerateVideoAsync(
+        string provider, VideoGenerationRequest request,
+        IProgress<VideoGenerationProgress>? progress = null, CancellationToken ct = default);
 }
 
 // Generate (async polling — Google Veo, etc.)
-var response = await hive.Videos.GenerateAsync(new VideoGenerationRequest
+var response = await hive.Videos.GenerateVideoAsync("google", new VideoGenerationRequest
 {
-    Provider = "google",
-    Model    = "veo-2.0-generate-001",
-    Prompt   = "A serene mountain lake at dawn",
-    Size     = GeneratedVideoSize.Landscape720p
+    Model  = "veo-2.0-generate-001",
+    Prompt = "A serene mountain lake at dawn",
+    Size   = new GeneratedVideoPresetSize { Resolution = "720p", AspectRatio = "16:9" }
 });
 
-foreach (var video in response.Videos)
-    Console.WriteLine(video.Url);
+File.WriteAllBytes("out.mp4", response.Video.Data);   // a single video, as bytes
 ```
 
 ## IAudioService — TTS / STT
@@ -180,29 +190,29 @@ foreach (var video in response.Videos)
 ```csharp
 public interface IAudioService
 {
-    Task<TextToSpeechResponse> TextToSpeechAsync(TextToSpeechRequest request, CancellationToken ct = default);
-    Task<SpeechToTextResponse> SpeechToTextAsync(SpeechToTextRequest request, CancellationToken ct = default);
+    IReadOnlyDictionary<string, IAudioProcessor> Processors { get; }
+    Task<TextToSpeechResponse> GenerateSpeechAsync(string provider, TextToSpeechRequest request, CancellationToken ct = default);
+    Task<SpeechToTextResponse> TranscribeAsync(string provider, SpeechToTextRequest request, CancellationToken ct = default);
 }
 
 // TTS
-var tts = await hive.Audio.TextToSpeechAsync(new TextToSpeechRequest
+var tts = await hive.Audio.GenerateSpeechAsync("openai", new TextToSpeechRequest
 {
-    Provider = "openai",
-    Model    = "tts-1",
-    Voice    = "alloy",
-    Text     = "Hello from IronHive"
+    Model = "tts-1",
+    Voice = "alloy",
+    Text  = "Hello from IronHive"
 });
-byte[] audioBytes = tts.Audio.Data;
+byte[] audioBytes = tts.Audio.Data;          // GeneratedAudio { MimeType, Data }
 
-// STT
-var stt = await hive.Audio.SpeechToTextAsync(new SpeechToTextRequest
+// STT — the input audio is wrapped in GeneratedAudio
+var stt = await hive.Audio.TranscribeAsync("openai", new SpeechToTextRequest
 {
-    Provider  = "openai",
-    Model     = "whisper-1",
-    AudioData = audioBytes,
-    Language  = "ko"
+    Model = "whisper-1",
+    Audio = new GeneratedAudio { Data = audioBytes, MimeType = "audio/mpeg" }
 });
 Console.WriteLine(stt.Text);
+foreach (var seg in stt.Segments ?? [])      // segments when the provider returns them (e.g. Diarized = true)
+    Console.WriteLine($"  [{seg.Start:F1}s] {seg.Speaker}: {seg.Text}");
 ```
 
 ## IModelService — Model Discovery
@@ -210,13 +220,14 @@ Console.WriteLine(stt.Text);
 ```csharp
 public interface IModelService
 {
-    Task<ModelCardList> ListModelsAsync(string provider, CancellationToken ct = default);
-    Task<IModelCard?> FindModelAsync(string provider, string model, CancellationToken ct = default);
+    Task<IEnumerable<ModelCardList>> ListModelsAsync(CancellationToken ct = default);   // every provider
+    Task<ModelCardList?> ListModelsAsync(string provider, CancellationToken ct = default);
+    Task<IModelCard?> FindModelAsync(string provider, string modelId, CancellationToken ct = default);
 }
 
-var models = await hive.Models.ListModelsAsync("openai");
-foreach (var m in models)
-    Console.WriteLine($"{m.Id} — {m.Description}");
+var list = await hive.Models.ListModelsAsync("openai");
+foreach (var m in list?.Models ?? [])
+    Console.WriteLine($"{m.ModelId} — {m.Description}");
 ```
 
 ## IFileStorageService — File Storage
@@ -224,15 +235,17 @@ foreach (var m in models)
 ```csharp
 public interface IFileStorageService
 {
-    Task UploadAsync(string storageName, string path, Stream data, CancellationToken ct = default);
-    Task<Stream> DownloadAsync(string storageName, string path, CancellationToken ct = default);
-    Task DeleteAsync(string storageName, string path, CancellationToken ct = default);
-    Task<IEnumerable<string>> ListAsync(string storageName, string? prefix = null, CancellationToken ct = default);
+    Task<IEnumerable<string>> ListAsync(string storageName, string? prefix = null, int depth = 1, CancellationToken ct = default);
+    Task<bool> ExistsFileAsync(string storageName, string filePath, CancellationToken ct = default);
+    Task<Stream> ReadFileAsync(string storageName, string filePath, CancellationToken ct = default);
+    Task WriteFileAsync(string storageName, string filePath, Stream data, bool overwrite = true, CancellationToken ct = default);
+    Task DeleteFileAsync(string storageName, string filePath, CancellationToken ct = default);
+    Task DeleteDirectoryAsync(string storageName, string directoryPath, CancellationToken ct = default);
 }
 
 // Usage
-await hive.Files.UploadAsync("s3", "documents/report.pdf", pdfStream);
-var stream = await hive.Files.DownloadAsync("s3", "documents/report.pdf");
+await hive.Files.WriteFileAsync("s3", "documents/report.pdf", pdfStream);
+var stream = await hive.Files.ReadFileAsync("s3", "documents/report.pdf");
 ```
 
 ## IMemoryService — Vector Memory
@@ -242,7 +255,7 @@ See [MEMORY.md](MEMORY.md) for full RAG pipeline.
 ```csharp
 await hive.Memory.CreateCollectionAsync("qdrant", "docs", "openai", "text-embedding-3-small");
 var collection = await hive.Memory.GetCollectionAsync("qdrant", "docs");
-var results    = await collection.SemanticSearchAsync("query", new SearchOptions { TopK = 5 });
+var results    = await collection.SemanticSearchAsync("query", new SearchOptions { Limit = 5 });
 ```
 
 ## IFileParserService (separate DI registration)
@@ -256,10 +269,10 @@ builder.Services.AddFileParser();
 // Usage
 public class ParseService(IFileParserService parser)
 {
-    public async Task<string> ExtractTextAsync(Stream stream, string contentType)
+    public async Task<string> ExtractTextAsync(string fileName, Stream data)
     {
-        var blocks = await parser.ParseAsync(stream, contentType);
-        return string.Join("\n", blocks.Select(b => b.Text));
+        var blocks = await parser.ParseAsync(fileName, data);   // TextBlock | ImageBlock
+        return string.Join("\n", blocks.OfType<TextBlock>().Select(b => b.Text));
     }
 }
 ```
@@ -273,14 +286,14 @@ Supported: PDF (`.pdf`), Word (`.docx`), Excel (`.xlsx`), PowerPoint (`.pptx`), 
 public class Message
 {
     public MessageRole Role { get; set; }           // User | Assistant
-    public List<MessageContent> Content { get; set; }
+    public ICollection<MessageContent> Content { get; set; }
 }
 
 // Content types (polymorphic)
-TextMessageContent    { Value: string }
-ImageMessageContent   { MediaType: string, Data: string (base64) | Url: string }
-ToolMessageContent    { /* tool call / result */ }
-ThinkingMessageContent { Thinking: string }          // Anthropic Extended Thinking
+TextMessageContent     { Value: string }
+ImageMessageContent    { Format: ImageFormat, Base64: string }
+ToolMessageContent     { /* tool call / result */ }
+ThinkingMessageContent { Value: string }             // extended thinking / reasoning
 
 // Build multimodal message
 var msg = new Message
@@ -289,7 +302,7 @@ var msg = new Message
     Content =
     [
         new TextMessageContent { Value = "Describe this image" },
-        new ImageMessageContent { MediaType = "image/png", Data = Convert.ToBase64String(bytes) }
+        new ImageMessageContent { Format = ImageFormat.Png, Base64 = Convert.ToBase64String(bytes) }
     ]
 };
 ```
@@ -317,11 +330,10 @@ var tool = new AIToolAdapter(mcpClientTool);
 ## Telemetry
 
 ```csharp
-// OpenTelemetry integration
-// ActivitySource: "IronHive"
-// Meter:          "IronHive"
+// OpenTelemetry integration (OpenTelemetry.Extensions.Hosting package)
+// ActivitySource and Meter are both named HiveTelemetry.SourceName ("IronHive")
 
 services.AddOpenTelemetry()
-    .WithTracing(b => b.AddSource("IronHive"))
-    .WithMetrics(b => b.AddMeter("IronHive"));
+    .WithTracing(b => b.AddSource(HiveTelemetry.SourceName))
+    .WithMetrics(b => b.AddMeter(HiveTelemetry.SourceName));
 ```
