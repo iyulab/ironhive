@@ -415,14 +415,15 @@ var response = await messageService.GenerateMessageAsync(new MessageRequest
 var predictedMs = response.ExtraBody?["timings"]?["predicted_ms"]?.GetValue<double>();
 ```
 
-## 토큰 로그 확률 (`LogProbabilities`) — OpenAI Compatible
+## 토큰 로그 확률 (`LogProbabilities`) — OpenAI Compatible · Google AI
 
 `MessageRequest.LogProbabilities = new LogProbabilityOptions { TopAlternatives = k }` 이면 출력 토큰마다 로그 확률과
 위치별 상위 `k` 개(0~20) 대안을 요청한다(`logprobs`/`top_logprobs`). `MessageResponse.LogProbabilities` 가 순서대로 싣는다 —
-스트리밍은 텍스트 델타마다 그 토큰들을, done 프레임이 전체를 싣는다. 요청하지 않으면 `null`, 요청했는데 서버가 구현하지
+스트리밍은 done 프레임이 전체를 싣고, OpenAI Compatible 은 텍스트 델타마다 그 토큰들도 싣는다. 요청하지 않으면 `null`, 요청했는데 서버가 구현하지
 않아 싣지 않으면 빈 목록이다. 1 토큰 판정기(`MaxTokens = 1`, `Temperature = 0`)는 `LogProbabilities[0].Alternatives` 로
-분포를 읽는다. OpenAI · Anthropic · Google AI provider 는 요청되면 `NotSupportedException` 을 던진다(답을 로그 확률 없이
-돌려주지 않는다).
+분포를 읽는다. Google AI 는 `responseLogprobs`/`logprobs` 로 요청하고 `candidates[].logprobsResult` 를 옮긴다 — 단, Gemini API 가
+모델에 따라 logprobs 를 막아 두면(2026-09 기준 Developer API 의 2.5/3.8 계열: «Logprobs is not enabled») 그 오류가 그대로 온다.
+OpenAI(Responses) · Anthropic provider 는 요청되면 `NotSupportedException` 을 던진다(답을 로그 확률 없이 돌려주지 않는다).
 
 ## OpenAI Compatible (범용 호환)
 

@@ -58,18 +58,12 @@ public class GoogleAIMessageGenerator : IMessageGenerator
     }
 
     // Request features this provider does not carry. The official SDK builds its request body, which this library does
-    // not extend, and this provider does not return token log probabilities; dropping either silently would answer a
-    // request other than the one asked for.
+    // not extend; dropping the caller's fields silently would send a request other than the one asked for.
     private static void RejectUnsupported(MessageGenerationRequest request)
     {
         if (request.ExtraBody is { Count: > 0 })
             throw new NotSupportedException(
                 "MessageGenerationRequest.ExtraBody is not supported by the GoogleAI provider; the OpenAI-compatible provider honours it.");
-
-        // Answering without them would hand the caller a response it cannot tell from one that has none.
-        if (request.LogProbabilities is not null)
-            throw new NotSupportedException(
-                "MessageGenerationRequest.LogProbabilities is not supported by the GoogleAI provider; the OpenAI-compatible provider returns them.");
     }
 
     /// <inheritdoc />
@@ -159,6 +153,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
             DoneReason = reason,
             Message = message,
             TokenUsage = usage,
+            LogProbabilities = request.LogProbabilities is null ? null : ToLogProbabilities(first.LogprobsResult) ?? [],
             Model = response.ModelVersion,
         };
     }
@@ -178,6 +173,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         string? model = null;
         MessageDoneReason? reason = null;
         MessageTokenUsage? usage = null;
+        var logProbabilities = request.LogProbabilities is null ? null : new List<TokenLogProbability>();
         // The buffered path reports ToolCall whenever a function call is present, wherever it sits
         // among the parts. The stream used to decide by whichever part arrived last, so a call
         // followed by narration came back as EndTurn on this path only (GoogleAIEquivalenceTests).
@@ -211,6 +207,10 @@ public class GoogleAIMessageGenerator : IMessageGenerator
             var msg = res.Candidates?.FirstOrDefault();
             if (msg == null)
                 continue;
+
+            // Each chunk's logprobs cover the tokens it carries; the done frame collects them in order.
+            if (logProbabilities is not null && ToLogProbabilities(msg.LogprobsResult) is { } chunkTokens)
+                logProbabilities.AddRange(chunkTokens);
 
             // 종료 메시지
             if (msg.FinishReason != null)
@@ -390,7 +390,30 @@ public class GoogleAIMessageGenerator : IMessageGenerator
             DoneReason = reason,
             Model = model,
             TokenUsage = usage,
+            LogProbabilities = logProbabilities,
         };
+    }
+
+    /// <summary>
+    /// Gemini's per-position result in IronHive's shape: <c>chosenCandidates[i]</c> is the token at position i and
+    /// <c>topCandidates[i]</c> its alternatives. Null when the candidate carried none.
+    /// </summary>
+    internal static List<TokenLogProbability>? ToLogProbabilities(LogprobsResult? result)
+    {
+        if (result?.ChosenCandidates is not { } chosen)
+            return null;
+
+        var list = new List<TokenLogProbability>(chosen.Count);
+        for (var i = 0; i < chosen.Count; i++)
+        {
+            var alternatives = result.TopCandidates is { } top && i < top.Count ? top[i].Candidates ?? [] : [];
+            list.Add(new TokenLogProbability(
+                chosen[i].Token ?? string.Empty,
+                chosen[i].LogProbability ?? 0,
+                alternatives.Select(a => new TokenAlternative(a.Token ?? string.Empty, a.LogProbability ?? 0)).ToList()));
+        }
+
+        return list;
     }
 
     /// <inheritdoc />
@@ -756,6 +779,9 @@ public class GoogleAIMessageGenerator : IMessageGenerator
             },
             CandidateCount = 1,
             MaxOutputTokens = request.MaxTokens,
+            // responseLogprobs returns the chosen token's log probability; logprobs adds that many top candidates.
+            ResponseLogprobs = request.LogProbabilities is null ? null : true,
+            Logprobs = request.LogProbabilities is { TopAlternatives: > 0 } lp ? lp.TopAlternatives : null,
             // 샘플링 파라미터를 받지 않는 모델(Gemini 3.8 Flash)에는 전달하지 않습니다.
             Temperature = capabilities.SupportsSamplingParameters ? request.Temperature : null,
             TopP = capabilities.SupportsSamplingParameters ? request.TopP : null,

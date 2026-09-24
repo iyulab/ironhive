@@ -101,19 +101,41 @@ public class LogProbabilitiesTests
     [Theory]
     [InlineData("OpenAI")]
     [InlineData("Anthropic")]
-    [InlineData("GoogleAI")]
-    public async Task SdkProviders_RefuseLogprobs_InsteadOfAnsweringWithout(string provider)
+    public async Task ProvidersWithoutLogprobs_RefuseThem_InsteadOfAnsweringWithout(string provider)
     {
         using IMessageGenerator generator = provider switch
         {
             "OpenAI" => new OpenAIMessageGenerator(new OpenAIConfig { ApiKey = "test-key" }),
-            "Anthropic" => new IronHive.Providers.Anthropic.AnthropicMessageGenerator(new IronHive.Providers.Anthropic.AnthropicConfig { ApiKey = "test-key" }),
-            _ => new IronHive.Providers.GoogleAI.GoogleAIMessageGenerator(new IronHive.Providers.GoogleAI.GoogleAIConfig { ApiKey = "test-key" }),
+            _ => new IronHive.Providers.Anthropic.AnthropicMessageGenerator(new IronHive.Providers.Anthropic.AnthropicConfig { ApiKey = "test-key" }),
         };
 
         var act = () => generator.GenerateMessageAsync(Request(new LogProbabilityOptions()), TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<NotSupportedException>().WithMessage("*LogProbabilities*");
+    }
+
+    [Fact]
+    public async Task Gemini_AsksWithResponseLogprobs_AndBothHalvesCarryTheChosenAndTopCandidates()
+    {
+        const string result = """"{"chosenCandidates":[{"token":"Yes","logProbability":-0.1}],"topCandidates":[{"candidates":[{"token":"Yes","logProbability":-0.1},{"token":"No","logProbability":-2.4}]}]}"""";
+        var json = $$$"""{"candidates":[{"content":{"parts":[{"text":"Yes"}],"role":"model"},"finishReason":"STOP","logprobsResult":{{{result}}},"index":0}],"modelVersion":"gemini-2.0-flash","responseId":"r1"}""";
+        var handler = new StubHttpHandler(json, StubHttpHandler.SseData(json));
+        var httpClient = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
+        using var generator = new IronHive.Providers.GoogleAI.GoogleAIMessageGenerator(new IronHive.Providers.GoogleAI.GoogleAIConfig { ApiKey = "test-key", HttpClientFactory = () => httpClient });
+        var request = new MessageGenerationRequest { Model = "gemini-2.0-flash", Messages = [Message.User("Hi")], LogProbabilities = new LogProbabilityOptions { TopAlternatives = 2 } };
+
+        var buffered = await generator.GenerateMessageAsync(request, TestContext.Current.CancellationToken);
+        StreamingMessageDoneResponse? done = null;
+        await foreach (var frame in generator.GenerateStreamingMessageAsync(request, TestContext.Current.CancellationToken))
+            done = frame as StreamingMessageDoneResponse ?? done;
+
+        var body = JsonNode.Parse(handler.Requests[0].Body)!["generationConfig"]!;
+        body["responseLogprobs"]!.GetValue<bool>().Should().BeTrue();
+        body["logprobs"]!.GetValue<int>().Should().Be(2);
+        var token = buffered.LogProbabilities!.Single();
+        (token.Token, token.LogProbability).Should().Be(("Yes", -0.1));
+        token.Alternatives.Select(a => a.Token).Should().Equal("Yes", "No");
+        done!.LogProbabilities.Should().BeEquivalentTo(buffered.LogProbabilities, o => o.WithStrictOrdering());
     }
 
     private static MessageGenerationRequest Request(LogProbabilityOptions? logProbabilities = null)
