@@ -10,11 +10,11 @@ internal static class GoogleAIClientFactory
     {
         return new Client(
             vertexAI: false,
-            apiKey: config.ApiKey,
+            apiKey: config.ResolveApiKey(),
             httpOptions: ResolveHttpOptions(config.HttpOptions, config.Timeout, config.Headers, nameof(GoogleAIConfig), nameof(GoogleAIConfig.ApiKey)),
             clientOptions: new ClientOptions
             {
-                HttpClientFactory = ResolveHttpClientFactory(config.HttpClientFactory, config.ConnectTimeout)
+                HttpClientFactory = ResolveHttpClientFactory(config)
             });
     }
 
@@ -30,6 +30,23 @@ internal static class GoogleAIClientFactory
             {
                 HttpClientFactory = ResolveHttpClientFactory(config.HttpClientFactory, config.ConnectTimeout)
             });
+    }
+
+    /// <summary>The Gemini API client factory: <see cref="ResolveHttpClientFactory(Func{HttpClient}?, TimeSpan)"/>, or a client whose
+    /// transport writes <see cref="GoogleAIConfig.ApiKeyResolver"/>'s key on every request.</summary>
+    internal static Func<HttpClient> ResolveHttpClientFactory(GoogleAIConfig config)
+    {
+        if (config.ApiKeyResolver == null)
+            return ResolveHttpClientFactory(config.HttpClientFactory, config.ConnectTimeout);
+        if (config.HttpClientFactory != null)
+            throw ResolvedCredentialHandler.ConflictsWithCustomHttpClient(nameof(GoogleAIConfig), nameof(GoogleAIConfig.HttpClientFactory));
+
+        return () => new HttpClient(new ResolvedCredentialHandler(
+            "x-goog-api-key", config.ApiKeyResolver, config.ApiKey, format: null,
+            new SocketsHttpHandler { ConnectTimeout = config.ConnectTimeout }))
+        {
+            Timeout = System.Threading.Timeout.InfiniteTimeSpan
+        };
     }
 
     /// <summary>
@@ -54,7 +71,7 @@ internal static class GoogleAIClientFactory
     /// Folds the configuration's timeout into the vendor <see cref="HttpOptions"/>, which is where the
     /// SDK reads it from. <paramref name="timeout"/> at its default
     /// (<see cref="System.Threading.Timeout.InfiniteTimeSpan"/>) is treated as "not set" rather than a
-    /// concrete value to send — the client built by <see cref="ResolveHttpClientFactory"/> already has
+    /// concrete value to send — the client built by <see cref="ResolveHttpClientFactory(Func{HttpClient}?, TimeSpan)"/> already has
     /// an unbounded <see cref="HttpClient.Timeout"/>, so leaving it alone means "no request ceiling",
     /// not an accidental inheritance of the vendor's bare-<see cref="HttpClient"/> 100-second default.
     /// And a configuration that sets the timeout twice, in different units, is rejected rather than

@@ -337,6 +337,25 @@ public enum GoogleAIServiceType
 
 ---
 
+## 요청마다 해석되는 키 (`ApiKeyResolver`) — OpenAI · Anthropic · Google AI · OpenAI Compatible · GPUStack
+
+키를 OS 자격증명 저장소 같은 곳에 두고 거기서 교체·회수한다면, 키 값을 config 에 복사해 넣는 대신
+「어디서 가져오는지」를 넘긴다. 리졸버는 **요청마다** 호출되고, 그 값이 provider 의 자격증명 헤더
+(`Authorization: Bearer …` · `x-api-key` · `x-goog-api-key`)로 나간다 — 교체한 키가 provider 를 다시 만들지 않아도 다음
+호출부터 쓰인다. null/빈 값이면 `ApiKey` 로 돌아간다.
+
+```csharp
+builder.AddOpenAIProviders("openai", new OpenAIConfig
+{
+    ApiKeyResolver = () => secretStore.Read("openai"),   // 매 요청
+});
+```
+
+- 소비자가 준 `HttpClient`(Google 은 `HttpClientFactory`)와 함께 쓸 수 없다 — 키는 IronHive 가 만드는 HTTP 클라이언트의
+  핸들러(`IronHive.Abstractions.Http.ResolvedCredentialHandler`)가 쓰므로, 그 조합은 생성 시 `InvalidOperationException`
+  이다(조용히 정적 키를 영원히 보내는 대신). 자체 `HttpClient` 가 필요하면 그 핸들러를 거기에 직접 넣는다.
+- `Validate()` 는 리졸버를 자격증명으로 센다.
+
 ## 추가 요청 헤더 (`Headers`) — 네 provider 공통
 
 게이트웨이 뒤의 엔드포인트(API 관리 계층·사내 프록시·테넌트 라우팅)는 자기 헤더를 요구한다 — 구독 키, 테넌트

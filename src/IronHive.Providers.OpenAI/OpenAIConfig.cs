@@ -36,6 +36,21 @@ public class OpenAIConfig
     public string ApiKey { get; set; } = string.Empty;
 
     /// <summary>
+    /// Optional resolver called on every request for the API key — a key kept in a secret store and rotated or
+    /// revoked there takes effect on the next call, without rebuilding the provider. A null or blank answer falls
+    /// back to <see cref="ApiKey"/>. Cannot be combined with a consumer-supplied <see cref="HttpClient"/>: the key is written by a
+    /// handler in the HTTP client IronHive builds (construction throws <see cref="InvalidOperationException"/>).
+    /// </summary>
+    public Func<string?>? ApiKeyResolver { get; set; }
+
+    /// <summary>The key to construct the vendor client with: the resolver's answer, else <see cref="ApiKey"/>.</summary>
+    internal string? ResolveApiKey()
+    {
+        var resolved = ApiKeyResolver?.Invoke();
+        return string.IsNullOrWhiteSpace(resolved) ? ApiKey : resolved;
+    }
+
+    /// <summary>
     /// OpenAI 계정의 조직 ID를 가져오거나 설정합니다.
     /// </summary>
     public string Organization { get; set; } = string.Empty;
@@ -104,6 +119,6 @@ public class OpenAIConfig
     /// </remarks>
     public bool Validate()
     {
-        return !string.IsNullOrWhiteSpace(ApiKey);
+        return ApiKeyResolver != null || !string.IsNullOrWhiteSpace(ApiKey);
     }
 }

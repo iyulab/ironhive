@@ -33,7 +33,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         _client = GoogleAIClientFactory.Create(config);
         _isVertex = false;
         _capabilityOverrides = CopyOverrides(config.ModelCapabilities);
-        _keyUsesRetiredFormat = config.ApiKey?.StartsWith("AIza", StringComparison.Ordinal) == true;
+        _keyUsesRetiredFormat = config.ResolveApiKey()?.StartsWith("AIza", StringComparison.Ordinal) == true;
     }
 
     public GoogleAIMessageGenerator(VertexAIConfig config)

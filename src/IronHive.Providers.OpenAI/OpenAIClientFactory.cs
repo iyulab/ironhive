@@ -24,7 +24,8 @@ public static class OpenAIClientFactory
 
     public static OpenAIClient Create(OpenAIConfig config)
     {
-        var key = string.IsNullOrWhiteSpace(config.ApiKey) ? NoCredential : config.ApiKey;
+        var initial = config.ResolveApiKey();
+        var key = string.IsNullOrWhiteSpace(initial) ? NoCredential : initial;
         return new OpenAIClient(new ApiKeyCredential(key), BuildOptions(config));
     }
 
@@ -46,10 +47,14 @@ public static class OpenAIClientFactory
         if (config.Timeout != System.Threading.Timeout.InfiniteTimeSpan)
             options.NetworkTimeout = config.Timeout;
 
-        var httpClient = config.HttpClient ?? new HttpClient(new SocketsHttpHandler
-        {
-            ConnectTimeout = config.ConnectTimeout
-        })
+        if (config.ApiKeyResolver != null && config.HttpClient != null)
+            throw ResolvedCredentialHandler.ConflictsWithCustomHttpClient(nameof(OpenAIConfig), nameof(OpenAIConfig.HttpClient));
+
+        HttpMessageHandler transport = new SocketsHttpHandler { ConnectTimeout = config.ConnectTimeout };
+        if (config.ApiKeyResolver != null)
+            transport = new ResolvedCredentialHandler("Authorization", config.ApiKeyResolver, config.ApiKey, k => $"Bearer {k}", transport);
+
+        var httpClient = config.HttpClient ?? new HttpClient(transport)
         {
             // A bare HttpClient's 100-second default would cap time-to-first-byte ahead of
             // NetworkTimeout and win. Disabling it here leaves NetworkTimeout (unset by default —

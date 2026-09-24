@@ -4,7 +4,22 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
-## 0.35.0 — unreleased
+## 0.36.0 — unreleased
+
+### Added
+
+- **`ApiKeyResolver` on `OpenAIConfig`, `AnthropicConfig` and `GoogleAIConfig`** — the seam `OpenAICompatibleConfig`
+  and `GpuStackConfig` already had. It is called on every request and its key goes out in the provider's credential
+  header (`Authorization: Bearer …`, `x-api-key`, `x-goog-api-key`), so a key kept in a secret store and rotated or
+  revoked there takes effect on the next call without rebuilding the provider. A null or blank answer falls back to
+  `ApiKey`. `Validate()` counts a resolver as a credential.
+- The resolver cannot be combined with a consumer-supplied `HttpClient` (`HttpClientFactory` for Google): the key is
+  written by a handler in the client IronHive builds, so that combination throws `InvalidOperationException` at
+  construction instead of silently sending the static key forever.
+- `IronHive.Abstractions.Http.ResolvedCredentialHandler` — the `DelegatingHandler` that does it, public for hosts that
+  build their own `HttpClient` and want the same behaviour.
+
+## 0.35.0 — 2026-09-24
 
 ### Changed
 
