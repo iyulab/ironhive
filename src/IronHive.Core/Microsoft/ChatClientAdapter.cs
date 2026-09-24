@@ -509,8 +509,22 @@ public class ChatClientAdapter : IChatClient
                 OutputTokenCount = response.TokenUsage.OutputTokens,
                 TotalTokenCount = response.TokenUsage.TotalTokens,
                 CachedInputTokenCount = response.TokenUsage.CachedInputTokens
-            } : null
+            } : null,
+            AdditionalProperties = ToAdditionalProperties(response.ExtraBody),
         };
+    }
+
+    // The provider's unmapped response fields, one entry per top-level field (JsonElement values), the way
+    // Microsoft.Extensions.AI carries provider-specific response data.
+    private static AdditionalPropertiesDictionary? ToAdditionalProperties(JsonObject? extraBody)
+    {
+        if (extraBody is not { Count: > 0 })
+            return null;
+
+        var props = new AdditionalPropertiesDictionary();
+        foreach (var (key, value) in extraBody)
+            props[key] = value is null ? null : JsonSerializer.SerializeToElement(value);
+        return props;
     }
 
     private static ChatResponseUpdate? ConvertToStreamingUpdate(StreamingMessageResponse chunk)
@@ -555,6 +569,7 @@ public class ChatClientAdapter : IChatClient
                     CreatedAt = done.Timestamp,
                     FinishReason = ConvertDoneReason(done.DoneReason),
                     ModelId = done.Model,
+                    AdditionalProperties = ToAdditionalProperties(done.ExtraBody),
                     // The done frame is where a streamed turn reports its usage. Without carrying it as UsageContent the
                     // streamed half reported none at all, while the buffered half of the same turn reported it in full.
                     Contents = done.TokenUsage is { } usage

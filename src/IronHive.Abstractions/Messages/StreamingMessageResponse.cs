@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
 namespace IronHive.Abstractions.Messages;
@@ -98,6 +99,14 @@ public class StreamingMessageDoneResponse : StreamingMessageResponse
     public List<Suggestion>? Suggestions { get; set; }
 
     public MessageTokenUsage? TokenUsage { get; set; }
+
+    /// <summary>
+    /// Top-level fields of the provider's response body that no typed member maps — e.g. llama.cpp's
+    /// <c>timings</c> (<c>prompt_ms</c>, <c>predicted_ms</c>). Per-choice fields are not included. From the last
+    /// generation call of the request. <see langword="null"/> when the response had none, or the provider does not
+    /// collect them (the OpenAI-compatible provider does).
+    /// </summary>
+    public JsonObject? ExtraBody { get; set; }
 
     public string? Model { get; set; }
 

@@ -43,11 +43,21 @@ public class AnthropicMessageGenerator : IMessageGenerator
         GC.SuppressFinalize(this);
     }
 
+    // The official SDK builds this provider's request body and this library does not extend it; dropping the
+    // caller's fields silently would send a request other than the one asked for.
+    private static void RejectExtraBody(MessageGenerationRequest request)
+    {
+        if (request.ExtraBody is { Count: > 0 })
+            throw new NotSupportedException(
+                "MessageGenerationRequest.ExtraBody is not supported by the Anthropic provider; the OpenAI-compatible provider honours it.");
+    }
+
     /// <inheritdoc />
     public async Task<MessageResponse> GenerateMessageAsync(
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
+        RejectExtraBody(request);
         var req = ToMessageCreateParams(request);
         var res = await _client.Messages.Create(req, cancellationToken)
             .MapException(ex => AnthropicExceptionMapper.Map(ex, cancellationToken));
@@ -131,6 +141,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        RejectExtraBody(request);
         var req = ToMessageCreateParams(request);
 
         string? id = null;

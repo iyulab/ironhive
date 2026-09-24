@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using IronHive.Abstractions.Tools;
 
 namespace IronHive.Abstractions.Messages;
@@ -46,6 +47,15 @@ public class MessageGenerationRequest
     /// Top-K sampling cutoff. Ignored by providers that do not expose it.
     /// </summary>
     public int? TopK { get; set; }
+
+    /// <summary>
+    /// Provider-specific request fields, deep-merged into the JSON body the provider sends (an object merges into an
+    /// object; any other value replaces the one there, including a field this library sets). For server extensions no
+    /// typed member models, e.g. a llama.cpp or vLLM sampling option. Honoured by the OpenAI-compatible
+    /// (Chat Completions) provider; a provider that cannot extend its request body throws
+    /// <see cref="NotSupportedException"/> when this has entries rather than dropping them.
+    /// </summary>
+    public JsonObject? ExtraBody { get; set; }
 
     /// <summary>
     /// Sequences that stop generation when produced.

@@ -40,7 +40,8 @@ public class AgentInvokeOptionRosterTests
         ["OutputFormat"] = "OutputFormat",
         ["Suggestions"] = "Suggestions",
         ["MaxTurns"] = "MaxTurns",
-        ["Items"] = "Items"
+        ["Items"] = "Items",
+        ["ExtraBody"] = "ExtraBody"
     };
 
     /// <summary>
@@ -122,6 +123,7 @@ public class AgentInvokeOptionRosterTests
         if (type == typeof(ToolOptions)) return new ToolOptions();
         if (type == typeof(SuggestionOptions)) return new SuggestionOptions();
         if (type == typeof(MessageContextItems)) return new MessageContextItems();
+        if (type == typeof(System.Text.Json.Nodes.JsonObject)) return new System.Text.Json.Nodes.JsonObject { ["sample"] = 1 };
         if (typeof(IToolCollection).IsAssignableFrom(type)) return new ToolCollection();
         if (typeof(ICollection<string>).IsAssignableFrom(type)) return new List<string> { "STOP" };
 

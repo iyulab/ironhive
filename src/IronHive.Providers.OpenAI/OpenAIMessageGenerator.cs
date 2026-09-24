@@ -44,11 +44,21 @@ public class OpenAIMessageGenerator : IMessageGenerator
         GC.SuppressFinalize(this);
     }
 
+    // The official SDK builds this provider's request body and this library does not extend it; dropping the
+    // caller's fields silently would send a request other than the one asked for.
+    private static void RejectExtraBody(MessageGenerationRequest request)
+    {
+        if (request.ExtraBody is { Count: > 0 })
+            throw new NotSupportedException(
+                "MessageGenerationRequest.ExtraBody is not supported by the OpenAI provider; the OpenAI-compatible provider honours it.");
+    }
+
     /// <inheritdoc />
     public async Task<MessageResponse> GenerateMessageAsync(
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
+        RejectExtraBody(request);
         var options = BuildOptions(request, _capabilityOverrides);
         var result = await _client.CreateResponseAsync(options, cancellationToken)
             .MapException(ex => OpenAIExceptionMapper.Map(ex, cancellationToken));
@@ -135,6 +145,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        RejectExtraBody(request);
         var options = BuildOptions(request, _capabilityOverrides);
         options.StreamingEnabled = true;
 

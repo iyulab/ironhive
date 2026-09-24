@@ -389,6 +389,32 @@ new AnthropicConfig
 - 소비자가 준 `HttpClient`의 `DefaultRequestHeaders`는 건드리지 않는다 — 헤더는 요청 단위로 실린다(공유
   `IHttpClientFactory` 클라이언트가 다른 provider와 섞이지 않게).
 
+## 공급자 고유 필드 (`ExtraBody`) — OpenAI Compatible
+
+타입 멤버가 모델링하지 않는 서버 확장 필드를 양방향으로 통과시킨다.
+
+- **요청**: `MessageRequest.ExtraBody`(또는 `AgentInvokeOptions.ExtraBody`)의 필드가 요청 JSON 본문에 deep merge 된다 —
+  객체는 객체에 합쳐지고, 그 밖의 값은 그 자리의 값(이 라이브러리가 넣은 필드 포함)을 대체한다. llama.cpp·vLLM 의
+  샘플링 확장 같은 값을 보낼 때 쓴다.
+- **응답**: 타입 멤버가 매핑하지 않은 **최상위** 응답 필드가 `MessageResponse.ExtraBody`(스트리밍은 done 프레임)에 실린다 —
+  llama.cpp 의 `timings`(`prompt_ms`·`predicted_ms`)가 대표적이다. `choices` 안의 필드와 봉투 필드(`object`·`created`)는
+  싣지 않는다. 도구 루프에서는 마지막 생성 호출의 값이다. `IChatClient` 브리지는 이것을 `ChatResponse.AdditionalProperties`
+  (필드마다 `JsonElement`)로 옮긴다.
+- **지원 범위**: OpenAI Compatible(Chat Completions) provider 가 양방향을 지킨다. 공식 SDK 가 요청 본문을 만드는 OpenAI ·
+  Anthropic · Google AI provider 는 요청 `ExtraBody` 에 항목이 있으면 조용히 버리지 않고 `NotSupportedException` 을 던지며,
+  응답 `ExtraBody` 는 `null` 이다.
+
+```csharp
+var response = await messageService.GenerateMessageAsync(new MessageRequest
+{
+    Provider = "local",
+    Model = "qwen3",
+    Messages = [Message.User("Hi")],
+    ExtraBody = new JsonObject { ["n_probs"] = 5 },
+});
+var predictedMs = response.ExtraBody?["timings"]?["predicted_ms"]?.GetValue<double>();
+```
+
 ## OpenAI Compatible (범용 호환)
 
 **패키지**: `IronHive.Providers.OpenAI.Compatible`

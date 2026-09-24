@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Tools;
 
@@ -49,6 +50,12 @@ public class AgentInvokeOptions
     /// Sequences that stop generation when produced.
     /// </summary>
     public ICollection<string>? StopSequences { get; set; }
+
+    /// <summary>
+    /// Provider-specific request fields for this call, deep-merged into the provider's JSON body
+    /// (<see cref="MessageRequest.ExtraBody"/>).
+    /// </summary>
+    public JsonObject? ExtraBody { get; set; }
 
 
     /// <summary>

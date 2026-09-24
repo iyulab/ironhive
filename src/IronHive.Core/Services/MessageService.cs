@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using IronHive.Abstractions.Messages;
@@ -33,6 +34,7 @@ public class MessageService : IMessageService
         var pipeline = BuildPipeline(generator, _middlewares, cancellationToken);
         var context = new MessageContext(request, req => ConfigureGeneration(request, req));
         var collector = request.Suggestions != null ? new SuggestionCollector() : null;
+        JsonObject? extraBody = null;
 
         for (var turn = 0; turn < context.MaxTurns; turn++)
         {
@@ -46,6 +48,7 @@ public class MessageService : IMessageService
             context.TrackedId = res.ResponseId;
             context.TurnReason = res.DoneReason;
             context.TokenUsage = MessageTokenUsage.Add(context.TokenUsage, res.TokenUsage);
+            extraBody = res.ExtraBody;
 
             context.CurrentMessage ??= new Message { Role = MessageRole.Assistant };
             foreach (var content in res.Message?.Content ?? [])
@@ -69,6 +72,7 @@ public class MessageService : IMessageService
             DoneReason = context.TurnReason,
             Message = context.CurrentMessage,
             TokenUsage = context.TokenUsage,
+            ExtraBody = extraBody,
             Model = request.Model,
             Duration = context.Elapsed,
             Timestamp = DateTime.UtcNow,
@@ -88,6 +92,7 @@ public class MessageService : IMessageService
 
         var beginSent = false;
         var parser = request.Suggestions != null ? new SuggestionCollector() : null;
+        JsonObject? extraBody = null;
 
         for (var turn = 0; turn < context.MaxTurns; turn++)
         {
@@ -201,6 +206,7 @@ public class MessageService : IMessageService
                     context.TurnReason = mdr.DoneReason;
                     context.TokenUsage = MessageTokenUsage.Add(context.TokenUsage, mdr.TokenUsage);
                     context.TrackedId = mdr.ResponseId;
+                    extraBody = mdr.ExtraBody;
                 }
                 else
                 {
@@ -230,6 +236,7 @@ public class MessageService : IMessageService
             DoneReason = context.TurnReason,
             Message = context.CurrentMessage,
             TokenUsage = context.TokenUsage,
+            ExtraBody = extraBody,
             Model = request.Model,
             Duration = context.Elapsed,
             Timestamp = DateTime.UtcNow,

@@ -103,6 +103,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
                 OutputTokens = res.Usage?.CompletionTokens ?? 0,
                 CachedInputTokens = res.Usage?.PromptTokensDetails?.CachedTokens
             },
+            ExtraBody = TopLevelExtras(res.ExtraBody, null),
             Model = res.Model,
         };
     }
@@ -122,6 +123,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         // streaming path only (ChatCompletionEquivalenceTests).
         string? id = null;
         string? model = null;
+        JsonObject? extraBody = null;
 
         // Chat Completions streams text as raw deltas and tool calls keyed by index; there are no explicit
         // block start/stop events. We synthesize the IronHive content-block protocol: assign each block a
@@ -257,6 +259,9 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
                 usage.OutputTokens = chunk.Usage.CompletionTokens;
                 usage.CachedInputTokens = chunk.Usage.PromptTokensDetails?.CachedTokens;
             }
+
+            // Servers report whole-response fields on a chunk of their own (llama.cpp: `timings` on the last one).
+            extraBody = TopLevelExtras(chunk.ExtraBody, extraBody);
         }
 
         foreach (var idx in openIndexes)
@@ -271,7 +276,30 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
             DoneReason = reason,
             Model = model,
             TokenUsage = usage,
+            ExtraBody = extraBody,
         };
+    }
+
+    /// <summary>
+    /// The top-level unmapped fields of a response (or chunk) merged into <paramref name="into"/>, the later value
+    /// winning. Left out: <c>choices</c>, whose unmapped fields are per-choice (e.g. <c>reasoning_content</c>, already
+    /// turned into content) and, when streaming, per-token; and the envelope fields <c>object</c> and <c>created</c>,
+    /// which every Chat Completions response carries and which say nothing about this one.
+    /// </summary>
+    internal static JsonObject? TopLevelExtras(JsonObject? extras, JsonObject? into)
+    {
+        if (extras is null)
+            return into;
+
+        foreach (var (key, value) in extras)
+        {
+            if (key is "choices" or "object" or "created")
+                continue;
+            into ??= new JsonObject();
+            into[key] = value?.DeepClone();
+        }
+
+        return into;
     }
 
     private enum PrimaryContentKind { None, Thinking, Text }
@@ -305,7 +333,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         var sendsNewName = tokenLimitParameter is TokenLimitParameter.MaxCompletionTokens or TokenLimitParameter.Both;
         var sendsOldName = tokenLimitParameter is TokenLimitParameter.MaxTokens or TokenLimitParameter.Both;
 
-        return new ChatCompletionRequest
+        var built = new ChatCompletionRequest
         {
             Model = request.Model,
             Messages = BuildMessages(request),
@@ -376,6 +404,27 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
                 }
             }
         };
+
+        // The caller's fields go over this library's: they are the more specific instruction. The payload's own
+        // ExtraBody is deep-merged into the serialized body, so a caller field can also replace a typed one.
+        if (request.ExtraBody is { Count: > 0 } callerExtras)
+        {
+            built.ExtraBody ??= new JsonObject();
+            MergeInto(built.ExtraBody, callerExtras);
+        }
+
+        return built;
+    }
+
+    private static void MergeInto(JsonObject target, JsonObject source)
+    {
+        foreach (var (key, value) in source)
+        {
+            if (target[key] is JsonObject existing && value is JsonObject incoming)
+                MergeInto(existing, incoming);
+            else
+                target[key] = value?.DeepClone();
+        }
     }
 
     /// <summary>

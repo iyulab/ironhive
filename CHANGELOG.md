@@ -4,6 +4,18 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.38.0 — Unreleased
+
+### Added
+
+- **Provider-specific fields pass through in both directions (`ExtraBody`).** `MessageRequest.ExtraBody`,
+  `MessageGenerationRequest.ExtraBody` and `AgentInvokeOptions.ExtraBody` are deep-merged into the request body the
+  OpenAI-compatible provider sends (a caller field wins over one this library sets). `MessageResponse.ExtraBody` and the
+  streaming done frame carry the top-level response fields no typed member maps — llama.cpp's `timings`, for example.
+  The `IChatClient` bridge carries them as `ChatResponse.AdditionalProperties`.
+- The OpenAI, Anthropic and Google AI providers, whose request bodies the official SDKs build, throw
+  `NotSupportedException` for a request with `ExtraBody` entries instead of dropping them.
+
 ## 0.37.0 — 2026-09-24
 
 ### Added
