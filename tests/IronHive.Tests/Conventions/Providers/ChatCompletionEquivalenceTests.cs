@@ -114,6 +114,8 @@ public class ChatCompletionEquivalenceTests
 
         done!.DoneReason.Should().Be(buffered.DoneReason);
         done.TokenUsage.Should().BeEquivalentTo(buffered.TokenUsage);
+        buffered.TokenUsage!.InputTokens.Should().Be(11);
+        buffered.TokenUsage.CachedInputTokens.Should().Be(4, "usage.prompt_tokens_details.cached_tokens must reach the consumer");
         buffered.ResponseId.Should().Be("chatcmpl-1", "the vendor's id must reach the consumer");
         done.ResponseId.Should().Be(buffered.ResponseId, "MessageService prefixes the id on both paths, so both must carry the same raw id");
         buffered.Model.Should().Be(Model, "the model the vendor reports must reach the consumer");
@@ -143,7 +145,7 @@ public class ChatCompletionEquivalenceTests
 
     // ---- recorded vendor bodies ----
 
-    private const string UsageJson = """{"prompt_tokens":11,"completion_tokens":7,"total_tokens":18}""";
+    private const string UsageJson = """{"prompt_tokens":11,"completion_tokens":7,"total_tokens":18,"prompt_tokens_details":{"cached_tokens":4}}""";
 
     private static string ResponseJson(string message, string finishReason)
         => $$$"""{"id":"chatcmpl-1","object":"chat.completion","created":{{{Created}}},"model":"{{{Model}}}","choices":[{"index":0,"message":{{{message}}},"finish_reason":"{{{finishReason}}}","logprobs":null}],"usage":{{{UsageJson}}}}""";

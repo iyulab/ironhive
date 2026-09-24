@@ -807,7 +807,7 @@ public class ChatClientAdapterTests : IDisposable
     {
         // The done frame carries the streamed turn's usage. It used to be dropped, so a streamed turn reported no usage
         // while the buffered call for the same exchange reported it in full.
-        var usage = new MessageTokenUsage { InputTokens = 7, OutputTokens = 3 };
+        var usage = new MessageTokenUsage { InputTokens = 7, OutputTokens = 3, CachedInputTokens = 2 };
         SetupStreamingGenerator(
         [
             new StreamingMessageBeginResponse(),
@@ -830,6 +830,7 @@ public class ChatClientAdapterTests : IDisposable
         streamed.Usage!.InputTokenCount.Should().Be(buffered.Usage!.InputTokenCount).And.Be(7);
         streamed.Usage.OutputTokenCount.Should().Be(buffered.Usage.OutputTokenCount).And.Be(3);
         streamed.Usage.TotalTokenCount.Should().Be(buffered.Usage.TotalTokenCount).And.Be(10);
+        streamed.Usage.CachedInputTokenCount.Should().Be(buffered.Usage.CachedInputTokenCount).And.Be(2);
     }
 
     [Fact]

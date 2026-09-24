@@ -4,6 +4,26 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.37.0 — unreleased
+
+### Added
+
+- **`MessageTokenUsage.CachedInputTokens`: how much of the input the provider read from its prompt cache.** It is filled
+  from OpenAI `input_tokens_details.cached_tokens` (Responses), `prompt_tokens_details.cached_tokens` (Chat Completions
+  and compatible servers), Anthropic `cache_read_input_tokens` and Gemini `cachedContentTokenCount`, on the buffered and
+  streaming paths alike. It is `null` when the provider does not report it (distinct from 0). The `IChatClient` bridge
+  carries it as `UsageDetails.CachedInputTokenCount`.
+- `MessageTokenUsage.Add(left, right)`.
+
+### Changed
+
+- **A tool-loop call reports the usage of every turn, not only the last.** `MessageService` overwrote the usage on each
+  turn, so a call that ran a tool and answered in a second request reported only the second request's tokens; budgets,
+  cost and termination conditions built on it undercounted.
+- **Anthropic: `InputTokens` is the whole input.** Anthropic's `input_tokens` excludes prompt-cache reads and writes;
+  IronHive now adds them back (the reads are also `CachedInputTokens`), as every other provider already reports it.
+  A caller using prompt caching sees a larger `InputTokens` than before.
+
 ## 0.36.0 — 2026-09-24
 
 ### Added

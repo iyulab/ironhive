@@ -114,8 +114,11 @@ public class AnthropicMessageGenerator : IMessageGenerator
             },
             TokenUsage = new MessageTokenUsage
             {
-                InputTokens = (int)res.Usage.InputTokens,
-                OutputTokens = (int)res.Usage.OutputTokens
+                // Anthropic's input_tokens excludes the prompt-cache reads and writes; IronHive's InputTokens is the
+                // whole input, with the reads also reported as CachedInputTokens.
+                InputTokens = (int)(res.Usage.InputTokens + (res.Usage.CacheReadInputTokens ?? 0) + (res.Usage.CacheCreationInputTokens ?? 0)),
+                OutputTokens = (int)res.Usage.OutputTokens,
+                CachedInputTokens = res.Usage.CacheReadInputTokens is { } read ? (int)read : null
             },
             // Same envelope on both paths — the streaming done frame carries the model from
             // message_start (AnthropicMessagesEquivalenceTests compares them).
@@ -143,7 +146,9 @@ public class AnthropicMessageGenerator : IMessageGenerator
             {
                 id = mse.Message.ID;
                 model = mse.Message.Model.Raw();
-                usage.InputTokens = (int)mse.Message.Usage.InputTokens;
+                var startUsage = mse.Message.Usage;
+                usage.InputTokens = (int)(startUsage.InputTokens + (startUsage.CacheReadInputTokens ?? 0) + (startUsage.CacheCreationInputTokens ?? 0));
+                usage.CachedInputTokens = startUsage.CacheReadInputTokens is { } read ? (int)read : null;
                 yield return new StreamingMessageBeginResponse();
             }
             // 2. 컨텐츠 생성 시작 이벤트

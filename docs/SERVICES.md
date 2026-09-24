@@ -101,7 +101,7 @@ public interface IMessageMiddleware
 | `Request` | 이번 턴에 generator로 나가는 요청(`MessageGenerationRequest`). 턴을 거치며 `Messages`가 누적됩니다. |
 | `CurrentTurn` / `MaxTurns` | 현재 턴 번호(0부터)와 이번 호출의 최대 턴 수. |
 | `CurrentMessage` | 턴을 거치며 계속 채워지는 assistant 메시지. 아직 아무 컨텐츠도 안 나왔다면 null. |
-| `TrackedId` / `TurnReason` / `TokenUsage` | 가장 최근 턴의 응답 ID(prefix 없음) / 종료 사유 / 토큰 사용량. |
+| `TrackedId` / `TurnReason` / `TokenUsage` | 가장 최근 턴의 응답 ID(prefix 없음) / 종료 사유 / **지금까지 모든 턴의 토큰 사용량 합**(0.37.0 부터 — 그 전엔 마지막 턴만). |
 | `Items` | 파이프라인 단계 간 공유 데이터. `MessageRequest.Items`로 시작해 `MessageResponse.Items`(스트리밍은 `StreamingMessageDoneResponse.Items`)로 흘러나갑니다. |
 
 ```csharp

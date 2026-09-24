@@ -135,6 +135,9 @@ public class AnthropicMessagesEquivalenceTests
 
         done!.DoneReason.Should().Be(buffered.DoneReason);
         done.TokenUsage.Should().BeEquivalentTo(buffered.TokenUsage);
+        // Anthropic's input_tokens (11) excludes cache reads (5) and writes (2); InputTokens is the whole input.
+        buffered.TokenUsage!.InputTokens.Should().Be(18);
+        buffered.TokenUsage.CachedInputTokens.Should().Be(5);
         done.ResponseId.Should().Be(buffered.ResponseId);
         buffered.Model.Should().Be(Model, "the model must come through as the vendor's plain string, not a wrapper's rendering");
         done.Model.Should().Be(buffered.Model);
@@ -165,6 +168,6 @@ public class AnthropicMessagesEquivalenceTests
 
     private static string MessageJson(string content, string? stopReason, int outputTokens)
         => $$$"""
-        {"id":"msg_1","type":"message","role":"assistant","model":"{{{Model}}}","content":{{{content}}},"stop_reason":{{{(stopReason is null ? "null" : $"\"{stopReason}\"")}}},"stop_sequence":null,"usage":{"input_tokens":11,"output_tokens":{{{outputTokens}}},"cache_creation_input_tokens":0,"cache_read_input_tokens":0}}
+        {"id":"msg_1","type":"message","role":"assistant","model":"{{{Model}}}","content":{{{content}}},"stop_reason":{{{(stopReason is null ? "null" : $"\"{stopReason}\"")}}},"stop_sequence":null,"usage":{"input_tokens":11,"output_tokens":{{{outputTokens}}},"cache_creation_input_tokens":2,"cache_read_input_tokens":5}}
         """;
 }

@@ -56,6 +56,34 @@ public class MessageServiceStreamingEquivalenceTests
     }
 
     [Fact]
+    public async Task ToolLoop_ReportsTheUsageOfEveryTurn_NotOnlyTheLast()
+    {
+        // Each turn of a tool loop is a billed request. The call used to report the last turn's usage alone, so a
+        // two-turn call looked like it cost 25 + 9 tokens instead of 35 + 13 — every budget and cost figure built on
+        // it undercounted.
+        Turn[] turns =
+        [
+            new("r1", MessageDoneReason.ToolCall, 10, 4, [new Part.Tool("call-1", "echo", "{\"q\":1}")]),
+            new("r2", MessageDoneReason.EndTurn, 25, 9, [new Part.Text("The answer is 1.")]),
+        ];
+
+        MessageRequest Request() => new()
+        {
+            Provider = Provider,
+            Model = Model,
+            Messages = [Message.User("look it up")],
+            Tools = new ToolCollection([new EchoTool()]),
+        };
+
+        var buffered = await RunBufferedAsync(turns, Request());
+        var streamed = await RunStreamingAsync(turns, Request());
+
+        buffered.Result.TokenUsage!.InputTokens.Should().Be(35);
+        buffered.Result.TokenUsage.OutputTokens.Should().Be(13);
+        streamed.Frames.OfType<StreamingMessageDoneResponse>().Last().TokenUsage.Should().BeEquivalentTo(buffered.Result.TokenUsage);
+    }
+
+    [Fact]
     public async Task SuggestionBlockInAToolTurn_IsStrippedBeforeTheNextTurnOnBothHalves()
     {
         // A suggestion block in a turn that also calls a tool. The next turn sends that turn back to

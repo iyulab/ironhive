@@ -122,11 +122,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
                 Role = IronHiveMessageRole.Assistant,
                 Content = content,
             },
-            TokenUsage = new MessageTokenUsage
-            {
-                InputTokens = response.Usage?.InputTokenCount ?? 0,
-                OutputTokens = response.Usage?.OutputTokenCount ?? 0
-            },
+            TokenUsage = UsageOf(response),
             // Same envelope on every path: the streaming done frame carries these too (see below),
             // and the equivalence test compares them.
             Model = response.Model,
@@ -295,12 +291,16 @@ public class OpenAIMessageGenerator : IMessageGenerator
         ResponseId = response.Id,
         DoneReason = reason,
         Model = response.Model,
-        TokenUsage = new MessageTokenUsage
-        {
-            InputTokens = response.Usage?.InputTokenCount ?? 0,
-            OutputTokens = response.Usage?.OutputTokenCount ?? 0
-        },
+        TokenUsage = UsageOf(response),
         Timestamp = response.CreatedAt.UtcDateTime,
+    };
+
+    // One reading of the usage for the buffered response and the streaming done frame alike.
+    private static MessageTokenUsage UsageOf(ResponseResult response) => new()
+    {
+        InputTokens = response.Usage?.InputTokenCount ?? 0,
+        OutputTokens = response.Usage?.OutputTokenCount ?? 0,
+        CachedInputTokens = response.Usage?.InputTokenDetails?.CachedTokenCount
     };
 
     /// <inheritdoc />

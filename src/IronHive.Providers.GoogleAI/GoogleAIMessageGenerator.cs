@@ -127,6 +127,9 @@ public class GoogleAIMessageGenerator : IMessageGenerator
             if (meta.PromptTokenCount.HasValue)
                 usage.InputTokens += meta.PromptTokenCount.Value;
 
+            if (meta.CachedContentTokenCount.HasValue)
+                usage.CachedInputTokens = (usage.CachedInputTokens ?? 0) + meta.CachedContentTokenCount.Value;
+
             if (meta.CandidatesTokenCount.HasValue)
                 usage.OutputTokens += meta.CandidatesTokenCount.Value;
 
@@ -182,7 +185,8 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                 {
                     InputTokens = res.UsageMetadata.PromptTokenCount ?? 0,
                     OutputTokens = (res.UsageMetadata.CandidatesTokenCount ?? 0)
-                        + (res.UsageMetadata.ThoughtsTokenCount ?? 0)
+                        + (res.UsageMetadata.ThoughtsTokenCount ?? 0),
+                    CachedInputTokens = res.UsageMetadata.CachedContentTokenCount
                 };
             }
 

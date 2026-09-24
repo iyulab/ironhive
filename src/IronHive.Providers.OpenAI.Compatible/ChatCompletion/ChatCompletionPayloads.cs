@@ -52,6 +52,16 @@ internal class ChatTokenUsage
 
     [JsonPropertyName("total_tokens")]
     public int TotalTokens { get; set; }
+
+    [JsonPropertyName("prompt_tokens_details")]
+    public ChatPromptTokensDetails? PromptTokensDetails { get; set; }
+}
+
+internal class ChatPromptTokensDetails
+{
+    /// <summary>Of <c>prompt_tokens</c>, how many were read from the server's prompt cache.</summary>
+    [JsonPropertyName("cached_tokens")]
+    public int? CachedTokens { get; set; }
 }
 
 /// <summary>

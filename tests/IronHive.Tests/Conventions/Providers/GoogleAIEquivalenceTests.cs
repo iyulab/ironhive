@@ -135,6 +135,7 @@ public class GoogleAIEquivalenceTests
 
         done!.DoneReason.Should().Be(buffered.DoneReason);
         done.TokenUsage.Should().BeEquivalentTo(buffered.TokenUsage);
+        buffered.TokenUsage!.CachedInputTokens.Should().Be(6, "usageMetadata.cachedContentTokenCount must reach the consumer");
         done.ResponseId.Should().Be(buffered.ResponseId);
         buffered.Model.Should().Be(Model, "the model version the vendor reports must reach the consumer");
         done.Model.Should().Be(buffered.Model);
@@ -180,7 +181,7 @@ public class GoogleAIEquivalenceTests
 
     // ---- recorded vendor bodies ----
 
-    private const string UsageJson = """{"promptTokenCount":11,"candidatesTokenCount":7,"totalTokenCount":18}""";
+    private const string UsageJson = """{"promptTokenCount":11,"candidatesTokenCount":7,"totalTokenCount":18,"cachedContentTokenCount":6}""";
 
     private static string ResponseJson(string parts, string finishReason, bool usage)
         => Chunk(parts, finishReason, usage);

@@ -138,6 +138,7 @@ public class OpenAIResponsesEquivalenceTests
 
         done!.DoneReason.Should().Be(buffered.DoneReason);
         done.TokenUsage.Should().BeEquivalentTo(buffered.TokenUsage, "usage aggregated on one path and dropped on the other is one of the defects this convention exists for");
+        buffered.TokenUsage!.CachedInputTokens.Should().Be(3, "usage.input_tokens_details.cached_tokens must reach the consumer");
         done.ResponseId.Should().Be(buffered.ResponseId, "MessageService prefixes the id with the provider name on both paths, so the generator must hand back the same raw id on both");
         done.Model.Should().Be(buffered.Model);
         done.Timestamp.Should().Be(buffered.Timestamp);
@@ -167,7 +168,7 @@ public class OpenAIResponsesEquivalenceTests
     // ---- recorded vendor bodies ----
 
     private static string Usage(int input, int output)
-        => $$$"""{"input_tokens":{{{input}}},"input_tokens_details":{"cached_tokens":0},"output_tokens":{{{output}}},"output_tokens_details":{"reasoning_tokens":0},"total_tokens":{{{input + output}}}}""";
+        => $$$"""{"input_tokens":{{{input}}},"input_tokens_details":{"cached_tokens":3},"output_tokens":{{{output}}},"output_tokens_details":{"reasoning_tokens":0},"total_tokens":{{{input + output}}}}""";
 
     private static string ResponseJson(string status, string output, string? usage, string? incompleteDetails = null)
         => $$$"""

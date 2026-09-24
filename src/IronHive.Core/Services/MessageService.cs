@@ -45,7 +45,7 @@ public class MessageService : IMessageService
             var res = await pipeline(context).ConfigureAwait(false);
             context.TrackedId = res.ResponseId;
             context.TurnReason = res.DoneReason;
-            context.TokenUsage = res.TokenUsage;
+            context.TokenUsage = MessageTokenUsage.Add(context.TokenUsage, res.TokenUsage);
 
             context.CurrentMessage ??= new Message { Role = MessageRole.Assistant };
             foreach (var content in res.Message?.Content ?? [])
@@ -199,7 +199,7 @@ public class MessageService : IMessageService
                 {
                     turnDone = true;
                     context.TurnReason = mdr.DoneReason;
-                    context.TokenUsage = mdr.TokenUsage;
+                    context.TokenUsage = MessageTokenUsage.Add(context.TokenUsage, mdr.TokenUsage);
                     context.TrackedId = mdr.ResponseId;
                 }
                 else

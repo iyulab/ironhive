@@ -100,7 +100,8 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
             TokenUsage = new MessageTokenUsage
             {
                 InputTokens = res.Usage?.PromptTokens ?? 0,
-                OutputTokens = res.Usage?.CompletionTokens ?? 0
+                OutputTokens = res.Usage?.CompletionTokens ?? 0,
+                CachedInputTokens = res.Usage?.PromptTokensDetails?.CachedTokens
             },
             Model = res.Model,
         };
@@ -254,6 +255,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
             {
                 usage.InputTokens = chunk.Usage.PromptTokens;
                 usage.OutputTokens = chunk.Usage.CompletionTokens;
+                usage.CachedInputTokens = chunk.Usage.PromptTokensDetails?.CachedTokens;
             }
         }
 

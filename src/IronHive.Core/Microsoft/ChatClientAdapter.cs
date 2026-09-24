@@ -507,7 +507,8 @@ public class ChatClientAdapter : IChatClient
             {
                 InputTokenCount = response.TokenUsage.InputTokens,
                 OutputTokenCount = response.TokenUsage.OutputTokens,
-                TotalTokenCount = response.TokenUsage.TotalTokens
+                TotalTokenCount = response.TokenUsage.TotalTokens,
+                CachedInputTokenCount = response.TokenUsage.CachedInputTokens
             } : null
         };
     }
@@ -561,7 +562,8 @@ public class ChatClientAdapter : IChatClient
                         {
                             InputTokenCount = usage.InputTokens,
                             OutputTokenCount = usage.OutputTokens,
-                            TotalTokenCount = usage.TotalTokens
+                            TotalTokenCount = usage.TotalTokens,
+                            CachedInputTokenCount = usage.CachedInputTokens
                         })]
                         : []
                 };
