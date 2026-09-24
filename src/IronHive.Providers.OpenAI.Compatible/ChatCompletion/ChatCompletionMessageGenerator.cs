@@ -104,6 +104,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
                 CachedInputTokens = res.Usage?.PromptTokensDetails?.CachedTokens
             },
             ExtraBody = TopLevelExtras(res.ExtraBody, null),
+            LogProbabilities = request.LogProbabilities is null ? null : ToLogProbabilities(choice?.Logprobs) ?? [],
             Model = res.Model,
         };
     }
@@ -124,6 +125,8 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         string? id = null;
         string? model = null;
         JsonObject? extraBody = null;
+        // Collected only when asked for, so a response without them stays null rather than an empty list.
+        var logProbabilities = request.LogProbabilities is null ? null : new List<TokenLogProbability>();
 
         // Chat Completions streams text as raw deltas and tool calls keyed by index; there are no explicit
         // block start/stop events. We synthesize the IronHive content-block protocol: assign each block a
@@ -202,10 +205,16 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
                     };
                 }
 
+                // Each chunk's logprobs are the tokens of its content delta.
+                var tokens = logProbabilities is null ? null : ToLogProbabilities(choice?.Logprobs);
+                if (tokens is not null)
+                    logProbabilities!.AddRange(tokens);
+
                 yield return new StreamingContentDeltaResponse
                 {
                     Index = primaryIndex,
-                    Delta = new TextDeltaContent { Value = delta.Content }
+                    Delta = new TextDeltaContent { Value = delta.Content },
+                    LogProbabilities = tokens
                 };
             }
 
@@ -277,8 +286,17 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
             Model = model,
             TokenUsage = usage,
             ExtraBody = extraBody,
+            LogProbabilities = logProbabilities,
         };
     }
+
+    /// <summary>The choice's content-token log probabilities in IronHive's shape, or null when it carried none.</summary>
+    internal static List<TokenLogProbability>? ToLogProbabilities(ChatLogprobs? logprobs)
+        => logprobs?.Content?.Select(t => new TokenLogProbability(
+                t.Token ?? string.Empty,
+                t.Logprob,
+                (t.TopLogprobs ?? []).Select(a => new TokenAlternative(a.Token ?? string.Empty, a.Logprob)).ToList()))
+            .ToList();
 
     /// <summary>
     /// The top-level unmapped fields of a response (or chunk) merged into <paramref name="into"/>, the later value
@@ -337,6 +355,8 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         {
             Model = request.Model,
             Messages = BuildMessages(request),
+            Logprobs = request.LogProbabilities is null ? null : true,
+            TopLogprobs = request.LogProbabilities is { TopAlternatives: > 0 } lp ? lp.TopAlternatives : null,
             MaxCompletionTokens = sendsNewName ? request.MaxTokens : null,
             MaxTokens = sendsOldName ? request.MaxTokens : null,
             Temperature = request.Temperature,

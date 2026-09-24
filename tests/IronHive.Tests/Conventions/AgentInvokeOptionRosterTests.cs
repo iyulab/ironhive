@@ -41,7 +41,8 @@ public class AgentInvokeOptionRosterTests
         ["Suggestions"] = "Suggestions",
         ["MaxTurns"] = "MaxTurns",
         ["Items"] = "Items",
-        ["ExtraBody"] = "ExtraBody"
+        ["ExtraBody"] = "ExtraBody",
+        ["LogProbabilities"] = "LogProbabilities"
     };
 
     /// <summary>
@@ -123,6 +124,7 @@ public class AgentInvokeOptionRosterTests
         if (type == typeof(ToolOptions)) return new ToolOptions();
         if (type == typeof(SuggestionOptions)) return new SuggestionOptions();
         if (type == typeof(MessageContextItems)) return new MessageContextItems();
+        if (type == typeof(LogProbabilityOptions)) return new LogProbabilityOptions { TopAlternatives = 3 };
         if (type == typeof(System.Text.Json.Nodes.JsonObject)) return new System.Text.Json.Nodes.JsonObject { ["sample"] = 1 };
         if (typeof(IToolCollection).IsAssignableFrom(type)) return new ToolCollection();
         if (typeof(ICollection<string>).IsAssignableFrom(type)) return new List<string> { "STOP" };

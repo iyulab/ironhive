@@ -58,6 +58,13 @@ public class MessageGenerationRequest
     public JsonObject? ExtraBody { get; set; }
 
     /// <summary>
+    /// Asks for the log probability of each output token (and, optionally, the most likely alternatives). The response
+    /// carries them in <c>LogProbabilities</c>. <see langword="null"/> requests none. A provider that cannot return them
+    /// throws <see cref="NotSupportedException"/> rather than answering without them.
+    /// </summary>
+    public LogProbabilityOptions? LogProbabilities { get; set; }
+
+    /// <summary>
     /// Sequences that stop generation when produced.
     /// </summary>
     public ICollection<string>? StopSequences { get; set; }

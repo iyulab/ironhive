@@ -44,13 +44,19 @@ public class OpenAIMessageGenerator : IMessageGenerator
         GC.SuppressFinalize(this);
     }
 
-    // The official SDK builds this provider's request body and this library does not extend it; dropping the
-    // caller's fields silently would send a request other than the one asked for.
-    private static void RejectExtraBody(MessageGenerationRequest request)
+    // Request features this provider does not carry. The official SDK builds its request body, which this library does
+    // not extend, and this provider does not return token log probabilities; dropping either silently would answer a
+    // request other than the one asked for.
+    private static void RejectUnsupported(MessageGenerationRequest request)
     {
         if (request.ExtraBody is { Count: > 0 })
             throw new NotSupportedException(
                 "MessageGenerationRequest.ExtraBody is not supported by the OpenAI provider; the OpenAI-compatible provider honours it.");
+
+        // Answering without them would hand the caller a response it cannot tell from one that has none.
+        if (request.LogProbabilities is not null)
+            throw new NotSupportedException(
+                "MessageGenerationRequest.LogProbabilities is not supported by the OpenAI provider; the OpenAI-compatible provider returns them.");
     }
 
     /// <inheritdoc />
@@ -58,7 +64,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        RejectExtraBody(request);
+        RejectUnsupported(request);
         var options = BuildOptions(request, _capabilityOverrides);
         var result = await _client.CreateResponseAsync(options, cancellationToken)
             .MapException(ex => OpenAIExceptionMapper.Map(ex, cancellationToken));
@@ -145,7 +151,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        RejectExtraBody(request);
+        RejectUnsupported(request);
         var options = BuildOptions(request, _capabilityOverrides);
         options.StreamingEnabled = true;
 

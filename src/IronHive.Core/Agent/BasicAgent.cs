@@ -98,6 +98,7 @@ public class BasicAgent : IAgent
         if (options.TopK is not null) request.TopK = options.TopK;
         if (options.StopSequences is not null) request.StopSequences = options.StopSequences;
         if (options.ExtraBody is not null) request.ExtraBody = options.ExtraBody;
+        if (options.LogProbabilities is not null) request.LogProbabilities = options.LogProbabilities;
         if (options.Tools is not null) request.Tools = options.Tools;
         if (options.ToolOptions is not null) request.ToolOptions = options.ToolOptions;
         if (options.OutputFormat is not null) request.OutputFormat = options.OutputFormat;

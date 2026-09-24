@@ -292,6 +292,9 @@ internal class ChatChoice
 
     [JsonPropertyName("message")]
     public ChatChoiceMessage? Message { get; set; }
+
+    [JsonPropertyName("logprobs")]
+    public ChatLogprobs? Logprobs { get; set; }
 }
 
 internal class ChatChoiceDelta
@@ -301,6 +304,37 @@ internal class ChatChoiceDelta
 
     [JsonPropertyName("finish_reason")]
     public ChatFinishReason? FinishReason { get; set; }
+
+    [JsonPropertyName("logprobs")]
+    public ChatLogprobs? Logprobs { get; set; }
+}
+
+/// <summary><c>choices[].logprobs</c>: one entry per content token (per chunk when streaming).</summary>
+internal class ChatLogprobs
+{
+    [JsonPropertyName("content")]
+    public List<ChatTokenLogprob>? Content { get; set; }
+}
+
+internal class ChatTokenLogprob
+{
+    [JsonPropertyName("token")]
+    public string? Token { get; set; }
+
+    [JsonPropertyName("logprob")]
+    public double Logprob { get; set; }
+
+    [JsonPropertyName("top_logprobs")]
+    public List<ChatTopLogprob>? TopLogprobs { get; set; }
+}
+
+internal class ChatTopLogprob
+{
+    [JsonPropertyName("token")]
+    public string? Token { get; set; }
+
+    [JsonPropertyName("logprob")]
+    public double Logprob { get; set; }
 }
 
 internal class ChatCompletionRequest : ChatCompletionPayloadBase
@@ -332,6 +366,12 @@ internal class ChatCompletionRequest : ChatCompletionPayloadBase
     /// Servers that do not recognize it ignore it.</summary>
     [JsonPropertyName("top_k")]
     public int? TopK { get; set; }
+
+    [JsonPropertyName("logprobs")]
+    public bool? Logprobs { get; set; }
+
+    [JsonPropertyName("top_logprobs")]
+    public int? TopLogprobs { get; set; }
 
     [JsonPropertyName("stop")]
     public ICollection<string>? Stop { get; set; }

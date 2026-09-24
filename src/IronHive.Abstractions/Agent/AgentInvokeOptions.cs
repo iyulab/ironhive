@@ -57,6 +57,11 @@ public class AgentInvokeOptions
     /// </summary>
     public JsonObject? ExtraBody { get; set; }
 
+    /// <summary>
+    /// Asks for per-token log probabilities for this call (<see cref="MessageRequest.LogProbabilities"/>).
+    /// </summary>
+    public LogProbabilityOptions? LogProbabilities { get; set; }
+
 
     /// <summary>
     /// 이 호출에서 사용할 도구 집합입니다. 설정 시 <see cref="IAgent.Tools"/>를 이 호출에 한해

@@ -35,6 +35,7 @@ public class MessageService : IMessageService
         var context = new MessageContext(request, req => ConfigureGeneration(request, req));
         var collector = request.Suggestions != null ? new SuggestionCollector() : null;
         JsonObject? extraBody = null;
+        IReadOnlyList<TokenLogProbability>? logProbabilities = null;
 
         for (var turn = 0; turn < context.MaxTurns; turn++)
         {
@@ -49,6 +50,7 @@ public class MessageService : IMessageService
             context.TurnReason = res.DoneReason;
             context.TokenUsage = MessageTokenUsage.Add(context.TokenUsage, res.TokenUsage);
             extraBody = res.ExtraBody;
+            logProbabilities = res.LogProbabilities;
 
             context.CurrentMessage ??= new Message { Role = MessageRole.Assistant };
             foreach (var content in res.Message?.Content ?? [])
@@ -73,6 +75,7 @@ public class MessageService : IMessageService
             Message = context.CurrentMessage,
             TokenUsage = context.TokenUsage,
             ExtraBody = extraBody,
+            LogProbabilities = logProbabilities,
             Model = request.Model,
             Duration = context.Elapsed,
             Timestamp = DateTime.UtcNow,
@@ -93,6 +96,7 @@ public class MessageService : IMessageService
         var beginSent = false;
         var parser = request.Suggestions != null ? new SuggestionCollector() : null;
         JsonObject? extraBody = null;
+        IReadOnlyList<TokenLogProbability>? logProbabilities = null;
 
         for (var turn = 0; turn < context.MaxTurns; turn++)
         {
@@ -167,7 +171,8 @@ public class MessageService : IMessageService
                             yield return new StreamingContentDeltaResponse
                             {
                                 Index = baseIndex + cdr.Index,
-                                Delta = new TextDeltaContent { Value = text }
+                                Delta = new TextDeltaContent { Value = text },
+                                LogProbabilities = cdr.LogProbabilities
                             };
                         }
                     }
@@ -207,6 +212,7 @@ public class MessageService : IMessageService
                     context.TokenUsage = MessageTokenUsage.Add(context.TokenUsage, mdr.TokenUsage);
                     context.TrackedId = mdr.ResponseId;
                     extraBody = mdr.ExtraBody;
+                    logProbabilities = mdr.LogProbabilities;
                 }
                 else
                 {
@@ -237,6 +243,7 @@ public class MessageService : IMessageService
             Message = context.CurrentMessage,
             TokenUsage = context.TokenUsage,
             ExtraBody = extraBody,
+            LogProbabilities = logProbabilities,
             Model = request.Model,
             Duration = context.Elapsed,
             Timestamp = DateTime.UtcNow,

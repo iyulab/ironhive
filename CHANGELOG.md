@@ -13,8 +13,14 @@ changes are expected and used freely for structural correctness (see
   OpenAI-compatible provider sends (a caller field wins over one this library sets). `MessageResponse.ExtraBody` and the
   streaming done frame carry the top-level response fields no typed member maps — llama.cpp's `timings`, for example.
   The `IChatClient` bridge carries them as `ChatResponse.AdditionalProperties`.
+- **Token log probabilities (`LogProbabilities`).** `MessageRequest.LogProbabilities` (also on
+  `MessageGenerationRequest` and `AgentInvokeOptions`) asks for each output token's log probability and up to 20 most
+  likely alternatives per position (`LogProbabilityOptions.TopAlternatives`). `MessageResponse.LogProbabilities` lists
+  them in order; when streaming, each text delta carries its tokens and the done frame the whole list. The
+  OpenAI-compatible provider fills them (`logprobs`/`top_logprobs`); a server that ignores the request answers with an
+  empty list.
 - The OpenAI, Anthropic and Google AI providers, whose request bodies the official SDKs build, throw
-  `NotSupportedException` for a request with `ExtraBody` entries instead of dropping them.
+  `NotSupportedException` for a request with `ExtraBody` entries or `LogProbabilities` instead of dropping them.
 
 ## 0.37.0 — 2026-09-24
 

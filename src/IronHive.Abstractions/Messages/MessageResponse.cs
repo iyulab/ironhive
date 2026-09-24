@@ -29,6 +29,12 @@ public class MessageResponse
     /// </summary>
     public JsonObject? ExtraBody { get; set; }
 
+    /// <summary>
+    /// The log probability of each output text token, in order, when the request asked for them
+    /// (<c>LogProbabilities</c>); <see langword="null"/> otherwise. From the last generation call of the request.
+    /// </summary>
+    public IReadOnlyList<TokenLogProbability>? LogProbabilities { get; set; }
+
     public string? Model { get; set; }
 
     public TimeSpan? Duration { get; set; }

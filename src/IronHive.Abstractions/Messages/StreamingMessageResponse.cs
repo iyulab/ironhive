@@ -48,6 +48,12 @@ public class StreamingContentDeltaResponse : StreamingMessageResponse
     public required int Index { get; set; }
 
     public required MessageDeltaContent Delta { get; set; }
+
+    /// <summary>
+    /// The log probabilities of the tokens in this text delta, when the request asked for them; the done frame carries
+    /// the whole list.
+    /// </summary>
+    public IReadOnlyList<TokenLogProbability>? LogProbabilities { get; set; }
 }
 
 /// <summary>
@@ -107,6 +113,12 @@ public class StreamingMessageDoneResponse : StreamingMessageResponse
     /// collect them (the OpenAI-compatible provider does).
     /// </summary>
     public JsonObject? ExtraBody { get; set; }
+
+    /// <summary>
+    /// The log probability of each output text token, in order, when the request asked for them
+    /// (<c>LogProbabilities</c>); <see langword="null"/> otherwise. From the last generation call of the request.
+    /// </summary>
+    public IReadOnlyList<TokenLogProbability>? LogProbabilities { get; set; }
 
     public string? Model { get; set; }
 

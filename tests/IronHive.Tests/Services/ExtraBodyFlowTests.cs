@@ -41,6 +41,28 @@ public class ExtraBodyFlowTests
     }
 
     [Fact]
+    public async Task MessageService_Buffered_CarriesLogProbabilitiesBothDirections()
+    {
+        var generator = Substitute.For<IMessageGenerator>();
+        MessageGenerationRequest? seen = null;
+        IReadOnlyList<TokenLogProbability> tokens = [new("yes", -0.1, [new("yes", -0.1), new("no", -2.4)])];
+        generator.GenerateMessageAsync(Arg.Do<MessageGenerationRequest>(r => seen = r), Arg.Any<CancellationToken>())
+            .Returns(new MessageResponse { DoneReason = MessageDoneReason.EndTurn, Message = Message.Assistant("yes"), LogProbabilities = tokens });
+        var service = new MessageService(new Dictionary<string, IMessageGenerator> { ["p"] = generator });
+
+        var response = await service.GenerateMessageAsync(new MessageRequest
+        {
+            Provider = "p",
+            Model = "m",
+            Messages = [Message.User("Hi")],
+            LogProbabilities = new LogProbabilityOptions { TopAlternatives = 2 },
+        }, TestContext.Current.CancellationToken);
+
+        seen!.LogProbabilities!.TopAlternatives.Should().Be(2);
+        response.LogProbabilities.Should().BeSameAs(tokens);
+    }
+
+    [Fact]
     public async Task MessageService_Streaming_CarriesTheDoneFramesExtraBody()
     {
         var service = new MessageService(new Dictionary<string, IMessageGenerator> { ["p"] = new DoneOnlyGenerator(Timings()) });
