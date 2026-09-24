@@ -46,6 +46,7 @@ public sealed class ApiKeyResolverWireTests : IDisposable
                     ["Authorization"] = ctx.Request.Headers["Authorization"],
                     ["x-api-key"] = ctx.Request.Headers["x-api-key"],
                     ["x-goog-api-key"] = ctx.Request.Headers["x-goog-api-key"],
+                    ["query"] = ctx.Request.Url!.Query,
                 });
             }
 
@@ -130,6 +131,8 @@ public sealed class ApiKeyResolverWireTests : IDisposable
         (await SentAsync(() => finder.ListModelsAsync(), "x-goog-api-key")).Should().Be("key-1");
         key = "key-2";
         (await SentAsync(() => finder.ListModelsAsync(), "x-goog-api-key")).Should().Be("key-2");
+        (await SentAsync(() => finder.ListModelsAsync(), "query")).Should().NotContain("key=",
+            "a key in the query string would carry the construction-time key past the resolver");
     }
 
     [Fact]
