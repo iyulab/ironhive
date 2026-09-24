@@ -4,7 +4,17 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
-## 0.34.0 — unreleased
+## 0.35.0 — unreleased
+
+### Changed
+
+- **A function tool that returns a `string` hands the model that text as-is.** The result used to go through the JSON
+  serializer like any object, so the model received it wrapped in quotes with every newline and quote escaped — a CSV
+  or a multi-line answer arrived as one escaped JSON literal (`"a,b\n\"x\""`). `Task<string>`, `ValueTask<string>`
+  and the `"executed done"` placeholder of a `void`/`Task` tool are covered too. Other return types are serialized as
+  before, and `MessageContent` results still pass through untouched. `docs/TOOLS.md` now lists both pass-through paths.
+
+## 0.34.0 — 2026-09-24
 
 ### Changed
 

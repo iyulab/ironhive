@@ -123,6 +123,10 @@ public sealed class FunctionTool : ITool
             var result = await execTask.ConfigureAwait(false);
             return result switch
             {
+                // Text is the model's own medium: a string result goes as-is. Serializing it would wrap it in
+                // quotes and escape every newline and quote inside, so a CSV or a multi-line answer reaches the
+                // model as one escaped JSON literal.
+                string text => ToolOutput.Success(text),
                 MessageContent single => ToolOutput.Success([single]),
                 IEnumerable<MessageContent> many => ToolOutput.Success(many),
                 _ => ToolOutput.Success(JsonSerializer.Serialize(result, JsonOptions ?? JsonDefaultOptions.FunctionOptions))

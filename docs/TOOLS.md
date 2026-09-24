@@ -79,11 +79,19 @@ public class MyTools
 ### 반환 타입 지원
 
 ```csharp
-[FunctionTool] public string Sync() { ... }
-[FunctionTool] public Task<string> Async() { ... }
+[FunctionTool] public string Sync() { ... }                             // 텍스트 그대로 전달
+[FunctionTool] public Task<string> Async() { ... }                      // 텍스트 그대로 전달
 [FunctionTool] public async IAsyncEnumerable<string> Streaming() { ... }
-[FunctionTool] public Task<MyObject> Complex() { ... }  // JSON 직렬화됨
+[FunctionTool] public Task<MyObject> Complex() { ... }                  // JSON 직렬화됨
+[FunctionTool] public Task<MessageContent> Content() { ... }            // 그대로 전달(이미지 등)
+[FunctionTool] public IEnumerable<MessageContent> Contents() { ... }    // 그대로 전달
 ```
+
+- `string`(및 `Task<string>`/`ValueTask<string>`) 결과는 **모델에 텍스트 그대로** 전달된다 — 따옴표로 감싸거나 개행·따옴표를
+  이스케이프하지 않는다. CSV·표·여러 줄 답은 `string` 으로 돌려주면 된다.
+- `MessageContent`(또는 그 목록)를 돌려주면 직렬화 없이 그대로 도구 결과가 된다 — 이미지(`ImageMessageContent`)나 여러 조각을
+  돌려줄 때 쓴다.
+- 그 밖의 타입은 `JsonOptions`(없으면 `JsonDefaultOptions.FunctionOptions`)로 JSON 직렬화된다.
 
 ---
 

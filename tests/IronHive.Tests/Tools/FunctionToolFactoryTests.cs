@@ -233,6 +233,41 @@ public class FunctionToolFactoryTests
     }
 
     [Fact]
+    public async Task InvokeAsync_StringResult_ReachesTheModelAsIs_NotAsAJsonLiteral()
+    {
+        // A CSV or a multi-line answer must not arrive as one quoted, escaped JSON string.
+        const string Csv = "name,note\n\"a\",line 1\nb,\"x\"";
+        Func<string> csv = () => Csv;
+        var tool = new FunctionTool(csv) { Name = "csv", Description = null, Parameters = null, RequiresApproval = false };
+
+        var result = await tool.InvokeAsync(new ToolInput(new Dictionary<string, object?>()), TestContext.Current.CancellationToken);
+
+        Text(result).Should().Be(Csv);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_TaskOfStringResult_ReachesTheModelAsIs()
+    {
+        Func<Task<string>> answer = () => Task.FromResult("line 1\nline 2");
+        var tool = new FunctionTool(answer) { Name = "answer", Description = null, Parameters = null, RequiresApproval = false };
+
+        var result = await tool.InvokeAsync(new ToolInput(new Dictionary<string, object?>()), TestContext.Current.CancellationToken);
+
+        Text(result).Should().Be("line 1\nline 2");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ObjectResult_IsStillSerializedAsJson()
+    {
+        Func<object> obj = () => new { Name = "a", Lines = new[] { "x", "y" } };
+        var tool = new FunctionTool(obj) { Name = "obj", Description = null, Parameters = null, RequiresApproval = false };
+
+        var result = await tool.InvokeAsync(new ToolInput(new Dictionary<string, object?>()), TestContext.Current.CancellationToken);
+
+        Text(result).Should().StartWith("{").And.Contain("\"x\"");
+    }
+
+    [Fact]
     public async Task InvokeAsync_VoidFunction_ReturnsExecutedDone()
     {
         var called = false;
@@ -248,7 +283,7 @@ public class FunctionToolFactoryTests
         var result = await tool.InvokeAsync(new ToolInput(), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
-        Text(result).Should().Contain("executed done");
+        Text(result).Should().Be("executed done");
         called.Should().BeTrue();
     }
 
@@ -267,7 +302,7 @@ public class FunctionToolFactoryTests
         var result = await tool.InvokeAsync(new ToolInput(), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
-        Text(result).Should().Contain("executed done");
+        Text(result).Should().Be("executed done");
     }
 
     [Fact]
