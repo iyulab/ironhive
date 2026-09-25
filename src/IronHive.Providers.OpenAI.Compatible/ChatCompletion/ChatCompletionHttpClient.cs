@@ -34,29 +34,72 @@ internal sealed class ChatCompletionHttpClient : IDisposable
     };
 
     private readonly HttpClient _http;
+    private readonly bool _ownsHttp;
+    private readonly Uri _endpoint;
+    private readonly TimeSpan _timeout;
+    private readonly string? _apiKey;
+    private readonly string? _organization;
+    private readonly string? _project;
     private readonly IReadOnlyDictionary<string, string>? _headers;
 
+    /// <remarks>
+    /// An injected <see cref="OpenAIConfig.HttpClient"/> is the consumer's — typically from <c>IHttpClientFactory</c>
+    /// and shared — so it is used as given: nothing is set on it (a client that has sent a request refuses changes)
+    /// and it is never disposed. The endpoint, the credentials and <see cref="OpenAIConfig.Timeout"/> travel with each
+    /// request instead, which is also why two generators can share one client.
+    /// </remarks>
     public ChatCompletionHttpClient(OpenAIConfig config)
     {
-        // Per request, not DefaultRequestHeaders: the client may be the consumer's own (shared, IHttpClientFactory-managed).
         _headers = ProviderRequestHeaders.Resolve(nameof(OpenAIConfig), nameof(OpenAIConfig.ApiKey), ["Authorization"], config.Headers);
+        _ownsHttp = config.HttpClient is null;
         _http = config.HttpClient ?? new HttpClient(new SocketsHttpHandler
         {
             ConnectTimeout = config.ConnectTimeout
-        });
-        _http.BaseAddress = new Uri((string.IsNullOrWhiteSpace(config.BaseUrl)
+        })
+        {
+            // The request timeout is applied per request below, the same way for an owned and an injected client.
+            Timeout = System.Threading.Timeout.InfiniteTimeSpan,
+        };
+        var baseUrl = new Uri((string.IsNullOrWhiteSpace(config.BaseUrl)
             ? "https://api.openai.com/v1/" : config.BaseUrl).EnsureSuffix('/'));
-        _http.Timeout = config.Timeout;
-
-        if (!string.IsNullOrWhiteSpace(config.ApiKey))
-            _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", config.ApiKey);
-        if (!string.IsNullOrWhiteSpace(config.Organization))
-            _http.DefaultRequestHeaders.Add("OpenAI-Organization", config.Organization);
-        if (!string.IsNullOrWhiteSpace(config.Project))
-            _http.DefaultRequestHeaders.Add("OpenAI-Project", config.Project);
+        _endpoint = new Uri(baseUrl, ChatCompletionsPath);
+        _timeout = config.Timeout;
+        _apiKey = string.IsNullOrWhiteSpace(config.ApiKey) ? null : config.ApiKey;
+        _organization = string.IsNullOrWhiteSpace(config.Organization) ? null : config.Organization;
+        _project = string.IsNullOrWhiteSpace(config.Project) ? null : config.Project;
     }
 
-    public void Dispose() => _http.Dispose();
+    public void Dispose()
+    {
+        if (_ownsHttp)
+            _http.Dispose();
+    }
+
+    private HttpRequestMessage CreateRequest(HttpContent content)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, _endpoint) { Content = content };
+        if (_apiKey != null)
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+        if (_organization != null)
+            request.Headers.Add("OpenAI-Organization", _organization);
+        if (_project != null)
+            request.Headers.Add("OpenAI-Project", _project);
+        ApplyHeaders(request);
+        return request;
+    }
+
+    /// <summary>
+    /// A token that fires at <see cref="OpenAIConfig.Timeout"/> as well as on the caller's token. A cancellation the
+    /// caller did not request is therefore the timeout, which is how the catch blocks below tell the two apart.
+    /// </summary>
+    private CancellationTokenSource? CreateTimeoutSource(CancellationToken cancellationToken)
+    {
+        if (_timeout == System.Threading.Timeout.InfiniteTimeSpan)
+            return null;
+        var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        source.CancelAfter(_timeout);
+        return source;
+    }
 
     /// <summary>A configured header replaces any default of the same name; the credential is never among them.</summary>
     private void ApplyHeaders(HttpRequestMessage request)
@@ -77,26 +120,23 @@ internal sealed class ChatCompletionHttpClient : IDisposable
         request.Stream = false;
         using var content = JsonContent.Create(request, options: JsonOptions);
 
-        HttpResponseMessage response;
+        using var timeout = CreateTimeoutSource(cancellationToken);
+        var token = timeout?.Token ?? cancellationToken;
         try
         {
-            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, ChatCompletionsPath) { Content = content };
-            ApplyHeaders(httpRequest);
-            response = await _http.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+            using var httpRequest = CreateRequest(content);
+            using var response = await _http.SendAsync(httpRequest, token).ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+                throw await ChatCompletionExceptionDetector.DetectAsync(response, token).ConfigureAwait(false);
+
+            return await response.Content.ReadFromJsonAsync<ChatCompletionResponse>(JsonOptions, token).ConfigureAwait(false)
+                ?? throw new InvalidOperationException("Failed to deserialize the chat completion response.");
         }
         catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
-            // HttpClient.Timeout (not the caller's token) cut the request short.
+            // The configured timeout, or an injected client's own HttpClient.Timeout — not the caller's token.
             throw new TimeoutException("The chat completion request timed out.", ex);
-        }
-
-        using (response)
-        {
-            if (!response.IsSuccessStatusCode)
-                throw await ChatCompletionExceptionDetector.DetectAsync(response, cancellationToken).ConfigureAwait(false);
-
-            return await response.Content.ReadFromJsonAsync<ChatCompletionResponse>(JsonOptions, cancellationToken).ConfigureAwait(false)
-                ?? throw new InvalidOperationException("Failed to deserialize the chat completion response.");
         }
     }
 
@@ -108,13 +148,14 @@ internal sealed class ChatCompletionHttpClient : IDisposable
         request.StreamOptions = new ChatCompletionStreamOptions { IncludeUsage = true };
 
         using var content = JsonContent.Create(request, options: JsonOptions);
-        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, ChatCompletionsPath) { Content = content };
-        ApplyHeaders(httpRequest);
+        using var httpRequest = CreateRequest(content);
+        using var timeout = CreateTimeoutSource(cancellationToken);
+        var token = timeout?.Token ?? cancellationToken;
 
         HttpResponseMessage response;
         try
         {
-            response = await _http.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+            response = await _http.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, token).ConfigureAwait(false);
         }
         catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
@@ -125,8 +166,10 @@ internal sealed class ChatCompletionHttpClient : IDisposable
         using (response)
         {
             if (!response.IsSuccessStatusCode)
-                throw await ChatCompletionExceptionDetector.DetectAsync(response, cancellationToken).ConfigureAwait(false);
+                throw await ChatCompletionExceptionDetector.DetectAsync(response, token).ConfigureAwait(false);
 
+            // The timeout bounds the wait for the response to start, as HttpClient.Timeout does with ResponseHeadersRead;
+            // a long generation that is streaming is not cut off by it.
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
             using var reader = new StreamReader(stream);
 

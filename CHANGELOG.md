@@ -4,6 +4,18 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.39.0 — Unreleased
+
+### Fixed
+
+- **An injected `OpenAIConfig.HttpClient` is the consumer's again on the OpenAI-compatible (Chat Completions) path.**
+  The generator no longer sets `BaseAddress`, `Timeout` or default headers on it, and no longer disposes it with
+  itself. Setting them threw on a client that had already sent a request, overwrote the consumer's timeout, and left a
+  shared `IHttpClientFactory` client disposed. The endpoint and credentials now go on each request, so two generators
+  can share one client, and an `ApiKeyResolver` rotation that rebuilds the generator no longer fails on an injected
+  client. `OpenAIConfig.Timeout` is applied per request, owned or injected: it bounds a request until the response
+  starts, as before.
+
 ## 0.38.0 — 2026-09-25
 
 ### Added
