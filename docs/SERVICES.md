@@ -162,7 +162,7 @@ public interface IEmbeddingService
         CancellationToken cancellationToken = default);
 
     // 배치 임베딩 → (벡터 + 토큰 수) 목록 반환
-    Task<IEnumerable<EmbeddingResult>> EmbedBatchAsync(
+    Task<EmbeddingResponse> EmbedBatchAsync(
         string provider,
         string modelId,
         IEnumerable<string> inputs,
@@ -187,8 +187,9 @@ public interface IEmbeddingService
 float[] vector = await hive.Embeddings.EmbedAsync("openai", "text-embedding-3-small", "텍스트");
 
 var batch = await hive.Embeddings.EmbedBatchAsync("openai", "text-embedding-3-small", texts);
-foreach (var r in batch)
+foreach (var r in batch.Results)
     Console.WriteLine(r.Embedding?.Length); // 임베딩 차원
+Console.WriteLine($"{batch.InputTokens} tokens, served by {batch.Model}"); // null when the provider does not report them
 ```
 
 ---
