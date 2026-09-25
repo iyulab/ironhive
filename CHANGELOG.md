@@ -4,6 +4,16 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.39.1 — Unreleased
+
+### Changed
+
+- **The docs of `ThinkingEffort` now say what leaving it unset means: send nothing about reasoning, so the provider's
+  and model's default applies.** A model that reasons by default (Qwen, DeepSeek and similar served over an
+  OpenAI-compatible endpoint) therefore reasons; `MessageThinkingEffort.None` is the explicit off. Every provider
+  already behaved this way; the docs on `MessageRequest`, `MessageGenerationRequest`, `AgentInvokeOptions` and
+  `MessageThinkingEffort.None` did not say so. No behaviour change.
+
 ## 0.39.0 — 2026-09-26
 
 ### Added
@@ -259,6 +269,10 @@ changes are expected and used freely for structural correctness (see
   never heard of the setting. The block is now sent only when the caller expressed an intent; `ThinkingEffort.None`
   still turns reasoning off explicitly, which is what that value means. Wire-shape tests now cover the path (it had
   none).
+  **Behaviour change** (note added in 0.39.1): on a model that reasons by default, a caller that never set
+  `ThinkingEffort` now gets reasoning — measured at roughly 10× the output tokens of a trivial reply on a GPUStack
+  endpoint. Set `ThinkingEffort = MessageThinkingEffort.None` to keep the pre-0.29.1 behaviour. This applies to the
+  GPUStack route too (`GpuStackConfig.ToOpenAICompatible()`, which replaced `GpuStackMessageGenerator` in 0.23.0).
 
 - **The `IChatClient` bridge dropped `ResponseFormat` and `Instructions`.** Both had a sink waiting under a
   different name (`MessageGenerationRequest.OutputFormat` and `.System`), and the reachability test scanned from

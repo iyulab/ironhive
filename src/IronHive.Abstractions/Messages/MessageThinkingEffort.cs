@@ -7,7 +7,8 @@
 public enum MessageThinkingEffort
 {
     /// <summary>
-    /// 추론을 사용하지 않습니다.
+    /// 추론을 사용하지 않습니다. 요청에 명시적인 «끄기»로 실립니다 — 값을 비워 두는 것(null)은 끄기가 아니라
+    /// provider·모델 기본 동작입니다.
     /// </summary>
     None,
 
