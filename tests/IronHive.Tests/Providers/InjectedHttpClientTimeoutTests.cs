@@ -6,30 +6,36 @@ using IronHive.Providers.OpenAI.Compatible.GpuStack;
 namespace IronHive.Tests.Providers;
 
 /// <summary>
-/// An injected <see cref="HttpClient"/> carries its own 100-second default timeout, which is applied
-/// ahead of the SDK's per-read budget and therefore caps time-to-first-byte no matter what
-/// <c>OpenAIConfig.Timeout</c> says. Locally hosted servers exceed that while loading a model, and the
-/// resulting cancellation names neither the handler nor the configured timeout. These configs build
-/// the client themselves, so the disabling is theirs to guarantee.
+/// A bare <see cref="HttpClient"/> carries a 100-second default timeout, applied ahead of any per-request budget, so it
+/// caps time-to-first-byte no matter what <c>OpenAIConfig.Timeout</c> says. Locally hosted servers exceed that while
+/// loading a model, and the resulting cancellation names neither the handler nor the configured timeout.
+/// <para>
+/// Until 0.39.0 the compatible configs built that client themselves and handed it over through
+/// <c>OpenAIConfig.HttpClient</c>. They now hand over none (an injected client is never disposed, so theirs leaked), and
+/// the client that receives the config creates and owns it — so the guarantee is checked on that client.
+/// </para>
 /// </summary>
 public class InjectedHttpClientTimeoutTests
 {
-    [Fact]
-    public void OpenAICompatible_InjectedClient_DoesNotImposeItsOwnRequestTimeout()
-    {
-        var http = new OpenAICompatibleConfig().ToOpenAI().HttpClient;
+    private static HttpClient OwnedClientFor(IronHive.Providers.OpenAI.OpenAIConfig config)
+        => new ProviderHttpClient(config, "chat/completions", defaultBaseUrl: null, sendAccountHeaders: true).Http;
 
-        http.Should().NotBeNull();
-        http!.Timeout.Should().Be(Timeout.InfiniteTimeSpan);
+    [Fact]
+    public void OpenAICompatible_TheClientThatSends_DoesNotImposeItsOwnRequestTimeout()
+    {
+        var config = new OpenAICompatibleConfig().ToOpenAI();
+
+        config.HttpClient.Should().BeNull("the config hands over no client of its own");
+        OwnedClientFor(config).Timeout.Should().Be(Timeout.InfiniteTimeSpan);
     }
 
     [Fact]
-    public void GpuStack_InjectedClient_DoesNotImposeItsOwnRequestTimeout()
+    public void GpuStack_TheClientThatSends_DoesNotImposeItsOwnRequestTimeout()
     {
-        var http = new GpuStackConfig().ToOpenAI().HttpClient;
+        var config = new GpuStackConfig().ToOpenAI();
 
-        http.Should().NotBeNull();
-        http!.Timeout.Should().Be(Timeout.InfiniteTimeSpan);
+        config.HttpClient.Should().BeNull("the config hands over no client of its own");
+        OwnedClientFor(config).Timeout.Should().Be(Timeout.InfiniteTimeSpan);
     }
 
     [Fact]
@@ -44,7 +50,7 @@ public class InjectedHttpClientTimeoutTests
             BaseUrl = "http://203.0.113.1:9",
             ConnectTimeout = TimeSpan.FromSeconds(2),
         };
-        var http = config.ToOpenAI().HttpClient!;
+        var http = OwnedClientFor(config.ToOpenAI());
         http.Timeout.Should().Be(Timeout.InfiniteTimeSpan);
 
         var elapsed = Stopwatch.StartNew();

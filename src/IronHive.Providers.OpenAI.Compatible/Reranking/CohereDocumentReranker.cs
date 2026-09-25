@@ -1,5 +1,4 @@
 using IronHive.Abstractions.Http;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -38,22 +37,11 @@ public class CohereDocumentReranker : IDocumentReranker
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
-    private readonly HttpClient _http;
-    private readonly IReadOnlyDictionary<string, string>? _headers;
+    private readonly ProviderHttpClient _http;
 
+    /// <remarks>An injected <see cref="OpenAIConfig.HttpClient"/> is used as given and never disposed — see <see cref="ProviderHttpClient"/>.</remarks>
     public CohereDocumentReranker(OpenAIConfig config)
-    {
-        _headers = ProviderRequestHeaders.Resolve(nameof(OpenAIConfig), nameof(OpenAIConfig.ApiKey), ["Authorization"], config.Headers);
-        _http = config.HttpClient ?? new HttpClient(new SocketsHttpHandler
-        {
-            ConnectTimeout = config.ConnectTimeout
-        });
-        _http.BaseAddress = new Uri(config.BaseUrl.EnsureSuffix('/'));
-        _http.Timeout = config.Timeout;
-
-        if (!string.IsNullOrWhiteSpace(config.ApiKey))
-            _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", config.ApiKey);
-    }
+        => _http = new ProviderHttpClient(config, RerankPath, defaultBaseUrl: null, sendAccountHeaders: false);
 
     /// <inheritdoc />
     public void Dispose()
@@ -79,25 +67,29 @@ public class CohereDocumentReranker : IDocumentReranker
         };
 
         using var content = JsonContent.Create(request, options: JsonOptions);
-        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, RerankPath) { Content = content };
-        if (_headers is not null)
+        using var httpRequest = _http.CreatePost(content);
+        using var timeout = _http.CreateTimeoutSource(cancellationToken);
+        var token = timeout?.Token ?? cancellationToken;
+
+        CohereRerankResponse result;
+        try
         {
-            foreach (var (name, value) in _headers)
+            using var response = await _http.Http.SendAsync(httpRequest, token).ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
             {
-                httpRequest.Headers.Remove(name);
-                httpRequest.Headers.TryAddWithoutValidation(name, value);
+                var body = await response.Content.ReadAsStringAsync(token).ConfigureAwait(false);
+                throw new HttpRequestException($"Rerank request failed with status {(int)response.StatusCode}: {body}");
             }
-        }
-        using var response = await _http.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
 
-        if (!response.IsSuccessStatusCode)
+            result = await response.Content.ReadFromJsonAsync<CohereRerankResponse>(JsonOptions, token).ConfigureAwait(false)
+                ?? throw new InvalidOperationException("Failed to deserialize the rerank response.");
+        }
+        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
-            var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            throw new HttpRequestException($"Rerank request failed with status {(int)response.StatusCode}: {body}");
+            // The configured timeout, or an injected client's own HttpClient.Timeout — not the caller's token.
+            throw new TimeoutException("The rerank request timed out.", ex);
         }
-
-        var result = await response.Content.ReadFromJsonAsync<CohereRerankResponse>(JsonOptions, cancellationToken).ConfigureAwait(false)
-            ?? throw new InvalidOperationException("Failed to deserialize the rerank response.");
 
         return result.Results.Select(r => new RerankResult
         {

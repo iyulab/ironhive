@@ -109,4 +109,65 @@ public class ChatCompletionInjectedHttpClientTests
 
         await act.Should().ThrowAsync<TimeoutException>();
     }
+
+    [Fact]
+    public void CompatibleConfigs_HandOverNoClientOfTheirOwn_SoTheReceivingClientOwnsAndDisposesIt()
+    {
+        // Before 0.39.0 ToOpenAI() put a fresh HttpClient into the injection slot — harmless while every client
+        // disposed whatever it held, a leak per generator once an injected client is (rightly) never disposed.
+        var compatible = new IronHive.Providers.OpenAI.Compatible.OpenAICompatibleConfig
+        {
+            BaseUrl = "http://localhost:11434",
+            ConnectTimeout = TimeSpan.FromSeconds(3),
+        }.ToOpenAI();
+        compatible.HttpClient.Should().BeNull();
+        compatible.ConnectTimeout.Should().Be(TimeSpan.FromSeconds(3));
+
+        var gpuStack = new IronHive.Providers.OpenAI.Compatible.GpuStack.GpuStackConfig
+        {
+            BaseUrl = "http://localhost:8080",
+            ConnectTimeout = TimeSpan.FromSeconds(4),
+        }.ToOpenAI();
+        gpuStack.HttpClient.Should().BeNull();
+        gpuStack.ConnectTimeout.Should().Be(TimeSpan.FromSeconds(4));
+    }
+
+    [Fact]
+    public async Task RerankClient_FollowsTheSameRule()
+    {
+        const string rerankJson = """{"results":[{"index":0,"relevance_score":0.9}]}""";
+        var handler = new StubHandler(rerankJson);
+        var shared = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(30) };
+        await shared.GetAsync("http://other.invalid/ping", Ct);
+
+        var reranker = new IronHive.Providers.OpenAI.Compatible.Reranking.CohereDocumentReranker(new OpenAIConfig
+        {
+            HttpClient = shared,
+            BaseUrl = "http://r.invalid/v1",
+            ApiKey = "k",
+        });
+        var results = await reranker.RerankAsync("m", "q", ["doc"], cancellationToken: Ct);
+        reranker.Dispose();
+
+        results.Should().ContainSingle();
+        handler.Requests[^1].RequestUri.Should().Be(new Uri("http://r.invalid/v1/rerank"));
+        handler.Requests[^1].Headers.Authorization!.Parameter.Should().Be("k");
+        shared.Timeout.Should().Be(TimeSpan.FromSeconds(30));
+        var act = () => shared.GetAsync("http://other.invalid/ping", Ct);
+        await act.Should().NotThrowAsync();
+    }
+
+    private sealed class StubHandler(string json) : HttpMessageHandler
+    {
+        public List<HttpRequestMessage> Requests { get; } = [];
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Requests.Add(request);
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(json, Encoding.UTF8, "application/json"),
+            });
+        }
+    }
 }

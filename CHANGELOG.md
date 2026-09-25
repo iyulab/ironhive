@@ -8,13 +8,16 @@ changes are expected and used freely for structural correctness (see
 
 ### Fixed
 
-- **An injected `OpenAIConfig.HttpClient` is the consumer's again on the OpenAI-compatible (Chat Completions) path.**
-  The generator no longer sets `BaseAddress`, `Timeout` or default headers on it, and no longer disposes it with
-  itself. Setting them threw on a client that had already sent a request, overwrote the consumer's timeout, and left a
-  shared `IHttpClientFactory` client disposed. The endpoint and credentials now go on each request, so two generators
-  can share one client, and an `ApiKeyResolver` rotation that rebuilds the generator no longer fails on an injected
-  client. `OpenAIConfig.Timeout` is applied per request, owned or injected: it bounds a request until the response
-  starts, as before.
+- **An injected `OpenAIConfig.HttpClient` is the consumer's again on the OpenAI-compatible Chat Completions and rerank
+  clients.** They no longer set `BaseAddress`, `Timeout` or default headers on it, and no longer dispose it. Setting
+  them threw on a client that had already sent a request, overwrote the consumer's timeout, and disposing it broke a
+  shared `IHttpClientFactory` client. The endpoint and credentials now go on each request, so several clients can
+  share one `HttpClient`. `OpenAIConfig.Timeout` is applied per request, owned or injected: it bounds a request until
+  the response starts, as before. A rerank timeout now surfaces as `TimeoutException`, like chat.
+- **`OpenAICompatibleConfig.ToOpenAI()` and the GPUStack equivalent no longer put an `HttpClient` into the config.**
+  They carry `ConnectTimeout`, and the receiving client creates and owns one with it and no client-level timeout,
+  which is what theirs did. The client they handed over was never disposed by anyone once an injected client is
+  left alone. **Breaking** only for code that read `ToOpenAI().HttpClient`.
 
 ## 0.38.0 — 2026-09-25
 

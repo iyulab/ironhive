@@ -135,14 +135,7 @@ public class GpuStackConfig
         BaseUrl = ResolveBaseUrl().TrimEnd('/') + apiPath,
         ApiKey = ResolveApiKey(),
         Headers = Headers,
-        HttpClient = new HttpClient(new SocketsHttpHandler
-        {
-            ConnectTimeout = ConnectTimeout
-        })
-        {
-            // See OpenAICompatibleConfig.ToOpenAI: HttpClient's 100-second default would cap
-            // time-to-first-byte ahead of OpenAIConfig.Timeout and silently win.
-            Timeout = System.Threading.Timeout.InfiniteTimeSpan
-        },
+        // No HttpClient here, as in OpenAICompatibleConfig.ToOpenAI: the receiving client creates and owns one.
+        ConnectTimeout = ConnectTimeout,
     };
 }
