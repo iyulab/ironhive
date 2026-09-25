@@ -13,6 +13,10 @@ changes are expected and used freely for structural correctness (see
   OpenAI-compatible endpoint) therefore reasons; `MessageThinkingEffort.None` is the explicit off. Every provider
   already behaved this way; the docs on `MessageRequest`, `MessageGenerationRequest`, `AgentInvokeOptions` and
   `MessageThinkingEffort.None` did not say so. No behaviour change.
+- **`IronHive.Providers.OpenAI` depends on `Tiktoken.Core` + `Tiktoken.Encodings.cl100k` instead of the `Tiktoken`
+  metapackage.** The provider counts embedding tokens with cl100k only; the metapackage also shipped the o200k, p50k and
+  r50k encodings (about 8 MB) to every consumer, unused. A consumer that used those encodings through this package's
+  dependency must now reference them itself.
 
 ## 0.39.0 — 2026-09-26
 

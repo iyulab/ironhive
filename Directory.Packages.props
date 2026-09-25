@@ -58,7 +58,8 @@
     <PackageVersion Include="PdfPig" Version="0.1.16" />
   </ItemGroup>
   <ItemGroup Label="Tokenizers">
-    <PackageVersion Include="Tiktoken" Version="3.1.5" />
+    <PackageVersion Include="Tiktoken.Core" Version="3.1.5" />
+    <PackageVersion Include="Tiktoken.Encodings.cl100k" Version="3.1.5" />
   </ItemGroup>
   <ItemGroup Label="Infrastructure">
     <PackageVersion Include="Qdrant.Client" Version="1.19.0" />

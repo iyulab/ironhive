@@ -10,7 +10,8 @@
 
   <ItemGroup>
     <PackageReference Include="OpenAI" />
-    <PackageReference Include="Tiktoken" />
+    <PackageReference Include="Tiktoken.Core" />
+    <PackageReference Include="Tiktoken.Encodings.cl100k" />
   </ItemGroup>
 
   <ItemGroup>
