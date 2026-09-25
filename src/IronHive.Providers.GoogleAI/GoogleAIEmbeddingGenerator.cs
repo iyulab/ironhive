@@ -50,7 +50,7 @@ public class GoogleAIEmbeddingGenerator : IEmbeddingGenerator
     private const int MaxBatchSize = 100;
 
     /// <inheritdoc />
-    public async Task<IEnumerable<EmbeddingResult>> EmbedBatchAsync(
+    public async Task<EmbeddingResponse> EmbedBatchAsync(
         string modelId,
         IEnumerable<string> inputs,
         CancellationToken cancellationToken = default)
@@ -67,16 +67,27 @@ public class GoogleAIEmbeddingGenerator : IEmbeddingGenerator
                 }).ToList();
 
                 var res = await _client.Models.EmbedContentAsync(modelId, contents, cancellationToken: cancellationToken);
+                var embeddings = res.Embeddings ?? [];
 
-                return batch.Zip(res.Embeddings ?? [], (b, e) => new EmbeddingResult
+                var results = batch.Zip(embeddings, (b, e) => new EmbeddingResult
                 {
                     Index = b.index,
                     Embedding = e.Values?.Select(v => (float)v).ToArray()
-                });
+                }).ToList();
+
+                // Vertex AI reports a token count per embedding; the Gemini Developer API reports none.
+                int? tokens = embeddings.Count > 0 && embeddings.All(e => e.Statistics?.TokenCount != null)
+                    ? (int)embeddings.Sum(e => e.Statistics!.TokenCount!.Value)
+                    : null;
+                return (Results: results, InputTokens: tokens);
             });
 
-        var batchResults = await Task.WhenAll(batchTasks);
-        return batchResults.SelectMany(r => r);
+        var parts = await Task.WhenAll(batchTasks);
+        return new EmbeddingResponse
+        {
+            Results = parts.SelectMany(p => p.Results).ToList(),
+            InputTokens = parts.All(p => p.InputTokens.HasValue) ? parts.Sum(p => p.InputTokens!.Value) : null,
+        };
     }
 
     /// <inheritdoc />

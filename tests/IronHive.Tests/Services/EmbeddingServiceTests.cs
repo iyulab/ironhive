@@ -102,7 +102,7 @@ public class EmbeddingServiceTests
         };
         _mockGenerator
             .EmbedBatchAsync(Arg.Any<string>(), Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
-            .Returns(expectedResults);
+            .Returns(new EmbeddingResponse { Results = expectedResults });
         _generators["openai"] = _mockGenerator;
 
         var inputs = new[] { "text1", "text2" };
@@ -112,7 +112,7 @@ public class EmbeddingServiceTests
 
         // Assert
         result.Should().NotBeNull();
-        result.Should().HaveCount(2);
+        result.Results.Should().HaveCount(2);
         await _mockGenerator.Received(1)
             .EmbedBatchAsync("text-embedding-3-small", inputs, Arg.Any<CancellationToken>());
     }
@@ -129,13 +129,13 @@ public class EmbeddingServiceTests
         };
         _mockGenerator
             .EmbedBatchAsync(Arg.Any<string>(), Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
-            .Returns(expectedResults);
+            .Returns(new EmbeddingResponse { Results = expectedResults });
         _generators["openai"] = _mockGenerator;
 
         var inputs = new[] { "first", "second", "third" };
 
         // Act
-        var result = (await _service.EmbedBatchAsync("openai", "model", inputs, TestContext.Current.CancellationToken)).ToList();
+        var result = (await _service.EmbedBatchAsync("openai", "model", inputs, TestContext.Current.CancellationToken)).Results.ToList();
 
         // Assert
         result[0].Index.Should().Be(0);

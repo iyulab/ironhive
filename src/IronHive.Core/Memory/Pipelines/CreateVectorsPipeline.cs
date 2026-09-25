@@ -30,19 +30,19 @@ public class CreateVectorsPipeline : IMemoryPipeline
         var points = new List<VectorRecord>();
         if (chunks is IEnumerable<DialogueExtractionPipeline.Dialogue> dialogues)
         {
-            var embeddings = await _embedder.EmbedBatchAsync(
+            var embeddings = (await _embedder.EmbedBatchAsync(
                     target.EmbeddingProvider,
                     target.EmbeddingModel,
                     dialogues.Select(x => x.Question),
-                    cancellationToken);
+                    cancellationToken)).Results;
 
-            if (embeddings == null || embeddings.Count() != dialogues.Count())
+            if (embeddings.Count != dialogues.Count())
                 throw new InvalidOperationException("failed to get embeddings for dialogues");
 
-            for (var i = 0; i < embeddings.Count(); i++)
+            for (var i = 0; i < embeddings.Count; i++)
             {
                 var content = dialogues.ElementAt(i);
-                var vector = embeddings.ElementAt(i).Embedding;
+                var vector = embeddings[i].Embedding;
 
                 if (vector == null || content == null)
                     throw new InvalidOperationException("failed to get embedding for dialogue");
@@ -62,19 +62,19 @@ public class CreateVectorsPipeline : IMemoryPipeline
         }
         else if (chunks is IEnumerable<string> texts)
         {
-            var embeddings = await _embedder.EmbedBatchAsync(
+            var embeddings = (await _embedder.EmbedBatchAsync(
                target.EmbeddingProvider,
                target.EmbeddingModel,
                texts,
-               cancellationToken);
+               cancellationToken)).Results;
 
-            if (embeddings == null || embeddings.Count() != texts.Count())
+            if (embeddings.Count != texts.Count())
                 throw new InvalidOperationException("failed to get embeddings for texts");
 
-            for (var i = 0; i < embeddings.Count(); i++)
+            for (var i = 0; i < embeddings.Count; i++)
             {
                 var content = texts.ElementAt(i);
-                var vector = embeddings.ElementAt(i).Embedding;
+                var vector = embeddings[i].Embedding;
 
                 if (vector == null || content == null)
                     throw new InvalidOperationException("failed to get embedding for dialogue");

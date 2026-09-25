@@ -21,8 +21,8 @@ public interface IEmbeddingGenerator : IDisposable
     /// </summary>
     /// <param name="modelId">사용할 모델의 식별자입니다.</param>
     /// <param name="inputs">임베딩할 입력 문자열 목록입니다.</param>
-    /// <returns>임베딩 결과들의 목록을 반환합니다.</returns>
-    Task<IEnumerable<EmbeddingResult>> EmbedBatchAsync(
+    /// <returns>The vectors, and the input tokens and model the provider reported for the call.</returns>
+    Task<EmbeddingResponse> EmbedBatchAsync(
         string modelId,
         IEnumerable<string> inputs,
         CancellationToken cancellationToken = default);

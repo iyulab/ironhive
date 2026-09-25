@@ -43,12 +43,12 @@ public class EmbeddingGeneratorAdapter : IEmbeddingGenerator<string, Embedding<f
         var inputList = values.ToList();
         var modelId = options?.ModelId ?? _modelId;
 
-        var results = await _generator.EmbedBatchAsync(modelId, inputList, cancellationToken)
+        var response = await _generator.EmbedBatchAsync(modelId, inputList, cancellationToken)
             .ConfigureAwait(false);
 
-        var embeddings = results
+        var embeddings = response.Results
             .Where(r => r.Embedding != null)
-            .Select(r => new Embedding<float>(r.Embedding!))
+            .Select(r => new Embedding<float>(r.Embedding!) { ModelId = response.Model ?? modelId })
             .ToList();
 
         // GeneratedEmbeddings is positional: the caller matches result[i] to input[i]. Dropping a
@@ -81,11 +81,13 @@ public class EmbeddingGeneratorAdapter : IEmbeddingGenerator<string, Embedding<f
             }
         }
 
-        // Usage is deliberately left unset. EmbeddingResult carries no token counts, and the number
-        // of input strings is not an approximation of a token count -- it is a different quantity,
-        // wrong by whatever the average input length happens to be. A consumer feeding Usage into
+        // Usage carries only what the provider reported. When it reports nothing, Usage stays unset rather than
+        // being estimated: the number of input strings is not a token count, and a consumer feeding Usage into
         // cost or budget arithmetic is better served by "unknown" than by a confident wrong number.
-        return new GeneratedEmbeddings<Embedding<float>>(embeddings);
+        var generated = new GeneratedEmbeddings<Embedding<float>>(embeddings);
+        if (response.InputTokens is int inputTokens)
+            generated.Usage = new UsageDetails { InputTokenCount = inputTokens, TotalTokenCount = inputTokens };
+        return generated;
     }
 
     /// <inheritdoc />

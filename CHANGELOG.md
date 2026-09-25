@@ -6,6 +6,16 @@ changes are expected and used freely for structural correctness (see
 
 ## 0.39.0 — Unreleased
 
+### Added
+
+- **An embedding call reports the input tokens and the model the provider says it used.**
+  `IEmbeddingGenerator.EmbedBatchAsync` and `IEmbeddingService.EmbedBatchAsync` return an `EmbeddingResponse`:
+  `Results`, plus `InputTokens` and `Model`, each null when the provider does not report it (never an estimate). OpenAI
+  and OpenAI-compatible servers report both; Vertex AI reports a token count per embedding and the Gemini Developer API
+  reports neither. The Microsoft.Extensions.AI adapter now fills `GeneratedEmbeddings.Usage` and `Embedding.ModelId`.
+  **Breaking**: the return type changed from `IEnumerable<EmbeddingResult>`. Read `.Results` where you read the list,
+  and return `new EmbeddingResponse { Results = … }` from an implementation.
+
 ### Fixed
 
 - **An injected `OpenAIConfig.HttpClient` is the consumer's again on the OpenAI-compatible Chat Completions and rerank

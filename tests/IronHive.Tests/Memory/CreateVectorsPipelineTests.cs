@@ -93,13 +93,13 @@ public class CreateVectorsPipelineTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_TextChunks_NullEmbeddings_Throws()
+    public async Task ExecuteAsync_TextChunks_NoEmbeddings_Throws()
     {
         var context = CreateContext(s_oneText);
         _mockEmbedder.EmbedBatchAsync(
             Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
-            .Returns((IEnumerable<EmbeddingResult>)null!);
+            .Returns(new EmbeddingResponse { Results = [] });
 
         var act = () => _pipeline.ExecuteAsync(context);
 
@@ -181,7 +181,7 @@ public class CreateVectorsPipelineTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_Dialogues_NullEmbeddings_Throws()
+    public async Task ExecuteAsync_Dialogues_NoEmbeddings_Throws()
     {
         var dialogues = new List<DialogueExtractionPipeline.Dialogue>
         {
@@ -191,7 +191,7 @@ public class CreateVectorsPipelineTests
         _mockEmbedder.EmbedBatchAsync(
             Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
-            .Returns((IEnumerable<EmbeddingResult>)null!);
+            .Returns(new EmbeddingResponse { Results = [] });
 
         var act = () => _pipeline.ExecuteAsync(context);
 
@@ -318,7 +318,7 @@ public class CreateVectorsPipelineTests
         _mockEmbedder.EmbedBatchAsync(
             Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
-            .Returns(results);
+            .Returns(new EmbeddingResponse { Results = results.ToList() });
     }
 
     #endregion

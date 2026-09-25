@@ -30,7 +30,7 @@ public class EmbeddingService : IEmbeddingService
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<EmbeddingResult>> EmbedBatchAsync(
+    public async Task<EmbeddingResponse> EmbedBatchAsync(
         string provider,
         string modelId,
         IEnumerable<string> inputs,

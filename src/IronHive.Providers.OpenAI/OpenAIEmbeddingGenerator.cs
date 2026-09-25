@@ -41,7 +41,7 @@ public class OpenAIEmbeddingGenerator : IEmbeddingGenerator
     }
 
     /// <inheritdoc />
-    public virtual async Task<IEnumerable<EmbeddingResult>> EmbedBatchAsync(
+    public virtual async Task<EmbeddingResponse> EmbedBatchAsync(
         string modelId,
         IEnumerable<string> inputs,
         CancellationToken cancellationToken = default)
@@ -59,17 +59,27 @@ public class OpenAIEmbeddingGenerator : IEmbeddingGenerator
             var indices = chunk.Select(x => x.Index).ToList();
 
             var result = await client.GenerateEmbeddingsAsync(texts, cancellationToken: cancellationToken);
+            var collection = result.Value;
 
-            return result.Value.Select((e, i) => new EmbeddingResult
+            var results = collection.Select((e, i) => new EmbeddingResult
             {
                 Index = indices.ElementAt(i),
                 Embedding = e.ToFloats().ToArray(),
-            });
+            }).ToList();
+
+            // A server that omits "usage" deserializes to an absent object or a zero count; neither is a report.
+            var reported = collection.Usage is { } usage && usage.InputTokenCount > 0 ? usage.InputTokenCount : (int?)null;
+            return (Results: results, InputTokens: reported, Model: string.IsNullOrEmpty(collection.Model) ? null : collection.Model);
         });
 
-        return (await Task.WhenAll(tasks))
-            .SelectMany(r => r)
-            .OrderBy(r => r.Index);
+        var parts = await Task.WhenAll(tasks);
+        return new EmbeddingResponse
+        {
+            Results = parts.SelectMany(p => p.Results).OrderBy(r => r.Index).ToList(),
+            // Summed only when every request reported: a partial sum would read as the whole call.
+            InputTokens = parts.All(p => p.InputTokens.HasValue) ? parts.Sum(p => p.InputTokens!.Value) : null,
+            Model = parts.Select(p => p.Model).FirstOrDefault(m => m != null),
+        };
     }
 
     /// <inheritdoc />

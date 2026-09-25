@@ -137,7 +137,7 @@ public class EmbeddingGeneratorAdapterTests : IDisposable
         };
         _mockGenerator.EmbedBatchAsync(
             Arg.Any<string>(), Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
-            .Returns(results);
+            .Returns(new IronHiveEmbedding.EmbeddingResponse { Results = results.ToList() });
 
         var act = async () => await _adapter.GenerateAsync(["a", "b", "c"]);
 
@@ -264,7 +264,7 @@ public class EmbeddingGeneratorAdapterTests : IDisposable
         });
         _mockGenerator.EmbedBatchAsync(
             Arg.Any<string>(), Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
-            .Returns(results);
+            .Returns(new IronHiveEmbedding.EmbeddingResponse { Results = results.ToList() });
     }
 
     #endregion
