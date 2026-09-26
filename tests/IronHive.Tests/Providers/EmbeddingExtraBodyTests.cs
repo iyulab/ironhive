@@ -30,11 +30,13 @@ public class EmbeddingExtraBodyTests
     private sealed class RecordingHandler(string json) : HttpMessageHandler
     {
         public List<string> Bodies { get; } = [];
+        public List<string?> Authorizations { get; } = [];
         public List<Uri?> Uris { get; } = [];
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Uris.Add(request.RequestUri);
+            Authorizations.Add(request.Headers.Authorization?.ToString());
             Bodies.Add(await request.Content!.ReadAsStringAsync(cancellationToken));
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
         }
@@ -104,6 +106,29 @@ public class EmbeddingExtraBodyTests
 
         response.InputTokens.Should().BeNull();
         response.Results.Single().Embedding.Should().Equal(0.5f);
+    }
+
+    [Fact]
+    public async Task Compatible_reads_the_api_key_resolver_on_every_request()
+    {
+        // OpenAIConfig.ApiKeyResolver is honoured per call on the SDK path; the raw-HTTP clients took ApiKey only.
+        var handler = new RecordingHandler(TwoVectors);
+        var key = "first";
+        using var generator = new OpenAICompatibleEmbeddingGenerator(new OpenAIConfig
+        {
+            BaseUrl = "http://embed.invalid/v1",
+            ApiKey = "static",
+            ApiKeyResolver = () => key,
+            HttpClient = new HttpClient(handler),
+        });
+
+        await generator.EmbedBatchAsync("m", ["alpha", "beta"], Ct);
+        key = "rotated";
+        await generator.EmbedBatchAsync("m", ["alpha", "beta"], Ct);
+        key = "";
+        await generator.EmbedBatchAsync("m", ["alpha", "beta"], Ct);
+
+        handler.Authorizations.Should().Equal("Bearer first", "Bearer rotated", "Bearer static");
     }
 
     [Fact]

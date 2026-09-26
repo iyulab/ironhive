@@ -27,7 +27,11 @@ changes are expected and used freely for structural correctness (see
   `InvalidOperationException("Error processing tool content …")`, while the same cancellation arriving a moment earlier
   (before the tool started) came out bare. One cancellation had two shapes, and a caller catching
   `OperationCanceledException` missed the wrapped one. Tool failures are still wrapped; a tool timeout
-  (`ToolOptions.Timeout`) is still fed back to the model as a failure. Streaming and non-streaming paths alike.
+  (`ToolOptions.Timeout`) is still fed back to the model as a failure. The streaming path no longer wraps it either.
+- **The raw-HTTP OpenAI-compatible clients read `OpenAIConfig.ApiKeyResolver` on every request** (embeddings, Cohere
+  rerank, chat), as the OpenAI SDK path does; they sent the static `ApiKey` only, so a resolver on a config handed to
+  them directly was ignored. Configs built by `OpenAICompatibleConfig.ToOpenAI()`/GPUStack carry the resolved key, as
+  before.
 
 ### Changed
 

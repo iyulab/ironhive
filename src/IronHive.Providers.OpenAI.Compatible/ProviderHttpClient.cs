@@ -21,6 +21,7 @@ internal sealed class ProviderHttpClient : IDisposable
     private readonly Uri _endpoint;
     private readonly TimeSpan _timeout;
     private readonly string? _apiKey;
+    private readonly Func<string?>? _apiKeyResolver;
     private readonly string? _organization;
     private readonly string? _project;
     private readonly IReadOnlyDictionary<string, string>? _headers;
@@ -44,6 +45,8 @@ internal sealed class ProviderHttpClient : IDisposable
         _endpoint = new Uri(new Uri(baseUrl.EnsureSuffix('/')), path);
         _timeout = config.Timeout;
         _apiKey = string.IsNullOrWhiteSpace(config.ApiKey) ? null : config.ApiKey;
+        // Read per request, as the OpenAI SDK path does — a key rotated in a secret store takes effect on the next call.
+        _apiKeyResolver = config.ApiKeyResolver;
         if (sendAccountHeaders)
         {
             _organization = string.IsNullOrWhiteSpace(config.Organization) ? null : config.Organization;
@@ -57,8 +60,10 @@ internal sealed class ProviderHttpClient : IDisposable
     public HttpRequestMessage CreatePost(HttpContent content)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, _endpoint) { Content = content };
-        if (_apiKey != null)
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+        var resolved = _apiKeyResolver?.Invoke();
+        var apiKey = string.IsNullOrWhiteSpace(resolved) ? _apiKey : resolved;
+        if (apiKey != null)
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         if (_organization != null)
             request.Headers.Add("OpenAI-Organization", _organization);
         if (_project != null)
