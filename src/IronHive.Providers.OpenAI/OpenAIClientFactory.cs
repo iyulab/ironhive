@@ -50,7 +50,7 @@ public static class OpenAIClientFactory
         if (config.ApiKeyResolver != null && config.HttpClient != null)
             throw ResolvedCredentialHandler.ConflictsWithCustomHttpClient(nameof(OpenAIConfig), nameof(OpenAIConfig.HttpClient));
 
-        HttpMessageHandler transport = new SocketsHttpHandler { ConnectTimeout = config.ConnectTimeout };
+        HttpMessageHandler transport = ProviderConnect.CreateHandler(config.ConnectTimeout);
         if (config.ApiKeyResolver != null)
             transport = new ResolvedCredentialHandler("Authorization", config.ApiKeyResolver, config.ApiKey, k => $"Bearer {k}", transport);
 

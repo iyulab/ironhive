@@ -43,7 +43,7 @@ internal static class GoogleAIClientFactory
 
         return () => new HttpClient(new ResolvedCredentialHandler(
             "x-goog-api-key", config.ApiKeyResolver, config.ApiKey, format: null,
-            new SocketsHttpHandler { ConnectTimeout = config.ConnectTimeout }))
+            ProviderConnect.CreateHandler(config.ConnectTimeout)))
         {
             Timeout = System.Threading.Timeout.InfiniteTimeSpan
         };
@@ -61,7 +61,7 @@ internal static class GoogleAIClientFactory
         if (factory != null)
             return factory;
 
-        return () => new HttpClient(new SocketsHttpHandler { ConnectTimeout = connectTimeout })
+        return () => new HttpClient(ProviderConnect.CreateHandler(connectTimeout))
         {
             Timeout = System.Threading.Timeout.InfiniteTimeSpan
         };

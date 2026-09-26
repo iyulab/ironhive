@@ -4,6 +4,23 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.41.0 — Unreleased
+
+### Fixed
+
+- **`http://localhost:…` to a local server that listens on IPv4 only (llama-server, Ollama) connects again with the
+  OpenAI-compatible provider on Windows.** `localhost` resolves to `::1` first, and a refused IPv6 connect takes about
+  2 s on Windows. The provider's 2 s connect timeout expired before `127.0.0.1` was tried, so every request failed with
+  "A connection could not be established within the configured ConnectTimeout". Every provider's own transport (OpenAI,
+  OpenAI-compatible, Anthropic, Google AI / Vertex AI) now races the host's addresses (RFC 8305): the next address starts
+  250 ms after the previous one. An unreachable host still fails within the connect timeout. An injected `HttpClient`
+  is unchanged.
+
+### Added
+
+- `IronHive.Abstractions.Http.ProviderConnect` — `CreateHandler(connectTimeout)` and the racing `ConnectAsync`
+  callback, for a consumer that builds its own `SocketsHttpHandler` and wants the same behaviour.
+
 ## 0.40.0 — 2026-09-26
 
 ### Added

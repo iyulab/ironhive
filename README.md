@@ -153,6 +153,11 @@ public class ChatService(IHiveService hive)
 > 받아들이는 엔드포인트에서만 쓴다(구 이름을 거부하는 곳에서는 요청 전체가 실패한다).
 > `MaxTokens` 를 지정하지 않으면 어느 설정에서도 두 필드 모두 전송되지 않는다.
 
+> **`localhost` 와 연결 타임아웃 (0.41.0~)** — 각 provider 가 직접 만드는 전송은 호스트의 주소들을 경주시킨다
+> (RFC 8305): `localhost` 가 `::1` 부터 풀려도 IPv4 전용 로컬 서버(llama-server · Ollama 기본값)에 곧바로 붙는다.
+> 그 전에는 Windows 에서 거부된 IPv6 연결이 약 2 초 걸려 OpenAI-compatible 의 2 초 `ConnectTimeout` 이 먼저 끝났다.
+> `HttpClient` 를 직접 주입하는 경우 같은 동작은 `IronHive.Abstractions.Http.ProviderConnect.CreateHandler(timeout)` 로 얻는다.
+
 ## 문서
 
 | 문서 | 설명 |

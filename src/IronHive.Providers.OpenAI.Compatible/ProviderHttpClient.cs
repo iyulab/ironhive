@@ -34,7 +34,7 @@ internal sealed class ProviderHttpClient : IDisposable
     {
         _headers = ProviderRequestHeaders.Resolve(nameof(OpenAIConfig), nameof(OpenAIConfig.ApiKey), ["Authorization"], config.Headers);
         _ownsHttp = config.HttpClient is null;
-        Http = config.HttpClient ?? new HttpClient(new SocketsHttpHandler { ConnectTimeout = config.ConnectTimeout })
+        Http = config.HttpClient ?? new HttpClient(ProviderConnect.CreateHandler(config.ConnectTimeout))
         {
             Timeout = System.Threading.Timeout.InfiniteTimeSpan,
         };

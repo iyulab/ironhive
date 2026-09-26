@@ -30,7 +30,7 @@ internal static class AnthropicClientFactory
         if (config.ApiKeyResolver != null && config.HttpClient != null)
             throw ResolvedCredentialHandler.ConflictsWithCustomHttpClient(nameof(AnthropicConfig), nameof(AnthropicConfig.HttpClient));
 
-        HttpMessageHandler transport = new SocketsHttpHandler { ConnectTimeout = config.ConnectTimeout };
+        HttpMessageHandler transport = ProviderConnect.CreateHandler(config.ConnectTimeout);
         if (config.ApiKeyResolver != null)
             transport = new ResolvedCredentialHandler("x-api-key", config.ApiKeyResolver, config.ApiKey, format: null, transport);
 
