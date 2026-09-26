@@ -403,6 +403,11 @@ new AnthropicConfig
 - **지원 범위**: OpenAI Compatible(Chat Completions) provider 가 양방향을 지킨다. 공식 SDK 가 요청 본문을 만드는 OpenAI ·
   Anthropic · Google AI provider 는 요청 `ExtraBody` 에 항목이 있으면 조용히 버리지 않고 `NotSupportedException` 을 던지며,
   응답 `ExtraBody` 는 `null` 이다.
+- **임베딩**: `EmbeddingRequestOptions.ExtraBody` 를 `EmbedBatchAsync(model, inputs, options)`(또는 `IEmbeddingService` 의
+  같은 오버로드)로 넘기면 같은 규칙으로 `/embeddings` 요청 본문에 합쳐진다(llama.cpp·vLLM 의 풀링·잘림 옵션 등). OpenAI
+  Compatible·GPUStack 은 raw-HTTP `OpenAICompatibleEmbeddingGenerator` 로 이를 보내고, OpenAI · Google AI 임베딩 생성기는
+  항목이 있으면 `NotSupportedException` 을 던진다. `IEmbeddingGenerator<string, Embedding<float>>` 브리지는 채팅 브리지와
+  같이 요청 쪽 `AdditionalProperties` 를 옮기지 않는다.
 
 ```csharp
 var response = await messageService.GenerateMessageAsync(new MessageRequest
@@ -429,7 +434,7 @@ OpenAI(Responses) · Anthropic provider 는 요청되면 `NotSupportedException`
 
 **패키지**: `IronHive.Providers.OpenAI.Compatible`
 
-OpenAI `/v1` API와 호환되는 모든 서버를 지원합니다: Ollama, LM Studio, vLLM, llama.cpp server 등. 이 패키지가 소유한 `ChatCompletionMessageGenerator`가 Chat Completions API(`POST /v1/chat/completions`)를 구현한다. 연결 정보(`BaseUrl`/`ApiKey`/`HttpClient`)만 `IronHive.Providers.OpenAI`의 `OpenAIConfig`를 재사용하고, GPUStack 프로바이더(아래)도 동일한 생성기에 위임한다.
+OpenAI `/v1` API와 호환되는 모든 서버를 지원합니다: Ollama, LM Studio, vLLM, llama.cpp server 등. 이 패키지가 소유한 `ChatCompletionMessageGenerator`가 Chat Completions API(`POST /v1/chat/completions`)를 구현한다. 연결 정보(`BaseUrl`/`ApiKey`/`HttpClient`)만 `IronHive.Providers.OpenAI`의 `OpenAIConfig`를 재사용하고, GPUStack 프로바이더(아래)도 동일한 생성기에 위임한다. 임베딩은 같은 이유(서버 확장 필드)로 이 패키지의 raw-HTTP `OpenAICompatibleEmbeddingGenerator`(`POST /embeddings`)가 맡는다 — OpenAI SDK 의 `OpenAIEmbeddingGenerator` 가 아니다(0.40.0).
 
 ### 등록
 

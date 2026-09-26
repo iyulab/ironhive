@@ -23,6 +23,15 @@ public class OpenAIEmbeddingGenerator : IEmbeddingGenerator
         _openai = OpenAIClientFactory.Create(config);
     }
 
+    // An embedding request this provider cannot extend: refusing is the only answer that does not hand the caller a
+    // request other than the one asked for.
+    private static void RejectUnsupported(EmbeddingRequestOptions? options)
+    {
+        if (options?.ExtraBody is { Count: > 0 })
+            throw new NotSupportedException(
+                "EmbeddingRequestOptions.ExtraBody is not supported by the OpenAI provider; the OpenAI-compatible provider honours it.");
+    }
+
     /// <inheritdoc />
     public void Dispose()
     {
@@ -30,22 +39,40 @@ public class OpenAIEmbeddingGenerator : IEmbeddingGenerator
     }
 
     /// <inheritdoc />
-    public virtual async Task<float[]> EmbedAsync(
+    public virtual Task<float[]> EmbedAsync(
         string modelId,
         string input,
         CancellationToken cancellationToken = default)
+        => EmbedAsync(modelId, input, options: null, cancellationToken);
+
+    /// <inheritdoc />
+    public virtual async Task<float[]> EmbedAsync(
+        string modelId,
+        string input,
+        EmbeddingRequestOptions? options,
+        CancellationToken cancellationToken = default)
     {
+        RejectUnsupported(options);
         var client = _openai.GetEmbeddingClient(modelId);
         var result = await client.GenerateEmbeddingAsync(input, cancellationToken: cancellationToken);
         return result.Value.ToFloats().ToArray();
     }
 
     /// <inheritdoc />
-    public virtual async Task<EmbeddingResponse> EmbedBatchAsync(
+    public virtual Task<EmbeddingResponse> EmbedBatchAsync(
         string modelId,
         IEnumerable<string> inputs,
         CancellationToken cancellationToken = default)
+        => EmbedBatchAsync(modelId, inputs, options: null, cancellationToken);
+
+    /// <inheritdoc />
+    public virtual async Task<EmbeddingResponse> EmbedBatchAsync(
+        string modelId,
+        IEnumerable<string> inputs,
+        EmbeddingRequestOptions? options,
+        CancellationToken cancellationToken = default)
     {
+        RejectUnsupported(options);
         // https://platform.openai.com/docs/api-reference/embeddings/create#embeddings-create-input
         const int MaxTokensPerBatch = 300_000;
         var tokens = await CountTokensBatchAsync(modelId, inputs, cancellationToken);

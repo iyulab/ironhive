@@ -29,7 +29,7 @@
 - **워크플로우** — 코드 기반 타입 안전 워크플로우 엔진
 - **구조화 출력** — `OutputFormat.For<T>()`/`For(schema)` 는 스키마로 구속, `OutputFormat.Json` 은 스키마 없는 JSON 모드(provider 네이티브 JSON 모드로 번역 — OpenAI `json_object`, Gemini `responseMimeType`, Anthropic 은 시스템 지시). `AgentInvokeOptions.OutputFormat` 또는 `IChatClient` 의 `ChatOptions.ResponseFormat` 으로 켠다
 - **도구 결과 합계 예산** — `ToolResultBudgetMiddleware`가 한 호출의 도구 루프 전체에서 모델에 보내는 결과 텍스트 합계를 제한(작은 문맥 창 대응, [docs/TOOLS.md](docs/TOOLS.md))
-- **공급자 고유 필드** — `MessageRequest.ExtraBody` 가 요청 본문에 합쳐지고, 매핑되지 않은 응답 필드(예: llama.cpp `timings`)가 `MessageResponse.ExtraBody` 로 돌아온다(OpenAI Compatible, [docs/PROVIDERS.md](docs/PROVIDERS.md))
+- **공급자 고유 필드** — `MessageRequest.ExtraBody`(임베딩은 `EmbeddingRequestOptions.ExtraBody`, `EmbedBatchAsync(model, inputs, options)`) 가 요청 본문에 합쳐지고, 매핑되지 않은 응답 필드(예: llama.cpp `timings`)가 `MessageResponse.ExtraBody` 로 돌아온다(OpenAI Compatible, [docs/PROVIDERS.md](docs/PROVIDERS.md))
 - **토큰 로그 확률** — `MessageRequest.LogProbabilities`(상위 대안 0~20)로 출력 토큰별 로그 확률을 받는다(`MessageResponse.LogProbabilities`, 스트리밍 done 프레임에도; OpenAI Compatible · Google AI, [docs/PROVIDERS.md](docs/PROVIDERS.md))
 - **도메인 예외** — 컨텍스트 윈도우 초과 시 프로바이더별 오류를 `ContextOverflowException`(`ContextWindow` 포함)으로 정규화 — 문자열 파싱 없이 `catch`로 압축·복구 로직 작성 가능
 

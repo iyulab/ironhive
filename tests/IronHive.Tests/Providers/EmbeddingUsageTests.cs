@@ -10,7 +10,7 @@ namespace IronHive.Tests.Providers;
 
 /// <summary>
 /// The provider reports how many input tokens an embedding call consumed and which model served it; until 0.39.0
-/// <see cref="IEmbeddingGenerator.EmbedBatchAsync"/> returned the vectors only, so a consumer that prices or audits
+/// <see cref="IEmbeddingGenerator.EmbedBatchAsync(string, IEnumerable{string}, CancellationToken)"/> returned the vectors only, so a consumer that prices or audits
 /// embedding calls re-implemented the HTTP call to read them. Unreported stays null — never a guess.
 /// </summary>
 public class EmbeddingUsageTests

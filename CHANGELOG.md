@@ -4,7 +4,21 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
-## 0.39.1 — Unreleased
+## 0.40.0 — Unreleased
+
+### Added
+
+- **An embedding call can carry provider-specific request fields: `EmbeddingRequestOptions.ExtraBody`**, the embedding
+  counterpart of `MessageRequest.ExtraBody`. New overloads `IEmbeddingGenerator.EmbedAsync/EmbedBatchAsync(…, options,
+  ct)` and the same on `IEmbeddingService`; the existing signatures forward `options: null`, so callers compile
+  unchanged. Same merge rule as the message path (objects merge; any other value replaces, including a typed field).
+- **`OpenAICompatibleEmbeddingGenerator`** — a raw-HTTP `POST /embeddings` client. `AddOpenAICompatibleProviders` and
+  `AddGpuStackProviders` now register it for embeddings instead of the OpenAI-SDK `OpenAIEmbeddingGenerator`, whose
+  request model has no slot for server fields. It reports the server's `usage` and `model` like before, and still splits
+  large batches by a cl100k token estimate.
+- **Breaking** for a custom `IEmbeddingGenerator` / `IEmbeddingService` implementation: implement the two new overloads
+  (the old signatures have default bodies that forward to them). The OpenAI and Google AI generators throw
+  `NotSupportedException` on a non-empty `ExtraBody` instead of dropping it.
 
 ### Changed
 

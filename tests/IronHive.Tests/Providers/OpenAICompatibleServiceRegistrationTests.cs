@@ -27,7 +27,7 @@ public class OpenAICompatibleServiceRegistrationTests
 
         hive.Models.Finders["ollama"].Should().BeOfType<OpenAIModelFinder>();
         hive.Messages.Generators["ollama"].Should().BeOfType<OpenAICompatibleMessageGenerator>();
-        hive.Embeddings.Generators["ollama"].Should().BeOfType<OpenAIEmbeddingGenerator>();
+        hive.Embeddings.Generators["ollama"].Should().BeOfType<IronHive.Providers.OpenAI.Compatible.Embedding.OpenAICompatibleEmbeddingGenerator>();
         hive.Rerank.Rerankers["ollama"].Should().BeOfType<CohereDocumentReranker>();
         hive.Images.Generators["ollama"].Should().BeOfType<OpenAIImageGenerator>();
         hive.Audio.Processors["ollama"].Should().BeOfType<OpenAIAudioProcessor>();
@@ -73,7 +73,7 @@ public class OpenAICompatibleServiceRegistrationTests
         // GPUStack no longer has its own message-generator class — it shares
         // OpenAICompatibleMessageGenerator with OpenAICompatibleConfig.
         hive.Messages.Generators["gpustack"].Should().BeOfType<OpenAICompatibleMessageGenerator>();
-        hive.Embeddings.Generators["gpustack"].Should().BeOfType<OpenAIEmbeddingGenerator>();
+        hive.Embeddings.Generators["gpustack"].Should().BeOfType<IronHive.Providers.OpenAI.Compatible.Embedding.OpenAICompatibleEmbeddingGenerator>();
         hive.Rerank.Rerankers["gpustack"].Should().BeOfType<CohereDocumentReranker>();
         hive.Images.Generators["gpustack"].Should().BeOfType<OpenAIImageGenerator>();
         hive.Audio.Processors["gpustack"].Should().BeOfType<OpenAIAudioProcessor>();

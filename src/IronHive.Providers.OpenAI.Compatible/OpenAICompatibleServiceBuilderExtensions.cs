@@ -24,7 +24,7 @@ public static partial class CompatibleHiveServiceBuilderExtensions
             builder.AddMessageGenerator(providerName, new OpenAICompatibleMessageGenerator(config));
 
         if (serviceType.HasFlag(OpenAICompatibleServiceType.Embeddings))
-            builder.AddEmbeddingGenerator(providerName, new OpenAIEmbeddingGenerator(config.ToOpenAI()));
+            builder.AddEmbeddingGenerator(providerName, new IronHive.Providers.OpenAI.Compatible.Embedding.OpenAICompatibleEmbeddingGenerator(config.ToOpenAI()));
 
         if (serviceType.HasFlag(OpenAICompatibleServiceType.Rerank))
             builder.AddDocumentReranker(providerName, new CohereDocumentReranker(config.ToOpenAI()));

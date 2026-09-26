@@ -44,6 +44,34 @@ public class EmbeddingService : IEmbeddingService
     }
 
     /// <inheritdoc />
+    public async Task<float[]> EmbedAsync(
+        string provider,
+        string modelId,
+        string input,
+        EmbeddingRequestOptions? options,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_generators.TryGetValue(provider, out var service))
+            throw new KeyNotFoundException($"Service key '{provider}' not found.");
+
+        return await service.EmbedAsync(modelId, input, options, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<EmbeddingResponse> EmbedBatchAsync(
+        string provider,
+        string modelId,
+        IEnumerable<string> inputs,
+        EmbeddingRequestOptions? options,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_generators.TryGetValue(provider, out var service))
+            throw new KeyNotFoundException($"Service key '{provider}' not found.");
+
+        return await service.EmbedBatchAsync(modelId, inputs, options, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
     public async Task<int> CountTokensAsync(
         string provider,
         string modelId,

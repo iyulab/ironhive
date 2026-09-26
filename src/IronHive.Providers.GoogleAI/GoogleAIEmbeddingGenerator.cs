@@ -31,11 +31,20 @@ public class GoogleAIEmbeddingGenerator : IEmbeddingGenerator
     }
 
     /// <inheritdoc />
-    public async Task<float[]> EmbedAsync(
+    public Task<float[]> EmbedAsync(
         string modelId,
         string input,
         CancellationToken cancellationToken = default)
+        => EmbedAsync(modelId, input, options: null, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<float[]> EmbedAsync(
+        string modelId,
+        string input,
+        EmbeddingRequestOptions? options,
+        CancellationToken cancellationToken = default)
     {
+        RejectUnsupported(options);
         var res = await _client.Models.EmbedContentAsync(modelId, input, cancellationToken: cancellationToken);
         var embedding = res.Embeddings?.FirstOrDefault()
             ?? throw new InvalidOperationException("No embedding found in response.");
@@ -44,17 +53,35 @@ public class GoogleAIEmbeddingGenerator : IEmbeddingGenerator
             ?? throw new InvalidOperationException("No embedding values found in response.");
     }
 
+    // An embedding request this provider cannot extend: refusing is the only answer that does not hand the caller a
+    // request other than the one asked for.
+    private static void RejectUnsupported(EmbeddingRequestOptions? options)
+    {
+        if (options?.ExtraBody is { Count: > 0 })
+            throw new NotSupportedException(
+                "EmbeddingRequestOptions.ExtraBody is not supported by the Google AI provider; the OpenAI-compatible provider honours it.");
+    }
+
     /// <summary>
     /// Google AI의 embedContent 요청 하나당 허용되는 최대 입력 개수입니다.
     /// </summary>
     private const int MaxBatchSize = 100;
 
     /// <inheritdoc />
-    public async Task<EmbeddingResponse> EmbedBatchAsync(
+    public Task<EmbeddingResponse> EmbedBatchAsync(
         string modelId,
         IEnumerable<string> inputs,
         CancellationToken cancellationToken = default)
+        => EmbedBatchAsync(modelId, inputs, options: null, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<EmbeddingResponse> EmbedBatchAsync(
+        string modelId,
+        IEnumerable<string> inputs,
+        EmbeddingRequestOptions? options,
+        CancellationToken cancellationToken = default)
     {
+        RejectUnsupported(options);
         var indexed = inputs.Select((input, index) => (input, index)).ToList();
 
         var batchTasks = indexed

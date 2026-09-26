@@ -430,21 +430,10 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         if (request.ExtraBody is { Count: > 0 } callerExtras)
         {
             built.ExtraBody ??= new JsonObject();
-            MergeInto(built.ExtraBody, callerExtras);
+            JsonObjectMerge.DeepMerge(built.ExtraBody, callerExtras);
         }
 
         return built;
-    }
-
-    private static void MergeInto(JsonObject target, JsonObject source)
-    {
-        foreach (var (key, value) in source)
-        {
-            if (target[key] is JsonObject existing && value is JsonObject incoming)
-                MergeInto(existing, incoming);
-            else
-                target[key] = value?.DeepClone();
-        }
     }
 
     /// <summary>
