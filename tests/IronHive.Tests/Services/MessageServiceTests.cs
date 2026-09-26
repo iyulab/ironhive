@@ -383,6 +383,50 @@ public class MessageServiceTests
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
+    [Fact]
+    public async Task StreamingExecuteTools_CallerCancelsDuringTheTool_ThrowsOperationCanceled_NotAToolFailure()
+    {
+        // The streaming twin of the fact above. Its tools run on worker tasks that hand their outcome to a channel,
+        // so the caller's cancellation travels through Task.WhenAll → Channel.Writer.Complete(ex) → the reader. Two
+        // guards each keep it unwrapped: the reader observes the caller's token itself, and the worker's catch filter
+        // lets the cancellation through. Removing either one alone stays green; removing both turns this red
+        // (InvalidOperationException).
+        var mockGenerator = Substitute.For<IMessageGenerator>();
+        mockGenerator
+            .GenerateStreamingMessageAsync(Arg.Any<MessageGenerationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new List<StreamingMessageResponse>
+            {
+                new StreamingMessageBeginResponse(),
+                new StreamingContentAddedResponse { Index = 0, Content = ToolCallMessage("slow").Content.First() },
+                new StreamingContentCompletedResponse { Index = 0 },
+                new StreamingMessageDoneResponse { ResponseId = "r1", DoneReason = MessageDoneReason.ToolCall, Model = "gpt-4o", Timestamp = DateTime.UtcNow },
+            }.ToAsyncEnumerable());
+        _generators["openai"] = mockGenerator;
+
+        using var cts = new CancellationTokenSource();
+        var tool = new DelayingTool("slow", TimeSpan.FromSeconds(30));
+        var request = new MessageRequest
+        {
+            Provider = "openai",
+            Model = "gpt-4o",
+            Messages = [Message.User("go")],
+            Tools = new ToolCollection([tool]),
+        };
+
+        // Cancel once the tool is running, not before it — the fact is about cancellation *during* a tool call.
+        var cancelDuringTool = tool.Started.Task.ContinueWith(_ => cts.CancelAsync(), TaskScheduler.Default).Unwrap();
+        var act = async () =>
+        {
+            await foreach (var _ in _service.GenerateStreamingMessageAsync(request, cts.Token))
+            {
+            }
+        };
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        tool.Started.Task.IsCompleted.Should().BeTrue("the cancellation must have fired during the tool, not before it");
+        await cancelDuringTool;
+    }
+
     #endregion
 }
 
