@@ -305,8 +305,12 @@ public class MessageServiceTests
         public object? Parameters => null;
         public bool RequiresApproval => false;
 
+        /// <summary>Completes when the tool has started — lets a test cancel <i>during</i> the call, not before it.</summary>
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         public async Task<ToolOutput> InvokeAsync(ToolInput input, CancellationToken cancellationToken = default)
         {
+            Started.TrySetResult();
             await Task.Delay(delay, cancellationToken);
             return ToolOutput.Success("done");
         }
@@ -347,12 +351,13 @@ public class MessageServiceTests
     }
 
     [Fact]
-    public async Task ExecuteTools_CallerCancels_ThrowsInsteadOfSwallowedAsTimeoutFailure()
+    public async Task ExecuteTools_CallerCancelsDuringTheTool_ThrowsOperationCanceled_NotAToolFailure()
     {
         // Unlike a ToolOptions.Timeout expiring (swallowed into ToolOutput.Failure, above), the
-        // caller's own token firing during a tool call is not swallowed — it still surfaces as a
-        // thrown exception (wrapped in InvalidOperationException by the per-tool Task.Run catch in
-        // ExecuteToolsAsync, with the cancellation as its InnerException).
+        // caller's own token firing during a tool call is not swallowed — and it surfaces as
+        // OperationCanceledException, the shape it has when it fires before the tool starts. It used to
+        // arrive wrapped in InvalidOperationException when it fired inside the tool and bare otherwise;
+        // this fact was timing-dependent (cancel after 50 ms) and flaked under load for exactly that reason.
         var mockGenerator = Substitute.For<IMessageGenerator>();
         mockGenerator
             .GenerateMessageAsync(Arg.Any<MessageGenerationRequest>(), Arg.Any<CancellationToken>())
@@ -360,20 +365,22 @@ public class MessageServiceTests
         _generators["openai"] = mockGenerator;
 
         using var cts = new CancellationTokenSource();
+        var tool = new DelayingTool("slow", TimeSpan.FromSeconds(30));
         var request = new MessageRequest
         {
             Provider = "openai",
             Model = "gpt-4o",
             Messages = [Message.User("go")],
-            Tools = new ToolCollection([new DelayingTool("slow", TimeSpan.FromSeconds(5))]),
+            Tools = new ToolCollection([tool]),
             // No ToolOptions.Timeout — the caller's own token is what fires during the tool call.
         };
-        cts.CancelAfter(TimeSpan.FromMilliseconds(50));
 
-        var act = async () => await _service.GenerateMessageAsync(request, cts.Token);
+        var call = _service.GenerateMessageAsync(request, cts.Token);
+        await tool.Started.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        await cts.CancelAsync();
+        var act = async () => await call;
 
-        (await act.Should().ThrowAsync<InvalidOperationException>())
-            .WithInnerException<OperationCanceledException>();
+        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
     #endregion

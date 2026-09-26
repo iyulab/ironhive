@@ -409,7 +409,10 @@ public class MessageService : IMessageService
                 {
                     await ExecuteToolAsync(tmc, tools, toolOptions, cancellationToken).ConfigureAwait(false);
                 }
-                catch (Exception ex)
+                // The caller's own cancellation is not a tool failure: it propagates as OperationCanceledException, the
+                // same as when it fires before the tool starts. Wrapping it made one cancellation arrive in two shapes,
+                // and a caller catching OperationCanceledException missed the wrapped one.
+                catch (Exception ex) when (!(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
                 {
                     throw new InvalidOperationException($"Error processing tool content for {tmc.Name}.", ex);
                 }
@@ -463,7 +466,8 @@ public class MessageService : IMessageService
                         Content = tool
                     }, cancellationToken).ConfigureAwait(false);
                 }
-                catch (Exception ex)
+                // As in ExecuteToolsAsync: the caller's cancellation propagates unwrapped.
+                catch (Exception ex) when (!(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
                 {
                     throw new InvalidOperationException($"Error processing tool content for {tool.Name} at index {idx}.", ex);
                 }

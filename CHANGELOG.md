@@ -20,6 +20,15 @@ changes are expected and used freely for structural correctness (see
   (the old signatures have default bodies that forward to them). The OpenAI and Google AI generators throw
   `NotSupportedException` on a non-empty `ExtraBody` instead of dropping it.
 
+### Fixed
+
+- **Cancelling a message call while a tool runs throws `OperationCanceledException`, not `InvalidOperationException`.**
+  `MessageService` wrapped every exception from a tool call — including the caller's own cancellation — in
+  `InvalidOperationException("Error processing tool content …")`, while the same cancellation arriving a moment earlier
+  (before the tool started) came out bare. One cancellation had two shapes, and a caller catching
+  `OperationCanceledException` missed the wrapped one. Tool failures are still wrapped; a tool timeout
+  (`ToolOptions.Timeout`) is still fed back to the model as a failure. Streaming and non-streaming paths alike.
+
 ### Changed
 
 - **The docs of `ThinkingEffort` now say what leaving it unset means: send nothing about reasoning, so the provider's
