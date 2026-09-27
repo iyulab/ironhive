@@ -4,6 +4,17 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.41.1 — Unreleased
+
+### Fixed
+
+- **A request to a local server no longer fails, now and then, with "No connection could be made because the target
+  machine actively refused it" while the server is listening.** The providers' default transport races a host's
+  addresses. When a connect finished synchronously, which loopback connects sometimes do, the race stopped before
+  collecting it. It then reported a connection refusal it had made up itself and disposed the connected socket. This
+  happened to about one request in 300 against `127.0.0.1`. When every address fails, the error now reported is the
+  real one, not a refusal.
+
 ## 0.41.0 — 2026-09-26
 
 ### Fixed

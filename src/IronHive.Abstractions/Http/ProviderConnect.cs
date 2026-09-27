@@ -47,11 +47,20 @@ public static class ProviderConnect
         if (addresses.Length == 0)
             throw new SocketException((int)SocketError.HostNotFound);
 
-        var socket = await RaceAsync(addresses, endpoint.Port, cancellationToken).ConfigureAwait(false);
+        var socket = await RaceAsync(addresses, endpoint.Port, ConnectOneAsync, cancellationToken).ConfigureAwait(false);
         return new NetworkStream(socket, ownsSocket: true);
     }
 
-    private static async Task<Socket> RaceAsync(IPAddress[] addresses, int port, CancellationToken cancellationToken)
+    /// <summary>
+    /// Starts one attempt per address, <see cref="AttemptDelay"/> apart or as soon as the previous one fails, and
+    /// returns the first socket that connects. <paramref name="connectOne"/> is the per-address connect — a parameter
+    /// so a test can hand back an attempt that has already finished.
+    /// </summary>
+    internal static async Task<Socket> RaceAsync(
+        IPAddress[] addresses,
+        int port,
+        Func<IPAddress, int, CancellationToken, Task<Socket>> connectOne,
+        CancellationToken cancellationToken)
     {
         using var race = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var attempts = new List<Task<Socket>>(addresses.Length);
@@ -63,19 +72,11 @@ public static class ProviderConnect
             while (true)
             {
                 if (next < addresses.Length)
-                    attempts.Add(ConnectOneAsync(addresses[next++], port, race.Token));
+                    attempts.Add(connectOne(addresses[next++], port, race.Token));
 
-                var pending = attempts.Where(a => !a.IsCompleted).ToList();
-                if (pending.Count == 0 && next >= addresses.Length)
-                    break;
-
-                // Wait for an attempt to finish, or for the delay after which the next address starts anyway.
-                var waitOn = new List<Task>(pending);
-                if (next < addresses.Length)
-                    waitOn.Add(Task.Delay(AttemptDelay, race.Token));
-                if (waitOn.Count > 0)
-                    await Task.WhenAny(waitOn).ConfigureAwait(false);
-
+                // Harvest before deciding anything: an attempt can finish synchronously (a loopback connect often
+                // does), and the check below would otherwise see "nothing pending, no address left" and report a
+                // refusal while the connected socket sat unread in the list — to be disposed as a loser.
                 foreach (var done in attempts.Where(a => a.IsCompleted).ToList())
                 {
                     attempts.Remove(done);
@@ -83,6 +84,15 @@ public static class ProviderConnect
                         return done.Result;
                     lastError = done.Exception?.GetBaseException() ?? lastError;
                 }
+
+                if (attempts.Count == 0 && next >= addresses.Length)
+                    break;
+
+                // Wait for an attempt to finish, or for the delay after which the next address starts anyway.
+                var waitOn = new List<Task>(attempts);
+                if (next < addresses.Length)
+                    waitOn.Add(Task.Delay(AttemptDelay, race.Token));
+                await Task.WhenAny(waitOn).ConfigureAwait(false);
 
                 cancellationToken.ThrowIfCancellationRequested();
             }

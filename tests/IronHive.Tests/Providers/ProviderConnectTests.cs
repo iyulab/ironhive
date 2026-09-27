@@ -67,6 +67,55 @@ public class ProviderConnectTests
         await server;
     }
 
+    // An attempt that has already finished when the race looks at it. Loopback connects sometimes complete
+    // synchronously; until 0.41.1 the race then saw "nothing pending, no address left", threw a ConnectionRefused it
+    // made up, and disposed the connected socket as a loser — about one request in 300 to a local server.
+    [Fact]
+    public async Task AnAttemptThatCompletedSynchronously_Wins()
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        var connected = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        connected.Connect(IPAddress.Loopback, port);
+
+        using var socket = await ProviderConnect.RaceAsync(
+            [IPAddress.Loopback], port, (_, _, _) => Task.FromResult(connected), TestContext.Current.CancellationToken);
+
+        socket.Should().BeSameAs(connected);
+        socket.Connected.Should().BeTrue("the winner must not have been disposed as a loser");
+    }
+
+    [Fact]
+    public async Task ASynchronousFailureThenASynchronousSuccess_ReturnsTheSuccess()
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        var connected = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        connected.Connect(IPAddress.Loopback, port);
+
+        using var socket = await ProviderConnect.RaceAsync(
+            [IPAddress.IPv6Loopback, IPAddress.Loopback], port,
+            (address, _, _) => address.Equals(IPAddress.IPv6Loopback)
+                ? Task.FromException<Socket>(new SocketException((int)SocketError.ConnectionRefused))
+                : Task.FromResult(connected),
+            TestContext.Current.CancellationToken);
+
+        socket.Should().BeSameAs(connected);
+    }
+
+    [Fact]
+    public async Task EveryAttemptFailingSynchronously_ReportsTheRealError()
+    {
+        var act = () => ProviderConnect.RaceAsync(
+            [IPAddress.Loopback], 1,
+            (_, _, _) => Task.FromException<Socket>(new SocketException((int)SocketError.HostUnreachable)),
+            TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<SocketException>()).Which.SocketErrorCode.Should().Be(SocketError.HostUnreachable);
+    }
+
     private static async Task RespondOnceAsync(TcpListener listener)
     {
         using var socket = await listener.AcceptSocketAsync();
