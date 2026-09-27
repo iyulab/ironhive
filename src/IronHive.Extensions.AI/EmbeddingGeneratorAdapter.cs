@@ -28,7 +28,10 @@ public class EmbeddingGeneratorAdapter : IEmbeddingGenerator<string, Embedding<f
         _providerName = providerName ?? "IronHive";
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// The provider name and default model this generator reports — also what <see cref="GetService"/> answers for
+    /// <see cref="EmbeddingGeneratorMetadata"/>, which is where M.E.AI middleware (e.g. OpenTelemetry) looks for it.
+    /// </summary>
     public EmbeddingGeneratorMetadata Metadata => new(
         providerName: _providerName,
         providerUri: null,
@@ -93,8 +96,16 @@ public class EmbeddingGeneratorAdapter : IEmbeddingGenerator<string, Embedding<f
     /// <inheritdoc />
     public object? GetService(Type serviceType, object? serviceKey = null)
     {
+        ArgumentNullException.ThrowIfNull(serviceType);
+        if (serviceKey is not null)
+            return null;
+
+        if (serviceType == typeof(EmbeddingGeneratorMetadata))
+            return Metadata;
         if (serviceType == typeof(IronHiveEmbedding.IEmbeddingGenerator))
             return _generator;
+        if (serviceType.IsInstanceOfType(this))
+            return this;
 
         return null;
     }

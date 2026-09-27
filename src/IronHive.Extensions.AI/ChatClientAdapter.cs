@@ -47,7 +47,10 @@ public class ChatClientAdapter : IChatClient
         _providerName = providerName ?? "IronHive";
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// The provider name and default model this client reports — also what <see cref="GetService"/> answers for
+    /// <see cref="ChatClientMetadata"/>, which is where M.E.AI middleware (e.g. OpenTelemetry) looks for it.
+    /// </summary>
     public ChatClientMetadata Metadata => new(
         providerName: _providerName,
         providerUri: null,
@@ -200,8 +203,16 @@ public class ChatClientAdapter : IChatClient
     /// <inheritdoc />
     public object? GetService(Type serviceType, object? serviceKey = null)
     {
+        ArgumentNullException.ThrowIfNull(serviceType);
+        if (serviceKey is not null)
+            return null;
+
+        if (serviceType == typeof(ChatClientMetadata))
+            return Metadata;
         if (serviceType == typeof(IMessageGenerator))
             return _generator;
+        if (serviceType.IsInstanceOfType(this))
+            return this;
 
         return null;
     }

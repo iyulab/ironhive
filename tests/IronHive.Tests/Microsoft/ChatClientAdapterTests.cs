@@ -78,6 +78,27 @@ public class ChatClientAdapterTests : IDisposable
         result.Should().BeSameAs(_mockGenerator);
     }
 
+    // M.E.AI asks a client for its metadata through GetService (the OpenTelemetry middleware reads the provider and
+    // model from it); until 0.42.0 the adapter answered only IMessageGenerator, so it reported neither.
+    [Fact]
+    public void GetService_ChatClientMetadata_ThroughTheInterface_ReportsProviderAndModel()
+    {
+        IChatClient client = _adapter;
+
+        var metadata = client.GetService<ChatClientMetadata>();
+
+        metadata.Should().NotBeNull();
+        metadata!.ProviderName.Should().Be("TestProvider");
+        metadata.DefaultModelId.Should().Be("test-model");
+    }
+
+    [Fact]
+    public void GetService_ItsOwnType_ReturnsItself_AndAKeyedRequestReturnsNull()
+    {
+        ((IChatClient)_adapter).GetService<ChatClientAdapter>().Should().BeSameAs(_adapter);
+        ((IChatClient)_adapter).GetService(typeof(ChatClientMetadata), serviceKey: "other").Should().BeNull();
+    }
+
     [Fact]
     public void GetService_UnknownType_ReturnsNull()
     {

@@ -231,6 +231,20 @@ public class EmbeddingGeneratorAdapterTests : IDisposable
         result.Should().BeSameAs(_mockGenerator);
     }
 
+    // Same convention as the chat adapter: metadata is asked for through GetService.
+    [Fact]
+    public void GetService_EmbeddingGeneratorMetadata_ThroughTheInterface_ReportsProviderAndModel()
+    {
+        IEmbeddingGenerator<string, Embedding<float>> generator = _adapter;
+
+        var metadata = generator.GetService<EmbeddingGeneratorMetadata>();
+
+        metadata.Should().NotBeNull();
+        metadata!.ProviderName.Should().Be("TestProvider");
+        metadata.DefaultModelId.Should().Be("test-model");
+        generator.GetService<EmbeddingGeneratorAdapter>().Should().BeSameAs(_adapter);
+    }
+
     [Fact]
     public void GetService_UnknownType_ReturnsNull()
     {

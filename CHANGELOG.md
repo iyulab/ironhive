@@ -20,6 +20,14 @@ changes are expected and used freely for structural correctness (see
 - The adapter's per-request tool set (`MessageGenerationRequest.Tools`) is now a read-only snapshot in the caller's
   order; before, it was Core's mutable `ToolCollection` in dictionary order. Providers only read it.
 
+### Fixed
+
+- **`IChatClient.GetService<ChatClientMetadata>()` and `IEmbeddingGenerator.GetService<EmbeddingGeneratorMetadata>()`
+  return the adapter's provider name and default model.** They returned null — the adapters exposed the values only as a
+  `Metadata` property, which is not where Microsoft.Extensions.AI looks (its OpenTelemetry middleware reads them through
+  `GetService`), so telemetry over an adapted provider carried neither. `GetService` also returns the adapter itself
+  for its own type, and null for any keyed request.
+
 ## 0.41.1 — 2026-09-27
 
 ### Fixed
