@@ -176,7 +176,9 @@ IQueueStorage (입력) → Pipeline Steps → IVectorStorage (출력)
 
 ## Microsoft.Extensions.AI 호환
 
-IronHive 구현체를 M.E.AI 생태계와 연동합니다:
+IronHive 구현체를 M.E.AI 생태계와 연동합니다. 브리지는 별도 패키지 `IronHive.Extensions.AI`(네임스페이스 같음)이고
+`IronHive.Abstractions` + `Microsoft.Extensions.AI.Abstractions` 에만 의존한다 — provider 하나를 `IChatClient` 로만 쓰는 호스트는
+`IronHive.Core` 없이 `IronHive.Providers.<X>` + `IronHive.Extensions.AI` 만 참조한다(예: `new GoogleAIMessageGenerator(config).AsChatClient("gemini-2.5-flash", "googleai")`).
 
 ```csharp
 // ChatClientAdapter/EmbeddingGeneratorAdapter는 provider 하나에 바인딩된 raw

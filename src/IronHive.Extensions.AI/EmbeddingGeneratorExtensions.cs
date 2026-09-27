@@ -1,8 +1,7 @@
-﻿using IronHive.Core.Microsoft;
-using Microsoft.Extensions.AI;
+﻿using Microsoft.Extensions.AI;
 using IHiveEmbeddingGenerator = IronHive.Abstractions.Embedding.IEmbeddingGenerator;
 
-namespace IronHive.Core.Extensions;
+namespace IronHive.Extensions.AI;
 
 public static class EmbeddingGeneratorExtensions
 {

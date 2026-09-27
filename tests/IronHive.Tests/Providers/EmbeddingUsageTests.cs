@@ -2,7 +2,7 @@ using System.Net;
 using System.Text;
 using AwesomeAssertions;
 using IronHive.Abstractions.Embedding;
-using IronHive.Core.Microsoft;
+using IronHive.Extensions.AI;
 using IronHive.Providers.OpenAI;
 using NSubstitute;
 

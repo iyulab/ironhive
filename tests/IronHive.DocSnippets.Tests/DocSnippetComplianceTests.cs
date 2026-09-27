@@ -22,7 +22,7 @@ public class DocSnippetComplianceTests
         using System.Collections.Generic;
         using IronHive.Abstractions;
         using IronHive.Core.Extensions;
-        using IronHive.Core.Microsoft;
+        using IronHive.Extensions.AI;
         using Microsoft.Extensions.AI;
 
         IHiveService hive = null!;

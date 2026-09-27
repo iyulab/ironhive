@@ -1,8 +1,7 @@
 ﻿using IronHive.Abstractions.Messages;
-using IronHive.Core.Microsoft;
 using Microsoft.Extensions.AI;
 
-namespace IronHive.Core.Extensions;
+namespace IronHive.Extensions.AI;
 
 public static class MessageGeneratorExtensions
 {

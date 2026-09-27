@@ -309,6 +309,10 @@ var msg = new Message
 
 ## M.E.AI Compatibility
 
+The bridge is its own package, `IronHive.Extensions.AI` (`using IronHive.Extensions.AI;`), and depends only on
+`IronHive.Abstractions` + `Microsoft.Extensions.AI.Abstractions` — a host that only needs a provider as an `IChatClient`
+references `IronHive.Providers.<X>` + `IronHive.Extensions.AI`, without `IronHive.Core`.
+
 ```csharp
 // ChatClientAdapter/EmbeddingGeneratorAdapter wrap a single provider's raw IMessageGenerator/
 // IEmbeddingGenerator. To reuse a provider registered via HiveServiceBuilder without

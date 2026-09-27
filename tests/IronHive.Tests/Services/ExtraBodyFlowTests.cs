@@ -3,7 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using AwesomeAssertions;
 using IronHive.Abstractions.Messages;
-using IronHive.Core.Microsoft;
+using IronHive.Extensions.AI;
 using IronHive.Core.Services;
 using Microsoft.Extensions.AI;
 using NSubstitute;

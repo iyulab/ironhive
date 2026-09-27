@@ -14,6 +14,7 @@
   <Folder Name="/10. src/">
     <Project Path="src/IronHive.Abstractions/IronHive.Abstractions.csproj" />
     <Project Path="src/IronHive.Core/IronHive.Core.csproj" />
+    <Project Path="src/IronHive.Extensions.AI/IronHive.Extensions.AI.csproj" />
   </Folder>
   <Folder Name="/10. src/Plugins/">
     <Project Path="src/IronHive.Plugins.MCP/IronHive.Plugins.MCP.csproj" />

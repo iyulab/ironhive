@@ -2,7 +2,7 @@ using System.Text.Json;
 using IronHive.Abstractions.Tools;
 using Microsoft.Extensions.AI;
 
-namespace IronHive.Core.Microsoft;
+namespace IronHive.Extensions.AI;
 
 /// <summary>
 /// M.E.AI의 AITool을 IronHive의 ITool로 변환하는 어댑터입니다.

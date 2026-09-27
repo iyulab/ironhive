@@ -4,6 +4,22 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.42.0 — Unreleased
+
+### Changed
+
+- **Breaking — the Microsoft.Extensions.AI bridge is its own package, `IronHive.Extensions.AI`, and no longer needs
+  `IronHive.Core`.** `ChatClientAdapter`, `EmbeddingGeneratorAdapter`, `AIToolAdapter`, `AsChatClient` and
+  `AsEmbeddingGenerator` moved from `IronHive.Core` (namespaces `IronHive.Core.Microsoft` / `IronHive.Core.Extensions`)
+  to `IronHive.Extensions.AI` (same namespace). It depends only on `IronHive.Abstractions` and
+  `Microsoft.Extensions.AI.Abstractions`, so a host that uses a provider as an `IChatClient` no longer ships Core's
+  document, SQLite (native), MessagePack and template stack. `IronHive.Core` no longer references
+  `Microsoft.Extensions.AI.Abstractions`.
+  Migration: add a reference to `IronHive.Extensions.AI` and replace `using IronHive.Core.Microsoft;` /
+  `using IronHive.Core.Extensions;` (for the two `As…` methods) with `using IronHive.Extensions.AI;`.
+- The adapter's per-request tool set (`MessageGenerationRequest.Tools`) is now a read-only snapshot in the caller's
+  order; before, it was Core's mutable `ToolCollection` in dictionary order. Providers only read it.
+
 ## 0.41.1 — 2026-09-27
 
 ### Fixed

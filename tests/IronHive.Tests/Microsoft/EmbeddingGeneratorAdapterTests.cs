@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using IronHive.Core.Microsoft;
+using IronHive.Extensions.AI;
 using Microsoft.Extensions.AI;
 using NSubstitute;
 using IronHiveEmbedding = IronHive.Abstractions.Embedding;

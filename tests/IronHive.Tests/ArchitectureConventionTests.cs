@@ -66,6 +66,22 @@ public class ArchitectureConventionTests
             + string.Join("\n  ", offenders));
     }
 
+    // IronHive.Extensions.AI is the lean bridge a host takes to use a provider as an M.E.AI IChatClient without
+    // IronHive.Core (docket #501): referencing any other IronHive assembly would bring Core's stack back.
+    [Fact]
+    public void ExtensionsAI_ReferencesOnlyAbstractions()
+    {
+        var bridge = typeof(IronHive.Extensions.AI.ChatClientAdapter).Assembly;
+        var offenders = bridge.GetReferencedAssemblies()
+            .Select(a => a.Name!)
+            .Where(n => n.StartsWith("IronHive.", StringComparison.Ordinal) && n != "IronHive.Abstractions")
+            .ToList();
+
+        Assert.True(offenders.Count == 0,
+            "IronHive.Extensions.AI must reference no IronHive assembly but IronHive.Abstractions:\n  "
+            + string.Join("\n  ", offenders));
+    }
+
     [Theory]
     [MemberData(nameof(ImplementationAssemblyNames))]
     public void ImplementationAssembly_DoesNotDeclareAbstractionsNamespace(string assemblyName)

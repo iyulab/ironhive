@@ -17,6 +17,7 @@ internal static class DocSnippetCompiler
     [
         "IronHive.Abstractions",
         "IronHive.Core",
+        "IronHive.Extensions.AI",
         "Microsoft.Extensions.AI.Abstractions",
         "Microsoft.Extensions.AI.OpenAI",
         "OpenAI",

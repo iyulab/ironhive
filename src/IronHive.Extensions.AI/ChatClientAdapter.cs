@@ -6,9 +6,8 @@ using Microsoft.Extensions.AI;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Tools;
-using IronHive.Core.Tools;
 
-namespace IronHive.Core.Microsoft;
+namespace IronHive.Extensions.AI;
 
 /// <summary>
 /// IronHive IMessageGenerator를 Microsoft.Extensions.AI IChatClient로 래핑하는 어댑터입니다.
@@ -286,7 +285,7 @@ public class ChatClientAdapter : IChatClient
             if (options.Tools is { Count: > 0 })
             {
                 var adapted = options.Tools.Select(t => (ITool)new AIToolAdapter(t));
-                request.Tools = new ToolCollection(adapted);
+                request.Tools = new ReadOnlyToolCollection(adapted);
             }
 
             request.ToolChoice = ToToolChoice(options.ToolMode);

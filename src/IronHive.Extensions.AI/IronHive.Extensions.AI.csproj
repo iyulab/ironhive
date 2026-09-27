@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>IronHive providers as Microsoft.Extensions.AI IChatClient / IEmbeddingGenerator — depends only on IronHive.Abstractions</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="IronHive.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\IronHive.Abstractions\IronHive.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

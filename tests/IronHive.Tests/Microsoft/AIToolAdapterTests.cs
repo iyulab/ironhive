@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Tools;
-using IronHive.Core.Microsoft;
+using IronHive.Extensions.AI;
 using Microsoft.Extensions.AI;
 
 namespace IronHive.Tests.Microsoft;
