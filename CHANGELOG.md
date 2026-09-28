@@ -4,6 +4,18 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.45.0 — Unreleased
+
+### Fixed
+
+- **The OpenAI (Responses) provider honours `StopSequences`.** The Responses API has no `stop` parameter, and the
+  provider dropped the stop sequences without a word, so output ran past them. The provider now ends the output at the
+  first stop sequence itself: the sequence and everything after it (text and tool calls) are not returned, and
+  `DoneReason` is `StopSequence`. A stream holds back the last (longest stop sequence − 1) characters of text until they
+  cannot start a match. The server still generates past the stop, so `TokenUsage` can count more output tokens than the
+  text returned.
+- **The packages carry the README**, so their nuget.org page shows it.
+
 ## 0.44.0 — 2026-09-28
 
 ### Changed
