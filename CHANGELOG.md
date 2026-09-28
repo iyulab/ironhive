@@ -4,6 +4,28 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.43.0 — Unreleased
+
+### Added
+
+- **`OpenAIErrors` (`IronHive.Providers.OpenAI`) maps OpenAI SDK errors to `ContextOverflowException` and
+  `RateLimitException` for callers that use their own SDK client.** A host that calls an OpenAI-compatible server
+  through the OpenAI SDK directly, or through `Microsoft.Extensions.AI.OpenAI`'s `IChatClient`, can now write
+  `catch (Exception ex) when (OpenAIErrors.TryMapContextOverflow(ex) is { } overflow)` instead of matching server
+  messages itself. It recognizes llama.cpp `exceed_context_size_error` and OpenAI / vLLM `context_length_exceeded`,
+  reads the error body the SDK kept, and finds the SDK exception inside a wrapping exception. `TryMapContextOverflow(string)`
+  covers a bare message (a mid-stream `error` event); `TryMapRateLimit(Exception)` maps HTTP 429 with `retry-after`.
+  The OpenAI and OpenAI-compatible providers now use this same recognition, so the spellings live in one place.
+- **`ContextOverflowException.RequestTokens`: the rejected request's token count, when the provider states it.**
+  Filled by the OpenAI-compatible (llama.cpp `n_prompt_tokens` or its message, vLLM "you requested N tokens"),
+  OpenAI, Anthropic ("N tokens > M maximum") and Gemini ("input token count (N)") mappings. With `ContextWindow` it
+  tells how far over the window a request was.
+
+### Changed
+
+- The OpenAI provider (Responses API path) now also recognizes the llama.cpp overflow spelling, which only the
+  OpenAI-compatible provider knew before.
+
 ## 0.42.0 — 2026-09-27
 
 ### Changed

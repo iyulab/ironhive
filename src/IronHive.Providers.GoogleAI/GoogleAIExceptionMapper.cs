@@ -81,7 +81,7 @@ internal static partial class GoogleAIExceptionMapper
         return true;
     }
 
-    [GeneratedRegex(@"input token count \(\d+\) exceeds the maximum number of tokens allowed \((\d+)\)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"input token count \((\d+)\) exceeds the maximum number of tokens allowed \((\d+)\)", RegexOptions.IgnoreCase)]
     private static partial Regex TokenCountExceededPattern();
 
     private static bool IsContextOverflow(Exception exception, out ContextOverflowException? result)
@@ -95,13 +95,16 @@ internal static partial class GoogleAIExceptionMapper
             return false;
 
         int? contextWindow = null;
-        if (TokenCountExceededPattern().Match(message) is { Success: true } match
-            && int.TryParse(match.Groups[1].Value, out var window))
+        int? requestTokens = null;
+        if (TokenCountExceededPattern().Match(message) is { Success: true } match)
         {
-            contextWindow = window;
+            if (int.TryParse(match.Groups[1].Value, out var requested))
+                requestTokens = requested;
+            if (int.TryParse(match.Groups[2].Value, out var window))
+                contextWindow = window;
         }
 
-        result = new ContextOverflowException(message, clientError) { ContextWindow = contextWindow };
+        result = new ContextOverflowException(message, clientError) { ContextWindow = contextWindow, RequestTokens = requestTokens };
         return true;
     }
 

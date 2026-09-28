@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.RegularExpressions;
 using IronHive.Abstractions.Exceptions;
+using IronHive.Providers.OpenAI;
 
 namespace IronHive.Providers.OpenAI.Compatible.ChatCompletion;
 
@@ -17,8 +17,10 @@ namespace IronHive.Providers.OpenAI.Compatible.ChatCompletion;
 /// body may carry <c>n_ctx</c>;
 /// vLLM / OpenAI-compatible — code <c>context_length_exceeded</c>, message
 /// "This model's maximum context length is X tokens. However, you requested Y tokens ...".
+/// The overflow spellings live in <see cref="OpenAIErrors"/> — shared with the OpenAI provider and public for
+/// callers with their own SDK client.
 /// </summary>
-internal static partial class ChatCompletionExceptionDetector
+internal static class ChatCompletionExceptionDetector
 {
     /// <summary>
     /// Reads and parses a failed HTTP response's error body, then returns the matching domain
@@ -42,13 +44,9 @@ internal static partial class ChatCompletionExceptionDetector
         var type = body.FindString("type");
         var code = body.FindString("code");
 
-        if (IsContextOverflow(message, type, code))
-        {
-            return new ContextOverflowException(message)
-            {
-                ContextWindow = FindContextWindow(message, body),
-            };
-        }
+        if (OpenAIErrors.MatchContextOverflow(
+                message, type, code, body.FindInt("n_ctx"), body.FindInt("n_prompt_tokens"), inner: null) is { } overflow)
+            return overflow;
 
         if (IsRateLimit(message, type, code, (int)response.StatusCode))
         {
@@ -67,32 +65,14 @@ internal static partial class ChatCompletionExceptionDetector
     /// </summary>
     public static Exception Detect(string message)
     {
-        if (IsContextOverflow(message, type: null, code: null))
-        {
-            return new ContextOverflowException(message)
-            {
-                ContextWindow = FindContextWindow(message, body: null),
-            };
-        }
+        if (OpenAIErrors.TryMapContextOverflow(message) is { } overflow)
+            return overflow;
 
         if (IsRateLimit(message, type: null, code: null, status: null))
             return new RateLimitException(message);
 
         return new HttpRequestException(message);
     }
-
-    private static readonly string[] ContextOverflowMarkers =
-    [
-        "exceed_context_size_error",
-        "context_length_exceeded",
-        "exceeds the available context size",
-        "maximum context length",
-    ];
-
-    private static bool IsContextOverflow(string message, string? type, string? code)
-        => type is "exceed_context_size_error" or "context_length_exceeded"
-            || code is "exceed_context_size_error" or "context_length_exceeded"
-            || ContextOverflowMarkers.Any(marker => message.Contains(marker, StringComparison.OrdinalIgnoreCase));
 
     private static readonly string[] RateLimitMarkers =
     [
@@ -108,29 +88,6 @@ internal static partial class ChatCompletionExceptionDetector
             || RateLimitMarkers.Contains(type, StringComparer.OrdinalIgnoreCase)
             || RateLimitMarkers.Contains(code, StringComparer.OrdinalIgnoreCase)
             || RateLimitMarkers.Any(marker => message.Contains(marker, StringComparison.OrdinalIgnoreCase));
-
-    [GeneratedRegex(@"\(\d+ tokens?\) exceeds the available context size \((\d+) tokens?\)")]
-    private static partial Regex LlamaCppPattern();
-
-    [GeneratedRegex(@"maximum context length is (\d+) tokens?", RegexOptions.IgnoreCase)]
-    private static partial Regex MaxContextPattern();
-
-    private static int? FindContextWindow(string message, JsonNode? body)
-    {
-        if (body.FindInt("n_ctx") is { } fromBody)
-            return fromBody;
-
-        if (LlamaCppPattern().Match(message) is { Success: true } llama)
-            return ParseInt(llama.Groups[1].Value);
-
-        if (MaxContextPattern().Match(message) is { Success: true } max)
-            return ParseInt(max.Groups[1].Value);
-
-        return null;
-    }
-
-    private static int? ParseInt(string value)
-        => int.TryParse(value, out var parsed) ? parsed : null;
 
     private static TimeSpan? FindRetryAfter(HttpResponseMessage response)
     {

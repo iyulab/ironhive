@@ -15,4 +15,11 @@ public class ContextOverflowException : HiveException
 
     /// <summary>Model context window size, when known.</summary>
     public int? ContextWindow { get; set; }
+
+    /// <summary>
+    /// Tokens the rejected request needed, when the provider states it (llama.cpp "request (N tokens)",
+    /// OpenAI/vLLM "you requested N tokens", Anthropic "N tokens &gt; M maximum", Gemini "input token count (N)").
+    /// With <see cref="ContextWindow"/> it tells how far over the window the request was.
+    /// </summary>
+    public int? RequestTokens { get; set; }
 }

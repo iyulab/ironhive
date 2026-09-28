@@ -141,9 +141,26 @@ try
 catch (ContextOverflowException ex)
 {
     // ex.ContextWindow — 모델 컨텍스트 윈도우 크기 (프로바이더가 보고하지 않으면 null)
+    // ex.RequestTokens — 거절된 요청의 토큰 수 (서버가 말하면)
     // 오래된 메시지를 요약해 request.Messages를 줄이고 재시도하는 등의 복구 로직
 }
 ```
+
+IronHive 프로바이더를 거치지 않고 자기 OpenAI SDK `ChatClient`(또는 그것을 감싼 `Microsoft.Extensions.AI.OpenAI`의 `IChatClient`)로 OpenAI·OpenAI 호환 서버를 부르는 경우에도 같은 인식을 쓸 수 있다 — `IronHive.Providers.OpenAI`의 `OpenAIErrors`:
+
+```csharp
+try
+{
+    var response = await chatClient.GetResponseAsync(messages);
+}
+catch (Exception ex) when (OpenAIErrors.TryMapContextOverflow(ex) is { } overflow)
+{
+    // llama.cpp exceed_context_size_error · OpenAI/vLLM context_length_exceeded 를 인식한다.
+    // overflow.ContextWindow / overflow.RequestTokens, overflow.InnerException = SDK 예외
+}
+```
+
+`TryMapContextOverflow(Exception)`은 SDK의 `ClientResultException`(감싼 예외 안에 있어도)만 본다. 스트림 중간의 `error` 이벤트처럼 예외가 없는 메시지는 `TryMapContextOverflow(string)`, 429는 `TryMapRateLimit(Exception)`(`retry-after` → `RetryAfter`).
 
 ---
 

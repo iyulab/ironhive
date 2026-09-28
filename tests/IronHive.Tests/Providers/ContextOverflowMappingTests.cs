@@ -29,18 +29,22 @@ public class ContextOverflowMappingTests
 
         var ex = await ChatCompletionExceptionDetector.DetectAsync(response, TestContext.Current.CancellationToken);
 
-        ex.Should().BeOfType<ContextOverflowException>().Which.ContextWindow.Should().Be(32768);
+        var overflow = ex.Should().BeOfType<ContextOverflowException>().Subject;
+        overflow.ContextWindow.Should().Be(32768);
+        overflow.RequestTokens.Should().Be(42259);
     }
 
     [Fact]
     public async Task Compatible_LlamaCpp_NumericFields_Preferred_Over_Message()
     {
         using var response = JsonResponse(HttpStatusCode.BadRequest,
-            """{"error":{"type":"exceed_context_size_error","message":"context overflow","n_ctx":32768}}""");
+            """{"error":{"type":"exceed_context_size_error","message":"context overflow","n_ctx":32768,"n_prompt_tokens":40408}}""");
 
         var ex = await ChatCompletionExceptionDetector.DetectAsync(response, TestContext.Current.CancellationToken);
 
-        ex.Should().BeOfType<ContextOverflowException>().Which.ContextWindow.Should().Be(32768);
+        var overflow = ex.Should().BeOfType<ContextOverflowException>().Subject;
+        overflow.ContextWindow.Should().Be(32768);
+        overflow.RequestTokens.Should().Be(40408);
     }
 
     [Fact]
@@ -103,7 +107,9 @@ public class ContextOverflowMappingTests
 
         var mapped = AnthropicMapper.Map(sdkException, TestContext.Current.CancellationToken);
 
-        mapped.Should().BeOfType<ContextOverflowException>().Which.ContextWindow.Should().Be(204698);
+        var overflow = mapped.Should().BeOfType<ContextOverflowException>().Subject;
+        overflow.ContextWindow.Should().Be(204698);
+        overflow.RequestTokens.Should().Be(210145);
     }
 
     [Fact]
@@ -138,7 +144,9 @@ public class ContextOverflowMappingTests
 
         var mapped = GoogleAIMapper.Map(clientError, TestContext.Current.CancellationToken);
 
-        mapped.Should().BeOfType<ContextOverflowException>().Which.ContextWindow.Should().Be(131072);
+        var overflow = mapped.Should().BeOfType<ContextOverflowException>().Subject;
+        overflow.ContextWindow.Should().Be(131072);
+        overflow.RequestTokens.Should().Be(185586);
     }
 
     [Fact]

@@ -51,7 +51,7 @@ internal static partial class AnthropicExceptionMapper
         return true;
     }
 
-    [GeneratedRegex(@"prompt is too long:\s*\d+ tokens? > (\d+) maximum", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"prompt is too long:\s*(\d+) tokens? > (\d+) maximum", RegexOptions.IgnoreCase)]
     private static partial Regex PromptTooLongPattern();
 
     private static bool IsContextOverflow(Exception exception, out ContextOverflowException? result)
@@ -65,13 +65,16 @@ internal static partial class AnthropicExceptionMapper
             return false;
 
         int? contextWindow = null;
-        if (PromptTooLongPattern().Match(message) is { Success: true } match
-            && int.TryParse(match.Groups[1].Value, out var window))
+        int? requestTokens = null;
+        if (PromptTooLongPattern().Match(message) is { Success: true } match)
         {
-            contextWindow = window;
+            if (int.TryParse(match.Groups[1].Value, out var requested))
+                requestTokens = requested;
+            if (int.TryParse(match.Groups[2].Value, out var window))
+                contextWindow = window;
         }
 
-        result = new ContextOverflowException(message, apiEx) { ContextWindow = contextWindow };
+        result = new ContextOverflowException(message, apiEx) { ContextWindow = contextWindow, RequestTokens = requestTokens };
         return true;
     }
 
