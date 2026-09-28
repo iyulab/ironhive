@@ -101,7 +101,7 @@ Wrapping `next()` in try/catch gives retry/fallback; inspecting/mutating `contex
 
 ### ContextOverflowException
 
-Provider-specific context-window overflow errors (OpenAI, Anthropic, GoogleAI, OpenAI Compatible) are normalized to `ContextOverflowException` (`IronHive.Abstractions.Exceptions`) — `ContextWindow` (nullable `int`) when the provider reports it.
+Provider-specific context-window overflow errors (OpenAI, Anthropic, GoogleAI, OpenAI Compatible) are normalized to `ContextOverflowException` (`IronHive.Abstractions.Exceptions`) — `ContextWindow` and `RequestTokens` (nullable `int`s) when the provider reports them.
 
 ```csharp
 try
@@ -113,6 +113,14 @@ catch (ContextOverflowException ex)
     // summarize/trim request.Messages and retry
 }
 ```
+
+Calling an OpenAI or OpenAI-compatible server through your own OpenAI SDK client (or `Microsoft.Extensions.AI.OpenAI`'s `IChatClient`) instead of an IronHive provider? `OpenAIErrors` (`IronHive.Providers.OpenAI`) applies the same recognition:
+
+```csharp
+catch (Exception ex) when (OpenAIErrors.TryMapContextOverflow(ex) is { } overflow) { /* overflow.ContextWindow, overflow.RequestTokens */ }
+```
+
+`TryMapContextOverflow(string)` covers a bare message (mid-stream `error` event); `TryMapRateLimit(Exception)` maps HTTP 429 with `retry-after`.
 
 ## IEmbeddingService — Embeddings
 
