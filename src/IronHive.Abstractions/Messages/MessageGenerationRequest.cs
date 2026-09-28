@@ -9,11 +9,6 @@ namespace IronHive.Abstractions.Messages;
 public class MessageGenerationRequest
 {
     /// <summary>
-    /// 이전 응답의 ResponseId. 프로바이더 측 저장된 컨텍스트를 재사용해 비용을 절감합니다.
-    /// </summary>
-    public string? PreviousId { get; set; }
-
-    /// <summary>
     /// 사용할 특정 모델의 식별자입니다.
     /// </summary>
     public required string Model { get; set; }

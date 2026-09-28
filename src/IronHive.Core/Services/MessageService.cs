@@ -275,13 +275,12 @@ public class MessageService : IMessageService
     // ---- MessageContext 구성 ----
 
     /// <summary>
-    /// MessageContext 생성 시 Provider 종속적인 보정(PreviousId 추출, 제안 프롬프트 병합)을 적용합니다.
+    /// MessageContext 생성 시 Core 쪽 보정(제안 프롬프트 병합)을 적용합니다.
     /// MessageContext(Abstractions)는 Provider 문자열이나 SuggestionCollector(Core 내부)를 알 필요가 없도록
     /// 이 보정을 MessageService(Core)에서 처리합니다.
     /// </summary>
     private static void ConfigureGeneration(MessageRequest request, MessageGenerationRequest generation)
     {
-        generation.PreviousId = ExtractResponseId(request.Provider, request.PreviousId);
         if (request.Suggestions != null)
             generation.System = SuggestionCollector.Prompt(request.System, request.Suggestions);
     }
@@ -329,12 +328,6 @@ public class MessageService : IMessageService
     private static string? BuildResponseId(string provider, string? responseId)
         => !string.IsNullOrWhiteSpace(responseId)
             ? $"{provider}_{responseId}" : null;
-
-    private static string? ExtractResponseId(string provider, string? responseId)
-        => !string.IsNullOrWhiteSpace(responseId)
-            ? responseId.StartsWith($"{provider}_", StringComparison.Ordinal)
-            ? responseId[(provider.Length + 1)..] : responseId
-            : null;
 
     // ---- 도구 실행 루프 ----
 

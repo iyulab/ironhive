@@ -46,8 +46,7 @@ var request = new MessageRequest
     System          = "You are helpful.",
     Messages        = messages,           // ICollection<Message>
     Tools           = toolCollection,     // optional IToolCollection
-    ThinkingEffort  = MessageThinkingEffort.High,   // Extended thinking
-    PreviousId      = "prev-response-id"            // Responses API continuity
+    ThinkingEffort  = MessageThinkingEffort.High    // Extended thinking
 };
 
 var response = await hive.Messages.GenerateMessageAsync(request);

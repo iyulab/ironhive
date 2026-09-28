@@ -56,8 +56,7 @@ var request = new MessageRequest
     System = "You are helpful.",
     Messages = messages,
     Tools = toolCollection,
-    ThinkingEffort = MessageThinkingEffort.High,  // 추론 모드
-    PreviousId = "prev-response-id"               // 대화 연속성 (Responses API)
+    ThinkingEffort = MessageThinkingEffort.High   // 추론 모드
 };
 ```
 

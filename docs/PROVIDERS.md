@@ -24,6 +24,8 @@ IronHive에서 지원하는 AI 프로바이더별 구현과 설정 방법입니�
 
 `IronHive.Providers.OpenAI`는 **Responses API**(`POST /v1/responses`)만 사용한다. Chat Completions(`POST /v1/chat/completions`) — 아래 `IronHive.Providers.OpenAI.Compatible` 패키지를 사용한다.
 
+요청은 **무상태**다 — 매 요청 `store: false` 를 보내 OpenAI 가 응답을 저장하지 않는다(Responses API 기본값은 저장). 대화는 호출자가 보내는 `Messages` 로 이어지고, 추론 모델의 추론은 응답이 준 `reasoning.encrypted_content`(`ThinkingMessageContent.Signature`)를 다음 요청에 되돌려 보내 잇는다.
+
 ### 등록
 
 ```csharp

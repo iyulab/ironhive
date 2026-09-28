@@ -27,7 +27,6 @@ public class AgentInvokeOptionRosterTests
     /// <summary>AgentInvokeOptions knob → the MessageRequest field the overlay writes it to.</summary>
     private static readonly Dictionary<string, string> OptionSinks = new()
     {
-        ["PreviousId"] = "PreviousId",
         ["ThinkingEffort"] = "ThinkingEffort",
         ["ThinkingOutput"] = "ThinkingOutput",
         ["MaxTokens"] = "MaxTokens",

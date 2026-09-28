@@ -89,7 +89,6 @@ public class BasicAgent : IAgent
             return request;
 
         // per-request overlay — null 필드는 에이전트/요청 기본값 유지
-        request.PreviousId = options.PreviousId;
         if (options.ThinkingEffort is not null) request.ThinkingEffort = options.ThinkingEffort;
         if (options.ThinkingOutput is not null) request.ThinkingOutput = options.ThinkingOutput;
         if (options.MaxTokens is not null) request.MaxTokens = options.MaxTokens;

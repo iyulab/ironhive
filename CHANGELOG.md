@@ -4,6 +4,28 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.44.0 — Unreleased
+
+### Changed
+
+- **The OpenAI (Responses) provider asks OpenAI not to store requests (`store: false`).** The Responses API stores every
+  response and its input by default, readable later through `GET /v1/responses/{id}` and the dashboard logs. IronHive
+  keeps the conversation on the client and sends the whole history every turn, so the stored copy served nothing. Every
+  request now sends `store: false`. Responses are no longer retrievable from OpenAI after the call.
+
+### Fixed
+
+- **Reasoning carries over between turns on the OpenAI (Responses) provider.** The provider received each reasoning
+  item's encrypted content (`ThinkingMessageContent.Signature`) but sent earlier reasoning back as summary text only.
+  It now sends the encrypted content back. That is how a reasoning model continues its reasoning across a tool call when
+  nothing is stored.
+
+### Removed
+
+- **Breaking: `PreviousId` on `MessageRequest`, `MessageGenerationRequest` and `AgentInvokeOptions`.** No provider ever
+  read it. It was carried as far as the request and dropped there, and with requests no longer stored it could not
+  work anyway. Delete the assignment; the conversation continues from the messages you send.
+
 ## 0.43.1 — 2026-09-28
 
 ### Fixed

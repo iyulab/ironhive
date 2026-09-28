@@ -12,11 +12,6 @@ namespace IronHive.Abstractions.Agent;
 public class AgentInvokeOptions
 {
     /// <summary>
-    /// 이전 응답의 ResponseId. 프로바이더 측 저장된 컨텍스트를 재사용해 비용을 절감합니다.
-    /// </summary>
-    public string? PreviousId { get; set; }
-
-    /// <summary>
     /// 모델의 사고 노력 수준을 정의합니다.
     /// null 이면 추론에 대해 아무것도 보내지 않아 provider·모델 기본 동작을 따릅니다 — 기본으로 추론하는 모델
     /// (예: OpenAI 호환 서버의 Qwen·DeepSeek 계열)은 추론합니다. 추론을 끄려면 <see cref="MessageThinkingEffort.None"/>

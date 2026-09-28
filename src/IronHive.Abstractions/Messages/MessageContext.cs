@@ -64,7 +64,6 @@ public class MessageContext
     {
         Request = new MessageGenerationRequest
         {
-            PreviousId = request.PreviousId,
             Model = request.Model,
             ThinkingEffort = request.ThinkingEffort,
             ThinkingOutput = request.ThinkingOutput,

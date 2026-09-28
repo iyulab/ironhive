@@ -276,7 +276,6 @@ public class BasicAgentTests
 
         var options = new AgentInvokeOptions
         {
-            PreviousId = "prev-1",
             ThinkingEffort = MessageThinkingEffort.High,
             ThinkingOutput = MessageThinkingOutput.None,
             MaxTokens = 2000,
@@ -304,7 +303,6 @@ public class BasicAgentTests
         capturedRequest!.Provider.Should().Be("test-provider");   // agent-fixed 유지
         capturedRequest.Model.Should().Be("test-model");
         capturedRequest.System.Should().Be("sys");
-        capturedRequest.PreviousId.Should().Be("prev-1");          // options 반영
         capturedRequest.ThinkingEffort.Should().Be(MessageThinkingEffort.High);
         capturedRequest.ThinkingOutput.Should().Be(MessageThinkingOutput.None);
         capturedRequest.MaxTokens.Should().Be(2000);               // 에이전트 기본값 1000 override
@@ -369,7 +367,6 @@ public class BasicAgentTests
         // Assert
         capturedRequest.Should().NotBeNull();
         capturedRequest!.MaxTokens.Should().Be(1000);
-        capturedRequest.PreviousId.Should().BeNull();
         capturedRequest.MaxTurns.Should().Be(50); // MessageRequest 기본값 유지
     }
 

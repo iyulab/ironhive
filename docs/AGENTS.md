@@ -60,7 +60,6 @@ var response = await agent.InvokeAsync(messages, new AgentInvokeOptions
     OutputFormat = format,      // 구조화 출력 — OutputFormat.For<T>() 또는 스키마 없는 OutputFormat.Json
     MaxTokens = 2048,           // 에이전트 MaxTokens override
     MaxTurns = 10,
-    PreviousId = previousResponseId,
 });
 ```
 
