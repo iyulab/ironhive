@@ -348,6 +348,10 @@ public class OpenAIMessageGenerator : IMessageGenerator
         {
             Model = request.Model,
             Instructions = request.System,
+            // 대화는 호출자가 들고 매 턴 input 에 전부 보냅니다(previous_response_id 를 쓰지 않음) — Responses API 의
+            // 기본값 store:true 는 이 생성기에 아무것도 주지 않고 모든 프롬프트·도구 결과·응답의 사본만 vendor 에 남깁니다.
+            // 추론 연속성은 저장된 응답이 아니라 reasoning.encrypted_content 왕복으로 잇습니다(아래 reasoning 아이템).
+            StoredOutputEnabled = false,
         };
 
         if (request.MaxTokens.HasValue)
@@ -462,8 +466,12 @@ public class OpenAIMessageGenerator : IMessageGenerator
                     {
                         if (content is ThinkingMessageContent thinking)
                         {
-                            options.InputItems.Add(ResponseItem.CreateReasoningItem(
-                                thinking.Value ?? string.Empty));
+                            // store:false 에서는 서버가 이전 추론을 기억하지 않으므로, 응답에서 받은 암호화 본문
+                            // (Signature)을 그대로 돌려줘야 모델이 도구 호출 전후의 추론을 잇습니다.
+                            options.InputItems.Add(new ReasoningResponseItem(thinking.Value ?? string.Empty)
+                            {
+                                EncryptedContent = string.IsNullOrEmpty(thinking.Signature) ? null : thinking.Signature,
+                            });
                         }
                         else if (content is TextMessageContent text)
                         {
