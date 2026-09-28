@@ -25,7 +25,8 @@ internal static class ChatCompletionExceptionDetector
     /// <summary>
     /// Reads and parses a failed HTTP response's error body, then returns the matching domain
     /// exception — falling back to <see cref="HttpRequestException"/> carrying the extracted (or,
-    /// failing that, a synthesized status-line) message when the shape isn't recognized.
+    /// failing that, a synthesized status-line) message and the response's
+    /// <see cref="HttpRequestException.StatusCode"/> when the shape isn't recognized.
     /// </summary>
     public static async Task<Exception> DetectAsync(HttpResponseMessage response, CancellationToken cancellationToken = default)
     {
@@ -45,7 +46,8 @@ internal static class ChatCompletionExceptionDetector
         var code = body.FindString("code");
 
         if (OpenAIErrors.MatchContextOverflow(
-                message, type, code, body.FindInt("n_ctx"), body.FindInt("n_prompt_tokens"), inner: null) is { } overflow)
+                message, type, code, body.FindInt("n_ctx"), body.FindInt("n_prompt_tokens"), inner: null,
+                (int)response.StatusCode) is { } overflow)
             return overflow;
 
         if (IsRateLimit(message, type, code, (int)response.StatusCode))
@@ -56,7 +58,8 @@ internal static class ChatCompletionExceptionDetector
             };
         }
 
-        return new HttpRequestException(message);
+        // The status is the one fact a caller needs to act on a refusal (401 key, 404 model, 5xx server).
+        return new HttpRequestException(message, inner: null, response.StatusCode);
     }
 
     /// <summary>

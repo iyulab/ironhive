@@ -87,6 +87,29 @@ public class OpenAIErrorsTests
     }
 
     [Fact]
+    public async Task Chat_Completions_Resulted_In_Sentence_Gives_The_Request_Size()
+    {
+        var sdkException = await ThrownBySdk(HttpStatusCode.BadRequest,
+            """{"error":{"message":"This model's maximum context length is 8192 tokens. However, your messages resulted in 9000 tokens. Please reduce the length of the messages.","type":"invalid_request_error","param":"messages","code":"context_length_exceeded"}}""");
+
+        var overflow = OpenAIErrors.TryMapContextOverflow(sdkException);
+
+        overflow!.ContextWindow.Should().Be(8192);
+        overflow.RequestTokens.Should().Be(9000);
+    }
+
+    [Fact]
+    public async Task A_Server_Error_Is_Not_An_Overflow_Even_With_Overflow_Text()
+    {
+        // llama.cpp answers a failed context shift with a 500 that says "exceeds the available context size". That is the
+        // server's fault and another try can clear it; mapping it to an overflow would make a caller treat it as terminal.
+        var sdkException = await ThrownBySdk(HttpStatusCode.InternalServerError,
+            """{"error":{"code":500,"message":"context shift failed: exceeds the available context size","type":"server_error"}}""");
+
+        OpenAIErrors.TryMapContextOverflow(sdkException).Should().BeNull();
+    }
+
+    [Fact]
     public async Task Responses_Style_Overflow_Without_Numbers_Maps_With_Nulls()
     {
         var sdkException = await ThrownBySdk(HttpStatusCode.BadRequest,

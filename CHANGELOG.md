@@ -4,6 +4,22 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.43.1 — Unreleased
+
+### Fixed
+
+- **An OpenAI-compatible refusal keeps its HTTP status.** When a server answered a chat completion with a non-2xx status
+  and an error shape IronHive does not map (for example `404` for an unknown model), the provider threw an
+  `HttpRequestException` whose `StatusCode` was null. It now carries the response's status, so a caller can tell a bad
+  key (401), an unknown model (404) and an overloaded server (5xx) apart. The OpenAI and Anthropic providers already
+  kept it.
+- **A server error is never mapped as a context overflow.** llama.cpp answers a failed context shift with
+  `500 "… exceeds the available context size"`. `OpenAIErrors.TryMapContextOverflow` and the OpenAI-compatible provider
+  turned that into a `ContextOverflowException`, which a caller treats as final. The server's own fault may clear on
+  retry, so a 5xx now stays an ordinary failure (`HttpRequestException` with its status, or the SDK's exception).
+- **`ContextOverflowException.RequestTokens` reads OpenAI's Chat Completions sentence** ("… your messages resulted in
+  9000 tokens"). Before, only "you requested N tokens" was read, and this shape left the request size null.
+
 ## 0.43.0 — 2026-09-28
 
 ### Added

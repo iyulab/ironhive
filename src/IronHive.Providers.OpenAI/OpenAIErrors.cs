@@ -50,7 +50,8 @@ public static partial class OpenAIErrors
             body.FindString("code"),
             body.FindInt("n_ctx"),
             body.FindInt("n_prompt_tokens"),
-            clientEx);
+            clientEx,
+            clientEx.Status);
     }
 
     /// <summary>
@@ -61,7 +62,7 @@ public static partial class OpenAIErrors
     public static ContextOverflowException? TryMapContextOverflow(string message)
     {
         ArgumentNullException.ThrowIfNull(message);
-        return MatchContextOverflow(message, type: null, code: null, contextWindow: null, requestTokens: null, inner: null);
+        return MatchContextOverflow(message, type: null, code: null, contextWindow: null, requestTokens: null, inner: null, status: null);
     }
 
     /// <summary>
@@ -103,10 +104,17 @@ public static partial class OpenAIErrors
     /// <summary>
     /// The one place the overflow spellings live — the SDK path above and the OpenAI-compatible provider's own
     /// HTTP path both come here. Explicit numbers (from the error body) win over numbers read from the message.
+    /// An overflow is the caller's request being too large, so a server error (<paramref name="status"/> 5xx) is never
+    /// one, whatever its text says — llama.cpp answers a failed context shift with <c>500 "… exceeds the available
+    /// context size"</c>, and another try can clear that. <paramref name="status"/> is <c>null</c> when there is none
+    /// (an error line inside a stream).
     /// </summary>
     internal static ContextOverflowException? MatchContextOverflow(
-        string message, string? type, string? code, int? contextWindow, int? requestTokens, Exception? inner)
+        string message, string? type, string? code, int? contextWindow, int? requestTokens, Exception? inner, int? status)
     {
+        if (status is >= 500)
+            return null;
+
         var matches = ContextOverflowCodes.Contains(type, StringComparer.OrdinalIgnoreCase)
             || ContextOverflowCodes.Contains(code, StringComparer.OrdinalIgnoreCase)
             || ContextOverflowMarkers.Any(marker => message.Contains(marker, StringComparison.OrdinalIgnoreCase));
@@ -122,6 +130,8 @@ public static partial class OpenAIErrors
             contextWindow ??= ParseInt(max.Groups[1].Value);
         if (RequestedPattern().Match(message) is { Success: true } requested)
             requestTokens ??= ParseInt(requested.Groups[1].Value);
+        if (ResultedInPattern().Match(message) is { Success: true } resulted)
+            requestTokens ??= ParseInt(resulted.Groups[1].Value);
 
         return new ContextOverflowException(message, inner)
         {
@@ -138,6 +148,10 @@ public static partial class OpenAIErrors
 
     [GeneratedRegex(@"you requested (\d+) tokens?", RegexOptions.IgnoreCase)]
     private static partial Regex RequestedPattern();
+
+    // OpenAI Chat Completions: "However, your messages resulted in 9000 tokens."
+    [GeneratedRegex(@"resulted in (\d+) tokens?", RegexOptions.IgnoreCase)]
+    private static partial Regex ResultedInPattern();
 
     private static int? ParseInt(string value)
         => int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) ? parsed : null;

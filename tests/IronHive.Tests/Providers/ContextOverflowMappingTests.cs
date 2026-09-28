@@ -70,6 +70,31 @@ public class ContextOverflowMappingTests
     }
 
     [Fact]
+    public async Task Compatible_Refusal_Keeps_Its_Http_Status()
+    {
+        // A caller tells a wrong model (404) from a bad key (401) or an overloaded server (5xx) by the status.
+        using var response = JsonResponse(HttpStatusCode.NotFound,
+            """{"error":{"message":"nope","type":"invalid_request_error"}}""");
+
+        var ex = await ChatCompletionExceptionDetector.DetectAsync(response, TestContext.Current.CancellationToken);
+
+        var refusal = ex.Should().BeOfType<HttpRequestException>().Subject;
+        refusal.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        refusal.Message.Should().Be("nope");
+    }
+
+    [Fact]
+    public async Task Compatible_Server_Error_With_Overflow_Text_Is_A_Server_Error()
+    {
+        using var response = JsonResponse(HttpStatusCode.InternalServerError,
+            """{"error":{"code":500,"message":"context shift failed: exceeds the available context size","type":"server_error"}}""");
+
+        var ex = await ChatCompletionExceptionDetector.DetectAsync(response, TestContext.Current.CancellationToken);
+
+        ex.Should().BeOfType<HttpRequestException>().Which.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+    }
+
+    [Fact]
     public async Task Compatible_Unrelated_Error_Falls_Back_To_HttpRequestException()
     {
         using var response = JsonResponse(HttpStatusCode.BadRequest,
