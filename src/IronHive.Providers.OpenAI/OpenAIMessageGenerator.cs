@@ -113,6 +113,10 @@ public class OpenAIMessageGenerator : IMessageGenerator
             }
         }
 
+        var stop = StopSequenceFilter.For(request.StopSequences);
+        if (stop is not null)
+            content = CutAtStop(content, stop);
+
         var reason = MessageDoneReason.EndTurn;
         var incompleteReason = response.IncompleteStatusDetails?.Reason?.ToString();
         if (!string.IsNullOrWhiteSpace(incompleteReason))
@@ -123,6 +127,10 @@ public class OpenAIMessageGenerator : IMessageGenerator
                 "content_filter" => MessageDoneReason.ContentFilter,
                 _ => MessageDoneReason.Unknown,
             };
+        }
+        if (stop?.Stopped == true)
+        {
+            reason = MessageDoneReason.StopSequence;
         }
         if (content.OfType<ToolMessageContent>().Any())
         {
@@ -157,9 +165,31 @@ public class OpenAIMessageGenerator : IMessageGenerator
 
         int pIndex = 0;
         var reason = MessageDoneReason.EndTurn;
+        // StopSequences, kept on the client (StopSequenceFilter): text is held back until it cannot start a stop
+        // sequence; once one is seen, nothing after it is emitted — the rest of the stream is still read so the done
+        // frame carries the response's id, model and usage, as the buffered call does.
+        var stop = StopSequenceFilter.For(request.StopSequences);
+        int? heldIndex = null;
+        int? stoppedIndex = null;
         await foreach (var update in _client.CreateResponseStreamingAsync(options, cancellationToken)
             .MapException(ex => OpenAIExceptionMapper.Map(ex, cancellationToken), cancellationToken))
         {
+            if (stoppedIndex is { } cut && update is not (StreamingResponseCompletedUpdate or StreamingResponseIncompleteUpdate
+                    or StreamingResponseFailedUpdate)
+                && !(update is StreamingResponseOutputItemDoneUpdate done && done.OutputIndex == cut))
+            {
+                continue;
+            }
+
+            if (heldIndex is { } held && update is StreamingResponseOutputItemDoneUpdate or StreamingResponseCompletedUpdate
+                    or StreamingResponseIncompleteUpdate)
+            {
+                heldIndex = null;
+                var tail = stop!.Flush();
+                if (tail.Length > 0)
+                    yield return new StreamingContentDeltaResponse { Index = held, Delta = new TextDeltaContent { Value = tail } };
+            }
+
             if (update is StreamingResponseCreatedUpdate)
             {
                 yield return new StreamingMessageBeginResponse();
@@ -226,14 +256,31 @@ public class OpenAIMessageGenerator : IMessageGenerator
                 var isAdded = pIndex != textDelta.ContentIndex;
                 if (isAdded) pIndex = textDelta.ContentIndex;
 
-                yield return new StreamingContentDeltaResponse
+                var value = isAdded ? $"\n---\n{textDelta.Delta}" : textDelta.Delta;
+                if (stop is not null)
                 {
-                    Index = textDelta.OutputIndex,
-                    Delta = new TextDeltaContent
+                    value = stop.Push(value);
+                    heldIndex = textDelta.OutputIndex;
+                    if (stop.Stopped)
                     {
-                        Value = isAdded ? $"\n---\n{textDelta.Delta}" : textDelta.Delta
-                    },
-                };
+                        heldIndex = null;
+                        stoppedIndex = textDelta.OutputIndex;
+                        if (reason != MessageDoneReason.ToolCall)
+                            reason = MessageDoneReason.StopSequence;
+                    }
+                }
+
+                if (value.Length > 0)
+                {
+                    yield return new StreamingContentDeltaResponse
+                    {
+                        Index = textDelta.OutputIndex,
+                        Delta = new TextDeltaContent
+                        {
+                            Value = value
+                        },
+                    };
+                }
             }
             else if (update is StreamingResponseReasoningSummaryTextDeltaUpdate reasoningDelta)
             {
@@ -282,12 +329,16 @@ public class OpenAIMessageGenerator : IMessageGenerator
             }
             else if (update is StreamingResponseIncompleteUpdate incomplete)
             {
-                reason = incomplete.Response.IncompleteStatusDetails?.Reason?.ToString() switch
+                // Output that ended at a stop sequence ended there, whatever cut the rest of the stream short.
+                if (stoppedIndex is null)
                 {
-                    "max_output_tokens" => MessageDoneReason.MaxTokens,
-                    "content_filter" => MessageDoneReason.ContentFilter,
-                    _ => MessageDoneReason.Unknown,
-                };
+                    reason = incomplete.Response.IncompleteStatusDetails?.Reason?.ToString() switch
+                    {
+                        "max_output_tokens" => MessageDoneReason.MaxTokens,
+                        "content_filter" => MessageDoneReason.ContentFilter,
+                        _ => MessageDoneReason.Unknown,
+                    };
+                }
                 yield return DoneFrame(incomplete.Response, reason);
             }
             else if (update is StreamingResponseCompletedUpdate completed)
@@ -303,6 +354,26 @@ public class OpenAIMessageGenerator : IMessageGenerator
     /// prefixed the id with "openai_" — which MessageService then prefixed again — and the completed
     /// copy carried no model or timestamp (0.26.1, OpenAIResponsesEquivalenceTests).
     /// </summary>
+    /// <summary>
+    /// The buffered half of <see cref="StopSequenceFilter"/>: content up to the first stop sequence, in order — the
+    /// text before it, and nothing after it.
+    /// </summary>
+    private static List<MessageContent> CutAtStop(List<MessageContent> content, StopSequenceFilter stop)
+    {
+        var kept = new List<MessageContent>(content.Count);
+        foreach (var item in content)
+        {
+            if (item is TextMessageContent text && stop.Cut(text.Value) is { } before)
+            {
+                if (before.Length > 0)
+                    kept.Add(new TextMessageContent { Value = before });
+                break;
+            }
+            kept.Add(item);
+        }
+        return kept;
+    }
+
     private static StreamingMessageDoneResponse DoneFrame(ResponseResult response, MessageDoneReason reason) => new()
     {
         ResponseId = response.Id,

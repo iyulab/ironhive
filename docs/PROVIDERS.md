@@ -26,6 +26,8 @@ IronHive에서 지원하는 AI 프로바이더별 구현과 설정 방법입니�
 
 요청은 **무상태**다 — 매 요청 `store: false` 를 보내 OpenAI 가 응답을 저장하지 않는다(Responses API 기본값은 저장). 대화는 호출자가 보내는 `Messages` 로 이어지고, 추론 모델의 추론은 응답이 준 `reasoning.encrypted_content`(`ThinkingMessageContent.Signature`)를 다음 요청에 되돌려 보내 잇는다.
 
+`StopSequences` 는 **클라이언트에서 지킨다**(0.45.0+) — Responses API 에는 `stop` 파라미터가 없다. 출력은 첫 stop 시퀀스 앞에서 끝나고(시퀀스 자신과 그 뒤의 텍스트·도구 호출은 반환되지 않는다) `DoneReason` 은 `StopSequence` 다. 스트림은 일치 여부가 정해질 때까지 텍스트 끝의 (가장 긴 stop 길이 − 1)자를 붙잡아 두므로 첫 델타가 그만큼 늦게 나온다. 서버는 stop 지점 뒤도 생성하므로 `TokenUsage` 는 반환된 텍스트보다 많은 출력 토큰을 셀 수 있다.
+
 ### 등록
 
 ```csharp

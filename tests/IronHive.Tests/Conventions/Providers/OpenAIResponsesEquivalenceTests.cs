@@ -100,9 +100,74 @@ public class OpenAIResponsesEquivalenceTests
         streamedArguments.Should().Be(bufferedTool.Input, "the argument deltas must add up to the buffered arguments");
     }
 
+    /// <summary>
+    /// The Responses API has no <c>stop</c> parameter, so the generator keeps <c>StopSequences</c> itself: both halves
+    /// end at the first stop sequence — a match split across deltas included — drop what follows (here a function call),
+    /// and report <see cref="MessageDoneReason.StopSequence"/> with the response's own usage.
+    /// </summary>
+    [Fact]
+    public async Task StopSequence_BothHalvesEndAtTheFirstMatch()
+    {
+        const string full = "Hello world. END then more";
+        var response = ResponseJson(
+            status: "completed",
+            output: $$$"""[{"type":"message","id":"msg_1","status":"completed","role":"assistant","content":[{"type":"output_text","text":"{{{full}}}","annotations":[]}]},{"type":"function_call","id":"fc_1","call_id":"call_1","name":"get_weather","arguments":"{}","status":"completed"}]""",
+            usage: Usage(11, 12));
+
+        var sse = StubHttpHandler.Sse(
+            ("response.created", Event("response.created", 0, $"\"response\":{ResponseJson("in_progress", "[]", null)}")),
+            ("response.output_item.added", Event("response.output_item.added", 1, "\"output_index\":0,\"item\":{\"type\":\"message\",\"id\":\"msg_1\",\"status\":\"in_progress\",\"role\":\"assistant\",\"content\":[]}")),
+            ("response.content_part.added", Event("response.content_part.added", 2, "\"item_id\":\"msg_1\",\"output_index\":0,\"content_index\":0,\"part\":{\"type\":\"output_text\",\"text\":\"\",\"annotations\":[]}")),
+            ("response.output_text.delta", Event("response.output_text.delta", 3, "\"item_id\":\"msg_1\",\"output_index\":0,\"content_index\":0,\"delta\":\"Hello wor\"")),
+            ("response.output_text.delta", Event("response.output_text.delta", 4, "\"item_id\":\"msg_1\",\"output_index\":0,\"content_index\":0,\"delta\":\"ld. E\"")),
+            ("response.output_text.delta", Event("response.output_text.delta", 5, "\"item_id\":\"msg_1\",\"output_index\":0,\"content_index\":0,\"delta\":\"ND then \"")),
+            ("response.output_text.delta", Event("response.output_text.delta", 6, "\"item_id\":\"msg_1\",\"output_index\":0,\"content_index\":0,\"delta\":\"more\"")),
+            ("response.output_item.done", Event("response.output_item.done", 7, $"\"output_index\":0,\"item\":{{\"type\":\"message\",\"id\":\"msg_1\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{{\"type\":\"output_text\",\"text\":\"{full}\",\"annotations\":[]}}]}}")),
+            ("response.output_item.added", Event("response.output_item.added", 8, "\"output_index\":1,\"item\":{\"type\":\"function_call\",\"id\":\"fc_1\",\"call_id\":\"call_1\",\"name\":\"get_weather\",\"arguments\":\"\",\"status\":\"in_progress\"}")),
+            ("response.function_call_arguments.delta", Event("response.function_call_arguments.delta", 9, "\"item_id\":\"fc_1\",\"output_index\":1,\"delta\":\"{}\"")),
+            ("response.output_item.done", Event("response.output_item.done", 10, "\"output_index\":1,\"item\":{\"type\":\"function_call\",\"id\":\"fc_1\",\"call_id\":\"call_1\",\"name\":\"get_weather\",\"arguments\":\"{}\",\"status\":\"completed\"}")),
+            ("response.completed", Event("response.completed", 11, $"\"response\":{response}")));
+
+        var (buffered, frames) = await RunBothAsync(response, sse, stops: ["END", "never"]);
+
+        buffered.DoneReason.Should().Be(MessageDoneReason.StopSequence);
+        AssertEnvelopesAgree(buffered, frames);
+        TextOf(buffered.Message).Should().Be("Hello world. ", "the stop sequence and everything after it are not part of the output");
+        TextOf(frames).Should().Be("Hello world. ", "the stop is split across two deltas; the held-back tail must not leak it");
+        buffered.Message!.Content.OfType<ToolMessageContent>().Should().BeEmpty("output after the stop is dropped, a tool call included");
+        frames.OfType<StreamingContentAddedResponse>().Select(f => f.Content).OfType<ToolMessageContent>().Should().BeEmpty();
+    }
+
+    /// <summary>Held-back text is released when the text ends without a stop sequence: nothing is lost.</summary>
+    [Fact]
+    public async Task StopSequence_NotMatched_TextIsComplete()
+    {
+        var response = ResponseJson(
+            status: "completed",
+            output: """[{"type":"message","id":"msg_1","status":"completed","role":"assistant","content":[{"type":"output_text","text":"Hello world","annotations":[]}]}]""",
+            usage: Usage(11, 7));
+
+        var sse = StubHttpHandler.Sse(
+            ("response.created", Event("response.created", 0, $"\"response\":{ResponseJson("in_progress", "[]", null)}")),
+            ("response.output_item.added", Event("response.output_item.added", 1, "\"output_index\":0,\"item\":{\"type\":\"message\",\"id\":\"msg_1\",\"status\":\"in_progress\",\"role\":\"assistant\",\"content\":[]}")),
+            ("response.content_part.added", Event("response.content_part.added", 2, "\"item_id\":\"msg_1\",\"output_index\":0,\"content_index\":0,\"part\":{\"type\":\"output_text\",\"text\":\"\",\"annotations\":[]}")),
+            ("response.output_text.delta", Event("response.output_text.delta", 3, "\"item_id\":\"msg_1\",\"output_index\":0,\"content_index\":0,\"delta\":\"Hello \"")),
+            ("response.output_text.delta", Event("response.output_text.delta", 4, "\"item_id\":\"msg_1\",\"output_index\":0,\"content_index\":0,\"delta\":\"world\"")),
+            ("response.output_item.done", Event("response.output_item.done", 5, "\"output_index\":0,\"item\":{\"type\":\"message\",\"id\":\"msg_1\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello world\",\"annotations\":[]}]}")),
+            ("response.completed", Event("response.completed", 6, $"\"response\":{response}")));
+
+        var (buffered, frames) = await RunBothAsync(response, sse, stops: ["world!!"]);
+
+        buffered.DoneReason.Should().Be(MessageDoneReason.EndTurn);
+        AssertEnvelopesAgree(buffered, frames);
+        TextOf(buffered.Message).Should().Be("Hello world");
+        TextOf(frames).Should().Be("Hello world", "a tail held back for a possible match must be released at the end of the text");
+    }
+
     // ---- the two halves, side by side ----
 
-    private static async Task<(MessageResponse Buffered, List<StreamingMessageResponse> Frames)> RunBothAsync(string json, string sse)
+    private static async Task<(MessageResponse Buffered, List<StreamingMessageResponse> Frames)> RunBothAsync(
+        string json, string sse, string[]? stops = null)
     {
         var handler = new StubHttpHandler(json, sse);
         using var generator = new OpenAIMessageGenerator(new OpenAIConfig
@@ -111,7 +176,7 @@ public class OpenAIResponsesEquivalenceTests
             HttpClient = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan },
         });
 
-        var request = new MessageGenerationRequest { Model = Model, Messages = [Message.User("Hi")] };
+        var request = new MessageGenerationRequest { Model = Model, Messages = [Message.User("Hi")], StopSequences = stops };
 
         var buffered = await generator.GenerateMessageAsync(request, TestContext.Current.CancellationToken);
 

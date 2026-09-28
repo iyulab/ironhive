@@ -36,7 +36,7 @@ public class RequestFieldRosterTests
             ["Tools"] = Carried, ["ToolChoice"] = Carried, ["OutputFormat"] = Carried,
             ["ExtraBody"] = Rejected, ["LogProbabilities"] = Rejected,
             ["TopK"] = Ignored("the Responses API has no top_k"),
-            ["StopSequences"] = Ignored("the Responses API has no stop parameter"),
+            ["StopSequences"] = Carried, // the Responses API has no stop parameter; kept on the client (StopSequenceFilter)
         }),
         ["Anthropic"] = ("src/IronHive.Providers.Anthropic/AnthropicMessageGenerator.cs", new()
         {
