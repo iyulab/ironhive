@@ -321,8 +321,9 @@ internal class ChatTokenLogprob
     [JsonPropertyName("token")]
     public string? Token { get; set; }
 
+    /// <summary>Null when the probability is zero: JSON has no −∞, and llama.cpp server writes it as <c>null</c>.</summary>
     [JsonPropertyName("logprob")]
-    public double Logprob { get; set; }
+    public double? Logprob { get; set; }
 
     [JsonPropertyName("top_logprobs")]
     public List<ChatTopLogprob>? TopLogprobs { get; set; }
@@ -333,8 +334,9 @@ internal class ChatTopLogprob
     [JsonPropertyName("token")]
     public string? Token { get; set; }
 
+    /// <summary>Null when the probability is zero: JSON has no −∞, and llama.cpp server writes it as <c>null</c>.</summary>
     [JsonPropertyName("logprob")]
-    public double Logprob { get; set; }
+    public double? Logprob { get; set; }
 }
 
 internal class ChatCompletionRequest : ChatCompletionPayloadBase

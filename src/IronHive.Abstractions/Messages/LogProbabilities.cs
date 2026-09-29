@@ -30,11 +30,11 @@ public sealed class LogProbabilityOptions
 /// One output token with its log probability and, when requested, the most likely alternatives at its position.
 /// </summary>
 /// <param name="Token">The token as the provider reports it.</param>
-/// <param name="LogProbability">Natural-log probability of the token.</param>
+/// <param name="LogProbability">Natural-log probability of the token; <see cref="double.NegativeInfinity"/> when its probability is zero.</param>
 /// <param name="Alternatives">The most likely tokens at this position, most likely first (the chosen token may be among them).</param>
 public sealed record TokenLogProbability(string Token, double LogProbability, IReadOnlyList<TokenAlternative> Alternatives);
 
 /// <summary>A candidate token at a position, with its log probability.</summary>
 /// <param name="Token">The token as the provider reports it.</param>
-/// <param name="LogProbability">Natural-log probability of the token.</param>
+/// <param name="LogProbability">Natural-log probability of the token; <see cref="double.NegativeInfinity"/> when its probability is zero.</param>
 public sealed record TokenAlternative(string Token, double LogProbability);

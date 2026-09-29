@@ -407,6 +407,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         for (var i = 0; i < chosen.Count; i++)
         {
             var alternatives = result.TopCandidates is { } top && i < top.Count ? top[i].Candidates ?? [] : [];
+            // An absent logProbability is 0.0 (certain): proto3 JSON omits fields at their default value.
             list.Add(new TokenLogProbability(
                 chosen[i].Token ?? string.Empty,
                 chosen[i].LogProbability ?? 0,

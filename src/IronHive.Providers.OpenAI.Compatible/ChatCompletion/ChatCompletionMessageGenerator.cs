@@ -290,12 +290,15 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         };
     }
 
-    /// <summary>The choice's content-token log probabilities in IronHive's shape, or null when it carried none.</summary>
+    /// <summary>
+    /// The choice's content-token log probabilities in IronHive's shape, or null when it carried none. A <c>null</c>
+    /// logprob is a zero probability (JSON cannot write −∞), so it reads as <see cref="double.NegativeInfinity"/>.
+    /// </summary>
     internal static List<TokenLogProbability>? ToLogProbabilities(ChatLogprobs? logprobs)
         => logprobs?.Content?.Select(t => new TokenLogProbability(
                 t.Token ?? string.Empty,
-                t.Logprob,
-                (t.TopLogprobs ?? []).Select(a => new TokenAlternative(a.Token ?? string.Empty, a.Logprob)).ToList()))
+                t.Logprob ?? double.NegativeInfinity,
+                (t.TopLogprobs ?? []).Select(a => new TokenAlternative(a.Token ?? string.Empty, a.Logprob ?? double.NegativeInfinity)).ToList()))
             .ToList();
 
     /// <summary>

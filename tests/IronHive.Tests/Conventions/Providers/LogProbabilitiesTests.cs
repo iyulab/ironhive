@@ -55,6 +55,32 @@ public class LogProbabilitiesTests
     }
 
     [Fact]
+    public async Task NullLogprob_IsAZeroProbability_InTheBufferedAndStreamedResponse()
+    {
+        // llama.cpp server writes a zero-probability candidate's -Infinity as null (JSON has no infinity).
+        const string tokenJson = """{"token":"yes","logprob":null,"bytes":null,"top_logprobs":[{"token":"yes","logprob":-0.1},{"token":"never","logprob":null}]}""";
+        var buffered = Buffered("yes", $$"""{"content":[{{tokenJson}}]}""");
+        var sse = StubHttpHandler.SseData(
+            Chunk("""{"role":"assistant","content":"yes"}""", $$"""{"content":[{{tokenJson}}]}""", null),
+            Chunk("""{}""", "null", "stop"),
+            "[DONE]");
+        var (generator, _) = Create(buffered, sse);
+        using var _g = generator;
+        var request = Request(new LogProbabilityOptions { TopAlternatives = 2 });
+
+        var response = await generator.GenerateMessageAsync(request, TestContext.Current.CancellationToken);
+        StreamingMessageDoneResponse? done = null;
+        await foreach (var frame in generator.GenerateStreamingMessageAsync(request, TestContext.Current.CancellationToken))
+            done = frame as StreamingMessageDoneResponse ?? done;
+
+        response.Message!.Content.OfType<TextMessageContent>().Single().Value.Should().Be("yes", "the completion survives a null logprob");
+        var token = response.LogProbabilities!.Single();
+        token.LogProbability.Should().Be(double.NegativeInfinity);
+        token.Alternatives.Select(a => (a.Token, a.LogProbability)).Should().Equal(("yes", -0.1), ("never", double.NegativeInfinity));
+        done!.LogProbabilities.Should().BeEquivalentTo(response.LogProbabilities, o => o.WithStrictOrdering());
+    }
+
+    [Fact]
     public async Task Buffered_NotRequested_IsNull_AndRequestedButAbsent_IsEmpty()
     {
         var (generator, _) = Create(Buffered("yes", logprobs: null), sse: "");

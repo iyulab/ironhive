@@ -4,6 +4,15 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.45.1 — Unreleased
+
+### Fixed
+
+- **The OpenAI-compatible provider reads a `null` token log probability as a zero probability.** JSON has no −∞, and
+  llama.cpp server writes a zero-probability `top_logprobs` candidate's log probability as `null`; the response then
+  failed to deserialize and the whole completion was lost. A `null` logprob — of an alternative or of the chosen token —
+  now reads as `double.NegativeInfinity`, buffered and streamed.
+
 ## 0.45.0 — 2026-09-28
 
 ### Fixed
