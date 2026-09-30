@@ -231,31 +231,31 @@ public class ChatClientAdapter : IChatClient
             Messages = []
         };
 
-        // Collect tool results keyed by callId for merging into assistant messages
-        var toolResults = new Dictionary<string, ToolOutput>();
-        foreach (var msg in chatMessages)
-        {
-            foreach (var content in msg.Contents)
-            {
-                if (content is FunctionResultContent result && result.CallId is not null)
-                {
-                    toolResults[result.CallId] = ToToolOutput(result);
-                }
-            }
-        }
+        // Tool results are merged into the assistant message that made the call, pairing each result with
+        // its call in conversation order. A call id is only unique within a turn: small and local models often
+        // reuse one (c1) on every turn, so a lookup keyed by id alone would attach the last result to every
+        // call of that id and silently replace the earlier ones.
+        var pendingCalls = new PendingToolCalls();
 
         foreach (var msg in chatMessages)
         {
             if (msg.Role == ChatRole.System)
             {
                 request.System = msg.Text;
+                continue;
             }
-            else
+
+            var converted = ConvertMessage(msg, pendingCalls, request.Messages.Count);
+            if (converted is not null)
             {
-                var converted = ConvertMessage(msg, toolResults);
-                if (converted is not null)
+                request.Messages.Add(converted);
+            }
+
+            foreach (var content in msg.Contents)
+            {
+                if (content is FunctionResultContent result && result.CallId is not null)
                 {
-                    request.Messages.Add(converted);
+                    pendingCalls.Answer(result.CallId, ToToolOutput(result));
                 }
             }
         }
@@ -340,7 +340,7 @@ public class ChatClientAdapter : IChatClient
         _ => ToolChoice.Auto
     };
 
-    private static Message? ConvertMessage(ChatMessage message, Dictionary<string, ToolOutput> toolResults)
+    private static Message? ConvertMessage(ChatMessage message, PendingToolCalls pendingCalls, int messageIndex)
     {
         if (message.Role == ChatRole.User)
         {
@@ -451,11 +451,7 @@ public class ChatClientAdapter : IChatClient
                                 : null
                         };
 
-                        if (toolResults.TryGetValue(callId, out var result))
-                        {
-                            toolMsg.Output = result;
-                        }
-
+                        pendingCalls.Add(callId, toolMsg, messageIndex);
                         Message.Content.Add(toolMsg);
                         break;
                 }
@@ -770,4 +766,36 @@ public class ChatClientAdapter : IChatClient
         JsonValueKind.Null or JsonValueKind.Undefined => null,
         _ => element
     };
+
+    /// <summary>
+    /// Tool calls still waiting for their result, in conversation order. A result is paired with the nearest
+    /// preceding call of its id: the latest assistant message that holds an unanswered call of that id, and
+    /// within that message the earliest such call, so same-id calls of one turn are answered in emission order.
+    /// A result with no unanswered preceding call is not attached; it never replaces an earlier result.
+    /// </summary>
+    private sealed class PendingToolCalls
+    {
+        private readonly Dictionary<string, List<(ToolMessageContent Call, int MessageIndex)>> _byId = [];
+
+        public void Add(string callId, ToolMessageContent call, int messageIndex)
+        {
+            if (!_byId.TryGetValue(callId, out var calls))
+            {
+                calls = [];
+                _byId[callId] = calls;
+            }
+            calls.Add((call, messageIndex));
+        }
+
+        public void Answer(string callId, ToolOutput output)
+        {
+            if (!_byId.TryGetValue(callId, out var calls) || calls.Count == 0)
+                return;
+
+            var latestMessage = calls[^1].MessageIndex;
+            var index = calls.FindIndex(c => c.MessageIndex == latestMessage);
+            calls[index].Call.Output = output;
+            calls.RemoveAt(index);
+        }
+    }
 }

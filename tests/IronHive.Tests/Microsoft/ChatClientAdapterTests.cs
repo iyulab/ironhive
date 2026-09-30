@@ -1112,6 +1112,76 @@ public class ChatClientAdapterTests : IDisposable
             .Which.Should().BeOfType<TextMessageContent>().Which.Value.Should().Be("42");
     }
 
+    // A call id is only unique within a turn: small and local models often reuse one on every turn. Each result
+    // pairs with the nearest preceding call of its id; a later result must not replace an earlier one.
+
+    [Fact]
+    public async Task GetResponseAsync_CallIdReusedAcrossTurns_EachResultStaysWithItsOwnCall()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+
+        await _adapter.GetResponseAsync(ReusedCallIdHistory(), cancellationToken: TestContext.Current.CancellationToken);
+
+        var outputs = capturedRequest().Messages
+            .SelectMany(m => m.Content.OfType<ToolMessageContent>())
+            .Select(t => t.Output!.Content.OfType<TextMessageContent>().Single().Value)
+            .ToList();
+        outputs.Should().Equal(["Lunch: stew", "Tomorrow: noodles"]);
+    }
+
+    [Fact]
+    public async Task GetResponseAsync_CallIdRepeatedWithinOneTurn_ResultsPairInEmissionOrder()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+
+        var messages = new List<ChatMessage>
+        {
+            new(ChatRole.User, "Read both tabs."),
+            new(ChatRole.Assistant,
+            [
+                new FunctionCallContent("c1", "read_page", new Dictionary<string, object?> { ["tab"] = "web-1" }),
+                new FunctionCallContent("c1", "read_page", new Dictionary<string, object?> { ["tab"] = "web-2" }),
+            ]),
+            new(ChatRole.Tool, [new FunctionResultContent("c1", "first")]),
+            new(ChatRole.Tool, [new FunctionResultContent("c1", "second")]),
+        };
+
+        await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
+
+        var tools = capturedRequest().Messages.ElementAt(1).Content.OfType<ToolMessageContent>().ToList();
+        tools.Select(t => (t.Input, t.Output!.Content.OfType<TextMessageContent>().Single().Value))
+            .Should().Equal([("{\"tab\":\"web-1\"}", "first"), ("{\"tab\":\"web-2\"}", "second")]);
+    }
+
+    [Fact]
+    public async Task GetResponseAsync_ExtraResultForAnAnsweredCall_DoesNotReplaceTheFirstResult()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+
+        var messages = new List<ChatMessage>
+        {
+            new(ChatRole.Assistant, [new FunctionCallContent("c1", "read_page")]),
+            new(ChatRole.Tool, [new FunctionResultContent("c1", "first")]),
+            new(ChatRole.Tool, [new FunctionResultContent("c1", "second")]),
+        };
+
+        await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
+
+        SingleToolOutput(capturedRequest()).Content.Should().ContainSingle()
+            .Which.Should().BeOfType<TextMessageContent>().Which.Value.Should().Be("first");
+    }
+
+    internal static List<ChatMessage> ReusedCallIdHistory() =>
+    [
+        new(ChatRole.User, "What is for lunch?"),
+        new(ChatRole.Assistant, [new FunctionCallContent("c1", "read_page", new Dictionary<string, object?> { ["tab"] = "web-1" })]),
+        new(ChatRole.Tool, [new FunctionResultContent("c1", "Lunch: stew")]),
+        new(ChatRole.Assistant, "Stew."),
+        new(ChatRole.User, "And tomorrow?"),
+        new(ChatRole.Assistant, [new FunctionCallContent("c1", "read_page", new Dictionary<string, object?> { ["tab"] = "web-2" })]),
+        new(ChatRole.Tool, [new FunctionResultContent("c1", "Tomorrow: noodles")]),
+    ];
+
     private static List<ChatMessage> ToolRoundTrip(FunctionResultContent result) =>
     [
         new(ChatRole.Assistant, [new FunctionCallContent(result.CallId, "read_image")]),

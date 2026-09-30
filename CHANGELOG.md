@@ -4,6 +4,16 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.45.2 — Unreleased
+
+### Fixed
+
+- **A tool result reaches the model with its own call when a later turn reuses the tool call id.** Small and local
+  models often send the same call id (`c1`) on every turn; the `IChatClient` adapter matched results to calls by id
+  alone, so every call of that id carried the last result and the earlier results were silently lost. Each
+  `FunctionResultContent` now pairs with the nearest preceding call of its id, and same-id calls within one turn are
+  answered in the order they were made. A result with no unanswered preceding call no longer replaces an earlier one.
+
 ## 0.45.1 — 2026-09-29
 
 ### Fixed
