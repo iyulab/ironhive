@@ -70,7 +70,7 @@
     <PackageVersion Include="Scriban" Version="7.4.0" />
     <PackageVersion Include="ModelContextProtocol" Version="2.2.0" />
     <!-- Test-only: hosts a real MCP server in-process so the adapter can be driven over a real
-         handshake instead of a transport seam (HD-77 C). -->
+         handshake instead of a transport seam. -->
     <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="2.2.0" />
   </ItemGroup>
   <ItemGroup Label="Samples">

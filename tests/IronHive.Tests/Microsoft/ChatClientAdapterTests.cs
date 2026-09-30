@@ -1027,7 +1027,7 @@ public class ChatClientAdapterTests : IDisposable
             .Which.Value.Should().Be("22\u00b0C, sunny");
     }
 
-    // Docket iyulab/ironhive#252: the bridge used to flatten every FunctionResultContent to
+    // The bridge used to flatten every FunctionResultContent to
     // Result?.ToString(), so an image a tool returned reached no provider \u2014 not even the ones that
     // carry image tool results natively. And it reported every result as a success.
 
@@ -1188,7 +1188,7 @@ public class ChatClientAdapterTests : IDisposable
         new(ChatRole.Tool, [result])
     ];
 
-    // #326 — a provider's tool-call signature (Gemini 3 thought_signature) must survive the IChatClient
+    // A provider's tool-call signature (Gemini 3 thought_signature) must survive the IChatClient
     // round trip: response → FunctionCallContent.AdditionalProperties → replayed ToolMessageContent.Signature.
 
     [Fact]
@@ -1640,7 +1640,7 @@ public class ChatClientAdapterTests : IDisposable
 
     #endregion
 
-    #region GetResponseAsync — ToolChoice mapping (regression — docket a95e2953)
+    #region GetResponseAsync — ToolChoice mapping (regression)
 
     // ChatOptions.ToolMode previously had no sink at all in ConvertToRequest — a caller setting
     // ChatToolMode.None to force a text-only response saw no effect on the wire. These pin the
@@ -1709,7 +1709,7 @@ public class ChatClientAdapterTests : IDisposable
 
     #endregion
 
-    #region Non-object tool-call args robustness (regression — Filer issue 2026-04-28)
+    #region Non-object tool-call args robustness (regression)
 
     // Some local LLMs (e.g. Gemma 4 E4B) emit non-object JSON for tool-call arguments
     // (`[]`, `[null]`, scalars). The adapter previously deserialized via
@@ -1745,7 +1745,7 @@ public class ChatClientAdapterTests : IDisposable
 
         var messages = new List<ChatMessage> { new(ChatRole.User, "Search") };
 
-        // Must not throw JsonException — was the regression from Filer issue 2026-04-28.
+        // Must not throw JsonException on a non-object arguments root.
         var response = await _adapter.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
 
         var fc = response.Messages.First().Contents.OfType<FunctionCallContent>().Single();

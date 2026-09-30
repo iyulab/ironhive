@@ -5,7 +5,7 @@ namespace IronHive.Tests.Storages;
 
 /// <summary>
 /// Tests to verify AzureStorageConfig validation.
-/// Issue #14: Azure config validation missing for build-time safety.
+/// Azure storage configuration is validated up front (build-time safety).
 /// </summary>
 public class AzureStorageConfigValidationTests
 {

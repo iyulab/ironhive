@@ -4,8 +4,7 @@ using IronHive.Core.Agent;
 
 namespace IronHive.Tests.Conventions;
 
-// Teeth for a known limitation of the agent middleware pair (ironhive-umbrella docs/CONVENTIONS.md
-// section 5).
+// Guards a known limitation of the agent middleware pair.
 //
 // A middleware that implements IAgentMiddleware but not IStreamingAgentMiddleware is skipped on every
 // streaming call: MiddlewareAgent.InvokeStreamingAsync and the orchestrators' streaming path both

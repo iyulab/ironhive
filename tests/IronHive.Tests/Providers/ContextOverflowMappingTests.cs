@@ -12,7 +12,7 @@ namespace IronHive.Tests.Providers;
 
 /// <summary>
 /// Context-window overflow normalization: each provider maps its vendor-specific error
-/// format to <see cref="ContextOverflowException"/> (vault-ai dogfooding, 2026-07-05).
+/// format to <see cref="ContextOverflowException"/>.
 /// </summary>
 public class ContextOverflowMappingTests
 {
@@ -23,7 +23,7 @@ public class ContextOverflowMappingTests
     [Fact]
     public async Task Compatible_LlamaCpp_ExceedContextSize_Maps_With_ContextWindow()
     {
-        // GPUStack/llama.cpp: vault-ai live-reproduced error (32k model, 42k request)
+        // GPUStack/llama.cpp: the error a 32k-context model returns for a 42k-token request
         using var response = JsonResponse(HttpStatusCode.BadRequest,
             """{"error":{"code":400,"message":"request (42259 tokens) exceeds the available context size (32768 tokens), try increasing it","type":"exceed_context_size_error"}}""");
 

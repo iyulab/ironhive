@@ -3,8 +3,7 @@ using AwesomeAssertions;
 
 namespace IronHive.Tests.Conventions;
 
-// Teeth for the "two entry points that must agree share the reconstruction" convention
-// (see ironhive-umbrella docs/CONVENTIONS.md §5).
+// Guards the "two entry points that must agree share the reconstruction" convention.
 //
 // The dominant shape of that defect in this ecosystem is a streaming/non-streaming pair:
 // one operation exposed twice, where the streaming half quietly reconstructs the result

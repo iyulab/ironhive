@@ -8,14 +8,14 @@ using IronHive.Core.Tools;
 
 namespace IronHive.Tests.Conventions;
 
-// Equivalence test for IMessageService.GenerateMessage (ironhive-umbrella docs/CONVENTIONS.md
-// section 5): given one generation described twice -- as a response and as a stream -- the two
+// Equivalence test for IMessageService.GenerateMessage (two entry points that must agree share
+// the reconstruction): given one generation described twice -- as a response and as a stream -- the two
 // halves of MessageService must return the same thing. That is the whole of what a result says:
 // every content part (tool outputs included), the done reason, usage, response id, suggestions,
 // and context items; and the request each turn sends to the generator, because the tool loop
 // feeds one turn's output into the next turn's input.
 //
-// Each case first asserts that the fixture actually took the path it claims (section 6): an
+// Each case first asserts that the fixture actually took the path it claims: an
 // equivalence test cannot see two halves that are wrong in the same way.
 public class MessageServiceStreamingEquivalenceTests
 {

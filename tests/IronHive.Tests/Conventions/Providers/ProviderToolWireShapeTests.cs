@@ -20,10 +20,10 @@ namespace IronHive.Tests.Conventions.Providers;
 /// Provider wire-shape roster — the things every provider's request translation must carry, pinned on
 /// the request object each provider hands its SDK (no network, no key):
 /// (a) a tool's schema reaches the wire whatever shape <see cref="ITool.Parameters"/> arrives in — the
-///     Anthropic rows live in <c>AnthropicToolInputSchemaTests</c> (#325: it sent an empty schema for
-///     every non-<see cref="JsonObject"/> shape for seven months, unseen without a live key);
+///     Anthropic rows live in <c>AnthropicToolInputSchemaTests</c> (an empty schema for
+///     every non-<see cref="JsonObject"/> shape is invisible without a live key);
 /// (b) a provider-private continuity value on a replayed message survives the round trip (Gemini 3
-///     <c>thoughtSignature</c> on a function call, Anthropic <c>signature</c> on a thinking block — #326);
+///     <c>thoughtSignature</c> on a function call, Anthropic <c>signature</c> on a thinking block);
 /// (c) a non-text tool result is carried natively where the provider can (image block / inlineData) and
 ///     named, not dropped, where it cannot.
 /// </summary>
@@ -140,7 +140,7 @@ public class ProviderToolWireShapeTests
         var (contents, _) = generator.ToGoogleAIParams(Request("gemini-3-pro", Tool(null), history));
 
         var replayed = contents.SelectMany(c => c.Parts ?? []).Single(p => p.FunctionCall is not null);
-        replayed.ThoughtSignature.Should().Equal(signature, "Gemini 3 refuses a played-back functionCall without the signature it issued (#326)");
+        replayed.ThoughtSignature.Should().Equal(signature, "Gemini 3 refuses a played-back functionCall without the signature it issued");
     }
 
     [Fact]
@@ -246,7 +246,7 @@ public class ProviderToolWireShapeTests
     [Fact]
     public void GoogleAI_ImageToolResult_IsNamedInText_OnAGenerationThatRejectsInlineData()
     {
-        // #327 — Gemini 2.5 answers 400 "Multimodal function responses are not supported for this model" to inlineData.
+        // Gemini 2.5 answers 400 "Multimodal function responses are not supported for this model" to inlineData.
         var generator = new GoogleAIMessageGenerator(new GoogleAIConfig { ApiKey = "test-key" });
         var image = new ImageMessageContent { Format = ImageFormat.Png, Base64 = Convert.ToBase64String([1, 2, 3]) };
         var history = new[] { Message.User("look"), Assistant(Call("call-1", ToolOutput.Success([new TextMessageContent { Value = "front" }, image]))) };

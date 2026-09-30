@@ -8,8 +8,7 @@ namespace IronHive.Tests;
 // C# has no compiler-checked exhaustiveness for switches over a non-sealed class hierarchy
 // (verified empirically: even a switch expression listing every currently-known MessageContent
 // subtype fails CS8509 without a discard arm, and a discard arm permanently silences the
-// diagnostic for any type added later -- see BD-20260828-04's issue draft Resolution for the
-// build-failure evidence). MessageContent is public and unsealed across an assembly boundary
+// diagnostic for any type added later). MessageContent is public and unsealed across an assembly boundary
 // (IronHive.Abstractions -> the 4 IronHive.Providers.* projects), so CS8509 can never provide
 // real protection here.
 //

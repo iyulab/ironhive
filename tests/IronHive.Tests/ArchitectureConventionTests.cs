@@ -67,7 +67,7 @@ public class ArchitectureConventionTests
     }
 
     // IronHive.Extensions.AI is the lean bridge a host takes to use a provider as an M.E.AI IChatClient without
-    // IronHive.Core (docket #501): referencing any other IronHive assembly would bring Core's stack back.
+    // IronHive.Core: referencing any other IronHive assembly would bring Core's stack back.
     [Fact]
     public void ExtensionsAI_ReferencesOnlyAbstractions()
     {

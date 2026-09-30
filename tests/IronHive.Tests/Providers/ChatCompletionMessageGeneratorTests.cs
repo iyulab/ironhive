@@ -10,7 +10,7 @@ namespace IronHive.Tests.Providers;
 
 /// <summary>
 /// Covers the IronHive → Chat Completions request translation and finish-reason mapping. These are the
-/// error-prone, provider-boundary paths; the live HTTP round-trip is exercised by the Filer e2e gate (AC#5).
+/// error-prone, provider-boundary paths; the live HTTP round-trip is not exercised here.
 /// </summary>
 public class ChatCompletionMessageGeneratorTests
 {
@@ -302,7 +302,7 @@ public class ChatCompletionMessageGeneratorTests
     public void BuildRequest_ToolChoiceNone_OmitsToolsEntirely_NotJustToolChoice()
     {
         // Not just tool_choice:"none" — the tool catalog itself must be gone, since some self-hosted
-        // backends only partially honor tool_choice as a hint (see docket a95e2953 ask #2).
+        // backends only partially honor tool_choice as a hint.
         var payload = SerializePayload(
             ChatCompletionMessageGenerator.BuildRequest(RequestWithTools(ToolChoice.None)));
 

@@ -10,8 +10,8 @@ using IronHive.Core.Agent.Orchestration;
 
 namespace IronHive.Tests.Conventions;
 
-// The IAgentOrchestrator.Execute half of the equivalence work described in
-// ironhive-umbrella docs/CONVENTIONS.md section 5.
+// The IAgentOrchestrator.Execute half of the streaming/buffered equivalence tests: the two
+// entry points must return the same result for the same run.
 //
 // This pair has a property the others do not: SupportsRealTimeStreaming says, per
 // orchestrator, whether the streaming path is a separate implementation or a wrapper over

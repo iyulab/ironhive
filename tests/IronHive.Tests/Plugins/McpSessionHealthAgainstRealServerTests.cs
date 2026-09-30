@@ -39,7 +39,7 @@ public class McpSessionHealthAgainstRealServerTests : IAsyncLifetime
         builder.Logging.ClearProviders();
         // Registered through the generic overload: WithTools(typeof(...)) on a private nested static class
         // registered nothing — the server answered "tools/list is not available" (found by
-        // McpToolTransportFailureTests, cycle-641). This class never listed tools, so it never noticed.
+        // McpToolTransportFailureTests). This class never listed tools, so it never noticed.
         builder.Services.AddMcpServer().WithHttpTransport().WithTools<McpHealthFixtureTools>();
 
         _app = builder.Build();

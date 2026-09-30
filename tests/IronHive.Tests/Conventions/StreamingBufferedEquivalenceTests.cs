@@ -6,8 +6,8 @@ using NSubstitute;
 
 namespace IronHive.Tests.Conventions;
 
-// The equivalence half of ironhive-umbrella docs/CONVENTIONS.md section 5, and the reference
-// the roster test points at.
+// The equivalence half of "a streaming and a buffered entry point must agree", and the
+// reference the roster test points at.
 //
 // StreamingPairRosterTests pins WHICH operations are exposed twice. It cannot assert that the
 // two halves agree, because "agree" means something different for each operation. This is what

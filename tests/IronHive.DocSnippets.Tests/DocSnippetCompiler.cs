@@ -8,7 +8,7 @@ namespace IronHive.DocSnippets.Tests;
 /// <summary>
 /// Compiles a doc snippet (preamble + fence content) as a top-level-statement program against the
 /// real, currently-built assemblies — a semantic (type-checking) compile, not an execution. Catches
-/// the class of defect #115/#116 were: a documented call site that no longer matches the shipped
+/// a documented call site that no longer matches the shipped
 /// public API.
 /// </summary>
 internal static class DocSnippetCompiler

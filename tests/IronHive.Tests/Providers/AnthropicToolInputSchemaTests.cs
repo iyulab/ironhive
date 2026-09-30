@@ -13,7 +13,7 @@ namespace IronHive.Tests.Providers;
 /// Wire-shape facts for the Anthropic tool translation. The Messages API requires
 /// <c>tools[].input_schema.type == "object"</c>; a schema that arrives as a <see cref="JsonElement"/>
 /// (the shape <c>AIFunction.JsonSchema</c> and MCP tools carry) used to be sent as an empty object,
-/// so any consumer with a tool got <c>400 input_schema.type: Field required</c> (#325).
+/// so any consumer with a tool got <c>400 input_schema.type: Field required</c>.
 /// </summary>
 public class AnthropicToolInputSchemaTests
 {

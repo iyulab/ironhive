@@ -594,7 +594,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                                         break;
                                     // A model generation that rejects inlineData in functionResponse.parts
                                     // (Gemini 2.5: 400 "Multimodal function responses are not supported") gets
-                                    // the block named in the text result instead of a call that fails (#327).
+                                    // the block named in the text result instead of a call that fails.
                                     case ImageMessageContent resultImage when !capabilities.SupportsMultimodalFunctionResponse:
                                         texts.Add(OmittedBlockPlaceholder(ToMimeType(resultImage.Format), resultImage.Base64));
                                         break;

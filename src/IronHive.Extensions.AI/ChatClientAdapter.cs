@@ -445,7 +445,7 @@ public class ChatClientAdapter : IChatClient
                                 : "{}",
                             IsApproved = true,
                             // Replay the provider's signature (Gemini 3 thought_signature and the like): the
-                            // provider refuses a played-back functionCall that lost it (#326).
+                            // provider refuses a played-back functionCall that lost it.
                             Signature = functionCall.AdditionalProperties?.TryGetValue(SignatureKey, out var signature) == true
                                 ? signature as string
                                 : null
@@ -689,7 +689,7 @@ public class ChatClientAdapter : IChatClient
 
     // Some local LLMs (e.g. Gemma 4 E4B) emit non-object JSON for tool-call arguments
     // (`[]`, `[null]`, scalars). Treat any non-object root as "no args" rather than
-    // throwing JsonException mid-stream. See Filer issue 2026-04-28.
+    // throwing JsonException mid-stream.
     /// <summary>
     /// provider 서명을 <see cref="SignatureKey"/>로 <c>FunctionCallContent.AdditionalProperties</c>에
     /// 실어, 소비자가 이 콘텐츠를 히스토리에 그대로 되돌려 보내면 요청 측(<see cref="ConvertToRequest"/>)이

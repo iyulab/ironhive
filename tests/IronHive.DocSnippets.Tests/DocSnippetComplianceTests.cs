@@ -5,7 +5,7 @@ namespace IronHive.DocSnippets.Tests;
 
 /// <summary>
 /// Compiles specific, known-important doc/skill code examples against the current public API,
-/// catching drift like #115/#116 (a worked example that no longer matches the shipped signature)
+/// catching drift (a worked example that no longer matches the shipped signature)
 /// before a reader hits it. Deliberately scoped to the sections that have actually broken, not
 /// every ```csharp fence in the docs tree — many fences elsewhere are intentionally elided
 /// pseudocode (e.g. `cfg => { ... }`) rather than standalone-compilable examples, and deciding how

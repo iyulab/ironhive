@@ -4,6 +4,12 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.45.3 — Unreleased
+
+### Changed
+
+- **Documentation comments describe behaviour only.** Comments no longer refer to internal tracking or planning records.
+
 ## 0.45.2 — 2026-09-30
 
 ### Fixed
@@ -1648,9 +1654,9 @@ context-overflow in the normalized exception taxonomy.
 
 ## 0.12.0 — 2026-07-13
 
-Follow-up to 0.11.0's `IMessageMiddleware`: a real consumer (vault-ai's
-context-compaction middleware) needed to signal its own out-of-band events
-mid-stream, which `MessageService` couldn't carry. Also dropped an `ITool`
+Follow-up to 0.11.0's `IMessageMiddleware`: a middleware (for example, one that
+compacts context) can now signal its own out-of-band events mid-stream, which
+`MessageService` couldn't carry. Also dropped an `ITool`
 JSON-polymorphism mechanism that turned out to have no actual caller.
 
 ### Changed
@@ -1772,8 +1778,8 @@ SDK/error shape via reflection instead of assumption.
 
 ## 0.10.0 — 2026-07-07
 
-Pipeline-state completion of the 0.9.0 `ContextPolicy` surface (vault-ai
-dogfooding — a persistence-aware `IMessageCompactor` cannot compute its
+Pipeline-state completion of the 0.9.0 `ContextPolicy` surface (a
+persistence-aware `IMessageCompactor` cannot compute its
 store-relative summary boundary without knowing which messages the pipeline
 added mid-loop, nor merge correctly when compaction fires twice in one request).
 
@@ -1805,9 +1811,9 @@ added mid-loop, nor merge correctly when compaction fires twice in one request).
 ## 0.9.0 — 2026-07-05
 
 First slice of the domain exception taxonomy: context-window overflow errors are
-now typed instead of leaking as raw provider strings (vault-ai dogfooding — a 32k
-local model receiving a 42k-token request permanently wedged the session because
-consumers had no way to detect the overflow without string parsing).
+now typed instead of leaking as raw provider strings (a 32k local model receiving
+a 42k-token request left the caller no way to detect the overflow without string
+parsing).
 
 ### Added
 
@@ -1904,8 +1910,7 @@ raw HTTP/JSON client so vendor reasoning fields are actually reachable.
 Fixes a silent runtime break introduced in 0.7.9 where the entire OpenAI provider
 family routed chat through the OpenAI-proprietary **Responses API**
 (`POST /v1/responses`), returning `404 Not Found` on every Chat-Completions-only
-endpoint (self-hosted / OpenAI-compatible servers). Reported by Filer while
-consuming iron-prow 0.1.1. The switch was intended for first-party OpenAI only;
+endpoint (self-hosted / OpenAI-compatible servers). The switch was intended for first-party OpenAI only;
 `OpenAICompatible`/GPUStack delegating to the Responses generator was the defect.
 Still present in 0.8.0/0.8.1 — the structural refactor in those releases did not
 touch the OpenAI provider files.
