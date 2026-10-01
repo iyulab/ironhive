@@ -4,6 +4,12 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.45.4 — Unreleased
+
+### Dependencies
+
+- `Anthropic` 12.46.0 → 12.53.0.
+
 ## 0.45.3 — 2026-09-30
 
 ### Changed
