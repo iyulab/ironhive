@@ -1,4 +1,3 @@
-using System.ClientModel;
 using System.ClientModel.Primitives;
 using System.Text.Json;
 using IronHive.Abstractions.Models;
@@ -71,8 +70,10 @@ public class OpenAICompatibleModelFinder : IModelFinder
             using var document = JsonDocument.Parse(result.GetRawResponse().Content);
             return ToModelCard(document.RootElement);
         }
-        catch (ClientResultException)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            // Same contract as the OpenAI finder this replaces: a model that cannot be found, or a server that cannot
+            // be asked, is null to the caller (ModelService passes it through). Cancellation still propagates.
             return null;
         }
     }
