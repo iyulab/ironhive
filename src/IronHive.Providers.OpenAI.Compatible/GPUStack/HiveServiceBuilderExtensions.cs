@@ -17,7 +17,7 @@ public static partial class CompatibleHiveServiceBuilderExtensions
         GpuStackServiceType serviceType = GpuStackServiceType.All)
     {
         if (serviceType.HasFlag(GpuStackServiceType.Models))
-            builder.AddModelFinder(providerName, new OpenAIModelFinder(config.ToOpenAI()));
+            builder.AddModelFinder(providerName, new OpenAICompatibleModelFinder(config.ToOpenAI()));
 
         if (serviceType.HasFlag(GpuStackServiceType.Language))
             builder.AddMessageGenerator(providerName, new OpenAICompatibleMessageGenerator(config.ToOpenAICompatible()));

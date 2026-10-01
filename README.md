@@ -21,6 +21,7 @@
 ## 주요 기능
 
 - **멀티 Provider LLM** — OpenAI, Anthropic, Google AI (Gemini/Vertex AI), OpenAI Compatible (Ollama, LM Studio, GPUStack 등)
+- **모델 목록의 컨텍스트 크기** — `IModelFinder.ListModelsAsync` 가 목록 API 가 알려 주는 컨텍스트를 `LanguageModelCard.ContextWindow` 로 싣는다(Google AI `inputTokenLimit`, OpenAI Compatible 중 vLLM `max_model_len` — `OpenAICompatibleModelFinder`, 등록 시 자동). 알려 주지 않는 서버는 null
 - **멀티에이전트 오케스트레이션** — `SequentialOrchestrator` · `ParallelOrchestrator` · `HubSpokeOrchestrator`(각자의 `…OrchestratorOptions` 로 생성), `HandoffOrchestratorBuilder` · `GroupChatOrchestratorBuilder` · `GraphOrchestratorBuilder`(DAG). 공통 옵션 — 타임아웃 · `StopOnAgentFailure` · 에이전트 미들웨어 · 승인 핸들러 · 컨텍스트 스코프 · 결과 distiller — 은 옵션 객체 또는 빌더의 `Set…` 으로 준다([docs/ORCHESTRATION.md](docs/ORCHESTRATION.md))
 - **RAG 파이프라인** — 텍스트 추출, 청킹, 임베딩, 벡터 검색
 - **다중 모달리티** — 이미지 생성, 음성 TTS/STT, 비디오 생성

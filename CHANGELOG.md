@@ -4,7 +4,14 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
-## 0.45.5 — Unreleased
+## 0.46.0 — Unreleased
+
+### Added
+- **An OpenAI-compatible server's context length reaches the model card.** `ListModelsAsync`/`FindModelAsync` of the
+  OpenAI Compatible and GPUStack providers return a `LanguageModelCard` with `ContextWindow` set when the server lists
+  the context it accepts (vLLM `max_model_len`); other entries stay plain `ModelCard`s. New
+  `OpenAICompatibleModelFinder`, registered by `AddOpenAICompatibleProviders` and `AddGpuStackProviders`. llama.cpp's
+  `meta.n_ctx_train` is not read — it is the training context, not what the server was started with.
 
 ### Fixed
 - **Packages now carry the license text.** Each `.nupkg` includes `LICENSE` next to the `MIT` expression,

@@ -25,7 +25,7 @@ public class OpenAICompatibleServiceRegistrationTests
             .AddOpenAICompatibleProviders("ollama", config, OpenAICompatibleServiceType.All)
             .Build();
 
-        hive.Models.Finders["ollama"].Should().BeOfType<OpenAIModelFinder>();
+        hive.Models.Finders["ollama"].Should().BeOfType<OpenAICompatibleModelFinder>();
         hive.Messages.Generators["ollama"].Should().BeOfType<OpenAICompatibleMessageGenerator>();
         hive.Embeddings.Generators["ollama"].Should().BeOfType<IronHive.Providers.OpenAI.Compatible.Embedding.OpenAICompatibleEmbeddingGenerator>();
         hive.Rerank.Rerankers["ollama"].Should().BeOfType<CohereDocumentReranker>();
@@ -69,7 +69,7 @@ public class OpenAICompatibleServiceRegistrationTests
             .AddGpuStackProviders("gpustack", config, GpuStackServiceType.All)
             .Build();
 
-        hive.Models.Finders["gpustack"].Should().BeOfType<OpenAIModelFinder>();
+        hive.Models.Finders["gpustack"].Should().BeOfType<OpenAICompatibleModelFinder>();
         // GPUStack no longer has its own message-generator class — it shares
         // OpenAICompatibleMessageGenerator with OpenAICompatibleConfig.
         hive.Messages.Generators["gpustack"].Should().BeOfType<OpenAICompatibleMessageGenerator>();

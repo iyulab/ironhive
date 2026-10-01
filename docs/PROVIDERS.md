@@ -440,6 +440,8 @@ OpenAI(Responses) · Anthropic provider 는 요청되면 `NotSupportedException`
 
 OpenAI `/v1` API와 호환되는 모든 서버를 지원합니다: Ollama, LM Studio, vLLM, llama.cpp server 등. 이 패키지가 소유한 `ChatCompletionMessageGenerator`가 Chat Completions API(`POST /v1/chat/completions`)를 구현한다. 연결 정보(`BaseUrl`/`ApiKey`/`HttpClient`)만 `IronHive.Providers.OpenAI`의 `OpenAIConfig`를 재사용하고, GPUStack 프로바이더(아래)도 동일한 생성기에 위임한다. 임베딩은 같은 이유(서버 확장 필드)로 이 패키지의 raw-HTTP `OpenAICompatibleEmbeddingGenerator`(`POST /embeddings`)가 맡는다 — OpenAI SDK 의 `OpenAIEmbeddingGenerator` 가 아니다(0.40.0).
 
+모델 목록도 이 패키지의 `OpenAICompatibleModelFinder` 가 원시 응답을 읽는다(0.46.0) — 목록 항목에 서버가 받아 주는 컨텍스트(vLLM `max_model_len`)가 있으면 `LanguageModelCard.ContextWindow` 로, 없으면 지금처럼 `ModelCard` 로 돌려준다. llama.cpp 의 `meta.n_ctx_train` 은 학습 컨텍스트라 서버 실행 컨텍스트와 다를 수 있어 읽지 않는다.
+
 ### 등록
 
 `ApiKey`는 **옵션**이다. 이 절이 다루는 서버들은 기본적으로 자격증명을 요구하지 않으므로 생략해도
