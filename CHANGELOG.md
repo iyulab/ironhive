@@ -4,6 +4,12 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.45.5 — Unreleased
+
+### Fixed
+- **Packages now carry the license text.** Each `.nupkg` includes `LICENSE` next to the `MIT` expression,
+  so an application that ships third-party notices can copy the copyright line from the package.
+
 ## 0.45.4 — 2026-10-01
 
 ### Dependencies

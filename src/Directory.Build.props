@@ -21,6 +21,7 @@
   <!-- The repository README is the package page on nuget.org. -->
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)../README.md" Pack="true" PackagePath="\" Visible="false" />
+    <None Include="$(MSBuildThisFileDirectory)../LICENSE" Pack="true" PackagePath="\" Visible="false" Condition="Exists('$(MSBuildThisFileDirectory)../LICENSE')" />
   </ItemGroup>
 
 </Project>
