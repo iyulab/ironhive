@@ -4,7 +4,7 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
-## 0.46.1 — Unreleased
+## 0.46.1 — 2026-10-02
 
 ### Fixed
 - **`FindModelAsync` finds a model on vLLM and llama.cpp's server.** The OpenAI Compatible and GPUStack finders asked
