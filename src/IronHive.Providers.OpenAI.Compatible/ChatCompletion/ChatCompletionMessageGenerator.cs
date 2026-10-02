@@ -389,6 +389,9 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
                     }
                 }),
             ToolChoice = BuildToolChoice(request.ToolChoice),
+            ParallelToolCalls = request.Tools is { Count: > 0 } && request.ToolChoice is not NoneToolChoice
+                ? request.AllowParallelToolCalls
+                : null,
             ReasoningEffort = request.ThinkingEffort switch
             {
                 null => null,

@@ -391,6 +391,11 @@ internal class ChatCompletionRequest : ChatCompletionPayloadBase
     [JsonPropertyName("tool_choice")]
     public JsonNode? ToolChoice { get; set; }
 
+    /// <summary>Whether the model may call several tools in one turn; omitted (the server's default) unless the
+    /// request sets it and sends tools — some servers reject the field on a request without tools.</summary>
+    [JsonPropertyName("parallel_tool_calls")]
+    public bool? ParallelToolCalls { get; set; }
+
     /// <summary>o-series/gpt-5-style reasoning effort. Most compatible servers ignore an unrecognized value
     /// silently; the vendor-specific overrides in <see cref="ChatCompletionPayloadBase.ExtraBody"/> carry the
     /// actual signal for reasoning-capable open-weight models.</summary>

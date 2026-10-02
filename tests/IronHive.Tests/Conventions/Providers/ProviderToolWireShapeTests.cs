@@ -124,6 +124,80 @@ public class ProviderToolWireShapeTests
         AssertObjectSchema(schema, shape);
     }
 
+    // ── (a2) one tool call per turn ──────────────────────────────────────────────────────────────
+
+    // The provider's HTTP client writes the body without nulls (WhenWritingNull); the wire is what that produces.
+    private static readonly JsonSerializerOptions ChatCompletionsWire = new()
+    {
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+    };
+
+    private static JsonObject ChatCompletionsBody(MessageGenerationRequest request) =>
+        JsonNode.Parse(JsonSerializer.Serialize(ChatCompletionMessageGenerator.BuildRequest(request), ChatCompletionsWire))!.AsObject();
+
+    /// <summary>The Anthropic request params object (ToString may wrap it; the params are the object holding «messages»).</summary>
+    private static JsonElement AnthropicParams(MessageGenerationRequest request)
+    {
+        var generator = new AnthropicMessageGenerator(new AnthropicConfig { ApiKey = "test-key" });
+        using var wire = JsonDocument.Parse(generator.ToMessageCreateParams(request).ToString());
+        var root = wire.RootElement.TryGetProperty("messages", out _)
+            ? wire.RootElement
+            : wire.RootElement.EnumerateObject().Select(p => p.Value).First(v => v.ValueKind == JsonValueKind.Object && v.TryGetProperty("messages", out _));
+        return root.Clone();
+    }
+
+    [Fact]
+    public void ChatCompletions_ParallelToolCalls_IsSentOnlyWhenSetAndToolsAreSent()
+    {
+        var single = Request("gpt-4o", Tool(null));
+        single.AllowParallelToolCalls = false;
+        var unset = Request("gpt-4o", Tool(null));
+        var noTools = Request("gpt-4o");
+        noTools.AllowParallelToolCalls = false;
+
+        ChatCompletionsBody(single)["parallel_tool_calls"]!.GetValue<bool>().Should().BeFalse();
+        ChatCompletionsBody(unset).ContainsKey("parallel_tool_calls").Should().BeFalse("unset leaves the server's default");
+        ChatCompletionsBody(noTools).ContainsKey("parallel_tool_calls").Should().BeFalse("some servers reject the field without tools");
+    }
+
+    [Fact]
+    public void OpenAIResponses_ParallelToolCalls_ReachesTheOptions()
+    {
+        var build = typeof(OpenAIMessageGenerator).GetMethod("BuildOptions", BindingFlags.NonPublic | BindingFlags.Static)!;
+        var single = Request("gpt-5", Tool(null));
+        single.AllowParallelToolCalls = false;
+
+        var options = (CreateResponseOptions)build.Invoke(null, [single, null])!;
+        var unset = (CreateResponseOptions)build.Invoke(null, [Request("gpt-5", Tool(null)), null])!;
+
+        options.ParallelToolCallsEnabled.Should().BeFalse();
+        unset.ParallelToolCallsEnabled.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("auto")]
+    [InlineData("required")]
+    [InlineData("function")]
+    public void Anthropic_OneToolCallPerTurn_DisablesParallelToolUse(string choice)
+    {
+        var request = Request("claude-sonnet-4-5", Tool(null));
+        request.AllowParallelToolCalls = false;
+        request.ToolChoice = choice switch
+        {
+            "required" => new RequiredToolChoice(),
+            "function" => new FunctionToolChoice(["read_file"]),
+            _ => null,
+        };
+
+        AnthropicParams(request).GetProperty("tool_choice").GetProperty("disable_parallel_tool_use").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public void Anthropic_ParallelToolUse_Unset_LeavesTheToolChoiceOut()
+    {
+        AnthropicParams(Request("claude-sonnet-4-5", Tool(null))).TryGetProperty("tool_choice", out _).Should().BeFalse();
+    }
+
     // ── (b) replayed provider-private continuity values ──────────────────────────────────────────
 
     [Fact]

@@ -273,7 +273,8 @@ public class ChatClientAdapterTests : IDisposable
         ["ToolMode"] = "ToolChoice",
         ["Reasoning"] = "ThinkingEffort",
         ["ResponseFormat"] = "OutputFormat",
-        ["Instructions"] = "System"
+        ["Instructions"] = "System",
+        ["AllowMultipleToolCalls"] = "AllowParallelToolCalls"
     };
 
     /// <summary>
@@ -288,7 +289,6 @@ public class ChatClientAdapterTests : IDisposable
         ["FrequencyPenalty"] = "no sink on MessageGenerationRequest — IronHive does not carry the penalty family",
         ["PresencePenalty"] = "no sink on MessageGenerationRequest — IronHive does not carry the penalty family",
         ["Seed"] = "no sink on MessageGenerationRequest — determinism is not part of the request contract",
-        ["AllowMultipleToolCalls"] = "no sink: parallel tool calls are a provider default IronHive does not constrain",
         ["AllowBackgroundResponses"] = "no sink: IronHive has no deferred-response surface",
         ["ContinuationToken"] = "pairs with AllowBackgroundResponses; nothing to continue without it",
         ["RawRepresentationFactory"] = "escape hatch into the caller's own SDK object — by definition not translatable",
@@ -473,6 +473,7 @@ public class ChatClientAdapterTests : IDisposable
     {
         var type = Nullable.GetUnderlyingType(propertyType) ?? propertyType;
         if (type == typeof(float)) return 0.5f;
+        if (type == typeof(bool)) return false;
         if (type == typeof(int)) return 7;
         if (type == typeof(long)) return 7L;
         if (type == typeof(string)) return "Answer in one sentence.";

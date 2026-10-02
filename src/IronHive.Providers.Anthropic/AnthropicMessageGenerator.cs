@@ -669,13 +669,19 @@ public class AnthropicMessageGenerator : IMessageGenerator
             Tools = tools?.Count > 0 ? tools : null,
             // 다중 함수명(FunctionToolChoice.Names.Count > 1)은 Anthropic wire에 "이 N개 중 하나 강제"에
             // 해당하는 값이 없어 ToolChoiceAny로 근사합니다 — 대신 위에서 도구 목록 자체를 필터링합니다.
-            ToolChoice = toolChoice switch
+            // disable_parallel_tool_use rides on the tool choice; with no explicit choice it needs an auto choice to
+            // carry it. Unset (or tools not sent) leaves the choice as before.
+            ToolChoice = (tools?.Count > 0 ? request.AllowParallelToolCalls is false : false, toolChoice) switch
             {
-                null or AutoToolChoice => null,
-                NoneToolChoice => new ToolChoiceNone(),
-                RequiredToolChoice => new ToolChoiceAny(),
-                FunctionToolChoice { Names.Count: 1 } f => new ToolChoiceTool(f.Names.First()),
-                FunctionToolChoice => new ToolChoiceAny(),
+                (_, NoneToolChoice) => new ToolChoiceNone(),
+                (true, null or AutoToolChoice) => new ToolChoiceAuto { DisableParallelToolUse = true },
+                (false, null or AutoToolChoice) => null,
+                (var single, RequiredToolChoice or FunctionToolChoice { Names.Count: not 1 }) => single
+                    ? new ToolChoiceAny { DisableParallelToolUse = true }
+                    : new ToolChoiceAny(),
+                (var single, FunctionToolChoice f) => single
+                    ? new ToolChoiceTool(f.Names.First()) { DisableParallelToolUse = true }
+                    : new ToolChoiceTool(f.Names.First()),
                 _ => null
             },
             Thinking = thinking,

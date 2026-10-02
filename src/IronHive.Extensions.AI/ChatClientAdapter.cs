@@ -300,6 +300,7 @@ public class ChatClientAdapter : IChatClient
             }
 
             request.ToolChoice = ToToolChoice(options.ToolMode);
+            request.AllowParallelToolCalls = options.AllowMultipleToolCalls;
 
             // M.E.AI carries system instructions in two places: a System-role message inside the
             // conversation, and Instructions on the options. Both are the caller asking for the same

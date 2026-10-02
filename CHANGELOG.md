@@ -4,6 +4,15 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.48.0 — Unreleased
+
+### Added
+- **`ChatOptions.AllowMultipleToolCalls = false` reaches the provider.** The `IChatClient` bridge dropped it silently,
+  so a caller asking for one tool call per turn got the provider's default (parallel calls). It is now carried as
+  `MessageGenerationRequest.AllowParallelToolCalls` and sent as `parallel_tool_calls` (OpenAI Responses and
+  OpenAI-compatible Chat Completions) or `tool_choice.disable_parallel_tool_use` (Anthropic), only when tools are sent.
+  Unset sends nothing, as before. The Gemini API has no such control and ignores it.
+
 ## 0.47.0 — 2026-10-02
 
 ### Fixed

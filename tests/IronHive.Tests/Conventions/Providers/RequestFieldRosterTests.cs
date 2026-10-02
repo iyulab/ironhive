@@ -37,6 +37,7 @@ public class RequestFieldRosterTests
             ["ExtraBody"] = Rejected, ["LogProbabilities"] = Rejected,
             ["TopK"] = Ignored("the Responses API has no top_k"),
             ["StopSequences"] = Carried, // the Responses API has no stop parameter; kept on the client (StopSequenceFilter)
+            ["AllowParallelToolCalls"] = Carried,
         }),
         ["Anthropic"] = ("src/IronHive.Providers.Anthropic/AnthropicMessageGenerator.cs", new()
         {
@@ -47,6 +48,7 @@ public class RequestFieldRosterTests
             ["Temperature"] = Ignored("deprecated by Anthropic; newer models answer any value with 400"),
             ["TopP"] = Ignored("deprecated by Anthropic; newer models answer any value with 400"),
             ["TopK"] = Ignored("deprecated by Anthropic; newer models answer any value with 400"),
+            ["AllowParallelToolCalls"] = Carried,
         }),
         ["Google AI"] = ("src/IronHive.Providers.GoogleAI/GoogleAIMessageGenerator.cs", new()
         {
@@ -55,6 +57,7 @@ public class RequestFieldRosterTests
             ["ThinkingEffort"] = Carried, ["ThinkingOutput"] = Carried,
             ["Tools"] = Carried, ["ToolChoice"] = Carried, ["OutputFormat"] = Carried,
             ["ExtraBody"] = Rejected, ["LogProbabilities"] = Rejected,
+            ["AllowParallelToolCalls"] = Ignored("the Gemini API has no control over parallel function calls"),
         }),
         ["OpenAI-compatible (Chat Completions)"] = ("src/IronHive.Providers.OpenAI.Compatible/ChatCompletion/ChatCompletionMessageGenerator.cs", new()
         {
@@ -63,6 +66,7 @@ public class RequestFieldRosterTests
             ["ThinkingEffort"] = Carried, ["Tools"] = Carried, ["ToolChoice"] = Carried, ["OutputFormat"] = Carried,
             ["ExtraBody"] = Carried, ["LogProbabilities"] = Carried,
             ["ThinkingOutput"] = Ignored("Chat Completions has no field for it; reasoning is returned as the server sends it"),
+            ["AllowParallelToolCalls"] = Carried,
         }),
     };
 

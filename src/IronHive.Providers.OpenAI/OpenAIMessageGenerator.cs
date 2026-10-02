@@ -493,6 +493,11 @@ public class OpenAIMessageGenerator : IMessageGenerator
             }
         }
 
+        if (request.Tools is { Count: > 0 } && request.AllowParallelToolCalls is { } allowParallel)
+        {
+            options.ParallelToolCallsEnabled = allowParallel;
+        }
+
         options.ToolChoice = request.ToolChoice switch
         {
             null or AutoToolChoice => null,

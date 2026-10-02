@@ -91,6 +91,14 @@ public class MessageGenerationRequest
     public ToolChoice? ToolChoice { get; set; }
 
     /// <summary>
+    /// Whether the model may call several tools in one turn. <see langword="null"/> (default) leaves the provider's
+    /// default (parallel calls allowed); <see langword="false"/> asks for at most one call per turn. Sent as
+    /// <c>parallel_tool_calls</c> (OpenAI, OpenAI-compatible) or <c>tool_choice.disable_parallel_tool_use</c>
+    /// (Anthropic), only when tools are sent. Google AI has no such control and ignores it.
+    /// </summary>
+    public bool? AllowParallelToolCalls { get; set; }
+
+    /// <summary>
     /// 구조화 출력 설정입니다. null이면 기본 텍스트 출력입니다.
     /// </summary>
     public OutputFormat? OutputFormat { get; set; }
