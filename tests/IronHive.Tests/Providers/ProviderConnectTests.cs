@@ -67,6 +67,33 @@ public class ProviderConnectTests
         await server;
     }
 
+    // Windows reports a refused connect after about 2 s; with the compatible providers' old 2 s default the connect
+    // timeout won that race, and a server that was down read as a timeout.
+    [Theory]
+    [InlineData("compatible")]
+    [InlineData("gpustack")]
+    public async Task ARefusedConnection_UnderTheCompatibleDefaults_IsReportedAsRefused(string provider)
+    {
+        var timeout = provider == "gpustack"
+            ? new IronHive.Providers.OpenAI.Compatible.GpuStack.GpuStackConfig().ConnectTimeout
+            : new IronHive.Providers.OpenAI.Compatible.OpenAICompatibleConfig().ConnectTimeout;
+        int port;
+        using (var probe = new TcpListener(IPAddress.Loopback, 0))
+        {
+            probe.Start();
+            port = ((IPEndPoint)probe.LocalEndpoint).Port;
+        }
+
+        using var client = new HttpClient(ProviderConnect.CreateHandler(timeout));
+        var failure = await Assert.ThrowsAnyAsync<Exception>(
+            () => client.GetStringAsync($"http://127.0.0.1:{port}/", TestContext.Current.CancellationToken));
+
+        var chain = new List<Exception>();
+        for (var e = failure; e is not null; e = e.InnerException) chain.Add(e);
+        chain.OfType<SocketException>().Should().ContainSingle()
+            .Which.SocketErrorCode.Should().Be(SocketError.ConnectionRefused);
+    }
+
     // An attempt that has already finished when the race looks at it. Loopback connects sometimes complete
     // synchronously; until 0.41.1 the race then saw "nothing pending, no address left", threw a ConnectionRefused it
     // made up, and disposed the connected socket as a loser — about one request in 300 to a local server.

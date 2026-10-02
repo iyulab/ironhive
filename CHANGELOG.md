@@ -11,6 +11,10 @@ changes are expected and used freely for structural correctness (see
   for `GET /v1/models/{id}`, a route those servers do not have, so the call returned null on exactly the servers that
   report a context length. It now looks the model up in the list and returns the same card `ListModelsAsync` does
   (with `ContextWindow` when the server reports it). Ids are compared ordinally.
+- **A server that is down is reported as refused, not as a timeout, on Windows.** The OpenAI Compatible and GPUStack
+  providers' default `ConnectTimeout` was 2 s — exactly how long Windows takes to report a refused connection, so the
+  timeout won and every refusal read as "could not be established within the configured ConnectTimeout". The default is
+  now 3 s (other providers use 5 s); an unreachable host still fails over within it.
 
 ## 0.46.0 — 2026-10-02
 

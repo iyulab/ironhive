@@ -39,11 +39,12 @@ public class GpuStackConfig
     public Func<string?>? ApiKeyResolver { get; set; }
 
     /// <summary>
-    /// TCP 연결 타임아웃입니다. (Default: 2초)
+    /// TCP 연결 타임아웃입니다. (Default: 3초)
     /// LAN 환경에서 정상 연결은 수십ms 이내이므로, unreachable 호스트에 대해
     /// OS 기본값(~21초) 대신 빠르게 실패하여 fallback 체인을 즉시 진행합니다.
+    /// Windows 가 거부된 연결을 알리는 데 걸리는 ~2초보다 길게 두어, 꺼진 서버가 타임아웃이 아니라 거부로 보고되게 합니다.
     /// </summary>
-    public TimeSpan ConnectTimeout { get; set; } = TimeSpan.FromSeconds(2);
+    public TimeSpan ConnectTimeout { get; set; } = TimeSpan.FromSeconds(3);
 
     /// <inheritdoc cref="OpenAICompatibleConfig.TokenLimitParameter"/>
     public TokenLimitParameter TokenLimitParameter { get; set; } = TokenLimitParameter.MaxCompletionTokens;

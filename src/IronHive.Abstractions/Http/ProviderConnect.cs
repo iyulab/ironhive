@@ -13,7 +13,7 @@ namespace IronHive.Abstractions.Http;
 /// <c>localhost</c> resolves to <c>::1</c> first. A local server that listens on IPv4 only — llama-server, Ollama and
 /// most local inference servers do by default — refuses the IPv6 attempt, and on Windows a refused connect takes about
 /// two seconds. The default handler tries the addresses in order within one <see cref="SocketsHttpHandler.ConnectTimeout"/>,
-/// so a short timeout (the OpenAI-compatible provider's is 2 s, chosen so a dead LAN host fails over fast) expired
+/// so a short timeout (the OpenAI-compatible provider's was 2 s, chosen so a dead LAN host fails over fast) expired
 /// before <c>127.0.0.1</c> was ever tried. Every request to <c>http://localhost:…</c> failed with a connect timeout.
 /// </para>
 /// <para>

@@ -46,10 +46,12 @@ public class OpenAICompatibleConfig
     public Func<string?>? ApiKeyResolver { get; set; }
 
     /// <summary>
-    /// TCP connect timeout. (Default: 2s) On a LAN a healthy connection completes within tens of ms,
+    /// TCP connect timeout. (Default: 3s) On a LAN a healthy connection completes within tens of ms,
     /// so an unreachable host fails fast instead of stalling the fallback chain on the OS default (~21s).
+    /// It stays above the ~2 s Windows takes to report a refused connection, so a server that is down is
+    /// reported as refused rather than as a timeout.
     /// </summary>
-    public TimeSpan ConnectTimeout { get; set; } = TimeSpan.FromSeconds(2);
+    public TimeSpan ConnectTimeout { get; set; } = TimeSpan.FromSeconds(3);
 
     /// <summary>
     /// Extra request headers sent on every request — the uniform slot every IronHive provider config

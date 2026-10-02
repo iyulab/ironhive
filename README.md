@@ -159,6 +159,7 @@ public class ChatService(IHiveService hive)
 > (RFC 8305): `localhost` 가 `::1` 부터 풀려도 IPv4 전용 로컬 서버(llama-server · Ollama 기본값)에 곧바로 붙는다.
 > 그 전에는 Windows 에서 거부된 IPv6 연결이 약 2 초 걸려 OpenAI-compatible 의 2 초 `ConnectTimeout` 이 먼저 끝났다.
 > `HttpClient` 를 직접 주입하는 경우 같은 동작은 `IronHive.Abstractions.Http.ProviderConnect.CreateHandler(timeout)` 로 얻는다.
+> OpenAI-compatible · GPUStack 의 기본 `ConnectTimeout` 은 0.46.1 부터 3 초다 — Windows 가 거부된 연결을 알리는 ~2 초보다 길어야 꺼진 서버가 타임아웃이 아니라 거부로 보고된다.
 
 > **SDK 재시도 횟수 `MaxRetries` (0.46.0~)** — `OpenAIConfig` · `OpenAICompatibleConfig` · `GpuStackConfig` · `AnthropicConfig`
 > 가 같은 이름·의미를 갖는다: 실패한 요청(전송 실패 · 408 · 429 · 5xx)을 SDK 가 몇 번 다시 보내는가. `null` 은 SDK 기본값
