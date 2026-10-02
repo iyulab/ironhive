@@ -51,6 +51,9 @@ LoggingMiddleware ← RetryMiddleware ← TimeoutMiddleware ← 응답
 
 실패 시 지수 백오프(exponential backoff)로 재시도합니다.
 
+> provider SDK 도 자체 재시도를 한다(OpenAI 계열 기본 3회). 이 미들웨어와 함께 쓰면 두 층이 곱해지므로 — 미들웨어 3회 ×
+> SDK 4 요청 = 한 호출에 최대 16 요청 — provider 설정의 `MaxRetries = 0` 으로 SDK 쪽을 끄고 재시도 정책을 여기 한 곳에 둔다.
+
 ```csharp
 // 간단한 사용
 var agent = baseAgent.WithMiddleware(new RetryMiddleware(maxRetries: 3));

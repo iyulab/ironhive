@@ -160,6 +160,11 @@ public class ChatService(IHiveService hive)
 > 그 전에는 Windows 에서 거부된 IPv6 연결이 약 2 초 걸려 OpenAI-compatible 의 2 초 `ConnectTimeout` 이 먼저 끝났다.
 > `HttpClient` 를 직접 주입하는 경우 같은 동작은 `IronHive.Abstractions.Http.ProviderConnect.CreateHandler(timeout)` 로 얻는다.
 
+> **SDK 재시도 횟수 `MaxRetries` (0.46.0~)** — `OpenAIConfig` · `OpenAICompatibleConfig` · `GpuStackConfig` · `AnthropicConfig`
+> 가 같은 이름·의미를 갖는다: 실패한 요청(전송 실패 · 408 · 429 · 5xx)을 SDK 가 몇 번 다시 보내는가. `null` 은 SDK 기본값
+> (OpenAI 계열 3회 = 최대 4 요청), `0` 은 한 번만 보낸다. 연결 확인처럼 즉답이 필요하거나 `RetryMiddleware` 로 직접 재시도하는
+> 곳에서는 `0` 으로 둬야 재시도가 곱해지지 않는다.
+
 ## 문서
 
 | 문서 | 설명 |

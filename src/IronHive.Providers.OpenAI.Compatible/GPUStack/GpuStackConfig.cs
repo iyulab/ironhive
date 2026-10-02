@@ -109,6 +109,12 @@ public class GpuStackConfig
     /// </summary>
     public IDictionary<string, string>? Headers { get; set; }
 
+    /// <summary>
+    /// How many times a failed request is retried before it surfaces, passed through to the configurations this
+    /// one converts to (<see cref="OpenAIConfig.MaxRetries"/>). Null keeps the SDK default (3); 0 sends one request.
+    /// </summary>
+    public int? MaxRetries { get; set; }
+
     public OpenAICompatibleConfig ToOpenAICompatible() => new()
     {
         // Baked in as the static fallback; BaseUrlResolver/ApiKeyResolver below still take
@@ -121,6 +127,7 @@ public class GpuStackConfig
         ConnectTimeout = ConnectTimeout,
         TokenLimitParameter = TokenLimitParameter,
         Headers = Headers,
+        MaxRetries = MaxRetries,
     };
 
     /// <summary>
@@ -137,5 +144,6 @@ public class GpuStackConfig
         Headers = Headers,
         // No HttpClient here, as in OpenAICompatibleConfig.ToOpenAI: the receiving client creates and owns one.
         ConnectTimeout = ConnectTimeout,
+        MaxRetries = MaxRetries,
     };
 }

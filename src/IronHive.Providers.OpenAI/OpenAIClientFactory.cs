@@ -46,6 +46,11 @@ public static class OpenAIClientFactory
             options.ProjectId = config.Project;
         if (config.Timeout != System.Threading.Timeout.InfiniteTimeSpan)
             options.NetworkTimeout = config.Timeout;
+        if (config.MaxRetries is { } maxRetries)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(maxRetries, $"{nameof(OpenAIConfig)}.{nameof(OpenAIConfig.MaxRetries)}");
+            options.RetryPolicy = new ClientRetryPolicy(maxRetries);
+        }
 
         if (config.ApiKeyResolver != null && config.HttpClient != null)
             throw ResolvedCredentialHandler.ConflictsWithCustomHttpClient(nameof(OpenAIConfig), nameof(OpenAIConfig.HttpClient));

@@ -60,6 +60,12 @@ public class OpenAICompatibleConfig
     public IDictionary<string, string>? Headers { get; set; }
 
     /// <summary>
+    /// How many times a failed request is retried before it surfaces — <see cref="OpenAIConfig.MaxRetries"/>,
+    /// passed through. Null keeps the SDK default (3); 0 sends one request.
+    /// </summary>
+    public int? MaxRetries { get; set; }
+
+    /// <summary>
     /// Which output-length parameter to send. (Default: <c>max_completion_tokens</c>, the previous
     /// and only behaviour — existing configurations are unaffected.)
     /// </summary>
@@ -128,6 +134,7 @@ public class OpenAICompatibleConfig
             // No HttpClient here: the client that receives this config creates and owns one with this connect
             // timeout and no client-level timeout. Handing it one of ours would make it the consumer's — never disposed.
             ConnectTimeout = ConnectTimeout,
+            MaxRetries = MaxRetries,
         };
     }
 }

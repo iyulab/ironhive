@@ -109,6 +109,16 @@ public class OpenAIConfig
     public IDictionary<string, string>? Headers { get; set; }
 
     /// <summary>
+    /// How many times the SDK retries a failed request (a transport failure, 408, 429 or 5xx) before it surfaces.
+    /// Null keeps the SDK default (3 retries, so up to 4 requests with backoff); 0 sends one request.
+    /// </summary>
+    /// <remarks>
+    /// Same meaning as <c>AnthropicConfig.MaxRetries</c>. Set it to 0 where a caller retries itself or needs one
+    /// prompt answer — a connection check, or an agent whose own retry layer would otherwise multiply the SDK's.
+    /// </remarks>
+    public int? MaxRetries { get; set; }
+
+    /// <summary>
     /// API key가 설정되어 있는지 확인합니다.
     /// </summary>
     /// <remarks>

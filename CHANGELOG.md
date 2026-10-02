@@ -12,6 +12,11 @@ changes are expected and used freely for structural correctness (see
   the context it accepts (vLLM `max_model_len`); other entries stay plain `ModelCard`s. New
   `OpenAICompatibleModelFinder`, registered by `AddOpenAICompatibleProviders` and `AddGpuStackProviders`. llama.cpp's
   `meta.n_ctx_train` is not read — it is the training context, not what the server was started with.
+- **`MaxRetries` on the OpenAI, OpenAI-compatible and GPUStack configurations.** The number of times the SDK resends a
+  failed request (transport failure, 408, 429, 5xx), with the same meaning `AnthropicConfig.MaxRetries` already had.
+  Null keeps the SDK default (3 retries, so up to 4 requests); 0 sends one request — for a connection check that must
+  answer promptly, or a caller that retries itself (`RetryMiddleware` would otherwise multiply the SDK's retries). The
+  compatible and GPUStack configurations pass it to every configuration they convert to.
 
 ### Fixed
 - **Packages now carry the license text.** Each `.nupkg` includes `LICENSE` next to the `MIT` expression,
