@@ -72,41 +72,55 @@ public class OpenAICompatibleModelFinderTests
     }
 
     [Fact]
-    public async Task Finding_one_model_reads_the_same_field()
+    public async Task Finding_one_model_on_vLLM_returns_the_card_the_list_returns()
     {
-        using var finder = Finder("""{"id":"qwen3-8b","object":"model","created":1790000000,"owned_by":"vllm","max_model_len":32768}""", out var requests);
+        // vLLM serves only GET /v1/models; GET /v1/models/{id} is a 404 there (and on llama.cpp's server).
+        using var finder = Finder(VllmList, out var requests, listOnly: true);
 
-        var card = await finder.FindModelAsync("qwen3-8b", TestContext.Current.CancellationToken);
+        var card = await finder.FindModelAsync("bge-m3", TestContext.Current.CancellationToken);
 
-        card.Should().BeOfType<LanguageModelCard>().Which.ContextWindow.Should().Be(32768);
-        requests.Should().ContainSingle().Which.Should().EndWith("/v1/models/qwen3-8b");
+        card.Should().BeOfType<LanguageModelCard>().Which.ContextWindow.Should().Be(8192);
+        requests.Should().Equal("/v1/models");
     }
 
     [Fact]
-    public async Task An_unknown_model_is_null()
+    public async Task A_model_the_server_does_not_list_is_null()
     {
-        using var finder = Finder("""{"error":{"message":"not found"}}""", out _, HttpStatusCode.NotFound);
+        using var finder = Finder(VllmList, out _, listOnly: true);
 
         (await finder.FindModelAsync("missing", TestContext.Current.CancellationToken)).Should().BeNull();
+        (await finder.FindModelAsync("QWEN3-8B", TestContext.Current.CancellationToken)).Should().BeNull();
     }
 
-    private static OpenAICompatibleModelFinder Finder(string body, out List<string> requests, HttpStatusCode status = HttpStatusCode.OK)
+    [Fact]
+    public async Task A_server_that_cannot_be_asked_is_null()
+    {
+        using var finder = Finder("""{"error":{"message":"unauthorized"}}""", out _, HttpStatusCode.Unauthorized);
+
+        (await finder.FindModelAsync("qwen3-8b", TestContext.Current.CancellationToken)).Should().BeNull();
+    }
+
+    private static OpenAICompatibleModelFinder Finder(
+        string body, out List<string> requests, HttpStatusCode status = HttpStatusCode.OK, bool listOnly = false)
     {
         var seen = new List<string>();
         requests = seen;
-        var http = new HttpClient(new StubHandler(seen, status, body));
+        var http = new HttpClient(new StubHandler(seen, status, body, listOnly));
         return new OpenAICompatibleModelFinder(new OpenAIConfig { BaseUrl = "http://server.test/v1", HttpClient = http });
     }
 
-    private sealed class StubHandler(List<string> requests, HttpStatusCode status, string body) : HttpMessageHandler
+    /// <summary><paramref name="listOnly"/>: only <c>/v1/models</c> exists, as on vLLM — anything else is vLLM's 404.</summary>
+    private sealed class StubHandler(List<string> requests, HttpStatusCode status, string body, bool listOnly) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            var path = request.RequestUri!.AbsolutePath;
             lock (requests)
-                requests.Add(request.RequestUri!.AbsolutePath);
-            return Task.FromResult(new HttpResponseMessage(status)
+                requests.Add(path);
+            var routed = !listOnly || path == "/v1/models";
+            return Task.FromResult(new HttpResponseMessage(routed ? status : HttpStatusCode.NotFound)
             {
-                Content = new StringContent(body, Encoding.UTF8, "application/json"),
+                Content = new StringContent(routed ? body : """{"detail":"Not Found"}""", Encoding.UTF8, "application/json"),
             });
         }
     }

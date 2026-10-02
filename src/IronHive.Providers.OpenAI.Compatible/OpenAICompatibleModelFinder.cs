@@ -61,14 +61,20 @@ public class OpenAICompatibleModelFinder : IModelFinder
             .ToList();
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Finds a model in the server's list — the same card <see cref="ListModelsAsync"/> returns for it.
+    /// </summary>
+    /// <remarks>
+    /// The list is the one route every OpenAI-compatible server serves: vLLM and llama.cpp's server have no
+    /// <c>/v1/models/{id}</c>, so asking for the model by id finds nothing on exactly the servers that report a context
+    /// length. Ids are compared ordinally, as the servers do.
+    /// </remarks>
     public virtual async Task<IModelCard?> FindModelAsync(string modelId, CancellationToken cancellationToken)
     {
         try
         {
-            var result = await _client.GetModelAsync(modelId, new RequestOptions { CancellationToken = cancellationToken }).ConfigureAwait(false);
-            using var document = JsonDocument.Parse(result.GetRawResponse().Content);
-            return ToModelCard(document.RootElement);
+            var models = await ListModelsAsync(cancellationToken).ConfigureAwait(false);
+            return models.FirstOrDefault(model => string.Equals(model.ModelId, modelId, StringComparison.Ordinal));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

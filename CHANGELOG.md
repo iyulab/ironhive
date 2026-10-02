@@ -4,6 +4,14 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.46.1 — Unreleased
+
+### Fixed
+- **`FindModelAsync` finds a model on vLLM and llama.cpp's server.** The OpenAI Compatible and GPUStack finders asked
+  for `GET /v1/models/{id}`, a route those servers do not have, so the call returned null on exactly the servers that
+  report a context length. It now looks the model up in the list and returns the same card `ListModelsAsync` does
+  (with `ContextWindow` when the server reports it). Ids are compared ordinally.
+
 ## 0.46.0 — 2026-10-02
 
 ### Added
