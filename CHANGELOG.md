@@ -4,7 +4,7 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
-## 0.46.2 — Unreleased
+## 0.47.0 — Unreleased
 
 ### Fixed
 - **A turn cut off at the output limit ends the call instead of being sent again.** `MessageService` started another
