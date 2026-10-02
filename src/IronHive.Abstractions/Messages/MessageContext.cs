@@ -109,10 +109,11 @@ public class MessageContext
     /// </summary>
     /// <remarks>
     /// 그 밖의 종료 사유(<see cref="MessageDoneReason.MaxTokens"/> · <see cref="MessageDoneReason.ContentFilter"/> ·
-    /// <see cref="MessageDoneReason.Unknown"/> · 사유 없음)는 턴을 끝냅니다. 「계속」은 이어 쓰기가 아닙니다: 생각만 하다
-    /// 잘린 턴은 아무것도 다시 보내지 않아 같은 요청이 <see cref="MaxTurns"/> 번까지 반복되고, 글이 잘린 턴은 잘린 글을
-    /// 완료된 assistant 메시지로 붙여 요청만 키운 채 모델의 컨텍스트 창을 넘깁니다. 잘림은 호출자가 응답의
-    /// DoneReason(<see cref="MessageDoneReason.MaxTokens"/>)으로 알게 됩니다.
+    /// <see cref="MessageDoneReason.Unknown"/> · 사유 없음)는 턴을 끝냅니다. 생각만 하다 잘린 턴은 다시 보낼 것이 없어
+    /// 같은 요청이 <see cref="MaxTurns"/> 번까지 반복되고, 글이 잘린 턴을 다시 보내면 chat-completion 서버는 그것을 끝난
+    /// 답으로 읽어 새 답을 시작하고(요청만 커져 컨텍스트 창을 넘는다) Anthropic 은 prefill 로 이어 쓰지만 호출자가 정한
+    /// MaxTokens 를 최대 MaxTurns 배까지 넘깁니다. 잘림은 호출자가 응답의 DoneReason(<see cref="MessageDoneReason.MaxTokens"/>)
+    /// 으로 알게 됩니다.
     /// </remarks>
     public bool ShouldContinue()
     {
