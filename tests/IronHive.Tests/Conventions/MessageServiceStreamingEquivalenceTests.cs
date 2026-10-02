@@ -412,6 +412,60 @@ public class MessageServiceStreamingEquivalenceTests
         AssertSameResult(buffered, streamed);
     }
 
+    public static TheoryData<MessageDoneReason, bool> TerminalWithoutATool => new()
+    {
+        { MessageDoneReason.MaxTokens, false }, // thinking only: the next request would be identical
+        { MessageDoneReason.MaxTokens, true },  // text: the next request would only grow toward the context window
+        { MessageDoneReason.ContentFilter, true },
+        { MessageDoneReason.Unknown, true },
+    };
+
+    [Theory]
+    [MemberData(nameof(TerminalWithoutATool))]
+    public async Task ATurnWithNoToolCallToRun_EndsTheCall_WhateverItsReason(MessageDoneReason reason, bool withText)
+    {
+        // The generator repeats its last turn, so a loop that read this reason as "continue" would call it MaxTurns times.
+        Part[] parts = withText ? [new Part.Thinking("weighing it"), new Part.Text("The answer is")] : [new Part.Thinking("weighing it")];
+        Turn[] turns = [new("r1", reason, 10, 4, parts)];
+
+        MessageRequest Request() => new() { Provider = Provider, Model = Model, Messages = [Message.User("answer")] };
+
+        var buffered = await RunBufferedAsync(turns, Request());
+        var streamed = await RunStreamingAsync(turns, Request());
+
+        buffered.Generator.Calls.Should().Be(1, "nothing new would reach the next request");
+        streamed.Generator.Calls.Should().Be(1, "nothing new would reach the next request");
+        buffered.Result.DoneReason.Should().Be(reason, "the caller learns why the turn ended");
+
+        AssertSameResult(buffered, streamed);
+    }
+
+    [Fact]
+    public async Task ATruncatedTurnThatAskedForATool_StillRunsItAndContinues()
+    {
+        Turn[] turns =
+        [
+            new("r1", MessageDoneReason.MaxTokens, 10, 4, [new Part.Tool("call-1", "echo", "{\"q\":1}")]),
+            new("r2", MessageDoneReason.EndTurn, 25, 9, [new Part.Text("The answer is 1.")]),
+        ];
+
+        MessageRequest Request() => new()
+        {
+            Provider = Provider,
+            Model = Model,
+            Messages = [Message.User("look it up")],
+            Tools = new ToolCollection([new EchoTool()]),
+        };
+
+        var buffered = await RunBufferedAsync(turns, Request());
+        var streamed = await RunStreamingAsync(turns, Request());
+
+        buffered.Generator.Calls.Should().Be(2, "the tool's result is new content for the next request");
+        buffered.Result.DoneReason.Should().Be(MessageDoneReason.EndTurn);
+
+        AssertSameResult(buffered, streamed);
+    }
+
     // ---- runs ----
 
     private sealed record BufferedRun(MessageResponse Result, ScriptedGenerator Generator);

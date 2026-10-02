@@ -4,6 +4,18 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.46.2 — Unreleased
+
+### Fixed
+- **A turn cut off at the output limit ends the call instead of being sent again.** `MessageService` started another
+  turn for every stop reason except end-of-turn and stop sequence. A turn cut off at `MaxTokens` (or stopped for
+  `ContentFilter` / `Unknown`) with no tool call to run therefore went round again: a reasoning-only turn re-sent the
+  identical request up to `MaxTurns` (50) times and ended with an empty answer, and a turn with partial text appended
+  it as a finished assistant message and re-sent a growing request until the model's context window rejected it. The
+  loop now continues only when a tool call awaits execution, so its result is the new content of the next request.
+  The response's `DoneReason` is `MaxTokens`, so a caller sees the truncation. A truncated turn that still asked for a
+  tool runs it and continues, as before.
+
 ## 0.46.1 — 2026-10-02
 
 ### Fixed

@@ -104,10 +104,22 @@ public class MessageContext
     }
 
     /// <summary>
-    /// 다음 턴을 계속 진행해야 하는지 판단합니다.
+    /// 다음 턴을 계속 진행해야 하는지 판단합니다. 다음 턴은 실행을 기다리는(승인됐고 아직 결과가 없는) 도구 호출이
+    /// 있을 때만 의미가 있습니다 — 그 결과가 다음 요청에 새로 실리는 유일한 것이기 때문입니다.
     /// </summary>
-    public bool ShouldContinue() =>
-        TurnReason != MessageDoneReason.EndTurn &&
-        TurnReason != MessageDoneReason.StopSequence &&
-        !(CurrentMessage?.Content.OfType<ToolMessageContent>().Any(t => !t.IsApproved) ?? false);
+    /// <remarks>
+    /// 그 밖의 종료 사유(<see cref="MessageDoneReason.MaxTokens"/> · <see cref="MessageDoneReason.ContentFilter"/> ·
+    /// <see cref="MessageDoneReason.Unknown"/> · 사유 없음)는 턴을 끝냅니다. 「계속」은 이어 쓰기가 아닙니다: 생각만 하다
+    /// 잘린 턴은 아무것도 다시 보내지 않아 같은 요청이 <see cref="MaxTurns"/> 번까지 반복되고, 글이 잘린 턴은 잘린 글을
+    /// 완료된 assistant 메시지로 붙여 요청만 키운 채 모델의 컨텍스트 창을 넘깁니다. 잘림은 호출자가 응답의
+    /// DoneReason(<see cref="MessageDoneReason.MaxTokens"/>)으로 알게 됩니다.
+    /// </remarks>
+    public bool ShouldContinue()
+    {
+        if (TurnReason is MessageDoneReason.EndTurn or MessageDoneReason.StopSequence)
+            return false;
+
+        var tools = CurrentMessage?.Content.OfType<ToolMessageContent>().ToList() ?? [];
+        return tools.All(t => t.IsApproved) && tools.Any(t => !t.IsCompleted);
+    }
 }
