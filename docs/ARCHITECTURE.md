@@ -240,7 +240,7 @@ provider 가 멀티턴 연속성을 위해 붙이는 **서명**은 두 자리로
 
 - `ActivitySource`: `"IronHive"` — 에이전트/오케스트레이션 단위 추적
 - `Meter`: `"IronHive"` — 토큰 사용량, 실행 시간 메트릭
-- GenAI Semantic Conventions 준수
+- [OpenTelemetry GenAI semantic conventions](https://github.com/open-telemetry/semantic-conventions-genai) 준수 — 공급자 `gen_ai.provider.name`, 작업 `chat` · `embeddings` · `execute_tool` · `invoke_agent` · `invoke_workflow`(오케스트레이션, 패턴은 `ironhive.orchestration.*`)
 
 ---
 

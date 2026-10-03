@@ -33,7 +33,8 @@ public static class HiveTelemetry
     public static class Attributes
     {
         // 요청 속성
-        public const string GenAiSystem = "gen_ai.system";
+        /// <summary>The provider as the client sees it (<c>openai</c>, <c>anthropic</c>, …). Replaces the deprecated <c>gen_ai.system</c>.</summary>
+        public const string GenAiProviderName = "gen_ai.provider.name";
         public const string GenAiRequestModel = "gen_ai.request.model";
         public const string GenAiRequestMaxTokens = "gen_ai.request.max_tokens";
         public const string GenAiRequestTemperature = "gen_ai.request.temperature";
@@ -58,7 +59,7 @@ public static class HiveTelemetry
 
         // Tool 속성
         public const string GenAiToolName = "gen_ai.tool.name";
-        public const string GenAiToolCallId = "gen_ai.tool.call_id";
+        public const string GenAiToolCallId = "gen_ai.tool.call.id";
 
         // Orchestration 속성
         public const string OrchestrationName = "ironhive.orchestration.name";
@@ -71,10 +72,11 @@ public static class HiveTelemetry
     public static class Operations
     {
         public const string Chat = "chat";
-        public const string Embedding = "embedding";
-        public const string ToolCall = "tool_call";
+        public const string Embeddings = "embeddings";
+        public const string ExecuteTool = "execute_tool";
         public const string AgentInvoke = "invoke_agent";
-        public const string Orchestration = "orchestration";
+        /// <summary>An orchestration run (several agents as one workflow); its pattern and steps are the <c>ironhive.orchestration.*</c> attributes.</summary>
+        public const string InvokeWorkflow = "invoke_workflow";
     }
 
     // 메트릭 정의
@@ -97,7 +99,7 @@ public static class HiveTelemetry
     /// 토큰 사용량을 기록합니다.
     /// </summary>
     public static void RecordTokenUsage(
-        string system,
+        string providerName,
         string model,
         string operationName,
         long inputTokens,
@@ -105,7 +107,7 @@ public static class HiveTelemetry
     {
         var inputTags = new TagList
         {
-            { Attributes.GenAiSystem, system },
+            { Attributes.GenAiProviderName, providerName },
             { Attributes.GenAiRequestModel, model },
             { Attributes.GenAiOperationName, operationName },
             { "token_type", "input" }
@@ -113,7 +115,7 @@ public static class HiveTelemetry
 
         var outputTags = new TagList
         {
-            { Attributes.GenAiSystem, system },
+            { Attributes.GenAiProviderName, providerName },
             { Attributes.GenAiRequestModel, model },
             { Attributes.GenAiOperationName, operationName },
             { "token_type", "output" }
@@ -127,7 +129,7 @@ public static class HiveTelemetry
     /// 작업 지속 시간을 기록합니다.
     /// </summary>
     public static void RecordOperationDuration(
-        string system,
+        string providerName,
         string model,
         string operationName,
         double durationSeconds,
@@ -135,7 +137,7 @@ public static class HiveTelemetry
     {
         var tags = new TagList
         {
-            { Attributes.GenAiSystem, system },
+            { Attributes.GenAiProviderName, providerName },
             { Attributes.GenAiRequestModel, model },
             { Attributes.GenAiOperationName, operationName },
             { "success", success }
@@ -149,7 +151,7 @@ public static class HiveTelemetry
     /// 채팅 완료 작업을 위한 Activity를 시작합니다.
     /// </summary>
     public static Activity? StartChatActivity(
-        string system,
+        string providerName,
         string model,
         int? maxTokens = null,
         float? temperature = null,
@@ -161,7 +163,7 @@ public static class HiveTelemetry
 
         if (activity != null)
         {
-            activity.SetTag(Attributes.GenAiSystem, system);
+            activity.SetTag(Attributes.GenAiProviderName, providerName);
             activity.SetTag(Attributes.GenAiOperationName, Operations.Chat);
             activity.SetTag(Attributes.GenAiRequestModel, model);
 
@@ -179,16 +181,16 @@ public static class HiveTelemetry
     /// <summary>
     /// 임베딩 생성 작업을 위한 Activity를 시작합니다.
     /// </summary>
-    public static Activity? StartEmbeddingActivity(string system, string model, int inputCount)
+    public static Activity? StartEmbeddingActivity(string providerName, string model, int inputCount)
     {
         var activity = ActivitySource.StartActivity(
-            $"{Operations.Embedding} {model}",
+            $"{Operations.Embeddings} {model}",
             ActivityKind.Client);
 
         if (activity != null)
         {
-            activity.SetTag(Attributes.GenAiSystem, system);
-            activity.SetTag(Attributes.GenAiOperationName, Operations.Embedding);
+            activity.SetTag(Attributes.GenAiProviderName, providerName);
+            activity.SetTag(Attributes.GenAiOperationName, Operations.Embeddings);
             activity.SetTag(Attributes.GenAiRequestModel, model);
             activity.SetTag("gen_ai.embedding.input_count", inputCount);
         }
@@ -202,12 +204,12 @@ public static class HiveTelemetry
     public static Activity? StartToolActivity(string toolName, string? callId = null)
     {
         var activity = ActivitySource.StartActivity(
-            $"{Operations.ToolCall} {toolName}",
+            $"{Operations.ExecuteTool} {toolName}",
             ActivityKind.Internal);
 
         if (activity != null)
         {
-            activity.SetTag(Attributes.GenAiOperationName, Operations.ToolCall);
+            activity.SetTag(Attributes.GenAiOperationName, Operations.ExecuteTool);
             activity.SetTag(Attributes.GenAiToolName, toolName);
             if (callId != null)
                 activity.SetTag(Attributes.GenAiToolCallId, callId);
@@ -242,12 +244,12 @@ public static class HiveTelemetry
     public static Activity? StartOrchestrationActivity(string name, string pattern, string? orchestrationId = null)
     {
         var activity = ActivitySource.StartActivity(
-            $"{Operations.Orchestration} {name}",
+            $"{Operations.InvokeWorkflow} {name}",
             ActivityKind.Internal);
 
         if (activity != null)
         {
-            activity.SetTag(Attributes.GenAiOperationName, Operations.Orchestration);
+            activity.SetTag(Attributes.GenAiOperationName, Operations.InvokeWorkflow);
             activity.SetTag(Attributes.OrchestrationName, name);
             activity.SetTag(Attributes.OrchestrationPattern, pattern);
             if (orchestrationId != null)

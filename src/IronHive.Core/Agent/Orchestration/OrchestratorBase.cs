@@ -200,7 +200,7 @@ public abstract class OrchestratorBase : IAgentOrchestrator
                 outputTokens: response.TokenUsage?.OutputTokens);
 
             HiveTelemetry.RecordOperationDuration(
-                system: agent.Provider,
+                providerName: agent.Provider,
                 model: agent.Model,
                 operationName: HiveTelemetry.Operations.AgentInvoke,
                 durationSeconds: stopwatch.Elapsed.TotalSeconds,
@@ -214,7 +214,7 @@ public abstract class OrchestratorBase : IAgentOrchestrator
             stopwatch.Stop();
 
             HiveTelemetry.RecordOperationDuration(
-                system: agent.Provider,
+                providerName: agent.Provider,
                 model: agent.Model,
                 operationName: HiveTelemetry.Operations.AgentInvoke,
                 durationSeconds: stopwatch.Elapsed.TotalSeconds,
@@ -234,7 +234,7 @@ public abstract class OrchestratorBase : IAgentOrchestrator
 
             activity.SetError(ex);
             HiveTelemetry.RecordOperationDuration(
-                system: agent.Provider,
+                providerName: agent.Provider,
                 model: agent.Model,
                 operationName: HiveTelemetry.Operations.AgentInvoke,
                 durationSeconds: stopwatch.Elapsed.TotalSeconds,
@@ -405,7 +405,7 @@ public abstract class OrchestratorBase : IAgentOrchestrator
         }
 
         HiveTelemetry.RecordOperationDuration(
-            system: agent.Provider,
+            providerName: agent.Provider,
             model: agent.Model,
             operationName: HiveTelemetry.Operations.AgentInvoke,
             durationSeconds: 0, // 스트리밍은 정확한 시간 측정이 어려움

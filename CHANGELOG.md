@@ -13,6 +13,17 @@ changes are expected and used freely for structural correctness (see
   OpenAI-compatible Chat Completions) or `tool_choice.disable_parallel_tool_use` (Anthropic), only when tools are sent.
   Unset sends nothing, as before. The Gemini API has no such control and ignores it.
 
+### Changed
+- **Spans and metrics use the current OpenTelemetry GenAI names.** `HiveTelemetry` tagged the provider as
+  `gen_ai.system` (deprecated, replaced by `gen_ai.provider.name`), named tool spans `tool_call` (the convention's
+  operation is `execute_tool`), embedding spans `embedding` (`embeddings`) and orchestration spans `orchestration`
+  (`invoke_workflow`), and wrote the tool call id as `gen_ai.tool.call_id` (`gen_ai.tool.call.id`). A backend that
+  keys on the convention now reads IronHive spans without a mapping. **Breaking** — **Migration:** dashboards or
+  queries on the old names switch to the new ones; code that used the constants renames
+  `Attributes.GenAiSystem` → `GenAiProviderName`, `Operations.Embedding` → `Embeddings`, `Operations.ToolCall` →
+  `ExecuteTool`, `Operations.Orchestration` → `InvokeWorkflow`, and the `system:` argument of `RecordTokenUsage` /
+  `RecordOperationDuration` / `StartChatActivity` / `StartEmbeddingActivity` → `providerName:`.
+
 ## 0.47.0 — 2026-10-02
 
 ### Fixed
