@@ -27,7 +27,7 @@ public class OpenAICompatibleMessageGenerator : IMessageGenerator
     public OpenAICompatibleMessageGenerator(OpenAICompatibleConfig config)
     {
         _config = config ?? throw new ArgumentNullException(nameof(config));
-        _inner = new ChatCompletionMessageGenerator(config.ToOpenAI()) { TokenLimitParameter = config.TokenLimitParameter };
+        _inner = CreateInner(config);
         _lastResolvedSignature = BuildSignature(config.ResolveBaseUrl(), config.ResolveApiKey());
     }
 
@@ -37,6 +37,15 @@ public class OpenAICompatibleMessageGenerator : IMessageGenerator
     /// no-op it was introduced to fix.
     /// </summary>
     public TokenLimitParameter EffectiveTokenLimitParameter => GetOrUpdateInner().TokenLimitParameter;
+
+    // The one place the inner generator is built, at construction and whenever a resolver yields a new endpoint or key:
+    // a setting copied in only one of two places is lost on the first rotation.
+    private static ChatCompletionMessageGenerator CreateInner(OpenAICompatibleConfig config) =>
+        new(config.ToOpenAI())
+        {
+            TokenLimitParameter = config.TokenLimitParameter,
+            CarryImageToolResultsAsUserMessage = config.CarryImageToolResultsAsUserMessage,
+        };
 
     private ChatCompletionMessageGenerator GetOrUpdateInner()
     {
@@ -53,7 +62,7 @@ public class OpenAICompatibleMessageGenerator : IMessageGenerator
             if (current == _lastResolvedSignature)
                 return _inner;
 
-            _inner = new ChatCompletionMessageGenerator(_config.ToOpenAI()) { TokenLimitParameter = _config.TokenLimitParameter };
+            _inner = CreateInner(_config);
             _lastResolvedSignature = current;
         }
 

@@ -5,6 +5,7 @@ using IronHive.Abstractions.Tools;
 using IronHive.Core.Tools;
 using IronHive.Providers.OpenAI.Compatible;
 using IronHive.Providers.OpenAI.Compatible.ChatCompletion;
+using IronHive.Providers.OpenAI.Compatible.GpuStack;
 
 namespace IronHive.Tests.Providers;
 
@@ -134,6 +135,63 @@ public class ChatCompletionMessageGeneratorTests
         tool.Content.Should().Contain("here you go");
         tool.Content.Should().Contain("unsupported");
         tool.Content.Should().NotContain("AAAA");
+    }
+
+    [Fact]
+    public void BuildMessages_CarryImageToolResults_PutsTheImagesInOneUserMessageAfterTheRoundsToolMessages()
+    {
+        // OpenAI-compatible servers refuse an image part in a tool message; opted in, the images follow the round's
+        // tool messages in a user message, each introduced by the call it came from.
+        var chart = new ToolMessageContent
+        {
+            Id = "call_1",
+            Name = "get_chart",
+            Input = "{}",
+            Output = ToolOutput.Success(
+            [
+                new TextMessageContent { Value = "here you go" },
+                new ImageMessageContent { Format = ImageFormat.Png, Base64 = "AAAA" }
+            ]),
+            IsApproved = true,
+        };
+        var weather = new ToolMessageContent { Id = "call_2", Name = "get_weather", Input = "{}", Output = ToolOutput.Success("sunny"), IsApproved = true };
+
+        var messages = ChatCompletionMessageGenerator.BuildMessages(
+            Request(null, Message.User("chart?"), Message.Assistant(chart, weather)), carryImageToolResults: true);
+
+        messages.Select(m => m.GetType().Name).Should().Equal(
+            nameof(UserChatMessage), nameof(AssistantChatMessage), nameof(ToolChatMessage), nameof(ToolChatMessage), nameof(UserChatMessage));
+        var first = messages[2].Should().BeOfType<ToolChatMessage>().Subject;
+        first.Content.Should().Be("here you go\n[image image/png — attached in the next message]");
+        messages[3].Should().BeOfType<ToolChatMessage>().Which.Content.Should().Be("sunny");
+        var carried = messages[4].Should().BeOfType<UserChatMessage>().Subject.Content!.ToList();
+        carried[0].Should().BeOfType<TextChatMessageContent>().Which.Text.Should().Be("Image returned by tool call call_1 (get_chart):");
+        carried[1].Should().BeOfType<ImageChatMessageContent>().Which.ImageUrl!.Url.Should().Be("data:image/png;base64,AAAA");
+        carried.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void BuildMessages_CarryImageToolResults_WithoutImages_AddsNoMessage()
+    {
+        var weather = new ToolMessageContent { Id = "call_2", Name = "get_weather", Input = "{}", Output = ToolOutput.Success("sunny"), IsApproved = true };
+
+        var messages = ChatCompletionMessageGenerator.BuildMessages(
+            Request(null, Message.User("weather?"), Message.Assistant(weather)), carryImageToolResults: true);
+
+        messages.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public void CarryImageToolResults_FlowsFromBothConfigsToTheGenerator()
+    {
+        new GpuStackConfig { CarryImageToolResultsAsUserMessage = true }.ToOpenAICompatible()
+            .CarryImageToolResultsAsUserMessage.Should().BeTrue();
+
+        using var generator = new OpenAICompatibleMessageGenerator(new OpenAICompatibleConfig { CarryImageToolResultsAsUserMessage = true });
+        var inner = typeof(OpenAICompatibleMessageGenerator)
+            .GetField("_inner", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+            .GetValue(generator).Should().BeOfType<ChatCompletionMessageGenerator>().Subject;
+        inner.CarryImageToolResultsAsUserMessage.Should().BeTrue();
     }
 
     [Fact]

@@ -4,6 +4,19 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.49.0 — Unreleased
+
+### Added
+- **`CarryImageToolResultsAsUserMessage` on `OpenAICompatibleConfig` and `GpuStackConfig` (default off): an image a
+  tool returns reaches a vision model behind an OpenAI-compatible server.** A Chat Completions `tool` message holds
+  text only and those servers refuse an image part there, so the image was replaced by a note. Turned on, the tool
+  message keeps its text and names each image, and one `user` message after the round's tool messages carries the
+  images as `image_url` parts, each introduced by the tool call that returned it. Off, the wire is unchanged.
+
+### Fixed
+- `OpenAICompatibleMessageGenerator` built its inner generator in two places (at construction and when a resolver
+  yields a new endpoint or key); they are one now, so a setting cannot be carried by one and lost by the other.
+
 ## 0.48.0 — 2026-10-03
 
 ### Added

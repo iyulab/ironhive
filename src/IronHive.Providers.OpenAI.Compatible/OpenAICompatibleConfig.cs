@@ -81,6 +81,20 @@ public class OpenAICompatibleConfig
     public TokenLimitParameter TokenLimitParameter { get; set; } = TokenLimitParameter.MaxCompletionTokens;
 
     /// <summary>
+    /// Whether an image a tool returns is carried to the model in a user message that follows the tool results.
+    /// (Default: <see langword="false"/> — the image is replaced by a note in the tool message, as before.)
+    /// </summary>
+    /// <remarks>
+    /// A Chat Completions <c>tool</c> message holds text only, and OpenAI-compatible servers refuse an image part there
+    /// (vLLM, llama.cpp). Turned on, the tool message keeps its text and names each image
+    /// (<c>[image image/png — attached in the next message]</c>), and one <c>user</c> message after the round's tool
+    /// messages carries the images as <c>image_url</c> parts, each introduced by the tool call it came from. For a
+    /// vision model behind such a server this is the only way it sees a tool's image. Off by default because it adds
+    /// a message the conversation did not contain.
+    /// </remarks>
+    public bool CarryImageToolResultsAsUserMessage { get; set; }
+
+    /// <summary>
     /// True when a base URL is resolvable, i.e. the endpoint can be contacted. A key-optional LAN
     /// service is usable without a key (distinct from <see cref="IsConfigured"/>).
     /// </summary>

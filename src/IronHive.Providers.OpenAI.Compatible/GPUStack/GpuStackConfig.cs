@@ -49,6 +49,9 @@ public class GpuStackConfig
     /// <inheritdoc cref="OpenAICompatibleConfig.TokenLimitParameter"/>
     public TokenLimitParameter TokenLimitParameter { get; set; } = TokenLimitParameter.MaxCompletionTokens;
 
+    /// <inheritdoc cref="OpenAICompatibleConfig.CarryImageToolResultsAsUserMessage"/>
+    public bool CarryImageToolResultsAsUserMessage { get; set; }
+
     /// <summary>
     /// 현재 유효한 BaseUrl을 반환합니다.
     /// <see cref="BaseUrlResolver"/>가 설정된 경우 이를 우선 호출하며,
@@ -127,6 +130,7 @@ public class GpuStackConfig
         ApiKeyResolver = ApiKeyResolver,
         ConnectTimeout = ConnectTimeout,
         TokenLimitParameter = TokenLimitParameter,
+        CarryImageToolResultsAsUserMessage = CarryImageToolResultsAsUserMessage,
         Headers = Headers,
         MaxRetries = MaxRetries,
     };

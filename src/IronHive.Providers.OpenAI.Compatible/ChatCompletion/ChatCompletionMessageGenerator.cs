@@ -47,6 +47,9 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
     /// </remarks>
     public TokenLimitParameter TokenLimitParameter { get; set; } = TokenLimitParameter.MaxCompletionTokens;
 
+    /// <inheritdoc cref="OpenAICompatibleConfig.CarryImageToolResultsAsUserMessage"/>
+    public bool CarryImageToolResultsAsUserMessage { get; set; }
+
     /// <inheritdoc />
     public void Dispose()
     {
@@ -59,7 +62,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var req = BuildRequest(request, TokenLimitParameter);
+        var req = BuildRequest(request, TokenLimitParameter, CarryImageToolResultsAsUserMessage);
         var res = await _client.PostAsync(req, cancellationToken);
         var choice = res.Choices?.FirstOrDefault();
         var content = new List<MessageContent>();
@@ -114,7 +117,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var req = BuildRequest(request, TokenLimitParameter);
+        var req = BuildRequest(request, TokenLimitParameter, CarryImageToolResultsAsUserMessage);
 
         var reason = MessageDoneReason.EndTurn;
         var usage = new MessageTokenUsage();
@@ -345,7 +348,8 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
 
     internal static ChatCompletionRequest BuildRequest(
         MessageGenerationRequest request,
-        TokenLimitParameter tokenLimitParameter = TokenLimitParameter.MaxCompletionTokens)
+        TokenLimitParameter tokenLimitParameter = TokenLimitParameter.MaxCompletionTokens,
+        bool carryImageToolResults = false)
     {
         var enabledReasoning = request.ThinkingEffort is not null and not MessageThinkingEffort.None;
 
@@ -357,7 +361,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         var built = new ChatCompletionRequest
         {
             Model = request.Model,
-            Messages = BuildMessages(request),
+            Messages = BuildMessages(request, carryImageToolResults),
             Logprobs = request.LogProbabilities is null ? null : true,
             TopLogprobs = request.LogProbabilities is { TopAlternatives: > 0 } lp ? lp.TopAlternatives : null,
             MaxCompletionTokens = sendsNewName ? request.MaxTokens : null,
@@ -481,7 +485,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         });
     }
 
-    internal static List<ChatMessage> BuildMessages(MessageGenerationRequest request)
+    internal static List<ChatMessage> BuildMessages(MessageGenerationRequest request, bool carryImageToolResults = false)
     {
         var messages = new List<ChatMessage>();
 
@@ -540,6 +544,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
                     string? text = null;
                     List<ChatToolCall>? toolCalls = null;
                     var toolOutputs = new List<(string Id, string Output)>();
+                    var carriedImages = new List<(string Id, string Name, ImageMessageContent Image)>();
 
                     foreach (var content in group)
                     {
@@ -572,6 +577,8 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
                                 : string.Join("\n", tool.Output.Content.Select(c => c switch
                                 {
                                     TextMessageContent text => text.Value ?? string.Empty,
+                                    ImageMessageContent image when carryImageToolResults =>
+                                        CarryImage(carriedImages, id, tool.Name, image),
                                     _ => "[unsupported content omitted — not supported in this provider's tool-result format]"
                                 }));
                             toolOutputs.Add((id, toolOutputText));
@@ -587,6 +594,11 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
                         messages.Add(new AssistantChatMessage { Content = text, ToolCalls = toolCalls });
                         foreach (var (id, output) in toolOutputs)
                             messages.Add(new ToolChatMessage { ToolCallId = id, Content = output });
+
+                        // After the round's last tool message: a message between two of them would break the
+                        // tool_calls -> tool sequence the servers validate.
+                        if (carriedImages.Count > 0)
+                            messages.Add(CarriedImagesMessage(carriedImages));
                     }
                     else if (text != null)
                     {
@@ -619,6 +631,43 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         var node = extraBody?["choices"]?[0]?[container];
         return node?["reasoning_content"]?.GetValue<string>() ?? node?["reasoning"]?.GetValue<string>();
     }
+
+    private static string CarryImage(List<(string Id, string Name, ImageMessageContent Image)> carried, string id, string name, ImageMessageContent image)
+    {
+        carried.Add((id, name, image));
+        return $"[image {MediaType(image)} — attached in the next message]";
+    }
+
+    /// <summary>
+    /// The user message that carries a round's tool images: each call's images introduced by the call that returned
+    /// them, so the model can tell which result an image belongs to.
+    /// </summary>
+    private static UserChatMessage CarriedImagesMessage(List<(string Id, string Name, ImageMessageContent Image)> carried)
+    {
+        var parts = new List<ChatMessageContent>();
+        foreach (var call in carried.GroupBy(c => (c.Id, c.Name)))
+        {
+            parts.Add(new TextChatMessageContent { Text = $"Image returned by tool call {call.Key.Id} ({call.Key.Name}):" });
+            foreach (var (_, _, image) in call)
+            {
+                parts.Add(new ImageChatMessageContent
+                {
+                    ImageUrl = new ImageChatMessageContent.ImageSource { Url = EnsureBase64Url(image), Detail = "auto" }
+                });
+            }
+        }
+
+        return new UserChatMessage { Content = parts };
+    }
+
+    private static string MediaType(ImageMessageContent image) => image.Format switch
+    {
+        ImageFormat.Png => "image/png",
+        ImageFormat.Jpeg => "image/jpeg",
+        ImageFormat.Gif => "image/gif",
+        ImageFormat.Webp => "image/webp",
+        _ => "image",
+    };
 
     private static string EnsureBase64Url(ImageMessageContent image)
     {

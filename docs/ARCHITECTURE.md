@@ -203,7 +203,10 @@ var tool = new AIToolAdapter(mcpClientTool);
 네이티브로 싣는 provider(Anthropic · GoogleAI)까지 그대로 닿는다. 옮길 수 없는 블록은 버리지 않고 무엇이 반환됐는지 텍스트로
 알린다. 결과에 예외가 기록돼 있으면 실패(`IsSuccess=false`)로 표시해 오류 플래그를 가진 provider가 그것을 싣는다 — 모델에게 보일
 문구는 invoker가 정한 `Result`이며, 오류 상세를 노출할지는 invoker 설정이 정한다. 그 밖의 값은 이전처럼 문자열 형태로 간다.
-Chat Completions 계열 wire는 도구 메시지에 이미지 자리가 없어 텍스트로 평탄화된다.
+Chat Completions 계열 wire는 도구 메시지에 이미지 자리가 없어 기본은 텍스트로 평탄화된다(이미지는 자리표시 한 줄).
+`OpenAICompatibleConfig`/`GpuStackConfig` 의 `CarryImageToolResultsAsUserMessage = true` 로 켜면 그 라운드의 도구 메시지들
+**뒤에** user 메시지 하나가 이미지를 `image_url` part 로 싣는다(호출 id·이름으로 소개) — OpenAI 호환 서버는 tool 메시지의
+이미지 part 를 거부하므로, 그런 서버 뒤의 vision 모델이 도구 이미지를 보는 유일한 길이다.
 
 `ChatOptions` 의 요청 knob 은 `MessageGenerationRequest` 로 간다 — `MaxOutputTokens` → `MaxTokens`, 샘플링
 파라미터, `Tools`/`ToolMode`, `Instructions` → `System`(대화 안의 system 메시지와 둘 다 오면 합쳐진다 — 어느 쪽도
