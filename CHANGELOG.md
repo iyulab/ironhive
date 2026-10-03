@@ -4,7 +4,7 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
-## 0.48.0 — Unreleased
+## 0.48.0 — 2026-10-03
 
 ### Added
 - **`ChatOptions.AllowMultipleToolCalls = false` reaches the provider.** The `IChatClient` bridge dropped it silently,
