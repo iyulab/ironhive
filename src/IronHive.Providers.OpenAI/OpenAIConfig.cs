@@ -1,3 +1,5 @@
+using IronHive.Abstractions.Http;
+
 namespace IronHive.Providers.OpenAI;
 
 /// <summary>
@@ -42,6 +44,21 @@ public class OpenAIConfig
     /// handler in the HTTP client IronHive builds (construction throws <see cref="InvalidOperationException"/>).
     /// </summary>
     public Func<string?>? ApiKeyResolver { get; set; }
+
+    /// <summary>
+    /// Where and how the API key is sent. (Default: <see cref="CredentialPlacement.Bearer"/> —
+    /// <c>Authorization: Bearer &lt;key&gt;</c>.)
+    /// </summary>
+    /// <remarks>
+    /// For a gateway in front of an OpenAI-wire endpoint that expects another form:
+    /// <c>CredentialPlacement.Authorization("Basic")</c>, <c>CredentialPlacement.Authorization(null)</c> for a bare token,
+    /// or <c>CredentialPlacement.InHeader("api-key")</c>. The key stays in <see cref="ApiKey"/>/<see cref="ApiKeyResolver"/>;
+    /// <see cref="Headers"/> refuses <c>Authorization</c> and this placement's header. Every request path reads it — the
+    /// SDK path and this package's own HTTP clients (Chat Completions, rerank) — and a key sent elsewhere is not also
+    /// sent as <c>Authorization: Bearer</c>. The key is sent as given: a <c>Basic</c> gateway takes the encoded
+    /// <c>user:password</c>.
+    /// </remarks>
+    public CredentialPlacement ApiKeyPlacement { get; set; } = CredentialPlacement.Bearer;
 
     /// <summary>The key to construct the vendor client with: the resolver's answer, else <see cref="ApiKey"/>.</summary>
     internal string? ResolveApiKey()

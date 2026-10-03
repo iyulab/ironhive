@@ -59,6 +59,7 @@ public class OpenAIConfig
     public TimeSpan ConnectTimeout { get; set; } // TCP 연결 타임아웃. 기본 5초
     public HttpClient? HttpClient { get; set; }
     public IDictionary<string, string>? Headers { get; set; }   // 게이트웨이 헤더 — 「추가 요청 헤더」 절
+    public CredentialPlacement ApiKeyPlacement { get; set; }    // 키를 어디에·어떻게 — 「키를 보내는 형태」 절. 기본 Authorization: Bearer
 }
 ```
 
@@ -359,6 +360,30 @@ builder.AddOpenAIProviders("openai", new OpenAIConfig
   핸들러(`IronHive.Abstractions.Http.ResolvedCredentialHandler`)가 쓰므로, 그 조합은 생성 시 `InvalidOperationException`
   이다(조용히 정적 키를 영원히 보내는 대신). 자체 `HttpClient` 가 필요하면 그 핸들러를 거기에 직접 넣는다.
 - `Validate()` 는 리졸버를 자격증명으로 센다.
+
+## 키를 보내는 형태 (`ApiKeyPlacement`) — OpenAI · OpenAI Compatible · GPUStack
+
+OpenAI 와이어의 키 슬롯은 기본으로 `Authorization: Bearer <key>` 를 보낸다. 앞단 게이트웨이가 다른 형태를 요구하면
+키를 `Headers` 로 옮기지 않고 키 슬롯의 **형태**를 바꾼다(`IronHive.Abstractions.Http.CredentialPlacement`):
+
+```csharp
+new OpenAICompatibleConfig
+{
+    BaseUrl = "https://gateway.example.com",
+    ApiKey = "…",
+    ApiKeyPlacement = CredentialPlacement.InHeader("api-key"),     // api-key: <key>
+    // CredentialPlacement.Authorization("Basic")                  // Authorization: Basic <key> — 키는 인코딩된 user:password
+    // CredentialPlacement.Authorization(null)                     // Authorization: <key> (scheme 없음)
+}
+```
+
+- 두 요청 경로(벤더 SDK — 모델 목록·Responses, 이 패키지의 HTTP 클라이언트 — Chat Completions·임베딩·rerank)가 같은
+  형태로 보낸다. 다른 헤더에 실을 때 SDK 의 `Authorization: Bearer` 는 지워진다 — 키가 두 번 나가지 않는다.
+- `ApiKeyResolver` 도 같은 형태로 나가고(요청마다), 주입한 `HttpClient` 와도 함께 쓸 수 있다.
+- 키는 준 그대로 보낸다. 키가 없으면 자격증명 헤더 자체를 보내지 않는다.
+- `Headers` 는 `Authorization` 과 이 placement 의 헤더 이름을 거부한다(아래 절의 규칙 그대로 — 자격증명은 헤더가 아니다).
+- `GpuStackConfig`·`OpenAICompatibleConfig` 의 값은 변환되는 모든 config(`ToOpenAI` · `ToOpenAICompatible` · rerank)로 넘어간다.
+- Anthropic · Google 와이어는 대상이 아니다 — 벤더 헤더(`x-api-key` · `x-goog-api-key`)를 그대로 쓴다.
 
 ## 추가 요청 헤더 (`Headers`) — 네 provider 공통
 

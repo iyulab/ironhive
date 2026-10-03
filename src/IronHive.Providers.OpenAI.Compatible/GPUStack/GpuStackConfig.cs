@@ -1,3 +1,5 @@
+using IronHive.Abstractions.Http;
+
 namespace IronHive.Providers.OpenAI.Compatible.GpuStack;
 
 /// <summary>
@@ -37,6 +39,14 @@ public class GpuStackConfig
     /// <see cref="BaseUrlResolver"/>와 대칭으로 동적 키 회전(rotation)을 지원합니다.
     /// </summary>
     public Func<string?>? ApiKeyResolver { get; set; }
+
+    /// <summary>
+    /// Where and how the API key is sent, passed through to the configurations this one converts to.
+    /// (Default: <see cref="CredentialPlacement.Bearer"/>.) For a gateway in front of GPUStack that expects <c>Basic</c>,
+    /// a bare token, or the key in its own header; <see cref="Headers"/> refuses <c>Authorization</c> and this
+    /// placement's header.
+    /// </summary>
+    public CredentialPlacement ApiKeyPlacement { get; set; } = CredentialPlacement.Bearer;
 
     /// <summary>
     /// TCP 연결 타임아웃입니다. (Default: 3초)
@@ -132,6 +142,7 @@ public class GpuStackConfig
         TokenLimitParameter = TokenLimitParameter,
         CarryImageToolResultsAsUserMessage = CarryImageToolResultsAsUserMessage,
         Headers = Headers,
+        ApiKeyPlacement = ApiKeyPlacement,
         MaxRetries = MaxRetries,
     };
 
@@ -147,6 +158,7 @@ public class GpuStackConfig
         BaseUrl = ResolveBaseUrl().TrimEnd('/') + apiPath,
         ApiKey = ResolveApiKey(),
         Headers = Headers,
+        ApiKeyPlacement = ApiKeyPlacement,
         // No HttpClient here, as in OpenAICompatibleConfig.ToOpenAI: the receiving client creates and owns one.
         ConnectTimeout = ConnectTimeout,
         MaxRetries = MaxRetries,

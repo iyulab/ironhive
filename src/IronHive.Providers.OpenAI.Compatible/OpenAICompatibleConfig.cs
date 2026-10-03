@@ -1,3 +1,4 @@
+using IronHive.Abstractions.Http;
 using IronHive.Providers.OpenAI;
 
 namespace IronHive.Providers.OpenAI.Compatible;
@@ -44,6 +45,14 @@ public class OpenAICompatibleConfig
     /// When null, the static <see cref="ApiKey"/> is used.
     /// </summary>
     public Func<string?>? ApiKeyResolver { get; set; }
+
+    /// <summary>
+    /// Where and how the API key is sent — <see cref="OpenAIConfig.ApiKeyPlacement"/>, passed through to the
+    /// configurations this one converts to. (Default: <see cref="CredentialPlacement.Bearer"/>.) For a gateway that
+    /// expects <c>Basic</c>, a bare token, or the key in its own header (<c>api-key</c>); the key stays in the key slot,
+    /// and <see cref="Headers"/> refuses <c>Authorization</c> and this placement's header.
+    /// </summary>
+    public CredentialPlacement ApiKeyPlacement { get; set; } = CredentialPlacement.Bearer;
 
     /// <summary>
     /// TCP connect timeout. (Default: 3s) On a LAN a healthy connection completes within tens of ms,
@@ -147,6 +156,7 @@ public class OpenAICompatibleConfig
             BaseUrl = full,
             ApiKey = ResolveApiKey(),
             Headers = Headers,
+            ApiKeyPlacement = ApiKeyPlacement,
             // No HttpClient here: the client that receives this config creates and owns one with this connect
             // timeout and no client-level timeout. Handing it one of ours would make it the consumer's — never disposed.
             ConnectTimeout = ConnectTimeout,

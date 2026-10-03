@@ -52,11 +52,17 @@ public static class OpenAIClientFactory
             options.RetryPolicy = new ClientRetryPolicy(maxRetries);
         }
 
-        if (config.ApiKeyResolver != null && config.HttpClient != null)
+        var placement = config.ApiKeyPlacement ?? CredentialPlacement.Bearer;
+        var defaultPlacement = placement.Equals(CredentialPlacement.Bearer);
+
+        // The SDK writes Authorization: Bearer itself. Any other placement is written by a pipeline policy after the
+        // SDK's credential policy, which reads the resolver too — so it needs no handler and works with an injected
+        // HttpClient. The default placement keeps the resolver in a transport handler, as before.
+        if (defaultPlacement && config.ApiKeyResolver != null && config.HttpClient != null)
             throw ResolvedCredentialHandler.ConflictsWithCustomHttpClient(nameof(OpenAIConfig), nameof(OpenAIConfig.HttpClient));
 
         HttpMessageHandler transport = ProviderConnect.CreateHandler(config.ConnectTimeout);
-        if (config.ApiKeyResolver != null)
+        if (defaultPlacement && config.ApiKeyResolver != null)
             transport = new ResolvedCredentialHandler("Authorization", config.ApiKeyResolver, config.ApiKey, k => $"Bearer {k}", transport);
 
         var httpClient = config.HttpClient ?? new HttpClient(transport)
@@ -72,7 +78,10 @@ public static class OpenAIClientFactory
         // Gateway headers ride BeforeTransport: the SDK's credential policy runs after the per-call
         // stage, so a header added there is overwritten by the bearer token. Here it is applied to the
         // assembled request, and Authorization itself is refused at resolution (see ProviderRequestHeaders).
-        var headers = ProviderRequestHeaders.Resolve(nameof(OpenAIConfig), nameof(OpenAIConfig.ApiKey), ["Authorization"], config.Headers);
+        if (!defaultPlacement)
+            options.AddPolicy(new CredentialPlacementPolicy(placement, config.ApiKeyResolver, config.ApiKey), PipelinePosition.BeforeTransport);
+
+        var headers = ProviderRequestHeaders.Resolve(nameof(OpenAIConfig), nameof(OpenAIConfig.ApiKey), placement.ReservedHeaderNames, config.Headers);
         if (headers is not null)
             options.AddPolicy(new ExtraRequestHeadersPolicy(headers), PipelinePosition.BeforeTransport);
 

@@ -1,4 +1,3 @@
-using System.Net.Http.Headers;
 using IronHive.Abstractions.Http;
 using IronHive.Providers.OpenAI;
 
@@ -22,6 +21,7 @@ internal sealed class ProviderHttpClient : IDisposable
     private readonly TimeSpan _timeout;
     private readonly string? _apiKey;
     private readonly Func<string?>? _apiKeyResolver;
+    private readonly CredentialPlacement _placement;
     private readonly string? _organization;
     private readonly string? _project;
     private readonly IReadOnlyDictionary<string, string>? _headers;
@@ -32,7 +32,8 @@ internal sealed class ProviderHttpClient : IDisposable
     /// <param name="sendAccountHeaders">Whether <c>OpenAI-Organization</c>/<c>OpenAI-Project</c> are sent.</param>
     public ProviderHttpClient(OpenAIConfig config, string path, string? defaultBaseUrl, bool sendAccountHeaders)
     {
-        _headers = ProviderRequestHeaders.Resolve(nameof(OpenAIConfig), nameof(OpenAIConfig.ApiKey), ["Authorization"], config.Headers);
+        _placement = config.ApiKeyPlacement ?? CredentialPlacement.Bearer;
+        _headers = ProviderRequestHeaders.Resolve(nameof(OpenAIConfig), nameof(OpenAIConfig.ApiKey), _placement.ReservedHeaderNames, config.Headers);
         _ownsHttp = config.HttpClient is null;
         Http = config.HttpClient ?? new HttpClient(ProviderConnect.CreateHandler(config.ConnectTimeout))
         {
@@ -63,7 +64,7 @@ internal sealed class ProviderHttpClient : IDisposable
         var resolved = _apiKeyResolver?.Invoke();
         var apiKey = string.IsNullOrWhiteSpace(resolved) ? _apiKey : resolved;
         if (apiKey != null)
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            request.Headers.TryAddWithoutValidation(_placement.Header, _placement.FormatValue(apiKey));
         if (_organization != null)
             request.Headers.Add("OpenAI-Organization", _organization);
         if (_project != null)

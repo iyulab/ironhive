@@ -4,6 +4,17 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.50.0 — Unreleased
+
+### Added
+- **`ApiKeyPlacement` on `OpenAIConfig`, `OpenAICompatibleConfig` and `GpuStackConfig`: an OpenAI-wire endpoint behind a
+  gateway that wants `Authorization: Basic <key>`, a bare `Authorization: <key>`, or the key in its own header (such as
+  `api-key`) is configured through the key slot.** The new `CredentialPlacement` (`IronHive.Abstractions.Http`) names
+  the header and the scheme; the default, `CredentialPlacement.Bearer`, is today's `Authorization: Bearer <key>`. Both
+  request paths (the vendor SDK, and the package's own Chat Completions/embedding/rerank client) send the configured
+  form, a key placed in another header is no longer also sent as a bearer, `ApiKeyResolver` follows the placement, and
+  it works with an injected `HttpClient`. `Headers` refuses `Authorization` and the placement's header, as before.
+
 ## 0.49.0 — 2026-10-04
 
 ### Added
