@@ -4,7 +4,7 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
-## 0.50.0 — Unreleased
+## 0.50.0 — 2026-10-04
 
 ### Added
 - **`ApiKeyPlacement` on `OpenAIConfig`, `OpenAICompatibleConfig` and `GpuStackConfig`: an OpenAI-wire endpoint behind a
