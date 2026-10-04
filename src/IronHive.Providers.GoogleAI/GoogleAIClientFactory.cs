@@ -107,7 +107,7 @@ internal static class GoogleAIClientFactory
         {
             throw new InvalidOperationException(
                 $"{configName}.Timeout and {configName}.HttpOptions.Timeout are both set. " +
-                $"Set only one — use {configName}.Timeout unless the vendor options are needed for something else.");
+                $"Set only one - use {configName}.Timeout unless the vendor options are needed for something else.");
         }
 
         if (isSet && timeout <= TimeSpan.Zero)

@@ -1,8 +1,18 @@
 # Changelog
 
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
-changes are expected and used freely for structural correctness (see
-`docs/CONSTITUTION.md`).
+changes are expected and used freely for structural correctness.
+
+## 0.51.1 — Unreleased
+
+### Fixed
+- **The GoogleAI «two timeouts set» exception message is plain ASCII** (it carried an em dash). A convention test now
+  scans every IronHive assembly's log templates and exception messages for non-ASCII text, replacing two tests that
+  looked for Hangul only.
+
+### Dependencies
+- Microsoft.Extensions.DependencyInjection(.Abstractions), Microsoft.Extensions.Logging.Abstractions,
+  Microsoft.Extensions.Http and Microsoft.Data.Sqlite 10.0.12 servicing (from 10.0.11).
 
 ## 0.51.0 — 2026-10-05
 
