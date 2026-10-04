@@ -61,17 +61,18 @@ public sealed class StreamIdleTimeoutTests
     [Fact]
     public async Task A_long_answer_that_keeps_streaming_is_not_cut_off()
     {
-        // 8 chunks, 250 ms apart — 2 s in total, every gap inside a 600 ms budget.
+        // 6 chunks, 400 ms apart — 2.4 s in total, longer than the 1.5 s budget, every gap well inside it. The margin is
+        // wide on purpose: a shared CI runner running the suite in parallel stretches a 250 ms gap past 600 ms.
         var steps = new List<Step> { Step.At(0, RoleChunk) };
-        for (var i = 0; i < 8; i++)
-            steps.Add(Step.At(250, TextChunk($"t{i}")));
+        for (var i = 0; i < 6; i++)
+            steps.Add(Step.At(400, TextChunk($"t{i}")));
         steps.Add(Step.At(0, "data: [DONE]"));
         await using var server = SseServer.Start([.. steps]);
-        using var client = new ChatCompletionHttpClient(new OpenAIConfig { BaseUrl = server.BaseUrl, StreamIdleTimeout = TimeSpan.FromMilliseconds(600), MaxRetries = 0 });
+        using var client = new ChatCompletionHttpClient(new OpenAIConfig { BaseUrl = server.BaseUrl, StreamIdleTimeout = TimeSpan.FromMilliseconds(1500), MaxRetries = 0 });
 
         var chunks = await Drain(client, TestContext.Current.CancellationToken);
 
-        chunks.Should().Be(9);
+        chunks.Should().Be(7);
     }
 
     [Fact]
@@ -100,13 +101,14 @@ public sealed class StreamIdleTimeoutTests
     [Fact]
     public async Task Keep_alive_lines_count_as_the_stream_being_alive()
     {
+        // Keep-alives 300 ms apart for 1.8 s against a 1.2 s budget: only the keep-alives keep it open.
         var steps = new List<Step> { Step.At(0, RoleChunk) };
         for (var i = 0; i < 6; i++)
-            steps.Add(Step.At(200, ": keep-alive"));
+            steps.Add(Step.At(300, ": keep-alive"));
         steps.Add(Step.At(0, TextChunk("after")));
         steps.Add(Step.At(0, "data: [DONE]"));
         await using var server = SseServer.Start([.. steps]);
-        using var client = new ChatCompletionHttpClient(new OpenAIConfig { BaseUrl = server.BaseUrl, StreamIdleTimeout = Short, MaxRetries = 0 });
+        using var client = new ChatCompletionHttpClient(new OpenAIConfig { BaseUrl = server.BaseUrl, StreamIdleTimeout = TimeSpan.FromMilliseconds(1200), MaxRetries = 0 });
 
         var chunks = await Drain(client, TestContext.Current.CancellationToken);
 
