@@ -23,6 +23,10 @@ changes are expected and used freely for structural correctness (see
 - `OpenAIConfig.Timeout` documents what it does on a streaming call: on the Chat Completions path it bounds the wait for
   the response to start, not the stream.
 
+### Dependencies
+- Microsoft.Extensions.AI.Abstractions 10.10.1, Microsoft.Extensions.AI.OpenAI 10.10.1 (from 10.7.0), OpenAI 2.14.0,
+  Google.GenAI 1.24.0.
+
 ## 0.50.0 — 2026-10-04
 
 ### Added
