@@ -55,7 +55,8 @@ public class OpenAIConfig
     public string BaseUrl { get; set; }         // 커스텀 엔드포인트·게이트웨이용. 버전 세그먼트 포함
     public string Organization { get; set; }    // 조직 ID (옵션)
     public string Project { get; set; }         // 프로젝트 ID (옵션)
-    public TimeSpan Timeout { get; set; }        // 요청 타임아웃. 기본 Timeout.InfiniteTimeSpan(무제한)
+    public TimeSpan Timeout { get; set; }        // 요청 타임아웃. 기본 Timeout.InfiniteTimeSpan(무제한) — 스트림은 응답 시작까지
+    public TimeSpan StreamIdleTimeout { get; set; } // 스트림 침묵 허용 시간. 기본 무제한 — 「스트림 idle 타임아웃」 절
     public TimeSpan ConnectTimeout { get; set; } // TCP 연결 타임아웃. 기본 5초
     public HttpClient? HttpClient { get; set; }
     public IDictionary<string, string>? Headers { get; set; }   // 게이트웨이 헤더 — 「추가 요청 헤더」 절
@@ -67,6 +68,34 @@ public class OpenAIConfig
 `HttpClient.Timeout`을 무제한으로 설정한 기본 클라이언트를 만든다 — 응답이 느린 요청은 `Timeout`을
 명시적으로 설정하지 않는 한 무한정 기다리고, 대신 연결 자체가 안 되는 호스트는 `ConnectTimeout` 안에
 빠르게 실패한다.
+
+#### 스트림 idle 타임아웃 (`StreamIdleTimeout`)
+
+`StreamIdleTimeout`은 스트리밍 응답이 **침묵할 수 있는 최대 시간**이다 — 요청 후 첫 이벤트까지, 그리고 이벤트
+사이. 넘기면 스트림이 `TimeoutException`으로 끝나고 메시지가 «stream idle timeout»을 말한다(요청 타임아웃과
+구별된다). 다섯 config 모두에 있다: `OpenAIConfig` · `OpenAICompatibleConfig` · `GpuStackConfig` · `AnthropicConfig` ·
+`GoogleAIConfig`/`VertexAIConfig`. 기본은 무제한이고 버퍼링(비스트리밍) 요청에는 적용되지 않는다.
+
+전체 요청 시한(`Timeout`)으로는 **느린 스트림과 죽은 스트림을 가를 수 없다** — 느린 하드웨어에서 몇 분의 프롬프트
+평가를 견딜 만큼 길게 잡으면 흘러나오는 긴 답변도 그만큼만 허용하고, 멈춘 스트림은 시한 끝에서야 드러난다. 그
+둘을 가르는 것은 읽기 사이 간격이다. 로컬·LAN 서버(llama-server, Ollama, vLLM)라면 첫 토큰 전 프롬프트 평가
+시간보다 크게 잡는다.
+
+```csharp
+new OpenAICompatibleConfig
+{
+    BaseUrl = "http://127.0.0.1:8080/v1",
+    StreamIdleTimeout = TimeSpan.FromMinutes(3),   // 이 시간 동안 한 줄도 오지 않으면 죽은 스트림
+}
+```
+
+- 소비자가 이벤트를 처리하는 시간은 세지 않는다 — 다음 이벤트를 기다리는 동안에만 시간이 흐른다.
+- Chat Completions 경로(`OpenAICompatible`·GPUStack·`ChatCompletionMessageGenerator`)는 SSE 주석·keep-alive 줄도
+  «살아 있음»으로 센다. SDK 기반 경로(Responses · Anthropic · Gemini)는 SDK가 넘기는 이벤트 사이를 잰다.
+- **`Timeout`의 스트림 의미**: Chat Completions 경로에서는 응답이 시작될 때까지(응답 헤더)만 제한한다 — 흐르는
+  답변을 자르지 않는다. Responses 경로에서는 SDK `NetworkTimeout`으로 전달되어 네트워크 작업 하나(스트림이면 읽기
+  한 번)마다 적용된다. 0.51.0부터 `Timeout`을 비워 두면 Responses·Anthropic SDK의 숨은 기본값(각각 100초 · 10분)을
+  물려받지 않는다 — 문서화된 기본값(무제한) 그대로다.
 
 #### `BaseUrl`은 버전 세그먼트를 포함한 완전한 엔드포인트다
 
@@ -161,6 +190,7 @@ public class AnthropicConfig
     public IDictionary<string, string>? ExtraHeaders { get; set; }
     public int? MaxRetries { get; set; }
     public TimeSpan Timeout { get; set; }        // 요청 타임아웃. 기본 Timeout.InfiniteTimeSpan(무제한)
+    public TimeSpan StreamIdleTimeout { get; set; } // 스트림 침묵 허용 시간. 기본 무제한 — 「스트림 idle 타임아웃」 절
     public TimeSpan ConnectTimeout { get; set; } // TCP 연결 타임아웃. 기본 5초
     public HttpClient? HttpClient { get; set; }
     public IDictionary<string, string>? Headers { get; set; }   // ExtraHeaders와 같은 슬롯(합집합) — 「추가 요청 헤더」 절
@@ -285,7 +315,8 @@ builder.AddVertexAIProviders("vertex", new VertexAIConfig
 
 `HttpOptions`로도 같은 값을 지정할 수 있으나(밀리초 단위) **둘을 동시에 설정하면
 `InvalidOperationException`을 던진다.** 어느 쪽이 이겼는지 알 수 없는 상태를 만들지 않기 위한 것이며,
-`HttpOptions`는 `BaseUrl` 등 나머지 설정에 계속 쓸 수 있다.
+`HttpOptions`는 `BaseUrl` 등 나머지 설정에 계속 쓸 수 있다. 시작된 스트림의 멈춤은 `StreamIdleTimeout`이
+잡는다(「스트림 idle 타임아웃」 절).
 
 `GoogleAIConfig.Headers` / `VertexAIConfig.Headers`는 벤더 `HttpOptions.Headers`에 병합된다(둘 다 설정 가능, 같은 이름은 값이 같아야 한다) — 「추가 요청 헤더」 절.
 

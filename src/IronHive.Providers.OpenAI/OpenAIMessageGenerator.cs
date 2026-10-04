@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using IronHive.Abstractions.Extensions;
+using IronHive.Abstractions.Http;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using OpenAI.Responses;
@@ -25,6 +26,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
 {
     private readonly ResponsesClient _client;
     private readonly IReadOnlyDictionary<string, OpenAIModelCapabilities>? _capabilityOverrides;
+    private readonly TimeSpan _streamIdleTimeout = System.Threading.Timeout.InfiniteTimeSpan;
 
     public OpenAIMessageGenerator(string apiKey)
         : this(new OpenAIConfig { ApiKey = apiKey })
@@ -32,6 +34,8 @@ public class OpenAIMessageGenerator : IMessageGenerator
 
     public OpenAIMessageGenerator(OpenAIConfig config)
     {
+        ProviderStreams.ThrowIfInvalid(config.StreamIdleTimeout, $"{nameof(OpenAIConfig)}.{nameof(OpenAIConfig.StreamIdleTimeout)}");
+        _streamIdleTimeout = config.StreamIdleTimeout;
         _client = OpenAIClientFactory.Create(config).GetResponsesClient();
         _capabilityOverrides = config.ModelCapabilities is { Count: > 0 } overrides
             ? new Dictionary<string, OpenAIModelCapabilities>(overrides, StringComparer.Ordinal)
@@ -171,7 +175,8 @@ public class OpenAIMessageGenerator : IMessageGenerator
         var stop = StopSequenceFilter.For(request.StopSequences);
         int? heldIndex = null;
         int? stoppedIndex = null;
-        await foreach (var update in _client.CreateResponseStreamingAsync(options, cancellationToken)
+        await foreach (var update in ProviderStreams.WithIdleTimeout(
+                ct => _client.CreateResponseStreamingAsync(options, ct), _streamIdleTimeout, cancellationToken)
             .MapException(ex => OpenAIExceptionMapper.Map(ex, cancellationToken), cancellationToken))
         {
             if (stoppedIndex is { } cut && update is not (StreamingResponseCompletedUpdate or StreamingResponseIncompleteUpdate

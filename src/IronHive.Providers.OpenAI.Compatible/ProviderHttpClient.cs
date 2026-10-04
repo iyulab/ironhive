@@ -19,6 +19,7 @@ internal sealed class ProviderHttpClient : IDisposable
     private readonly bool _ownsHttp;
     private readonly Uri _endpoint;
     private readonly TimeSpan _timeout;
+    private readonly TimeSpan _streamIdleTimeout;
     private readonly string? _apiKey;
     private readonly Func<string?>? _apiKeyResolver;
     private readonly CredentialPlacement _placement;
@@ -45,6 +46,8 @@ internal sealed class ProviderHttpClient : IDisposable
             : config.BaseUrl;
         _endpoint = new Uri(new Uri(baseUrl.EnsureSuffix('/')), path);
         _timeout = config.Timeout;
+        ProviderStreams.ThrowIfInvalid(config.StreamIdleTimeout, $"{nameof(OpenAIConfig)}.{nameof(OpenAIConfig.StreamIdleTimeout)}");
+        _streamIdleTimeout = config.StreamIdleTimeout;
         _apiKey = string.IsNullOrWhiteSpace(config.ApiKey) ? null : config.ApiKey;
         // Read per request, as the OpenAI SDK path does — a key rotated in a secret store takes effect on the next call.
         _apiKeyResolver = config.ApiKeyResolver;
@@ -93,6 +96,23 @@ internal sealed class ProviderHttpClient : IDisposable
             return null;
         var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         source.CancelAfter(_timeout);
+        return source;
+    }
+
+    /// <summary><see cref="OpenAIConfig.StreamIdleTimeout"/>.</summary>
+    public TimeSpan StreamIdleTimeout => _streamIdleTimeout;
+
+    /// <summary>
+    /// A source for one wait on a stream — the response to start, or the next line — that fires at
+    /// <see cref="OpenAIConfig.StreamIdleTimeout"/> as well as on <paramref name="token"/>, or null when the budget is infinite.
+    /// A fresh source per wait means an event that arrives never leaves a timer running into the next wait.
+    /// </summary>
+    public CancellationTokenSource? CreateStreamWaitSource(CancellationToken token)
+    {
+        if (_streamIdleTimeout == System.Threading.Timeout.InfiniteTimeSpan)
+            return null;
+        var source = CancellationTokenSource.CreateLinkedTokenSource(token);
+        source.CancelAfter(_streamIdleTimeout);
         return source;
     }
 

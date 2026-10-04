@@ -42,6 +42,17 @@ public class VertexAIConfig
     public TimeSpan Timeout { get; set; } = System.Threading.Timeout.InfiniteTimeSpan;
 
     /// <summary>
+    /// 스트리밍 응답이 침묵할 수 있는 최대 시간 — 요청 후 첫 이벤트까지, 그리고 이벤트 사이.
+    /// (Default: <see cref="System.Threading.Timeout.InfiniteTimeSpan"/> — 무제한)
+    /// </summary>
+    /// <remarks>
+    /// 넘기면 스트림이 <see cref="TimeoutException"/>으로 끝납니다(메시지가 «stream idle timeout»을 말하므로 요청
+    /// 타임아웃과 구별됩니다). 전체 요청 시한과 달리 느린 스트림과 죽은 스트림을 가릅니다. 소비자가 이벤트를 처리하는
+    /// 시간은 세지 않습니다. 버퍼링(비스트리밍) 요청에는 적용되지 않습니다.
+    /// </remarks>
+    public TimeSpan StreamIdleTimeout { get; set; } = System.Threading.Timeout.InfiniteTimeSpan;
+
+    /// <summary>
     /// TCP 연결(connect) 타임아웃입니다. (Default: 5초)
     /// </summary>
     /// <remarks>

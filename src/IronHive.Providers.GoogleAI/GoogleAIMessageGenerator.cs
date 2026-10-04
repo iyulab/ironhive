@@ -1,6 +1,7 @@
 using Google.GenAI;
 using Google.GenAI.Types;
 using IronHive.Abstractions.Extensions;
+using IronHive.Abstractions.Http;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Tools;
@@ -23,6 +24,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
     /// this type holding a credential.
     /// </summary>
     private readonly bool _keyUsesRetiredFormat;
+    private readonly TimeSpan _streamIdleTimeout = System.Threading.Timeout.InfiniteTimeSpan;
 
     public GoogleAIMessageGenerator(string apiKey)
         : this(new GoogleAIConfig { ApiKey = apiKey })
@@ -34,6 +36,8 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         _isVertex = false;
         _capabilityOverrides = CopyOverrides(config.ModelCapabilities);
         _keyUsesRetiredFormat = config.ResolveApiKey()?.StartsWith("AIza", StringComparison.Ordinal) == true;
+        ProviderStreams.ThrowIfInvalid(config.StreamIdleTimeout, $"{nameof(GoogleAIConfig)}.{nameof(GoogleAIConfig.StreamIdleTimeout)}");
+        _streamIdleTimeout = config.StreamIdleTimeout;
     }
 
     public GoogleAIMessageGenerator(VertexAIConfig config)
@@ -42,6 +46,8 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         _isVertex = true;
         // Vertex authenticates with application default credentials, not a Gemini API key.
         _capabilityOverrides = CopyOverrides(config.ModelCapabilities);
+        ProviderStreams.ThrowIfInvalid(config.StreamIdleTimeout, $"{nameof(VertexAIConfig)}.{nameof(VertexAIConfig.StreamIdleTimeout)}");
+        _streamIdleTimeout = config.StreamIdleTimeout;
     }
 
     private static Dictionary<string, GoogleAIModelCapabilities>? CopyOverrides(
@@ -179,8 +185,8 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         // followed by narration came back as EndTurn on this path only (GoogleAIEquivalenceTests).
         var sawToolCall = false;
 
-        await foreach (var res in _client.Models.GenerateContentStreamAsync(
-            request.Model, contents, config, cancellationToken)
+        await foreach (var res in ProviderStreams.WithIdleTimeout(
+                ct => _client.Models.GenerateContentStreamAsync(request.Model, contents, config, ct), _streamIdleTimeout, cancellationToken)
             .MapException(ex => GoogleAIExceptionMapper.Map(ex, _keyUsesRetiredFormat, cancellationToken), cancellationToken))
         {
             // 메시지 시작

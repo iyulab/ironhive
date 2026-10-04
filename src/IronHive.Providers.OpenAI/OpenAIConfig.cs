@@ -82,10 +82,30 @@ public class OpenAIConfig
     /// (Default: <see cref="System.Threading.Timeout.InfiniteTimeSpan"/> — 무제한)
     /// </summary>
     /// <remarks>
+    /// <para>
     /// 기본값(무제한)일 때는 요청 타임아웃을 두지 않습니다. 대신 <see cref="ConnectTimeout"/>이 TCP
     /// 연결 수립을 제한하므로, 응답이 없는 호스트에서 무한정 멈추지는 않습니다.
+    /// </para>
+    /// <para>
+    /// 스트리밍 요청에서는 <b>응답이 시작될 때까지</b>(응답 헤더)만 제한합니다 — 이미 흘러나오는 긴 답변을 자르지
+    /// 않기 위해서입니다. 시작된 스트림이 멈춘 것을 잡으려면 <see cref="StreamIdleTimeout"/>을 씁니다.
+    /// (Chat Completions 클라이언트 기준. Responses 클라이언트에서는 SDK의 <c>NetworkTimeout</c>으로 전달되어
+    /// 네트워크 작업 하나 — 스트림이면 읽기 한 번 — 마다 적용됩니다.)
+    /// </para>
     /// </remarks>
     public TimeSpan Timeout { get; set; } = System.Threading.Timeout.InfiniteTimeSpan;
+
+    /// <summary>
+    /// 스트리밍 응답이 침묵할 수 있는 최대 시간 — 요청 후 첫 이벤트까지, 그리고 이벤트 사이.
+    /// (Default: <see cref="System.Threading.Timeout.InfiniteTimeSpan"/> — 무제한)
+    /// </summary>
+    /// <remarks>
+    /// 넘기면 스트림이 <see cref="TimeoutException"/>으로 끝납니다(메시지가 «stream idle timeout»을 말하므로 요청
+    /// 타임아웃과 구별됩니다). 전체 요청 시한과 달리 느린 스트림(긴 프롬프트 평가 뒤 계속 흐르는 답변)과 죽은 스트림을
+    /// 가릅니다 — 느린 하드웨어의 로컬 서버라면 첫 토큰 전 프롬프트 평가 시간보다 크게 잡습니다. 소비자가 이벤트를
+    /// 처리하는 시간은 세지 않습니다. 버퍼링(비스트리밍) 요청에는 적용되지 않습니다.
+    /// </remarks>
+    public TimeSpan StreamIdleTimeout { get; set; } = System.Threading.Timeout.InfiniteTimeSpan;
 
     /// <summary>
     /// TCP 연결(connect) 타임아웃입니다. (Default: 5초)

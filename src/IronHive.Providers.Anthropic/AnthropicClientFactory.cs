@@ -24,8 +24,9 @@ internal static class AnthropicClientFactory
             options.ExtraHeaders = headers;
         if (config.MaxRetries.HasValue)
             options.MaxRetries = config.MaxRetries.Value;
-        if (config.Timeout != System.Threading.Timeout.InfiniteTimeSpan)
-            options.Timeout = config.Timeout;
+        // Always set: left unset, the SDK applies its own 10-minute default, which contradicts AnthropicConfig.Timeout's
+        // documented default of no limit.
+        options.Timeout = config.Timeout;
 
         if (config.ApiKeyResolver != null && config.HttpClient != null)
             throw ResolvedCredentialHandler.ConflictsWithCustomHttpClient(nameof(AnthropicConfig), nameof(AnthropicConfig.HttpClient));

@@ -62,6 +62,12 @@ public class OpenAICompatibleConfig
     /// </summary>
     public TimeSpan ConnectTimeout { get; set; } = TimeSpan.FromSeconds(3);
 
+    /// <inheritdoc cref="OpenAIConfig.Timeout"/>
+    public TimeSpan Timeout { get; set; } = System.Threading.Timeout.InfiniteTimeSpan;
+
+    /// <inheritdoc cref="OpenAIConfig.StreamIdleTimeout"/>
+    public TimeSpan StreamIdleTimeout { get; set; } = System.Threading.Timeout.InfiniteTimeSpan;
+
     /// <summary>
     /// Extra request headers sent on every request — the uniform slot every IronHive provider config
     /// has. Passed through to the <see cref="OpenAIConfig"/> this configuration converts to, so the
@@ -160,6 +166,8 @@ public class OpenAICompatibleConfig
             // No HttpClient here: the client that receives this config creates and owns one with this connect
             // timeout and no client-level timeout. Handing it one of ours would make it the consumer's — never disposed.
             ConnectTimeout = ConnectTimeout,
+            Timeout = Timeout,
+            StreamIdleTimeout = StreamIdleTimeout,
             MaxRetries = MaxRetries,
         };
     }

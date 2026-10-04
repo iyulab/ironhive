@@ -162,6 +162,12 @@ public class ChatService(IHiveService hive)
 > `HttpClient` 를 직접 주입하는 경우 같은 동작은 `IronHive.Abstractions.Http.ProviderConnect.CreateHandler(timeout)` 로 얻는다.
 > OpenAI-compatible · GPUStack 의 기본 `ConnectTimeout` 은 0.46.1 부터 3 초다 — Windows 가 거부된 연결을 알리는 ~2 초보다 길어야 꺼진 서버가 타임아웃이 아니라 거부로 보고된다.
 
+> **스트림 idle 타임아웃 `StreamIdleTimeout` (0.51.0~)** — 모든 provider config 에 있다. 스트리밍 응답이 이 시간보다 오래
+> 침묵하면(첫 이벤트 전, 또는 이벤트 사이) `TimeoutException`(«stream idle timeout»)으로 끝난다. 전체 요청 시한과 달리
+> 느린 스트림(긴 프롬프트 평가 뒤 흐르는 답변)과 죽은 스트림을 가른다 — 로컬 서버라면 첫 토큰 전 평가 시간보다 크게.
+> 기본 무제한. `OpenAICompatibleConfig` · `GpuStackConfig` 는 이 버전부터 `Timeout` 도 갖는다. 같은 예산을 직접 쓰려면
+> `IronHive.Abstractions.Http.ProviderStreams.WithIdleTimeout`. 상세: [docs/PROVIDERS.md](docs/PROVIDERS.md) 「스트림 idle 타임아웃」.
+
 > **도구 이미지 운반 `CarryImageToolResultsAsUserMessage` (0.49.0~)** — Chat Completions 의 `tool` 메시지는 텍스트만
 > 담고, OpenAI 호환 서버(vLLM · llama.cpp)는 그 자리의 이미지 part 를 거부한다. 기본(꺼짐)은 종전대로 이미지를 자리표시
 > 한 줄로 바꾼다. 켜면 도구 메시지는 텍스트와 `[image image/png — attached in the next message]` 를 갖고, 그 라운드의 도구

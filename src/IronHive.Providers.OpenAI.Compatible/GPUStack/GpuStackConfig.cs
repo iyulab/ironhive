@@ -56,6 +56,12 @@ public class GpuStackConfig
     /// </summary>
     public TimeSpan ConnectTimeout { get; set; } = TimeSpan.FromSeconds(3);
 
+    /// <inheritdoc cref="OpenAIConfig.Timeout"/>
+    public TimeSpan Timeout { get; set; } = System.Threading.Timeout.InfiniteTimeSpan;
+
+    /// <inheritdoc cref="OpenAIConfig.StreamIdleTimeout"/>
+    public TimeSpan StreamIdleTimeout { get; set; } = System.Threading.Timeout.InfiniteTimeSpan;
+
     /// <inheritdoc cref="OpenAICompatibleConfig.TokenLimitParameter"/>
     public TokenLimitParameter TokenLimitParameter { get; set; } = TokenLimitParameter.MaxCompletionTokens;
 
@@ -139,6 +145,8 @@ public class GpuStackConfig
         BaseUrlResolver = BaseUrlResolver,
         ApiKeyResolver = ApiKeyResolver,
         ConnectTimeout = ConnectTimeout,
+        Timeout = Timeout,
+        StreamIdleTimeout = StreamIdleTimeout,
         TokenLimitParameter = TokenLimitParameter,
         CarryImageToolResultsAsUserMessage = CarryImageToolResultsAsUserMessage,
         Headers = Headers,
@@ -161,6 +169,8 @@ public class GpuStackConfig
         ApiKeyPlacement = ApiKeyPlacement,
         // No HttpClient here, as in OpenAICompatibleConfig.ToOpenAI: the receiving client creates and owns one.
         ConnectTimeout = ConnectTimeout,
+        Timeout = Timeout,
+        StreamIdleTimeout = StreamIdleTimeout,
         MaxRetries = MaxRetries,
     };
 }

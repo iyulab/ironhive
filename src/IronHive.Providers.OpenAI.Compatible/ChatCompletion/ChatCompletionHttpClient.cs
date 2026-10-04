@@ -76,18 +76,26 @@ internal sealed class ChatCompletionHttpClient : IDisposable
 
         using var content = JsonContent.Create(request, options: JsonOptions);
         using var httpRequest = _http.CreatePost(content);
+        // OpenAIConfig.Timeout bounds the wait for the response to start, as HttpClient.Timeout does with
+        // ResponseHeadersRead; a long generation that is streaming is not cut off by it. OpenAIConfig.StreamIdleTimeout
+        // bounds every silence: that same wait, then each read of the body.
         using var timeout = _http.CreateTimeoutSource(cancellationToken);
         var token = timeout?.Token ?? cancellationToken;
 
         HttpResponseMessage response;
-        try
+        using (var wait = _http.CreateStreamWaitSource(token))
         {
-            response = await _http.Http.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, token).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
-        {
-            // HttpClient.Timeout (not the caller's token) cut the request short.
-            throw new TimeoutException("The chat completion request timed out.", ex);
+            try
+            {
+                response = await _http.Http.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, wait?.Token ?? token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                // The configured timeout, an injected client's own HttpClient.Timeout, or the idle budget — not the caller.
+                throw wait is { IsCancellationRequested: true } && timeout is not { IsCancellationRequested: true }
+                    ? ProviderStreams.IdleTimeout(_http.StreamIdleTimeout, ex)
+                    : new TimeoutException("The chat completion request timed out.", ex);
+            }
         }
 
         using (response)
@@ -95,21 +103,23 @@ internal sealed class ChatCompletionHttpClient : IDisposable
             if (!response.IsSuccessStatusCode)
                 throw await ChatCompletionExceptionDetector.DetectAsync(response, token).ConfigureAwait(false);
 
-            // The timeout bounds the wait for the response to start, as HttpClient.Timeout does with ResponseHeadersRead;
-            // a long generation that is streaming is not cut off by it.
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
             using var reader = new StreamReader(stream);
 
             string? line;
             while (true)
             {
-                try
+                using (var wait = _http.CreateStreamWaitSource(cancellationToken))
                 {
-                    line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
-                {
-                    throw new TimeoutException("The chat completion request timed out.", ex);
+                    try
+                    {
+                        // Any line counts as the stream being alive, an SSE comment or keep-alive included.
+                        line = await reader.ReadLineAsync(wait?.Token ?? cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception ex) when (wait is { IsCancellationRequested: true } && !cancellationToken.IsCancellationRequested)
+                    {
+                        throw ProviderStreams.IdleTimeout(_http.StreamIdleTimeout, ex);
+                    }
                 }
 
                 if (line is null)

@@ -4,6 +4,25 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
+## 0.51.0 — Unreleased
+
+### Added
+- **`StreamIdleTimeout` on every provider config (`OpenAIConfig`, `OpenAICompatibleConfig`, `GpuStackConfig`,
+  `AnthropicConfig`, `GoogleAIConfig`, `VertexAIConfig`): a streamed response that stays silent longer than the budget —
+  before its first event, or between two events — ends with `TimeoutException` whose message names the stream idle
+  timeout.** A whole-request deadline cannot separate a slow stream from a dead one; the gap between reads can. Default
+  is no limit; buffered requests are unaffected. On the Chat Completions path any line, a keep-alive included, counts as
+  the stream being alive. The shared implementation is `ProviderStreams` (`IronHive.Abstractions.Http`).
+- `Timeout` on `OpenAICompatibleConfig` and `GpuStackConfig`, carried to the client like `ConnectTimeout` — those two
+  configs had no request timeout at all.
+
+### Changed
+- **`OpenAIConfig.Timeout` left at its default now means no limit on the Responses client too.** The SDK applied its own
+  100-second limit to every network operation, each read of a stream included. The Anthropic client likewise no longer
+  inherits the SDK's 10-minute default. Both now follow the documented default.
+- `OpenAIConfig.Timeout` documents what it does on a streaming call: on the Chat Completions path it bounds the wait for
+  the response to start, not the stream.
+
 ## 0.50.0 — 2026-10-04
 
 ### Added

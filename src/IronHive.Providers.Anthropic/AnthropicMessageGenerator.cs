@@ -6,6 +6,7 @@ using Anthropic.Models.Messages;
 using IronHiveMessage = IronHive.Abstractions.Messages.Message;
 using IronHiveMessageRole = IronHive.Abstractions.Messages.MessageRole;
 using IronHive.Abstractions.Extensions;
+using IronHive.Abstractions.Http;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Tools;
@@ -24,6 +25,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
 
     private readonly IAnthropicClient _client;
     private readonly IReadOnlyDictionary<string, AnthropicModelCapabilities>? _capabilityOverrides;
+    private readonly TimeSpan _streamIdleTimeout = System.Threading.Timeout.InfiniteTimeSpan;
 
     public AnthropicMessageGenerator(string apiKey)
         : this(new AnthropicConfig { ApiKey = apiKey })
@@ -31,6 +33,8 @@ public class AnthropicMessageGenerator : IMessageGenerator
 
     public AnthropicMessageGenerator(AnthropicConfig config)
     {
+        ProviderStreams.ThrowIfInvalid(config.StreamIdleTimeout, $"{nameof(AnthropicConfig)}.{nameof(AnthropicConfig.StreamIdleTimeout)}");
+        _streamIdleTimeout = config.StreamIdleTimeout;
         _client = AnthropicClientFactory.Create(config);
         _capabilityOverrides = config.ModelCapabilities is { Count: > 0 } overrides
             ? new Dictionary<string, AnthropicModelCapabilities>(overrides, StringComparer.Ordinal)
@@ -155,7 +159,8 @@ public class AnthropicMessageGenerator : IMessageGenerator
         int index = 0;
         var usage = new MessageTokenUsage();
 
-        await foreach (var evt in _client.Messages.CreateStreaming(req, cancellationToken)
+        await foreach (var evt in ProviderStreams.WithIdleTimeout(
+                ct => _client.Messages.CreateStreaming(req, ct), _streamIdleTimeout, cancellationToken)
             .MapException(ex => AnthropicExceptionMapper.Map(ex, cancellationToken), cancellationToken))
         {
             // 1. 메시지 시작 이벤트

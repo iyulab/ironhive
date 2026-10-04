@@ -88,10 +88,12 @@ public class OpenAIClientFactoryTests
     public void DefaultTimeout_LeavesTheNetworkBudgetUnbounded()
     {
         // No Timeout configured means no ceiling — ConnectTimeout bounds connection establishment
-        // instead, and the default transport's HttpClient.Timeout is infinite (see below).
+        // instead, and the default transport's HttpClient.Timeout is infinite (see below). Left null, the pipeline
+        // would apply its own 100-second default to every network operation — each read of a stream included.
         var options = OpenAIClientFactory.BuildOptions(new OpenAIConfig { ApiKey = "sk-test" });
 
-        options.NetworkTimeout.Should().BeNull();
+        options.NetworkTimeout.Should().Be(OpenAIClientFactory.NoNetworkTimeout);
+        options.NetworkTimeout.Should().BeGreaterThan(TimeSpan.FromDays(24));
     }
 
     [Fact]

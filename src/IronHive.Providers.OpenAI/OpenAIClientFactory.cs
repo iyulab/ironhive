@@ -34,6 +34,9 @@ public static class OpenAIClientFactory
     /// the constructed client exposes none of these values, and a field routed to the wrong slot is
     /// invisible at compile time.
     /// </summary>
+    /// <summary>The longest budget a timer accepts — about 24.8 days, i.e. no limit in practice.</summary>
+    internal static readonly TimeSpan NoNetworkTimeout = TimeSpan.FromMilliseconds(int.MaxValue);
+
     internal static OpenAIClientOptions BuildOptions(OpenAIConfig config)
     {
         var options = new OpenAIClientOptions();
@@ -44,8 +47,12 @@ public static class OpenAIClientFactory
             options.OrganizationId = config.Organization;
         if (!string.IsNullOrWhiteSpace(config.Project))
             options.ProjectId = config.Project;
-        if (config.Timeout != System.Threading.Timeout.InfiniteTimeSpan)
-            options.NetworkTimeout = config.Timeout;
+        // Always set: left unset, the pipeline applies its own 100-second default to every network operation (each
+        // read of a stream included), which contradicts OpenAIConfig.Timeout's documented default of no limit. "No limit"
+        // is the longest finite budget rather than InfiniteTimeSpan: with an infinite one the pipeline stops wrapping a
+        // streamed body in its read-timeout stream, and then disposing a fully read stream that happens to be seekable (a
+        // handler that buffered the body) throws "Content stream position is not at beginning of stream".
+        options.NetworkTimeout = config.Timeout == System.Threading.Timeout.InfiniteTimeSpan ? NoNetworkTimeout : config.Timeout;
         if (config.MaxRetries is { } maxRetries)
         {
             ArgumentOutOfRangeException.ThrowIfNegative(maxRetries, $"{nameof(OpenAIConfig)}.{nameof(OpenAIConfig.MaxRetries)}");
