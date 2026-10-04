@@ -4,7 +4,7 @@ All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness (see
 `docs/CONSTITUTION.md`).
 
-## 0.51.0 — Unreleased
+## 0.51.0 — 2026-10-05
 
 ### Added
 - **`StreamIdleTimeout` on every provider config (`OpenAIConfig`, `OpenAICompatibleConfig`, `GpuStackConfig`,
