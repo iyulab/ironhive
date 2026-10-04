@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## 0.51.1 — Unreleased
+## 0.51.1 — 2026-10-05
 
 ### Fixed
 - **The GoogleAI «two timeouts set» exception message is plain ASCII** (it carried an em dash). A convention test now
