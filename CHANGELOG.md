@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## 0.53.0 — Unreleased
+## 0.53.0 — 2026-10-05
 
 ### Changed
 - **Breaking:** `IMemoryWorker.StartAsync` and `StopAsync` take a `CancellationToken` (optional). A canceled
