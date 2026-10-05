@@ -161,6 +161,16 @@ catch (Exception ex) when (OpenAIErrors.TryMapContextOverflow(ex) is { } overflo
 
 `TryMapContextOverflow(Exception)`은 SDK의 `ClientResultException`(감싼 예외 안에 있어도)만 본다. 스트림 중간의 `error` 이벤트처럼 예외가 없는 메시지는 `TryMapContextOverflow(string)`, 429는 `TryMapRateLimit(Exception)`(`retry-after` → `RetryAfter`).
 
+OpenAI 호환 클라이언트가 받은 그 밖의 HTTP 오류(401·404·5xx 등)는 `ProviderHttpException`이다. `HttpRequestException`을 상속하므로 `StatusCode`로 분기하던 코드는 그대로 동작하고, 서버가 `Retry-After`(초 또는 HTTP 날짜)나 `retry-after-ms`를 보냈으면 `RetryAfter`에 싣는다 — 503 + 힌트는 «잠시 뒤 같은 곳에 다시», 힌트 없는 5xx는 «다른 곳으로»를 가르는 근거다.
+
+```csharp
+catch (ProviderHttpException ex) when (ex.StatusCode == HttpStatusCode.ServiceUnavailable && ex.RetryAfter is { } wait)
+{
+    await Task.Delay(wait, cancellationToken);
+    // retry the same provider
+}
+```
+
 ---
 
 ## IEmbeddingService

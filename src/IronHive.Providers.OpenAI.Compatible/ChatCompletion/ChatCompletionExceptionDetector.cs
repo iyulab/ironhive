@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using IronHive.Abstractions.Exceptions;
@@ -24,9 +25,9 @@ internal static class ChatCompletionExceptionDetector
 {
     /// <summary>
     /// Reads and parses a failed HTTP response's error body, then returns the matching domain
-    /// exception — falling back to <see cref="HttpRequestException"/> carrying the extracted (or,
-    /// failing that, a synthesized status-line) message and the response's
-    /// <see cref="HttpRequestException.StatusCode"/> when the shape isn't recognized.
+    /// exception — falling back to <see cref="ProviderHttpException"/> carrying the extracted (or,
+    /// failing that, a synthesized status-line) message, the response's
+    /// <see cref="HttpRequestException.StatusCode"/> and its retry hint when the shape isn't recognized.
     /// </summary>
     public static async Task<Exception> DetectAsync(HttpResponseMessage response, CancellationToken cancellationToken = default)
     {
@@ -58,8 +59,12 @@ internal static class ChatCompletionExceptionDetector
             };
         }
 
-        // The status is the one fact a caller needs to act on a refusal (401 key, 404 model, 5xx server).
-        return new HttpRequestException(message, inner: null, response.StatusCode);
+        // The status is the one fact a caller needs to act on a refusal (401 key, 404 model, 5xx server), and the
+        // retry hint tells a busy server (503 + Retry-After) from a broken one.
+        return new ProviderHttpException(message, response.StatusCode)
+        {
+            RetryAfter = FindRetryAfter(response),
+        };
     }
 
     /// <summary>
@@ -94,6 +99,12 @@ internal static class ChatCompletionExceptionDetector
 
     private static TimeSpan? FindRetryAfter(HttpResponseMessage response)
     {
+        // OpenAI-style servers send a millisecond hint next to (or instead of) the standard header.
+        if (response.Headers.TryGetValues("retry-after-ms", out var values)
+            && double.TryParse(values.FirstOrDefault(), NumberStyles.Float, CultureInfo.InvariantCulture, out var millis)
+            && millis >= 0)
+            return TimeSpan.FromMilliseconds(millis);
+
         var retryAfter = response.Headers.RetryAfter;
         if (retryAfter is null)
             return null;

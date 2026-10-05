@@ -3,6 +3,17 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## 0.52.0 — Unreleased
+
+### Added
+- **An HTTP error from the OpenAI-compatible client keeps the server's retry hint.** Every status other than 429 and a
+  context-window overflow now throws `ProviderHttpException` (`IronHive.Abstractions.Exceptions`): an
+  `HttpRequestException` with the same `StatusCode`, plus `RetryAfter` from `Retry-After` (seconds or an HTTP date) or
+  `retry-after-ms`. A 503 from a busy self-hosted server (vLLM, llama-server, a gateway shedding load) was a bare
+  `HttpRequestException` and the hint was lost, so a caller could not tell "wait a second" from "go elsewhere".
+  Embeddings from the same client throw it too. Code that catches `HttpRequestException` by status is unaffected; a
+  test asserting the exact type `HttpRequestException` sees the subclass.
+
 ## 0.51.1 — 2026-10-05
 
 ### Fixed

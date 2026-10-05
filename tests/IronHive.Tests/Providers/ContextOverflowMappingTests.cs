@@ -78,9 +78,45 @@ public class ContextOverflowMappingTests
 
         var ex = await ChatCompletionExceptionDetector.DetectAsync(response, TestContext.Current.CancellationToken);
 
-        var refusal = ex.Should().BeOfType<HttpRequestException>().Subject;
+        var refusal = ex.Should().BeOfType<ProviderHttpException>().Subject;
         refusal.StatusCode.Should().Be(HttpStatusCode.NotFound);
         refusal.Message.Should().Be("nope");
+        refusal.RetryAfter.Should().BeNull();
+    }
+
+    // A busy server answers 503 with Retry-After: the hint is the difference between "wait a second" and "go elsewhere".
+    [Theory]
+    [InlineData(503)]
+    [InlineData(502)]
+    [InlineData(500)]
+    public async Task Compatible_Server_Error_Keeps_Its_Retry_Hint(int status)
+    {
+        using var response = JsonResponse((HttpStatusCode)status,
+            """{"error":{"message":"refused","type":"server_error"}}""");
+        response.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(2));
+
+        var ex = await ChatCompletionExceptionDetector.DetectAsync(response, TestContext.Current.CancellationToken);
+
+        var failure = ex.Should().BeOfType<ProviderHttpException>().Subject;
+        failure.StatusCode.Should().Be((HttpStatusCode)status);
+        failure.RetryAfter.Should().Be(TimeSpan.FromSeconds(2));
+        ex.Should().BeAssignableTo<HttpRequestException>("code that handles HTTP failures by status keeps working");
+    }
+
+    [Fact]
+    public async Task Compatible_Retry_Hint_Reads_Milliseconds_And_Dates()
+    {
+        using var millis = JsonResponse(HttpStatusCode.ServiceUnavailable, """{"error":{"message":"busy"}}""");
+        millis.Headers.TryAddWithoutValidation("retry-after-ms", "1500");
+        using var date = JsonResponse(HttpStatusCode.ServiceUnavailable, """{"error":{"message":"busy"}}""");
+        date.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(DateTimeOffset.UtcNow.AddMinutes(1));
+
+        var fromMillis = await ChatCompletionExceptionDetector.DetectAsync(millis, TestContext.Current.CancellationToken);
+        var fromDate = await ChatCompletionExceptionDetector.DetectAsync(date, TestContext.Current.CancellationToken);
+
+        fromMillis.Should().BeOfType<ProviderHttpException>().Which.RetryAfter.Should().Be(TimeSpan.FromMilliseconds(1500));
+        fromDate.Should().BeOfType<ProviderHttpException>().Which.RetryAfter.Should()
+            .BeGreaterThan(TimeSpan.FromSeconds(50)).And.BeLessThanOrEqualTo(TimeSpan.FromMinutes(1));
     }
 
     [Fact]
@@ -91,18 +127,18 @@ public class ContextOverflowMappingTests
 
         var ex = await ChatCompletionExceptionDetector.DetectAsync(response, TestContext.Current.CancellationToken);
 
-        ex.Should().BeOfType<HttpRequestException>().Which.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        ex.Should().BeOfType<ProviderHttpException>().Which.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
     }
 
     [Fact]
-    public async Task Compatible_Unrelated_Error_Falls_Back_To_HttpRequestException()
+    public async Task Compatible_Unrelated_Error_Falls_Back_To_ProviderHttpException()
     {
         using var response = JsonResponse(HttpStatusCode.BadRequest,
             """{"error":{"message":"Invalid API key provided","type":"invalid_request_error","code":"invalid_api_key"}}""");
 
         var ex = await ChatCompletionExceptionDetector.DetectAsync(response, TestContext.Current.CancellationToken);
 
-        ex.Should().BeOfType<HttpRequestException>().Which.Message.Should().Be("Invalid API key provided");
+        ex.Should().BeOfType<ProviderHttpException>().Which.Message.Should().Be("Invalid API key provided");
     }
 
     private static HttpResponseMessage JsonResponse(HttpStatusCode statusCode, string json)

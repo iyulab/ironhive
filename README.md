@@ -33,7 +33,7 @@
 - **공급자 고유 필드** — `MessageRequest.ExtraBody`(임베딩은 `EmbeddingRequestOptions.ExtraBody`, `EmbedBatchAsync(model, inputs, options)`) 가 요청 본문에 합쳐지고, 매핑되지 않은 응답 필드(예: llama.cpp `timings`)가 `MessageResponse.ExtraBody` 로 돌아온다(OpenAI Compatible, [docs/PROVIDERS.md](docs/PROVIDERS.md))
 - **게이트웨이 자격증명 형태** — OpenAI 와이어(OpenAI · OpenAI Compatible · GPUStack)의 키 슬롯이 `ApiKeyPlacement`(`CredentialPlacement.Authorization("Basic")` · `.Authorization(null)` · `.InHeader("api-key")`, 기본 `Bearer`)로 키를 보낼 헤더와 scheme 을 정한다 — 키는 계속 `ApiKey`/`ApiKeyResolver` 에 있다([docs/PROVIDERS.md](docs/PROVIDERS.md))
 - **토큰 로그 확률** — `MessageRequest.LogProbabilities`(상위 대안 0~20)로 출력 토큰별 로그 확률을 받는다(`MessageResponse.LogProbabilities`, 스트리밍 done 프레임에도; OpenAI Compatible · Google AI, [docs/PROVIDERS.md](docs/PROVIDERS.md))
-- **도메인 예외** — 컨텍스트 윈도우 초과 시 프로바이더별 오류를 `ContextOverflowException`(`ContextWindow`·`RequestTokens` 포함)으로 정규화 — 문자열 파싱 없이 `catch`로 압축·복구 로직 작성 가능. 프로바이더 대신 자기 OpenAI SDK 클라이언트(또는 `Microsoft.Extensions.AI.OpenAI`)를 쓰는 경우 `OpenAIErrors.TryMapContextOverflow(ex)`/`TryMapRateLimit(ex)`(`IronHive.Providers.OpenAI`)로 같은 매핑을 받는다
+- **도메인 예외** — 컨텍스트 윈도우 초과 시 프로바이더별 오류를 `ContextOverflowException`(`ContextWindow`·`RequestTokens` 포함)으로 정규화 — 문자열 파싱 없이 `catch`로 압축·복구 로직 작성 가능. 프로바이더 대신 자기 OpenAI SDK 클라이언트(또는 `Microsoft.Extensions.AI.OpenAI`)를 쓰는 경우 `OpenAIErrors.TryMapContextOverflow(ex)`/`TryMapRateLimit(ex)`(`IronHive.Providers.OpenAI`)로 같은 매핑을 받는다. OpenAI 호환 클라이언트(`IronHive.Providers.OpenAI.Compatible`)의 그 밖의 HTTP 오류는 `ProviderHttpException` — `HttpRequestException`(같은 `StatusCode`)이면서 서버가 보낸 `Retry-After`/`retry-after-ms` 를 `RetryAfter` 로 싣는다(503 + 힌트 = «기다려라», 힌트 없음 = 다른 곳으로)
 
 ## 왜 IronHive인가
 
