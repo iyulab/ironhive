@@ -15,15 +15,16 @@ namespace IronHive.Tests;
 /// </remarks>
 public class PublicApiConventionTests
 {
+    // Kept (2026-10-05): MapException awaits a task it is handed (the token belongs to whoever started it);
+    // DisposeSafelyAsync wraps DisposeAsync, which takes no token.
     private static readonly string[] KnownUncancellable =
     [
         "IronHive.Abstractions.Extensions.ExceptionExtensions.MapException(Task<T>, Func<Exception, Exception>)",
-        "IronHive.Abstractions.Memory.IMemoryWorker.StartAsync()",
-        "IronHive.Abstractions.Memory.IMemoryWorker.StopAsync(Boolean)",
-        "IronHive.Core.Storages.LocalQueueStorage.RestoreAsync()",
         "IronHive.Core.Utilities.DisposalHelper.DisposeSafelyAsync(T)",
     ];
 
+    // Kept (2026-10-05): an orchestration's result is the run's report (each agent's output, which steps failed), read
+    // by the caller as data; the call throws for its own failures (cancellation, invalid configuration).
     private static readonly string[] KnownResultReturns =
     [
         "IronHive.Abstractions.Agent.Orchestration.IAgentOrchestrator.ExecuteAsync(IEnumerable<Message>, CancellationToken)",

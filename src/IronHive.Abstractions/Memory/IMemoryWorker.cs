@@ -30,7 +30,8 @@ public interface IMemoryWorker : IDisposable
     /// <summary>
     /// 설정에 따라 작업을 수행합니다.
     /// </summary>
-    Task StartAsync();
+    /// <param name="cancellationToken">시작(큐 소비자 생성)을 취소합니다.</param>
+    Task StartAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 모든 작업을 중지시키고 대기합니다.
@@ -39,5 +40,8 @@ public interface IMemoryWorker : IDisposable
     /// true이면 현재 작업중인 작업들을 강제로 중지합니다.
     /// false이면 현재 작업들이 완료될 때까지 기다린후 중지합니다.
     /// </param>
-    Task StopAsync(bool force = false);
+    /// <param name="cancellationToken">
+    /// 정상 중지의 대기를 끝냅니다 — 취소되면 남은 작업을 <paramref name="force"/>와 같이 강제로 중지합니다.
+    /// </param>
+    Task StopAsync(bool force = false, CancellationToken cancellationToken = default);
 }

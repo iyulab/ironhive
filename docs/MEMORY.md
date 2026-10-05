@@ -72,6 +72,7 @@ worker.Progressed += (_, args) =>
 // 워커 정지 (graceful)
 await worker.StopAsync(force: false);  // 현재 작업 완료 후 정지
 await worker.StopAsync(force: true);   // 즉시 정지
+await worker.StopAsync(cancellationToken: stoppingToken);  // 기다리다 토큰이 취소되면 남은 작업도 취소 (호스트의 StopAsync 관례)
 ```
 
 ---

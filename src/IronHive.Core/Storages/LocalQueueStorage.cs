@@ -48,7 +48,7 @@ public class LocalQueueStorage : IQueueStorage
     /// <summary>
     /// 큐에 처리되지 않은 메시지(lock/dead)들을 다시 복원후, 복원된 메시지들의 본문을 반환합니다.
     /// </summary>
-    public async Task<IEnumerable<T>> RestoreAsync<T>()
+    public async Task<IEnumerable<T>> RestoreAsync<T>(CancellationToken cancellationToken = default)
     {
         var targets = new List<string>();
         targets.AddRange(Directory.GetFiles(DirectoryPath, $"*"));
@@ -69,7 +69,7 @@ public class LocalQueueStorage : IQueueStorage
                     File.Move(filePath, queueFilePath, overwrite: false);
                 }
                 
-                var bytes = await File.ReadAllBytesAsync(queueFilePath);
+                var bytes = await File.ReadAllBytesAsync(queueFilePath, cancellationToken);
                 var payload = JsonSerializer.Deserialize<LocalQueuePayload<T>>(bytes, _jsonOptions);
                 if (payload == null)
                     continue;

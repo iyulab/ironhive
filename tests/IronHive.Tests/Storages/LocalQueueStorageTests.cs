@@ -263,7 +263,7 @@ public class LocalQueueStorageTests : IDisposable
         await _storage.EnqueueAsync("msg1", TestContext.Current.CancellationToken);
         await _storage.EnqueueAsync("msg2", TestContext.Current.CancellationToken);
 
-        var restored = await _storage.RestoreAsync<string>();
+        var restored = await _storage.RestoreAsync<string>(TestContext.Current.CancellationToken);
 
         restored.Should().HaveCount(2);
     }

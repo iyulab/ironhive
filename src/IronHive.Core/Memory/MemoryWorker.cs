@@ -48,7 +48,7 @@ public class MemoryWorker : IMemoryWorker
     }
 
     /// <inheritdoc />
-    public async Task StartAsync()
+    public async Task StartAsync(CancellationToken cancellationToken = default)
     {
         if (Interlocked.CompareExchange(ref _flag, 1, 0) != 0)
             return;
@@ -58,18 +58,18 @@ public class MemoryWorker : IMemoryWorker
 
         _consumer = await _queue.CreateConsumerAsync<MemoryContext>(
             onReceived: OnReceivedMessageAsync,
-            cancellationToken: default).ConfigureAwait(false);
+            cancellationToken: cancellationToken).ConfigureAwait(false);
 
-        await _consumer.StartAsync().ConfigureAwait(false);
+        await _consumer.StartAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task StopAsync(bool force = false)
+    public async Task StopAsync(bool force = false, CancellationToken cancellationToken = default)
     {
         // 큐 소비자를 중지하고 해제합니다.
         if (_consumer is not null)
         {
-            await _consumer.StopAsync().ConfigureAwait(false);
+            await _consumer.StopAsync(cancellationToken).ConfigureAwait(false);
             _consumer.Dispose();
             _consumer = null;
         }
@@ -84,7 +84,19 @@ public class MemoryWorker : IMemoryWorker
         if (!force && !_tasks.IsEmpty)
         {
             Task[] running = _tasks.Keys.ToArray();
-            try { await Task.WhenAll(running).ConfigureAwait(false); } catch { /* 개별 실패 무시 */ }
+            try
+            {
+                await Task.WhenAll(running).WaitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // 호출자가 대기를 끝냈다: 남은 작업은 강제 중지와 같이 취소한다(호스트의 StopAsync 관례).
+                _cts.Cancel();
+            }
+            catch
+            {
+                /* 개별 실패 무시 */
+            }
         }
 
         // 게이트웨이 해제

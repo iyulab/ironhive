@@ -3,6 +3,14 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## 0.53.0 — Unreleased
+
+### Changed
+- **Breaking:** `IMemoryWorker.StartAsync` and `StopAsync` take a `CancellationToken` (optional). A canceled
+  `StopAsync` stops waiting for running memory tasks and cancels them, as `force: true` does — the hosted-service
+  convention for a stop that runs out of time. Implementations of `IMemoryWorker` add the parameter.
+- `LocalQueueStorage.RestoreAsync<T>` takes an optional `CancellationToken`.
+
 ## 0.52.0 — 2026-10-05
 
 ### Added
