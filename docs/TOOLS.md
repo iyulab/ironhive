@@ -22,7 +22,9 @@ public interface ITool
 
 ## FunctionTool (권장)
 
-`[FunctionTool]` 어트리뷰트로 메서드를 도구로 변환합니다.
+`[FunctionTool]` 어트리뷰트로 메서드를 도구로 변환합니다. `FunctionTool` · `FunctionToolFactory` · `[FunctionTool]` ·
+`[FromServices]` 는 `IronHive.Abstractions`(`IronHive.Abstractions.Tools`)에 있다 — 도구를 만들기만 하는 패키지는
+`IronHive.Core` 를 참조하지 않아도 된다(Microsoft.Extensions.AI 가 `AIFunctionFactory` 를 Abstractions 에 두는 것과 같다).
 
 ### 기본 사용법
 

@@ -1,5 +1,4 @@
 ﻿using IronHive.Abstractions.Json;
-using IronHive.Abstractions.Tools;
 using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -8,7 +7,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Schema;
 
-namespace IronHive.Core.Tools;
+namespace IronHive.Abstractions.Tools;
 
 /// <summary>
 /// FunctionTool을 생성하는 팩토리.

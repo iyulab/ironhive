@@ -14,6 +14,13 @@ changes are expected and used freely for structural correctness.
   Embeddings from the same client throw it too. Code that catches `HttpRequestException` by status is unaffected; a
   test asserting the exact type `HttpRequestException` sees the subclass.
 
+### Changed
+- **Breaking:** `FunctionTool`, `FunctionToolFactory`, `FunctionToolAttribute` and `FromServicesAttribute` moved from
+  `IronHive.Core` (`IronHive.Core.Tools`) to `IronHive.Abstractions` (`IronHive.Abstractions.Tools`). A package that
+  only turns methods into tools no longer needs `IronHive.Core` and the dependencies it brings (OpenXml, PdfPig,
+  SQLite, Scriban, …). Migration: `using IronHive.Core.Tools;` → `using IronHive.Abstractions.Tools;` (type names
+  unchanged; keep the old using if you also use `ToolCollection`, which stays in Core).
+
 ## 0.51.1 — 2026-10-05
 
 ### Fixed

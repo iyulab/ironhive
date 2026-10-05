@@ -3,6 +3,7 @@ using IronHive.Abstractions.Messages;
 using IronHive.Core.Extensions;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Core;
+using IronHive.Abstractions.Tools;
 using IronHive.Core.Tools;
 using IronHive.Providers.Anthropic;
 using IronHive.Providers.GoogleAI;

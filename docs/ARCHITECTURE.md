@@ -252,6 +252,7 @@ provider 가 멀티턴 연속성을 위해 붙이는 **서명**은 두 자리로
 ```
 src/
 ├── IronHive.Abstractions/           # 인터페이스, DTO, enum
+│   ├── Tools/                       # ITool, FunctionTool, FunctionToolFactory, [FunctionTool]
 ├── IronHive.Core/                   # 핵심 구현
 │   ├── Agent/                       # BasicAgent, 미들웨어, 오케스트레이터
 │   │   └── Orchestration/           # 6개 오케스트레이터 + 빌더 + 체크포인트
@@ -260,7 +261,7 @@ src/
 │   ├── Microsoft/                   # M.E.AI 어댑터
 │   ├── Services/                    # 서비스 구현체
 │   ├── Storages/                    # 로컬 파일/벡터/큐 구현체
-│   ├── Tools/                       # FunctionTool, FunctionToolFactory
+│   ├── Tools/                       # ToolCollection
 │   ├── Utilities/                   # HiveTelemetry, MessageSerializer 등
 │   └── Workflow/                    # 워크플로우 엔진
 ├── IronHive.Providers.*/            # LLM 프로바이더

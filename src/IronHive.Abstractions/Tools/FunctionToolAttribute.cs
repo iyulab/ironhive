@@ -1,4 +1,4 @@
-﻿namespace IronHive.Core.Tools;
+﻿namespace IronHive.Abstractions.Tools;
 
 /// <summary>
 /// 메서드에 부착할 수 있는 도구 속성(Attribute)입니다.

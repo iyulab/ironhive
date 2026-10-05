@@ -3,7 +3,6 @@ using System.Text.Json;
 using AwesomeAssertions;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Tools;
-using IronHive.Core.Tools;
 
 namespace IronHive.Tests.Tools;
 
