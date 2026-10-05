@@ -56,7 +56,7 @@ public class GoogleAIModelFinder : IModelFinder
             var model = await _client.Models.GetAsync(modelId, cancellationToken: cancellationToken);
             return ConvertToModelCard(model);
         }
-        catch
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
             return null;
         }

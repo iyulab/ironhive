@@ -66,7 +66,7 @@ public class AnthropicModelFinder : IModelFinder
                 CreatedAt = model.CreatedAt.UtcDateTime,
             };
         }
-        catch
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
             return null;
         }

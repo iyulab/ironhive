@@ -105,7 +105,7 @@ public class McpSession : IAsyncDisposable
 
             return true;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
             UpdateState(McpConnectionState.Errored, ex);
             return false;
@@ -149,7 +149,7 @@ public class McpSession : IAsyncDisposable
 
             UpdateState(McpConnectionState.Connected);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
             UpdateState(McpConnectionState.Errored, ex);
         }
@@ -177,7 +177,7 @@ public class McpSession : IAsyncDisposable
             
             UpdateState(McpConnectionState.Disconnected);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
             UpdateState(McpConnectionState.Errored, ex);
         }
@@ -217,7 +217,7 @@ public class McpSession : IAsyncDisposable
 
             UpdateState(McpConnectionState.Connected);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
             UpdateState(McpConnectionState.Errored, ex);
         }

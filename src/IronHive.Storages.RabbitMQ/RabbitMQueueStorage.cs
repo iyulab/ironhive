@@ -74,7 +74,7 @@ public partial class RabbitMQueueStorage : IQueueStorage
                     };
                     await onReceived(msg);
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
                 {
                     if (_logger is not null)
                         LogConsumerError(_logger, ex, QueueName);

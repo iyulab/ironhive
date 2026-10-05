@@ -481,7 +481,7 @@ public class MessageService : IMessageService
                 await Task.WhenAll(tasks).ConfigureAwait(false);
                 channel.Writer.Complete();
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
             {
                 channel.Writer.Complete(ex);
             }

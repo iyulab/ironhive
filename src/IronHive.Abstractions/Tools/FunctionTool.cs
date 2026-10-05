@@ -352,7 +352,7 @@ public sealed class FunctionTool : ITool
                     var disposeResult = disposeAsync.Invoke(enumerator, null);
                     await (ValueTask)disposeResult!;
                 }
-                catch
+                catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
                 {
                     // finally 블록 내 예외 무시 (CA2219)
                 }

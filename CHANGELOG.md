@@ -3,6 +3,14 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## 0.53.1 — Unreleased
+
+### Fixed
+- **Cancelling a call now cancels it.** 11 method(s) that take a `CancellationToken` caught every exception to
+  return a fallback (`null`, an empty result, a failure value) or to log and continue, and treated the caller's own
+  cancellation the same way. They now let the caller's `OperationCanceledException` through; other failures behave
+  as before. For example, `FindModelAsync` on the OpenAI, Anthropic and Google AI finders returned `null` («no such model») for a lookup the caller cancelled.
+
 ## 0.53.0 — 2026-10-05
 
 ### Changed

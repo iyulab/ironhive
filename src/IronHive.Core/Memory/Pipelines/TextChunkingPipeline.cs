@@ -373,7 +373,7 @@ public partial class TextChunkingPipeline : IMemoryPipeline<TextChunkingPipeline
             return await _embedder.CountTokensAsync(provider, model, text, cancellationToken)
                 .ConfigureAwait(false);
         }
-        catch
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
             // 토큰 카운트 실패 시 문자 수 기반 추정 (대략 4자 = 1토큰)
             return text.Length / 4;
