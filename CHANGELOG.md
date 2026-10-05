@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## 0.53.1 — Unreleased
+## 0.53.1 — 2026-10-06
 
 ### Fixed
 - **Cancelling a call now cancels it.** 11 method(s) that take a `CancellationToken` caught every exception to
