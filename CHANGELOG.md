@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## 0.52.0 — Unreleased
+## 0.52.0 — 2026-10-05
 
 ### Added
 - **An HTTP error from the OpenAI-compatible client keeps the server's retry hint.** Every status other than 429 and a
