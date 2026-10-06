@@ -328,6 +328,9 @@ public class ChatClientAdapter : IChatClient
 
             request.ToolChoice = ToToolChoice(options.ToolMode);
             request.AllowParallelToolCalls = options.AllowMultipleToolCalls;
+            // A caller that watches argument fragments also needs the provider to send them as written.
+            request.StreamToolArguments = options.AdditionalProperties is { } extra
+                && extra.TryGetValue(StreamToolArgumentsKey, out var streamArguments) && streamArguments is true;
 
             // M.E.AI carries system instructions in two places: a System-role message inside the
             // conversation, and Instructions on the options. Both are the caller asking for the same

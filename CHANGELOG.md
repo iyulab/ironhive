@@ -3,6 +3,17 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## 0.56.0 — Unreleased
+
+### Added
+- **Anthropic streams a tool call's arguments as they are written when asked.** New
+  `MessageGenerationRequest.StreamToolArguments` (default `false`); `ChatClientAdapter` sets it when the request carries
+  `StreamToolArgumentsKey`. The Anthropic provider then marks every tool sent with `eager_input_streaming`. Before, the
+  API buffered and validated each tool input and sent a long argument in one piece at the end of the call, so
+  `FunctionCallDeltaContent` arrived all at once. The server no longer validates such input: a call can arrive as invalid
+  JSON or cut off at the token limit, and it is parsed and refused as an unparseable call as before. Chat Completions and
+  Responses already stream fragments; Google AI sends calls whole.
+
 ## 0.55.1 — 2026-10-06
 
 ### Fixed

@@ -99,6 +99,16 @@ public class MessageGenerationRequest
     public bool? AllowParallelToolCalls { get; set; }
 
     /// <summary>
+    /// Asks the provider to stream each tool call's arguments as the model writes them, for a caller that shows a long
+    /// argument while it is produced. Chat Completions and Responses stream argument fragments anyway and need nothing.
+    /// Anthropic buffers and validates a tool's input before streaming it unless the tool is marked
+    /// <c>eager_input_streaming</c>, which this sets on every tool sent; the server then does not validate the input, so
+    /// a call can arrive as invalid JSON or cut off at the token limit — the complete call is parsed by the caller as
+    /// before. Google AI sends each call whole and ignores it. Default <see langword="false"/>.
+    /// </summary>
+    public bool StreamToolArguments { get; set; }
+
+    /// <summary>
     /// 구조화 출력 설정입니다. null이면 기본 텍스트 출력입니다.
     /// </summary>
     public OutputFormat? OutputFormat { get; set; }

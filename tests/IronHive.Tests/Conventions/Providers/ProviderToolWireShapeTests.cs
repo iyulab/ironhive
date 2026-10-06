@@ -198,6 +198,22 @@ public class ProviderToolWireShapeTests
         AnthropicParams(Request("claude-sonnet-4-5", Tool(null))).TryGetProperty("tool_choice", out _).Should().BeFalse();
     }
 
+    [Fact]
+    public void Anthropic_StreamToolArguments_MarksEveryToolForEagerInputStreaming()
+    {
+        var streaming = Request("claude-sonnet-4-5", Tool(null));
+        streaming.Tools = new ToolCollection([Tool(null), Tool(null, name: "write_file")]);
+        streaming.StreamToolArguments = true;
+
+        var tools = AnthropicParams(streaming).GetProperty("tools").EnumerateArray().ToList();
+        tools.Should().HaveCount(2);
+        tools.Should().OnlyContain(tool => tool.GetProperty("eager_input_streaming").GetBoolean());
+
+        // Off by default: the API keeps validating the input before it streams it.
+        AnthropicParams(Request("claude-sonnet-4-5", Tool(null))).GetProperty("tools")[0]
+            .TryGetProperty("eager_input_streaming", out _).Should().BeFalse();
+    }
+
     // ── (b) replayed provider-private continuity values ──────────────────────────────────────────
 
     [Fact]

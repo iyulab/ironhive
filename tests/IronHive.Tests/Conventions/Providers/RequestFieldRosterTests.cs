@@ -38,6 +38,7 @@ public class RequestFieldRosterTests
             ["TopK"] = Ignored("the Responses API has no top_k"),
             ["StopSequences"] = Carried, // the Responses API has no stop parameter; kept on the client (StopSequenceFilter)
             ["AllowParallelToolCalls"] = Carried,
+            ["StreamToolArguments"] = Ignored("the Responses API streams argument fragments without being asked"),
         }),
         ["Anthropic"] = ("src/IronHive.Providers.Anthropic/AnthropicMessageGenerator.cs", new()
         {
@@ -49,6 +50,7 @@ public class RequestFieldRosterTests
             ["TopP"] = Ignored("deprecated by Anthropic; newer models answer any value with 400"),
             ["TopK"] = Ignored("deprecated by Anthropic; newer models answer any value with 400"),
             ["AllowParallelToolCalls"] = Carried,
+            ["StreamToolArguments"] = Carried,
         }),
         ["Google AI"] = ("src/IronHive.Providers.GoogleAI/GoogleAIMessageGenerator.cs", new()
         {
@@ -58,6 +60,7 @@ public class RequestFieldRosterTests
             ["Tools"] = Carried, ["ToolChoice"] = Carried, ["OutputFormat"] = Carried,
             ["ExtraBody"] = Rejected, ["LogProbabilities"] = Rejected,
             ["AllowParallelToolCalls"] = Ignored("the Gemini API has no control over parallel function calls"),
+            ["StreamToolArguments"] = Ignored("the Gemini API sends each function call whole"),
         }),
         ["OpenAI-compatible (Chat Completions)"] = ("src/IronHive.Providers.OpenAI.Compatible/ChatCompletion/ChatCompletionMessageGenerator.cs", new()
         {
@@ -67,6 +70,7 @@ public class RequestFieldRosterTests
             ["ExtraBody"] = Carried, ["LogProbabilities"] = Carried,
             ["ThinkingOutput"] = Ignored("Chat Completions has no field for it; reasoning is returned as the server sends it"),
             ["AllowParallelToolCalls"] = Carried,
+            ["StreamToolArguments"] = Ignored("Chat Completions streams argument fragments without being asked"),
         }),
     };
 

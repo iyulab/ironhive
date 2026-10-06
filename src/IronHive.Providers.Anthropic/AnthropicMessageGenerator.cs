@@ -543,7 +543,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
             : request.Tools;
         var tools = toolSource?.Select(t =>
         {
-            ToolUnion toolUnion = new Tool
+            var tool = new Tool
             {
                 Name = t.UniqueName,
                 Description = t.Description,
@@ -552,6 +552,9 @@ public class AnthropicMessageGenerator : IMessageGenerator
                 // Gating on JsonObject alone sent every bridge and MCP tool with an empty schema.
                 InputSchema = InputSchema.FromRawUnchecked(AnthropicHelper.ToInputSchema(t.Parameters))
             };
+            // Without it the API buffers and validates the whole input before streaming any of it, so a long argument
+            // arrives in one piece at the end of the call. Set only when asked: the SDK writes a null value as a key.
+            ToolUnion toolUnion = request.StreamToolArguments ? tool with { EagerInputStreaming = true } : tool;
             return toolUnion;
         })?.ToList();
 

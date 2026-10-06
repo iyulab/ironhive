@@ -1054,6 +1054,28 @@ public class ChatClientAdapterTests : IDisposable
             .Which.Id.Should().Be("tool-1");
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task GetStreamingResponseAsync_ToolArgumentStreamingSwitch_ReachesTheRequest(bool on)
+    {
+        var captured = SetupStreamingGeneratorCapturing([new StreamingMessageBeginResponse()]);
+        var options = new ChatOptions
+        {
+            AdditionalProperties = on
+                ? new AdditionalPropertiesDictionary { [ChatClientAdapter.StreamToolArgumentsKey] = true }
+                : null
+        };
+
+        await foreach (var _ in _adapter.GetStreamingResponseAsync([new(ChatRole.User, "make an app")], options,
+            TestContext.Current.CancellationToken))
+        {
+        }
+
+        // The provider is asked to stream the arguments as written (Anthropic otherwise buffers each tool input whole).
+        captured().StreamToolArguments.Should().Be(on);
+    }
+
     [Fact]
     public async Task GetStreamingResponseAsync_ErrorChunk_ThrowsInvalidOperation()
     {
