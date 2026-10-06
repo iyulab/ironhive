@@ -3,6 +3,16 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## 0.55.0 — Unreleased
+
+### Added
+- **Tool-call arguments can stream while the model writes them.** With
+  `ChatOptions.AdditionalProperties[ChatClientAdapter.StreamToolArgumentsKey] = true`, `ChatClientAdapter`'s streaming
+  response also yields `FunctionCallDeltaContent` (`CallId`, `Name` on the first piece, `ArgumentsFragment` — the provider's
+  raw partial JSON) for Chat Completions, Responses and Anthropic. The complete `FunctionCallContent` follows as before.
+  Off by default: generic `IChatClient` middleware does not know the new content type. Fragments that come back in chat
+  history are not sent to the provider.
+
 ## 0.54.0 — 2026-10-06
 
 ### Removed

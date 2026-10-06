@@ -976,6 +976,84 @@ public class ChatClientAdapterTests : IDisposable
         fc.Arguments!["city"].Should().Be("Seoul");
     }
 
+    private static List<StreamingMessageResponse> FragmentedToolCall() =>
+    [
+        new StreamingMessageBeginResponse(),
+        new StreamingContentAddedResponse
+        {
+            Index = 0,
+            Content = new ToolMessageContent { Id = "tool-1", Name = "propose_app", IsApproved = true }
+        },
+        new StreamingContentDeltaResponse { Index = 0, Delta = new ToolDeltaContent { Input = "{\"html\":\"<h1>" } },
+        new StreamingContentDeltaResponse { Index = 0, Delta = new ToolDeltaContent { Input = "Hi</h1>\"}" } },
+        new StreamingContentCompletedResponse { Index = 0 }
+    ];
+
+    [Fact]
+    public async Task GetStreamingResponseAsync_ToolArgumentStreamingOn_EmitsFragmentsThenTheCompleteCall()
+    {
+        SetupStreamingGenerator(FragmentedToolCall());
+        var options = new ChatOptions
+        {
+            AdditionalProperties = new AdditionalPropertiesDictionary { [ChatClientAdapter.StreamToolArgumentsKey] = true }
+        };
+
+        var updates = new List<ChatResponseUpdate>();
+        await foreach (var update in _adapter.GetStreamingResponseAsync([new(ChatRole.User, "make an app")], options,
+            TestContext.Current.CancellationToken))
+        {
+            updates.Add(update);
+        }
+
+        var deltas = updates.SelectMany(u => u.Contents).OfType<FunctionCallDeltaContent>().ToList();
+        deltas.Should().HaveCount(3);
+        deltas.Should().AllSatisfy(d => d.CallId.Should().Be("tool-1"));
+        deltas[0].Name.Should().Be("propose_app");
+        deltas.Skip(1).Should().AllSatisfy(d => d.Name.Should().BeNull());
+        string.Concat(deltas.Select(d => d.ArgumentsFragment)).Should().Be("{\"html\":\"<h1>Hi</h1>\"}");
+
+        var complete = updates.Last().Contents.OfType<FunctionCallContent>().Single();
+        complete.CallId.Should().Be("tool-1");
+        complete.Arguments!["html"]!.ToString().Should().Be("<h1>Hi</h1>");
+    }
+
+    [Fact]
+    public async Task GetStreamingResponseAsync_ToolArgumentStreamingOff_EmitsOnlyTheCompleteCall()
+    {
+        SetupStreamingGenerator(FragmentedToolCall());
+
+        var updates = new List<ChatResponseUpdate>();
+        await foreach (var update in _adapter.GetStreamingResponseAsync([new(ChatRole.User, "make an app")],
+            cancellationToken: TestContext.Current.CancellationToken))
+        {
+            updates.Add(update);
+        }
+
+        updates.SelectMany(u => u.Contents).OfType<FunctionCallDeltaContent>().Should().BeEmpty();
+        updates.Should().ContainSingle().Which.Contents.OfType<FunctionCallContent>().Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task GetStreamingResponseAsync_HistoryWithFragments_SendsOnlyTheCompleteCall()
+    {
+        var captured = SetupStreamingGeneratorCapturing([new StreamingMessageBeginResponse()]);
+        var assistant = new ChatMessage(ChatRole.Assistant,
+        [
+            new FunctionCallDeltaContent("tool-1", "{\"html\":", "propose_app"),
+            new FunctionCallDeltaContent("tool-1", "\"x\"}"),
+            new FunctionCallContent("tool-1", "propose_app", new Dictionary<string, object?> { ["html"] = "x" }),
+        ]);
+
+        await foreach (var _ in _adapter.GetStreamingResponseAsync([new(ChatRole.User, "make an app"), assistant],
+            cancellationToken: TestContext.Current.CancellationToken))
+        {
+        }
+
+        var sent = captured().Messages.Single(m => m.Role == MessageRole.Assistant);
+        sent.Content.Should().ContainSingle().Which.Should().BeOfType<ToolMessageContent>()
+            .Which.Id.Should().Be("tool-1");
+    }
+
     [Fact]
     public async Task GetStreamingResponseAsync_ErrorChunk_ThrowsInvalidOperation()
     {

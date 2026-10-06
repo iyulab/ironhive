@@ -26,7 +26,7 @@
 - **RAG 파이프라인** — 텍스트 추출, 청킹, 임베딩, 벡터 검색
 - **다중 모달리티** — 이미지 생성, 음성 TTS/STT, 비디오 생성
 - **플러그인** — MCP: `McpClientManager.AddOrUpdate(new McpHttpClientConfig{…}` / `McpStdioClientConfig{…})` 로 서버를 붙이고 세션의 도구를 에이전트 도구에 더한다(HTTP/Stdio/OAuth). OpenAPI: `new OpenApiClientManager(tools)` 에 `await AddOrUpdateAsync(client)` 로 `OpenApiClient` 를 등록하면 스펙의 연산이 그 `IToolCollection` 에 도구로 들어간다([docs/PLUGINS.md](docs/PLUGINS.md))
-- **M.E.AI 호환** — 패키지 `IronHive.Extensions.AI`(의존: Abstractions 뿐 — Core 없이 provider 를 `IChatClient` 로): `generator.AsChatClient(model, provider)` · `AsEmbeddingGenerator(…)` · `AIToolAdapter`(임의의 `AITool`을 `ITool`로 래핑·실행 — MCP `McpClientTool` 등). `using IronHive.Extensions.AI;`
+- **M.E.AI 호환** — 패키지 `IronHive.Extensions.AI`(의존: Abstractions 뿐 — Core 없이 provider 를 `IChatClient` 로): `generator.AsChatClient(model, provider)` · `AsEmbeddingGenerator(…)` · `AIToolAdapter`(임의의 `AITool`을 `ITool`로 래핑·실행 — MCP `McpClientTool` 등). 도구 인자 스트리밍(opt-in): `ChatOptions.AdditionalProperties[ChatClientAdapter.StreamToolArgumentsKey] = true` 이면 스트리밍 응답이 인자를 쓰이는 동안 `FunctionCallDeltaContent`(`CallId` · 첫 조각의 `Name` · `ArgumentsFragment`)로도 내고, 완전한 `FunctionCallContent` 가 뒤따른다(Chat Completions·Responses·Anthropic — Google 은 호출을 한 번에 보낸다). `using IronHive.Extensions.AI;`
 - **워크플로우** — 코드 기반 타입 안전 워크플로우 엔진
 - **구조화 출력** — `OutputFormat.For<T>()`/`For(schema)` 는 스키마로 구속, `OutputFormat.Json` 은 스키마 없는 JSON 모드(provider 네이티브 JSON 모드로 번역 — OpenAI `json_object`, Gemini `responseMimeType`, Anthropic 은 시스템 지시). `AgentInvokeOptions.OutputFormat` 또는 `IChatClient` 의 `ChatOptions.ResponseFormat` 으로 켠다
 - **도구 결과 합계 예산** — `ToolResultBudgetMiddleware`가 한 호출의 도구 루프 전체에서 모델에 보내는 결과 텍스트 합계를 제한(작은 문맥 창 대응, [docs/TOOLS.md](docs/TOOLS.md))

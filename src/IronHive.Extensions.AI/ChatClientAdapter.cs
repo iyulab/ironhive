@@ -35,6 +35,13 @@ public class ChatClientAdapter : IChatClient
     public const string RedactedReasoningKey = "IronHive.RedactedReasoning";
 
     /// <summary>
+    /// <see cref="ChatOptions.AdditionalProperties"/> 키 — 값이 <c>true</c>면 스트리밍 응답이 도구 호출 인자를 쓰이는 동안
+    /// 조각(<see cref="FunctionCallDeltaContent"/>)으로도 냅니다. 완전한 <see cref="FunctionCallContent"/>는 그대로 뒤따릅니다.
+    /// 기본은 꺼짐 — 일반 <c>IChatClient</c> 미들웨어(응답 캐시·직렬화)는 이 콘텐츠 형식을 모릅니다.
+    /// </summary>
+    public const string StreamToolArgumentsKey = "IronHive.StreamToolArguments";
+
+    /// <summary>
     /// ChatClientAdapter의 새 인스턴스를 생성합니다.
     /// </summary>
     /// <param name="generator">IronHive 메시지 생성기</param>
@@ -88,6 +95,8 @@ public class ChatClientAdapter : IChatClient
         // reasoning pieces into the first one and keeps only that piece's AdditionalProperties, while it
         // keeps ProtectedData and splits blocks at it.
         var thinkingIndexes = new HashSet<int>();
+        var streamToolArguments = options?.AdditionalProperties is { } extra
+            && extra.TryGetValue(StreamToolArgumentsKey, out var flag) && flag is true;
 
         await foreach (var chunk in _generator.GenerateStreamingMessageAsync(request, cancellationToken)
             .ConfigureAwait(false))
@@ -98,11 +107,21 @@ public class ChatClientAdapter : IChatClient
                     var initialArguments = new StringBuilder();
                     if (!string.IsNullOrEmpty(tool.Input))
                         initialArguments.Append(tool.Input);
+                    var callId = tool.Id ?? Guid.NewGuid().ToString();
                     toolCallBuffers[added.Index] = (
-                        tool.Id ?? Guid.NewGuid().ToString(),
+                        callId,
                         tool.Name ?? string.Empty,
                         initialArguments,
                         tool.Signature);
+                    if (streamToolArguments)
+                    {
+                        // The call is announced as it starts — its name, and whatever input the first frame carried.
+                        yield return new ChatResponseUpdate
+                        {
+                            ResponseId = null,
+                            Contents = [new FunctionCallDeltaContent(callId, tool.Input ?? string.Empty, tool.Name ?? string.Empty)]
+                        };
+                    }
                     break;
 
                 // A provider may attach the tool call's signature after the block was added (Anthropic
@@ -165,6 +184,14 @@ public class ChatClientAdapter : IChatClient
                     if (toolCallBuffers.TryGetValue(delta.Index, out var buffer))
                     {
                         buffer.Arguments.Append(toolDelta.Input);
+                        if (streamToolArguments && !string.IsNullOrEmpty(toolDelta.Input))
+                        {
+                            yield return new ChatResponseUpdate
+                            {
+                                ResponseId = null,
+                                Contents = [new FunctionCallDeltaContent(buffer.CallId, toolDelta.Input)]
+                            };
+                        }
                     }
                     break;
 
