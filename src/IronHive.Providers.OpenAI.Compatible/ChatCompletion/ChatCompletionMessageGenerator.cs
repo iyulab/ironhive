@@ -415,18 +415,16 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
             // one (budget 0, enable_thinking false), so a server whose model reasons by default was told
             // to stop by every caller who had never heard of the setting. "Said nothing" and "said no"
             // are different instructions, and only the second belongs on the wire.
+            //
+            // The budget goes out under each name a common server reads: vLLM's thinking_token_budget, llama.cpp's
+            // reasoning_budget_tokens and its alias thinking_budget_tokens. A server ignores the names it does not know;
+            // under one name only, llama.cpp (incl. GPUStack) never applied it and a thinking model spent the whole
+            // output cap on reasoning.
             ExtraBody = request.ThinkingEffort is null ? null : new JsonObject
             {
-                ["thinking_token_budget"] = request.ThinkingEffort switch
-                {
-                    MessageThinkingEffort.None => 0,
-                    MessageThinkingEffort.Minimal => 256,
-                    MessageThinkingEffort.Low => 512,
-                    MessageThinkingEffort.Medium => 1024,
-                    MessageThinkingEffort.High => 2048,
-                    MessageThinkingEffort.XHigh => 4096,
-                    _ => 0
-                },
+                ["thinking_token_budget"] = ThinkingBudget(request.ThinkingEffort.Value),
+                ["reasoning_budget_tokens"] = ThinkingBudget(request.ThinkingEffort.Value),
+                ["thinking_budget_tokens"] = ThinkingBudget(request.ThinkingEffort.Value),
                 ["chat_template_kwargs"] = new JsonObject
                 {
                     ["thinking"] = enabledReasoning,        // DeepSeek, IBM Granite
@@ -467,6 +465,18 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         },
         FunctionToolChoice => JsonValue.Create("required"),
         _ => null
+    };
+
+    /// <summary>The reasoning-token budget sent for an effort level (0 = no reasoning).</summary>
+    internal static int ThinkingBudget(MessageThinkingEffort effort) => effort switch
+    {
+        MessageThinkingEffort.None => 0,
+        MessageThinkingEffort.Minimal => 256,
+        MessageThinkingEffort.Low => 512,
+        MessageThinkingEffort.Medium => 1024,
+        MessageThinkingEffort.High => 2048,
+        MessageThinkingEffort.XHigh => 4096,
+        _ => 0
     };
 
     private static ChatResponseFormat? BuildResponseFormat(MessageGenerationRequest request)

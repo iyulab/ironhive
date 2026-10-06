@@ -3,6 +3,15 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## 0.55.1 — Unreleased
+
+### Fixed
+- **A thinking budget now reaches llama.cpp servers (incl. GPUStack).** The OpenAI-compatible provider sends the
+  budget it picks for `ThinkingEffort` as `reasoning_budget_tokens` and `thinking_budget_tokens` (llama.cpp) as well as
+  `thinking_token_budget` (vLLM). Before, llama.cpp ignored the budget, so a thinking model could spend the whole output
+  cap on reasoning and end the turn with no answer. A field the caller sets through `ExtraBody` still replaces the
+  library's value for that name.
+
 ## 0.55.0 — 2026-10-06
 
 ### Added

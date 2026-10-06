@@ -462,4 +462,35 @@ public class ChatCompletionMessageGeneratorTests
         chatRequest.ExtraBody!["thinking_token_budget"]!.GetValue<int>().Should().Be(expectedBudget);
         chatRequest.ExtraBody["chat_template_kwargs"]!["enable_thinking"]!.GetValue<bool>().Should().BeTrue();
     }
+
+    /// <summary>
+    /// The budget reaches llama.cpp too: it reads <c>reasoning_budget_tokens</c> (alias <c>thinking_budget_tokens</c>), not
+    /// vLLM's <c>thinking_token_budget</c> — under one name the budget never applied there and reasoning ran to the output cap.
+    /// </summary>
+    [Theory]
+    [InlineData(MessageThinkingEffort.None, 0)]
+    [InlineData(MessageThinkingEffort.Medium, 1024)]
+    public void BuildRequest_ThinkingEffort_SendsTheBudgetUnderEveryServersName(MessageThinkingEffort effort, int expectedBudget)
+    {
+        var request = Request(null, Message.User("hi"));
+        request.ThinkingEffort = effort;
+
+        var body = ChatCompletionMessageGenerator.BuildRequest(request).ExtraBody!;
+
+        foreach (var name in new[] { "thinking_token_budget", "reasoning_budget_tokens", "thinking_budget_tokens" })
+            body[name]!.GetValue<int>().Should().Be(expectedBudget, name);
+    }
+
+    [Fact]
+    public void BuildRequest_CallerBudget_ReplacesOnlyTheNameItSets()
+    {
+        var request = Request(null, Message.User("hi"));
+        request.ThinkingEffort = MessageThinkingEffort.High;
+        request.ExtraBody = new System.Text.Json.Nodes.JsonObject { ["reasoning_budget_tokens"] = 99 };
+
+        var body = ChatCompletionMessageGenerator.BuildRequest(request).ExtraBody!;
+
+        body["reasoning_budget_tokens"]!.GetValue<int>().Should().Be(99);
+        body["thinking_token_budget"]!.GetValue<int>().Should().Be(2048, "a caller field replaces only the name it names");
+    }
 }
