@@ -12,10 +12,12 @@ changes are expected and used freely for structural correctness.
 ## 0.53.1 — 2026-10-06
 
 ### Fixed
-- **Cancelling a call now cancels it.** 11 method(s) that take a `CancellationToken` caught every exception to
+- **Breaking** (released as a patch) — **cancelling a call now cancels it.** 11 method(s) that take a `CancellationToken` caught every exception to
   return a fallback (`null`, an empty result, a failure value) or to log and continue, and treated the caller's own
   cancellation the same way. They now let the caller's `OperationCanceledException` through; other failures behave
   as before. For example, `FindModelAsync` on the OpenAI, Anthropic and Google AI finders returned `null` («no such model») for a lookup the caller cancelled.
+  Migration: code that relied on a cancelled call returning `null`, an empty result or a failure value now
+  receives `OperationCanceledException` — catch it where a cancellation is expected.
 
 ## 0.53.0 — 2026-10-05
 
