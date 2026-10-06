@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## 0.55.1 — Unreleased
+## 0.55.1 — 2026-10-06
 
 ### Fixed
 - **A thinking budget now reaches llama.cpp servers (incl. GPUStack).** The OpenAI-compatible provider sends the
