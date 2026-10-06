@@ -67,7 +67,6 @@
   </ItemGroup>
   <ItemGroup Label="Utilities">
     <PackageVersion Include="dotenv.net" Version="4.0.2" />
-    <PackageVersion Include="Scriban" Version="7.4.0" />
     <PackageVersion Include="ModelContextProtocol" Version="2.2.0" />
     <!-- Test-only: hosts a real MCP server in-process so the adapter can be driven over a real
          handshake instead of a transport seam. -->
