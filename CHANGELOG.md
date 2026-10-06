@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## 0.56.0 — Unreleased
+## 0.56.0 — 2026-10-07
 
 ### Added
 - **Anthropic streams a tool call's arguments as they are written when asked.** New
