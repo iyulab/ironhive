@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## 0.57.0 — Unreleased
+## 0.57.0 — 2026-10-07
 
 ### Fixed
 - **A thinking request whose `MaxTokens` is smaller than its effort's budget gets an answer.** Reasoning and answer share
