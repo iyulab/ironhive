@@ -33,6 +33,20 @@ public sealed class HiveTelemetryTests : IDisposable
     }
 
     [Fact]
+    public void A_failed_span_carries_the_error_type_and_status_but_no_exception_text_attributes()
+    {
+        using var activity = HiveTelemetry.StartAgentActivity("planner")!;
+
+        activity.SetError(new InvalidOperationException("tool argument: secret-path"));
+
+        activity.GetTagItem("error.type").Should().Be(typeof(InvalidOperationException).FullName);
+        activity.Status.Should().Be(ActivityStatusCode.Error);
+        activity.GetTagItem("exception.message").Should().BeNull();
+        activity.GetTagItem("exception.stacktrace").Should().BeNull();
+        activity.GetTagItem("exception.type").Should().BeNull();
+    }
+
+    [Fact]
     public void An_embeddings_span_uses_the_embeddings_operation()
     {
         using var activity = HiveTelemetry.StartEmbeddingActivity("openai", "text-embedding-3-small", 2)!;

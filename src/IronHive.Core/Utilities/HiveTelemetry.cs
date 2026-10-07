@@ -66,6 +66,10 @@ public static class HiveTelemetry
         public const string OrchestrationId = "ironhive.orchestration.id";
         public const string OrchestrationStepIndex = "ironhive.orchestration.step_index";
         public const string OrchestrationPattern = "ironhive.orchestration.pattern";
+
+        // 오류 속성
+        /// <summary>The failure's class - the exception's full type name (<c>error.type</c>, OpenTelemetry general conventions).</summary>
+        public const string ErrorType = "error.type";
     }
 
     // 작업 이름 상수
@@ -285,16 +289,18 @@ public static class HiveTelemetry
     }
 
     /// <summary>
-    /// 에러 정보로 Activity를 업데이트합니다.
+    /// 에러 정보로 Activity를 업데이트합니다 — <c>error.type</c>(예외 형식 이름)과 Error 상태.
     /// </summary>
+    /// <remarks>
+    /// Microsoft.Extensions.AI 의 GenAI span 과 같은 형태다(<c>error.type</c> + 상태 설명 = 예외 메시지). 예외 메시지·스택
+    /// 트레이스를 span 속성으로 따로 싣지 않는다 — 스택 트레이스는 span 마다 수 KB 를 더하고, 메시지는 상태 설명에
+    /// 이미 있다. 상태 설명까지 빼야 하는 호스트는 span 처리기 한 곳에서 모든 계층(이 span 과 M.E.AI span)을 함께 거른다.
+    /// </remarks>
     public static void SetError(this Activity? activity, Exception exception)
     {
         if (activity == null) return;
 
+        activity.SetTag(Attributes.ErrorType, exception.GetType().FullName);
         activity.SetStatus(ActivityStatusCode.Error, exception.Message);
-        // OpenTelemetry Semantic Convention에 따라 예외 정보 기록
-        activity.SetTag("exception.type", exception.GetType().FullName);
-        activity.SetTag("exception.message", exception.Message);
-        activity.SetTag("exception.stacktrace", exception.StackTrace);
     }
 }

@@ -3,6 +3,19 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## 0.58.0 — Unreleased
+
+### Changed
+- **Breaking (telemetry): a failed orchestration step's span carries `error.type` and the Error status, and no longer
+  `exception.type`, `exception.message` or `exception.stacktrace` attributes.** This is the shape Microsoft.Extensions.AI
+  gives its GenAI spans (`error.type` = the exception's full type name, status description = its message), so one span
+  processor rule now covers every layer of a trace. The stack trace added kilobytes to every failed span and the
+  message was already the status description. Migration: a query or alert on `exception.type` reads `error.type`.
+
+### Added
+- `HiveTelemetry.Attributes.ErrorType` (`error.type`).
+- A test over every shipped `[LoggerMessage]` template keeps user, model and tool text out of log messages (none found).
+
 ## 0.57.0 — 2026-10-07
 
 ### Fixed
