@@ -351,7 +351,10 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         TokenLimitParameter tokenLimitParameter = TokenLimitParameter.MaxCompletionTokens,
         bool carryImageToolResults = false)
     {
-        var enabledReasoning = request.ThinkingEffort is not null and not MessageThinkingEffort.None;
+        // The budget fits inside MaxTokens, which reasoning and answer share: a budget the cap cannot hold leaves no answer.
+        // When no budget fits, reasoning is turned off for this request — a short answer instead of none.
+        int? budget = request.ThinkingEffort is { } effort ? ThinkingBudget.FitWithin(EffortBudget(effort), request.MaxTokens) : null;
+        var enabledReasoning = budget > 0;
 
         // Only the selected spelling is populated; the other stays null and the serializer omits it,
         // so a server never receives a name the caller did not ask for.
@@ -399,6 +402,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
             ReasoningEffort = request.ThinkingEffort switch
             {
                 null => null,
+                _ when !enabledReasoning => ChatReasoningEffort.None,
                 MessageThinkingEffort.None => ChatReasoningEffort.None,
                 MessageThinkingEffort.Minimal => ChatReasoningEffort.Minimal,
                 MessageThinkingEffort.Low => ChatReasoningEffort.Low,
@@ -420,11 +424,11 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
             // reasoning_budget_tokens and its alias thinking_budget_tokens. A server ignores the names it does not know;
             // under one name only, llama.cpp (incl. GPUStack) never applied it and a thinking model spent the whole
             // output cap on reasoning.
-            ExtraBody = request.ThinkingEffort is null ? null : new JsonObject
+            ExtraBody = budget is not { } sent ? null : new JsonObject
             {
-                ["thinking_token_budget"] = ThinkingBudget(request.ThinkingEffort.Value),
-                ["reasoning_budget_tokens"] = ThinkingBudget(request.ThinkingEffort.Value),
-                ["thinking_budget_tokens"] = ThinkingBudget(request.ThinkingEffort.Value),
+                ["thinking_token_budget"] = sent,
+                ["reasoning_budget_tokens"] = sent,
+                ["thinking_budget_tokens"] = sent,
                 ["chat_template_kwargs"] = new JsonObject
                 {
                     ["thinking"] = enabledReasoning,        // DeepSeek, IBM Granite
@@ -467,8 +471,11 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         _ => null
     };
 
-    /// <summary>The reasoning-token budget sent for an effort level (0 = no reasoning).</summary>
-    internal static int ThinkingBudget(MessageThinkingEffort effort) => effort switch
+    /// <summary>
+    /// The reasoning-token budget for an effort level (0 = no reasoning), before it is fitted inside
+    /// <see cref="MessageGenerationRequest.MaxTokens"/> (<see cref="ThinkingBudget.FitWithin"/>).
+    /// </summary>
+    internal static int EffortBudget(MessageThinkingEffort effort) => effort switch
     {
         MessageThinkingEffort.None => 0,
         MessageThinkingEffort.Minimal => 256,

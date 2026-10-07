@@ -606,13 +606,13 @@ public class AnthropicMessageGenerator : IMessageGenerator
                     _ => null
                 };
 
-                // budget_tokens 는 max_tokens 보다 작아야 합니다(아니면 400 «max_tokens must be greater than
-                // thinking.budget_tokens»). 호출자가 작은 출력 한도를 주면 예산을 그 절반으로 줄여 답변 자리를
-                // 남기고, 그것이 vendor 최소 예산(1,024)에도 못 미치면 thinking 을 켜지 않습니다 — 그 한도 안에서는
-                // 생각과 답을 함께 담을 수 없습니다.
-                if (budget is not null && request.MaxTokens is { } maxTokens && budget >= maxTokens)
+                // budget_tokens 는 max_tokens 안에서 답과 나눠 씁니다(같거나 크면 400 «max_tokens must be greater than
+                // thinking.budget_tokens», 조금만 작아도 답이 잘립니다). 모든 provider 와 같은 규칙(ThinkingBudget.FitWithin)으로
+                // 답의 자리를 먼저 남기고, 남는 예산이 vendor 최소(1,024)에도 못 미치면 thinking 을 켜지 않습니다.
+                if (budget is { } effortBudget && request.MaxTokens is not null)
                 {
-                    budget = maxTokens / 2 >= AnthropicMinThinkingBudget ? maxTokens / 2 : null;
+                    var fitted = ThinkingBudget.FitWithin((int)effortBudget, request.MaxTokens);
+                    budget = fitted >= AnthropicMinThinkingBudget ? fitted : null;
                 }
 
                 if (budget is { } b)

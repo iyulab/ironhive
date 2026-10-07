@@ -222,9 +222,10 @@ Opus 5.5 의 기본값은 `medium` 으로 Opus 5(`high`)보다 한 단계 낮다
 줄어드니, 이전과 같은 깊이가 필요하면 `ThinkingEffort` 를 명시한다.
 
 `Budget` 세대의 예산(Minimal 1,024 · Low 4,000 · Medium 10,000 · High 20,000 · XHigh 32,000)은 `max_tokens` 보다
-작아야 한다(아니면 400 «`max_tokens` must be greater than `thinking.budget_tokens`»). 호출자의 `MaxTokens` 가 예산
-이하이면 예산을 그 절반으로 줄여 답변 자리를 남기고, 절반이 vendor 최소 예산 1,024 에 못 미치면 thinking 을 켜지
-않는다. `MaxTokens` 를 주지 않으면 `max_tokens` 는 64,000 이라 조정되지 않는다.
+작아야 한다(아니면 400 «`max_tokens` must be greater than `thinking.budget_tokens`»). 호출자가 `MaxTokens` 를 주면
+모든 provider 와 같은 규칙(`ThinkingBudget.FitWithin` — 한도의 4분의 1, 최소 256 토큰을 답의 자리로 남긴 나머지와 예산 중
+작은 쪽)으로 예산을 맞추고, 그것이 vendor 최소 예산 1,024 에 못 미치면 thinking 을 켜지 않는다. `MaxTokens` 를 주지
+않으면 `max_tokens` 는 64,000 이라 조정되지 않는다.
 
 내장 표에 없는 새 모델은 `ModelCapabilities`로 코드 수정 없이 선언한다. 소비자 항목이 내장 표보다 우선한다.
 
@@ -344,6 +345,10 @@ Gemini 2.5·3 계열 대부분은 기본으로 생각하고 thinking 토큰이 `
 보낸다 — 끌 수 없는 모델(Pro)은 여전히 생각하므로 출력 예산을 넉넉히 준다. 모르는 모델의 기본값이 `false` 인 것은
 예산 0 을 거부하는 모델(3.1 Pro · 3.5 Flash-Lite)에서 호출 자체가 400 이 되기 때문이다. 표의 끄기·`minimal` 행은
 2026-09-17 실키 실측.
+
+Budget 모델(Gemini 2.5)의 예산(Minimal 1,024 · Low 4,000 · Medium 10,000 · High 20,000 · XHigh 24,576)도 생각이
+`maxOutputTokens` 에 포함되므로 `MaxTokens` 안에 맞춘다(`ThinkingBudget.FitWithin`, 0.57.0). 맞춘 예산이 2.5 모델 모두가
+받는 최소값 512(Flash-Lite) 아래면 `None` 과 같이 처리한다 — 끌 수 있으면 `thinkingBudget: 0`, Pro 는 128.
 
 ### 지원 기능
 
@@ -495,6 +500,12 @@ OpenAI(Responses) · Anthropic provider 는 요청되면 `NotSupportedException`
 **패키지**: `IronHive.Providers.OpenAI.Compatible`
 
 OpenAI `/v1` API와 호환되는 모든 서버를 지원합니다: Ollama, LM Studio, vLLM, llama.cpp server 등. 이 패키지가 소유한 `ChatCompletionMessageGenerator`가 Chat Completions API(`POST /v1/chat/completions`)를 구현한다. 연결 정보(`BaseUrl`/`ApiKey`/`HttpClient`)만 `IronHive.Providers.OpenAI`의 `OpenAIConfig`를 재사용하고, GPUStack 프로바이더(아래)도 동일한 생성기에 위임한다. 임베딩은 같은 이유(서버 확장 필드)로 이 패키지의 raw-HTTP `OpenAICompatibleEmbeddingGenerator`(`POST /embeddings`)가 맡는다 — OpenAI SDK 의 `OpenAIEmbeddingGenerator` 가 아니다(0.40.0).
+
+**추론 예산.** `ThinkingEffort` 를 주면 그 단계의 예산(Minimal 256 · Low 512 · Medium 1,024 · High 2,048 · XHigh 4,096)을
+서버마다 읽는 이름 셋(vLLM `thinking_token_budget`, llama.cpp `reasoning_budget_tokens` · `thinking_budget_tokens`)으로
+보내고, `chat_template_kwargs` 의 `enable_thinking`/`thinking` 을 켠다. 추론과 답은 `max_tokens` 를 나눠 쓰므로 예산은
+`MaxTokens` 안에 맞춘다(`ThinkingBudget.FitWithin` — 한도의 4분의 1, 최소 256 토큰을 답에 남김, 0.57.0). 맞출 자리가 없으면
+(예: Medium · `MaxTokens` 256) 그 요청은 추론을 끄고 보낸다 — 빈 답 대신 짧은 답이다. `ExtraBody` 로 준 이름은 그 이름만 대체한다.
 
 모델 목록도 이 패키지의 `OpenAICompatibleModelFinder` 가 원시 응답을 읽는다(0.46.0) — 목록 항목에 서버가 받아 주는 컨텍스트(vLLM `max_model_len`)가 있으면 `LanguageModelCard.ContextWindow` 로, 없으면 지금처럼 `ModelCard` 로 돌려준다. llama.cpp 의 `meta.n_ctx_train` 은 학습 컨텍스트라 서버 실행 컨텍스트와 다를 수 있어 읽지 않는다.
 

@@ -81,7 +81,7 @@ var response2 = await agent.InvokeAsync("안녕하세요", new AgentInvokeOption
     ThinkingEffort = MessageThinkingEffort.High,
     ThinkingOutput = MessageThinkingOutput.Summary,  // 추론 요약을 응답에 싣기 (None 이면 숨김)
     Suggestions = new SuggestionOptions(),  // 후속 질의 제안 활성화
-    MaxTokens = 2048,
+    MaxTokens = 2048,  // 추론과 답이 나눠 쓰는 한도 — 예산 방식 provider 는 추론 예산을 이 안에 맞춘다(ThinkingBudget.FitWithin)
 });
 
 // 스트리밍

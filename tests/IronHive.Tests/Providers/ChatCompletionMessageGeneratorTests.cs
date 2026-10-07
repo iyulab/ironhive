@@ -481,6 +481,29 @@ public class ChatCompletionMessageGeneratorTests
             body[name]!.GetValue<int>().Should().Be(expectedBudget, name);
     }
 
+    /// <summary>
+    /// Reasoning and answer share max_tokens: the budget is fitted inside MaxTokens, and when nothing fits reasoning is
+    /// turned off for the request — a short answer instead of none (Medium 1,024 · MaxTokens 256 answered empty 6 of 6 times).
+    /// </summary>
+    [Theory]
+    [InlineData(256, 0, false)]
+    [InlineData(1_100, 825, true)]
+    [InlineData(2_000, 1_024, true)]
+    public void BuildRequest_ThinkingBudget_FitsInsideMaxTokens(int maxTokens, int expectedBudget, bool reasoning)
+    {
+        var request = Request(null, Message.User("hi"));
+        request.ThinkingEffort = MessageThinkingEffort.Medium;
+        request.MaxTokens = maxTokens;
+
+        var chatRequest = ChatCompletionMessageGenerator.BuildRequest(request);
+
+        foreach (var name in new[] { "thinking_token_budget", "reasoning_budget_tokens", "thinking_budget_tokens" })
+            chatRequest.ExtraBody![name]!.GetValue<int>().Should().Be(expectedBudget, name);
+        chatRequest.ExtraBody!["chat_template_kwargs"]!["enable_thinking"]!.GetValue<bool>().Should().Be(reasoning);
+        if (!reasoning)
+            chatRequest.ReasoningEffort.Should().Be(ChatReasoningEffort.None);
+    }
+
     [Fact]
     public void BuildRequest_CallerBudget_ReplacesOnlyTheNameItSets()
     {

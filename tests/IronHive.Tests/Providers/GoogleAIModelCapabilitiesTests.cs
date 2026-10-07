@@ -174,6 +174,26 @@ public class GoogleAIModelCapabilitiesTests
         config.ThinkingConfig.ThinkingBudget.Should().Be(4_000);
     }
 
+    /// <summary>
+    /// Gemini 2.5 counts thoughts against maxOutputTokens, so a budget the cap cannot hold returns no text. The budget is
+    /// fitted inside MaxTokens; when not even the smallest 2.5 budget fits, thinking is turned off where the model allows it.
+    /// </summary>
+    [Theory]
+    [InlineData("gemini-2.5-flash", 4_000, 3_000)]   // Low 4,000 under a 4,000 cap: a quarter left for the answer
+    [InlineData("gemini-2.5-flash", 256, 0)]         // no room: off
+    [InlineData("gemini-2.5-pro", 256, 128)]         // no room, and Pro cannot turn thinking off: its minimum
+    [InlineData("gemini-2.5-flash", 60_000, 4_000)]  // room for both: the effort's budget
+    public void Thinking_OnGemini25_FitsTheBudgetInsideMaxTokens(string model, int maxTokens, int expectedBudget)
+    {
+        var request = Request(model, MessageThinkingEffort.Low);
+        request.MaxTokens = maxTokens;
+
+        var (_, config) = Generator().ToGoogleAIParams(request);
+
+        config.ThinkingConfig!.ThinkingBudget.Should().Be(expectedBudget);
+        config.MaxOutputTokens.Should().Be(maxTokens);
+    }
+
     [Fact]
     public void Thinking_OnGemini20_SendsNoThinkingConfig()
     {

@@ -3,6 +3,27 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## 0.57.0 — Unreleased
+
+### Fixed
+- **A thinking request whose `MaxTokens` is smaller than its effort's budget gets an answer.** Reasoning and answer share
+  the output cap, and the OpenAI-compatible provider sent the effort's budget unchanged (Medium 1,024 with `MaxTokens`
+  256), so the reasoning spent the whole cap and every answer was empty. The budget is now fitted inside `MaxTokens`: a
+  quarter of the cap, at least 256 tokens, is left for the answer, and when nothing is left for thinking the request turns
+  reasoning off (`enable_thinking` false, budget 0, `reasoning_effort` none) — a short answer instead of none.
+- **Gemini 2.5 fits its `thinkingBudget` inside `maxOutputTokens` the same way.** Thoughts count against the cap, so
+  Low (4,000) under a 1,000-token cap returned no text. Below 512 (the smallest budget every 2.5 model accepts) thinking
+  is turned off where the model allows it, 128 on Pro.
+
+### Changed
+- **Anthropic's budget models use the same rule.** The budget was halved only when it reached `max_tokens`, so a cap
+  just above it (Low 4,000 · `MaxTokens` 4,100) left 100 tokens to answer in; it now keeps a quarter of the cap (3,075).
+  Below the vendor minimum (1,024) thinking stays off, as before.
+
+### Added
+- **`ThinkingBudget.FitWithin(budget, maxTokens)`** (`IronHive.Abstractions.Messages`) — the rule every provider applies,
+  public so a caller that sets its own budget through `ExtraBody` can fit it the same way.
+
 ## 0.56.0 — 2026-10-07
 
 ### Added

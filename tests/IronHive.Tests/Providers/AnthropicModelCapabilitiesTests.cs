@@ -120,12 +120,15 @@ public class AnthropicModelCapabilitiesTests
 
     // Live 400 (claude-haiku-4-5, max_tokens 3000, effort Low → budget 4000): "`max_tokens` must be greater
     // than `thinking.budget_tokens`". A caller's small output cap must not turn a thinking request into a failure.
+    // The budget is fitted with every provider's rule (ThinkingBudget.FitWithin): a quarter of the cap, at least 256, is the
+    // answer's. Before 0.57.0 the budget was halved only when it reached the cap, so a cap just above it (4,100) left 100.
     [Theory]
     [InlineData(null, 4_000L)]    // no cap: provider default max_tokens, full effort budget
-    [InlineData(8_000, 4_000L)]   // cap above the budget: unchanged
-    [InlineData(4_000, 2_000L)]   // cap equal to the budget: halved, leaving room for the answer
-    [InlineData(3_000, 1_500L)]   // the measured case
-    [InlineData(2_048, 1_024L)]   // halved lands exactly on the vendor minimum
+    [InlineData(8_000, 4_000L)]   // cap with room for both: unchanged
+    [InlineData(4_100, 3_075L)]   // just above the budget: the answer keeps a quarter
+    [InlineData(4_000, 3_000L)]   // cap equal to the budget
+    [InlineData(3_000, 2_250L)]   // the measured case
+    [InlineData(1_366, 1_025L)]   // just above the vendor minimum
     public void BudgetThinking_StaysBelowMaxTokens(int? maxTokens, long expectedBudget)
     {
         var request = Request("claude-sonnet-4-5", effort: MessageThinkingEffort.Low);

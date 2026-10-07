@@ -14,6 +14,9 @@ namespace IronHive.Providers.GoogleAI;
 /// <inheritdoc />
 public class GoogleAIMessageGenerator : IMessageGenerator
 {
+    // The smallest thinkingBudget every Gemini 2.5 model accepts (Flash-Lite: 512; Pro: 128; Flash: any).
+    private const int GeminiMinThinkingBudget = 512;
+
     private readonly Client _client;
     private readonly bool _isVertex;
     private readonly IReadOnlyDictionary<string, GoogleAIModelCapabilities>? _capabilityOverrides;
@@ -693,7 +696,25 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         // Gemini 3: thinkingLevel · Gemini 2.5: thinkingBudget · 그 이전: 없음.
         // https://ai.google.dev/api/generate-content?hl=ko#ThinkingConfig
         ThinkingConfig? thinkingConfig = null;
-        if (request.ThinkingEffort is MessageThinkingEffort.None)
+
+        // Gemini 2.5 counts thoughts against maxOutputTokens: a budget the cap cannot hold leaves no answer. The budget is
+        // fitted inside MaxTokens like every provider's (ThinkingBudget.FitWithin); below the smallest budget every 2.5 model
+        // accepts (Flash-Lite: 512), the request is treated as None — off where the model allows it, its minimum otherwise.
+        int? budget = capabilities.ThinkingControl == GoogleAIThinkingControl.Budget ? request.ThinkingEffort switch
+        {
+            MessageThinkingEffort.Minimal => 1_024,
+            MessageThinkingEffort.Low => 4_000,
+            MessageThinkingEffort.Medium => 10_000,
+            MessageThinkingEffort.High => 20_000,
+            MessageThinkingEffort.XHigh => 24_576,
+            _ => null
+        } : null;
+        if (budget is { } effortBudget)
+            budget = ThinkingBudget.FitWithin(effortBudget, request.MaxTokens) is var fitted && fitted >= GeminiMinThinkingBudget ? fitted : null;
+        var thinkingOff = request.ThinkingEffort is MessageThinkingEffort.None
+            || (capabilities.ThinkingControl == GoogleAIThinkingControl.Budget && request.ThinkingEffort is not null && budget is null);
+
+        if (thinkingOff)
         {
             // None 은 「보내지 않음」이 아니라 「꺼 달라」입니다 — 기본으로 생각하는 모델은 thinking 토큰이 출력 예산을
             // 먹어 짧은 응답이 빈 문자열로 돌아옵니다. 끌 수 없는 모델에는 가장 낮은 단계를 보냅니다.
@@ -729,16 +750,9 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                 GoogleAIThinkingControl.Budget => new ThinkingConfig
                 {
                     IncludeThoughts = true,
-                    // 토큰 예산은 Anthropic budget 매핑과 같은 커뮤니티 기준; 상한은 Gemini 2.5 Flash 의 최대(24,576).
-                    ThinkingBudget = request.ThinkingEffort switch
-                    {
-                        MessageThinkingEffort.Minimal => 1_024,
-                        MessageThinkingEffort.Low => 4_000,
-                        MessageThinkingEffort.Medium => 10_000,
-                        MessageThinkingEffort.High => 20_000,
-                        MessageThinkingEffort.XHigh => 24_576,
-                        _ => null
-                    }
+                    // 토큰 예산은 Anthropic budget 매핑과 같은 커뮤니티 기준; 상한은 Gemini 2.5 Flash 의 최대(24,576). 위에서
+                    // MaxTokens 안에 맞춘 값입니다.
+                    ThinkingBudget = budget
                 },
                 _ => null
             };
