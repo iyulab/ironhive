@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## 0.58.0 — Unreleased
+## 0.58.0 — 2026-10-07
 
 ### Changed
 - **Breaking (telemetry): a failed orchestration step's span carries `error.type` and the Error status, and no longer
