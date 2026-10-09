@@ -61,18 +61,20 @@ public sealed class StreamIdleTimeoutTests
     [Fact]
     public async Task A_long_answer_that_keeps_streaming_is_not_cut_off()
     {
-        // 6 chunks, 400 ms apart — 2.4 s in total, longer than the 1.5 s budget, every gap well inside it. The margin is
-        // wide on purpose: a shared CI runner running the suite in parallel stretches a 250 ms gap past 600 ms.
+        // 12 chunks, 300 ms apart — 3.6 s in total, longer than the 3 s budget, every gap a tenth of it. The margin is
+        // wide on purpose: a shared CI runner running the suite in parallel stretched a 250 ms gap past 600 ms, and later a
+        // 400 ms gap past 1.5 s (a publish run on 2026-10-09). What this fact holds is «total longer than the budget, each
+        // gap inside it», so the ratio is what must survive a loaded runner, not the absolute times.
         var steps = new List<Step> { Step.At(0, RoleChunk) };
-        for (var i = 0; i < 6; i++)
-            steps.Add(Step.At(400, TextChunk($"t{i}")));
+        for (var i = 0; i < 12; i++)
+            steps.Add(Step.At(300, TextChunk($"t{i}")));
         steps.Add(Step.At(0, "data: [DONE]"));
         await using var server = SseServer.Start([.. steps]);
-        using var client = new ChatCompletionHttpClient(new OpenAIConfig { BaseUrl = server.BaseUrl, StreamIdleTimeout = TimeSpan.FromMilliseconds(1500), MaxRetries = 0 });
+        using var client = new ChatCompletionHttpClient(new OpenAIConfig { BaseUrl = server.BaseUrl, StreamIdleTimeout = TimeSpan.FromSeconds(3), MaxRetries = 0 });
 
         var chunks = await Drain(client, TestContext.Current.CancellationToken);
 
-        chunks.Should().Be(7);
+        chunks.Should().Be(13);
     }
 
     [Fact]
