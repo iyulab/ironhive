@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## Unreleased
+## 0.59.0 — 2026-10-09
 
 ### Added
 - **An account that cannot pay is a `BillingException` on every provider.** HTTP 402 Payment Required (any server or
