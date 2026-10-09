@@ -176,7 +176,7 @@ public class ContextOverflowMappingTests
     [Fact]
     public void Anthropic_Map_Ignores_Unrelated_Message()
     {
-        var body = """{"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low"}}""";
+        var body = """{"type":"error","error":{"type":"invalid_request_error","message":"max_tokens: Input should be greater than or equal to 1"}}""";
         var sdkException = AnthropicExceptionFactory.CreateApiException(HttpStatusCode.BadRequest, body);
 
         AnthropicMapper.Map(sdkException, TestContext.Current.CancellationToken).Should().BeNull();

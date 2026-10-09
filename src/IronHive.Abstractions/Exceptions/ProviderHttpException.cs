@@ -4,7 +4,8 @@ namespace IronHive.Abstractions.Exceptions;
 
 /// <summary>
 /// A provider answered with an HTTP error that has no more specific IronHive type (rate limits are
-/// <see cref="RateLimitException"/>, context-window overflows <see cref="ContextOverflowException"/>). It is an
+/// <see cref="RateLimitException"/>, context-window overflows <see cref="ContextOverflowException"/>, billing
+/// refusals <see cref="BillingException"/>). It is an
 /// <see cref="HttpRequestException"/> with the response's <see cref="HttpRequestException.StatusCode"/>, so code that
 /// handles HTTP failures by status keeps working, and it adds the provider's retry hint: a 503 that sent
 /// <c>Retry-After</c> is asking the caller to wait, which a gateway can only honour if the hint survives.

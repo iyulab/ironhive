@@ -66,14 +66,36 @@ public static partial class OpenAIErrors
     }
 
     /// <summary>
+    /// Returns a <see cref="BillingException"/> when <paramref name="exception"/> — or an exception it wraps — is an
+    /// OpenAI SDK <see cref="ClientResultException"/> refusing the request because the account cannot pay: HTTP 402,
+    /// or error code/type <c>insufficient_quota</c> (OpenAI sends an exhausted balance or quota as HTTP 429);
+    /// otherwise null.
+    /// </summary>
+    public static BillingException? TryMapBilling(Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+        if (FindClientResultException(exception) is not { } clientEx)
+            return null;
+
+        var body = ReadBody(clientEx);
+        return IsBilling(clientEx.Message, body.FindString("type"), body.FindString("code"), clientEx.Status)
+            ? new BillingException(clientEx.Message, clientEx)
+            : null;
+    }
+
+    /// <summary>
     /// Returns a <see cref="RateLimitException"/> when <paramref name="exception"/> — or an exception it wraps —
     /// is an OpenAI SDK <see cref="ClientResultException"/> with HTTP status 429, with
     /// <see cref="RateLimitException.RetryAfter"/> from the <c>retry-after</c> header when present; otherwise null.
+    /// A 429 that reports an exhausted balance or quota is a billing refusal, not a rate limit — null here,
+    /// <see cref="TryMapBilling"/> maps it.
     /// </summary>
     public static RateLimitException? TryMapRateLimit(Exception exception)
     {
         ArgumentNullException.ThrowIfNull(exception);
         if (FindClientResultException(exception) is not { Status: 429 } clientEx)
+            return null;
+        if (TryMapBilling(clientEx) is not null)
             return null;
 
         // OpenAI's other rate-limit headers (x-ratelimit-remaining-requests etc.) are only
@@ -87,6 +109,23 @@ public static partial class OpenAIErrors
 
         return new RateLimitException(clientEx.Message, clientEx) { RetryAfter = retryAfter };
     }
+
+    private static readonly string[] BillingCodes =
+    [
+        "insufficient_quota",
+    ];
+
+    /// <summary>
+    /// The one place the billing-refusal spellings live — the SDK path above and the OpenAI-compatible provider's own
+    /// HTTP path both come here. HTTP 402 Payment Required is a billing refusal from any server (DeepSeek, OpenRouter,
+    /// a metering gateway); OpenAI's <c>insufficient_quota</c> arrives as 429, so the code is checked regardless of
+    /// status, and in the message for an error line inside a stream (<paramref name="status"/> null).
+    /// </summary>
+    internal static bool IsBilling(string message, string? type, string? code, int? status)
+        => status == 402
+            || BillingCodes.Contains(type, StringComparer.OrdinalIgnoreCase)
+            || BillingCodes.Contains(code, StringComparer.OrdinalIgnoreCase)
+            || BillingCodes.Any(marker => message.Contains(marker, StringComparison.OrdinalIgnoreCase));
 
     private static readonly string[] ContextOverflowCodes =
     [

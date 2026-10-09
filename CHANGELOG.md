@@ -3,6 +3,21 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## Unreleased
+
+### Added
+- **An account that cannot pay is a `BillingException` on every provider.** HTTP 402 Payment Required (any server or
+  gateway), OpenAI `insufficient_quota` and Anthropic `billing_error` / «credit balance is too low» now arrive as
+  `IronHive.Abstractions.Exceptions.BillingException`, so an application can tell «top up the account» apart from «wait
+  and retry» without parsing messages. `OpenAIErrors.TryMapBilling(ex)` gives the same mapping to a caller with its own
+  OpenAI SDK client.
+
+### Changed
+- **Breaking: OpenAI `insufficient_quota` is no longer a `RateLimitException`.** It arrives as HTTP 429, but waiting does
+  not restore an exhausted balance or quota, which is what `RateLimitException` promises; `OpenAIErrors.TryMapRateLimit`
+  returns null for it. Migration: code that caught `RateLimitException` to detect an exhausted quota catches
+  `BillingException`.
+
 ## 0.58.0 — 2026-10-07
 
 ### Changed

@@ -8,7 +8,8 @@ namespace IronHive.Providers.Anthropic;
 /// <summary>
 /// Normalizes Anthropic SDK errors to IronHive domain exceptions. Currently covers
 /// context-window overflow (invalid_request_error with message "prompt is too long:
-/// X tokens > Y maximum") -> <see cref="ContextOverflowException"/>, and a request that
+/// X tokens > Y maximum") -> <see cref="ContextOverflowException"/>, a billing refusal -> <see cref="BillingException"/>,
+/// a rate limit -> <see cref="RateLimitException"/>, and a request that
 /// was cut short by the SDK's own network timeout -> <see cref="TimeoutException"/>.
 /// </summary>
 internal static partial class AnthropicExceptionMapper
@@ -28,10 +29,34 @@ internal static partial class AnthropicExceptionMapper
         if (IsContextOverflow(exception, out var overflow))
             return overflow;
 
+        if (IsBilling(exception, out var billing))
+            return billing;
+
         if (IsRateLimit(exception, out var rateLimit))
             return rateLimit;
 
         return null;
+    }
+
+    /// <summary>
+    /// The account cannot pay: <c>billing_error</c> (HTTP 402), or the «credit balance is too low» refusal the API has
+    /// sent as an <c>invalid_request_error</c> (HTTP 400) — the same condition under its older shape.
+    /// </summary>
+    private static bool IsBilling(Exception exception, out BillingException? result)
+    {
+        result = null;
+        if (exception is not AnthropicApiException apiEx)
+            return false;
+
+        var message = apiEx.ResponseBody ?? apiEx.Message;
+        var isBilling = apiEx.ErrorType == ErrorType.BillingError
+            || (apiEx.ErrorType == ErrorType.InvalidRequestError
+                && message.Contains("credit balance is too low", StringComparison.OrdinalIgnoreCase));
+        if (!isBilling)
+            return false;
+
+        result = new BillingException(message, apiEx);
+        return true;
     }
 
     /// <summary>

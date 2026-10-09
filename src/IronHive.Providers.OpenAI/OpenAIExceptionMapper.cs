@@ -29,6 +29,10 @@ internal static class OpenAIExceptionMapper
         if (IsContextOverflow(exception, out var overflow))
             return overflow;
 
+        // Before the rate limit: OpenAI sends an exhausted balance or quota as 429 insufficient_quota.
+        if (OpenAIErrors.TryMapBilling(exception) is { } billing)
+            return billing;
+
         if (IsRateLimit(exception, out var rateLimit))
             return rateLimit;
 

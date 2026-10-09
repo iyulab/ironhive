@@ -8,7 +8,7 @@ namespace IronHive.Providers.OpenAI.Compatible.ChatCompletion;
 
 /// <summary>
 /// Detects errors in OpenAI-compatible chat completion responses and normalizes them to
-/// IronHive domain exceptions (context-window overflow, rate limiting). Two entry points,
+/// IronHive domain exceptions (context-window overflow, billing refusal, rate limiting). Two entry points,
 /// matching the two shapes errors arrive in: <see cref="DetectAsync"/> for a failed HTTP
 /// response (reads and parses the error body itself), and <see cref="Detect(string)"/> for a
 /// bare mid-stream error line that has no response of its own — see
@@ -51,6 +51,11 @@ internal static class ChatCompletionExceptionDetector
                 (int)response.StatusCode) is { } overflow)
             return overflow;
 
+        // Before the rate limit: an exhausted balance arrives as 402 from most servers and as 429 insufficient_quota
+        // from OpenAI — waiting does not clear either.
+        if (OpenAIErrors.IsBilling(message, type, code, (int)response.StatusCode))
+            return new BillingException(message);
+
         if (IsRateLimit(message, type, code, (int)response.StatusCode))
         {
             return new RateLimitException(message)
@@ -76,6 +81,9 @@ internal static class ChatCompletionExceptionDetector
         if (OpenAIErrors.TryMapContextOverflow(message) is { } overflow)
             return overflow;
 
+        if (OpenAIErrors.IsBilling(message, type: null, code: null, status: null))
+            return new BillingException(message);
+
         if (IsRateLimit(message, type: null, code: null, status: null))
             return new RateLimitException(message);
 
@@ -85,7 +93,6 @@ internal static class ChatCompletionExceptionDetector
     private static readonly string[] RateLimitMarkers =
     [
         "rate_limit_exceeded",
-        "insufficient_quota",
     ];
 
     private static bool IsRateLimit(string message, string? type, string? code, int? status)

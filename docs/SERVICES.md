@@ -171,6 +171,21 @@ catch (ProviderHttpException ex) when (ex.StatusCode == HttpStatusCode.ServiceUn
 }
 ```
 
+### 잔액·한도 소진 예외
+
+계정이 요청을 지불할 수 없어 거절된 경우 — HTTP 402 Payment Required(어느 서버·게이트웨이든), OpenAI `insufficient_quota`(HTTP 429 로 온다), Anthropic `billing_error`·«credit balance is too low» — 는 네 프로바이더 모두 `BillingException`이다. 같은 자격 증명으로는 계정이 채워지기 전까지 성공하지 않으므로 `RateLimitException`(«기다렸다 다시»)과 다르다: 재시도 대신 사용자에게 충전을 안내하는 자리다. 거절은 그 자격 증명의 계정에 묶인 것이라 다른 프로바이더·다른 계정은 영향을 받지 않는다. 자기 OpenAI SDK 클라이언트를 쓰면 `OpenAIErrors.TryMapBilling(ex)`.
+
+```csharp
+try
+{
+    var response = await hive.Messages.GenerateMessageAsync(request);
+}
+catch (BillingException)
+{
+    // 재시도하지 않는다 — 계정 충전을 안내한다.
+}
+```
+
 ---
 
 ## IEmbeddingService
