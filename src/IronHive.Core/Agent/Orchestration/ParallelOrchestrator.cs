@@ -103,7 +103,7 @@ public class ParallelOrchestrator : OrchestratorBase
                 $"Orchestration timed out after {Options.Timeout.TotalSeconds}s",
                 duration: stopwatch.Elapsed);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
             stopwatch.Stop();
             return OrchestrationResult.Failure(

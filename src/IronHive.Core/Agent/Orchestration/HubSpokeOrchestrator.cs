@@ -204,7 +204,7 @@ public partial class HubSpokeOrchestrator : OrchestratorBase
                 steps,
                 stopwatch.Elapsed);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
             stopwatch.Stop();
             return OrchestrationResult.Failure(

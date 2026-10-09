@@ -3,6 +3,15 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## Unreleased
+
+### Changed
+- **Breaking: a cancelled orchestration throws `OperationCanceledException` instead of returning a failed
+  `OrchestrationResult`.** `ParallelOrchestrator`, `GroupChatOrchestrator`, `HandoffOrchestrator` and
+  `HubSpokeOrchestrator` turned the caller's cancellation into a failed result carrying the cancellation's message,
+  unlike `SequentialOrchestrator` and `GraphOrchestrator`. The orchestrator's own `Timeout` is still a
+  failed result. Migration: catch `OperationCanceledException` around `ExecuteAsync` if you relied on the failed result.
+
 ## 0.59.1 — 2026-10-09
 
 ### Fixed
