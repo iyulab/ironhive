@@ -54,7 +54,7 @@ internal static class ChatCompletionExceptionDetector
         // Before the rate limit: an exhausted balance arrives as 402 from most servers and as 429 insufficient_quota
         // from OpenAI — waiting does not clear either.
         if (OpenAIErrors.IsBilling(message, type, code, (int)response.StatusCode))
-            return new BillingException(message);
+            return new BillingException(message) { StatusCode = response.StatusCode };
 
         if (IsRateLimit(message, type, code, (int)response.StatusCode))
         {

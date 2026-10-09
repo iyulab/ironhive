@@ -3,6 +3,15 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## Unreleased
+
+### Fixed
+- **`BillingException.StatusCode` carries the status the provider answered with** (402; 429 for OpenAI
+  `insufficient_quota`; 400 for Anthropic's older credit-balance refusal; null for an error line inside a stream).
+  0.59.0 turned a 402 from an OpenAI-compatible server — before, a `ProviderHttpException` (an `HttpRequestException`
+  with `StatusCode` 402) — into a `BillingException` without a status, so code that read the status off the refusal
+  lost it.
+
 ## 0.59.0 — 2026-10-09
 
 ### Added
@@ -24,6 +33,9 @@ changes are expected and used freely for structural correctness.
   not restore an exhausted balance or quota, which is what `RateLimitException` promises; `OpenAIErrors.TryMapRateLimit`
   returns null for it. Migration: code that caught `RateLimitException` to detect an exhausted quota catches
   `BillingException`.
+- **Breaking (not noted at release): an HTTP 402 from an OpenAI-compatible server is no longer a `ProviderHttpException`.**
+  It is a `BillingException`, which is not an `HttpRequestException`. Migration: code that matched
+  `HttpRequestException { StatusCode: 402 }` catches `BillingException` (its `StatusCode` from the next release).
 
 ## 0.58.0 — 2026-10-07
 

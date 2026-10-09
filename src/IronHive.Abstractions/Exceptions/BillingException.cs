@@ -1,3 +1,5 @@
+using System.Net;
+
 namespace IronHive.Abstractions.Exceptions;
 
 /// <summary>
@@ -18,4 +20,11 @@ public class BillingException : HiveException
     public BillingException(string message, Exception? inner = null)
         : base(message, inner)
     { }
+
+    /// <summary>
+    /// The HTTP status the provider answered with — 402, or 429 for OpenAI's <c>insufficient_quota</c>, 400 for
+    /// Anthropic's older «credit balance is too low» refusal — or null when the refusal arrived without one (an error
+    /// line inside a stream).
+    /// </summary>
+    public HttpStatusCode? StatusCode { get; init; }
 }

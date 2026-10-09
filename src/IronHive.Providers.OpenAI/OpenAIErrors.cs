@@ -79,7 +79,7 @@ public static partial class OpenAIErrors
 
         var body = ReadBody(clientEx);
         return IsBilling(clientEx.Message, body.FindString("type"), body.FindString("code"), clientEx.Status)
-            ? new BillingException(clientEx.Message, clientEx)
+            ? new BillingException(clientEx.Message, clientEx) { StatusCode = (System.Net.HttpStatusCode)clientEx.Status }
             : null;
     }
 

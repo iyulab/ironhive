@@ -39,7 +39,7 @@ internal static partial class GoogleAIExceptionMapper
 
         // HTTP 402 Payment Required: a metering gateway in front of the Gemini API refusing an unfunded account.
         if (exception is ClientError { StatusCode: 402 } paymentRequired)
-            return new BillingException(paymentRequired.Message, paymentRequired);
+            return new BillingException(paymentRequired.Message, paymentRequired) { StatusCode = System.Net.HttpStatusCode.PaymentRequired };
 
         if (IsRateLimit(exception, out var rateLimit))
             return rateLimit;

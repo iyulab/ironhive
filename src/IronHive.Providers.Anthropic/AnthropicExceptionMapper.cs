@@ -55,7 +55,7 @@ internal static partial class AnthropicExceptionMapper
         if (!isBilling)
             return false;
 
-        result = new BillingException(message, apiEx);
+        result = new BillingException(message, apiEx) { StatusCode = apiEx.StatusCode };
         return true;
     }
 

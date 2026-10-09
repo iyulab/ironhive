@@ -29,7 +29,9 @@ public class BillingMappingTests
 
         var ex = await ChatCompletionExceptionDetector.DetectAsync(response, TestContext.Current.CancellationToken);
 
-        ex.Should().BeOfType<BillingException>().Which.Message.Should().Be("Insufficient Balance");
+        var billing = ex.Should().BeOfType<BillingException>().Subject;
+        billing.Message.Should().Be("Insufficient Balance");
+        billing.StatusCode.Should().Be(HttpStatusCode.PaymentRequired, "the status the provider answered with stays readable");
     }
 
     [Fact]
@@ -41,7 +43,7 @@ public class BillingMappingTests
 
         var ex = await ChatCompletionExceptionDetector.DetectAsync(response, TestContext.Current.CancellationToken);
 
-        ex.Should().BeOfType<BillingException>();
+        ex.Should().BeOfType<BillingException>().Which.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
     }
 
     [Fact]
@@ -59,7 +61,7 @@ public class BillingMappingTests
     public void Compatible_MidStream_InsufficientQuota_Is_Billing()
     {
         ChatCompletionExceptionDetector.Detect("insufficient_quota: You exceeded your current quota")
-            .Should().BeOfType<BillingException>();
+            .Should().BeOfType<BillingException>().Which.StatusCode.Should().BeNull("an error line inside a stream has no status");
     }
 
     // ---- OpenAI SDK (ClientResultException) ----
@@ -70,8 +72,9 @@ public class BillingMappingTests
         var sdk = new ClientResultException(new FakeResponse(429,
             """{"error":{"message":"You exceeded your current quota","type":"insufficient_quota","code":"insufficient_quota"}}"""));
 
-        OpenAIMapper.Map(sdk, TestContext.Current.CancellationToken).Should().BeOfType<BillingException>()
-            .Which.InnerException.Should().BeSameAs(sdk);
+        var billing = OpenAIMapper.Map(sdk, TestContext.Current.CancellationToken).Should().BeOfType<BillingException>().Subject;
+        billing.InnerException.Should().BeSameAs(sdk);
+        billing.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
         OpenAIErrors.TryMapRateLimit(sdk).Should().BeNull("a quota that waiting does not restore is not a rate limit");
     }
 
@@ -80,7 +83,8 @@ public class BillingMappingTests
     {
         var sdk = new ClientResultException(new FakeResponse(402, """{"error":{"message":"Payment required"}}"""));
 
-        OpenAIMapper.Map(sdk, TestContext.Current.CancellationToken).Should().BeOfType<BillingException>();
+        OpenAIMapper.Map(sdk, TestContext.Current.CancellationToken).Should().BeOfType<BillingException>()
+            .Which.StatusCode.Should().Be(HttpStatusCode.PaymentRequired);
     }
 
     [Fact]
@@ -100,7 +104,8 @@ public class BillingMappingTests
         var body = """{"type":"error","error":{"type":"billing_error","message":"Your account has a billing issue."}}""";
         var sdk = AnthropicExceptionFactory.CreateApiException(HttpStatusCode.PaymentRequired, body);
 
-        AnthropicMapper.Map(sdk, TestContext.Current.CancellationToken).Should().BeOfType<BillingException>();
+        AnthropicMapper.Map(sdk, TestContext.Current.CancellationToken).Should().BeOfType<BillingException>()
+            .Which.StatusCode.Should().Be(HttpStatusCode.PaymentRequired);
     }
 
     [Fact]
@@ -109,7 +114,8 @@ public class BillingMappingTests
         var body = """{"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API."}}""";
         var sdk = AnthropicExceptionFactory.CreateApiException(HttpStatusCode.BadRequest, body);
 
-        AnthropicMapper.Map(sdk, TestContext.Current.CancellationToken).Should().BeOfType<BillingException>();
+        AnthropicMapper.Map(sdk, TestContext.Current.CancellationToken).Should().BeOfType<BillingException>()
+            .Which.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     // ---- Google GenAI ----
@@ -119,7 +125,8 @@ public class BillingMappingTests
     {
         var clientError = new ClientError("Payment required", 402, "PAYMENT_REQUIRED");
 
-        GoogleAIMapper.Map(clientError, TestContext.Current.CancellationToken).Should().BeOfType<BillingException>();
+        GoogleAIMapper.Map(clientError, TestContext.Current.CancellationToken).Should().BeOfType<BillingException>()
+            .Which.StatusCode.Should().Be(HttpStatusCode.PaymentRequired);
     }
 
     private static HttpResponseMessage JsonResponse(HttpStatusCode statusCode, string json)
