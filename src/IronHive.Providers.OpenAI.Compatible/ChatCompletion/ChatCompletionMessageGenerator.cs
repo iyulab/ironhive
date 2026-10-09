@@ -63,7 +63,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         CancellationToken cancellationToken = default)
     {
         var req = BuildRequest(request, TokenLimitParameter, CarryImageToolResultsAsUserMessage);
-        var res = await _client.PostAsync(req, cancellationToken);
+        var res = await _client.PostAsync(req, request.Headers, cancellationToken);
         var choice = res.Choices?.FirstOrDefault();
         var content = new List<MessageContent>();
 
@@ -145,7 +145,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         var completedIndexes = new HashSet<int>();
         var nextIndex = 0;
 
-        await foreach (var chunk in _client.PostStreamingAsync(req, cancellationToken))
+        await foreach (var chunk in _client.PostStreamingAsync(req, request.Headers, cancellationToken))
         {
             if (!begun)
             {

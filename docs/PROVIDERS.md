@@ -454,6 +454,30 @@ new AnthropicConfig
 - 소비자가 준 `HttpClient`의 `DefaultRequestHeaders`는 건드리지 않는다 — 헤더는 요청 단위로 실린다(공유
   `IHttpClientFactory` 클라이언트가 다른 provider와 섞이지 않게).
 
+### 호출 단위 헤더 (`MessageGenerationRequest.Headers`)
+
+한 클라이언트가 여러 실행 단위(에이전트·작업·사용자)를 대신해 부를 때, 게이트웨이가 호출마다 읽는 값(귀속 태그,
+세션·추적 id)은 config 가 아니라 요청에 싣는다. 네 provider 모두 버퍼·스트리밍·토큰 카운트 호출에 실어 보낸다.
+
+| 들어가는 길 | 멤버 |
+|---|---|
+| provider 직접 호출 | `MessageGenerationRequest.Headers` |
+| `IMessageService` | `MessageRequest.Headers`(그 요청이 부르는 모든 provider 호출) |
+| 에이전트 | `AgentInvokeOptions.Headers` |
+| M.E.AI `IChatClient`(`ChatClientAdapter`) | `ChatOptions.AdditionalProperties[ChatClientAdapter.RequestHeadersKey]` — `IDictionary<string, string>` 또는 `IReadOnlyDictionary<string, string>`, 다른 타입은 `ArgumentException` |
+
+```csharp
+var options = new AgentInvokeOptions
+{
+    Headers = new Dictionary<string, string> { ["X-Gateway-Tag"] = "folder-42" }
+};
+```
+
+- **config 위에 얹힌다.** config `Headers` 는 그대로 가고, 같은 이름이면 **요청 값이 이긴다**(클라이언트 기본값 위의 호출
+  값 — HTTP 클라이언트 관례). 한 번만 보내진다(Anthropic 도 값이 둘 가지 않는다).
+- **자격증명 규칙은 같다.** 자격증명 헤더 이름이면 그 호출이 `ArgumentException` 으로 거부되고 요청은 나가지 않는다.
+- 그 호출에만 실린다 — 다음 호출로 새지 않는다.
+
 ## 공급자 고유 필드 (`ExtraBody`) — OpenAI Compatible
 
 타입 멤버가 모델링하지 않는 서버 확장 필드를 양방향으로 통과시킨다.

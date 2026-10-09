@@ -69,7 +69,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
     {
         RejectUnsupported(request);
         var req = ToMessageCreateParams(request);
-        var res = await _client.Messages.Create(req, cancellationToken)
+        var res = await ClientFor(request).Messages.Create(req, cancellationToken)
             .MapException(ex => AnthropicExceptionMapper.Map(ex, cancellationToken));
 
         var content = new List<MessageContent>();
@@ -153,6 +153,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
     {
         RejectUnsupported(request);
         var req = ToMessageCreateParams(request);
+        var client = ClientFor(request);
 
         string? id = null;
         string? model = null;
@@ -160,7 +161,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
         var usage = new MessageTokenUsage();
 
         await foreach (var evt in ProviderStreams.WithIdleTimeout(
-                ct => _client.Messages.CreateStreaming(req, ct), _streamIdleTimeout, cancellationToken)
+                ct => client.Messages.CreateStreaming(req, ct), _streamIdleTimeout, cancellationToken)
             .MapException(ex => AnthropicExceptionMapper.Map(ex, cancellationToken), cancellationToken))
         {
             // 1. 메시지 시작 이벤트
@@ -319,7 +320,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var result = await _client.Messages.CountTokens(ToMessageCountTokensParams(request), cancellationToken);
+        var result = await ClientFor(request).Messages.CountTokens(ToMessageCountTokensParams(request), cancellationToken);
         return (int)result.InputTokens;
     }
 
@@ -695,6 +696,32 @@ public class AnthropicMessageGenerator : IMessageGenerator
             Thinking = thinking,
             OutputConfig = outputConfig,
         };
+    }
+
+    /// <summary>
+    /// The client for one request: the shared one, or — when the request carries its own headers
+    /// (<see cref="MessageGenerationRequest.Headers"/>) — a copy whose <c>ExtraHeaders</c> are the configured ones with
+    /// the request's on top, so a request value replaces a configured one of the same name. The SDK's per-request header
+    /// data would be sent beside a configured header of the same name rather than instead of it; the copy shares the
+    /// shared client's HTTP client. A request header that names the credential is refused.
+    /// </summary>
+    private IAnthropicClient ClientFor(MessageGenerationRequest request)
+    {
+        var headers = ProviderRequestHeaders.ResolveRequest(
+            nameof(AnthropicConfig), nameof(AnthropicConfig.ApiKey), ["Authorization", "x-api-key"], request.Headers);
+        if (headers is null)
+            return _client;
+
+        return _client.WithOptions(options =>
+        {
+            var merged = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (name, value) in options.ExtraHeaders ?? new Dictionary<string, string>())
+                merged[name] = value;
+            foreach (var (name, value) in headers)
+                merged[name] = value;
+            options.ExtraHeaders = merged;
+            return options;
+        });
     }
 
     private static string ToMediaType(ImageFormat format) => format switch

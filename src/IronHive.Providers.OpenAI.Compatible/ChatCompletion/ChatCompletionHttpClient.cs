@@ -42,6 +42,7 @@ internal sealed class ChatCompletionHttpClient : IDisposable
 
     public async Task<ChatCompletionResponse> PostAsync(
         ChatCompletionRequest request,
+        IDictionary<string, string>? headers = null,
         CancellationToken cancellationToken = default)
     {
         request.Stream = false;
@@ -51,7 +52,7 @@ internal sealed class ChatCompletionHttpClient : IDisposable
         var token = timeout?.Token ?? cancellationToken;
         try
         {
-            using var httpRequest = _http.CreatePost(content);
+            using var httpRequest = _http.CreatePost(content, headers);
             using var response = await _http.Http.SendAsync(httpRequest, token).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
@@ -69,13 +70,14 @@ internal sealed class ChatCompletionHttpClient : IDisposable
 
     public async IAsyncEnumerable<StreamingChatCompletionResponse> PostStreamingAsync(
         ChatCompletionRequest request,
+        IDictionary<string, string>? headers = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         request.Stream = true;
         request.StreamOptions = new ChatCompletionStreamOptions { IncludeUsage = true };
 
         using var content = JsonContent.Create(request, options: JsonOptions);
-        using var httpRequest = _http.CreatePost(content);
+        using var httpRequest = _http.CreatePost(content, headers);
         // OpenAIConfig.Timeout bounds the wait for the response to start, as HttpClient.Timeout does with
         // ResponseHeadersRead; a long generation that is streaming is not cut off by it. OpenAIConfig.StreamIdleTimeout
         // bounds every silence: that same wait, then each read of the body.

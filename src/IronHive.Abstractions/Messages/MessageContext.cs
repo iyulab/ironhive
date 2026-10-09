@@ -77,6 +77,7 @@ public class MessageContext
             TopK = request.TopK,
             StopSequences = request.StopSequences,
             ExtraBody = request.ExtraBody,
+            Headers = request.Headers,
             LogProbabilities = request.LogProbabilities,
         };
         configure?.Invoke(Request);

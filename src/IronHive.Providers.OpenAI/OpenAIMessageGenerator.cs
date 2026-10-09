@@ -27,6 +27,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
     private readonly ResponsesClient _client;
     private readonly IReadOnlyDictionary<string, OpenAIModelCapabilities>? _capabilityOverrides;
     private readonly TimeSpan _streamIdleTimeout = System.Threading.Timeout.InfiniteTimeSpan;
+    private readonly IReadOnlyCollection<string> _credentialHeaders;
 
     public OpenAIMessageGenerator(string apiKey)
         : this(new OpenAIConfig { ApiKey = apiKey })
@@ -37,6 +38,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
         ProviderStreams.ThrowIfInvalid(config.StreamIdleTimeout, $"{nameof(OpenAIConfig)}.{nameof(OpenAIConfig.StreamIdleTimeout)}");
         _streamIdleTimeout = config.StreamIdleTimeout;
         _client = OpenAIClientFactory.Create(config).GetResponsesClient();
+        _credentialHeaders = (config.ApiKeyPlacement ?? CredentialPlacement.Bearer).ReservedHeaderNames;
         _capabilityOverrides = config.ModelCapabilities is { Count: > 0 } overrides
             ? new Dictionary<string, OpenAIModelCapabilities>(overrides, StringComparer.Ordinal)
             : null;
@@ -47,6 +49,9 @@ public class OpenAIMessageGenerator : IMessageGenerator
     {
         GC.SuppressFinalize(this);
     }
+
+    private IReadOnlyDictionary<string, string>? ResolveRequestHeaders(MessageGenerationRequest request)
+        => ProviderRequestHeaders.ResolveRequest(nameof(OpenAIConfig), nameof(OpenAIConfig.ApiKey), _credentialHeaders, request.Headers);
 
     // Request features this provider does not carry. The official SDK builds its request body, which this library does
     // not extend, and this provider does not return token log probabilities; dropping either silently would answer a
@@ -70,6 +75,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
     {
         RejectUnsupported(request);
         var options = BuildOptions(request, _capabilityOverrides);
+        using var headers = RequestHeadersScope.Begin(ResolveRequestHeaders(request));
         var result = await _client.CreateResponseAsync(options, cancellationToken)
             .MapException(ex => OpenAIExceptionMapper.Map(ex, cancellationToken));
         var response = result.Value;
@@ -166,6 +172,8 @@ public class OpenAIMessageGenerator : IMessageGenerator
         RejectUnsupported(request);
         var options = BuildOptions(request, _capabilityOverrides);
         options.StreamingEnabled = true;
+        // The SDK sends the request on the first read below, inside this iteration — the scope covers it.
+        using var headers = RequestHeadersScope.Begin(ResolveRequestHeaders(request));
 
         int pIndex = 0;
         var reason = MessageDoneReason.EndTurn;
@@ -409,6 +417,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
         body.Remove("include");
         body.Remove("stream");
         var content = BinaryContent.Create(BinaryData.FromString(body.ToJsonString()));
+        using var headers = RequestHeadersScope.Begin(ResolveRequestHeaders(request));
         var result = await _client.GetInputTokenCountAsync(
             content, "application/json",
             new RequestOptions { CancellationToken = cancellationToken });

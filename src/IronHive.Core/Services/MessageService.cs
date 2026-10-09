@@ -268,6 +268,7 @@ public class MessageService : IMessageService
             Tools = request.Tools,
             OutputFormat = request.OutputFormat,
             MaxTokens = request.MaxTokens,
+            Headers = request.Headers,
         };
         return generator.CountTokensAsync(req, cancellationToken);
     }

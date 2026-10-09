@@ -302,7 +302,7 @@ public sealed class StreamIdleTimeoutTests
     {
         var request = new ChatCompletionRequest { Model = "m", Messages = [] };
         var count = 0;
-        await foreach (var _ in client.PostStreamingAsync(request, cancellationToken))
+        await foreach (var _ in client.PostStreamingAsync(request, cancellationToken: cancellationToken))
             count++;
         return count;
     }

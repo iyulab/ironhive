@@ -53,7 +53,7 @@ public class ChatCompletionInjectedHttpClientTests
             Organization = "org-1",
             Project = "proj-1",
         });
-        await client.PostAsync(Request(), Ct);
+        await client.PostAsync(Request(), cancellationToken: Ct);
 
         shared.Timeout.Should().Be(TimeSpan.FromSeconds(30), "the consumer's timeout is the consumer's");
         shared.BaseAddress.Should().BeNull();
@@ -88,8 +88,8 @@ public class ChatCompletionInjectedHttpClientTests
         using var a = new ChatCompletionHttpClient(new OpenAIConfig { HttpClient = shared, BaseUrl = "http://a.invalid/v1" });
         using var b = new ChatCompletionHttpClient(new OpenAIConfig { HttpClient = shared, BaseUrl = "http://b.invalid/v1/" });
 
-        await a.PostAsync(Request(), Ct);
-        await b.PostAsync(Request(), Ct);
+        await a.PostAsync(Request(), cancellationToken: Ct);
+        await b.PostAsync(Request(), cancellationToken: Ct);
 
         handler.Requests.Select(r => r.RequestUri!.Host).Should().Equal("a.invalid", "b.invalid");
     }
@@ -105,7 +105,7 @@ public class ChatCompletionInjectedHttpClientTests
             Timeout = TimeSpan.FromMilliseconds(200),
         });
 
-        var act = () => client.PostAsync(Request(), Ct);
+        var act = () => client.PostAsync(Request(), cancellationToken: Ct);
 
         await act.Should().ThrowAsync<TimeoutException>();
     }

@@ -435,8 +435,8 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         // Developer API는 CountTokens에서 systemInstruction/tools를 지원하지 않아
         // contents(메시지)만 카운팅 가능합니다. Vertex AI는 풀 카운팅을 지원합니다.
         var countConfig = _isVertex
-            ? new CountTokensConfig { SystemInstruction = config.SystemInstruction, Tools = config.Tools }
-            : null;
+            ? new CountTokensConfig { SystemInstruction = config.SystemInstruction, Tools = config.Tools, HttpOptions = config.HttpOptions }
+            : config.HttpOptions is null ? null : new CountTokensConfig { HttpOptions = config.HttpOptions };
         var result = await _client.Models.CountTokensAsync(request.Model, contents, countConfig, cancellationToken);
         return result.TotalTokens ?? 0;
     }
@@ -477,6 +477,16 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         var bytes = string.IsNullOrEmpty(base64) ? 0 : (int)Math.Round(base64.Length * 3.0 / 4.0);
         return $"[{mimeType} content omitted - {bytes} bytes; this model does not accept multimodal function responses]";
     }
+
+    /// <summary>
+    /// The request's own headers (<see cref="MessageGenerationRequest.Headers"/>) as the SDK's per-request
+    /// <see cref="HttpOptions"/>, which the SDK merges over the client's — a request value replaces a configured one of
+    /// the same name, and the client's base URL, version and timeout stay. Null when the request carries none.
+    /// </summary>
+    private static HttpOptions? RequestHttpOptions(MessageGenerationRequest request)
+        => ProviderRequestHeaders.ResolveRequest(nameof(GoogleAIConfig), nameof(GoogleAIConfig.ApiKey), ["x-goog-api-key", "Authorization"], request.Headers) is { } headers
+            ? new HttpOptions { Headers = new Dictionary<string, string>(headers) }
+            : null;
 
     /// <summary>
     /// IronHive의 MessageGenerationRequest를 Google GenAI SDK의 타입들로 변환합니다.
@@ -770,6 +780,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
 
         var config = new GenerateContentConfig
         {
+            HttpOptions = RequestHttpOptions(request),
             SystemInstruction = string.IsNullOrWhiteSpace(request.System) ? null : new Content
             {
                 Parts = [new Part { Text = request.System }]

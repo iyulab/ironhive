@@ -79,4 +79,45 @@ public static class ProviderRequestHeaders
 
         return merged.Count == 0 ? null : merged;
     }
+
+    /// <summary>
+    /// Checks the headers one request asks for (<c>MessageGenerationRequest.Headers</c>) under the same credential rule
+    /// as the configured ones: a header that names the provider's credential is refused, because the credential belongs
+    /// to the config's credential slot whatever the scope. The provider sends the result on top of its configured
+    /// headers — the request's value wins for a header both set, as a per-request value replaces a client default.
+    /// </summary>
+    /// <param name="configName">The provider's configuration type, for the error text.</param>
+    /// <param name="credentialSlot">The config member that carries the credential, for the error text.</param>
+    /// <param name="reservedNames">Header names the provider's credential occupies.</param>
+    /// <param name="headers">The request's headers; null or empty for none.</param>
+    /// <returns>The headers, or <c>null</c> when the request carries none.</returns>
+    /// <exception cref="ArgumentException">A header name is empty or names the credential.</exception>
+    public static IReadOnlyDictionary<string, string>? ResolveRequest(
+        string configName,
+        string credentialSlot,
+        IEnumerable<string> reservedNames,
+        IDictionary<string, string>? headers)
+    {
+        if (headers is null || headers.Count == 0)
+            return null;
+
+        var reserved = new HashSet<string>(reservedNames, StringComparer.OrdinalIgnoreCase);
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (name, value) in headers)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("MessageGenerationRequest.Headers contains an empty header name.");
+
+            if (reserved.Contains(name))
+            {
+                throw new ArgumentException(
+                    $"MessageGenerationRequest.Headers must not set '{name}': that header carries the credential, " +
+                    $"which is configured through {configName}.{credentialSlot}.");
+            }
+
+            result[name] = value;
+        }
+
+        return result;
+    }
 }

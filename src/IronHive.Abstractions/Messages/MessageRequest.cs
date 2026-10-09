@@ -61,6 +61,12 @@ public class MessageRequest
     public JsonObject? ExtraBody { get; set; }
 
     /// <summary>
+    /// Extra HTTP headers for every provider call this request makes, on top of the provider configuration's headers
+    /// (<see cref="MessageGenerationRequest.Headers"/>).
+    /// </summary>
+    public IDictionary<string, string>? Headers { get; set; }
+
+    /// <summary>
     /// Asks for the log probability of each output token (and, optionally, the most likely alternatives). The response
     /// carries them in <c>LogProbabilities</c>. <see langword="null"/> requests none. A provider that cannot return them
     /// throws <see cref="NotSupportedException"/> rather than answering without them.

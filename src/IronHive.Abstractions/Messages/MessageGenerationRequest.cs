@@ -56,6 +56,15 @@ public class MessageGenerationRequest
     public JsonObject? ExtraBody { get; set; }
 
     /// <summary>
+    /// Extra HTTP headers for this request only, sent on top of the provider configuration's <c>Headers</c> — a request
+    /// value replaces a configured one of the same name. For what a gateway reads per call (an attribution tag, a session
+    /// or trace id) when one client serves many callers. Honoured by every provider. A header that names the provider's
+    /// credential (<c>Authorization</c>, <c>x-api-key</c>, <c>x-goog-api-key</c>) is refused with
+    /// <see cref="ArgumentException"/>; the credential belongs to the configuration.
+    /// </summary>
+    public IDictionary<string, string>? Headers { get; set; }
+
+    /// <summary>
     /// Asks for the log probability of each output token (and, optionally, the most likely alternatives). The response
     /// carries them in <c>LogProbabilities</c>. <see langword="null"/> requests none. A provider that cannot return them
     /// throws <see cref="NotSupportedException"/> rather than answering without them.

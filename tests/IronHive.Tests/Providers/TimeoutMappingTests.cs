@@ -99,7 +99,7 @@ public class TimeoutMappingTests
         using var client = new ChatCompletionHttpClient(config);
         var request = new ChatCompletionRequest { Model = "test-model", Messages = [] };
 
-        var act = () => client.PostAsync(request, TestContext.Current.CancellationToken);
+        var act = () => client.PostAsync(request, cancellationToken: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<TimeoutException>();
     }
@@ -117,7 +117,7 @@ public class TimeoutMappingTests
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        var act = () => client.PostAsync(request, cts.Token);
+        var act = () => client.PostAsync(request, cancellationToken: cts.Token);
 
         var ex = await act.Should().ThrowAsync<OperationCanceledException>();
         ex.Which.Should().NotBeOfType<TimeoutException>();

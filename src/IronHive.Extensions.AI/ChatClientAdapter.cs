@@ -42,6 +42,15 @@ public class ChatClientAdapter : IChatClient
     public const string StreamToolArgumentsKey = "IronHive.StreamToolArguments";
 
     /// <summary>
+    /// <see cref="ChatOptions.AdditionalProperties"/> key — extra HTTP headers for this call
+    /// (<see cref="MessageGenerationRequest.Headers"/>): an <c>IDictionary&lt;string, string&gt;</c> or
+    /// <c>IReadOnlyDictionary&lt;string, string&gt;</c> of name → value, sent on top of the provider configuration's
+    /// headers. For what a gateway reads per call (an attribution tag, a session or trace id) when one client serves
+    /// many callers. Any other value type is refused with <see cref="ArgumentException"/> rather than dropped.
+    /// </summary>
+    public const string RequestHeadersKey = "IronHive.RequestHeaders";
+
+    /// <summary>
     /// ChatClientAdapter의 새 인스턴스를 생성합니다.
     /// </summary>
     /// <param name="generator">IronHive 메시지 생성기</param>
@@ -331,6 +340,7 @@ public class ChatClientAdapter : IChatClient
             // A caller that watches argument fragments also needs the provider to send them as written.
             request.StreamToolArguments = options.AdditionalProperties is { } extra
                 && extra.TryGetValue(StreamToolArgumentsKey, out var streamArguments) && streamArguments is true;
+            request.Headers = ReadRequestHeaders(options.AdditionalProperties);
 
             // M.E.AI carries system instructions in two places: a System-role message inside the
             // conversation, and Instructions on the options. Both are the caller asking for the same
@@ -553,6 +563,21 @@ public class ChatClientAdapter : IChatClient
 
     // The provider's unmapped response fields, one entry per top-level field (JsonElement values), the way
     // Microsoft.Extensions.AI carries provider-specific response data.
+    private static IDictionary<string, string>? ReadRequestHeaders(AdditionalPropertiesDictionary? properties)
+    {
+        if (properties is null || !properties.TryGetValue(RequestHeadersKey, out var value) || value is null)
+            return null;
+
+        return value switch
+        {
+            IDictionary<string, string> headers => headers,
+            IReadOnlyDictionary<string, string> headers => headers.ToDictionary(h => h.Key, h => h.Value, StringComparer.OrdinalIgnoreCase),
+            _ => throw new ArgumentException(
+                $"ChatOptions.AdditionalProperties[\"{RequestHeadersKey}\"] must be an IDictionary<string, string> or " +
+                $"IReadOnlyDictionary<string, string> of header name to value, not {value.GetType().Name}."),
+        };
+    }
+
     private static AdditionalPropertiesDictionary? ToAdditionalProperties(JsonObject? extraBody)
     {
         if (extraBody is not { Count: > 0 })

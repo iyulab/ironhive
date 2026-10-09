@@ -60,9 +60,15 @@ internal sealed class ProviderHttpClient : IDisposable
 
     public HttpClient Http { get; }
 
-    /// <summary>A POST to the operation's endpoint carrying the credentials and the configured headers.</summary>
-    public HttpRequestMessage CreatePost(HttpContent content)
+    /// <summary>
+    /// A POST to the operation's endpoint carrying the credentials, the configured headers and then
+    /// <paramref name="requestHeaders"/> — one request's own headers, which replace a configured one of the same name.
+    /// A request header that names the credential is refused (<see cref="ProviderRequestHeaders.ResolveRequest"/>).
+    /// </summary>
+    public HttpRequestMessage CreatePost(HttpContent content, IDictionary<string, string>? requestHeaders = null)
     {
+        var perRequest = ProviderRequestHeaders.ResolveRequest(
+            nameof(OpenAIConfig), nameof(OpenAIConfig.ApiKey), _placement.ReservedHeaderNames, requestHeaders);
         var request = new HttpRequestMessage(HttpMethod.Post, _endpoint) { Content = content };
         var resolved = _apiKeyResolver?.Invoke();
         var apiKey = string.IsNullOrWhiteSpace(resolved) ? _apiKey : resolved;
@@ -74,16 +80,21 @@ internal sealed class ProviderHttpClient : IDisposable
             request.Headers.Add("OpenAI-Project", _project);
 
         // A configured header replaces any default of the same name; the credential is never among them.
-        if (_headers is not null)
-        {
-            foreach (var (name, value) in _headers)
-            {
-                request.Headers.Remove(name);
-                request.Headers.TryAddWithoutValidation(name, value);
-            }
-        }
-
+        Apply(request, _headers);
+        Apply(request, perRequest);
         return request;
+    }
+
+    private static void Apply(HttpRequestMessage request, IReadOnlyDictionary<string, string>? headers)
+    {
+        if (headers is null)
+            return;
+
+        foreach (var (name, value) in headers)
+        {
+            request.Headers.Remove(name);
+            request.Headers.TryAddWithoutValidation(name, value);
+        }
     }
 
     /// <summary>

@@ -41,7 +41,8 @@ public class AgentInvokeOptionRosterTests
         ["MaxTurns"] = "MaxTurns",
         ["Items"] = "Items",
         ["ExtraBody"] = "ExtraBody",
-        ["LogProbabilities"] = "LogProbabilities"
+        ["LogProbabilities"] = "LogProbabilities",
+        ["Headers"] = "Headers"
     };
 
     /// <summary>
@@ -126,6 +127,7 @@ public class AgentInvokeOptionRosterTests
         if (type == typeof(LogProbabilityOptions)) return new LogProbabilityOptions { TopAlternatives = 3 };
         if (type == typeof(System.Text.Json.Nodes.JsonObject)) return new System.Text.Json.Nodes.JsonObject { ["sample"] = 1 };
         if (typeof(IToolCollection).IsAssignableFrom(type)) return new ToolCollection();
+        if (type == typeof(IDictionary<string, string>)) return new Dictionary<string, string> { ["X-Sample"] = "1" };
         if (typeof(ICollection<string>).IsAssignableFrom(type)) return new List<string> { "STOP" };
 
         throw new NotSupportedException(

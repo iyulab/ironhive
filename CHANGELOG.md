@@ -12,6 +12,13 @@ changes are expected and used freely for structural correctness.
   and retry» without parsing messages. `OpenAIErrors.TryMapBilling(ex)` gives the same mapping to a caller with its own
   OpenAI SDK client.
 
+- **Per-call HTTP headers on every provider.** `MessageGenerationRequest.Headers` (and `MessageRequest.Headers`,
+  `AgentInvokeOptions.Headers`, `ChatOptions.AdditionalProperties[ChatClientAdapter.RequestHeadersKey]`) sends extra
+  headers on that call only — buffered, streaming and token-count calls — on top of the configuration's `Headers`, the
+  request value winning for a shared name. For what a gateway reads per call (an attribution tag, a session or trace
+  id) when one client serves many callers. A header naming the credential is refused, as in the configuration.
+  `ProviderRequestHeaders.ResolveRequest` applies that rule.
+
 ### Changed
 - **Breaking: OpenAI `insufficient_quota` is no longer a `RateLimitException`.** It arrives as HTTP 429, but waiting does
   not restore an exhausted balance or quota, which is what `RateLimitException` promises; `OpenAIErrors.TryMapRateLimit`

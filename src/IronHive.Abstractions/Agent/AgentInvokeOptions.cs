@@ -56,6 +56,12 @@ public class AgentInvokeOptions
     public JsonObject? ExtraBody { get; set; }
 
     /// <summary>
+    /// Extra HTTP headers for this call's provider requests, on top of the provider configuration's headers
+    /// (<see cref="MessageRequest.Headers"/>).
+    /// </summary>
+    public IDictionary<string, string>? Headers { get; set; }
+
+    /// <summary>
     /// Asks for per-token log probabilities for this call (<see cref="MessageRequest.LogProbabilities"/>).
     /// </summary>
     public LogProbabilityOptions? LogProbabilities { get; set; }

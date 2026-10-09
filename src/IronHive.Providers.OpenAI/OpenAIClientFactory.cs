@@ -88,9 +88,9 @@ public static class OpenAIClientFactory
         if (!defaultPlacement)
             options.AddPolicy(new CredentialPlacementPolicy(placement, config.ApiKeyResolver, config.ApiKey), PipelinePosition.BeforeTransport);
 
+        // Always registered: a request's own headers (MessageGenerationRequest.Headers) ride the same policy.
         var headers = ProviderRequestHeaders.Resolve(nameof(OpenAIConfig), nameof(OpenAIConfig.ApiKey), placement.ReservedHeaderNames, config.Headers);
-        if (headers is not null)
-            options.AddPolicy(new ExtraRequestHeadersPolicy(headers), PipelinePosition.BeforeTransport);
+        options.AddPolicy(new ExtraRequestHeadersPolicy(headers), PipelinePosition.BeforeTransport);
 
         return options;
     }
