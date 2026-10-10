@@ -20,4 +20,14 @@ public class ProviderResponseException : HiveException
     public ProviderResponseException(string message, Exception? inner = null)
         : base(message, inner)
     { }
+
+    /// <summary>
+    /// The HTTP status the vendor documents for the same error when it is not inside a stream — Anthropic
+    /// <c>overloaded_error</c> 529, <c>api_error</c> 500, <c>invalid_request_error</c> 400; OpenAI <c>server_error</c> 500 — so a
+    /// caller that classifies HTTP failures by status (retry the same provider, fall back, give up) treats the mid-stream and
+    /// the HTTP form of one error alike. Null when the vendor documents no status for the code, or the response ended
+    /// without an error of its own. It is not a status this response had: the response was a 200, and a stream that
+    /// already delivered output cannot be retried without repeating it.
+    /// </summary>
+    public System.Net.HttpStatusCode? EquivalentStatusCode { get; init; }
 }

@@ -1,3 +1,4 @@
+using System.Net;
 using AwesomeAssertions;
 using IronHive.Abstractions.Exceptions;
 using IronHive.Abstractions.Messages;
@@ -26,7 +27,9 @@ public class ProviderResponseFailureTests
 
         var (frames, error) = await RunAsync(OpenAI(sse));
 
-        error.Should().BeOfType<ProviderResponseException>().Which.ErrorCode.Should().Be("server_error");
+        var thrown = error.Should().BeOfType<ProviderResponseException>().Which;
+        thrown.ErrorCode.Should().Be("server_error");
+        thrown.EquivalentStatusCode.Should().Be(HttpStatusCode.InternalServerError, "OpenAI documents server_error as 500");
         TextOf(frames).Should().Be("Hel", "the text streamed before the error is still delivered");
         frames.OfType<StreamingMessageDoneResponse>().Should().BeEmpty("a done frame would read as a completed response");
     }
@@ -52,7 +55,9 @@ public class ProviderResponseFailureTests
     {
         var (frames, error) = await RunAsync(OpenAI(OpenAIPrefix()));
 
-        error.Should().BeOfType<ProviderResponseException>().Which.ErrorCode.Should().BeNull("no error was sent — the stream just stopped");
+        var thrown = error.Should().BeOfType<ProviderResponseException>().Which;
+        thrown.ErrorCode.Should().BeNull("no error was sent — the stream just stopped");
+        thrown.EquivalentStatusCode.Should().BeNull("no vendor error, so no documented status");
         TextOf(frames).Should().Be("Hel");
     }
 
@@ -89,6 +94,7 @@ public class ProviderResponseFailureTests
         var thrown = error.Should().BeOfType<ProviderResponseException>().Which;
         thrown.Message.Should().Be("Upstream overloaded");
         thrown.ErrorCode.Should().Be("503", "a numeric code is kept as the server wrote it");
+        thrown.EquivalentStatusCode.Should().Be(HttpStatusCode.ServiceUnavailable, "a numeric code in the error range is the status");
         TextOf(frames).Should().Be("Hel");
         frames.OfType<StreamingMessageDoneResponse>().Should().BeEmpty();
     }
@@ -143,8 +149,21 @@ public class ProviderResponseFailureTests
 
         var thrown = error.Should().BeOfType<ProviderResponseException>().Which;
         thrown.ErrorCode.Should().Be("overloaded_error");
+        thrown.EquivalentStatusCode.Should().Be((HttpStatusCode)529, "Anthropic documents overloaded_error as 529");
         thrown.Message.Should().Be("Overloaded", "the vendor's message, not the SDK's wrapper around the event data");
         TextOf(frames).Should().Be("Hel");
+    }
+
+    [Fact]
+    public async Task Anthropic_InvalidRequestErrorEvent_CarriesTheRefusalStatus()
+    {
+        var sse = AnthropicPrefix() + StubHttpHandler.Sse(
+            ("error", """{"type":"error","error":{"type":"invalid_request_error","message":"Bad request"}}"""));
+
+        var (_, error) = await RunAsync(Anthropic(sse));
+
+        error.Should().BeOfType<ProviderResponseException>()
+            .Which.EquivalentStatusCode.Should().Be(HttpStatusCode.BadRequest, "a refusal, not a transient fault");
     }
 
     [Fact]

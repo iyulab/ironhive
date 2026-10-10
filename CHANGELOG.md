@@ -3,6 +3,15 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## Unreleased
+
+### Added
+- **A mid-stream provider failure says which HTTP error it is.** `ProviderResponseException.EquivalentStatusCode` is the
+  status the vendor documents for the same error outside a stream: Anthropic `overloaded_error` 529, `api_error` 500,
+  `invalid_request_error` 400 (every documented type), OpenAI `server_error` 500, and a numeric status an OpenAI-compatible
+  server writes in `code`. A caller that classifies HTTP failures by status (retry, fall back, give up) can treat both forms
+  of one error alike. Null when no status is documented or the stream ended without an error.
+
 ## 0.60.0 — 2026-10-10
 
 ### Added

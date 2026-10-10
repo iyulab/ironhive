@@ -76,8 +76,30 @@ internal static partial class AnthropicExceptionMapper
     {
         var body = SseBody(sse);
         var message = ErrorField(body, "message");
-        return new ProviderResponseException(message is { Length: > 0 } ? message : body, sse) { ErrorCode = ErrorField(body, "type") };
+        var type = ErrorField(body, "type");
+        return new ProviderResponseException(message is { Length: > 0 } ? message : body, sse)
+        {
+            ErrorCode = type,
+            EquivalentStatusCode = StatusOfErrorType(type),
+        };
     }
+
+    // The status Anthropic's error reference gives each error type (platform.claude.com/docs/en/api/errors).
+    private static System.Net.HttpStatusCode? StatusOfErrorType(string? type) => type switch
+    {
+        "invalid_request_error" => System.Net.HttpStatusCode.BadRequest,
+        "authentication_error" => System.Net.HttpStatusCode.Unauthorized,
+        "billing_error" => System.Net.HttpStatusCode.PaymentRequired,
+        "permission_error" => System.Net.HttpStatusCode.Forbidden,
+        "not_found_error" => System.Net.HttpStatusCode.NotFound,
+        "conflict_error" => System.Net.HttpStatusCode.Conflict,
+        "request_too_large" => System.Net.HttpStatusCode.RequestEntityTooLarge,
+        "rate_limit_error" => System.Net.HttpStatusCode.TooManyRequests,
+        "api_error" => System.Net.HttpStatusCode.InternalServerError,
+        "timeout_error" => System.Net.HttpStatusCode.GatewayTimeout,
+        "overloaded_error" => (System.Net.HttpStatusCode)529,
+        _ => null,
+    };
 
     // The vendor's error.type as written (billing_error, rate_limit_error, or a gateway's own code), from the error body.
     private static string? ErrorTypeText(string body) => ErrorField(body, "type");

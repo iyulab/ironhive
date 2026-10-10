@@ -141,7 +141,23 @@ public static partial class OpenAIErrors
         if (IsRateLimit(message, type, code, status: null))
             return new RateLimitException(message) { ErrorCode = code ?? type };
 
-        return new ProviderResponseException(message) { ErrorCode = code ?? type };
+        return new ProviderResponseException(message)
+        {
+            ErrorCode = code ?? type,
+            EquivalentStatusCode = EquivalentStatus(type, code),
+        };
+    }
+
+    // A numeric code in the HTTP error range is the status the server would have sent (OpenAI-compatible gateways write it
+    // there); otherwise OpenAI's error reference documents 500 for «server_error» and no status for the other codes.
+    private static System.Net.HttpStatusCode? EquivalentStatus(string? type, string? code)
+    {
+        if (int.TryParse(code, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var numeric)
+            && numeric is >= 400 and <= 599)
+            return (System.Net.HttpStatusCode)numeric;
+        return code == "server_error" || (code is null && type == "server_error")
+            ? System.Net.HttpStatusCode.InternalServerError
+            : null;
     }
 
     /// <summary>
