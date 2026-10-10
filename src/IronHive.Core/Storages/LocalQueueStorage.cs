@@ -203,6 +203,13 @@ public class LocalQueueStorage : IQueueStorage
             {
                 continue;
             }
+            // A cancelled read says nothing about the message: put it back for the next consumer instead of moving it
+            // to the dead messages below.
+            catch (OperationCanceledException)
+            {
+                try { File.Move(lockedFilePath, queueFilePath); } catch (IOException) { /* left locked; RestoreAsync returns it */ }
+                throw;
+            }
             // 이외의 경우 예외가 발생하면 해당 파일을 dead 메시지로 이동합니다.
             catch (Exception ex)
             {
@@ -219,12 +226,6 @@ public class LocalQueueStorage : IQueueStorage
                 catch (IOException)
                 {
                     // 이동 실패 시, lock 상태에 남겨둡니다.
-                }
-
-                // 취소 요청의 경우, 예외를 전파합니다
-                if (ex is OperationCanceledException)
-                {
-                    throw;
                 }
             }
         }

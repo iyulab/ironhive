@@ -23,6 +23,8 @@ changes are expected and used freely for structural correctness.
   `ProviderResponseException` for a stream that sent `[DONE]` but no `finish_reason` (some gateways and test servers omit
   it); now its done reason is `ToolCall` when tool calls arrived, else `EndTurn`. A stream that closes with neither is
   still cut off and throws. Nothing after `[DONE]` is read.
+- **A dequeue cancelled while reading a message no longer dead-letters it.** `LocalQueueStorage.DequeueAsync` moved the
+  message it had locked to the dead messages when the read was cancelled; it now returns it to the queue and rethrows.
 
 ## 0.60.0 — 2026-10-10
 
