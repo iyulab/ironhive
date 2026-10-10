@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## Unreleased
+## 0.61.0 — 2026-10-10
 
 ### Added
 - **A mid-stream provider failure says which HTTP error it is.** `ProviderResponseException.EquivalentStatusCode` is the
