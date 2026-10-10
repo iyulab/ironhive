@@ -15,14 +15,25 @@ namespace IronHive.Tests.Providers;
 /// </summary>
 public class CohereDocumentRerankerTests
 {
+    // HttpListener cannot bind port 0: a free port is probed and then bound, and a parallel test can take it in between
+    // («Failed to listen on prefix» on a CI runner). Probe again when the bind loses that race.
     private static (HttpListener Listener, string Prefix) StartListener()
     {
-        var port = GetFreeTcpPort();
-        var prefix = $"http://127.0.0.1:{port}/";
-        var listener = new HttpListener();
-        listener.Prefixes.Add(prefix);
-        listener.Start();
-        return (listener, prefix);
+        for (var attempt = 1; ; attempt++)
+        {
+            var prefix = $"http://127.0.0.1:{GetFreeTcpPort()}/";
+            var listener = new HttpListener();
+            listener.Prefixes.Add(prefix);
+            try
+            {
+                listener.Start();
+                return (listener, prefix);
+            }
+            catch (HttpListenerException) when (attempt < 10)
+            {
+                listener.Close();
+            }
+        }
     }
 
     private static int GetFreeTcpPort()
