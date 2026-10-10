@@ -9,7 +9,9 @@ namespace IronHive.Providers.GoogleAI;
 /// Normalizes Gemini API errors to IronHive domain exceptions. Currently covers
 /// context-window overflow (HTTP 400, <c>status == "INVALID_ARGUMENT"</c>, message "The input
 /// token count (X) exceeds the maximum number of tokens allowed (Y).") ->
-/// <see cref="ContextOverflowException"/>.
+/// <see cref="ContextOverflowException"/>, a refusal the account cannot pay (402, or 429 <c>insufficient_quota</c>) ->
+/// <see cref="BillingException"/>, and any other 429 -> <see cref="RateLimitException"/>. The Gemini <c>status</c>
+/// (<c>RESOURCE_EXHAUSTED</c>, <c>INVALID_ARGUMENT</c>) is the exception's <see cref="HiveException.ErrorCode"/>.
 /// </summary>
 internal static partial class GoogleAIExceptionMapper
 {
@@ -37,9 +39,8 @@ internal static partial class GoogleAIExceptionMapper
         if (IsContextOverflow(exception, out var overflow))
             return overflow;
 
-        // HTTP 402 Payment Required: a metering gateway in front of the Gemini API refusing an unfunded account.
-        if (exception is ClientError { StatusCode: 402 } paymentRequired)
-            return new BillingException(paymentRequired.Message, paymentRequired) { StatusCode = System.Net.HttpStatusCode.PaymentRequired };
+        if (IsBilling(exception, out var billing))
+            return billing;
 
         if (IsRateLimit(exception, out var rateLimit))
             return rateLimit;
@@ -108,8 +109,38 @@ internal static partial class GoogleAIExceptionMapper
                 contextWindow = window;
         }
 
-        result = new ContextOverflowException(message, clientError) { ContextWindow = contextWindow, RequestTokens = requestTokens };
+        result = new ContextOverflowException(message, clientError)
+        {
+            ContextWindow = contextWindow,
+            RequestTokens = requestTokens,
+            ErrorCode = clientError.Status,
+        };
         return true;
+    }
+
+    /// <summary>
+    /// The account cannot pay: HTTP 402 Payment Required (a metering gateway in front of the Gemini API refusing an
+    /// unfunded account), or a 429 whose body says <c>insufficient_quota</c> — the code an OpenAI-style gateway uses for an
+    /// exhausted balance. Checked before the rate limit: waiting does not clear either.
+    /// </summary>
+    private static bool IsBilling(Exception exception, out BillingException? result)
+    {
+        result = exception switch
+        {
+            ClientError { StatusCode: 402 } paymentRequired => new BillingException(paymentRequired.Message, paymentRequired)
+            {
+                StatusCode = System.Net.HttpStatusCode.PaymentRequired,
+                ErrorCode = paymentRequired.Status,
+            },
+            ClientError { StatusCode: 429 } quota when quota.Message.Contains("insufficient_quota", StringComparison.OrdinalIgnoreCase)
+                => new BillingException(quota.Message, quota)
+                {
+                    StatusCode = System.Net.HttpStatusCode.TooManyRequests,
+                    ErrorCode = "insufficient_quota",
+                },
+            _ => null,
+        };
+        return result is not null;
     }
 
     [GeneratedRegex(@"""retryDelay""\s*:\s*""(\d+(?:\.\d+)?)s""", RegexOptions.IgnoreCase)]
@@ -118,7 +149,9 @@ internal static partial class GoogleAIExceptionMapper
     private static bool IsRateLimit(Exception exception, out RateLimitException? result)
     {
         result = null;
-        if (exception is not ClientError { StatusCode: 429, Status: "RESOURCE_EXHAUSTED" } rateLimited)
+        // Any 429 is a rate limit: Gemini says RESOURCE_EXHAUSTED, a gateway in front of it may say something else or
+        // nothing — the status is the signal. A billing refusal sent as 429 was taken by IsBilling first.
+        if (exception is not ClientError { StatusCode: 429 } rateLimited)
             return false;
 
         // The SDK doesn't expose a dedicated RetryInfo/retryDelay field, so this falls back
@@ -131,7 +164,7 @@ internal static partial class GoogleAIExceptionMapper
             retryAfter = TimeSpan.FromSeconds(seconds);
         }
 
-        result = new RateLimitException(rateLimited.Message, rateLimited) { RetryAfter = retryAfter };
+        result = new RateLimitException(rateLimited.Message, rateLimited) { RetryAfter = retryAfter, ErrorCode = rateLimited.Status };
         return true;
     }
 }

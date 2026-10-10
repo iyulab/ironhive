@@ -19,4 +19,8 @@ public class ProviderHttpException : HttpRequestException
     /// <summary>How long the provider asked the caller to wait before retrying (<c>Retry-After</c>, seconds or an
     /// HTTP date), or null when the response carried no hint.</summary>
     public TimeSpan? RetryAfter { get; init; }
+
+    /// <summary>The error code or type the server put in its error body (<c>error.code</c>, else <c>error.type</c>), or null
+    /// when it sent none — the same reading as <see cref="HiveException.ErrorCode"/> on IronHive's typed exceptions.</summary>
+    public string? ErrorCode { get; init; }
 }

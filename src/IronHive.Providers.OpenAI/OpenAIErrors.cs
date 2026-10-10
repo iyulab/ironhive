@@ -79,7 +79,11 @@ public static partial class OpenAIErrors
 
         var body = ReadBody(clientEx);
         return IsBilling(clientEx.Message, body.FindString("type"), body.FindString("code"), clientEx.Status)
-            ? new BillingException(clientEx.Message, clientEx) { StatusCode = (System.Net.HttpStatusCode)clientEx.Status }
+            ? new BillingException(clientEx.Message, clientEx)
+            {
+                StatusCode = (System.Net.HttpStatusCode)clientEx.Status,
+                ErrorCode = body.FindString("code") ?? body.FindString("type"),
+            }
             : null;
     }
 
@@ -107,7 +111,12 @@ public static partial class OpenAIErrors
             retryAfter = TimeSpan.FromSeconds(seconds);
         }
 
-        return new RateLimitException(clientEx.Message, clientEx) { RetryAfter = retryAfter };
+        var body = ReadBody(clientEx);
+        return new RateLimitException(clientEx.Message, clientEx)
+        {
+            RetryAfter = retryAfter,
+            ErrorCode = body.FindString("code") ?? body.FindString("type"),
+        };
     }
 
     private static readonly string[] RateLimitMarkers =
@@ -127,10 +136,10 @@ public static partial class OpenAIErrors
             return overflow;
 
         if (IsBilling(message, type, code, status: null))
-            return new BillingException(message);
+            return new BillingException(message) { ErrorCode = code ?? type };
 
         if (IsRateLimit(message, type, code, status: null))
-            return new RateLimitException(message);
+            return new RateLimitException(message) { ErrorCode = code ?? type };
 
         return new ProviderResponseException(message) { ErrorCode = code ?? type };
     }
@@ -146,9 +155,13 @@ public static partial class OpenAIErrors
             || RateLimitMarkers.Contains(code, StringComparer.OrdinalIgnoreCase)
             || RateLimitMarkers.Any(marker => message.Contains(marker, StringComparison.OrdinalIgnoreCase));
 
+    // insufficient_quota: an exhausted balance or quota (sent as 429). billing_hard_limit_reached: the account's own
+    // spending limit. billing_not_active: no billing set up. All three clear only when the account changes, never by waiting.
     private static readonly string[] BillingCodes =
     [
         "insufficient_quota",
+        "billing_hard_limit_reached",
+        "billing_not_active",
     ];
 
     /// <summary>
@@ -212,6 +225,7 @@ public static partial class OpenAIErrors
         {
             ContextWindow = contextWindow,
             RequestTokens = requestTokens,
+            ErrorCode = code ?? type,
         };
     }
 

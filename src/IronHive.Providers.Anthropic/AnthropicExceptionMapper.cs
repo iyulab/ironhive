@@ -75,23 +75,29 @@ internal static partial class AnthropicExceptionMapper
     private static ProviderResponseException StreamError(AnthropicSseException sse)
     {
         var body = SseBody(sse);
-        string? type = null;
-        string? message = null;
+        var message = ErrorField(body, "message");
+        return new ProviderResponseException(message is { Length: > 0 } ? message : body, sse) { ErrorCode = ErrorField(body, "type") };
+    }
+
+    // The vendor's error.type as written (billing_error, rate_limit_error, or a gateway's own code), from the error body.
+    private static string? ErrorTypeText(string body) => ErrorField(body, "type");
+
+    private static string? ErrorField(string body, string name)
+    {
         try
         {
-            var error = JsonNode.Parse(body)?["error"];
-            type = error?["type"]?.GetValue<string>();
-            message = error?["message"]?.GetValue<string>();
+            return JsonNode.Parse(body)?["error"]?[name] is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
         }
-        catch (Exception ex) when (ex is JsonException or InvalidOperationException)
-        { }
-
-        return new ProviderResponseException(message is { Length: > 0 } ? message : body, sse) { ErrorCode = type };
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     /// <summary>
-    /// The account cannot pay: <c>billing_error</c> (HTTP 402), or the «credit balance is too low» refusal the API has
-    /// sent as an <c>invalid_request_error</c> (HTTP 400) — the same condition under its older shape.
+    /// The account cannot pay: <c>billing_error</c>, HTTP 402 whatever the body says (a gateway in front of the API may not
+    /// send Anthropic's error shape), or the «credit balance is too low» refusal the API has sent as an
+    /// <c>invalid_request_error</c> (HTTP 400) — the same condition under its older shape.
     /// </summary>
     private static bool IsBilling(Exception exception, out BillingException? result)
     {
@@ -100,12 +106,13 @@ internal static partial class AnthropicExceptionMapper
             return false;
 
         var isBilling = type == ErrorType.BillingError
+            || status == System.Net.HttpStatusCode.PaymentRequired
             || (type == ErrorType.InvalidRequestError
                 && message.Contains("credit balance is too low", StringComparison.OrdinalIgnoreCase));
         if (!isBilling)
             return false;
 
-        result = new BillingException(message, exception) { StatusCode = status };
+        result = new BillingException(message, exception) { StatusCode = status, ErrorCode = ErrorTypeText(message) };
         return true;
     }
 
@@ -148,7 +155,12 @@ internal static partial class AnthropicExceptionMapper
                 contextWindow = window;
         }
 
-        result = new ContextOverflowException(message, exception) { ContextWindow = contextWindow, RequestTokens = requestTokens };
+        result = new ContextOverflowException(message, exception)
+        {
+            ContextWindow = contextWindow,
+            RequestTokens = requestTokens,
+            ErrorCode = ErrorTypeText(message),
+        };
         return true;
     }
 
@@ -161,7 +173,7 @@ internal static partial class AnthropicExceptionMapper
         // The SDK exposes no response headers, so anthropic-ratelimit-*/retry-after
         // (see https://platform.claude.com/docs/en/api/rate-limits) aren't reachable here;
         // RetryAfter is left null.
-        result = new RateLimitException(message, exception);
+        result = new RateLimitException(message, exception) { ErrorCode = ErrorTypeText(message) };
         return true;
     }
 }

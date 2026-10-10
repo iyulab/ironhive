@@ -27,6 +27,18 @@ public class GoogleAIClientFactoryTests
         Location = "us-central1",
     };
 
+    [Theory]
+    [InlineData("https://gateway.example/", "https://gateway.example")]
+    [InlineData("https://gateway.example/gemini//", "https://gateway.example/gemini")]
+    [InlineData("https://gateway.example/gemini", "https://gateway.example/gemini")]
+    public void BaseUrl_TrailingSlash_IsDropped(string configured, string expected)
+    {
+        // The SDK adds its own slash before the API version; «https://gateway.example/» used to reach «//v1beta».
+        var options = Resolve(new GoogleAIConfig { ApiKey = "k", HttpOptions = new HttpOptions { BaseUrl = configured } });
+
+        options.BaseUrl.Should().Be(expected);
+    }
+
     [Fact]
     public void GoogleAI_NoTimeoutConfigured_LeavesTheRequestUnbounded()
     {

@@ -90,7 +90,7 @@ internal static class GoogleAIClientFactory
     /// </summary>
     internal static HttpOptions ResolveHttpOptions(HttpOptions? options, TimeSpan timeout, IDictionary<string, string>? headers, string configName, string credentialSlot)
     {
-        var resolved = ResolveTimeout(options, timeout, configName);
+        var resolved = ResolveBaseUrl(ResolveTimeout(options, timeout, configName));
         var merged = ProviderRequestHeaders.Resolve(
             configName, credentialSlot, ["x-goog-api-key", "Authorization"],
             resolved.Headers is null ? null : new Dictionary<string, string>(resolved.Headers), headers);
@@ -98,6 +98,16 @@ internal static class GoogleAIClientFactory
             ? resolved
             : resolved with { Headers = new Dictionary<string, string>(merged) };
     }
+
+    /// <summary>
+    /// The SDK joins the base URL and the API version with a slash of its own, so a base URL written with a trailing slash
+    /// (<c>https://gateway.example/</c>, the usual way to write a root) reached <c>https://gateway.example//v1beta</c>,
+    /// which most servers and gateways do not route. Trailing slashes are dropped; the URL is otherwise left as written.
+    /// </summary>
+    private static HttpOptions ResolveBaseUrl(HttpOptions options)
+        => options.BaseUrl is { Length: > 0 } baseUrl && baseUrl.EndsWith('/')
+            ? options with { BaseUrl = baseUrl.TrimEnd('/') }
+            : options;
 
     private static HttpOptions ResolveTimeout(HttpOptions? options, TimeSpan timeout, string configName)
     {

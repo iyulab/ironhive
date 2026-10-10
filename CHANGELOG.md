@@ -5,7 +5,20 @@ changes are expected and used freely for structural correctness.
 
 ## Unreleased
 
+### Added
+- **Every IronHive provider exception carries the vendor's own error code.** `HiveException.ErrorCode` (so
+  `BillingException`, `RateLimitException`, `ContextOverflowException`, `ProviderResponseException`) and
+  `ProviderHttpException.ErrorCode` hold the code the provider or a gateway in front of it sent — OpenAI `error.code`
+  (else `error.type`), Anthropic `error.type`, Gemini `status` — or null. Two refusals of the same type can need
+  different handling: an exhausted balance (`insufficient_quota`) against a spending limit (`billing_hard_limit_reached`,
+  or a gateway's per-key budget code).
+
 ### Changed
+- **Breaking: more refusals are classified.** An HTTP 402 from the Anthropic provider is a `BillingException` whatever
+  the body says (a gateway answers in its own shape; before, only `billing_error` was). OpenAI `billing_hard_limit_reached`
+  and `billing_not_active` are `BillingException`. On the Gemini provider every 429 is a `RateLimitException` (before,
+  only one with `RESOURCE_EXHAUSTED`), and a 429 that says `insufficient_quota` is a `BillingException`. Migration: code
+  that caught the SDK exception for these cases catches the IronHive type.
 - **Breaking: a stream that fails after it started now throws instead of ending like a completed response.** An error
   the vendor sends inside the stream — OpenAI Responses `error` / `response.failed`, a Chat Completions
   `data: {"error": …}` line, an Anthropic `event: error` such as `overloaded_error` — and a stream that ends without the
@@ -22,6 +35,8 @@ changes are expected and used freely for structural correctness.
 - **Breaking: `StreamingMessageErrorResponse` (`message.error`) is removed.** Only the OpenAI provider produced it, and
   `MessageService` and `ChatClientAdapter` turned it into an exception anyway; every provider now reports a stream
   failure by throwing. Migration: drop the `case StreamingMessageErrorResponse` branch and handle the exception.
+- **A Gemini `HttpOptions.BaseUrl` written with a trailing slash works.** `https://gateway.example/` reached
+  `https://gateway.example//v1beta`; trailing slashes are now dropped.
 - **A Gemini prompt the safety filter blocks is a finished response with `DoneReason = ContentFilter` on both paths.**
   The stream used to end with no reason and the buffered call threw «No candidates in response.».
 - **Breaking: a cancelled orchestration throws `OperationCanceledException` instead of returning a failed

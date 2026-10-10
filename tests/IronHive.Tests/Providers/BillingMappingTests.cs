@@ -129,6 +129,98 @@ public class BillingMappingTests
             .Which.StatusCode.Should().Be(HttpStatusCode.PaymentRequired);
     }
 
+    // ---- the vendor's own code travels with the type (#1016: «top up» vs «raise the limit» are different codes) ----
+
+    [Fact]
+    public async Task Compatible_Billing_Carries_The_Body_Code()
+    {
+        using var response = JsonResponse(HttpStatusCode.PaymentRequired,
+            """{"error":{"message":"Spending limit reached for this key","type":"billing_error","code":"key_budget_exceeded"}}""");
+
+        var ex = await ChatCompletionExceptionDetector.DetectAsync(response, TestContext.Current.CancellationToken);
+
+        ex.Should().BeOfType<BillingException>().Which.ErrorCode.Should().Be("key_budget_exceeded", "code wins over type");
+    }
+
+    [Fact]
+    public async Task Compatible_Unclassified_Error_Carries_The_Body_Code()
+    {
+        using var response = JsonResponse(HttpStatusCode.ServiceUnavailable,
+            """{"error":{"message":"Upstream unavailable","type":"upstream_error"}}""");
+
+        var ex = await ChatCompletionExceptionDetector.DetectAsync(response, TestContext.Current.CancellationToken);
+
+        ex.Should().BeOfType<ProviderHttpException>().Which.ErrorCode.Should().Be("upstream_error");
+    }
+
+    [Fact]
+    public void OpenAI_Billing_Carries_The_Code()
+    {
+        var sdk = new ClientResultException(new FakeResponse(429,
+            """{"error":{"message":"You exceeded your current quota","type":"insufficient_quota","code":"insufficient_quota"}}"""));
+
+        OpenAIMapper.Map(sdk, TestContext.Current.CancellationToken).Should().BeOfType<BillingException>()
+            .Which.ErrorCode.Should().Be("insufficient_quota");
+    }
+
+    [Fact]
+    public void OpenAI_HardLimitReached_Is_Billing()
+    {
+        // The account's own spending limit: raising the limit clears it, waiting does not.
+        var sdk = new ClientResultException(new FakeResponse(400,
+            """{"error":{"message":"Billing hard limit has been reached","type":"invalid_request_error","code":"billing_hard_limit_reached"}}"""));
+
+        OpenAIMapper.Map(sdk, TestContext.Current.CancellationToken).Should().BeOfType<BillingException>()
+            .Which.ErrorCode.Should().Be("billing_hard_limit_reached");
+    }
+
+    [Fact]
+    public void Anthropic_PaymentRequired_Without_Anthropic_Body_Is_Billing()
+    {
+        // A gateway in front of the API answers 402 in its own shape; the status alone says the account cannot pay.
+        var body = """{"error":{"message":"Insufficient credits"}}""";
+        var sdk = AnthropicExceptionFactory.CreateApiException(HttpStatusCode.PaymentRequired, body);
+
+        AnthropicMapper.Map(sdk, TestContext.Current.CancellationToken).Should().BeOfType<BillingException>()
+            .Which.StatusCode.Should().Be(HttpStatusCode.PaymentRequired);
+    }
+
+    [Fact]
+    public void Anthropic_Billing_Carries_The_Error_Type()
+    {
+        var body = """{"type":"error","error":{"type":"billing_error","message":"Your account has a billing issue."}}""";
+        var sdk = AnthropicExceptionFactory.CreateApiException(HttpStatusCode.PaymentRequired, body);
+
+        AnthropicMapper.Map(sdk, TestContext.Current.CancellationToken).Should().BeOfType<BillingException>()
+            .Which.ErrorCode.Should().Be("billing_error");
+    }
+
+    [Fact]
+    public void Google_PaymentRequired_Carries_The_Status()
+    {
+        GoogleAIMapper.Map(new ClientError("Payment required", 402, "PAYMENT_REQUIRED"), TestContext.Current.CancellationToken)
+            .Should().BeOfType<BillingException>().Which.ErrorCode.Should().Be("PAYMENT_REQUIRED");
+    }
+
+    [Fact]
+    public void Google_InsufficientQuota_429_Is_Billing_Not_RateLimit()
+    {
+        var clientError = new ClientError("You exceeded your current quota (insufficient_quota)", 429, "Too Many Requests");
+
+        var billing = GoogleAIMapper.Map(clientError, TestContext.Current.CancellationToken).Should().BeOfType<BillingException>().Subject;
+        billing.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+        billing.ErrorCode.Should().Be("insufficient_quota");
+    }
+
+    [Fact]
+    public void Google_429_Without_ResourceExhausted_Is_RateLimit()
+    {
+        // A gateway in front of Gemini answers 429 without Gemini's status; the status alone is the signal.
+        var clientError = new ClientError("Too many requests", 429, "Too Many Requests");
+
+        GoogleAIMapper.Map(clientError, TestContext.Current.CancellationToken).Should().BeOfType<RateLimitException>();
+    }
+
     private static HttpResponseMessage JsonResponse(HttpStatusCode statusCode, string json)
         => new(statusCode) { Content = new StringContent(json) };
 
