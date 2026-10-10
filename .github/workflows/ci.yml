@@ -10,6 +10,7 @@ on:
       # re-pin is exactly the change most likely to break the build. Without these a dependency
       # bump merged with no CI run at all.
       - '**/*.props'
+      - '**/*.targets'
       - '**/*.slnx'
       - '.github/workflows/ci.yml'
       # IronHive.DocSnippets.Tests compiles these against the current API — a docs-only edit that
@@ -25,6 +26,7 @@ on:
       # re-pin is exactly the change most likely to break the build. Without these a dependency
       # bump merged with no CI run at all.
       - '**/*.props'
+      - '**/*.targets'
       - '**/*.slnx'
       - '.github/workflows/ci.yml'
       # IronHive.DocSnippets.Tests compiles these against the current API — a docs-only edit that
