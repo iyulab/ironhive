@@ -52,8 +52,10 @@ public sealed class OpenApiTool : ITool
             var queue = new Queue<Uri>(BaseUris);
             var errors = new List<Exception>();
 
-            while (queue.TryDequeue(out var baseUri) && !cancellationToken.IsCancellationRequested)
+            while (queue.TryDequeue(out var baseUri))
             {
+                // A caller that cancels between two servers gets the cancellation, not «failed on all servers».
+                cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
                     using var req = BuildHttpRequest(baseUri, input);

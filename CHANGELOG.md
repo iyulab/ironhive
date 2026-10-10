@@ -12,6 +12,12 @@ changes are expected and used freely for structural correctness.
   server writes in `code`. A caller that classifies HTTP failures by status (retry, fall back, give up) can treat both forms
   of one error alike. Null when no status is documented or the stream ended without an error.
 
+### Changed
+- **Breaking: a cancelled OpenAPI tool call throws.** `OpenApiTool.InvokeAsync` tries its servers in turn; a caller that
+  cancelled between two of them got `ToolOutput.Failure("Request failed on all servers …")`, which an agent reports to
+  the model as a tool failure. It now throws `OperationCanceledException`. Migration: a caller that read the failure
+  output to detect cancellation catches the exception instead.
+
 ### Fixed
 - **A Chat Completions stream that ends with `data: [DONE]` is a finished answer, `finish_reason` or not.** 0.60.0 threw
   `ProviderResponseException` for a stream that sent `[DONE]` but no `finish_reason` (some gateways and test servers omit
