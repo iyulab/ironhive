@@ -1076,27 +1076,6 @@ public class ChatClientAdapterTests : IDisposable
         captured().StreamToolArguments.Should().Be(on);
     }
 
-    [Fact]
-    public async Task GetStreamingResponseAsync_ErrorChunk_ThrowsInvalidOperation()
-    {
-        var chunks = new List<StreamingMessageResponse>
-        {
-            new StreamingMessageBeginResponse(),
-            new StreamingMessageErrorResponse { Code = "500", Message = "Internal error" }
-        };
-        SetupStreamingGenerator(chunks);
-
-        var messages = new List<ChatMessage> { new(ChatRole.User, "Hi") };
-
-        var act = async () =>
-        {
-            await foreach (var _ in _adapter.GetStreamingResponseAsync(messages)) { }
-        };
-
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Internal error*");
-    }
-
     #endregion
 
     #region GetResponseAsync — Tool result merging

@@ -116,8 +116,8 @@ public class MessageService : IMessageService
 
             await foreach (var res in pipeline(context).ConfigureAwait(false))
             {
-                // 에러가 아닌 첫 이벤트 수신 시 begin emit (제너레이터 정상 진입 확인)
-                if (!beginSent && res is not StreamingMessageErrorResponse)
+                // 첫 이벤트 수신 시 begin emit (제너레이터 정상 진입 확인). 실패는 제너레이터가 던지는 예외로 온다.
+                if (!beginSent)
                 {
                     yield return new StreamingMessageBeginResponse();
                     beginSent = true;
@@ -126,14 +126,6 @@ public class MessageService : IMessageService
                 if (res is StreamingMessageBeginResponse)
                 {
                     continue; // 제너레이터의 begin은 suppress
-                }
-                else if (res is StreamingMessageErrorResponse mer)
-                {
-                    // 오류 프레임은 생성의 끝이다. 종료 사유 없이 턴을 넘기면 루프가 그것을 「계속」으로 읽어
-                    // 같은 요청을 MaxTurns 번까지 다시 보낸다. 프레임을 읽는 소비자를 위해 먼저 내보내고,
-                    // 버퍼드 경로(제너레이터가 던진다)와 같이 예외로 끝낸다.
-                    yield return mer;
-                    throw new InvalidOperationException($"Streaming error: {mer.Code} - {mer.Message}");
                 }
                 else if (res is StreamingContentAddedResponse car)
                 {

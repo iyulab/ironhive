@@ -11,7 +11,6 @@ namespace IronHive.Abstractions.Messages;
 [JsonDerivedType(typeof(StreamingContentInProgressResponse), "message.content.in_progress")]
 [JsonDerivedType(typeof(StreamingContentCompletedResponse), "message.content.completed")]
 [JsonDerivedType(typeof(StreamingMessageDoneResponse), "message.done")]
-[JsonDerivedType(typeof(StreamingMessageErrorResponse), "message.error")]
 public abstract class StreamingMessageResponse
 { }
 
@@ -20,15 +19,6 @@ public abstract class StreamingMessageResponse
 /// </summary>
 public class StreamingMessageBeginResponse : StreamingMessageResponse
 { }
-
-/// <summary>
-/// 스트리밍 에러 응답
-/// </summary>
-public class StreamingMessageErrorResponse : StreamingMessageResponse
-{
-    public string? Code { get; set; }
-    public string? Message { get; set; }
-}
 
 /// <summary>
 /// 메시지 컨텐츠 추가

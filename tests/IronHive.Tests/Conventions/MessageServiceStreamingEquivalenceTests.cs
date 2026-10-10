@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using AwesomeAssertions;
+using IronHive.Abstractions.Exceptions;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Tools;
@@ -155,18 +156,18 @@ public class MessageServiceStreamingEquivalenceTests
     }
 
     [Fact]
-    public async Task ErrorFrame_EndsTheStreamingCallTheWayTheBufferedCallThrows()
+    public async Task StreamError_EndsTheStreamingCallTheWayTheBufferedCallThrows()
     {
         var generator = new FailingGenerator();
         var service = new MessageService(new Dictionary<string, IMessageGenerator> { [Provider] = generator });
         var request = new MessageRequest { Provider = Provider, Model = Model, Messages = [Message.User("hi")] };
 
         var bufferedCall = async () => await service.GenerateMessageAsync(request, TestContext.Current.CancellationToken);
-        await bufferedCall.Should().ThrowAsync<InvalidOperationException>();
+        await bufferedCall.Should().ThrowAsync<ProviderResponseException>();
         generator.BufferedCalls.Should().Be(1, "the fixture's buffered generation must fail once and throw");
 
         var frames = new List<StreamingMessageResponse>();
-        Exception? thrown = null;
+        ProviderResponseException? thrown = null;
         try
         {
             await foreach (var frame in service.GenerateStreamingMessageAsync(request, TestContext.Current.CancellationToken))
@@ -174,7 +175,7 @@ public class MessageServiceStreamingEquivalenceTests
                 frames.Add(frame);
             }
         }
-        catch (InvalidOperationException ex)
+        catch (ProviderResponseException ex)
         {
             thrown = ex;
         }
@@ -182,18 +183,18 @@ public class MessageServiceStreamingEquivalenceTests
         generator.StreamingCalls.Should().Be(1,
             "a failed generation carries no done reason, and the tool loop must not read that as "
             + "'continue' and send the same request again -- up to MaxTurns times");
-        frames.OfType<StreamingMessageErrorResponse>().Should().ContainSingle(
-            "a consumer reading frames must still see the provider's error");
+        frames.OfType<StreamingContentDeltaResponse>().Should().ContainSingle(
+            "the text streamed before the failure still reaches the consumer");
         frames.OfType<StreamingMessageDoneResponse>().Should().BeEmpty(
             "a done frame after an error reads as a completed generation");
         thrown.Should().NotBeNull("the buffered call throws, so the streaming call must not end as if it succeeded");
-        thrown!.Message.Should().Contain("server_error").And.Contain("boom");
+        thrown!.ErrorCode.Should().Be("server_error", "the provider's typed exception reaches the caller unchanged");
     }
 
     [Fact]
     public async Task StreamEndingWithoutADoneFrame_EndsTheCallInsteadOfStartingAnotherTurn()
     {
-        // Same root as the error frame: a turn with no done reason is not a turn that asked to continue.
+        // Same root as a stream error: a turn with no done reason is not a turn that asked to continue.
         var generator = new DonelessGenerator();
         var service = new MessageService(new Dictionary<string, IMessageGenerator> { [Provider] = generator });
         var request = new MessageRequest { Provider = Provider, Model = Model, Messages = [Message.User("hi")] };
@@ -613,7 +614,7 @@ public class MessageServiceStreamingEquivalenceTests
         public Task<MessageResponse> GenerateMessageAsync(MessageGenerationRequest request, CancellationToken cancellationToken = default)
         {
             BufferedCalls++;
-            throw new InvalidOperationException("OpenAI API Error: server_error - boom");
+            throw new ProviderResponseException("boom") { ErrorCode = "server_error" };
         }
 
         public async IAsyncEnumerable<StreamingMessageResponse> GenerateStreamingMessageAsync(
@@ -622,8 +623,10 @@ public class MessageServiceStreamingEquivalenceTests
         {
             StreamingCalls++;
             yield return new StreamingMessageBeginResponse();
+            yield return new StreamingContentAddedResponse { Index = 0, Content = new TextMessageContent { Value = "par" } };
+            yield return new StreamingContentDeltaResponse { Index = 0, Delta = new TextDeltaContent { Value = "tial" } };
             await Task.Yield();
-            yield return new StreamingMessageErrorResponse { Code = "server_error", Message = "boom" };
+            throw new ProviderResponseException("boom") { ErrorCode = "server_error" };
         }
 
         public Task<int> CountTokensAsync(MessageGenerationRequest request, CancellationToken cancellationToken = default)

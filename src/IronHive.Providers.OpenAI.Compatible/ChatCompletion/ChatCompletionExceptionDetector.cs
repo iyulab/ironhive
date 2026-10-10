@@ -10,9 +10,9 @@ namespace IronHive.Providers.OpenAI.Compatible.ChatCompletion;
 /// Detects errors in OpenAI-compatible chat completion responses and normalizes them to
 /// IronHive domain exceptions (context-window overflow, billing refusal, rate limiting). Two entry points,
 /// matching the two shapes errors arrive in: <see cref="DetectAsync"/> for a failed HTTP
-/// response (reads and parses the error body itself), and <see cref="Detect(string)"/> for a
-/// bare mid-stream error line that has no response of its own — see
-/// ChatCompletionHttpClient.PostStreamingAsync's "error:" line. Known formats:
+/// response (reads and parses the error body itself), and <see cref="Detect(string, string?, string?)"/> for an
+/// error inside a stream that has no response of its own — see ChatCompletionHttpClient.PostStreamingAsync's
+/// <c>data: {"error": …}</c> and <c>error:</c> lines. Known formats:
 /// llama.cpp / GPUStack — type <c>exceed_context_size_error</c>, message
 /// "request (42259 tokens) exceeds the available context size (32768 tokens), ...",
 /// body may carry <c>n_ctx</c>;
@@ -56,7 +56,7 @@ internal static class ChatCompletionExceptionDetector
         if (OpenAIErrors.IsBilling(message, type, code, (int)response.StatusCode))
             return new BillingException(message) { StatusCode = response.StatusCode };
 
-        if (IsRateLimit(message, type, code, (int)response.StatusCode))
+        if (OpenAIErrors.IsRateLimit(message, type, code, (int)response.StatusCode))
         {
             return new RateLimitException(message)
             {
@@ -73,36 +73,12 @@ internal static class ChatCompletionExceptionDetector
     }
 
     /// <summary>
-    /// Detects a known error shape in a bare message with no HTTP response of its own —
-    /// falling back to <see cref="HttpRequestException"/> when the shape isn't recognized.
+    /// The exception for an error the server sent inside a stream that had already started — a
+    /// <c>data: {"error": …}</c> line or GPUStack's bare <c>error:</c> line — which has no HTTP response of its own.
+    /// Same recognition as <see cref="DetectAsync"/>, with <see cref="ProviderResponseException"/> for the rest.
     /// </summary>
-    public static Exception Detect(string message)
-    {
-        if (OpenAIErrors.TryMapContextOverflow(message) is { } overflow)
-            return overflow;
-
-        if (OpenAIErrors.IsBilling(message, type: null, code: null, status: null))
-            return new BillingException(message);
-
-        if (IsRateLimit(message, type: null, code: null, status: null))
-            return new RateLimitException(message);
-
-        return new HttpRequestException(message);
-    }
-
-    private static readonly string[] RateLimitMarkers =
-    [
-        "rate_limit_exceeded",
-    ];
-
-    private static bool IsRateLimit(string message, string? type, string? code, int? status)
-        // 429 is unambiguous (HTTP "Too Many Requests") regardless of body shape, so it's
-        // checked first; the marker fallback covers mid-stream errors reported without a
-        // status code.
-        => status == 429
-            || RateLimitMarkers.Contains(type, StringComparer.OrdinalIgnoreCase)
-            || RateLimitMarkers.Contains(code, StringComparer.OrdinalIgnoreCase)
-            || RateLimitMarkers.Any(marker => message.Contains(marker, StringComparison.OrdinalIgnoreCase));
+    public static Exception Detect(string message, string? type = null, string? code = null)
+        => OpenAIErrors.MapResponseError(message, type, code);
 
     private static TimeSpan? FindRetryAfter(HttpResponseMessage response)
     {

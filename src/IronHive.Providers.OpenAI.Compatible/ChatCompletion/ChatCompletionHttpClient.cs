@@ -1,4 +1,5 @@
 using IronHive.Abstractions.Http;
+using System.Text.Json.Nodes;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text.Encodings.Web;
@@ -141,10 +142,53 @@ internal sealed class ChatCompletionHttpClient : IDisposable
                 if (data is "[DONE]" || data.Length == 0)
                     continue;
 
+                // A server that fails after the 200 sends the error as a data line of its own (OpenAI, vLLM, LiteLLM and most
+                // gateways): it has no choices, so read as a chunk it would vanish and the stream would look complete.
+                if (TryReadStreamError(data) is { } streamError)
+                    throw streamError;
+
                 var chunk = JsonSerializer.Deserialize<StreamingChatCompletionResponse>(data, JsonOptions);
                 if (chunk != null)
                     yield return chunk;
             }
         }
     }
+
+    /// <summary>The exception for a <c>data:</c> line whose body is an error object (<c>{"error": {"message", "type",
+    /// "code"}}</c>, or <c>{"error": "…"}</c>), or null for an ordinary chunk.</summary>
+    internal static Exception? TryReadStreamError(string data)
+    {
+        if (!data.Contains("\"error\"", StringComparison.Ordinal))
+            return null;
+
+        JsonNode? root;
+        try
+        {
+            root = JsonNode.Parse(data);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+
+        if (root is not JsonObject obj || !obj.TryGetPropertyValue("error", out var error) || error is null)
+            return null;
+
+        if (error is JsonValue value && value.TryGetValue<string>(out var text))
+            return ChatCompletionExceptionDetector.Detect(text);
+
+        if (error is not JsonObject body)
+            return null;
+
+        var message = body["message"] is JsonValue m && m.TryGetValue<string>(out var msg) && msg.Length > 0
+            ? msg
+            : body.ToJsonString();
+        return ChatCompletionExceptionDetector.Detect(message, ScalarText(body["type"]), ScalarText(body["code"]));
+    }
+
+    // A code may be a string ("rate_limit_exceeded") or a number (vLLM sends the HTTP status the error would have had).
+    private static string? ScalarText(JsonNode? node)
+        => node is JsonValue value
+            ? value.TryGetValue<string>(out var text) ? text : value.ToJsonString()
+            : null;
 }

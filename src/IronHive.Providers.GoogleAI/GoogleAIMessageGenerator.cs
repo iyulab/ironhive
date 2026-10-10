@@ -2,6 +2,7 @@ using Google.GenAI;
 using Google.GenAI.Types;
 using IronHive.Abstractions.Extensions;
 using IronHive.Abstractions.Http;
+using IronHive.Abstractions.Exceptions;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Tools;
@@ -89,8 +90,21 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         MessageDoneReason? reason = null;
         var usage = new MessageTokenUsage();
         var message = new Message { Role = MessageRole.Assistant };
+        // A blocked prompt is answered with feedback and no candidate — a finished response, as on the streaming path.
+        if (response.PromptFeedback?.BlockReason != null && response.Candidates is not { Count: > 0 })
+        {
+            return new MessageResponse
+            {
+                ResponseId = response.ResponseId,
+                DoneReason = MessageDoneReason.ContentFilter,
+                Message = message,
+                TokenUsage = new MessageTokenUsage { InputTokens = response.UsageMetadata?.PromptTokenCount ?? 0 },
+                Model = response.ModelVersion,
+            };
+        }
+
         var first = response.Candidates?.FirstOrDefault()
-            ?? throw new InvalidOperationException("No candidates in response.");
+            ?? throw new ProviderResponseException("The Gemini response has no candidates.");
 
         // 응답 메시지 구성
         foreach (var part in first.Content?.Parts ?? [])
@@ -187,6 +201,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         // among the parts. The stream used to decide by whichever part arrived last, so a call
         // followed by narration came back as EndTurn on this path only (GoogleAIEquivalenceTests).
         var sawToolCall = false;
+        var finished = false;
 
         await foreach (var res in ProviderStreams.WithIdleTimeout(
                 ct => _client.Models.GenerateContentStreamAsync(request.Model, contents, config, ct), _streamIdleTimeout, cancellationToken)
@@ -212,6 +227,13 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                 };
             }
 
+            // A blocked prompt is answered with feedback and no candidate at all — a finished response, not a cut one.
+            if (res.PromptFeedback?.BlockReason != null)
+            {
+                finished = true;
+                reason = MessageDoneReason.ContentFilter;
+            }
+
             // 메시지 확인 및 건너뛰기
             var msg = res.Candidates?.FirstOrDefault();
             if (msg == null)
@@ -224,6 +246,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
             // 종료 메시지
             if (msg.FinishReason != null)
             {
+                finished = true;
                 reason = ResolveReason(msg.FinishReason);
             }
 
@@ -376,6 +399,14 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                 }
             }
         }
+
+        // Gemini's last chunk carries the finish reason. A stream that closed without one was cut off — the connection
+        // dropped, or the server sent an error the SDK does not raise (Google.GenAI reads a «data: {"error": …}» event as
+        // an empty response) — and what arrived is not the whole answer.
+        // TODO(upstream: googleapis/dotnet-genai — an SSE «data: {"error": …}» event is dropped, 1.24.0): once the SDK
+        // raises it, it reaches GoogleAIExceptionMapper with its code, and this guard only sees dropped connections.
+        if (!finished)
+            throw new ProviderResponseException("The Gemini response stream ended without a finish reason; the response is incomplete.");
 
         // 남아 있는 컨텐츠 처리
         if (current.HasValue)

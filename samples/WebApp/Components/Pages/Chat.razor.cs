@@ -84,9 +84,6 @@ public partial class Chat : IDisposable
                         if (done.Message is not null)
                             _history.Add(done.Message);
                         break;
-                    case StreamingMessageErrorResponse error:
-                        _errorMessage = error.Message;
-                        break;
                 }
                 StateHasChanged();
             }

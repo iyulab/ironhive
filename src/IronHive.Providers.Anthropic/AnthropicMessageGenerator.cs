@@ -5,6 +5,7 @@ using Anthropic;
 using Anthropic.Models.Messages;
 using IronHiveMessage = IronHive.Abstractions.Messages.Message;
 using IronHiveMessageRole = IronHive.Abstractions.Messages.MessageRole;
+using IronHive.Abstractions.Exceptions;
 using IronHive.Abstractions.Extensions;
 using IronHive.Abstractions.Http;
 using IronHive.Abstractions.Messages;
@@ -159,6 +160,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
         string? model = null;
         int index = 0;
         var usage = new MessageTokenUsage();
+        var finished = false;
 
         await foreach (var evt in ProviderStreams.WithIdleTimeout(
                 ct => client.Messages.CreateStreaming(req, ct), _streamIdleTimeout, cancellationToken)
@@ -295,6 +297,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
             // 5. 메시지 메타 데이터 이벤트
             else if (evt.TryPickDelta(out var mde))
             {
+                finished = true;
                 usage.OutputTokens = (int)(mde.Usage?.OutputTokens ?? usage.OutputTokens);
 
                 yield return new StreamingMessageDoneResponse
@@ -313,6 +316,11 @@ public class AnthropicMessageGenerator : IMessageGenerator
                 };
             }
         }
+
+        // message_delta carries the stop reason of every response that finished. A stream that closed before it was cut
+        // off — the connection dropped — and what arrived is not the whole answer.
+        if (!finished)
+            throw new ProviderResponseException("The Anthropic message stream ended without a stop reason; the response is incomplete.");
     }
 
     /// <inheritdoc />

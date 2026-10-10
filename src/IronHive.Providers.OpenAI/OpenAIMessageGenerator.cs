@@ -3,6 +3,7 @@ using System.ClientModel.Primitives;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using IronHive.Abstractions.Exceptions;
 using IronHive.Abstractions.Extensions;
 using IronHive.Abstractions.Http;
 using IronHive.Abstractions.Messages;
@@ -79,11 +80,10 @@ public class OpenAIMessageGenerator : IMessageGenerator
         var result = await _client.CreateResponseAsync(options, cancellationToken)
             .MapException(ex => OpenAIExceptionMapper.Map(ex, cancellationToken));
         var response = result.Value;
+        // A failed response comes back as 200 with an error object — the same failure the stream reports as
+        // response.failed, and the same exception.
         if (response.Error != null)
-        {
-            throw new InvalidOperationException(
-                $"OpenAI API Error: {response.Error.Code} - {response.Error.Message}");
-        }
+            throw OpenAIErrors.MapResponseError(response.Error.Message ?? "The OpenAI response failed.", type: null, response.Error.Code.ToString());
 
         var content = new List<MessageContent>();
         foreach (var item in response.OutputItems)
@@ -183,12 +183,21 @@ public class OpenAIMessageGenerator : IMessageGenerator
         var stop = StopSequenceFilter.For(request.StopSequences);
         int? heldIndex = null;
         int? stoppedIndex = null;
+        var finished = false;
         await foreach (var update in ProviderStreams.WithIdleTimeout(
                 ct => _client.CreateResponseStreamingAsync(options, ct), _streamIdleTimeout, cancellationToken)
             .MapException(ex => OpenAIExceptionMapper.Map(ex, cancellationToken), cancellationToken))
         {
-            if (stoppedIndex is { } cut && update is not (StreamingResponseCompletedUpdate or StreamingResponseIncompleteUpdate
-                    or StreamingResponseFailedUpdate)
+            // An error after the 200 arrives as an event: «error» for a stream-level failure, «response.failed» for a
+            // response the server gave up on. Either ends the response — whatever was streamed before it is incomplete.
+            if (update is StreamingResponseErrorUpdate streamError)
+                throw OpenAIErrors.MapResponseError(
+                    streamError.Message ?? "The OpenAI response stream reported an error.", type: null, streamError.Code);
+            if (update is StreamingResponseFailedUpdate failed)
+                throw OpenAIErrors.MapResponseError(
+                    failed.Response.Error?.Message ?? "The OpenAI response failed.", type: null, failed.Response.Error?.Code.ToString());
+
+            if (stoppedIndex is { } cut && update is not (StreamingResponseCompletedUpdate or StreamingResponseIncompleteUpdate)
                 && !(update is StreamingResponseOutputItemDoneUpdate done && done.OutputIndex == cut))
             {
                 continue;
@@ -206,14 +215,6 @@ public class OpenAIMessageGenerator : IMessageGenerator
             if (update is StreamingResponseCreatedUpdate)
             {
                 yield return new StreamingMessageBeginResponse();
-            }
-            else if (update is StreamingResponseFailedUpdate failed)
-            {
-                yield return new StreamingMessageErrorResponse
-                {
-                    Code = failed.Response.Error?.Code.ToString() ?? "Unknown",
-                    Message = failed.Response.Error?.Message ?? "An unknown error occurred."
-                };
             }
             else if (update is StreamingResponseOutputItemAddedUpdate outputAdded)
             {
@@ -352,13 +353,20 @@ public class OpenAIMessageGenerator : IMessageGenerator
                         _ => MessageDoneReason.Unknown,
                     };
                 }
+                finished = true;
                 yield return DoneFrame(incomplete.Response, reason);
             }
             else if (update is StreamingResponseCompletedUpdate completed)
             {
+                finished = true;
                 yield return DoneFrame(completed.Response, reason);
             }
         }
+
+        // The Responses API ends every response with response.completed or response.incomplete. A stream that closed
+        // without either was cut off, and what arrived is not the whole answer.
+        if (!finished)
+            throw new ProviderResponseException("The OpenAI response stream ended without a completion event; the response is incomplete.");
     }
 
     /// <summary>

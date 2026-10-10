@@ -110,6 +110,42 @@ public static partial class OpenAIErrors
         return new RateLimitException(clientEx.Message, clientEx) { RetryAfter = retryAfter };
     }
 
+    private static readonly string[] RateLimitMarkers =
+    [
+        "rate_limit_exceeded",
+    ];
+
+    /// <summary>
+    /// The exception for an error the server sent inside a response it had accepted (no HTTP status of its own): the
+    /// Responses API's <c>error</c> / <c>response.failed</c> events and a failed buffered response, a Chat Completions
+    /// <c>data: {"error": …}</c> line, GPUStack's bare <c>error:</c> line. The same recognition as the HTTP path — context overflow, billing, rate
+    /// limit — and <see cref="ProviderResponseException"/> for the rest.
+    /// </summary>
+    internal static Exception MapResponseError(string message, string? type, string? code)
+    {
+        if (MatchContextOverflow(message, type, code, contextWindow: null, requestTokens: null, inner: null, status: null) is { } overflow)
+            return overflow;
+
+        if (IsBilling(message, type, code, status: null))
+            return new BillingException(message);
+
+        if (IsRateLimit(message, type, code, status: null))
+            return new RateLimitException(message);
+
+        return new ProviderResponseException(message) { ErrorCode = code ?? type };
+    }
+
+    /// <summary>
+    /// The one place the rate-limit spellings of a server's error body live. 429 is unambiguous (HTTP "Too Many
+    /// Requests") whatever the body says; the code/type and message markers cover an error inside a stream, which has no
+    /// status. A billing refusal sent as 429 is checked before this by every caller.
+    /// </summary>
+    internal static bool IsRateLimit(string message, string? type, string? code, int? status)
+        => status == 429
+            || RateLimitMarkers.Contains(type, StringComparer.OrdinalIgnoreCase)
+            || RateLimitMarkers.Contains(code, StringComparer.OrdinalIgnoreCase)
+            || RateLimitMarkers.Any(marker => message.Contains(marker, StringComparison.OrdinalIgnoreCase));
+
     private static readonly string[] BillingCodes =
     [
         "insufficient_quota",

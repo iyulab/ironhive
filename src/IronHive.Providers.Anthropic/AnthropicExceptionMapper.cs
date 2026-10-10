@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Anthropic.Exceptions;
 using Anthropic.Models;
@@ -6,10 +8,12 @@ using IronHive.Abstractions.Exceptions;
 namespace IronHive.Providers.Anthropic;
 
 /// <summary>
-/// Normalizes Anthropic SDK errors to IronHive domain exceptions. Currently covers
+/// Normalizes Anthropic SDK errors — an HTTP error, or an <c>event: error</c> inside a stream that had already started —
+/// to IronHive domain exceptions. Currently covers
 /// context-window overflow (invalid_request_error with message "prompt is too long:
 /// X tokens > Y maximum") -> <see cref="ContextOverflowException"/>, a billing refusal -> <see cref="BillingException"/>,
-/// a rate limit -> <see cref="RateLimitException"/>, and a request that
+/// a rate limit -> <see cref="RateLimitException"/>, any other error inside a stream (<c>overloaded_error</c>,
+/// <c>api_error</c>) -> <see cref="ProviderResponseException"/>, and a request that
 /// was cut short by the SDK's own network timeout -> <see cref="TimeoutException"/>.
 /// </summary>
 internal static partial class AnthropicExceptionMapper
@@ -17,8 +21,9 @@ internal static partial class AnthropicExceptionMapper
     /// <summary>
     /// Returns the normalized exception when <paramref name="exception"/> matches a known
     /// error shape; otherwise null (leaving the original exception to propagate). Gates
-    /// structurally on <see cref="AnthropicApiException"/>'s <c>ErrorType</c> — not a
-    /// base-type catch-all — and reads the message from <c>ResponseBody</c> (the raw JSON),
+    /// structurally on the SDK's <c>ErrorType</c> (<see cref="AnthropicApiException"/> over HTTP,
+    /// <see cref="AnthropicSseException"/> inside a stream) — not a base-type catch-all — and reads the
+    /// message from the error body (<c>ResponseBody</c>, or the event data the SSE exception carries),
     /// not <c>.Message</c>, which the SDK prefixes with <c>"Status Code: {code}"</c>.
     /// </summary>
     public static Exception? Map(Exception exception, CancellationToken cancellationToken = default)
@@ -35,7 +40,53 @@ internal static partial class AnthropicExceptionMapper
         if (IsRateLimit(exception, out var rateLimit))
             return rateLimit;
 
+        // An error event after the stream started that none of the above recognised (overloaded_error, api_error, …):
+        // it ended the response all the same.
+        if (exception is AnthropicSseException sse)
+            return StreamError(sse);
+
         return null;
+    }
+
+    /// <summary>
+    /// The error body and type of an Anthropic error, wherever it arrived: an HTTP error (<see cref="AnthropicApiException"/>,
+    /// body in <c>ResponseBody</c>) or an <c>event: error</c> inside a stream that had already started
+    /// (<see cref="AnthropicSseException"/>, body inside its message and no status). Null for anything else.
+    /// </summary>
+    private static (ErrorType? Type, string Body, System.Net.HttpStatusCode? Status)? ReadError(Exception exception)
+        => exception switch
+        {
+            AnthropicApiException apiEx => (apiEx.ErrorType, apiEx.ResponseBody ?? apiEx.Message, apiEx.StatusCode),
+            AnthropicSseException sse => (sse.ErrorType, SseBody(sse), null),
+            _ => null,
+        };
+
+    private const string SsePrefix = "SSE error returned from server: '";
+
+    // The SDK writes the event's data into the message as «SSE error returned from server: '<json>'».
+    private static string SseBody(AnthropicSseException sse)
+    {
+        var message = sse.Message;
+        return message.StartsWith(SsePrefix, StringComparison.Ordinal) && message.EndsWith('\'')
+            ? message[SsePrefix.Length..^1]
+            : message;
+    }
+
+    private static ProviderResponseException StreamError(AnthropicSseException sse)
+    {
+        var body = SseBody(sse);
+        string? type = null;
+        string? message = null;
+        try
+        {
+            var error = JsonNode.Parse(body)?["error"];
+            type = error?["type"]?.GetValue<string>();
+            message = error?["message"]?.GetValue<string>();
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException)
+        { }
+
+        return new ProviderResponseException(message is { Length: > 0 } ? message : body, sse) { ErrorCode = type };
     }
 
     /// <summary>
@@ -45,17 +96,16 @@ internal static partial class AnthropicExceptionMapper
     private static bool IsBilling(Exception exception, out BillingException? result)
     {
         result = null;
-        if (exception is not AnthropicApiException apiEx)
+        if (ReadError(exception) is not var (type, message, status))
             return false;
 
-        var message = apiEx.ResponseBody ?? apiEx.Message;
-        var isBilling = apiEx.ErrorType == ErrorType.BillingError
-            || (apiEx.ErrorType == ErrorType.InvalidRequestError
+        var isBilling = type == ErrorType.BillingError
+            || (type == ErrorType.InvalidRequestError
                 && message.Contains("credit balance is too low", StringComparison.OrdinalIgnoreCase));
         if (!isBilling)
             return false;
 
-        result = new BillingException(message, apiEx) { StatusCode = apiEx.StatusCode };
+        result = new BillingException(message, exception) { StatusCode = status };
         return true;
     }
 
@@ -82,10 +132,9 @@ internal static partial class AnthropicExceptionMapper
     private static bool IsContextOverflow(Exception exception, out ContextOverflowException? result)
     {
         result = null;
-        if (exception is not AnthropicApiException { ErrorType: ErrorType.InvalidRequestError } apiEx)
+        if (ReadError(exception) is not (ErrorType.InvalidRequestError, var message, _))
             return false;
 
-        var message = apiEx.ResponseBody ?? apiEx.Message;
         if (!message.Contains("prompt is too long", StringComparison.OrdinalIgnoreCase))
             return false;
 
@@ -99,20 +148,20 @@ internal static partial class AnthropicExceptionMapper
                 contextWindow = window;
         }
 
-        result = new ContextOverflowException(message, apiEx) { ContextWindow = contextWindow, RequestTokens = requestTokens };
+        result = new ContextOverflowException(message, exception) { ContextWindow = contextWindow, RequestTokens = requestTokens };
         return true;
     }
 
     private static bool IsRateLimit(Exception exception, out RateLimitException? result)
     {
         result = null;
-        if (exception is not AnthropicApiException { ErrorType: ErrorType.RateLimitError } rateLimitEx)
+        if (ReadError(exception) is not (ErrorType.RateLimitError, var message, _))
             return false;
 
         // The SDK exposes no response headers, so anthropic-ratelimit-*/retry-after
         // (see https://platform.claude.com/docs/en/api/rate-limits) aren't reachable here;
         // RetryAfter is left null.
-        result = new RateLimitException(rateLimitEx.ResponseBody ?? rateLimitEx.Message, rateLimitEx);
+        result = new RateLimitException(message, exception);
         return true;
     }
 }

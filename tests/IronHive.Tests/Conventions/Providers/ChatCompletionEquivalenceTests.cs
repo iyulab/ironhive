@@ -107,7 +107,6 @@ public class ChatCompletionEquivalenceTests
 
     private static void AssertEnvelopesAgree(MessageResponse buffered, List<StreamingMessageResponse> frames)
     {
-        frames.OfType<StreamingMessageErrorResponse>().Should().BeEmpty();
 
         var done = frames.OfType<StreamingMessageDoneResponse>().LastOrDefault();
         done.Should().NotBeNull("the streaming half must terminate with a done frame");

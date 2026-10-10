@@ -196,7 +196,6 @@ public class OpenAIResponsesEquivalenceTests
 
     private static void AssertEnvelopesAgree(MessageResponse buffered, List<StreamingMessageResponse> frames)
     {
-        frames.OfType<StreamingMessageErrorResponse>().Should().BeEmpty("a recorded success must not surface as a streamed error");
 
         var done = frames.OfType<StreamingMessageDoneResponse>().LastOrDefault();
         done.Should().NotBeNull("the streaming half must terminate with a done frame");

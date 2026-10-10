@@ -221,10 +221,6 @@ public class ChatClientAdapter : IChatClient
                     }
                     break;
 
-                case StreamingMessageErrorResponse error:
-                    throw new InvalidOperationException(
-                        $"Streaming error: {error.Code} - {error.Message}");
-
                 default:
                     var update = ConvertToStreamingUpdate(chunk);
                     if (update is not null)

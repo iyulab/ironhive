@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json.Nodes;
+using IronHive.Abstractions.Exceptions;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Tools;
@@ -145,6 +146,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         var completedIndexes = new HashSet<int>();
         var nextIndex = 0;
 
+        var finished = false;
         await foreach (var chunk in _client.PostStreamingAsync(req, request.Headers, cancellationToken))
         {
             if (!begun)
@@ -262,8 +264,12 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
                 }
             }
 
-            if (choice?.FinishReason != null && reason != MessageDoneReason.ToolCall)
-                reason = MapFinishReason(choice.FinishReason);
+            if (choice?.FinishReason != null)
+            {
+                finished = true;
+                if (reason != MessageDoneReason.ToolCall)
+                    reason = MapFinishReason(choice.FinishReason);
+            }
 
             if (chunk.Usage != null)
             {
@@ -275,6 +281,11 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
             // Servers report whole-response fields on a chunk of their own (llama.cpp: `timings` on the last one).
             extraBody = TopLevelExtras(chunk.ExtraBody, extraBody);
         }
+
+        // Every server ends a choice with a finish_reason. A stream that closed without one was cut off — the connection
+        // dropped, or a proxy ended it — and what arrived is not the whole answer.
+        if (!finished)
+            throw new ProviderResponseException("The chat completion stream ended without a finish_reason; the response is incomplete.");
 
         foreach (var idx in openIndexes)
         {

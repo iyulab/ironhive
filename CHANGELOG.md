@@ -6,6 +6,24 @@ changes are expected and used freely for structural correctness.
 ## Unreleased
 
 ### Changed
+- **Breaking: a stream that fails after it started now throws instead of ending like a completed response.** An error
+  the vendor sends inside the stream — OpenAI Responses `error` / `response.failed`, a Chat Completions
+  `data: {"error": …}` line, an Anthropic `event: error` such as `overloaded_error` — and a stream that ends without the
+  vendor's completion signal (`response.completed`, `finish_reason`, `stop_reason`, Gemini `finishReason`) used to end
+  the stream silently (Responses `error`, Chat Completions, Gemini), as an unclassified `InvalidOperationException`
+  (Responses `response.failed`) or as the Anthropic SDK's own exception. Each now throws the same exception the
+  non-streaming call would: `BillingException`, `RateLimitException` or `ContextOverflowException` (status null), and
+  otherwise the new `ProviderResponseException` with the vendor's `ErrorCode`. The text streamed before the failure is
+  still delivered. A buffered OpenAI response that comes back failed throws the same type (it was an
+  `InvalidOperationException` «OpenAI API Error: …»), and a Gemini response with no candidate and no prompt block throws
+  `ProviderResponseException` instead of `InvalidOperationException`. Migration: catch `ProviderResponseException` (or
+  `HiveException`) where you consume a response; code that caught `InvalidOperationException` («Streaming error: …»,
+  «OpenAI API Error: …») or `HttpRequestException` for GPUStack's `error:` line catches the typed exception instead.
+- **Breaking: `StreamingMessageErrorResponse` (`message.error`) is removed.** Only the OpenAI provider produced it, and
+  `MessageService` and `ChatClientAdapter` turned it into an exception anyway; every provider now reports a stream
+  failure by throwing. Migration: drop the `case StreamingMessageErrorResponse` branch and handle the exception.
+- **A Gemini prompt the safety filter blocks is a finished response with `DoneReason = ContentFilter` on both paths.**
+  The stream used to end with no reason and the buffered call threw «No candidates in response.».
 - **Breaking: a cancelled orchestration throws `OperationCanceledException` instead of returning a failed
   `OrchestrationResult`.** `ParallelOrchestrator`, `GroupChatOrchestrator`, `HandoffOrchestrator` and
   `HubSpokeOrchestrator` turned the caller's cancellation into a failed result carrying the cancellation's message,
