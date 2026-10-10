@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## 0.60.0 — Unreleased
+## 0.60.0 — 2026-10-10
 
 ### Added
 - **Usage reports what the vendors price differently.** `MessageTokenUsage.CacheWriteInputTokens` (input written to the
