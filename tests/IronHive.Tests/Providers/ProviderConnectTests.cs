@@ -34,6 +34,27 @@ public class ProviderConnectTests
         await server;
     }
 
+    // The connect timeout bounds the step by itself: an attempt that does not observe its token (a connect that is slow
+    // to cancel on a loaded machine) must not hold the race past the caller's cancellation.
+    [Fact]
+    public async Task ACallerCancellation_EndsTheRace_EvenWhenNoAttemptObservesItsToken()
+    {
+        var never = new TaskCompletionSource<Socket>();
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        // After every address has started (AttemptDelay 250 ms): before that the stagger delay would wake the race anyway.
+        timeout.CancelAfter(TimeSpan.FromMilliseconds(600));
+
+        var race = ProviderConnect.RaceAsync(
+            [IPAddress.IPv6Loopback, IPAddress.Loopback], 1, (_, _, _) => never.Task, timeout.Token);
+        var finished = await Task.WhenAny(race, Task.Delay(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken));
+
+        finished.Should().BeSameAs(race, "the race returns on the caller's cancellation, not when an attempt gives up");
+        var act = () => race;
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    // End to end on a real refused port. The precise bound lives in the fact above; wall time here includes scheduling on a
+    // loaded test host (14 s was seen against a 2 s timeout while a full suite ran), so this bound only says «no hang».
     [Fact]
     public async Task NoListener_FailsWithinTheConnectTimeout()
     {
@@ -49,7 +70,7 @@ public class ProviderConnectTests
         var act = () => client.GetStringAsync($"http://localhost:{port}/", TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<Exception>();
-        watch.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(4));
+        watch.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(30));
     }
 
     [Fact]

@@ -63,6 +63,10 @@ public static class ProviderConnect
         CancellationToken cancellationToken)
     {
         using var race = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        // Completes when the caller cancels (the handler's connect timeout): the race ends then even if an attempt is slow
+        // to observe its token, so the connect timeout bounds the step by itself, not by every attempt's cooperation.
+        var callerCancelled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var onCancel = cancellationToken.Register(static state => ((TaskCompletionSource)state!).TrySetResult(), callerCancelled);
         var attempts = new List<Task<Socket>>(addresses.Length);
         Exception? lastError = null;
         var next = 0;
@@ -89,7 +93,7 @@ public static class ProviderConnect
                     break;
 
                 // Wait for an attempt to finish, or for the delay after which the next address starts anyway.
-                var waitOn = new List<Task>(attempts);
+                var waitOn = new List<Task>(attempts) { callerCancelled.Task };
                 if (next < addresses.Length)
                     waitOn.Add(Task.Delay(AttemptDelay, race.Token));
                 await Task.WhenAny(waitOn).ConfigureAwait(false);

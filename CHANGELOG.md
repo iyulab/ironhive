@@ -10,6 +10,12 @@ changes are expected and used freely for structural correctness.
   A consumer that moves one of them while another resolves at an older version now gets restore warning NU1608 naming
   the pair (an error where warnings are errors) — before, the mixed versions restored silently and could fail at run time.
 
+### Fixed
+- **A provider's connect timeout ends the connect step even when an attempt is slow to cancel.** The address race
+  (`ProviderConnect`) waited for one of its attempts to finish after every address had started; an attempt that observed
+  its cancellation late held a refused or unreachable connect past the timeout (seen as 14 s against 2 s on a loaded
+  machine). The race now also wakes on the caller's cancellation.
+
 ## 0.61.0 — 2026-10-10
 
 ### Added
