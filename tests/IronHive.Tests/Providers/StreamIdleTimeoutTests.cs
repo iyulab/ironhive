@@ -304,8 +304,12 @@ public sealed class StreamIdleTimeoutTests
     {
         var request = new ChatCompletionRequest { Model = "m", Messages = [] };
         var count = 0;
-        await foreach (var _ in client.PostStreamingAsync(request, cancellationToken: cancellationToken))
-            count++;
+        // Data chunks only: the client also yields its end-of-stream marker for `data: [DONE]`.
+        await foreach (var chunk in client.PostStreamingAsync(request, cancellationToken: cancellationToken))
+        {
+            if (!ReferenceEquals(chunk, StreamingChatCompletionResponse.EndOfStream))
+                count++;
+        }
         return count;
     }
 
