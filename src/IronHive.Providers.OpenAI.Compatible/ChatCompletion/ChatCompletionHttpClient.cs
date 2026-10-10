@@ -139,7 +139,14 @@ internal sealed class ChatCompletionHttpClient : IDisposable
                     continue;
 
                 var data = line["data:".Length..].Trim();
-                if (data is "[DONE]" || data.Length == 0)
+                if (data is "[DONE]")
+                {
+                    // The protocol's end marker: the server says the response is whole, finish_reason or not.
+                    yield return StreamingChatCompletionResponse.EndOfStream;
+                    yield break;
+                }
+
+                if (data.Length == 0)
                     continue;
 
                 // A server that fails after the 200 sends the error as a data line of its own (OpenAI, vLLM, LiteLLM and most

@@ -446,6 +446,9 @@ internal class ChatCompletionResponse : ChatCompletionPayloadBase
 
 internal class StreamingChatCompletionResponse : ChatCompletionPayloadBase
 {
+    /// <summary>Stands for the <c>data: [DONE]</c> line, the last item a stream yields when the server sent it.</summary>
+    internal static readonly StreamingChatCompletionResponse EndOfStream = new();
+
     [JsonPropertyName("id")]
     public string? Id { get; set; }
 

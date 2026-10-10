@@ -137,6 +137,53 @@ public class ProviderResponseFailureTests
         frames.OfType<StreamingMessageDoneResponse>().Should().ContainSingle();
     }
 
+    [Fact]
+    public async Task ChatCompletions_DoneMarkerWithoutFinishReason_IsAFinishedAnswer()
+    {
+        // `data: [DONE]` is the protocol's end marker; a gateway or test server that omits finish_reason still says the
+        // response is whole. Only a stream that closes with neither is cut off (the test above).
+        var sse = StubHttpHandler.SseData(
+            ChatChunk("""{"role":"assistant","content":"Hel"}""", finishReason: null),
+            ChatChunk("""{"content":"lo"}""", finishReason: null),
+            "[DONE]");
+
+        var (frames, error) = await RunAsync(Chat(sse));
+
+        error.Should().BeNull();
+        TextOf(frames).Should().Be("Hello");
+        frames.OfType<StreamingMessageDoneResponse>().Should().ContainSingle()
+            .Which.DoneReason.Should().Be(MessageDoneReason.EndTurn);
+    }
+
+    [Fact]
+    public async Task ChatCompletions_DoneMarkerAfterToolCallWithoutFinishReason_EndsWithToolCall()
+    {
+        var sse = StubHttpHandler.SseData(
+            ChatChunk("""{"role":"assistant","tool_calls":[{"index":0,"id":"call_1","type":"function","function":{"name":"lookup","arguments":"{}"}}]}""", finishReason: null),
+            "[DONE]");
+
+        var (frames, error) = await RunAsync(Chat(sse));
+
+        error.Should().BeNull();
+        frames.OfType<StreamingMessageDoneResponse>().Should().ContainSingle()
+            .Which.DoneReason.Should().Be(MessageDoneReason.ToolCall);
+    }
+
+    [Fact]
+    public async Task ChatCompletions_LinesAfterDoneMarker_AreNotRead()
+    {
+        // [DONE] ends the response: a proxy that keeps the connection open, or writes more, does not extend the answer.
+        var sse = StubHttpHandler.SseData(
+            ChatChunk("""{"role":"assistant","content":"Hel"}""", finishReason: "stop"),
+            "[DONE]",
+            """{"error":{"message":"late","type":"server_error"}}""");
+
+        var (frames, error) = await RunAsync(Chat(sse));
+
+        error.Should().BeNull();
+        TextOf(frames).Should().Be("Hel");
+    }
+
     // ---- Anthropic ----
 
     [Fact]

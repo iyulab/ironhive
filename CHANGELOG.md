@@ -12,6 +12,12 @@ changes are expected and used freely for structural correctness.
   server writes in `code`. A caller that classifies HTTP failures by status (retry, fall back, give up) can treat both forms
   of one error alike. Null when no status is documented or the stream ended without an error.
 
+### Fixed
+- **A Chat Completions stream that ends with `data: [DONE]` is a finished answer, `finish_reason` or not.** 0.60.0 threw
+  `ProviderResponseException` for a stream that sent `[DONE]` but no `finish_reason` (some gateways and test servers omit
+  it); now its done reason is `ToolCall` when tool calls arrived, else `EndTurn`. A stream that closes with neither is
+  still cut off and throws. Nothing after `[DONE]` is read.
+
 ## 0.60.0 — 2026-10-10
 
 ### Added

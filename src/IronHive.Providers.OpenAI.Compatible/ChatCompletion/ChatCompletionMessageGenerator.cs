@@ -149,12 +149,19 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         var nextIndex = 0;
 
         var finished = false;
+        var ended = false;
         await foreach (var chunk in _client.PostStreamingAsync(req, request.Headers, cancellationToken))
         {
             if (!begun)
             {
                 begun = true;
                 yield return new StreamingMessageBeginResponse();
+            }
+
+            if (ReferenceEquals(chunk, StreamingChatCompletionResponse.EndOfStream))
+            {
+                ended = true;
+                continue;
             }
 
             id ??= chunk.Id;
@@ -286,9 +293,11 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
             extraBody = TopLevelExtras(chunk.ExtraBody, extraBody);
         }
 
-        // Every server ends a choice with a finish_reason. A stream that closed without one was cut off — the connection
-        // dropped, or a proxy ended it — and what arrived is not the whole answer.
-        if (!finished)
+        // A server ends a choice with a finish_reason and the stream with `data: [DONE]`. A stream that closed with
+        // neither was cut off — the connection dropped, or a proxy ended it — and what arrived is not the whole answer.
+        // [DONE] alone (some gateways and test servers omit finish_reason) is complete: the done reason is then
+        // ToolCall when calls arrived, else EndTurn.
+        if (!finished && !ended)
             throw new ProviderResponseException("The chat completion stream ended without a finish_reason; the response is incomplete.");
 
         foreach (var idx in openIndexes)
