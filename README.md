@@ -21,7 +21,8 @@
 ## 주요 기능
 
 - **멀티 Provider LLM** — OpenAI, Anthropic, Google AI (Gemini/Vertex AI), OpenAI Compatible (Ollama, LM Studio, GPUStack 등)
-- **모델 목록의 컨텍스트 크기** — `IModelFinder.ListModelsAsync` 가 목록 API 가 알려 주는 컨텍스트를 `LanguageModelCard.ContextWindow` 로 싣는다(Google AI `inputTokenLimit`, OpenAI Compatible 중 vLLM `max_model_len` — `OpenAICompatibleModelFinder`, 등록 시 자동). 알려 주지 않는 서버는 null
+- **모델 목록의 한도** — `IModelFinder.ListModelsAsync`/`FindModelAsync` 가 목록 API 가 알려 주는 컨텍스트와 최대 출력을 `LanguageModelCard.ContextWindow`·`MaxOutputTokens` 로 싣는다(Google AI `inputTokenLimit`·`outputTokenLimit`, Anthropic `max_input_tokens`·`max_tokens`, OpenAI 와이어 서버·게이트웨이의 `max_model_len`·`context_length`·`context_window`·`max_completion_tokens`·`top_provider.*` — `OpenAIModelFinder`·`OpenAICompatibleModelFinder`, 등록 시 자동). 알려 주지 않는 서버는 null
+- **사용량 내역** — `MessageTokenUsage` 가 입력·출력 합계 외에 캐시 읽기(`CachedInputTokens`), 캐시 쓰기(`CacheWriteInputTokens`)와 그 TTL 별 내역(`CacheWritesByTtl` — Anthropic 5분/1시간), 추론 토큰(`ReasoningTokens`)을 공급자가 보고하는 만큼 싣는다 — 공급자마다 다르게 매기는 부분을 소비자가 다시 계산할 수 있다. M.E.AI 어댑터는 `UsageDetails.ReasoningTokenCount` 와 `AdditionalCounts[ChatClientAdapter.CacheWriteInputTokenCountKey]` 로 옮긴다
 - **멀티에이전트 오케스트레이션** — `SequentialOrchestrator` · `ParallelOrchestrator` · `HubSpokeOrchestrator`(각자의 `…OrchestratorOptions` 로 생성), `HandoffOrchestratorBuilder` · `GroupChatOrchestratorBuilder` · `GraphOrchestratorBuilder`(DAG). 공통 옵션 — 타임아웃 · `StopOnAgentFailure` · 에이전트 미들웨어 · 승인 핸들러 · 컨텍스트 스코프 · 결과 distiller — 은 옵션 객체 또는 빌더의 `Set…` 으로 준다([docs/ORCHESTRATION.md](docs/ORCHESTRATION.md))
 - **RAG 파이프라인** — 텍스트 추출, 청킹, 임베딩, 벡터 검색
 - **다중 모달리티** — 이미지 생성, 음성 TTS/STT, 비디오 생성

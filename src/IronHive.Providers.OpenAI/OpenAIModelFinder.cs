@@ -1,3 +1,5 @@
+using System.ClientModel.Primitives;
+using System.Text.Json;
 using IronHive.Abstractions.Models;
 using OpenAI.Models;
 
@@ -26,16 +28,10 @@ public class OpenAIModelFinder : IModelFinder
     public virtual async Task<IEnumerable<IModelCard>> ListModelsAsync(
         CancellationToken cancellationToken = default)
     {
-        var result = await _client.GetModelsAsync(cancellationToken);
-        return result.Value
-            .OrderByDescending(m => m.CreatedAt)
-            .Select(m => new ModelCard
-            {
-                ModelId = m.Id,
-                DisplayName = m.Id,
-                OwnedBy = m.OwnedBy,
-                CreatedAt = m.CreatedAt.UtcDateTime,
-            });
+        // Read raw: the SDK's model type drops the limits a gateway in front of OpenAI reports (OpenAIModelCards).
+        var result = await _client.GetModelsAsync(new RequestOptions { CancellationToken = cancellationToken }).ConfigureAwait(false);
+        using var document = JsonDocument.Parse(result.GetRawResponse().Content);
+        return OpenAIModelCards.FromList(document.RootElement);
     }
 
     /// <inheritdoc />
@@ -45,15 +41,9 @@ public class OpenAIModelFinder : IModelFinder
     {
         try
         {
-            var result = await _client.GetModelAsync(modelId, cancellationToken);
-            var model = result.Value;
-            return new ModelCard
-            {
-                ModelId = model.Id,
-                DisplayName = model.Id,
-                OwnedBy = model.OwnedBy,
-                CreatedAt = model.CreatedAt.UtcDateTime,
-            };
+            var result = await _client.GetModelAsync(modelId, new RequestOptions { CancellationToken = cancellationToken }).ConfigureAwait(false);
+            using var document = JsonDocument.Parse(result.GetRawResponse().Content);
+            return OpenAIModelCards.FromEntry(document.RootElement);
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {

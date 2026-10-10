@@ -531,7 +531,7 @@ OpenAI `/v1` API와 호환되는 모든 서버를 지원합니다: Ollama, LM St
 `MaxTokens` 안에 맞춘다(`ThinkingBudget.FitWithin` — 한도의 4분의 1, 최소 256 토큰을 답에 남김, 0.57.0). 맞출 자리가 없으면
 (예: Medium · `MaxTokens` 256) 그 요청은 추론을 끄고 보낸다 — 빈 답 대신 짧은 답이다. `ExtraBody` 로 준 이름은 그 이름만 대체한다.
 
-모델 목록도 이 패키지의 `OpenAICompatibleModelFinder` 가 원시 응답을 읽는다(0.46.0) — 목록 항목에 서버가 받아 주는 컨텍스트(vLLM `max_model_len`)가 있으면 `LanguageModelCard.ContextWindow` 로, 없으면 지금처럼 `ModelCard` 로 돌려준다. llama.cpp 의 `meta.n_ctx_train` 은 학습 컨텍스트라 서버 실행 컨텍스트와 다를 수 있어 읽지 않는다.
+모델 목록도 이 패키지의 `OpenAICompatibleModelFinder`(그리고 게이트웨이를 `BaseUrl` 로 가리키는 `OpenAIModelFinder`)가 원시 응답을 읽는다 — 목록 항목에 서버·게이트웨이가 알려 주는 한도가 있으면 `LanguageModelCard` 로(컨텍스트: vLLM `max_model_len` · OpenRouter/Together/Fireworks `context_length` · Groq `context_window` · Mistral `max_context_length` · OpenRouter `top_provider.context_length`; 최대 출력: `max_output_tokens` · Groq `max_completion_tokens` · OpenRouter `top_provider.max_completion_tokens` — 먼저 있는 것), 없으면 지금처럼 `ModelCard` 로 돌려준다. llama.cpp 의 `meta.n_ctx_train` 은 학습 컨텍스트라 서버 실행 컨텍스트와 다를 수 있어 읽지 않는다.
 
 ### 등록
 

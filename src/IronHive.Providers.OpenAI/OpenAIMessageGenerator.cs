@@ -409,7 +409,9 @@ public class OpenAIMessageGenerator : IMessageGenerator
     {
         InputTokens = response.Usage?.InputTokenCount ?? 0,
         OutputTokens = response.Usage?.OutputTokenCount ?? 0,
-        CachedInputTokens = response.Usage?.InputTokenDetails?.CachedTokenCount
+        CachedInputTokens = response.Usage?.InputTokenDetails?.CachedTokenCount,
+        CacheWriteInputTokens = response.Usage?.InputTokenDetails?.CacheWriteTokenCount,
+        ReasoningTokens = response.Usage?.OutputTokenDetails?.ReasoningTokenCount,
     };
 
     /// <inheritdoc />

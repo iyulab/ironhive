@@ -167,7 +167,10 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                 usage.OutputTokens += meta.CandidatesTokenCount.Value;
 
             if (meta.ThoughtsTokenCount.HasValue)
+            {
                 usage.OutputTokens += meta.ThoughtsTokenCount.Value;
+                usage.ReasoningTokens = meta.ThoughtsTokenCount.Value;
+            }
         }
 
         return new MessageResponse
@@ -223,7 +226,8 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                     InputTokens = res.UsageMetadata.PromptTokenCount ?? 0,
                     OutputTokens = (res.UsageMetadata.CandidatesTokenCount ?? 0)
                         + (res.UsageMetadata.ThoughtsTokenCount ?? 0),
-                    CachedInputTokens = res.UsageMetadata.CachedContentTokenCount
+                    CachedInputTokens = res.UsageMetadata.CachedContentTokenCount,
+                    ReasoningTokens = res.UsageMetadata.ThoughtsTokenCount,
                 };
             }
 

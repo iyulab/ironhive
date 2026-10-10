@@ -139,7 +139,9 @@ public class AnthropicMessageGenerator : IMessageGenerator
                 // whole input, with the reads also reported as CachedInputTokens.
                 InputTokens = (int)(res.Usage.InputTokens + (res.Usage.CacheReadInputTokens ?? 0) + (res.Usage.CacheCreationInputTokens ?? 0)),
                 OutputTokens = (int)res.Usage.OutputTokens,
-                CachedInputTokens = res.Usage.CacheReadInputTokens is { } read ? (int)read : null
+                CachedInputTokens = res.Usage.CacheReadInputTokens is { } read ? (int)read : null,
+                CacheWriteInputTokens = res.Usage.CacheCreationInputTokens is { } written ? (int)written : null,
+                CacheWritesByTtl = CacheWritesOf(res.Usage.CacheCreation),
             },
             // Same envelope on both paths — the streaming done frame carries the model from
             // message_start (AnthropicMessagesEquivalenceTests compares them).
@@ -174,6 +176,8 @@ public class AnthropicMessageGenerator : IMessageGenerator
                 var startUsage = mse.Message.Usage;
                 usage.InputTokens = (int)(startUsage.InputTokens + (startUsage.CacheReadInputTokens ?? 0) + (startUsage.CacheCreationInputTokens ?? 0));
                 usage.CachedInputTokens = startUsage.CacheReadInputTokens is { } read ? (int)read : null;
+                usage.CacheWriteInputTokens = startUsage.CacheCreationInputTokens is { } written ? (int)written : null;
+                usage.CacheWritesByTtl = CacheWritesOf(startUsage.CacheCreation);
                 yield return new StreamingMessageBeginResponse();
             }
             // 2. 컨텐츠 생성 시작 이벤트
@@ -740,6 +744,23 @@ public class AnthropicMessageGenerator : IMessageGenerator
         ImageFormat.Webp => "image/webp",
         _ => throw new NotSupportedException($"not supported image format {format}")
     };
+
+    /// <summary>
+    /// The cache writes by TTL Anthropic reports (<c>cache_creation</c>: 5 minutes and 1 hour, priced differently), or null
+    /// when it reported no breakdown. A TTL with no tokens is left out.
+    /// </summary>
+    internal static IReadOnlyList<CacheWriteTokens>? CacheWritesOf(CacheCreation? creation)
+    {
+        if (creation is null)
+            return null;
+
+        var writes = new List<CacheWriteTokens>(2);
+        if (creation.Ephemeral5mInputTokens > 0)
+            writes.Add(new CacheWriteTokens(TimeSpan.FromMinutes(5), (int)creation.Ephemeral5mInputTokens));
+        if (creation.Ephemeral1hInputTokens > 0)
+            writes.Add(new CacheWriteTokens(TimeSpan.FromHours(1), (int)creation.Ephemeral1hInputTokens));
+        return writes;
+    }
 
 }
 

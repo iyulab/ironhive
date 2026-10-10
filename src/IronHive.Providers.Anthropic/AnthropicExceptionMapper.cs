@@ -173,6 +173,8 @@ internal static partial class AnthropicExceptionMapper
         // The SDK exposes no response headers, so anthropic-ratelimit-*/retry-after
         // (see https://platform.claude.com/docs/en/api/rate-limits) aren't reachable here;
         // RetryAfter is left null.
+        // TODO(upstream: anthropics/anthropic-sdk-csharp — AnthropicApiException carries no response headers, 12.53.0):
+        // read retry-after here once the exception exposes them.
         result = new RateLimitException(message, exception) { ErrorCode = ErrorTypeText(message) };
         return true;
     }

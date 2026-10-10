@@ -100,6 +100,54 @@ public class OpenAICompatibleModelFinderTests
         (await finder.FindModelAsync("qwen3-8b", TestContext.Current.CancellationToken)).Should().BeNull();
     }
 
+    [Theory]
+    // OpenRouter: context_length on the entry, the output cap under top_provider.
+    [InlineData("""{"object":"list","data":[{"id":"m","created":1,"context_length":200000,"top_provider":{"context_length":200000,"max_completion_tokens":64000}}]}""", 200000, 64000)]
+    // Groq: context_window and max_completion_tokens.
+    [InlineData("""{"object":"list","data":[{"id":"m","created":1,"context_window":131072,"max_completion_tokens":32768}]}""", 131072, 32768)]
+    // Mistral: max_context_length only.
+    [InlineData("""{"object":"list","data":[{"id":"m","created":1,"max_context_length":128000}]}""", 128000, null)]
+    // A gateway that reports only the output cap.
+    [InlineData("""{"object":"list","data":[{"id":"m","created":1,"max_output_tokens":8192}]}""", null, 8192)]
+    public async Task A_gateway_listing_carries_the_limits_it_reports(string body, int? contextWindow, int? maxOutput)
+    {
+        using var finder = Finder(body, out _);
+
+        var card = (await finder.ListModelsAsync(TestContext.Current.CancellationToken)).Single();
+
+        var language = card.Should().BeOfType<LanguageModelCard>().Subject;
+        language.ContextWindow.Should().Be(contextWindow);
+        language.MaxOutputTokens.Should().Be(maxOutput);
+    }
+
+    [Fact]
+    public async Task The_OpenAI_finder_pointed_at_a_gateway_keeps_the_limits_too()
+    {
+        // OpenAI's own /models reports no limits; a gateway serving the same wire under OpenAIConfig.BaseUrl does.
+        const string body = """{"object":"list","data":[{"id":"gw-model","object":"model","created":1790000000,"owned_by":"gw","context_length":65536,"top_provider":{"max_completion_tokens":4096}}]}""";
+        var http = new HttpClient(new StubHandler([], HttpStatusCode.OK, body, listOnly: false));
+        using var finder = new OpenAIModelFinder(new OpenAIConfig { BaseUrl = "http://server.test/v1", ApiKey = "k", HttpClient = http });
+
+        var card = (await finder.ListModelsAsync(TestContext.Current.CancellationToken)).Single();
+
+        var language = card.Should().BeOfType<LanguageModelCard>().Subject;
+        language.ContextWindow.Should().Be(65536);
+        language.MaxOutputTokens.Should().Be(4096);
+        language.OwnedBy.Should().Be("gw");
+    }
+
+    [Fact]
+    public void Anthropic_limits_become_a_language_card_and_their_absence_a_plain_one()
+    {
+        var created = DateTimeOffset.FromUnixTimeSeconds(1790000000);
+
+        IronHive.Providers.Anthropic.AnthropicModelFinder.ToCard("claude-x", "Claude X", created, 200000, 64000)
+            .Should().BeOfType<LanguageModelCard>()
+            .Which.Should().Match<LanguageModelCard>(c => c.ContextWindow == 200000 && c.MaxOutputTokens == 64000);
+        IronHive.Providers.Anthropic.AnthropicModelFinder.ToCard("claude-y", "Claude Y", created, null, null)
+            .Should().BeOfType<ModelCard>();
+    }
+
     private static OpenAICompatibleModelFinder Finder(
         string body, out List<string> requests, HttpStatusCode status = HttpStatusCode.OK, bool listOnly = false)
     {

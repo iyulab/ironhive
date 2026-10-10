@@ -55,6 +55,9 @@ internal class ChatTokenUsage
 
     [JsonPropertyName("prompt_tokens_details")]
     public ChatPromptTokensDetails? PromptTokensDetails { get; set; }
+
+    [JsonPropertyName("completion_tokens_details")]
+    public ChatCompletionTokensDetails? CompletionTokensDetails { get; set; }
 }
 
 internal class ChatPromptTokensDetails
@@ -62,6 +65,17 @@ internal class ChatPromptTokensDetails
     /// <summary>Of <c>prompt_tokens</c>, how many were read from the server's prompt cache.</summary>
     [JsonPropertyName("cached_tokens")]
     public int? CachedTokens { get; set; }
+
+    /// <summary>Of <c>prompt_tokens</c>, how many this request wrote to the server's prompt cache.</summary>
+    [JsonPropertyName("cache_write_tokens")]
+    public int? CacheWriteTokens { get; set; }
+}
+
+internal class ChatCompletionTokensDetails
+{
+    /// <summary>Of <c>completion_tokens</c>, how many the model spent reasoning.</summary>
+    [JsonPropertyName("reasoning_tokens")]
+    public int? ReasoningTokens { get; set; }
 }
 
 /// <summary>

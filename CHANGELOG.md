@@ -6,6 +6,17 @@ changes are expected and used freely for structural correctness.
 ## Unreleased
 
 ### Added
+- **Usage reports what the vendors price differently.** `MessageTokenUsage.CacheWriteInputTokens` (input written to the
+  prompt cache: Anthropic `cache_creation_input_tokens`, OpenAI `cache_write_tokens`), `CacheWritesByTtl` (Anthropic's
+  5-minute / 1-hour split, as `CacheWriteTokens(Ttl, Tokens)`) and `ReasoningTokens` (OpenAI `reasoning_tokens`, Gemini
+  `thoughtsTokenCount`), each null when the provider does not report it; `MessageTokenUsage.Add` sums them. The
+  M.E.AI adapter fills `UsageDetails.ReasoningTokenCount` and
+  `AdditionalCounts[ChatClientAdapter.CacheWriteInputTokenCountKey]`.
+- **Model lists carry the limits the server reports.** `OpenAIModelFinder` (pointed at a gateway) and
+  `OpenAICompatibleModelFinder` read `context_length`, `context_window`, `max_context_length`, `max_output_tokens`,
+  `max_completion_tokens` and OpenRouter's `top_provider` beside vLLM's `max_model_len`; `AnthropicModelFinder` reads
+  `max_input_tokens` and `max_tokens`. An entry with a limit is a `LanguageModelCard` (`ContextWindow`,
+  `MaxOutputTokens`).
 - **Every IronHive provider exception carries the vendor's own error code.** `HiveException.ErrorCode` (so
   `BillingException`, `RateLimitException`, `ContextOverflowException`, `ProviderResponseException`) and
   `ProviderHttpException.ErrorCode` hold the code the provider or a gateway in front of it sent — OpenAI `error.code`

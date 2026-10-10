@@ -105,7 +105,9 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
             {
                 InputTokens = res.Usage?.PromptTokens ?? 0,
                 OutputTokens = res.Usage?.CompletionTokens ?? 0,
-                CachedInputTokens = res.Usage?.PromptTokensDetails?.CachedTokens
+                CachedInputTokens = res.Usage?.PromptTokensDetails?.CachedTokens,
+                CacheWriteInputTokens = res.Usage?.PromptTokensDetails?.CacheWriteTokens,
+                ReasoningTokens = res.Usage?.CompletionTokensDetails?.ReasoningTokens,
             },
             ExtraBody = TopLevelExtras(res.ExtraBody, null),
             LogProbabilities = request.LogProbabilities is null ? null : ToLogProbabilities(choice?.Logprobs) ?? [],
@@ -276,6 +278,8 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
                 usage.InputTokens = chunk.Usage.PromptTokens;
                 usage.OutputTokens = chunk.Usage.CompletionTokens;
                 usage.CachedInputTokens = chunk.Usage.PromptTokensDetails?.CachedTokens;
+                usage.CacheWriteInputTokens = chunk.Usage.PromptTokensDetails?.CacheWriteTokens;
+                usage.ReasoningTokens = chunk.Usage.CompletionTokensDetails?.ReasoningTokens;
             }
 
             // Servers report whole-response fields on a chunk of their own (llama.cpp: `timings` on the last one).

@@ -51,6 +51,13 @@ public class ChatClientAdapter : IChatClient
     public const string RequestHeadersKey = "IronHive.RequestHeaders";
 
     /// <summary>
+    /// <see cref="UsageDetails.AdditionalCounts"/> key — of the input tokens, how many the call wrote to the provider's
+    /// prompt cache (<see cref="MessageTokenUsage.CacheWriteInputTokens"/>). <see cref="UsageDetails"/> has no slot of its
+    /// own for it. Absent when the provider did not report it.
+    /// </summary>
+    public const string CacheWriteInputTokenCountKey = "IronHive.CacheWriteInputTokenCount";
+
+    /// <summary>
     /// ChatClientAdapter의 새 인스턴스를 생성합니다.
     /// </summary>
     /// <param name="generator">IronHive 메시지 생성기</param>
@@ -546,13 +553,7 @@ public class ChatClientAdapter : IChatClient
             CreatedAt = response.Timestamp,
             FinishReason = ConvertDoneReason(response.DoneReason),
             ModelId = response.Model ?? _modelId,
-            Usage = response.TokenUsage != null ? new UsageDetails
-            {
-                InputTokenCount = response.TokenUsage.InputTokens,
-                OutputTokenCount = response.TokenUsage.OutputTokens,
-                TotalTokenCount = response.TokenUsage.TotalTokens,
-                CachedInputTokenCount = response.TokenUsage.CachedInputTokens
-            } : null,
+            Usage = response.TokenUsage != null ? ToUsageDetails(response.TokenUsage) : null,
             AdditionalProperties = ToAdditionalProperties(response.ExtraBody),
         };
     }
@@ -631,13 +632,7 @@ public class ChatClientAdapter : IChatClient
                     // The done frame is where a streamed turn reports its usage. Without carrying it as UsageContent the
                     // streamed half reported none at all, while the buffered half of the same turn reported it in full.
                     Contents = done.TokenUsage is { } usage
-                        ? [new UsageContent(new UsageDetails
-                        {
-                            InputTokenCount = usage.InputTokens,
-                            OutputTokenCount = usage.OutputTokens,
-                            TotalTokenCount = usage.TotalTokens,
-                            CachedInputTokenCount = usage.CachedInputTokens
-                        })]
+                        ? [new UsageContent(ToUsageDetails(usage))]
                         : []
                 };
 
@@ -850,4 +845,17 @@ public class ChatClientAdapter : IChatClient
             calls.RemoveAt(index);
         }
     }
+
+    // One reading of IronHive's usage for the buffered response and the streamed usage content alike.
+    private static UsageDetails ToUsageDetails(MessageTokenUsage usage) => new()
+    {
+        InputTokenCount = usage.InputTokens,
+        OutputTokenCount = usage.OutputTokens,
+        TotalTokenCount = usage.TotalTokens,
+        CachedInputTokenCount = usage.CachedInputTokens,
+        ReasoningTokenCount = usage.ReasoningTokens,
+        AdditionalCounts = usage.CacheWriteInputTokens is { } written
+            ? new AdditionalPropertiesDictionary<long> { [CacheWriteInputTokenCountKey] = written }
+            : null,
+    };
 }
