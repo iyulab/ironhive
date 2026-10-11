@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## Unreleased
+## 0.62.0 — 2026-10-11
 
 ### Added
 - **`ToolOutput.ToText()` turns a tool result into one string.** Text blocks are joined with newlines. Every other block
