@@ -139,6 +139,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
                 // whole input, with the reads also reported as CachedInputTokens.
                 InputTokens = (int)(res.Usage.InputTokens + (res.Usage.CacheReadInputTokens ?? 0) + (res.Usage.CacheCreationInputTokens ?? 0)),
                 OutputTokens = (int)res.Usage.OutputTokens,
+                ReasoningTokens = ThinkingTokensOf(res.Usage.OutputTokensDetails),
                 CachedInputTokens = res.Usage.CacheReadInputTokens is { } read ? (int)read : null,
                 CacheWriteInputTokens = res.Usage.CacheCreationInputTokens is { } written ? (int)written : null,
                 CacheWritesByTtl = CacheWritesOf(res.Usage.CacheCreation),
@@ -303,6 +304,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
             {
                 finished = true;
                 usage.OutputTokens = (int)(mde.Usage?.OutputTokens ?? usage.OutputTokens);
+                usage.ReasoningTokens = ThinkingTokensOf(mde.Usage?.OutputTokensDetails) ?? usage.ReasoningTokens;
 
                 yield return new StreamingMessageDoneResponse
                 {
@@ -749,6 +751,13 @@ public class AnthropicMessageGenerator : IMessageGenerator
     /// The cache writes by TTL Anthropic reports (<c>cache_creation</c>: 5 minutes and 1 hour, priced differently), or null
     /// when it reported no breakdown. A TTL with no tokens is left out.
     /// </summary>
+    /// <summary>
+    /// The thinking share of <c>output_tokens</c> (<c>output_tokens_details.thinking_tokens</c>) — part of the output count,
+    /// not added to it; null when the response does not report it.
+    /// </summary>
+    internal static int? ThinkingTokensOf(OutputTokensDetails? details)
+        => details?.ThinkingTokens is { } thinking ? (int)thinking : null;
+
     internal static IReadOnlyList<CacheWriteTokens>? CacheWritesOf(CacheCreation? creation)
     {
         if (creation is null)

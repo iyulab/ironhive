@@ -5,6 +5,11 @@ changes are expected and used freely for structural correctness.
 
 ## Unreleased
 
+### Added
+- **The Anthropic provider reports how much of the output was thinking.** `MessageTokenUsage.ReasoningTokens` (and so
+  M.E.AI `UsageDetails.ReasoningTokenCount`) now carries `output_tokens_details.thinking_tokens` on the buffered and the
+  streamed path. `OutputTokens` already included the thinking, as Anthropic bills it; the new value is the part of it.
+
 ### Changed
 - **`PlanStep.Index` and `PlanStep.DependsOn` are documented.** `Index` is the step's number, unique within its plan (a
   planner numbers steps by 1-based position), and `DependsOn` lists the `Index` of each step that must succeed first.

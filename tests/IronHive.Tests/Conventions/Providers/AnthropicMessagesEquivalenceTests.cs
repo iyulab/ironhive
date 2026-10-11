@@ -44,6 +44,35 @@ public class AnthropicMessagesEquivalenceTests
     }
 
     [Fact]
+    public async Task ThinkingTokens_ArePartOfTheOutputAndReportedAsReasoning_OnBothHalves()
+    {
+        // output_tokens counts the thinking (Anthropic bills it as output); output_tokens_details.thinking_tokens says how
+        // much of it was thinking. Measured on the wire 2026-10-12: output_tokens 1914, thinking_tokens 1546.
+        var response = MessageJson(
+            content: """[{"type":"thinking","thinking":"","signature":"sig"},{"type":"text","text":"14833"}]""",
+            stopReason: "end_turn",
+            outputTokens: 1914).Replace("\"output_tokens\":1914", "\"output_tokens\":1914,\"output_tokens_details\":{\"thinking_tokens\":1546}");
+
+        var sse = StubHttpHandler.Sse(
+            ("message_start", $$$"""{"type":"message_start","message":{{{MessageJson("[]", null, 1)}}}}"""),
+            ("content_block_start", """{"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}}"""),
+            ("content_block_delta", """{"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"sig"}}"""),
+            ("content_block_stop", """{"type":"content_block_stop","index":0}"""),
+            ("content_block_start", """{"type":"content_block_start","index":1,"content_block":{"type":"text","text":""}}"""),
+            ("content_block_delta", """{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"14833"}}"""),
+            ("content_block_stop", """{"type":"content_block_stop","index":1}"""),
+            ("message_delta", """{"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"output_tokens":1914,"output_tokens_details":{"thinking_tokens":1546}}}"""),
+            ("message_stop", """{"type":"message_stop"}"""));
+
+        var (buffered, frames) = await RunBothAsync(response, sse);
+
+        AssertEnvelopesAgree(buffered, frames);
+        buffered.TokenUsage!.OutputTokens.Should().Be(1914, "the output count includes the thinking");
+        buffered.TokenUsage.ReasoningTokens.Should().Be(1546);
+        frames.OfType<StreamingMessageDoneResponse>().Last().TokenUsage!.ReasoningTokens.Should().Be(1546);
+    }
+
+    [Fact]
     public async Task MaxTokens_BothHalvesCarryTheSameResult()
     {
         var response = MessageJson(

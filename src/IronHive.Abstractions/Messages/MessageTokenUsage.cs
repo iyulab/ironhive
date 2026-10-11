@@ -33,7 +33,8 @@ public class MessageTokenUsage
     public IReadOnlyList<CacheWriteTokens>? CacheWritesByTtl { get; set; }
 
     /// <summary>
-    /// <see cref="OutputTokens"/> 중 모델의 추론(생각)에 쓰인 토큰 수입니다(OpenAI <c>reasoning_tokens</c>, Gemini
+    /// <see cref="OutputTokens"/> 중 모델의 추론(생각)에 쓰인 토큰 수입니다(OpenAI <c>reasoning_tokens</c>, Anthropic
+    /// <c>output_tokens_details.thinking_tokens</c>, Gemini
     /// <c>thoughtsTokenCount</c>). 공급자가 따로 보고하지 않으면 <c>null</c>.
     /// </summary>
     public int? ReasoningTokens { get; set; }
