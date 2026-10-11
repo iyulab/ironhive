@@ -61,4 +61,30 @@ public class ToolOutput
     /// <returns>실패한 <see cref="ToolOutput"/> 객체</returns>
     public static ToolOutput Failure(string? error)
         => new(false, error is null ? [] : [new TextMessageContent { Value = error }]);
+
+    /// <summary>
+    /// 결과 콘텐츠를 하나의 문자열로 평탄화합니다 — 텍스트만 나르는 자리(문자열 하나만 받는 provider의 도구 결과 wire,
+    /// 텍스트 스트림 소비자)를 위한 형태입니다. 텍스트 블록은 그대로 줄바꿈으로 잇고, 텍스트가 아닌 블록은
+    /// <paramref name="describeNonText"/>가 돌려준 문자열로 대신합니다.
+    /// </summary>
+    /// <param name="describeNonText">
+    /// 텍스트가 아닌 블록을 대신할 문자열. 생략하면 블록 종류를 이름으로 밝히는 <c>[image content omitted]</c> 형태입니다.
+    /// </param>
+    /// <returns>평탄화된 텍스트. 콘텐츠가 없으면 빈 문자열입니다.</returns>
+    public string ToText(Func<MessageContent, string>? describeNonText = null)
+    {
+        if (Content.Count == 0)
+            return string.Empty;
+
+        describeNonText ??= DescribeOmitted;
+        return string.Join("\n", Content.Select(c => c is TextMessageContent text ? text.Value ?? string.Empty : describeNonText(c)));
+    }
+
+    private static string DescribeOmitted(MessageContent content)
+    {
+        var kind = content.GetType().Name;
+        if (kind.EndsWith(nameof(MessageContent), StringComparison.Ordinal) && kind.Length > nameof(MessageContent).Length)
+            kind = kind[..^nameof(MessageContent).Length];
+        return $"[{kind.ToLowerInvariant()} content omitted]";
+    }
 }

@@ -236,6 +236,10 @@ return ToolOutput.Success("처리 완료");
 return ToolOutput.Success(JsonSerializer.Serialize(new { id = 42, name = "item" }));
 return ToolOutput.Success([new TextMessageContent { Value = "..." }]);   // MessageContent 목록
 return ToolOutput.Failure("오류가 발생했습니다");
+
+// ToolOutput → 문자열 하나 (텍스트만 받는 자리: 텍스트 스트림, 문자열 도구 결과 wire)
+output.ToText();                                  // 텍스트 블록을 줄바꿈으로 잇고, 이미지 등은 "[image content omitted]"
+output.ToText(c => $"[{c.GetType().Name} not carried]");   // 텍스트 아닌 블록의 문구를 호출자가 정함
 ```
 
 ---

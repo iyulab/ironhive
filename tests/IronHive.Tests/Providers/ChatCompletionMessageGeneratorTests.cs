@@ -132,9 +132,7 @@ public class ChatCompletionMessageGeneratorTests
             Request(null, Message.User("chart?"), Message.Assistant(toolContent)));
 
         var tool = messages[2].Should().BeOfType<ToolChatMessage>().Subject;
-        tool.Content.Should().Contain("here you go");
-        tool.Content.Should().Contain("unsupported");
-        tool.Content.Should().NotContain("AAAA");
+        tool.Content.Should().Be("here you go\n[unsupported content omitted — not supported in this provider's tool-result format]");
     }
 
     [Fact]

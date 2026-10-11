@@ -26,6 +26,9 @@ namespace IronHive.Providers.OpenAI.Compatible.ChatCompletion;
 /// </summary>
 public class ChatCompletionMessageGenerator : IMessageGenerator
 {
+    // What a non-text tool-result block becomes on the plain-string tool message (unless an image is carried).
+    private const string UnsupportedToolResultContent = "[unsupported content omitted — not supported in this provider's tool-result format]";
+
     private readonly ChatCompletionHttpClient _client;
 
     public ChatCompletionMessageGenerator(string apiKey)
@@ -613,15 +616,9 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
                             // Chat Completions의 tool 역할 content는 wire상 plain string입니다(user와 달리
                             // content-part 배열 없음) — 텍스트는 그대로 이어붙이고, 비텍스트 콘텐츠는
                             // 설명 텍스트로 대체합니다.
-                            var toolOutputText = tool.Output is null || tool.Output.Content.Count == 0
-                                ? string.Empty
-                                : string.Join("\n", tool.Output.Content.Select(c => c switch
-                                {
-                                    TextMessageContent text => text.Value ?? string.Empty,
-                                    ImageMessageContent image when carryImageToolResults =>
-                                        CarryImage(carriedImages, id, tool.Name, image),
-                                    _ => "[unsupported content omitted — not supported in this provider's tool-result format]"
-                                }));
+                            var toolOutputText = tool.Output?.ToText(c => c is ImageMessageContent image && carryImageToolResults
+                                ? CarryImage(carriedImages, id, tool.Name, image)
+                                : UnsupportedToolResultContent) ?? string.Empty;
                             toolOutputs.Add((id, toolOutputText));
                         }
                         else

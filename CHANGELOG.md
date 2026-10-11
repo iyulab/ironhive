@@ -5,6 +5,12 @@ changes are expected and used freely for structural correctness.
 
 ## Unreleased
 
+### Added
+- **`ToolOutput.ToText()` turns a tool result into one string.** Text blocks are joined with newlines. Every other block
+  becomes `[image content omitted]` (named by its kind), or whatever the optional `describeNonText` delegate returns. It is
+  for places that carry text only: a text stream, or a provider whose tool-result wire is a plain string. The OpenAI
+  (Responses) and OpenAI-compatible (Chat Completions) generators now use it, and their wire text is unchanged.
+
 ### Changed
 - **The packages from this repository depend on each other at exactly the same version** (`[x.y.z]`), not a floor.
   A consumer that moves one of them while another resolves at an older version now gets restore warning NU1608 naming

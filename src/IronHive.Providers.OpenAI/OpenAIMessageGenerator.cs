@@ -25,6 +25,9 @@ namespace IronHive.Providers.OpenAI;
 /// </summary>
 public class OpenAIMessageGenerator : IMessageGenerator
 {
+    // What a non-text tool-result block becomes on the Responses API's plain-string function_call_output.
+    private const string UnsupportedToolResultContent = "[unsupported content omitted — not supported in this provider's tool-result format]";
+
     private readonly ResponsesClient _client;
     private readonly IReadOnlyDictionary<string, OpenAIModelCapabilities>? _capabilityOverrides;
     private readonly TimeSpan _streamIdleTimeout = System.Threading.Timeout.InfiniteTimeSpan;
@@ -590,13 +593,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
                             // 설명 텍스트로 대체한다.
                             options.InputItems.Add(ResponseItem.CreateFunctionCallOutputItem(
                                 tool.Id ?? string.Empty,
-                                tool.Output is null || tool.Output.Content.Count == 0
-                                    ? string.Empty
-                                    : string.Join("\n", tool.Output.Content.Select(c => c switch
-                                    {
-                                        TextMessageContent text => text.Value ?? string.Empty,
-                                        _ => "[unsupported content omitted — not supported in this provider's tool-result format]"
-                                    }))));
+                                tool.Output?.ToText(_ => UnsupportedToolResultContent) ?? string.Empty));
                         }
                         else
                         {

@@ -1,4 +1,4 @@
-using AwesomeAssertions;
+﻿using AwesomeAssertions;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Messages.Content;
 using IronHive.Abstractions.Tools;
@@ -76,5 +76,40 @@ public class ToolOutputTests
 
         output.IsSuccess.Should().BeFalse();
         output.Content.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ToText_JoinsTextBlocksWithNewlines()
+    {
+        var output = ToolOutput.Success([new TextMessageContent { Value = "first" }, new TextMessageContent { Value = "second" }]);
+
+        output.ToText().Should().Be("first\nsecond");
+    }
+
+    [Fact]
+    public void ToText_NamesANonTextBlockByItsKind()
+    {
+        var output = ToolOutput.Success(
+        [
+            new TextMessageContent { Value = "caption" },
+            new ImageMessageContent { Format = ImageFormat.Png, Base64 = "AAAA" },
+        ]);
+
+        output.ToText().Should().Be("caption\n[image content omitted]");
+    }
+
+    [Fact]
+    public void ToText_UsesTheCallersDescriptionForNonTextBlocks()
+    {
+        var output = ToolOutput.Success([new ImageMessageContent { Format = ImageFormat.Png, Base64 = "AAAA" }]);
+
+        output.ToText(c => $"<{c.GetType().Name}>").Should().Be("<ImageMessageContent>");
+    }
+
+    [Fact]
+    public void ToText_OfNoContentIsEmpty()
+    {
+        ToolOutput.Success((string?)null).ToText().Should().BeEmpty();
+        ToolOutput.Failure("boom").ToText().Should().Be("boom");
     }
 }
