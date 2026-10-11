@@ -86,6 +86,8 @@ public class OrchestratorOptions
 }
 ```
 
+`ResultDistiller` 에 넣을 기본 구현으로 `TruncatingResultDistiller` 가 있습니다 — LLM 없이 긴 텍스트를 앞·뒤만 남기고 잘라 내고, 도구 호출 정보와 구조는 보존합니다(`ResultDistillationOptions` 로 길이 조절). `new OrchestratorOptions { ResultDistiller = new TruncatingResultDistiller() }` 또는 Handoff·GroupChat 빌더의 `SetResultDistiller(...)`.
+
 ---
 
 ## SequentialOrchestrator
