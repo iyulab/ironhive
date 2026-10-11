@@ -6,6 +6,8 @@ changes are expected and used freely for structural correctness.
 ## Unreleased
 
 ### Changed
+- **`PlanStep.Index` and `PlanStep.DependsOn` are documented.** `Index` is the step's number, unique within its plan (a
+  planner numbers steps by 1-based position), and `DependsOn` lists the `Index` of each step that must succeed first.
 - **The nuget.org «Release Notes» of every package link to the GitHub release of its version**, whose notes are this CHANGELOG's section for that version.
 
 ## 0.62.0 — 2026-10-11
