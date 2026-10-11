@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## Unreleased
+## 0.63.0 — 2026-10-12
 
 ### Added
 - **The Anthropic provider caches prompts.** Every request now carries a top-level `cache_control` (automatic caching), so the API
