@@ -27,6 +27,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
     private readonly IAnthropicClient _client;
     private readonly IReadOnlyDictionary<string, AnthropicModelCapabilities>? _capabilityOverrides;
     private readonly TimeSpan _streamIdleTimeout = System.Threading.Timeout.InfiniteTimeSpan;
+    private readonly AnthropicPromptCaching _promptCaching = AnthropicPromptCaching.FiveMinutes;
 
     public AnthropicMessageGenerator(string apiKey)
         : this(new AnthropicConfig { ApiKey = apiKey })
@@ -36,6 +37,9 @@ public class AnthropicMessageGenerator : IMessageGenerator
     {
         ProviderStreams.ThrowIfInvalid(config.StreamIdleTimeout, $"{nameof(AnthropicConfig)}.{nameof(AnthropicConfig.StreamIdleTimeout)}");
         _streamIdleTimeout = config.StreamIdleTimeout;
+        if (!Enum.IsDefined(config.PromptCaching))
+            throw new ArgumentOutOfRangeException(nameof(config), config.PromptCaching, $"{nameof(AnthropicConfig)}.{nameof(AnthropicConfig.PromptCaching)} is not a defined value.");
+        _promptCaching = config.PromptCaching;
         _client = AnthropicClientFactory.Create(config);
         _capabilityOverrides = config.ModelCapabilities is { Count: > 0 } overrides
             ? new Dictionary<string, AnthropicModelCapabilities>(overrides, StringComparer.Ordinal)
@@ -709,6 +713,13 @@ public class AnthropicMessageGenerator : IMessageGenerator
             },
             Thinking = thinking,
             OutputConfig = outputConfig,
+            // Automatic caching: one top-level breakpoint the API places on the last cacheable block.
+            CacheControl = _promptCaching switch
+            {
+                AnthropicPromptCaching.FiveMinutes => new CacheControlEphemeral(),
+                AnthropicPromptCaching.OneHour => new CacheControlEphemeral { Ttl = Ttl.Ttl1h },
+                _ => null,
+            },
         };
     }
 

@@ -138,6 +138,13 @@ public class AnthropicConfig
     /// </code>
     /// </example>
     public IDictionary<string, AnthropicModelCapabilities>? ModelCapabilities { get; set; }
+
+    /// <summary>
+    /// Prompt caching for every request (default <see cref="AnthropicPromptCaching.FiveMinutes"/>): automatic caching with
+    /// the chosen lifetime, or <see cref="AnthropicPromptCaching.Off"/>. See <see cref="AnthropicPromptCaching"/> for what it
+    /// costs and where it pays.
+    /// </summary>
+    public AnthropicPromptCaching PromptCaching { get; set; } = AnthropicPromptCaching.FiveMinutes;
     
     /// <summary>
     /// 설정 값의 유효성을 검증합니다.

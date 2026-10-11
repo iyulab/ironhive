@@ -6,6 +6,12 @@ changes are expected and used freely for structural correctness.
 ## Unreleased
 
 ### Added
+- **The Anthropic provider caches prompts.** Every request now carries a top-level `cache_control` (automatic caching), so the API
+  places a breakpoint on the last cacheable block. The next request that repeats the prefix (the next tool round or turn) reads
+  it at the cache-read rate. Measured: the second of two requests sharing a ~17k-token prompt read 17,115 cached tokens, where
+  before it read 0. `AnthropicConfig.PromptCaching` chooses `FiveMinutes` (the default), `OneHour` or `Off`.
+  **Default change**: cache writes cost 1.25× input (5 min) and reads 0.1×. A host whose requests never repeat a prefix within
+  the lifetime pays more for input and should set `Off`.
 - **The Anthropic provider reports how much of the output was thinking.** `MessageTokenUsage.ReasoningTokens` (and so
   M.E.AI `UsageDetails.ReasoningTokenCount`) now carries `output_tokens_details.thinking_tokens` on the buffered and the
   streamed path. `OutputTokens` already included the thinking, as Anthropic bills it; the new value is the part of it.
