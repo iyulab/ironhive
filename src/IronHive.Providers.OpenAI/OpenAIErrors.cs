@@ -51,7 +51,9 @@ public static partial class OpenAIErrors
             body.FindInt("n_ctx"),
             body.FindInt("n_prompt_tokens"),
             clientEx,
-            clientEx.Status);
+            clientEx.Status,
+            SentenceOf(clientEx, body),
+            RawBody(clientEx));
     }
 
     /// <summary>
@@ -79,10 +81,11 @@ public static partial class OpenAIErrors
 
         var body = ReadBody(clientEx);
         return IsBilling(clientEx.Message, body.FindString("type"), body.FindString("code"), clientEx.Status)
-            ? new BillingException(clientEx.Message, clientEx)
+            ? new BillingException(SentenceOf(clientEx, body), clientEx)
             {
                 StatusCode = (System.Net.HttpStatusCode)clientEx.Status,
                 ErrorCode = body.FindString("code") ?? body.FindString("type"),
+                ResponseBody = RawBody(clientEx),
             }
             : null;
     }
@@ -104,19 +107,53 @@ public static partial class OpenAIErrors
 
         // OpenAI's other rate-limit headers (x-ratelimit-remaining-requests etc.) are only
         // meaningful relative to the caller's configured limit, so they aren't surfaced here.
-        TimeSpan? retryAfter = null;
-        if (clientEx.GetRawResponse()?.Headers.TryGetValue("retry-after", out var value) == true
-            && double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds))
+        var body = ReadBody(clientEx);
+        return new RateLimitException(SentenceOf(clientEx, body), clientEx)
         {
-            retryAfter = TimeSpan.FromSeconds(seconds);
-        }
+            RetryAfter = RetryAfterOf(clientEx),
+            ErrorCode = body.FindString("code") ?? body.FindString("type"),
+            ResponseBody = RawBody(clientEx),
+        };
+    }
+
+    /// <summary>
+    /// Returns a <see cref="ProviderHttpException"/> for any OpenAI SDK <see cref="ClientResultException"/> — or an exception
+    /// that wraps one — that carries an HTTP status: the status, the server's sentence (<c>error.message</c>, not the SDK's
+    /// «HTTP 401 (type: code)» headline), its code, the raw body and the retry hint. Otherwise null. Try the specific
+    /// mappings (<see cref="TryMapContextOverflow(Exception)"/>, <see cref="TryMapBilling"/>, <see cref="TryMapRateLimit"/>)
+    /// first: this one takes every status.
+    /// </summary>
+    public static ProviderHttpException? TryMapHttp(Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+        if (FindClientResultException(exception) is not { Status: > 0 } clientEx)
+            return null;
 
         var body = ReadBody(clientEx);
-        return new RateLimitException(clientEx.Message, clientEx)
+        return new ProviderHttpException(SentenceOf(clientEx, body), (System.Net.HttpStatusCode)clientEx.Status, clientEx)
         {
-            RetryAfter = retryAfter,
+            RetryAfter = RetryAfterOf(clientEx),
             ErrorCode = body.FindString("code") ?? body.FindString("type"),
+            ResponseBody = RawBody(clientEx),
         };
+    }
+
+    // retry-after-ms (OpenAI-style servers) before the standard header, in seconds or as an HTTP date.
+    private static TimeSpan? RetryAfterOf(ClientResultException exception)
+    {
+        var headers = exception.GetRawResponse()?.Headers;
+        if (headers is null)
+            return null;
+        if (headers.TryGetValue("retry-after-ms", out var ms)
+            && double.TryParse(ms, NumberStyles.Float, CultureInfo.InvariantCulture, out var millis) && millis >= 0)
+            return TimeSpan.FromMilliseconds(millis);
+        if (!headers.TryGetValue("retry-after", out var value) || value is null)
+            return null;
+        if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds) && seconds >= 0)
+            return TimeSpan.FromSeconds(seconds);
+        return DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var at) && at > DateTimeOffset.UtcNow
+            ? at - DateTimeOffset.UtcNow
+            : null;
     }
 
     private static readonly string[] RateLimitMarkers =
@@ -214,7 +251,8 @@ public static partial class OpenAIErrors
     /// (an error line inside a stream).
     /// </summary>
     internal static ContextOverflowException? MatchContextOverflow(
-        string message, string? type, string? code, int? contextWindow, int? requestTokens, Exception? inner, int? status)
+        string message, string? type, string? code, int? contextWindow, int? requestTokens, Exception? inner, int? status,
+        string? sentence = null, string? responseBody = null)
     {
         if (status is >= 500)
             return null;
@@ -237,11 +275,12 @@ public static partial class OpenAIErrors
         if (ResultedInPattern().Match(message) is { Success: true } resulted)
             requestTokens ??= ParseInt(resulted.Groups[1].Value);
 
-        return new ContextOverflowException(message, inner)
+        return new ContextOverflowException(sentence ?? message, inner)
         {
             ContextWindow = contextWindow,
             RequestTokens = requestTokens,
             ErrorCode = code ?? type,
+            ResponseBody = responseBody,
         };
     }
 
@@ -286,5 +325,31 @@ public static partial class OpenAIErrors
             // the spelling, so recognition falls back to it.
             return null;
         }
+    }
+
+    private static string? RawBody(ClientResultException exception)
+    {
+        try
+        {
+            var content = exception.GetRawResponse()?.Content;
+            return content is null || content.ToMemory().IsEmpty ? null : content.ToString();
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
+    // The server's sentence: the body's error.message, else the SDK's message without the «HTTP 402 (type: code)» headline
+    // the OpenAI SDK puts above it.
+    private static string SentenceOf(ClientResultException exception, JsonNode? body)
+    {
+        if (body.FindString("message") is { Length: > 0 } message)
+            return message;
+        var text = exception.Message;
+        var split = text.IndexOf("\n\n", StringComparison.Ordinal);
+        return text.StartsWith("HTTP ", StringComparison.Ordinal) && split > 0 && split + 2 < text.Length
+            ? text[(split + 2)..].Trim()
+            : text;
     }
 }

@@ -176,10 +176,13 @@ public class ContextOverflowMappingTests
     [Fact]
     public void Anthropic_Map_Ignores_Unrelated_Message()
     {
+        // Not an overflow: any other HTTP error is a ProviderHttpException with the status and the provider's sentence.
         var body = """{"type":"error","error":{"type":"invalid_request_error","message":"max_tokens: Input should be greater than or equal to 1"}}""";
         var sdkException = AnthropicExceptionFactory.CreateApiException(HttpStatusCode.BadRequest, body);
 
-        AnthropicMapper.Map(sdkException, TestContext.Current.CancellationToken).Should().BeNull();
+        var http = AnthropicMapper.Map(sdkException, TestContext.Current.CancellationToken).Should().BeOfType<ProviderHttpException>().Subject;
+        http.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        http.Message.Should().Be("max_tokens: Input should be greater than or equal to 1");
     }
 
     [Fact]
@@ -215,7 +218,8 @@ public class ContextOverflowMappingTests
     {
         var clientError = new ClientError("API key not valid. Please pass a valid API key.", 400, "INVALID_ARGUMENT");
 
-        GoogleAIMapper.Map(clientError, TestContext.Current.CancellationToken).Should().BeNull();
+        GoogleAIMapper.Map(clientError, TestContext.Current.CancellationToken).Should().BeOfType<ProviderHttpException>()
+            .Which.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]
@@ -223,7 +227,8 @@ public class ContextOverflowMappingTests
     {
         var clientError = new ClientError("API key not valid.", 400, "UNAUTHENTICATED");
 
-        GoogleAIMapper.Map(clientError, TestContext.Current.CancellationToken).Should().BeNull();
+        GoogleAIMapper.Map(clientError, TestContext.Current.CancellationToken).Should().BeOfType<ProviderHttpException>()
+            .Which.ErrorCode.Should().Be("UNAUTHENTICATED");
     }
 
     // ---- Google: a key in the format Gemini retired in 2026-09 ----
@@ -243,8 +248,9 @@ public class ContextOverflowMappingTests
         var mapped = GoogleAIMapper.Map(
             clientError, keyUsesRetiredFormat: true, TestContext.Current.CancellationToken);
 
-        mapped.Should().BeOfType<HiveException>()
-            .Which.Message.Should().Contain("re-issue the key");
+        var http = mapped.Should().BeOfType<ProviderHttpException>().Subject;
+        http.Message.Should().Contain("re-issue the key");
+        http.StatusCode.Should().Be((HttpStatusCode)status, "the status still tells an authentication failure apart");
     }
 
     [Theory]
@@ -254,7 +260,9 @@ public class ContextOverflowMappingTests
     {
         var clientError = new ClientError("API key not valid. Please pass a valid API key.", status, "UNAUTHENTICATED");
 
-        GoogleAIMapper.Map(clientError, keyUsesRetiredFormat: false, TestContext.Current.CancellationToken)
-            .Should().BeNull();
+        var http = GoogleAIMapper.Map(clientError, keyUsesRetiredFormat: false, TestContext.Current.CancellationToken)
+            .Should().BeOfType<ProviderHttpException>().Subject;
+        http.Message.Should().Be("API key not valid. Please pass a valid API key.", "no re-issue hint for a key in the current format");
+        http.StatusCode.Should().Be((HttpStatusCode)status);
     }
 }

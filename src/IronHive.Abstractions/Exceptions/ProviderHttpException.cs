@@ -3,7 +3,8 @@ using System.Net;
 namespace IronHive.Abstractions.Exceptions;
 
 /// <summary>
-/// A provider answered with an HTTP error that has no more specific IronHive type (rate limits are
+/// A provider answered with an HTTP error that has no more specific IronHive type (an invalid key, an unknown model, a
+/// server error — every provider raises this instead of its SDK's own exception; rate limits are
 /// <see cref="RateLimitException"/>, context-window overflows <see cref="ContextOverflowException"/>, billing
 /// refusals <see cref="BillingException"/>). It is an
 /// <see cref="HttpRequestException"/> with the response's <see cref="HttpRequestException.StatusCode"/>, so code that
@@ -23,4 +24,8 @@ public class ProviderHttpException : HttpRequestException
     /// <summary>The error code or type the server put in its error body (<c>error.code</c>, else <c>error.type</c>), or null
     /// when it sent none — the same reading as <see cref="HiveException.ErrorCode"/> on IronHive's typed exceptions.</summary>
     public string? ErrorCode { get; init; }
+
+    /// <summary>The response body as it arrived, or null when the provider's SDK does not keep it (Gemini) — the same
+    /// reading as <see cref="HiveException.ResponseBody"/>. <see cref="Exception.Message"/> is the provider's sentence.</summary>
+    public string? ResponseBody { get; init; }
 }

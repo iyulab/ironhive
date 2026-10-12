@@ -1,3 +1,4 @@
+using IronHive.Abstractions.Extensions;
 using IronHive.Abstractions.Embedding;
 using OpenAI;
 using Tiktoken;
@@ -54,7 +55,8 @@ public class OpenAIEmbeddingGenerator : IEmbeddingGenerator
     {
         RejectUnsupported(options);
         var client = _openai.GetEmbeddingClient(modelId);
-        var result = await client.GenerateEmbeddingAsync(input, cancellationToken: cancellationToken);
+        var result = await client.GenerateEmbeddingAsync(input, cancellationToken: cancellationToken)
+            .MapException(ex => OpenAIExceptionMapper.Map(ex, cancellationToken));
         return result.Value.ToFloats().ToArray();
     }
 
@@ -85,7 +87,8 @@ public class OpenAIEmbeddingGenerator : IEmbeddingGenerator
             var texts = chunk.Select(x => x.Text).ToList();
             var indices = chunk.Select(x => x.Index).ToList();
 
-            var result = await client.GenerateEmbeddingsAsync(texts, cancellationToken: cancellationToken);
+            var result = await client.GenerateEmbeddingsAsync(texts, cancellationToken: cancellationToken)
+                .MapException(ex => OpenAIExceptionMapper.Map(ex, cancellationToken));
             var collection = result.Value;
 
             var results = collection.Select((e, i) => new EmbeddingResult

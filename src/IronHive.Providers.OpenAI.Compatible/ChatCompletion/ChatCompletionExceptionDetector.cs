@@ -32,13 +32,16 @@ internal static class ChatCompletionExceptionDetector
     public static async Task<Exception> DetectAsync(HttpResponseMessage response, CancellationToken cancellationToken = default)
     {
         JsonNode? body = null;
+        string? content = null;
         try
         {
-            var content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             body = JsonNode.Parse(content);
         }
         catch (JsonException)
         { }
+
+        var responseBody = string.IsNullOrEmpty(content) ? null : content;
 
         var message = body.FindString("message") is { Length: > 0 } found
             ? found
@@ -48,13 +51,13 @@ internal static class ChatCompletionExceptionDetector
 
         if (OpenAIErrors.MatchContextOverflow(
                 message, type, code, body.FindInt("n_ctx"), body.FindInt("n_prompt_tokens"), inner: null,
-                (int)response.StatusCode) is { } overflow)
+                (int)response.StatusCode, responseBody: responseBody) is { } overflow)
             return overflow;
 
         // Before the rate limit: an exhausted balance arrives as 402 from most servers and as 429 insufficient_quota
         // from OpenAI — waiting does not clear either.
         if (OpenAIErrors.IsBilling(message, type, code, (int)response.StatusCode))
-            return new BillingException(message) { StatusCode = response.StatusCode, ErrorCode = code ?? type };
+            return new BillingException(message) { StatusCode = response.StatusCode, ErrorCode = code ?? type, ResponseBody = responseBody };
 
         if (OpenAIErrors.IsRateLimit(message, type, code, (int)response.StatusCode))
         {
@@ -62,6 +65,7 @@ internal static class ChatCompletionExceptionDetector
             {
                 RetryAfter = FindRetryAfter(response),
                 ErrorCode = code ?? type,
+                ResponseBody = responseBody,
             };
         }
 
@@ -71,6 +75,7 @@ internal static class ChatCompletionExceptionDetector
         {
             RetryAfter = FindRetryAfter(response),
             ErrorCode = code ?? type,
+            ResponseBody = responseBody,
         };
     }
 

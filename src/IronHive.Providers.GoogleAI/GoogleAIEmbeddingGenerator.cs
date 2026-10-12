@@ -1,3 +1,4 @@
+using IronHive.Abstractions.Extensions;
 using Google.GenAI;
 using Google.GenAI.Types;
 using IronHive.Abstractions.Embedding;
@@ -45,7 +46,8 @@ public class GoogleAIEmbeddingGenerator : IEmbeddingGenerator
         CancellationToken cancellationToken = default)
     {
         RejectUnsupported(options);
-        var res = await _client.Models.EmbedContentAsync(modelId, input, cancellationToken: cancellationToken);
+        var res = await _client.Models.EmbedContentAsync(modelId, input, cancellationToken: cancellationToken)
+            .MapException(ex => GoogleAIExceptionMapper.Map(ex, cancellationToken));
         var embedding = res.Embeddings?.FirstOrDefault()
             ?? throw new InvalidOperationException("No embedding found in response.");
 
@@ -93,7 +95,8 @@ public class GoogleAIEmbeddingGenerator : IEmbeddingGenerator
                     Parts = [new Part { Text = b.input }]
                 }).ToList();
 
-                var res = await _client.Models.EmbedContentAsync(modelId, contents, cancellationToken: cancellationToken);
+                var res = await _client.Models.EmbedContentAsync(modelId, contents, cancellationToken: cancellationToken)
+                    .MapException(ex => GoogleAIExceptionMapper.Map(ex, cancellationToken));
                 var embeddings = res.Embeddings ?? [];
 
                 var results = batch.Zip(embeddings, (b, e) => new EmbeddingResult
@@ -123,7 +126,8 @@ public class GoogleAIEmbeddingGenerator : IEmbeddingGenerator
         string input,
         CancellationToken cancellationToken = default)
     {
-        var res = await _client.Models.CountTokensAsync(modelId, input, cancellationToken: cancellationToken);
+        var res = await _client.Models.CountTokensAsync(modelId, input, cancellationToken: cancellationToken)
+            .MapException(ex => GoogleAIExceptionMapper.Map(ex, cancellationToken));
         return res.TotalTokens
             ?? throw new InvalidOperationException("No token count found for the input.");
     }

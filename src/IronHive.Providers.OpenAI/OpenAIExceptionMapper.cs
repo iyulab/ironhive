@@ -14,6 +14,8 @@ namespace IronHive.Providers.OpenAI;
 /// <see cref="ContextOverflowException.ContextWindow"/> is therefore expected to be null in
 /// practice here — the legacy-format regex is kept only as a best-effort fallback.
 /// </para>
+/// <para>Any other HTTP error becomes a <see cref="ProviderHttpException"/>. Every exception's message is the server's
+/// <c>error.message</c>, not the SDK's «HTTP 402 (type: code)» headline, and the raw body is its <c>ResponseBody</c>.</para>
 /// <para>The recognition itself is <see cref="OpenAIErrors"/>, public so a caller with its own SDK client
 /// gets the same mapping.</para>
 /// </summary>
@@ -36,7 +38,8 @@ internal static class OpenAIExceptionMapper
         if (IsRateLimit(exception, out var rateLimit))
             return rateLimit;
 
-        return null;
+        // Any other HTTP error (an invalid key, an unknown model, a server error): the status and the server's sentence.
+        return OpenAIErrors.TryMapHttp(exception);
     }
 
     /// <summary>

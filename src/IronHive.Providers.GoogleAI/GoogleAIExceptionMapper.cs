@@ -1,3 +1,4 @@
+using IronHive.Abstractions.Extensions;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using Google.GenAI;
@@ -10,8 +11,11 @@ namespace IronHive.Providers.GoogleAI;
 /// context-window overflow (HTTP 400, <c>status == "INVALID_ARGUMENT"</c>, message "The input
 /// token count (X) exceeds the maximum number of tokens allowed (Y).") ->
 /// <see cref="ContextOverflowException"/>, a refusal the account cannot pay (402, or 429 <c>insufficient_quota</c>) ->
-/// <see cref="BillingException"/>, and any other 429 -> <see cref="RateLimitException"/>. The Gemini <c>status</c>
-/// (<c>RESOURCE_EXHAUSTED</c>, <c>INVALID_ARGUMENT</c>) is the exception's <see cref="HiveException.ErrorCode"/>.
+/// <see cref="BillingException"/>, any other 429 -> <see cref="RateLimitException"/>, and any other HTTP error (an invalid
+/// key, an unknown model, a server error) -> <see cref="ProviderHttpException"/>. The Gemini <c>status</c>
+/// (<c>RESOURCE_EXHAUSTED</c>, <c>INVALID_ARGUMENT</c>) is the exception's error code. The message is Gemini's
+/// <c>error.message</c> without the «Details: …» lines the SDK appends; the SDK keeps no response body, so
+/// <c>ResponseBody</c> is null.
 /// </summary>
 internal static partial class GoogleAIExceptionMapper
 {
@@ -45,8 +49,34 @@ internal static partial class GoogleAIExceptionMapper
         if (IsRateLimit(exception, out var rateLimit))
             return rateLimit;
 
+        // Any other HTTP error: the status and Gemini's sentence, not the SDK's exception type.
+        if (exception is ApiException { StatusCode: > 0 } api)
+        {
+            return new ProviderHttpException(SentenceOf(api), (System.Net.HttpStatusCode)api.StatusCode, api)
+            {
+                RetryAfter = RetryDelayOf(api),
+                ErrorCode = api.Status,
+            };
+        }
+
         return null;
     }
+
+    // The SDK writes error.message, then «Details: <json>» lines for the error's details; the sentence is the part before.
+    private static string SentenceOf(ApiException exception)
+    {
+        var message = exception.Message;
+        var details = message.IndexOf("\nDetails:", StringComparison.Ordinal);
+        return details > 0 ? message[..details].TrimEnd() : message;
+    }
+
+    // The SDK doesn't expose a dedicated RetryInfo/retryDelay field, so it is read from the details the SDK writes into
+    // the message; null when it wrote none.
+    private static TimeSpan? RetryDelayOf(ApiException exception)
+        => RetryDelayPattern().Match(exception.Message) is { Success: true } match
+            && double.TryParse(match.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds)
+                ? TimeSpan.FromSeconds(seconds)
+                : null;
 
     /// <summary>
     /// The SDK's own request timeout cancels the request via an internal
@@ -72,17 +102,21 @@ internal static partial class GoogleAIExceptionMapper
     /// format: with a re-issued key a 401/403 is an ordinary authentication failure and is left alone.
     /// </summary>
     private static bool IsRetiredKeyFormatRejected(
-        Exception exception, bool keyUsesRetiredFormat, out HiveException? result)
+        Exception exception, bool keyUsesRetiredFormat, out ProviderHttpException? result)
     {
         result = null;
         if (!keyUsesRetiredFormat || exception is not ClientError { StatusCode: 401 or 403 } rejected)
             return false;
 
-        result = new HiveException(
-            $"{rejected.Message} The configured API key is in the retired key format, which Gemini stopped " +
+        result = new ProviderHttpException(
+            $"{SentenceOf(rejected)} The configured API key is in the retired key format, which Gemini stopped " +
             "accepting in September 2026; re-issue the key in Google AI Studio. The library does not check " +
             "the key format, so this is a hint rather than a verdict.",
-            rejected);
+            (System.Net.HttpStatusCode)rejected.StatusCode,
+            rejected)
+        {
+            ErrorCode = rejected.Status,
+        };
         return true;
     }
 
@@ -109,7 +143,7 @@ internal static partial class GoogleAIExceptionMapper
                 contextWindow = window;
         }
 
-        result = new ContextOverflowException(message, clientError)
+        result = new ContextOverflowException(SentenceOf(clientError), clientError)
         {
             ContextWindow = contextWindow,
             RequestTokens = requestTokens,
@@ -127,13 +161,13 @@ internal static partial class GoogleAIExceptionMapper
     {
         result = exception switch
         {
-            ClientError { StatusCode: 402 } paymentRequired => new BillingException(paymentRequired.Message, paymentRequired)
+            ClientError { StatusCode: 402 } paymentRequired => new BillingException(SentenceOf(paymentRequired), paymentRequired)
             {
                 StatusCode = System.Net.HttpStatusCode.PaymentRequired,
                 ErrorCode = paymentRequired.Status,
             },
             ClientError { StatusCode: 429 } quota when quota.Message.Contains("insufficient_quota", StringComparison.OrdinalIgnoreCase)
-                => new BillingException(quota.Message, quota)
+                => new BillingException(SentenceOf(quota), quota)
                 {
                     StatusCode = System.Net.HttpStatusCode.TooManyRequests,
                     ErrorCode = "insufficient_quota",
@@ -154,17 +188,7 @@ internal static partial class GoogleAIExceptionMapper
         if (exception is not ClientError { StatusCode: 429 } rateLimited)
             return false;
 
-        // The SDK doesn't expose a dedicated RetryInfo/retryDelay field, so this falls back
-        // to scraping it out of the error message on the off chance the SDK preserved the
-        // raw error body there; if not, RetryAfter is left null.
-        TimeSpan? retryAfter = null;
-        if (RetryDelayPattern().Match(rateLimited.Message) is { Success: true } match
-            && double.TryParse(match.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds))
-        {
-            retryAfter = TimeSpan.FromSeconds(seconds);
-        }
-
-        result = new RateLimitException(rateLimited.Message, rateLimited) { RetryAfter = retryAfter, ErrorCode = rateLimited.Status };
+        result = new RateLimitException(SentenceOf(rateLimited), rateLimited) { RetryAfter = RetryDelayOf(rateLimited), ErrorCode = rateLimited.Status };
         return true;
     }
 }

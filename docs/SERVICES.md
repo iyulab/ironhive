@@ -161,7 +161,17 @@ catch (Exception ex) when (OpenAIErrors.TryMapContextOverflow(ex) is { } overflo
 
 `TryMapContextOverflow(Exception)`은 SDK의 `ClientResultException`(감싼 예외 안에 있어도)만 본다. 스트림 중간의 `error` 이벤트처럼 예외가 없는 메시지는 `TryMapContextOverflow(string)`, 429는 `TryMapRateLimit(Exception)`(`retry-after` → `RetryAfter`).
 
-OpenAI 호환 클라이언트가 받은 그 밖의 HTTP 오류(401·404·5xx 등)는 `ProviderHttpException`이다. `HttpRequestException`을 상속하므로 `StatusCode`로 분기하던 코드는 그대로 동작하고, 서버가 `Retry-After`(초 또는 HTTP 날짜)나 `retry-after-ms`를 보냈으면 `RetryAfter`에 싣는다 — 503 + 힌트는 «잠시 뒤 같은 곳에 다시», 힌트 없는 5xx는 «다른 곳으로»를 가르는 근거다.
+네 프로바이더 모두 그 밖의 HTTP 오류(401·404·5xx 등)는 `ProviderHttpException`이다 — SDK 자신의 예외(`AnthropicUnauthorizedException`·`ClientResultException`·Gemini `ClientError`)는 `InnerException`으로 남는다. 자기 OpenAI SDK 클라이언트를 쓰면 `OpenAIErrors.TryMapHttp(ex)`. `HttpRequestException`을 상속하므로 `StatusCode`로 분기하던 코드는 그대로 동작하고, 서버가 `Retry-After`(초 또는 HTTP 날짜)나 `retry-after-ms`를 보냈으면(Gemini는 `RetryInfo.retryDelay`) `RetryAfter`에 싣는다 — 503 + 힌트는 «잠시 뒤 같은 곳에 다시», 힌트 없는 5xx는 «다른 곳으로»를 가르는 근거다. Anthropic SDK는 응답 헤더를 넘기지 않으므로 Anthropic 오류의 `RetryAfter`는 null이다.
+
+**메시지와 원문.** 모든 프로바이더 예외의 `Message`는 벤더가 쓴 문장(`error.message`)이다 — SDK가 덧붙이는 «Status Code: …»·«HTTP 402 (type: code)» 머리줄이나 «Details: …» 줄, JSON 원문이 아니다. 원문이 필요하면(게이트웨이가 덧붙인 필드 등) `ResponseBody`(`HiveException`·`ProviderHttpException`)를 읽는다 — HTTP 응답 본문, 스트림 안 오류면 그 이벤트의 데이터. Gemini SDK는 본문을 보관하지 않으므로 Gemini 예외는 null이다.
+
+```csharp
+catch (BillingException ex) when (ex.ResponseBody is { } body)
+{
+    // ex.Message: "Not enough credits for this request's output limit."
+    // body: {"type":"error","error":{"type":"hold_rejected", …, "affordable_max_tokens":4000}}
+}
+```
 
 ```csharp
 catch (ProviderHttpException ex) when (ex.StatusCode == HttpStatusCode.ServiceUnavailable && ex.RetryAfter is { } wait)

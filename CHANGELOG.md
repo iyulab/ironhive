@@ -3,6 +3,30 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## Unreleased
+
+### Changed
+- **Breaking: a provider failure's `Message` is the provider's sentence.** Before, Anthropic's `BillingException`,
+  `RateLimitException` and `ContextOverflowException` carried the whole JSON error body as their message. OpenAI's carried the
+  SDK's «HTTP 402 (type: code)» headline above the sentence, and Gemini's carried the SDK's «Details: …» lines after it. Now
+  each message is `error.message`, the body itself only when it has no message (a gateway answering in plain text).
+  Migration: code that parsed the JSON out of `Message` reads `ResponseBody` instead.
+- **Breaking: every provider raises `ProviderHttpException` for an HTTP error with no more specific type** (an invalid key, an
+  unknown model, a server error). Before, the Anthropic, OpenAI and Gemini providers let their SDK's own exception through.
+  The SDK's exception is the `InnerException`, and `StatusCode`, `ErrorCode` and `RetryAfter` are set as on the
+  OpenAI-compatible provider. The Gemini retired-key hint is a `ProviderHttpException` too (it was a `HiveException`), so it
+  keeps the 401/403. Migration: catch `ProviderHttpException` (or `HttpRequestException`) by `StatusCode` instead of
+  `AnthropicApiException` / `ClientResultException` / `Google.GenAI.ClientError`.
+- **The OpenAI and Gemini embedding generators map errors the same way** as their message generators. They used to let SDK
+  exceptions through.
+
+### Added
+- **`HiveException.ResponseBody` and `ProviderHttpException.ResponseBody`**: the provider's error answer as it arrived (the HTTP
+  body, or the data of an error event inside a stream), for the fields beyond the sentence, such as a gateway's own.
+  Gemini's SDK keeps no body, so it is null there.
+- **`OpenAIErrors.TryMapHttp(Exception)`**: the `ProviderHttpException` for any HTTP error from your own OpenAI SDK client,
+  with the sentence, code, body and retry hint (`retry-after-ms`, `Retry-After`).
+
 ## 0.63.0 — 2026-10-12
 
 ### Added

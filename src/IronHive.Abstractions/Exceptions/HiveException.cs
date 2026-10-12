@@ -27,4 +27,11 @@ public class HiveException : Exception
     /// exhausted balance against a per-key or per-project spending limit).
     /// </summary>
     public string? ErrorCode { get; init; }
+
+    /// <summary>
+    /// The provider's error answer as it arrived — the HTTP response body, or the data of an error event inside a stream —
+    /// or null when the provider's SDK does not keep it (Gemini) or the failure came with none. <see cref="Exception.Message"/>
+    /// is the provider's sentence; read this for the fields beyond it (a gateway's own, such as an affordable token limit).
+    /// </summary>
+    public string? ResponseBody { get; init; }
 }
