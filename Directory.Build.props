@@ -8,7 +8,7 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <NoWarn>$(NoWarn);OPENAI001;OPENAI002</NoWarn>
-    <Version>0.64.0</Version>
+    <Version>0.65.0</Version>
     <!-- nuget.org «Release Notes»: the GitHub release of this version (its notes are the CHANGELOG section). -->
     <PackageReleaseNotes>https://github.com/iyulab/ironhive/releases/tag/v$(Version)</PackageReleaseNotes>
     <!-- 기본적으로 NuGet 패키지 생성 비활성화 -->
