@@ -28,18 +28,26 @@ public class AnthropicModelFinder : IModelFinder
     public async Task<IEnumerable<IModelCard>> ListModelsAsync(
         CancellationToken cancellationToken = default)
     {
-        var page = await _client.Models.List(new ModelListParams
+        try
         {
-            Limit = 1000,
-        }, cancellationToken);
+            var page = await _client.Models.List(new ModelListParams
+            {
+                Limit = 1000,
+            }, cancellationToken);
 
-        var models = new List<IModelCard>();
-        await foreach (var model in page.Paginate(cancellationToken))
-        {
-            models.Add(ToCard(model.ID, model.DisplayName, model.CreatedAt, model.MaxInputTokens, model.MaxTokens));
+            var models = new List<IModelCard>();
+            await foreach (var model in page.Paginate(cancellationToken))
+            {
+                models.Add(ToCard(model.ID, model.DisplayName, model.CreatedAt, model.MaxInputTokens, model.MaxTokens));
+            }
+
+            return models;
         }
-
-        return models;
+        catch (Exception ex) when (AnthropicExceptionMapper.Map(ex, cancellationToken) is { } mapped)
+        {
+            // The same failure a message call with this key would raise (an invalid key is a ProviderHttpException 401).
+            throw mapped;
+        }
     }
 
     /// <inheritdoc />

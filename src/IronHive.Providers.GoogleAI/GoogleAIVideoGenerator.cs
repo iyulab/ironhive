@@ -1,3 +1,4 @@
+using IronHive.Abstractions.Extensions;
 using Google.GenAI;
 using Google.GenAI.Types;
 using IronHive.Abstractions.Videos;
@@ -68,7 +69,7 @@ public class GoogleAIVideoGenerator : IVideoGenerator
             model: request.Model,
             source: source,
             config: config,
-            cancellationToken: cancellationToken);
+            cancellationToken: cancellationToken).MapException(ex => GoogleAIExceptionMapper.Map(ex, cancellationToken));
 
         if (operation is null)
             throw new InvalidOperationException("Failed to start video generation operation.");
@@ -86,7 +87,7 @@ public class GoogleAIVideoGenerator : IVideoGenerator
             cancellationToken.ThrowIfCancellationRequested();
             await Task.Delay(request.PollInterval, cancellationToken);
 
-            operation = await _client.Operations.GetAsync(operation, null, cancellationToken);
+            operation = await _client.Operations.GetAsync(operation, null, cancellationToken).MapException(ex => GoogleAIExceptionMapper.Map(ex, cancellationToken));
             progress?.Report(new VideoGenerationProgress
             {
                 Done = operation.Done == true,
@@ -106,7 +107,7 @@ public class GoogleAIVideoGenerator : IVideoGenerator
         // 6. 비디오 데이터 다운로드
         var video = operation.Response?.GeneratedVideos?.FirstOrDefault()?.Video
             ?? throw new InvalidOperationException("Video generation completed but no video was returned.");
-        using var fs = await _client.Files.DownloadAsync(video, null, cancellationToken);
+        using var fs = await _client.Files.DownloadAsync(video, null, cancellationToken).MapException(ex => GoogleAIExceptionMapper.Map(ex, cancellationToken));
         using var ms = new MemoryStream();
         await fs.CopyToAsync(ms, cancellationToken);
             

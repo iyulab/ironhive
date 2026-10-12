@@ -3,6 +3,20 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## Unreleased
+
+### Changed
+- **Breaking: listing models and generating images or videos fail like a message call.** `ListModelsAsync` on the
+  Anthropic, OpenAI and Gemini model finders, the OpenAI and Gemini image generators, and the Gemini video generator now
+  raise the same IronHive exceptions as the message generators (for example a `ProviderHttpException` 401 with the
+  provider's sentence for an invalid key). Before, they let the SDK's own exception through. `FindModelAsync` still answers
+  null for a model it cannot find or a server it cannot ask. Migration: catch `ProviderHttpException` / `HttpRequestException`
+  instead of the SDK types around these calls.
+
+### Fixed
+- **An OpenAI SDK error whose body is not OpenAI's error shape says the body** (a proxy that answers in plain text). Before,
+  the message was System.ClientModel's «Service request failed.» followed by a response dump.
+
 ## 0.64.0 — 2026-10-12
 
 ### Changed

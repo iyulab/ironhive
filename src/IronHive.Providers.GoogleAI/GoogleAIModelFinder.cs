@@ -33,17 +33,25 @@ public class GoogleAIModelFinder : IModelFinder
     public async Task<IEnumerable<IModelCard>> ListModelsAsync(
         CancellationToken cancellationToken = default)
     {
-        var list = new List<IModelCard>();
-        var pager = await _client.Models.ListAsync(
-            new Google.GenAI.Types.ListModelsConfig { PageSize = 1000 },
-            cancellationToken);
-
-        await foreach (var model in pager)
+        try
         {
-            list.Add(ConvertToModelCard(model));
-        }
+            var list = new List<IModelCard>();
+            var pager = await _client.Models.ListAsync(
+                new Google.GenAI.Types.ListModelsConfig { PageSize = 1000 },
+                cancellationToken);
 
-        return list;
+            await foreach (var model in pager)
+            {
+                list.Add(ConvertToModelCard(model));
+            }
+
+            return list;
+        }
+        catch (Exception ex) when (GoogleAIExceptionMapper.Map(ex, cancellationToken) is { } mapped)
+        {
+            // The same failure a message call with this key would raise (an invalid key is a ProviderHttpException 401).
+            throw mapped;
+        }
     }
 
     /// <inheritdoc />

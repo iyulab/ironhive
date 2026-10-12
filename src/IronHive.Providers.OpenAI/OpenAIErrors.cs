@@ -340,12 +340,15 @@ public static partial class OpenAIErrors
         }
     }
 
-    // The server's sentence: the body's error.message, else the SDK's message without the «HTTP 402 (type: code)» headline
-    // the OpenAI SDK puts above it.
+    // The server's sentence: the body's error.message; else the body itself (a server that answers in plain text or in
+    // another shape); else the SDK's message without the «HTTP 402 (type: code)» headline the OpenAI SDK puts above it.
+    // System.ClientModel's own message for a non-OpenAI server is «Service request failed.» plus a dump of the response.
     private static string SentenceOf(ClientResultException exception, JsonNode? body)
     {
         if (body.FindString("message") is { Length: > 0 } message)
             return message;
+        if (RawBody(exception) is { } raw && raw.Trim() is { Length: > 0 } trimmed)
+            return trimmed;
         var text = exception.Message;
         var split = text.IndexOf("\n\n", StringComparison.Ordinal);
         return text.StartsWith("HTTP ", StringComparison.Ordinal) && split > 0 && split + 2 < text.Length

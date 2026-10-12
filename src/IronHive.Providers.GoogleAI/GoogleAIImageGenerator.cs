@@ -1,3 +1,4 @@
+using IronHive.Abstractions.Extensions;
 using Google.GenAI;
 using Google.GenAI.Types;
 using IronHive.Abstractions.Images;
@@ -55,7 +56,7 @@ public class GoogleAIImageGenerator : IImageGenerator
                     ImageSize = preset.Size,
                     AspectRatio = preset.Ratio,
                 },
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken).MapException(ex => GoogleAIExceptionMapper.Map(ex, cancellationToken));
 
             return new ImageGenerationResponse
             {
@@ -95,7 +96,7 @@ public class GoogleAIImageGenerator : IImageGenerator
                     AspectRatio = preset.Ratio,
                 }
             },
-            cancellationToken: cancellationToken);
+            cancellationToken: cancellationToken).MapException(ex => GoogleAIExceptionMapper.Map(ex, cancellationToken));
 
         return MapGeminiResponse(response);
     }
@@ -144,7 +145,7 @@ public class GoogleAIImageGenerator : IImageGenerator
                     NumberOfImages = request.N,
                     AspectRatio = preset.Ratio,
                 },
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken).MapException(ex => GoogleAIExceptionMapper.Map(ex, cancellationToken));
 
             return new ImageGenerationResponse
             {
@@ -195,7 +196,7 @@ public class GoogleAIImageGenerator : IImageGenerator
                     AspectRatio = preset.Ratio,
                 }
             },
-            cancellationToken: cancellationToken);
+            cancellationToken: cancellationToken).MapException(ex => GoogleAIExceptionMapper.Map(ex, cancellationToken));
         
         return MapGeminiResponse(response);
     }

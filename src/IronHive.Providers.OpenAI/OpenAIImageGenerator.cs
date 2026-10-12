@@ -1,3 +1,4 @@
+using IronHive.Abstractions.Extensions;
 using System.ClientModel;
 using IronHive.Abstractions.Images;
 using OpenAI;
@@ -46,7 +47,7 @@ public class OpenAIImageGenerator : IImageGenerator
             request.Prompt,
             request.N ?? 1,
             options,
-            cancellationToken);
+            cancellationToken).MapException(ex => OpenAIExceptionMapper.Map(ex, cancellationToken));
         var images = result.Value;
 
         return new ImageGenerationResponse
@@ -99,7 +100,7 @@ public class OpenAIImageGenerator : IImageGenerator
                     request.Prompt,
                     maskStream, maskFilename,
                     options,
-                    cancellationToken);
+                    cancellationToken).MapException(ex => OpenAIExceptionMapper.Map(ex, cancellationToken));
             }
             else
             {
@@ -107,7 +108,7 @@ public class OpenAIImageGenerator : IImageGenerator
                     stream, filename,
                     request.Prompt,
                     options,
-                    cancellationToken);
+                    cancellationToken).MapException(ex => OpenAIExceptionMapper.Map(ex, cancellationToken));
             }
 
             var img = result.Value;
