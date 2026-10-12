@@ -142,6 +142,34 @@ public class ProviderErrorMessageTests
 
         rate.Message.Should().Be("Resource has been exhausted (e.g. check quota).");
         rate.RetryAfter.Should().Be(TimeSpan.FromSeconds(7));
+        rate.ErrorCode.Should().Be("RESOURCE_EXHAUSTED", "no ErrorInfo detail, so the status stays the code");
+    }
+
+    [Fact]
+    public void Google_RateLimit_ErrorInfoReason_IsTheErrorCode_AlongsideTheRetryDelay()
+    {
+        // The SDK writes one detail per line with the platform's line ending; the stream path prefixes the whole error JSON.
+        var clientError = new ClientError(
+            "got status: RESOURCE_EXHAUSTED. {\"error\":{\"code\":429,\"status\":\"RESOURCE_EXHAUSTED\"}}\nDetails: "
+            + "{\"@type\":\"type.googleapis.com/google.rpc.ErrorInfo\",\"reason\":\"RATE_LIMIT_EXCEEDED\",\"domain\":\"googleapis.com\"}\r\n"
+            + "{\"@type\":\"type.googleapis.com/google.rpc.RetryInfo\",\"retryDelay\":\"12s\"}",
+            429, "RESOURCE_EXHAUSTED");
+
+        var rate = GoogleAIMapper.Map(clientError, TestContext.Current.CancellationToken).Should().BeOfType<RateLimitException>().Subject;
+
+        rate.ErrorCode.Should().Be("RATE_LIMIT_EXCEEDED");
+        rate.RetryAfter.Should().Be(TimeSpan.FromSeconds(12));
+    }
+
+    [Fact]
+    public void Google_DetailsWithoutErrorInfo_KeepTheStatus()
+    {
+        var clientError = new ClientError(
+            "Bad request.\nDetails: {\"@type\":\"type.googleapis.com/google.rpc.BadRequest\",\"fieldViolations\":[]}\nnot json",
+            400, "INVALID_ARGUMENT");
+
+        GoogleAIMapper.Map(clientError, TestContext.Current.CancellationToken).Should().BeOfType<ProviderHttpException>()
+            .Which.ErrorCode.Should().Be("INVALID_ARGUMENT");
     }
 
     [Fact]

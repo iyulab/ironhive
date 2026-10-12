@@ -1,5 +1,7 @@
 using IronHive.Abstractions.Extensions;
 using System.Globalization;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Google.GenAI;
 using IronHive.Abstractions.Exceptions;
@@ -12,8 +14,10 @@ namespace IronHive.Providers.GoogleAI;
 /// token count (X) exceeds the maximum number of tokens allowed (Y).") ->
 /// <see cref="ContextOverflowException"/>, a refusal the account cannot pay (402, or 429 <c>insufficient_quota</c>) ->
 /// <see cref="BillingException"/>, any other 429 -> <see cref="RateLimitException"/>, and any other HTTP error (an invalid
-/// key, an unknown model, a server error) -> <see cref="ProviderHttpException"/>. The Gemini <c>status</c>
-/// (<c>RESOURCE_EXHAUSTED</c>, <c>INVALID_ARGUMENT</c>) is the exception's error code. The message is Gemini's
+/// key, an unknown model, a server error) -> <see cref="ProviderHttpException"/>. The exception's error code is the
+/// machine-readable reason Google puts in the error's <c>google.rpc.ErrorInfo</c> detail (<c>API_KEY_INVALID</c>,
+/// <c>RATE_LIMIT_EXCEEDED</c>) when the error carries one, otherwise the Gemini <c>status</c> (<c>RESOURCE_EXHAUSTED</c>,
+/// <c>INVALID_ARGUMENT</c>) — one status covers several reasons that need different handling. The message is Gemini's
 /// <c>error.message</c> without the «Details: …» lines the SDK appends; the SDK keeps no response body, so
 /// <c>ResponseBody</c> is null.
 /// </summary>
@@ -55,7 +59,7 @@ internal static partial class GoogleAIExceptionMapper
             return new ProviderHttpException(SentenceOf(api), (System.Net.HttpStatusCode)api.StatusCode, api)
             {
                 RetryAfter = RetryDelayOf(api),
-                ErrorCode = api.Status,
+                ErrorCode = ErrorCodeOf(api),
             };
         }
 
@@ -68,6 +72,43 @@ internal static partial class GoogleAIExceptionMapper
         var message = exception.Message;
         var details = message.IndexOf("\nDetails:", StringComparison.Ordinal);
         return details > 0 ? message[..details].TrimEnd() : message;
+    }
+
+    // Google's error model puts the machine-readable reason in a google.rpc.ErrorInfo detail; the status is the coarse
+    // class above it. The SDK keeps no structured details: it writes each detail as one JSON line after «Details:» (the
+    // stream path also writes the whole error JSON before that), so the reason is read from those lines.
+    private static string? ErrorCodeOf(ApiException exception) => ErrorInfoReasonOf(exception.Message) ?? exception.Status;
+
+    private static string? ErrorInfoReasonOf(string message)
+    {
+        const string marker = "\nDetails:";
+        var details = message.IndexOf(marker, StringComparison.Ordinal);
+        if (details < 0)
+            return null;
+
+        foreach (var line in message[(details + marker.Length)..].Split('\n'))
+        {
+            var json = line.Trim();
+            if (!json.StartsWith('{'))
+                continue;
+            try
+            {
+                if (JsonNode.Parse(json) is JsonObject detail
+                    && detail["@type"] is JsonValue type && type.TryGetValue<string>(out var typeName)
+                    && typeName.EndsWith("google.rpc.ErrorInfo", StringComparison.Ordinal)
+                    && detail["reason"] is JsonValue reason && reason.TryGetValue<string>(out var value)
+                    && !string.IsNullOrWhiteSpace(value))
+                {
+                    return value;
+                }
+            }
+            catch (JsonException)
+            {
+                // A line that is not one detail's JSON (a message that itself contains «Details:»): skip it.
+            }
+        }
+
+        return null;
     }
 
     // The SDK doesn't expose a dedicated RetryInfo/retryDelay field, so it is read from the details the SDK writes into
@@ -115,7 +156,7 @@ internal static partial class GoogleAIExceptionMapper
             (System.Net.HttpStatusCode)rejected.StatusCode,
             rejected)
         {
-            ErrorCode = rejected.Status,
+            ErrorCode = ErrorCodeOf(rejected),
         };
         return true;
     }
@@ -147,7 +188,7 @@ internal static partial class GoogleAIExceptionMapper
         {
             ContextWindow = contextWindow,
             RequestTokens = requestTokens,
-            ErrorCode = clientError.Status,
+            ErrorCode = ErrorCodeOf(clientError),
         };
         return true;
     }
@@ -164,7 +205,7 @@ internal static partial class GoogleAIExceptionMapper
             ClientError { StatusCode: 402 } paymentRequired => new BillingException(SentenceOf(paymentRequired), paymentRequired)
             {
                 StatusCode = System.Net.HttpStatusCode.PaymentRequired,
-                ErrorCode = paymentRequired.Status,
+                ErrorCode = ErrorCodeOf(paymentRequired),
             },
             ClientError { StatusCode: 429 } quota when quota.Message.Contains("insufficient_quota", StringComparison.OrdinalIgnoreCase)
                 => new BillingException(SentenceOf(quota), quota)
@@ -188,7 +229,7 @@ internal static partial class GoogleAIExceptionMapper
         if (exception is not ClientError { StatusCode: 429 } rateLimited)
             return false;
 
-        result = new RateLimitException(SentenceOf(rateLimited), rateLimited) { RetryAfter = RetryDelayOf(rateLimited), ErrorCode = rateLimited.Status };
+        result = new RateLimitException(SentenceOf(rateLimited), rateLimited) { RetryAfter = RetryDelayOf(rateLimited), ErrorCode = ErrorCodeOf(rateLimited) };
         return true;
     }
 }

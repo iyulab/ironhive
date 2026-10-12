@@ -278,6 +278,58 @@ public class ProviderResponseFailureTests
         response.TokenUsage!.InputTokens.Should().Be(5);
     }
 
+    // Google's error model puts the machine-readable reason in a google.rpc.ErrorInfo detail; the status above it is the
+    // coarse class (INVALID_ARGUMENT covers an invalid key and a bad request alike). The body is the one Gemini returned
+    // for an invalid key (2026-10-13), served through the SDK's real error path, buffered and streaming.
+    private const string GeminiInvalidKeyBody = """
+        {
+          "error": {
+            "code": 400,
+            "message": "API key not valid. Please pass a valid API key.",
+            "status": "INVALID_ARGUMENT",
+            "details": [
+              {
+                "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+                "reason": "API_KEY_INVALID",
+                "domain": "googleapis.com",
+                "metadata": { "service": "generativelanguage.googleapis.com" }
+              },
+              {
+                "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+                "locale": "en-US",
+                "message": "API key not valid. Please pass a valid API key."
+              }
+            ]
+          }
+        }
+        """;
+
+    [Fact]
+    public async Task Gemini_ErrorInfoReason_IsTheErrorCode_Buffered()
+    {
+        var client = new HttpClient(new StubHttpHandler(GeminiInvalidKeyBody, GeminiInvalidKeyBody) { Status = HttpStatusCode.BadRequest })
+        { Timeout = Timeout.InfiniteTimeSpan };
+        using var generator = new GoogleAIMessageGenerator(new GoogleAIConfig { ApiKey = "test-key", HttpClientFactory = () => client });
+
+        var act = () => generator.GenerateMessageAsync(Request(), TestContext.Current.CancellationToken);
+
+        var http = (await act.Should().ThrowAsync<ProviderHttpException>()).Which;
+        http.ErrorCode.Should().Be("API_KEY_INVALID", "the ErrorInfo reason, not the INVALID_ARGUMENT status");
+        http.Message.Should().Be("API key not valid. Please pass a valid API key.");
+        http.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Gemini_ErrorInfoReason_IsTheErrorCode_Streaming()
+    {
+        var client = new HttpClient(new StubHttpHandler(GeminiInvalidKeyBody, GeminiInvalidKeyBody) { Status = HttpStatusCode.BadRequest })
+        { Timeout = Timeout.InfiniteTimeSpan };
+
+        var (_, error) = await RunAsync(new GoogleAIMessageGenerator(new GoogleAIConfig { ApiKey = "test-key", HttpClientFactory = () => client }));
+
+        error.Should().BeOfType<ProviderHttpException>().Which.ErrorCode.Should().Be("API_KEY_INVALID");
+    }
+
     // ---- harness ----
 
     private static MessageGenerationRequest Request()

@@ -12,6 +12,11 @@ changes are expected and used freely for structural correctness.
   provider's sentence for an invalid key). Before, they let the SDK's own exception through. `FindModelAsync` still answers
   null for a model it cannot find or a server it cannot ask. Migration: catch `ProviderHttpException` / `HttpRequestException`
   instead of the SDK types around these calls.
+- **Breaking: a Gemini error's `ErrorCode` is its machine-readable reason.** When the error carries a `google.rpc.ErrorInfo`
+  detail, `ErrorCode` is that detail's `reason` (`API_KEY_INVALID`, `RATE_LIMIT_EXCEEDED`, …); otherwise it is still the
+  status (`INVALID_ARGUMENT`, `RESOURCE_EXHAUSTED`). One status covers reasons that need different handling, for example an
+  invalid key and a malformed request are both `INVALID_ARGUMENT`. Migration: code that compares a Gemini `ErrorCode` with a
+  status string compares with the reason, or checks `StatusCode` for the coarse class.
 
 ### Fixed
 - **An OpenAI SDK error whose body is not OpenAI's error shape says the body** (a proxy that answers in plain text). Before,

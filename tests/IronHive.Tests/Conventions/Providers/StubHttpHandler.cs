@@ -26,6 +26,9 @@ internal sealed class StubHttpHandler : HttpMessageHandler
         _sse = streamingSse;
     }
 
+    /// <summary>The status every response carries — set it to serve a vendor error body (the SDK's error path).</summary>
+    public HttpStatusCode Status { get; init; } = HttpStatusCode.OK;
+
     public List<(bool Streaming, string Body)> Requests { get; } = [];
 
     /// <summary>The request headers of each request, in order — what actually went over the wire (name → joined values).</summary>
@@ -44,11 +47,11 @@ internal sealed class StubHttpHandler : HttpMessageHandler
         Requests.Add((streaming, body));
 
         return streaming
-            ? new HttpResponseMessage(HttpStatusCode.OK)
+            ? new HttpResponseMessage(Status)
             {
                 Content = new StringContent(_sse, Encoding.UTF8, "text/event-stream"),
             }
-            : new HttpResponseMessage(HttpStatusCode.OK)
+            : new HttpResponseMessage(Status)
             {
                 Content = new StringContent(_json, Encoding.UTF8, "application/json"),
             };
