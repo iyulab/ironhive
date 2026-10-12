@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## Unreleased
+## 0.64.0 — 2026-10-12
 
 ### Changed
 - **Breaking: a provider failure's `Message` is the provider's sentence.** Before, Anthropic's `BillingException`,
