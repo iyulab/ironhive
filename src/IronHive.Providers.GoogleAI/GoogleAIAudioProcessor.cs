@@ -1,3 +1,4 @@
+using IronHive.Abstractions.Extensions;
 using Google.GenAI;
 using Google.GenAI.Types;
 using IronHive.Abstractions.Audio;
@@ -73,7 +74,7 @@ public partial class GoogleAIAudioProcessor : IAudioProcessor
             request.Model,
             [contents],
             config,
-            cancellationToken);
+            cancellationToken).MapException(ex => GoogleAIExceptionMapper.Map(ex, cancellationToken));
 
         var audioBlob = response.Candidates?.FirstOrDefault()?.Content?.Parts?.FirstOrDefault()?.InlineData;
 
@@ -145,7 +146,7 @@ public partial class GoogleAIAudioProcessor : IAudioProcessor
             request.Model,
             [contents],
             config: null,
-            cancellationToken);
+            cancellationToken).MapException(ex => GoogleAIExceptionMapper.Map(ex, cancellationToken));
 
         var text = response.Candidates?.FirstOrDefault()?.Content?.Parts?.FirstOrDefault()?.Text
             ?? throw new InvalidOperationException("No text data in response.");
@@ -245,7 +246,7 @@ public partial class GoogleAIAudioProcessor : IAudioProcessor
             request.Model,
             [contents],
             config,
-            cancellationToken);
+            cancellationToken).MapException(ex => GoogleAIExceptionMapper.Map(ex, cancellationToken));
 
         // JSON 파싱해서 반환
         var json = response.Candidates?.FirstOrDefault()?.Content?.Parts?.FirstOrDefault()?.Text

@@ -1,12 +1,14 @@
 using System.Net;
 using System.Text;
 using AwesomeAssertions;
+using IronHive.Abstractions.Audio;
 using IronHive.Abstractions.Exceptions;
 using IronHive.Abstractions.Images;
 using IronHive.Abstractions.Models;
 using IronHive.Providers.Anthropic;
 using IronHive.Providers.GoogleAI;
 using IronHive.Providers.OpenAI;
+using IronHive.Providers.OpenAI.Compatible;
 
 namespace IronHive.Tests.Providers;
 
@@ -16,7 +18,7 @@ namespace IronHive.Tests.Providers;
 /// </summary>
 public class ProviderSideCallErrorTests
 {
-    public static TheoryData<string> Finders => new() { "openai", "anthropic", "googleai" };
+    public static TheoryData<string> Finders => new() { "openai", "openai-compatible", "anthropic", "googleai" };
 
     [Theory]
     [MemberData(nameof(Finders))]
@@ -24,7 +26,7 @@ public class ProviderSideCallErrorTests
     {
         var (body, sentence) = provider switch
         {
-            "openai" => ("""{"error":{"message":"Incorrect API key provided.","type":"invalid_request_error","code":"invalid_api_key"}}""", "Incorrect API key provided."),
+            "openai" or "openai-compatible" => ("""{"error":{"message":"Incorrect API key provided.","type":"invalid_request_error","code":"invalid_api_key"}}""", "Incorrect API key provided."),
             "anthropic" => ("""{"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"}}""", "invalid x-api-key"),
             _ => ("""{"error":{"code":401,"message":"API key not valid. Please pass a valid API key.","status":"UNAUTHENTICATED"}}""", "API key not valid. Please pass a valid API key."),
         };
@@ -32,6 +34,7 @@ public class ProviderSideCallErrorTests
         using IModelFinder finder = provider switch
         {
             "openai" => new OpenAIModelFinder(new OpenAIConfig { BaseUrl = "https://gateway.example/v1", ApiKey = "sk-test", HttpClient = http, MaxRetries = 0 }),
+            "openai-compatible" => new OpenAICompatibleModelFinder(new OpenAIConfig { BaseUrl = "https://gateway.example/v1", ApiKey = "sk-test", HttpClient = http, MaxRetries = 0 }),
             "anthropic" => new AnthropicModelFinder(new AnthropicConfig { ApiKey = "sk-test", HttpClient = http, MaxRetries = 0 }),
             _ => new GoogleAIModelFinder(new GoogleAIConfig { ApiKey = "test", HttpClientFactory = () => http }),
         };
@@ -56,6 +59,38 @@ public class ProviderSideCallErrorTests
         thrown.Which.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         thrown.Which.Message.Should().Be("Incorrect API key provided.");
         thrown.Which.ResponseBody.Should().Be(body);
+    }
+
+    public static TheoryData<string, string> AudioCalls => new()
+    {
+        { "openai", "speech" }, { "openai", "transcribe" }, { "openai", "transcribe-diarized" },
+        { "googleai", "speech" }, { "googleai", "transcribe" }, { "googleai", "transcribe-diarized" },
+    };
+
+    [Theory]
+    [MemberData(nameof(AudioCalls))]
+    public async Task Audio_WithAnInvalidKey_IsProviderHttpException401(string provider, string call)
+    {
+        var (body, sentence) = provider == "openai"
+            ? ("""{"error":{"message":"Incorrect API key provided.","type":"invalid_request_error","code":"invalid_api_key"}}""", "Incorrect API key provided.")
+            : ("""{"error":{"code":401,"message":"API key not valid. Please pass a valid API key.","status":"UNAUTHENTICATED"}}""", "API key not valid. Please pass a valid API key.");
+        using var http = new HttpClient(new FixedHandler(HttpStatusCode.Unauthorized, body));
+        IAudioProcessor processor = provider == "openai"
+            ? new OpenAIAudioProcessor(new OpenAIConfig { BaseUrl = "https://gateway.example/v1", ApiKey = "sk-test", HttpClient = http, MaxRetries = 0 })
+            : new GoogleAIAudioProcessor(new GoogleAIConfig { ApiKey = "test", HttpClientFactory = () => http });
+        var ct = TestContext.Current.CancellationToken;
+        var audio = new GeneratedAudio { MimeType = "audio/wav", Data = [1, 2, 3] };
+
+        Func<Task> act = call switch
+        {
+            "speech" => () => processor.GenerateSpeechAsync(new TextToSpeechRequest { Model = "tts", Text = "hi", Voice = "alloy" }, ct),
+            "transcribe" => () => processor.TranscribeAsync(new SpeechToTextRequest { Model = "stt", Audio = audio }, ct),
+            _ => () => processor.TranscribeAsync(new SpeechToTextRequest { Model = "stt", Audio = audio, Diarized = true }, ct),
+        };
+
+        var thrown = await act.Should().ThrowAsync<ProviderHttpException>();
+        thrown.Which.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        thrown.Which.Message.Should().Be(sentence);
     }
 
     [Fact]

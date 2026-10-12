@@ -1,3 +1,4 @@
+using IronHive.Abstractions.Extensions;
 using IronHive.Abstractions.Audio;
 using OpenAI;
 using OpenAI.Audio;
@@ -40,7 +41,7 @@ public class OpenAIAudioProcessor : IAudioProcessor
             {
                 ResponseFormat = GeneratedSpeechFormat.Mp3
             },
-            cancellationToken);
+            cancellationToken).MapException(ex => OpenAIExceptionMapper.Map(ex, cancellationToken));
 
         return new TextToSpeechResponse
         {
@@ -82,7 +83,7 @@ public class OpenAIAudioProcessor : IAudioProcessor
                     ResponseFormat = AudioTranscriptionFormat.Diarized,
                     ChunkingStrategy = AudioTranscriptionDefaultChunkingStrategy.Auto,
                 },
-                cancellationToken);
+                cancellationToken).MapException(ex => OpenAIExceptionMapper.Map(ex, cancellationToken));
 
             var transcription = result.Value;
             return new SpeechToTextResponse
@@ -104,7 +105,7 @@ public class OpenAIAudioProcessor : IAudioProcessor
             var result = await client.TranscribeAudioAsync(
                 stream,
                 filename,
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken).MapException(ex => OpenAIExceptionMapper.Map(ex, cancellationToken));
 
             var transcription = result.Value;
             return new SpeechToTextResponse

@@ -6,9 +6,10 @@ changes are expected and used freely for structural correctness.
 ## Unreleased
 
 ### Changed
-- **Breaking: listing models and generating images or videos fail like a message call.** `ListModelsAsync` on the
-  Anthropic, OpenAI and Gemini model finders, the OpenAI and Gemini image generators, and the Gemini video generator now
-  raise the same IronHive exceptions as the message generators (for example a `ProviderHttpException` 401 with the
+- **Breaking: listing models, generating images or videos, and speech calls fail like a message call.** `ListModelsAsync`
+  on the Anthropic, OpenAI, OpenAI-compatible and Gemini model finders, the OpenAI and Gemini image generators, the Gemini
+  video generator, and the OpenAI and Gemini audio processors (`GenerateSpeechAsync`, `TranscribeAsync`) now raise the same
+  IronHive exceptions as the message generators (for example a `ProviderHttpException` 401 with the
   provider's sentence for an invalid key). Before, they let the SDK's own exception through. `FindModelAsync` still answers
   null for a model it cannot find or a server it cannot ask. Migration: catch `ProviderHttpException` / `HttpRequestException`
   instead of the SDK types around these calls.

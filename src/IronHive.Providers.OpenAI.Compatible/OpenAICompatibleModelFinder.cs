@@ -1,3 +1,4 @@
+using IronHive.Abstractions.Extensions;
 using System.ClientModel.Primitives;
 using System.Text.Json;
 using IronHive.Abstractions.Models;
@@ -44,7 +45,9 @@ public class OpenAICompatibleModelFinder : IModelFinder
     /// <inheritdoc />
     public virtual async Task<IEnumerable<IModelCard>> ListModelsAsync(CancellationToken cancellationToken = default)
     {
-        var result = await _client.GetModelsAsync(new RequestOptions { CancellationToken = cancellationToken }).ConfigureAwait(false);
+        // The same failure a message call with this key would raise (an invalid key is a ProviderHttpException 401).
+        var result = await _client.GetModelsAsync(new RequestOptions { CancellationToken = cancellationToken })
+            .MapException(ex => OpenAIExceptionMapper.Map(ex, cancellationToken)).ConfigureAwait(false);
         using var document = JsonDocument.Parse(result.GetRawResponse().Content);
         return OpenAIModelCards.FromList(document.RootElement);
     }
