@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## Unreleased
+## 0.65.0 — 2026-10-13
 
 ### Changed
 - **Breaking: listing models, generating images or videos, and speech calls fail like a message call.** `ListModelsAsync`
