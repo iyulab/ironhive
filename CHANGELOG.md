@@ -10,7 +10,8 @@ changes are expected and used freely for structural correctness.
   (`Stop`, `Length`, `Error` — the enum is `EndTurn`, `ToolCall`, `MaxTokens`, `ContentFilter`, `StopSequence`, `Unknown`);
   `docs/STORAGES.md` showed an `IVectorStorage` with other signatures (a collection name passed apart from its info, ids
   instead of a filter, a `VectorSearchResult` return); `docs/WORKFLOW.md` showed the planning interfaces' old shapes. Each
-  listing is now checked against the real type in the docs test, so the next drift fails it.
+  listing is now checked against the real type in the docs test, so the next drift fails it. `MessageResponse` is shown with
+  its settable properties (the guide had `init`), and `TaskPlan.Goal` as `required`.
 
 ## 0.65.1 — 2026-10-13
 

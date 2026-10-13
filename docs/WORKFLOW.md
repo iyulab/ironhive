@@ -235,7 +235,7 @@ public interface IPlanEvaluator
 public sealed class TaskPlan
 {
     public string Id { get; init; }
-    public string Goal { get; init; }
+    public required string Goal { get; init; }
     public string? Reasoning { get; init; }
     public IList<PlanStep> Steps { get; init; }
     public PlanStatus Status { get; set; }

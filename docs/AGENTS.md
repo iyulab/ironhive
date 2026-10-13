@@ -205,12 +205,12 @@ await foreach (var chunk in agent.InvokeStreamingAsync("안녕하세요"))
 ```csharp
 public class MessageResponse
 {
-    public string? ResponseId { get; init; }           // 응답 ID
-    public MessageDoneReason? DoneReason { get; init; } // 완료 이유
-    public Message? Message { get; init; }             // 생성된 메시지
-    public MessageTokenUsage? TokenUsage { get; init; } // 토큰 사용량
-    public string Model { get; init; }                 // 사용된 모델
-    public DateTime Timestamp { get; init; }           // 응답 시각
+    public string? ResponseId { get; set; }           // 응답 ID
+    public MessageDoneReason? DoneReason { get; set; } // 완료 이유
+    public Message? Message { get; set; }             // 생성된 메시지
+    public MessageTokenUsage? TokenUsage { get; set; } // 토큰 사용량
+    public string Model { get; set; }                 // 사용된 모델
+    public DateTime Timestamp { get; set; }           // 응답 시각
 }
 
 public enum MessageDoneReason
