@@ -480,7 +480,7 @@ public class MessageService : IMessageService
             }
         }, CancellationToken.None);
 
-        await foreach (var res in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+        await foreach (var res in channel.Reader.ReadUntilCancelledAsync(cancellationToken).ConfigureAwait(false))
         {
             yield return res;
         }

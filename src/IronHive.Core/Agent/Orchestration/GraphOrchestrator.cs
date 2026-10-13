@@ -151,7 +151,7 @@ public class GraphOrchestrator : OrchestratorBase
 
         var producerTask = ProduceStreamingEventsAsync(channel.Writer, messages, cancellationToken);
 
-        await foreach (var streamEvent in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+        await foreach (var streamEvent in channel.Reader.ReadUntilCancelledAsync(cancellationToken).ConfigureAwait(false))
         {
             yield return streamEvent;
         }

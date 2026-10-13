@@ -4,6 +4,7 @@ using System.Threading.Channels;
 using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Agent.Orchestration;
 using IronHive.Abstractions.Messages;
+using IronHive.Core.Utilities;
 
 namespace IronHive.Core.Agent.Orchestration;
 
@@ -148,7 +149,7 @@ public class SequentialOrchestrator : OrchestratorBase
 
         var producerTask = ProduceStreamingEventsAsync(channel.Writer, messages, cancellationToken);
 
-        await foreach (var streamEvent in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+        await foreach (var streamEvent in channel.Reader.ReadUntilCancelledAsync(cancellationToken).ConfigureAwait(false))
         {
             yield return streamEvent;
         }

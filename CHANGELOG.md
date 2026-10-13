@@ -5,6 +5,13 @@ changes are expected and used freely for structural correctness.
 
 ## Unreleased
 
+### Fixed
+- **A streaming orchestration or message stream stops at the caller's cancellation.**
+  `SequentialOrchestrator`/`GraphOrchestrator.ExecuteStreamingAsync` and the parallel message stream read their events
+  through a channel, and the channel's reader looks at the token only while it waits. When the producer had run ahead,
+  every event it had buffered still came after the caller cancelled, and the cancellation surfaced only after them. Now
+  no event follows the cancellation.
+
 ### Documentation
 - **The GPUStack provider guide's examples compile against the current API.** Message generation uses
   `hive.Messages.GenerateMessageAsync(new MessageRequest { … Messages = [Message.User(…)] })`, embeddings
