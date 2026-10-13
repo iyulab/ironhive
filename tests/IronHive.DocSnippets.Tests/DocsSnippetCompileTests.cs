@@ -38,16 +38,14 @@ public class DocsSnippetCompileTests
     ];
 
     private const string Pending = "migration to the kit compiler (run 146) - blocks not yet repaired";
-    private const string CrossBlock =
-        "blocks use types another block of the document declares (MyTools, the workflow steps) - waits for compiling a document as a whole";
 
     // Documents with C# blocks that are not compiled yet, with the reason. Shrink this; a new document with a C# block
     // must land in one of the two lists (see EveryDocumentWithCSharp_IsCheckedOrListed).
     private static readonly Dictionary<string, string> NotYetChecked = new(StringComparer.Ordinal)
     {
-        ["docs/TOOLS.md"] = CrossBlock,
-        ["docs/WORKFLOW.md"] = CrossBlock,
-        ["skills/ironhive/references/TOOLS.md"] = CrossBlock,
+        ["docs/TOOLS.md"] = Pending,
+        ["docs/WORKFLOW.md"] = Pending,
+        ["skills/ironhive/references/TOOLS.md"] = Pending,
         ["docs/ORCHESTRATION.md"] = Pending,
         ["docs/PROVIDERS.md"] = Pending,
         ["docs/SERVICES.md"] = Pending,
@@ -155,7 +153,20 @@ public class DocsSnippetCompileTests
     private static readonly IReadOnlyList<DocSnippet> Snippets =
         [.. Checked.SelectMany(d => MarkdownSnippets.Read(Path.Combine(RepositoryRoot(), d), d))];
 
+    // An ASP.NET Core block stands alone: it is compiled by HostCompiler, outside its document.
+    private static bool IsHostBlock(DocSnippet snippet) => snippet.Code.Contains("builder.Services", StringComparison.Ordinal);
+
+    // Each document's examples compile together: a guide declares a type (a tool class, a workflow step) in one example
+    // and uses it in the next.
+    private static readonly Dictionary<string, Lazy<DocumentCompilation>> Documents = Checked.ToDictionary(
+        d => d,
+        d => new Lazy<DocumentCompilation>(() => Compiler.CompileDocument(
+            [.. Snippets.Where(s => s.File == d && !IsHostBlock(s) && !Fragments.IsFragment(s))])),
+        StringComparer.Ordinal);
+
     public static TheoryData<string> Blocks() => new(Snippets.Select(s => s.Key));
+
+    public static TheoryData<string> CheckedDocuments() => new(Checked);
 
     [Theory]
     [MemberData(nameof(Blocks))]
@@ -164,9 +175,16 @@ public class DocsSnippetCompileTests
         var snippet = Snippets.Single(s => s.Key == key);
         if (Fragments.IsFragment(snippet))
             return;
-        var compiler = snippet.Code.Contains("builder.Services", StringComparison.Ordinal) ? HostCompiler : Compiler;
-        compiler.ShouldCompile(snippet);
+        if (IsHostBlock(snippet))
+            HostCompiler.ShouldCompile(snippet);
+        else
+            Documents[snippet.File].Value.ShouldCompile(snippet);
     }
+
+    /// <summary>A document's type stand-ins compile against the current API (they belong to no single example).</summary>
+    [Theory]
+    [MemberData(nameof(CheckedDocuments))]
+    public void Document_HasNoErrorsOutsideItsExamples(string document) => Documents[document].Value.ShouldHaveNoSharedErrors();
 
     [Fact]
     public void EveryCheckedBlock_IsFoundAndFragmentsNameRealHeadings()
