@@ -222,10 +222,11 @@ public class MyOptionsPipeline : IMemoryPipeline<MyPipelineOptions>
     }
 }
 
-// Register
-builder
+// Register — as steps of the worker's pipeline
+var worker = hive.CreateMemoryWorkerFrom(builder => builder
+    .UseQueue("local-queue")
     .Then<MyFilterPipeline>("filter")
-    .Then<MyOptionsPipeline, MyPipelineOptions>("trim", new MyPipelineOptions { MaxLength = 500 });
+    .Then<MyOptionsPipeline, MyPipelineOptions>("trim", new MyPipelineOptions { MaxLength = 500 }));
 ```
 
 ## RAG + Agent Pattern

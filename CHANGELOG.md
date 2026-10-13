@@ -11,6 +11,10 @@ changes are expected and used freely for structural correctness.
   `hive.Embeddings.EmbedAsync(…)` and model listing `hive.Models.ListModelsAsync("gpustack")`; the old examples called the
   obsolete `GetMessageGenerator` / `GetEmbeddingGenerator`, a `UserMessage` type and a `GetModelCatalog` that do not exist.
   The guides' C# blocks are now compiled by the test suite, document by document.
+- **Storage and memory guides match the API.** The vector storage example uses `VectorRecord.VectorId` / `SourceId` /
+  `Vectors` / `Payload` and `CreateCollectionAsync(VectorCollectionInfo { Name, … })` (it showed `Id` / `Vector` /
+  `Content` / `Metadata` and a name argument); the `IQueueStorage` listing shows the current members (consumer callback,
+  no queue-name argument); a custom memory pipeline is registered inside `CreateMemoryWorkerFrom`.
 
 ## 0.65.0 — 2026-10-13
 

@@ -9,7 +9,7 @@ Middleware wraps an `IAgent` and intercepts `InvokeAsync` / `InvokeStreamingAsyn
 ## Usage Pattern
 
 ```csharp
-IAgent agent = hive.CreateAgentFrom(cfg => { ... });
+IAgent agent = hive.CreateAgentFrom(cfg => { cfg.Provider = "openai"; cfg.Model = "gpt-4o-mini"; });
 
 // Single middleware
 agent = agent.WithMiddleware(new RetryMiddleware(maxRetries: 3));

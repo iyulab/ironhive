@@ -188,9 +188,11 @@ public class MyOptionsPipeline : IMemoryPipeline<MyPipelineOptions>
     }
 }
 
-// 등록
-builder.Then<MyFilterPipeline>("filter")
-       .Then<MyOptionsPipeline, MyPipelineOptions>("my-opts", new MyPipelineOptions { MaxLength = 500 });
+// 등록 — 워커를 구성할 때 단계로 끼운다
+var worker = hive.CreateMemoryWorkerFrom(builder => builder
+    .UseQueue("local-queue")
+    .Then<MyFilterPipeline>("filter")
+    .Then<MyOptionsPipeline, MyPipelineOptions>("my-opts", new MyPipelineOptions { MaxLength = 500 }));
 ```
 
 실패는 예외를 던지거나 `TaskStepResult.Fail(exception)`을 반환한다. `TaskStepResult`는

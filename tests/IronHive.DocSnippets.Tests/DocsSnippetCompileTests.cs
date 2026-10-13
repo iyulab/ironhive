@@ -25,6 +25,10 @@ public class DocsSnippetCompileTests
         "README.md",
         "docs/ARCHITECTURE.md",
         "src/IronHive.Providers.OpenAI.Compatible/GPUStack/README.md",
+        "docs/MEMORY.md",
+        "docs/STORAGES.md",
+        "skills/ironhive/references/MEMORY.md",
+        "skills/ironhive/references/MIDDLEWARE.md",
     ];
 
     private const string Pending = "migration to the kit compiler (run 146) - blocks not yet repaired";
@@ -34,19 +38,15 @@ public class DocsSnippetCompileTests
     private static readonly Dictionary<string, string> NotYetChecked = new(StringComparer.Ordinal)
     {
         ["docs/AGENTS.md"] = Pending,
-        ["docs/MEMORY.md"] = Pending,
         ["docs/MIDDLEWARE.md"] = Pending,
         ["docs/ORCHESTRATION.md"] = Pending,
         ["docs/PLUGINS.md"] = Pending,
         ["docs/PROVIDERS.md"] = Pending,
         ["docs/SERVICES.md"] = Pending,
         ["docs/SETUP.md"] = Pending,
-        ["docs/STORAGES.md"] = Pending,
         ["docs/TOOLS.md"] = Pending,
         ["docs/WORKFLOW.md"] = Pending,
         ["skills/ironhive/SKILL.md"] = Pending,
-        ["skills/ironhive/references/MEMORY.md"] = Pending,
-        ["skills/ironhive/references/MIDDLEWARE.md"] = Pending,
         ["skills/ironhive/references/ORCHESTRATION.md"] = Pending,
         ["skills/ironhive/references/PROVIDERS.md"] = Pending,
         ["skills/ironhive/references/SERVICES.md"] = Pending,
@@ -101,6 +101,15 @@ public class DocsSnippetCompileTests
         ["qdrantStorage"] = "IVectorStorage qdrantStorage = null!;",
         ["localStorage"] = "IVectorStorage localStorage = null!;",
         ["mcpClientTool"] = "Microsoft.Extensions.AI.AITool mcpClientTool = null!;",
+        ["backupAgent"] = "IAgent backupAgent = null!;",
+        ["collection"] = "IMemoryCollection collection = null!;",
+        ["context"] = "MemoryContext context = null!;",
+        ["stoppingToken"] = "CancellationToken stoppingToken = default;",
+        ["queueStorage"] = "IQueueStorage queueStorage = null!;",
+        ["rabbitMQStorage"] = "IQueueStorage rabbitMQStorage = null!;",
+        ["s3Config"] = "AmazonS3Config s3Config = null!;",
+        ["localVecConfig"] = "LocalVectorConfig localVecConfig = null!;",
+        ["localQueueConfig"] = "LocalQueueConfig localQueueConfig = null!;",
     };
 
     private static readonly IReadOnlyList<MetadataReference> References =
@@ -139,7 +148,7 @@ public class DocsSnippetCompileTests
     public void EveryCheckedBlock_IsFoundAndFragmentsNameRealHeadings()
     {
         Assert.True(Snippets.Count(s => s.File == "README.md") >= 4, "expected the README's C# blocks");
-        Fragments.ShouldMatch([.. Snippets], atLeast: 12);
+        Fragments.ShouldMatch([.. Snippets], atLeast: 56);
     }
 
     /// <summary>

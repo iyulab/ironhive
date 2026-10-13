@@ -140,34 +140,39 @@ public interface IVectorStorage
 ### 직접 사용 예시
 
 ```csharp
-var vectorStorage = /* ... */;
+IVectorStorage vectorStorage = qdrantStorage;   // 등록한 벡터 스토리지 중 하나
+float[] embeddingVector = await hive.Embeddings.EmbedAsync("openai", "text-embedding-3-small", "문서 내용...");
 
-// 컬렉션 생성
-await vectorStorage.CreateCollectionAsync("documents", new VectorCollectionInfo
+// 컬렉션 생성 — 이름과 차원, 그 벡터를 만든 임베딩 모델을 함께 기록한다
+await vectorStorage.CreateCollectionAsync(new VectorCollectionInfo
 {
+    Name = "documents",
     Dimensions = 1536,
     EmbeddingProvider = "openai",
     EmbeddingModel = "text-embedding-3-small"
 });
 
-// 벡터 저장
-await vectorStorage.UpsertVectorsAsync("documents", new[]
-{
+// 벡터 저장 — 원본 문서 id(SourceId)와 검색 결과에 함께 돌려받을 Payload
+await vectorStorage.UpsertVectorsAsync("documents",
+[
     new VectorRecord
     {
-        Id = "doc-1",
-        Vector = embeddingVector,
-        Content = "문서 내용...",
-        Metadata = new Dictionary<string, object>
+        VectorId = "doc-1#0",
+        SourceId = "doc-1",
+        Vectors = embeddingVector,
+        Payload = new Dictionary<string, object?>
         {
+            ["text"] = "문서 내용...",
             ["source"] = "manual.pdf",
-            ["category"] = "technology"
         }
     }
-});
+]);
 
-// 유사도 검색
-var result = await vectorStorage.SearchVectorsAsync("documents", queryVector, limit: 5);
+// 유사도 검색 — 점수가 붙은 레코드(ScoredVectorRecord)가 돌아온다
+float[] queryVector = await hive.Embeddings.EmbedAsync("openai", "text-embedding-3-small", "검색어");
+var results = await vectorStorage.SearchVectorsAsync("documents", queryVector, limit: 5);
+foreach (var hit in results)
+    Console.WriteLine($"{hit.SourceId} {hit.Score:F3}");
 ```
 
 ---
@@ -215,15 +220,17 @@ builder.AddQueueStorage("rabbitmq", new RabbitMQueueStorage(new RabbitMQConfig
 ### IQueueStorage 인터페이스
 
 ```csharp
-public interface IQueueStorage
+public interface IQueueStorage : IDisposable
 {
-    Task EnqueueAsync<T>(T message, string? queueName = null, CancellationToken ct = default);
-    Task<T?> DequeueAsync<T>(string? queueName = null, CancellationToken ct = default);
-    Task<IQueueConsumer<T>> CreateConsumerAsync<T>(string? queueName = null, CancellationToken ct = default);
-    Task<long> CountAsync(string? queueName = null, CancellationToken ct = default);
-    Task ClearAsync(string? queueName = null, CancellationToken ct = default);
+    Task EnqueueAsync<T>(T message, CancellationToken cancellationToken = default);
+    Task<IQueueMessage<T>?> DequeueAsync<T>(CancellationToken cancellationToken = default);
+    Task<IQueueConsumer> CreateConsumerAsync<T>(Func<IQueueMessage<T>, Task> onReceived, CancellationToken cancellationToken = default);
+    Task<int> CountAsync(CancellationToken cancellationToken = default);
+    Task ClearAsync(CancellationToken cancellationToken = default);
 }
 ```
+
+메서드에는 큐 이름 인자가 없다 — 등록한 스토리지 하나가 큐 하나다(`RabbitMQConfig.QueueName`, 로컬 큐는 `LocalQueueConfig.DirectoryPath`). 큐가 여럿이면 스토리지를 이름별로 등록한다.
 
 ### 큐 사용 예시
 
@@ -249,7 +256,7 @@ await queueStorage.EnqueueAsync(new MemoryContext
 // 소비자 생성 — 메시지가 도착할 때마다 콜백이 불린다
 using var consumer = await queueStorage.CreateConsumerAsync<MemoryContext>(async message =>
 {
-    await ProcessAsync(message.Body);   // 처리
+    Console.WriteLine(message.Body.Source.Id);   // 처리
     await message.CompleteAsync();      // 처리 완료
     // 또는: await message.RequeueAsync();          // 재큐잉
     // 또는: await message.DeadAsync("reason");     // 폐기
