@@ -118,22 +118,28 @@ builder.AddVectorStorage("qdrant", new QdrantVectorStorage(new QdrantConfig
 ### IVectorStorage 인터페이스
 
 ```csharp
-public interface IVectorStorage
+public interface IVectorStorage : IDisposable
 {
-    Task<IEnumerable<VectorCollectionInfo>> ListCollectionsAsync(string? prefix, CancellationToken ct);
-    Task CreateCollectionAsync(string name, VectorCollectionInfo info, CancellationToken ct);
-    Task DeleteCollectionAsync(string name, CancellationToken ct);
+    Task<IEnumerable<VectorCollectionInfo>> ListCollectionsAsync(CancellationToken cancellationToken = default);
+    Task<bool> CollectionExistsAsync(string collectionName, CancellationToken cancellationToken = default);
+    Task<VectorCollectionInfo?> GetCollectionInfoAsync(string collectionName, CancellationToken cancellationToken = default);
+    Task CreateCollectionAsync(VectorCollectionInfo collection, CancellationToken cancellationToken = default);
+    Task DeleteCollectionAsync(string collectionName, CancellationToken cancellationToken = default);
 
-    Task UpsertVectorsAsync(string collection, IEnumerable<VectorRecord> records, CancellationToken ct);
-    Task DeleteVectorsAsync(string collection, IEnumerable<string> ids, CancellationToken ct);
-    Task<IEnumerable<VectorRecord>> FindVectorsAsync(string collection, IEnumerable<string> ids, CancellationToken ct);
+    Task<IEnumerable<VectorRecord>> FindVectorsAsync(
+        string collectionName, int limit = 20, VectorRecordFilter? filter = null, CancellationToken cancellationToken = default);
+    Task UpsertVectorsAsync(
+        string collectionName, IEnumerable<VectorRecord> vectors, CancellationToken cancellationToken = default);
+    Task DeleteVectorsAsync(
+        string collectionName, VectorRecordFilter filter, CancellationToken cancellationToken = default);
 
-    Task<VectorSearchResult> SearchVectorsAsync(
-        string collection,
-        ReadOnlyMemory<float> vector,
-        int limit,
+    Task<IEnumerable<ScoredVectorRecord>> SearchVectorsAsync(
+        string collectionName,
+        float[] vector,
+        float minScore = 0.0f,
+        int limit = 5,
         VectorRecordFilter? filter = null,
-        CancellationToken ct = default);
+        CancellationToken cancellationToken = default);
 }
 ```
 

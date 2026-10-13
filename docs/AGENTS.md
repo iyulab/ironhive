@@ -215,10 +215,12 @@ public class MessageResponse
 
 public enum MessageDoneReason
 {
-    Stop,      // 정상 완료
-    ToolCall,  // 도구 호출 요청
-    Length,    // 최대 토큰 도달
-    Error      // 오류
+    EndTurn,        // 응답 턴 완료
+    ToolCall,       // 도구 호출 요청
+    MaxTokens,      // 최대 출력 토큰 도달
+    ContentFilter,  // 콘텐츠 필터가 응답을 막음
+    StopSequence,   // 중단 시퀀스를 만남
+    Unknown         // 그 밖의 이유
 }
 ```
 

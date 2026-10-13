@@ -219,24 +219,29 @@ public interface ITaskPlanner
     Task<TaskPlan> ReplanAsync(TaskPlan current, string failureReason, CancellationToken ct = default);
 }
 
-// 계획 실행
+// 계획 실행 — 한 단계를 실행하며 진행 이벤트를 스트리밍
 public interface IPlanExecutor
 {
-    Task<StepResult> ExecuteStepAsync(PlanStep step, PlanningContext context, CancellationToken ct = default);
+    IAsyncEnumerable<PlanExecutionEvent> ExecuteStepAsync(TaskPlan plan, PlanStep planStep, CancellationToken cancellationToken = default);
 }
 
-// 계획 평가
+// 계획 평가 — 끝난 단계의 결과로 다음 행동(계속 · 재계획 · 종료)을 정함
 public interface IPlanEvaluator
 {
-    Task<EvaluationResult> EvaluateAsync(TaskPlan plan, PlanningContext context, CancellationToken ct = default);
+    Task<EvaluationResult> EvaluateAsync(TaskPlan plan, PlanStep completedStep, StepResult result, CancellationToken cancellationToken = default);
 }
 
 // TaskPlan 구조
-public class TaskPlan
+public sealed class TaskPlan
 {
-    public string Goal { get; set; }
-    public List<PlanStep> Steps { get; set; }
+    public string Id { get; init; }
+    public string Goal { get; init; }
+    public string? Reasoning { get; init; }
+    public IList<PlanStep> Steps { get; init; }
     public PlanStatus Status { get; set; }
+    public int CurrentStepIndex { get; set; }
+    public DateTimeOffset CreatedAt { get; init; }
+    public int ReplanCount { get; set; }
 }
 ```
 

@@ -168,12 +168,13 @@ public class DocsSnippetCompileTests
     private static readonly IReadOnlyList<MetadataReference> References =
         SnippetCompiler.ReferencesFor([.. AssembliesToLoad.Select(Assembly.Load)]);
 
-    private static readonly SnippetCompiler Compiler = new(References) { Usings = Usings, StandIns = StandIns };
+    private static readonly SnippetCompiler Compiler = new(References) { Usings = Usings, StandIns = StandIns, CheckListings = true };
 
     // An ASP.NET Core block's `builder` is the host's application builder (builder.Services, builder.Configuration), not
     // the hive builder the other blocks configure.
     private static readonly SnippetCompiler HostCompiler = new(References)
     {
+        CheckListings = true,
         Usings = [.. Usings, "Microsoft.Extensions.Hosting"],
         StandIns = new Dictionary<string, string>(StandIns, StringComparer.Ordinal)
         {
@@ -244,6 +245,20 @@ public class DocsSnippetCompileTests
         Assert.All(withCSharp, d => Assert.True(Checked.Contains(d) || NotYetChecked.ContainsKey(d), $"{d} has C# blocks but is in neither list"));
         Assert.All(Checked, d => Assert.False(NotYetChecked.ContainsKey(d), $"{d} is both checked and waiting"));
         Assert.All(Checked.Concat(NotYetChecked.Keys), d => Assert.Contains(d, withCSharp));
+    }
+
+    /// <summary>
+    /// The guides' type listings (an interface or enum shown with its members) are checked against the real types
+    /// (<see cref="SnippetCompiler.CheckListings"/>), not compiled as a second type of the same name. A floor, so a listing
+    /// the kit stops recognising shows here instead of passing unchecked. Turning it on found 11 drifted members in three
+    /// guides (an enum's members, a storage interface's signatures, the planning interfaces).
+    /// </summary>
+    [Fact]
+    public void TypeListings_AreCheckedAgainstTheRealTypes()
+    {
+        // Documents, not HostDocuments: the host compilation takes every block of a document again, and a listing is never a host block.
+        var listed = Checked.Sum(d => Documents[d].Value.ListedTypes);
+        Assert.True(listed >= 65, $"expected the guides' type listings to be checked, found {listed}");
     }
 
     /// <summary>Positive control: the compiler rejects the GPUStack README's old message example.</summary>
