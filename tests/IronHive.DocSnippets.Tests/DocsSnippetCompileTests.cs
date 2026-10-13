@@ -11,10 +11,11 @@ namespace IronHive.DocSnippets.Tests;
 /// shipped API fails here instead of in their build.
 /// </summary>
 /// <remarks>
-/// Each block is compiled as a top-level program by <see cref="SnippetCompiler"/>: its own usings, the usings below, and the
-/// stand-ins below when the block uses the name without declaring it — values a reader already has from the surrounding
-/// text (a built <c>IHiveService</c>, a configured builder), not part of what the block shows. A section that is
-/// deliberately not a program is in <see cref="Fragments"/> with the reason. A document is either in
+/// Each guide compiles as a whole (<see cref="SnippetCompiler.CompileDocument"/>): a type one block declares is visible to
+/// the next, each block's statements run in a method of their own, and a block that restates a library type compiles alone.
+/// A block gets the usings below and the stand-ins below when it uses the name without declaring it — values a reader
+/// already has from the surrounding text (a built <c>IHiveService</c>, a configured builder). A section that is
+/// deliberately not a program is in <see cref="Fragments"/> with the reason. A document with a C# block is either in
 /// <see cref="Checked"/> or in <see cref="NotYetChecked"/> with the reason — never silently in neither.
 /// </remarks>
 public class DocsSnippetCompileTests
@@ -23,36 +24,33 @@ public class DocsSnippetCompileTests
     private static readonly string[] Checked =
     [
         "README.md",
-        "docs/ARCHITECTURE.md",
-        "src/IronHive.Providers.OpenAI.Compatible/GPUStack/README.md",
-        "docs/MEMORY.md",
-        "docs/STORAGES.md",
-        "skills/ironhive/references/MEMORY.md",
-        "skills/ironhive/references/MIDDLEWARE.md",
-        "docs/SETUP.md",
-        "skills/ironhive/references/SETUP.md",
-        "skills/ironhive/SKILL.md",
         "docs/AGENTS.md",
-        "docs/PLUGINS.md",
+        "docs/ARCHITECTURE.md",
+        "docs/MEMORY.md",
         "docs/MIDDLEWARE.md",
+        "docs/ORCHESTRATION.md",
+        "docs/PLUGINS.md",
+        "docs/PROVIDERS.md",
+        "docs/SERVICES.md",
+        "docs/SETUP.md",
+        "docs/STORAGES.md",
         "docs/TOOLS.md",
         "docs/WORKFLOW.md",
-        "skills/ironhive/references/TOOLS.md",
-        "docs/ORCHESTRATION.md",
+        "skills/ironhive/SKILL.md",
+        "skills/ironhive/references/MEMORY.md",
+        "skills/ironhive/references/MIDDLEWARE.md",
         "skills/ironhive/references/ORCHESTRATION.md",
-        "docs/PROVIDERS.md",
         "skills/ironhive/references/PROVIDERS.md",
-        "docs/SERVICES.md",
         "skills/ironhive/references/SERVICES.md",
+        "skills/ironhive/references/SETUP.md",
         "skills/ironhive/references/STORAGES.md",
+        "skills/ironhive/references/TOOLS.md",
+        "src/IronHive.Providers.OpenAI.Compatible/GPUStack/README.md",
     ];
-
 
     // Documents with C# blocks that are not compiled yet, with the reason. Shrink this; a new document with a C# block
     // must land in one of the two lists (see EveryDocumentWithCSharp_IsCheckedOrListed).
-    private static readonly Dictionary<string, string> NotYetChecked = new(StringComparer.Ordinal)
-    {
-    };
+    private static readonly Dictionary<string, string> NotYetChecked = new(StringComparer.Ordinal);
 
     // A block that is deliberately not a program (a signature sketch, pseudocode), by the heading it sits under, with the
     // reason. Shrink this, never grow it silently.
