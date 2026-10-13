@@ -228,23 +228,23 @@ public class GroupChatOrchestratorOptions : OrchestratorOptions
 
 ```csharp
 // 순환 (Round Robin)
-.WithRoundRobin()
+groupChat.WithRoundRobin();
 
 // LLM 기반 선택 — 매니저 에이전트가 다음 발언자를 고른다
-.WithLlmManager(managerAgent)
+groupChat.WithLlmManager(managerAgent);
 
 // 랜덤 선택
-.WithRandom()
+groupChat.WithRandom();
 ```
 
 ### 종료 조건
 
 ```csharp
 // 키워드 종료
-.TerminateOnKeyword("APPROVED")
+groupChat.TerminateOnKeyword("APPROVED");
 
 // 최대 라운드 종료
-.TerminateAfterRounds(10)
+groupChat.TerminateAfterRounds(10);
 
 // 복합 조건 (OR — 하나라도 만족하면 종료)
 var condition = new CompositeTermination(requireAll: false,

@@ -22,6 +22,9 @@ changes are expected and used freely for structural correctness.
 - **Tool and workflow guides compile as whole documents.** The workflow guide declares the `MyContext` and `NotifyStep`
   it uses; the tool guides give each tool class its own name, show the supported return types as a compiling class, and
   no longer call helpers they never define (`SearchAsync`, `Evaluate`) or Dapper's `QueryAsync`.
+- **Orchestration guides compile.** Speaker selection and termination are shown as `GroupChatOrchestratorBuilder` calls
+  and typed `ISpeakerSelector` / `ITerminationCondition` / `IContextScope` values instead of loose expressions; the
+  `IAgentOrchestrator` listing and its `AsAgent()` example are separate blocks.
 
 ## 0.65.0 — 2026-10-13
 

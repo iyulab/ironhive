@@ -38,6 +38,8 @@ public class DocsSnippetCompileTests
         "docs/TOOLS.md",
         "docs/WORKFLOW.md",
         "skills/ironhive/references/TOOLS.md",
+        "docs/ORCHESTRATION.md",
+        "skills/ironhive/references/ORCHESTRATION.md",
     ];
 
     private const string Pending = "migration to the kit compiler (run 146) - blocks not yet repaired";
@@ -46,10 +48,8 @@ public class DocsSnippetCompileTests
     // must land in one of the two lists (see EveryDocumentWithCSharp_IsCheckedOrListed).
     private static readonly Dictionary<string, string> NotYetChecked = new(StringComparer.Ordinal)
     {
-        ["docs/ORCHESTRATION.md"] = Pending,
         ["docs/PROVIDERS.md"] = Pending,
         ["docs/SERVICES.md"] = Pending,
-        ["skills/ironhive/references/ORCHESTRATION.md"] = Pending,
         ["skills/ironhive/references/PROVIDERS.md"] = Pending,
         ["skills/ironhive/references/SERVICES.md"] = Pending,
         ["skills/ironhive/references/STORAGES.md"] = Pending,
@@ -90,13 +90,23 @@ public class DocsSnippetCompileTests
             .Order(StringComparer.Ordinal),
     ];
 
+    // The agents the guides' text has already built (a researcher, a reviewer, a triage agent...): any IAgent.
+    private static readonly string[] AgentNames =
+    [
+        "agent", "agentA", "agentB", "agentC", "analystA", "analystB", "analystC", "backupAgent", "baseAgent",
+        "billingAgent", "classifyAgent", "coordinatorAgent", "expertA", "expertB", "fallbackAgent", "finalizer",
+        "formatterAgent", "generalAgent", "hubAgent", "managerAgent", "mergeAgent", "moderator", "primaryAgent",
+        "researchAgent", "reviewAgent", "reviewer1", "reviewer2", "reviewerAgent", "specialistA", "specialistB",
+        "specialistC", "startAgent", "summarizerAgent", "summaryAgent", "supportAgent", "technicalAgent",
+        "translatorAgent", "triageAgent", "writer", "writerAgent",
+    ];
+
     // Values the guides' running text gives the reader, typed as the API takes them.
-    private static readonly Dictionary<string, string> StandIns = new(StringComparer.Ordinal)
+    private static readonly Dictionary<string, string> StandIns = new(
+        AgentNames.Select(n => KeyValuePair.Create(n, $"IAgent {n} = null!;")), StringComparer.Ordinal)
     {
         ["hive"] = "IHiveService hive = null!;",
         ["builder"] = "IHiveServiceBuilder builder = null!;",
-        ["agent"] = "IAgent agent = null!;",
-        ["baseAgent"] = "IAgent baseAgent = null!;",
         ["tools"] = "ToolCollection tools = new();",
         ["serviceProvider"] = "IServiceProvider serviceProvider = null!;",
         ["messages"] = "List<Message> messages = [];",
@@ -106,7 +116,6 @@ public class DocsSnippetCompileTests
         ["qdrantStorage"] = "IVectorStorage qdrantStorage = null!;",
         ["localStorage"] = "IVectorStorage localStorage = null!;",
         ["mcpClientTool"] = "Microsoft.Extensions.AI.AITool mcpClientTool = null!;",
-        ["backupAgent"] = "IAgent backupAgent = null!;",
         ["collection"] = "IMemoryCollection collection = null!;",
         ["context"] = "MemoryContext context = null!;",
         ["stoppingToken"] = "CancellationToken stoppingToken = default;",
@@ -121,14 +130,8 @@ public class DocsSnippetCompileTests
         ["yamlConfig"] = "string yamlConfig = \"\";",
         ["tomlString"] = "string tomlString = \"\";",
         ["json"] = "string json = \"{}\";",
-        ["reviewer1"] = "IAgent reviewer1 = null!;",
-        ["reviewer2"] = "IAgent reviewer2 = null!;",
-        ["writer"] = "IAgent writer = null!;",
-        ["finalizer"] = "IAgent finalizer = null!;",
         ["mcpManager"] = "McpClientManager mcpManager = null!;",
         ["apiManager"] = "OpenApiClientManager apiManager = null!;",
-        ["primaryAgent"] = "IAgent primaryAgent = null!;",
-        ["fallbackAgent"] = "IAgent fallbackAgent = null!;",
         ["messageService"] = "IMessageService messageService = null!;",
         ["input"] = "ToolInput input = new();",
         ["output"] = "ToolOutput output = ToolOutput.Success(\"\");",
@@ -136,6 +139,14 @@ public class DocsSnippetCompileTests
         ["factory"] = "WorkflowFactory factory = null!;",
         ["workflow"] = "IWorkflow<MyContext> workflow = null!;",
         ["delegateFn"] = "Func<string, string> delegateFn = text => text;",
+        ["orchestrator"] = "IAgentOrchestrator orchestrator = null!;",
+        ["orch"] = "IAgentOrchestrator orch = null!;",
+        ["options"] = "OrchestratorOptions options = null!;",
+        ["groupChat"] = "GroupChatOrchestratorBuilder groupChat = new();",
+        ["analysisExecutor"] = "ITypedExecutor<string, Analysis> analysisExecutor = null!;",
+        ["summaryExecutor"] = "ITypedExecutor<Analysis, Summary> summaryExecutor = null!;",
+        ["Analysis"] = "public sealed record Analysis(string Text);",
+        ["Summary"] = "public sealed record Summary(string Text);",
         // The reader's own services and types that a tool asks the container for, or a tool argument deserializes to.
         ["ICodeRunner"] = "public interface ICodeRunner { Task<string> RunAsync(string code); }",
         ["ISearchService"] = "public interface ISearchService { Task<string> SearchAsync(string query); }",
@@ -206,7 +217,7 @@ public class DocsSnippetCompileTests
     public void EveryCheckedBlock_IsFoundAndFragmentsNameRealHeadings()
     {
         Assert.True(Snippets.Count(s => s.File == "README.md") >= 4, "expected the README's C# blocks");
-        Fragments.ShouldMatch([.. Snippets], atLeast: 140);
+        Fragments.ShouldMatch([.. Snippets], atLeast: 175);
     }
 
     /// <summary>

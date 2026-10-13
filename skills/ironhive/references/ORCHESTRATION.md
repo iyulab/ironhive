@@ -33,9 +33,11 @@ public interface IAgentOrchestrator
         IEnumerable<Message> messages,
         CancellationToken cancellationToken = default);
 }
+```
 
+```csharp
 // Wrap as IAgent
-IAgent agent = orchestrator.AsAgent();
+IAgent wrapped = orchestrator.AsAgent();
 ```
 
 ## OrchestrationStreamEvent
@@ -159,20 +161,20 @@ var orchestrator = new GroupChatOrchestratorBuilder()
 ### Speaker Selectors
 
 ```csharp
-new LlmSpeakerSelector(managerAgent)      // LLM picks next speaker
-new RoundRobinSpeakerSelector()           // rotate in order
-new RandomSpeakerSelector()               // random
+ISpeakerSelector llm        = new LlmSpeakerSelector(managerAgent);   // LLM picks next speaker
+ISpeakerSelector roundRobin = new RoundRobinSpeakerSelector();        // rotate in order
+ISpeakerSelector random     = new RandomSpeakerSelector();            // random
 ```
 
 ### Termination Conditions
 
 ```csharp
-new KeywordTermination("TERMINATE")       // stop when keyword appears
-new MaxRoundsTermination(10)              // stop after N rounds
-new TokenBudgetTermination(50_000)        // stop after a token budget
-new CompositeTermination(requireAll: false,
+ITerminationCondition keyword = new KeywordTermination("TERMINATE");     // stop when keyword appears
+ITerminationCondition rounds  = new MaxRoundsTermination(10);            // stop after N rounds
+ITerminationCondition budget  = new TokenBudgetTermination(50_000);      // stop after a token budget
+ITerminationCondition anyOf   = new CompositeTermination(requireAll: false,
     new KeywordTermination("DONE"),
-    new MaxRoundsTermination(5))          // OR (requireAll: true = AND)
+    new MaxRoundsTermination(5));                                        // OR (requireAll: true = AND)
 ```
 
 ## Graph Orchestrator (DAG)
@@ -214,7 +216,7 @@ orchestrator.AddSpokeAgent(specialistC);
 var store = new InMemoryCheckpointStore();
 
 // File-based checkpoint (survives restarts)
-var store = new FileCheckpointStore("./checkpoints");
+var fileStore = new FileCheckpointStore("./checkpoints");
 
 var orchestrator = new HandoffOrchestratorBuilder()
     // ...
@@ -235,9 +237,9 @@ var sequential = new SequentialOrchestrator(new SequentialOrchestratorOptions
 Controls how much conversation history each agent receives:
 
 ```csharp
-new LastNMessagesScope(20)          // last N messages only (default 5)
-new SummaryContextScope()           // compress older history into a structured summary (SummaryContextScopeOptions)
-new TaskOnlyScope()                 // only the original task message
+IContextScope lastN    = new LastNMessagesScope(20);   // last N messages only (default 5)
+IContextScope summary  = new SummaryContextScope();    // compress older history into a structured summary (SummaryContextScopeOptions)
+IContextScope taskOnly = new TaskOnlyScope();          // only the original task message
 ```
 
 ## OrchestrationResult
