@@ -65,7 +65,7 @@ public class FunctionToolAttribute : Attribute
 ### DI 주입 파라미터
 
 ```csharp
-public class MyTools
+public class SearchTools
 {
     [FunctionTool]
     public async Task<string> Search(
@@ -81,12 +81,23 @@ public class MyTools
 ### 반환 타입 지원
 
 ```csharp
-[FunctionTool] public string Sync() { ... }                             // 텍스트 그대로 전달
-[FunctionTool] public Task<string> Async() { ... }                      // 텍스트 그대로 전달
-[FunctionTool] public async IAsyncEnumerable<string> Streaming() { ... }
-[FunctionTool] public Task<MyObject> Complex() { ... }                  // JSON 직렬화됨
-[FunctionTool] public Task<MessageContent> Content() { ... }            // 그대로 전달(이미지 등)
-[FunctionTool] public IEnumerable<MessageContent> Contents() { ... }    // 그대로 전달
+public record MyObject(int Id, string Name);
+
+public class ReturnTypeTools
+{
+    [FunctionTool] public string Sync() => "text";                                         // 텍스트 그대로 전달
+    [FunctionTool] public Task<string> Async() => Task.FromResult("text");                 // 텍스트 그대로 전달
+    [FunctionTool] public async IAsyncEnumerable<string> Streaming()
+    {
+        yield return "part 1";
+        await Task.Yield();
+        yield return "part 2";
+    }
+    [FunctionTool] public Task<MyObject> Complex() => Task.FromResult(new MyObject(42, "item"));   // JSON 직렬화됨
+    [FunctionTool] public Task<MessageContent> Content()                                   // 그대로 전달(이미지 등)
+        => Task.FromResult<MessageContent>(new TextMessageContent { Value = "text" });
+    [FunctionTool] public IEnumerable<MessageContent> Contents() => [new TextMessageContent { Value = "text" }];   // 그대로 전달
+}
 ```
 
 - `string`(및 `Task<string>`/`ValueTask<string>`) 결과는 **모델에 텍스트 그대로** 전달된다 — 따옴표로 감싸거나 개행·따옴표를
@@ -108,7 +119,7 @@ var tools = new ToolCollection();
 tools.AddFunctionTool<MyTools>();
 
 // 인스턴스로 등록
-var instance = new MyTools(dependency);
+var instance = new MyTools();
 tools.AddFunctionTool(instance);
 
 // DI와 함께 사용
@@ -119,7 +130,7 @@ tools.AddFunctionTool<MyTools>(serviceProvider);
 
 ```csharp
 tools.AddFunctionTool(
-    async (string query) => await SearchAsync(query),
+    (string query) => $"'{query}' 검색 결과",
     new DelegateDescriptor
     {
         Name = "search",
@@ -135,10 +146,11 @@ tools.AddFunctionTool(
 var functionTools = FunctionToolFactory.CreateFrom<MyTools>(serviceProvider);
 
 // 인스턴스에서 생성
-var instanceTools = FunctionToolFactory.CreateFrom(myToolsInstance);
+var instanceTools = FunctionToolFactory.CreateFrom(new MyTools());
 
 // Delegate에서 생성
-var tool = FunctionToolFactory.CreateFrom(myDelegate, descriptor, serviceProvider);
+Func<string, string> upper = text => text.ToUpperInvariant();
+var tool = FunctionToolFactory.CreateFrom(upper, new DelegateDescriptor { Name = "upper", Description = "대문자로 바꿉니다" }, serviceProvider);
 ```
 
 ---
@@ -189,6 +201,8 @@ agent.Tools = tools;
 복잡한 상태 관리나 특수한 직렬화가 필요한 경우:
 
 ```csharp
+using System.Data;
+
 public class DatabaseQueryTool : ITool
 {
     private readonly IDbConnection _db;
@@ -216,8 +230,10 @@ public class DatabaseQueryTool : ITool
         if (!input.TryGetValue<string>("query", out var query))
             return ToolOutput.Failure("query is required");
 
-        var results = await _db.QueryAsync(query);
-        return ToolOutput.Success(JsonSerializer.Serialize(results));   // 결과는 텍스트(또는 MessageContent 목록)
+        using var command = _db.CreateCommand();
+        command.CommandText = query;
+        var result = await Task.Run(command.ExecuteScalar, cancellationToken);
+        return ToolOutput.Success(JsonSerializer.Serialize(result));   // 결과는 텍스트(또는 MessageContent 목록)
     }
 }
 ```
@@ -232,10 +248,10 @@ input.TryGetValue<MyOptions>("options", out var options);
 var raw = input["name"];                                 // 원시 값 (없으면 null)
 
 // ToolOutput — 결과 반환
-return ToolOutput.Success("처리 완료");
-return ToolOutput.Success(JsonSerializer.Serialize(new { id = 42, name = "item" }));
-return ToolOutput.Success([new TextMessageContent { Value = "..." }]);   // MessageContent 목록
-return ToolOutput.Failure("오류가 발생했습니다");
+ToolOutput done = ToolOutput.Success("처리 완료");
+ToolOutput json = ToolOutput.Success(JsonSerializer.Serialize(new { id = 42, name = "item" }));
+ToolOutput contents = ToolOutput.Success([new TextMessageContent { Value = "..." }]);   // MessageContent 목록
+ToolOutput failure = ToolOutput.Failure("오류가 발생했습니다");
 
 // ToolOutput → 문자열 하나 (텍스트만 받는 자리: 텍스트 스트림, 문자열 도구 결과 wire)
 output.ToText();                                  // 텍스트 블록을 줄바꿈으로 잇고, 이미지 등은 "[image content omitted]"
@@ -268,7 +284,7 @@ var request = new MessageRequest
     Provider = "openai",
     Model    = "gpt-4o",
     Messages = messages,
-    Tools    = toolCollection,
+    Tools    = tools,
     ToolOptions = new ToolOptions
     {
         MaxParallel   = 3,

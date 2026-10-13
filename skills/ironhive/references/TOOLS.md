@@ -29,7 +29,9 @@ public interface IToolCollection : ICollection<ITool>
     int RemoveAll(Predicate<ITool>? match = null);
     IToolCollection FilterBy(IEnumerable<string> names);
 }
+```
 
+```csharp
 // Function-tool registration (extension methods, IronHive.Core)
 tools.AddFunctionTool<MyTools>(serviceProvider);                 // from type ([FunctionTool] methods; optional DI)
 tools.AddFunctionTool(new MyTools());                             // from instance
@@ -56,15 +58,14 @@ public class MyTools
     [FunctionTool(Description = "Search the web for a query")]
     public async Task<string> WebSearch(string query, int maxResults = 5)
     {
-        // implementation
-        return results;
+        await Task.Yield();   // call your search backend here
+        return $"top {maxResults} results for '{query}'";
     }
 
     [FunctionTool(Name = "run_code", Description = "Execute Python code", RequiresApproval = true, Timeout = 120)]
     public string ExecuteCode(string code)
     {
-        // implementation
-        return output;
+        return $"ran {code.Length} characters";   // run the code in your sandbox here
     }
 }
 ```
@@ -72,7 +73,7 @@ public class MyTools
 ## DI Parameter Injection
 
 ```csharp
-public class MyTools
+public class DataTools
 {
     // [FromServices] — inject from IServiceProvider
     [FunctionTool(Description = "Fetch URL content")]
@@ -85,11 +86,13 @@ public class MyTools
 
     // [FromKeyedServices] — inject keyed service
     [FunctionTool(Description = "Query database")]
-    public async Task<string> Query(
-        [FromKeyedServices("main")] IDbConnection db,
+    public Task<string> Query(
+        [FromKeyedServices("main")] System.Data.IDbConnection db,
         string sql)
     {
-        // implementation
+        using var command = db.CreateCommand();
+        command.CommandText = sql;
+        return Task.FromResult(Convert.ToString(command.ExecuteScalar()) ?? "");
     }
 }
 ```
@@ -114,8 +117,8 @@ agent.Tools.AddFunctionTool(new MyTools());
 
 // Single delegate
 agent.Tools.AddFunctionTool(
-    (string expr) => Evaluate(expr).ToString(),
-    new DelegateDescriptor { Name = "calculator", Description = "Evaluate a math expression" });
+    (string text) => text.ToUpperInvariant(),
+    new DelegateDescriptor { Name = "uppercase", Description = "Upper-case a text" });
 ```
 
 ## MCP Tools
@@ -187,24 +190,15 @@ OpenAPI tool `UniqueName` format: `"openapi_{ClientName}_{OperationId}"`, `Requi
 ## ToolOptions — Intercepting Invocation
 
 ```csharp
-public class ToolOptions
-{
-    public int MaxParallel { get; set; } = 3;         // max concurrent tool executions
-    public TimeSpan? Timeout { get; set; }             // per-tool timeout (null = unlimited)
-
-    // Called right before invocation. Pre-filling content.Output short-circuits the real call.
-    public Func<ToolMessageContent, CancellationToken, Task>? OnBeforeInvoke { get; set; }
-
-    // Called right after invocation (success or failure). Mutate content.Output directly.
-    public Func<ToolMessageContent, CancellationToken, Task>? OnAfterInvoke { get; set; }
-}
-
+// ToolOptions: MaxParallel (default 3, concurrent tool executions) · Timeout (per tool, null = unlimited)
+//   · OnBeforeInvoke (right before invocation; pre-filling content.Output short-circuits the real call)
+//   · OnAfterInvoke (right after invocation, success or failure; mutate content.Output directly)
 var request = new MessageRequest
 {
     Provider = "openai",
     Model    = "gpt-4o",
     Messages = messages,
-    Tools    = toolCollection,
+    Tools    = tools,
     ToolOptions = new ToolOptions
     {
         MaxParallel   = 3,

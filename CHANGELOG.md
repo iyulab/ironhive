@@ -19,6 +19,9 @@ changes are expected and used freely for structural correctness.
   arguments the other way round and read `.Text` from every block — only `TextBlock` has text); an agent from JSON goes
   through `AgentService.CreateAgentFromJson` (there is no `CreateAgentFrom(AgentConfig)`); the `AgentCard` example no
   longer redeclares the library type; OpenAPI credentials are shown as `IOpenApiCredential` values.
+- **Tool and workflow guides compile as whole documents.** The workflow guide declares the `MyContext` and `NotifyStep`
+  it uses; the tool guides give each tool class its own name, show the supported return types as a compiling class, and
+  no longer call helpers they never define (`SearchAsync`, `Evaluate`) or Dapper's `QueryAsync`.
 
 ## 0.65.0 — 2026-10-13
 

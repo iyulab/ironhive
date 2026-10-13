@@ -35,6 +35,9 @@ public class DocsSnippetCompileTests
         "docs/AGENTS.md",
         "docs/PLUGINS.md",
         "docs/MIDDLEWARE.md",
+        "docs/TOOLS.md",
+        "docs/WORKFLOW.md",
+        "skills/ironhive/references/TOOLS.md",
     ];
 
     private const string Pending = "migration to the kit compiler (run 146) - blocks not yet repaired";
@@ -43,9 +46,6 @@ public class DocsSnippetCompileTests
     // must land in one of the two lists (see EveryDocumentWithCSharp_IsCheckedOrListed).
     private static readonly Dictionary<string, string> NotYetChecked = new(StringComparer.Ordinal)
     {
-        ["docs/TOOLS.md"] = Pending,
-        ["docs/WORKFLOW.md"] = Pending,
-        ["skills/ironhive/references/TOOLS.md"] = Pending,
         ["docs/ORCHESTRATION.md"] = Pending,
         ["docs/PROVIDERS.md"] = Pending,
         ["docs/SERVICES.md"] = Pending,
@@ -130,8 +130,17 @@ public class DocsSnippetCompileTests
         ["primaryAgent"] = "IAgent primaryAgent = null!;",
         ["fallbackAgent"] = "IAgent fallbackAgent = null!;",
         ["messageService"] = "IMessageService messageService = null!;",
-        // A service of the reader's own that a tool asks the container for.
+        ["input"] = "ToolInput input = new();",
+        ["output"] = "ToolOutput output = ToolOutput.Success(\"\");",
+        ["request"] = "MessageRequest request = null!;",
+        ["factory"] = "WorkflowFactory factory = null!;",
+        ["workflow"] = "IWorkflow<MyContext> workflow = null!;",
+        ["delegateFn"] = "Func<string, string> delegateFn = text => text;",
+        // The reader's own services and types that a tool asks the container for, or a tool argument deserializes to.
         ["ICodeRunner"] = "public interface ICodeRunner { Task<string> RunAsync(string code); }",
+        ["ISearchService"] = "public interface ISearchService { Task<string> SearchAsync(string query); }",
+        ["IMyService"] = "public interface IMyService { }",
+        ["MyOptions"] = "public sealed class MyOptions { public int Limit { get; set; } }",
     };
 
     private static readonly IReadOnlyList<MetadataReference> References =
@@ -153,8 +162,15 @@ public class DocsSnippetCompileTests
     private static readonly IReadOnlyList<DocSnippet> Snippets =
         [.. Checked.SelectMany(d => MarkdownSnippets.Read(Path.Combine(RepositoryRoot(), d), d))];
 
-    // An ASP.NET Core block stands alone: it is compiled by HostCompiler, outside its document.
+    // An ASP.NET Core block's `builder` is the host's: it is read from the same document compiled by HostCompiler, so it
+    // still sees the document's types. The other blocks read the document compiled by Compiler.
     private static bool IsHostBlock(DocSnippet snippet) => snippet.Code.Contains("builder.Services", StringComparison.Ordinal);
+
+    private static readonly Dictionary<string, Lazy<DocumentCompilation>> HostDocuments = Checked.ToDictionary(
+        d => d,
+        d => new Lazy<DocumentCompilation>(() => HostCompiler.CompileDocument(
+            [.. Snippets.Where(s => s.File == d && !Fragments.IsFragment(s))])),
+        StringComparer.Ordinal);
 
     // Each document's examples compile together: a guide declares a type (a tool class, a workflow step) in one example
     // and uses it in the next.
@@ -176,7 +192,7 @@ public class DocsSnippetCompileTests
         if (Fragments.IsFragment(snippet))
             return;
         if (IsHostBlock(snippet))
-            HostCompiler.ShouldCompile(snippet);
+            HostDocuments[snippet.File].Value.ShouldCompile(snippet);
         else
             Documents[snippet.File].Value.ShouldCompile(snippet);
     }
@@ -190,7 +206,7 @@ public class DocsSnippetCompileTests
     public void EveryCheckedBlock_IsFoundAndFragmentsNameRealHeadings()
     {
         Assert.True(Snippets.Count(s => s.File == "README.md") >= 4, "expected the README's C# blocks");
-        Fragments.ShouldMatch([.. Snippets], atLeast: 106);
+        Fragments.ShouldMatch([.. Snippets], atLeast: 140);
     }
 
     /// <summary>

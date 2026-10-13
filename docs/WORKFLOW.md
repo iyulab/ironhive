@@ -25,6 +25,14 @@ public interface IWorkflow<TContext>
 `WorkflowFactory` + Fluent Builder API로 워크플로우를 구성합니다:
 
 ```csharp
+// 스텝들이 함께 읽고 쓰는 컨텍스트 — 어떤 타입이든 된다
+public class MyContext
+{
+    public string DocumentPath { get; set; } = "";
+    public bool IsValid { get; set; }
+    public int ProcessedCount { get; set; }
+}
+
 var factory = new WorkflowFactory(serviceProvider);
 
 var workflow = factory.CreateBuilder()
@@ -54,6 +62,15 @@ public class ValidateStep : IWorkflowTask<MyContext>
             return Task.FromResult(TaskStepResult.Fail(new ArgumentException("DocumentPath is required")));
 
         context.IsValid = true;
+        return Task.FromResult(TaskStepResult.Success());
+    }
+}
+
+public class NotifyStep : IWorkflowTask<MyContext>
+{
+    public Task<TaskStepResult> ExecuteAsync(MyContext context, CancellationToken ct = default)
+    {
+        Console.WriteLine($"{context.DocumentPath}: {context.ProcessedCount} processed");
         return Task.FromResult(TaskStepResult.Success());
     }
 }
@@ -143,8 +160,8 @@ public class MyService(WorkflowFactory factory)
     {
         var wf = factory.CreateBuilder()
             .StartWith<MyContext>()
-            .Then<Step1>("step1")
-            .Then<Step2>("step2")
+            .Then<ValidateStep>("validate")
+            .Then<NotifyStep>("notify")
             .Build();
 
         await wf.RunAsync(ctx);
@@ -160,10 +177,10 @@ public class MyService(WorkflowFactory factory)
 
 ```csharp
 // 성공 (메시지는 선택)
-return TaskStepResult.Success("processed 10 items");
+TaskStepResult succeeded = TaskStepResult.Success("processed 10 items");
 
 // 실패 — 워크플로우가 중단된다. 예외를 던져도 같다.
-return TaskStepResult.Fail(new InvalidOperationException("오류 메시지"));
+TaskStepResult failed = TaskStepResult.Fail(new InvalidOperationException("오류 메시지"));
 ```
 
 분기는 조건 스텝(`IWorkflowCondition<TContext>`)이 키를 고르고 `Switch` 가 그 키로 다음 경로를 정한다:
