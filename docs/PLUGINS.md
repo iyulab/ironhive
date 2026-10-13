@@ -161,11 +161,11 @@ document 순으로 처음 발견된 것을 쓴다.
 헤더·쿼리·경로·쿠키 중 어디에 실릴지는 자격증명이 아니라 **스펙의 `in`/`name`** 이 정한다.
 
 ```csharp
-new ApiKeyCredential("...")                  // apiKey — 위치는 스펙이 정한다
-new HttpBearerCredential("...")              // http, scheme: bearer
-new HttpBasicCredential("user", "pass")      // http, scheme: basic
-new OAuth2Credential("...")                  // oauth2 (access token)
-new OpenIdConnectCredential("...")           // openIdConnect (access token)
+IOpenApiCredential apiKey = new ApiKeyCredential("...");             // apiKey — 위치는 스펙이 정한다
+IOpenApiCredential bearer = new HttpBearerCredential("...");         // http, scheme: bearer
+IOpenApiCredential basic  = new HttpBasicCredential("user", "pass"); // http, scheme: basic
+IOpenApiCredential oauth2 = new OAuth2Credential("...");             // oauth2 (access token)
+IOpenApiCredential oidc   = new OpenIdConnectCredential("...");      // openIdConnect (access token)
 ```
 
 각 타입의 `Match(scheme)`가 스펙의 스킴과 맞는지 검사하므로, 스킴 이름이 같아도 종류가 다르면 적용되지 않는다.
@@ -234,7 +234,7 @@ public class CustomTool : ITool
 {
     public string UniqueName => "custom_tool";
     public string? Description => "커스텀 도구 설명";
-    public object? Parameters => /* JSON Schema */;
+    public object? Parameters => new { type = "object", properties = new { input = new { type = "string" } } };   // JSON Schema
     public bool RequiresApproval => false;
 
     public async Task<ToolOutput> InvokeAsync(

@@ -15,6 +15,10 @@ changes are expected and used freely for structural correctness.
   `Vectors` / `Payload` and `CreateCollectionAsync(VectorCollectionInfo { Name, … })` (it showed `Id` / `Vector` /
   `Content` / `Metadata` and a name argument); the `IQueueStorage` listing shows the current members (consumer callback,
   no queue-name argument); a custom memory pipeline is registered inside `CreateMemoryWorkerFrom`.
+- **Setup, agent and plugin guides match the API.** `IFileParserService.ParseAsync(fileName, stream)` (the guide had the
+  arguments the other way round and read `.Text` from every block — only `TextBlock` has text); an agent from JSON goes
+  through `AgentService.CreateAgentFromJson` (there is no `CreateAgentFrom(AgentConfig)`); the `AgentCard` example no
+  longer redeclares the library type; OpenAPI credentials are shown as `IOpenApiCredential` values.
 
 ## 0.65.0 — 2026-10-13
 

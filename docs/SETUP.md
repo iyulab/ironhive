@@ -75,7 +75,7 @@ builder.AddGoogleAIProviders("google", new GoogleAIConfig
 }, GoogleAIServiceType.All);
 
 // Vertex AI
-builder.AddVertexAIProviders("vertex", new VertexAIConfig { ... });
+builder.AddVertexAIProviders("vertex", new VertexAIConfig { Project = "my-project", Location = "us-central1" });
 
 // OpenAI Compatible (Ollama, LM Studio, vLLM, llama.cpp 등)
 builder.AddOpenAICompatibleProviders("ollama", new OpenAICompatibleConfig
@@ -84,14 +84,14 @@ builder.AddOpenAICompatibleProviders("ollama", new OpenAICompatibleConfig
 });
 
 // GPUStack
-builder.AddGpuStackProviders("gpustack", new GpuStackConfig { ... });
+builder.AddGpuStackProviders("gpustack", new GpuStackConfig { BaseUrl = "http://localhost:80", ApiKey = "your-key" });
 ```
 
 ### ServiceType [Flags] 옵션
 
 ```csharp
 // 일부만 등록
-builder.AddOpenAIProviders("openai", config,
+builder.AddOpenAIProviders("openai", new OpenAIConfig { ApiKey = "sk-..." },
     OpenAIServiceType.Messages | OpenAIServiceType.Embeddings);
 ```
 
@@ -168,7 +168,9 @@ builder.Services.AddHiveService((b, sp) => b.Build(),
     lifetime: ServiceLifetime.Singleton);
 
 // 기존 인스턴스 등록
-var hive = new HiveServiceBuilder()...Build();
+var hive = new HiveServiceBuilder()
+    .AddOpenAIProviders("openai", new OpenAIConfig { ApiKey = "sk-..." })
+    .Build();
 builder.Services.AddHiveService(hive);
 ```
 
@@ -177,6 +179,8 @@ builder.Services.AddHiveService(hive);
 ## AddHiveService 오버로드
 
 ```csharp
+using Microsoft.Extensions.Configuration;
+
 // 팩토리 방식 (IServiceProvider 접근 가능)
 services.AddHiveService((builder, sp) =>
 {
@@ -212,10 +216,12 @@ services.AddFileParser();
 // DI에서 사용
 public class DocumentService(IFileParserService parserService)
 {
-    public async Task<string> ParseAsync(Stream stream, string contentType)
+    public async Task<string> ParseAsync(string fileName, Stream stream)
     {
-        var blocks = await parserService.ParseAsync(stream, contentType);
-        return string.Concat(blocks.Select(b => b.Text));
+        // 파일명(확장자)이 파서를 고른다
+        var blocks = await parserService.ParseAsync(fileName, stream);
+        // 블록은 TextBlock · ImageBlock · BinaryBlock 중 하나다
+        return string.Concat(blocks.OfType<TextBlock>().Select(b => b.Text));
     }
 }
 ```

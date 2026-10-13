@@ -39,12 +39,18 @@ builder.Services.AddFileParser();
 
 ```csharp
 // Inject IHiveService anywhere
-public class MyService(IHiveService hive) { ... }
+public class MyService(IHiveService hive)
+{
+    public IAgent CreateAssistant() => hive.CreateAgentFrom(cfg => { cfg.Provider = "openai"; cfg.Model = "gpt-4o-mini"; });
+}
 ```
 
 ## Provider Extension Methods
 
 ```csharp
+using Google.Apis.Auth.OAuth2;   // GoogleCredential, for Vertex AI below
+
+builder
 // OpenAI — Chat, Embeddings, Images, Audio (TTS/STT)
 .AddOpenAIProviders("openai", new OpenAIConfig
 {
@@ -79,12 +85,13 @@ public class MyService(IHiveService hive) { ... }
 {
     BaseUrl = "http://localhost:80",
     ApiKey  = "your-key"
-})
+});
 ```
 
 ## Local Storage Extension Methods
 
 ```csharp
+builder
 // File storage (local filesystem — file paths are used as given; no config)
 .AddLocalFileStorage("local-files")
 
@@ -92,12 +99,13 @@ public class MyService(IHiveService hive) { ... }
 .AddLocalVectorStorage("local-vec", new LocalVectorConfig { DatabasePath = "./data/vectors.db" })
 
 // Queue storage (file-based .qmsg/.qlock/.qdead) — one directory per queue
-.AddLocalQueueStorage("local-queue", new LocalQueueConfig { DirectoryPath = "./data/queue" })
+.AddLocalQueueStorage("local-queue", new LocalQueueConfig { DirectoryPath = "./data/queue" });
 ```
 
 ## External Storage
 
 ```csharp
+builder
 // Amazon S3
 .AddAmazonS3Storage("s3", new AmazonS3Config
 {
@@ -131,7 +139,7 @@ public class MyService(IHiveService hive) { ... }
     UserName  = "guest",
     Password  = "guest",
     QueueName = "hive-tasks"
-}))
+}));
 ```
 
 ## HiveServiceBuilder Full Signature (key methods)

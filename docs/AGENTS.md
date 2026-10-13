@@ -57,7 +57,7 @@ var response = await agent.InvokeAsync(messages, new AgentInvokeOptions
 {
     ThinkingEffort = MessageThinkingEffort.High,
     Suggestions = new SuggestionOptions { Mode = SuggestionMode.Always },
-    OutputFormat = format,      // 구조화 출력 — OutputFormat.For<T>() 또는 스키마 없는 OutputFormat.Json
+    OutputFormat = OutputFormat.Json,   // 구조화 출력 — OutputFormat.For<T>() 또는 스키마 없는 OutputFormat.Json
     MaxTokens = 2048,           // 에이전트 MaxTokens override
     MaxTurns = 10,
 });
@@ -89,7 +89,7 @@ var agent = hive.CreateAgentFrom(config =>
 });
 
 // YAML 문자열에서 생성
-var agent = hive.CreateAgentFromYaml(yamlString);
+var yamlAgent = hive.CreateAgentFromYaml(yamlString);
 ```
 
 ### AgentConfig 직접 사용
@@ -143,12 +143,10 @@ TOML 은 `defaultProvider`/`defaultModel` 별칭도)만 읽는다. 모르는 키
 TOML / JSON 형식도 동일 구조로 지원:
 
 ```csharp
-// JSON
-var agent = hive.CreateAgentFrom(JsonSerializer.Deserialize<AgentConfig>(json)!);
-
-// TOML — AgentService 사용
+// JSON / TOML — AgentService 사용 (YAML 과 같은 스키마)
 var agentService = new AgentService(hive.Messages);
-var agent = agentService.CreateAgentFromToml(tomlString);
+var jsonAgent = agentService.CreateAgentFromJson(json);
+var tomlAgent = agentService.CreateAgentFromToml(tomlString);
 ```
 
 ---
@@ -233,7 +231,7 @@ public enum MessageDoneReason
 var wrapped = agent.WithMiddleware(new RetryMiddleware(maxRetries: 3));
 
 // 다중 미들웨어 (실행 순서: 왼쪽 → 오른쪽)
-var wrapped = agent.WithMiddleware(
+var layered = agent.WithMiddleware(
     new LoggingMiddleware(Console.WriteLine),
     new RetryMiddleware(maxRetries: 3),
     new TimeoutMiddleware(TimeSpan.FromSeconds(30))
@@ -269,16 +267,7 @@ pipeline.AddAgent(finalizer);
 외부 시스템에서 에이전트 정의를 전달할 때 사용합니다:
 
 ```csharp
-public class AgentCard
-{
-    public required string Name { get; init; }
-    public string? Description { get; init; }
-    public required string Workflow { get; init; }  // YAML 형식 에이전트 설정
-    public string? PromptTemplate { get; init; }
-    public object? InitialContext { get; init; }
-}
-
-// 사용
+// AgentCard: Name(필수) · Description · Workflow(필수, YAML 형식 에이전트 설정) · PromptTemplate · InitialContext
 var card = new AgentCard
 {
     Name = "SupportBot",

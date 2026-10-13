@@ -29,6 +29,11 @@ public class DocsSnippetCompileTests
         "docs/STORAGES.md",
         "skills/ironhive/references/MEMORY.md",
         "skills/ironhive/references/MIDDLEWARE.md",
+        "docs/SETUP.md",
+        "skills/ironhive/references/SETUP.md",
+        "skills/ironhive/SKILL.md",
+        "docs/AGENTS.md",
+        "docs/PLUGINS.md",
     ];
 
     private const string Pending = "migration to the kit compiler (run 146) - blocks not yet repaired";
@@ -37,27 +42,26 @@ public class DocsSnippetCompileTests
     // must land in one of the two lists (see EveryDocumentWithCSharp_IsCheckedOrListed).
     private static readonly Dictionary<string, string> NotYetChecked = new(StringComparer.Ordinal)
     {
-        ["docs/AGENTS.md"] = Pending,
         ["docs/MIDDLEWARE.md"] = Pending,
         ["docs/ORCHESTRATION.md"] = Pending,
-        ["docs/PLUGINS.md"] = Pending,
         ["docs/PROVIDERS.md"] = Pending,
         ["docs/SERVICES.md"] = Pending,
-        ["docs/SETUP.md"] = Pending,
         ["docs/TOOLS.md"] = Pending,
         ["docs/WORKFLOW.md"] = Pending,
-        ["skills/ironhive/SKILL.md"] = Pending,
         ["skills/ironhive/references/ORCHESTRATION.md"] = Pending,
         ["skills/ironhive/references/PROVIDERS.md"] = Pending,
         ["skills/ironhive/references/SERVICES.md"] = Pending,
-        ["skills/ironhive/references/SETUP.md"] = Pending,
         ["skills/ironhive/references/STORAGES.md"] = Pending,
         ["skills/ironhive/references/TOOLS.md"] = Pending,
     };
 
     // A block that is deliberately not a program (a signature sketch, pseudocode), by the heading it sits under, with the
     // reason. Shrink this, never grow it silently.
-    private static readonly SnippetRoster Fragments = new(new Dictionary<string, string>(StringComparer.Ordinal));
+    private static readonly SnippetRoster Fragments = new(new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["HiveServiceBuilder Full Signature (key methods)"] =
+            "a signature summary of the builder's extension methods across packages, declared without bodies",
+    });
 
     private static readonly string[] AssembliesToLoad =
     [
@@ -69,6 +73,7 @@ public class DocsSnippetCompileTests
         "Microsoft.Extensions.AI.Abstractions", "Microsoft.Extensions.Configuration.Abstractions",
         "Microsoft.Extensions.DependencyInjection", "Microsoft.Extensions.DependencyInjection.Abstractions",
         "Microsoft.Extensions.Hosting.Abstractions", "Microsoft.Extensions.Logging.Abstractions",
+        "Google.Apis.Auth",
     ];
 
     // Every namespace the IronHive packages export, as a reader who followed the guides' setup has them; plus the BCL
@@ -110,6 +115,20 @@ public class DocsSnippetCompileTests
         ["s3Config"] = "AmazonS3Config s3Config = null!;",
         ["localVecConfig"] = "LocalVectorConfig localVecConfig = null!;",
         ["localQueueConfig"] = "LocalQueueConfig localQueueConfig = null!;",
+        ["services"] = "IServiceCollection services = new ServiceCollection();",
+        ["existingHiveInstance"] = "IHiveService existingHiveInstance = null!;",
+        ["yamlString"] = "string yamlString = \"\";",
+        ["yamlConfig"] = "string yamlConfig = \"\";",
+        ["tomlString"] = "string tomlString = \"\";",
+        ["json"] = "string json = \"{}\";",
+        ["reviewer1"] = "IAgent reviewer1 = null!;",
+        ["reviewer2"] = "IAgent reviewer2 = null!;",
+        ["writer"] = "IAgent writer = null!;",
+        ["finalizer"] = "IAgent finalizer = null!;",
+        ["mcpManager"] = "McpClientManager mcpManager = null!;",
+        ["apiManager"] = "OpenApiClientManager apiManager = null!;",
+        // A service of the reader's own that a tool asks the container for.
+        ["ICodeRunner"] = "public interface ICodeRunner { Task<string> RunAsync(string code); }",
     };
 
     private static readonly IReadOnlyList<MetadataReference> References =
@@ -148,7 +167,7 @@ public class DocsSnippetCompileTests
     public void EveryCheckedBlock_IsFoundAndFragmentsNameRealHeadings()
     {
         Assert.True(Snippets.Count(s => s.File == "README.md") >= 4, "expected the README's C# blocks");
-        Fragments.ShouldMatch([.. Snippets], atLeast: 56);
+        Fragments.ShouldMatch([.. Snippets], atLeast: 95);
     }
 
     /// <summary>
