@@ -10,7 +10,8 @@ changes are expected and used freely for structural correctness.
   `hive.Messages.GenerateMessageAsync(new MessageRequest { … Messages = [Message.User(…)] })`, embeddings
   `hive.Embeddings.EmbedAsync(…)` and model listing `hive.Models.ListModelsAsync("gpustack")`; the old examples called the
   obsolete `GetMessageGenerator` / `GetEmbeddingGenerator`, a `UserMessage` type and a `GetModelCatalog` that do not exist.
-  The guides' C# blocks are now compiled by the test suite, document by document.
+  Every C# block of the README, the guides under `docs/` and the skill references (299 test cases over 23 documents)
+  is now compiled by the test suite, each guide as a whole.
 - **Storage and memory guides match the API.** The vector storage example uses `VectorRecord.VectorId` / `SourceId` /
   `Vectors` / `Payload` and `CreateCollectionAsync(VectorCollectionInfo { Name, … })` (it showed `Id` / `Vector` /
   `Content` / `Metadata` and a name argument); the `IQueueStorage` listing shows the current members (consumer callback,
@@ -25,6 +26,10 @@ changes are expected and used freely for structural correctness.
 - **Orchestration guides compile.** Speaker selection and termination are shown as `GroupChatOrchestratorBuilder` calls
   and typed `ISpeakerSelector` / `ITerminationCondition` / `IContextScope` values instead of loose expressions; the
   `IAgentOrchestrator` listing and its `AsAgent()` example are separate blocks.
+- **Provider, service and storage guides compile.** The skill references' builder fragments start from `builder`; the
+  service listings (`IMessageService`, `IEmbeddingService`, `IFileStorageService`, `IMessageMiddleware`) are separate from
+  their usage, and the `IEmbeddingService` listing shows `EmbedBatchAsync` returning `EmbeddingResponse` (it showed
+  `IEnumerable<EmbeddingResult>`); exception-filter examples sit in a `try`.
 
 ## 0.65.0 — 2026-10-13
 

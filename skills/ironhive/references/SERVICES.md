@@ -20,8 +20,8 @@ public interface IHiveService : IDisposable
     IAgent CreateAgentFromYaml(string yaml);
 }
 
-// Extension method (IronHive.Core)
-IMemoryWorker CreateMemoryWorkerFrom(this IHiveService service, Func<MemoryWorkerBuilder, MemoryPipelineBuilder> configure, IServiceProvider? sp = null);
+// Extension method (IronHive.Core):
+// IMemoryWorker CreateMemoryWorkerFrom(this IHiveService service, Func<MemoryWorkerBuilder, MemoryPipelineBuilder> configure, IServiceProvider? sp = null);
 ```
 
 ## IMessageService — LLM Chat
@@ -37,7 +37,9 @@ public interface IMessageService
         MessageRequest request,
         CancellationToken ct = default);
 }
+```
 
+```csharp
 // Request
 var request = new MessageRequest
 {
@@ -45,7 +47,7 @@ var request = new MessageRequest
     Model           = "gpt-4o-mini",
     System          = "You are helpful.",
     Messages        = messages,           // ICollection<Message>
-    Tools           = toolCollection,     // optional IToolCollection
+    Tools           = tools,              // optional IToolCollection
     ThinkingEffort  = MessageThinkingEffort.High    // Extended thinking
 };
 
@@ -78,7 +80,9 @@ public interface IMessageMiddleware
         Func<MessageContext, IAsyncEnumerable<StreamingMessageResponse>> next,
         CancellationToken cancellationToken = default);   // default: pass-through
 }
+```
 
+```csharp
 // Registration — global, applied outer-to-inner in registration order
 var hive = new HiveServiceBuilder()
     .AddOpenAIProviders("openai", config)
@@ -116,6 +120,7 @@ catch (ContextOverflowException ex)
 Calling an OpenAI or OpenAI-compatible server through your own OpenAI SDK client (or `Microsoft.Extensions.AI.OpenAI`'s `IChatClient`) instead of an IronHive provider? `OpenAIErrors` (`IronHive.Providers.OpenAI`) applies the same recognition:
 
 ```csharp
+try { await hive.Messages.GenerateMessageAsync(request); }
 catch (Exception ex) when (OpenAIErrors.TryMapContextOverflow(ex) is { } overflow) { /* overflow.ContextWindow, overflow.RequestTokens */ }
 ```
 
@@ -132,7 +137,7 @@ public interface IEmbeddingService
         string provider, string modelId, string input,
         CancellationToken ct = default);
 
-    Task<IEnumerable<EmbeddingResult>> EmbedBatchAsync(
+    Task<EmbeddingResponse> EmbedBatchAsync(            // Results (one EmbeddingResult per input) + token usage
         string provider, string modelId, IEnumerable<string> inputs,
         CancellationToken ct = default);
 
@@ -140,12 +145,14 @@ public interface IEmbeddingService
         string provider, string modelId, string input,
         CancellationToken ct = default);
 }
+```
 
+```csharp
 // Usage
 float[] vector = await hive.Embeddings.EmbedAsync("openai", "text-embedding-3-small", "hello");
 
 var batch = await hive.Embeddings.EmbedBatchAsync("openai", "text-embedding-3-small", texts);
-foreach (var r in batch)
+foreach (var r in batch.Results)
     Console.WriteLine($"{r.Index}: {r.Embedding?.Length}");
 ```
 
@@ -249,7 +256,9 @@ public interface IFileStorageService
     Task DeleteFileAsync(string storageName, string filePath, CancellationToken ct = default);
     Task DeleteDirectoryAsync(string storageName, string directoryPath, CancellationToken ct = default);
 }
+```
 
+```csharp
 // Usage
 await hive.Files.WriteFileAsync("s3", "documents/report.pdf", pdfStream);
 var stream = await hive.Files.ReadFileAsync("s3", "documents/report.pdf");
@@ -295,12 +304,14 @@ public class Message
     public MessageRole Role { get; set; }           // User | Assistant
     public ICollection<MessageContent> Content { get; set; }
 }
+```
 
-// Content types (polymorphic)
-TextMessageContent     { Value: string }
-ImageMessageContent    { Format: ImageFormat, Base64: string }
-ToolMessageContent     { /* tool call / result */ }
-ThinkingMessageContent { Value: string }             // extended thinking / reasoning
+```csharp
+// Content types (polymorphic):
+//   TextMessageContent     { Value: string }
+//   ImageMessageContent    { Format: ImageFormat, Base64: string }
+//   ToolMessageContent     { tool call / result }
+//   ThinkingMessageContent { Value: string }             // extended thinking / reasoning
 
 // Build multimodal message
 var msg = new Message

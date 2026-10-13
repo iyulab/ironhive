@@ -29,42 +29,46 @@ var s = await hive.Files.ReadFileAsync("my-storage", "path/to/file.pdf");
 ### Local File Storage
 
 ```csharp
-.AddLocalFileStorage("local")    // no config — file paths are used as given
+builder
+.AddLocalFileStorage("local");    // no config — file paths are used as given
 ```
 
 ### Amazon S3
 
 ```csharp
 // dotnet add package IronHive.Storages.Amazon
+builder
 .AddAmazonS3Storage("s3", new AmazonS3Config
 {
     BucketName      = "my-bucket",
     RegionCode      = "us-east-1",
     AccessKey       = "AKIA...",
     SecretAccessKey = "..."
-})
+});
 ```
 
 ### Azure Blob Storage
 
 ```csharp
 // dotnet add package IronHive.Storages.Azure
+builder
 .AddAzureBlobStorage("azure-blob", new AzureStorageConfig
 {
     AuthType         = AzureStorageAuthTypes.ConnectionString,   // default; also AccountKey | SASToken | AzureIdentity
     ConnectionString = "DefaultEndpointsProtocol=https;AccountName=...;",
     StorageName      = "hive-files"                              // container name
-})
+});
 ```
 
 ### Azure File Share
 
 ```csharp
+builder
 .AddAzureFilesStorage("azure-files", new AzureStorageConfig
 {
     ConnectionString = "DefaultEndpointsProtocol=https;AccountName=...;",
     StorageName      = "hive-share"                              // file share name
-})
+});
 ```
 
 ---
@@ -92,20 +96,22 @@ Used internally by `IMemoryService`. Access via `hive.Memory`.
 ### Local Vector Storage (SQLite + sqlite-vec)
 
 ```csharp
-.AddLocalVectorStorage("local-vec", new LocalVectorConfig { DatabasePath = "./data/vectors.db" })
+builder
+.AddLocalVectorStorage("local-vec", new LocalVectorConfig { DatabasePath = "./data/vectors.db" });
 ```
 
 ### Qdrant
 
 ```csharp
 // dotnet add package IronHive.Storages.Qdrant — no shortcut extension; register the storage instance
+builder
 .AddVectorStorage("qdrant", new QdrantVectorStorage(new QdrantConfig
 {
     Host   = "localhost",
     Port   = 6334,                 // gRPC port (default)
     Https  = false,
     ApiKey = "..."                 // optional
-}))
+}));
 ```
 
 ---
@@ -130,13 +136,15 @@ Used internally by `MemoryWorker` pipeline. Specify name in `UseQueue("name")`.
 ### Local Queue Storage (file-based: .qmsg / .qlock / .qdead)
 
 ```csharp
-.AddLocalQueueStorage("local-queue", new LocalQueueConfig { DirectoryPath = "./data/queue" })
+builder
+.AddLocalQueueStorage("local-queue", new LocalQueueConfig { DirectoryPath = "./data/queue" });
 ```
 
 ### RabbitMQ
 
 ```csharp
 // dotnet add package IronHive.Storages.RabbitMQ — no shortcut extension; register the storage instance
+builder
 .AddQueueStorage("rabbit", new RabbitMQueueStorage(new RabbitMQConfig
 {
     Host        = "localhost",
@@ -145,7 +153,7 @@ Used internally by `MemoryWorker` pipeline. Specify name in `UseQueue("name")`.
     Password    = "pass",
     VirtualHost = "/",
     QueueName   = "hive-tasks"     // required
-}))
+}));
 ```
 
 ---

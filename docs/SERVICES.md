@@ -55,7 +55,7 @@ var request = new MessageRequest
     Model = "gpt-4o-mini",
     System = "You are helpful.",
     Messages = messages,
-    Tools = toolCollection,
+    Tools = tools,
     ThinkingEffort = MessageThinkingEffort.High   // 추론 모드
 };
 ```
@@ -148,9 +148,11 @@ catch (ContextOverflowException ex)
 IronHive 프로바이더를 거치지 않고 자기 OpenAI SDK `ChatClient`(또는 그것을 감싼 `Microsoft.Extensions.AI.OpenAI`의 `IChatClient`)로 OpenAI·OpenAI 호환 서버를 부르는 경우에도 같은 인식을 쓸 수 있다 — `IronHive.Providers.OpenAI`의 `OpenAIErrors`:
 
 ```csharp
+using Microsoft.Extensions.AI;
+
 try
 {
-    var response = await chatClient.GetResponseAsync(messages);
+    var response = await chatClient.GetResponseAsync("Summarize this long document …");
 }
 catch (Exception ex) when (OpenAIErrors.TryMapContextOverflow(ex) is { } overflow)
 {
@@ -166,6 +168,7 @@ catch (Exception ex) when (OpenAIErrors.TryMapContextOverflow(ex) is { } overflo
 **메시지와 원문.** 모든 프로바이더 예외의 `Message`는 벤더가 쓴 문장(`error.message`)이다 — SDK가 덧붙이는 «Status Code: …»·«HTTP 402 (type: code)» 머리줄이나 «Details: …» 줄, JSON 원문이 아니다. 원문이 필요하면(게이트웨이가 덧붙인 필드 등) `ResponseBody`(`HiveException`·`ProviderHttpException`)를 읽는다 — HTTP 응답 본문, 스트림 안 오류면 그 이벤트의 데이터. Gemini SDK는 본문을 보관하지 않으므로 Gemini 예외는 null이다.
 
 ```csharp
+try { await hive.Messages.GenerateMessageAsync(request); }
 catch (BillingException ex) when (ex.ResponseBody is { } body)
 {
     // ex.Message: "Not enough credits for this request's output limit."
@@ -174,7 +177,8 @@ catch (BillingException ex) when (ex.ResponseBody is { } body)
 ```
 
 ```csharp
-catch (ProviderHttpException ex) when (ex.StatusCode == HttpStatusCode.ServiceUnavailable && ex.RetryAfter is { } wait)
+try { await hive.Messages.GenerateMessageAsync(request); }
+catch (ProviderHttpException ex) when (ex.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable && ex.RetryAfter is { } wait)
 {
     await Task.Delay(wait, cancellationToken);
     // retry the same provider
@@ -248,7 +252,9 @@ public interface IEmbeddingService
         IEnumerable<string> inputs,
         CancellationToken cancellationToken = default);
 }
+```
 
+```csharp
 // 사용 예시
 float[] vector = await hive.Embeddings.EmbedAsync("openai", "text-embedding-3-small", "텍스트");
 
@@ -417,7 +423,9 @@ public interface IFileStorageService
     Task DeleteFileAsync(string storageName, string filePath, CancellationToken cancellationToken = default);
     Task DeleteDirectoryAsync(string storageName, string directoryPath, CancellationToken cancellationToken = default);
 }
+```
 
+```csharp
 // 사용 예시
 await hive.Files.WriteFileAsync("s3", "documents/report.pdf", pdfStream);
 var stream = await hive.Files.ReadFileAsync("s3", "documents/report.pdf");
@@ -552,11 +560,12 @@ public enum MessageRole { User, Assistant }
 
 ```csharp
 // 타입 식별자: "text", "image", "audio", "tool", "thinking"
-TextMessageContent { Value: string }
-ImageMessageContent { Format: ImageFormat, Base64: string }
-AudioMessageContent { /* 오디오 입력 */ }
-ToolMessageContent  { Id, Name, Input, Output: ToolOutput?, IsApproved }  // 도구 호출/결과
-ThinkingMessageContent { Value: string, Format: ThinkingFormat? }  // 추론(thinking) 블록
+//   TextMessageContent     { Value: string }
+//   ImageMessageContent    { Format: ImageFormat, Base64: string }
+//   AudioMessageContent    { 오디오 입력 }
+//   ToolMessageContent     { Id, Name, Input, Output: ToolOutput?, IsApproved }  // 도구 호출/결과
+//   ThinkingMessageContent { Value: string, Format: ThinkingFormat? }  // 추론(thinking) 블록
+MessageContent content = new TextMessageContent { Value = "..." };
 ```
 
 ### 메시지 구성 예시

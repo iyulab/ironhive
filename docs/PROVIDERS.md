@@ -82,11 +82,11 @@ public class OpenAIConfig
 시간보다 크게 잡는다.
 
 ```csharp
-new OpenAICompatibleConfig
+var localConfig = new OpenAICompatibleConfig
 {
     BaseUrl = "http://127.0.0.1:8080/v1",
     StreamIdleTimeout = TimeSpan.FromMinutes(3),   // 이 시간 동안 한 줄도 오지 않으면 죽은 스트림
-}
+};
 ```
 
 - 소비자가 이벤트를 처리하는 시간은 세지 않는다 — 다음 이벤트를 기다리는 동안에만 시간이 흐른다.
@@ -230,14 +230,14 @@ Opus 5.5 의 기본값은 `medium` 으로 Opus 5(`high`)보다 한 단계 낮다
 내장 표에 없는 새 모델은 `ModelCapabilities`로 코드 수정 없이 선언한다. 소비자 항목이 내장 표보다 우선한다.
 
 ```csharp
-new AnthropicConfig
+var capabilities = new AnthropicConfig
 {
     ApiKey = "sk-ant-...",
     ModelCapabilities = new Dictionary<string, AnthropicModelCapabilities>
     {
         ["claude-fable-5-2"] = new() { SupportsForcedToolChoice = false },   // 접두 일치 — 날짜 접미사 포함
     }
-}
+};
 ```
 
 `HttpClient`를 직접 설정하지 않으면 어댑터가 `ConnectTimeout`을 적용하고 `HttpClient.Timeout`을
@@ -403,14 +403,14 @@ OpenAI 와이어의 키 슬롯은 기본으로 `Authorization: Bearer <key>` 를
 키를 `Headers` 로 옮기지 않고 키 슬롯의 **형태**를 바꾼다(`IronHive.Abstractions.Http.CredentialPlacement`):
 
 ```csharp
-new OpenAICompatibleConfig
+var gatewayConfig = new OpenAICompatibleConfig
 {
     BaseUrl = "https://gateway.example.com",
     ApiKey = "…",
     ApiKeyPlacement = CredentialPlacement.InHeader("api-key"),     // api-key: <key>
     // CredentialPlacement.Authorization("Basic")                  // Authorization: Basic <key> — 키는 인코딩된 user:password
     // CredentialPlacement.Authorization(null)                     // Authorization: <key> (scheme 없음)
-}
+};
 ```
 
 - 두 요청 경로(벤더 SDK — 모델 목록·Responses, 이 패키지의 HTTP 클라이언트 — Chat Completions·임베딩·rerank)가 같은
@@ -429,11 +429,11 @@ id, 추적 헤더. 네 provider config(`OpenAIConfig`·`OpenAICompatibleConfig`�
 **모든 요청**에 실린다. 소비자는 어느 벤더 SDK가 뒤에 있는지 보지 않고 설정한다.
 
 ```csharp
-new AnthropicConfig
+var anthropicConfig = new AnthropicConfig
 {
     ApiKey = "sk-ant-...",
     Headers = new Dictionary<string, string> { ["Ocp-Apim-Subscription-Key"] = "…", ["X-Tenant-Id"] = "acme" }
-}
+};
 ```
 
 **우선순위 규칙은 문서가 아니라 코드가 강제한다** (`IronHive.Abstractions.Http.ProviderRequestHeaders`):
@@ -499,6 +499,8 @@ var options = new AgentInvokeOptions
   같이 요청 쪽 `AdditionalProperties` 를 옮기지 않는다.
 
 ```csharp
+using System.Text.Json.Nodes;
+
 var response = await messageService.GenerateMessageAsync(new MessageRequest
 {
     Provider = "local",
@@ -664,14 +666,14 @@ var request = new MessageRequest
 };
 
 // AgentParametersConfig
-config.Parameters = new AgentParametersConfig
+var agent = hive.CreateAgentFrom(cfg => cfg.Parameters = new AgentParametersConfig
 {
     MaxTokens = 4096,
     Temperature = 0.7f,
     TopP = 0.9f,
     TopK = 50,
     StopSequences = ["END", "STOP"]
-};
+});
 ```
 
 `ThinkingOutput` 은 추론을 **보여 줄지만** 정한다 — 추론을 할지·얼마나 할지는 `ThinkingEffort` 다(`ChatOptions.Reasoning.Output`

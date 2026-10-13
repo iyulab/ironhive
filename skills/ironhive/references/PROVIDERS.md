@@ -5,13 +5,14 @@ All providers are registered on `HiveServiceBuilder` by name. The name string is
 ## OpenAI
 
 ```csharp
+builder
 .AddOpenAIProviders("openai", new OpenAIConfig
 {
     ApiKey       = "sk-...",
     Organization = "org-...",       // optional
     Project      = "proj_...",      // optional
     BaseUrl      = "https://.../v1" // optional — full endpoint incl. the version segment (proxy/gateway)
-}, OpenAIServiceType.All)           // optional flag — see below
+}, OpenAIServiceType.All);           // optional flag — see below
 ```
 
 ### OpenAIServiceType Flags
@@ -34,11 +35,12 @@ public enum OpenAIServiceType
 ## Anthropic
 
 ```csharp
+builder
 .AddAnthropicProviders("anthropic", new AnthropicConfig
 {
     ApiKey = "sk-ant-...",
     BaseUrl = "https://..."   // optional proxy
-})
+});
 ```
 
 **Capabilities:** Chat only (Claude models)  
@@ -47,10 +49,11 @@ public enum OpenAIServiceType
 ## Google AI (Gemini)
 
 ```csharp
+builder
 .AddGoogleAIProviders("google", new GoogleAIConfig
 {
     ApiKey = "AIzaSy..."
-})
+});
 ```
 
 **Capabilities:** Chat, Embeddings, Images (Imagen), Video (Veo), Audio, Model listing
@@ -58,12 +61,15 @@ public enum OpenAIServiceType
 ## Vertex AI (GCP)
 
 ```csharp
+using Google.Apis.Auth.OAuth2;   // GoogleCredential
+
+builder
 .AddVertexAIProviders("vertex", new VertexAIConfig
 {
     Project    = "my-gcp-project",
     Location   = "us-central1",
     Credential = GoogleCredential.GetApplicationDefault()   // optional: left null, the SDK uses ADC itself
-})
+});
 ```
 
 **Capabilities:** Same as Google AI but via GCP project billing
@@ -73,11 +79,12 @@ public enum OpenAIServiceType
 Supports any provider with OpenAI-compatible API:
 
 ```csharp
+builder
 .AddOpenAICompatibleProviders("provider-name", new OpenAICompatibleConfig
 {
     BaseUrl = "http://localhost:11434",   // server address without the API path; Path (default "/v1") is appended
     ApiKey  = "ollama"                    // optional — LAN services often accept no key
-})
+});
 ```
 
 **Known compatible providers:** Ollama, LM Studio, vLLM, DeepSeek, Groq, OpenRouter, Fireworks, Perplexity, TogetherAI, xAI (Grok)
@@ -85,11 +92,12 @@ Supports any provider with OpenAI-compatible API:
 ## GPUStack
 
 ```csharp
+builder
 .AddGpuStackProviders("gpustack", new GpuStackConfig
 {
     BaseUrl = "http://localhost:80",
     ApiKey  = "your-api-key"
-})
+});
 ```
 
 **Capabilities:** Chat, Embeddings (model-dependent)
@@ -100,8 +108,11 @@ Once registered, use the name everywhere:
 
 ```csharp
 // In AgentConfig
-cfg.Provider = "openai";
-cfg.Model    = "gpt-4o-mini";
+var agent = hive.CreateAgentFrom(cfg =>
+{
+    cfg.Provider = "openai";
+    cfg.Model    = "gpt-4o-mini";
+});
 
 // In MessageRequest
 var req = new MessageRequest

@@ -40,19 +40,18 @@ public class DocsSnippetCompileTests
         "skills/ironhive/references/TOOLS.md",
         "docs/ORCHESTRATION.md",
         "skills/ironhive/references/ORCHESTRATION.md",
+        "docs/PROVIDERS.md",
+        "skills/ironhive/references/PROVIDERS.md",
+        "docs/SERVICES.md",
+        "skills/ironhive/references/SERVICES.md",
+        "skills/ironhive/references/STORAGES.md",
     ];
 
-    private const string Pending = "migration to the kit compiler (run 146) - blocks not yet repaired";
 
     // Documents with C# blocks that are not compiled yet, with the reason. Shrink this; a new document with a C# block
     // must land in one of the two lists (see EveryDocumentWithCSharp_IsCheckedOrListed).
     private static readonly Dictionary<string, string> NotYetChecked = new(StringComparer.Ordinal)
     {
-        ["docs/PROVIDERS.md"] = Pending,
-        ["docs/SERVICES.md"] = Pending,
-        ["skills/ironhive/references/PROVIDERS.md"] = Pending,
-        ["skills/ironhive/references/SERVICES.md"] = Pending,
-        ["skills/ironhive/references/STORAGES.md"] = Pending,
     };
 
     // A block that is deliberately not a program (a signature sketch, pseudocode), by the heading it sits under, with the
@@ -61,6 +60,7 @@ public class DocsSnippetCompileTests
     {
         ["HiveServiceBuilder Full Signature (key methods)"] =
             "a signature summary of the builder's extension methods across packages, declared without bodies",
+        ["Telemetry"] = "registers OpenTelemetry (OpenTelemetry.Extensions.Hosting), a package the library does not reference",
     });
 
     private static readonly string[] AssembliesToLoad =
@@ -139,6 +139,19 @@ public class DocsSnippetCompileTests
         ["factory"] = "WorkflowFactory factory = null!;",
         ["workflow"] = "IWorkflow<MyContext> workflow = null!;",
         ["delegateFn"] = "Func<string, string> delegateFn = text => text;",
+        ["config"] = "OpenAIConfig config = null!;",
+        ["qdrantConfig"] = "QdrantConfig qdrantConfig = null!;",
+        ["rabbitConfig"] = "RabbitMQConfig rabbitConfig = null!;",
+        ["secretStore"] = "ISecretStore secretStore = null!;",
+        ["chatClient"] = "Microsoft.Extensions.AI.IChatClient chatClient = null!;",
+        ["text"] = "string text = \"\";",
+        ["texts"] = "IEnumerable<string> texts = [];",
+        ["stream"] = "Stream stream = Stream.Null;",
+        ["pdfStream"] = "Stream pdfStream = Stream.Null;",
+        ["bytes"] = "byte[] bytes = [];",
+        ["imageBytes"] = "byte[] imageBytes = [];",
+        ["ISecretStore"] = "public interface ISecretStore { string? Read(string name); }",
+        ["CompactingMiddleware"] = "public sealed class CompactingMiddleware : IMessageMiddleware { }",
         ["orchestrator"] = "IAgentOrchestrator orchestrator = null!;",
         ["orch"] = "IAgentOrchestrator orch = null!;",
         ["options"] = "OrchestratorOptions options = null!;",
@@ -217,7 +230,7 @@ public class DocsSnippetCompileTests
     public void EveryCheckedBlock_IsFoundAndFragmentsNameRealHeadings()
     {
         Assert.True(Snippets.Count(s => s.File == "README.md") >= 4, "expected the README's C# blocks");
-        Fragments.ShouldMatch([.. Snippets], atLeast: 175);
+        Fragments.ShouldMatch([.. Snippets], atLeast: 265);
     }
 
     /// <summary>
