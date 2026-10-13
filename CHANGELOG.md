@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## Unreleased
+## 0.65.1 — 2026-10-13
 
 ### Fixed
 - **A streaming orchestration or message stream stops at the caller's cancellation.**
