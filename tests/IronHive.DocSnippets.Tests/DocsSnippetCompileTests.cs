@@ -34,25 +34,27 @@ public class DocsSnippetCompileTests
         "skills/ironhive/SKILL.md",
         "docs/AGENTS.md",
         "docs/PLUGINS.md",
+        "docs/MIDDLEWARE.md",
     ];
 
     private const string Pending = "migration to the kit compiler (run 146) - blocks not yet repaired";
+    private const string CrossBlock =
+        "blocks use types another block of the document declares (MyTools, the workflow steps) - waits for compiling a document as a whole";
 
     // Documents with C# blocks that are not compiled yet, with the reason. Shrink this; a new document with a C# block
     // must land in one of the two lists (see EveryDocumentWithCSharp_IsCheckedOrListed).
     private static readonly Dictionary<string, string> NotYetChecked = new(StringComparer.Ordinal)
     {
-        ["docs/MIDDLEWARE.md"] = Pending,
+        ["docs/TOOLS.md"] = CrossBlock,
+        ["docs/WORKFLOW.md"] = CrossBlock,
+        ["skills/ironhive/references/TOOLS.md"] = CrossBlock,
         ["docs/ORCHESTRATION.md"] = Pending,
         ["docs/PROVIDERS.md"] = Pending,
         ["docs/SERVICES.md"] = Pending,
-        ["docs/TOOLS.md"] = Pending,
-        ["docs/WORKFLOW.md"] = Pending,
         ["skills/ironhive/references/ORCHESTRATION.md"] = Pending,
         ["skills/ironhive/references/PROVIDERS.md"] = Pending,
         ["skills/ironhive/references/SERVICES.md"] = Pending,
         ["skills/ironhive/references/STORAGES.md"] = Pending,
-        ["skills/ironhive/references/TOOLS.md"] = Pending,
     };
 
     // A block that is deliberately not a program (a signature sketch, pseudocode), by the heading it sits under, with the
@@ -80,8 +82,8 @@ public class DocsSnippetCompileTests
     // namespaces a project has implicitly and the ones the guides use without saying so.
     private static readonly string[] Usings =
     [
-        "System", "System.Collections.Generic", "System.ComponentModel", "System.IO", "System.Linq", "System.Net.Http",
-        "System.Text.Json", "System.Threading", "System.Threading.Tasks", "Microsoft.Extensions.DependencyInjection",
+        "System", "System.Collections.Generic", "System.ComponentModel", "System.Diagnostics.CodeAnalysis", "System.IO", "System.Linq", "System.Net.Http",
+        "System.Runtime.CompilerServices", "System.Text.Json", "System.Threading", "System.Threading.Tasks", "Microsoft.Extensions.DependencyInjection",
         .. AssembliesToLoad.Where(n => n.StartsWith("IronHive.", StringComparison.Ordinal))
             .SelectMany(n => Assembly.Load(n).GetExportedTypes())
             .Select(t => t.Namespace)
@@ -127,6 +129,9 @@ public class DocsSnippetCompileTests
         ["finalizer"] = "IAgent finalizer = null!;",
         ["mcpManager"] = "McpClientManager mcpManager = null!;",
         ["apiManager"] = "OpenApiClientManager apiManager = null!;",
+        ["primaryAgent"] = "IAgent primaryAgent = null!;",
+        ["fallbackAgent"] = "IAgent fallbackAgent = null!;",
+        ["messageService"] = "IMessageService messageService = null!;",
         // A service of the reader's own that a tool asks the container for.
         ["ICodeRunner"] = "public interface ICodeRunner { Task<string> RunAsync(string code); }",
     };
@@ -167,7 +172,7 @@ public class DocsSnippetCompileTests
     public void EveryCheckedBlock_IsFoundAndFragmentsNameRealHeadings()
     {
         Assert.True(Snippets.Count(s => s.File == "README.md") >= 4, "expected the README's C# blocks");
-        Fragments.ShouldMatch([.. Snippets], atLeast: 95);
+        Fragments.ShouldMatch([.. Snippets], atLeast: 106);
     }
 
     /// <summary>

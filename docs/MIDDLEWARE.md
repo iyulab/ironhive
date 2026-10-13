@@ -31,7 +31,7 @@ IAgentMiddleware
 var agent = baseAgent.WithMiddleware(new RetryMiddleware(maxRetries: 3));
 
 // 다중 미들웨어 (실행 순서: 왼쪽 → 오른쪽)
-var agent = baseAgent.WithMiddleware(
+var configured = baseAgent.WithMiddleware(
     new LoggingMiddleware(Console.WriteLine),
     new RetryMiddleware(maxRetries: 3),
     new TimeoutMiddleware(TimeSpan.FromSeconds(30))
@@ -59,7 +59,7 @@ LoggingMiddleware ← RetryMiddleware ← TimeoutMiddleware ← 응답
 var agent = baseAgent.WithMiddleware(new RetryMiddleware(maxRetries: 3));
 
 // 상세 설정
-var agent = baseAgent.WithMiddleware(new RetryMiddleware(new RetryMiddlewareOptions
+var configured = baseAgent.WithMiddleware(new RetryMiddleware(new RetryMiddlewareOptions
 {
     MaxRetries = 3,
     InitialDelay = TimeSpan.FromSeconds(1),
@@ -94,7 +94,7 @@ var agent = baseAgent.WithMiddleware(new RetryMiddleware(new RetryMiddlewareOpti
 var agent = baseAgent.WithMiddleware(new TimeoutMiddleware(TimeSpan.FromSeconds(30)));
 
 // 상세 설정
-var agent = baseAgent.WithMiddleware(new TimeoutMiddleware(new TimeoutMiddlewareOptions
+var configured = baseAgent.WithMiddleware(new TimeoutMiddleware(new TimeoutMiddlewareOptions
 {
     Timeout = TimeSpan.FromSeconds(30),
     OnTimeout = (name, timeout) =>
@@ -113,7 +113,7 @@ var agent = baseAgent.WithMiddleware(new TimeoutMiddleware(new TimeoutMiddleware
 var agent = baseAgent.WithMiddleware(new RateLimitMiddleware(60, TimeSpan.FromMinutes(1)));
 
 // 상세 설정
-var agent = baseAgent.WithMiddleware(new RateLimitMiddleware(new RateLimitMiddlewareOptions
+var configured = baseAgent.WithMiddleware(new RateLimitMiddleware(new RateLimitMiddlewareOptions
 {
     MaxRequests = 60,
     Window = TimeSpan.FromMinutes(1),
@@ -187,7 +187,7 @@ cb.Reset();
 var agent = baseAgent.WithMiddleware(new BulkheadMiddleware(5));
 
 // 대기열 포함
-var agent = baseAgent.WithMiddleware(new BulkheadMiddleware(5, maxQueueSize: 10));
+var configured = baseAgent.WithMiddleware(new BulkheadMiddleware(5, maxQueueSize: 10));
 
 // 상세 설정
 var bh = new BulkheadMiddleware(new BulkheadMiddlewareOptions
@@ -254,7 +254,7 @@ cache.ClearCache();
 var agent = baseAgent.WithMiddleware(new LoggingMiddleware(Console.WriteLine));
 
 // 상세 설정
-var agent = baseAgent.WithMiddleware(new LoggingMiddleware(new LoggingMiddlewareOptions
+var configured = baseAgent.WithMiddleware(new LoggingMiddleware(new LoggingMiddlewareOptions
 {
     LogAction = Console.WriteLine,
     LogPrefix = "MyAgent",
@@ -283,7 +283,7 @@ var agent = baseAgent.WithMiddleware(new LoggingMiddleware(new LoggingMiddleware
 var agent = primaryAgent.WithMiddleware(new FallbackMiddleware(fallbackAgent));
 
 // 동적 폴백
-var agent = primaryAgent.WithMiddleware(new FallbackMiddleware(new FallbackMiddlewareOptions
+var configured = primaryAgent.WithMiddleware(new FallbackMiddleware(new FallbackMiddlewareOptions
 {
     FallbackFactory = primary => new BasicAgent(messageService)
     {
@@ -370,10 +370,16 @@ public class MyMiddleware : IAgentMiddleware
     }
 }
 
-// 스트리밍 지원 미들웨어
+// 스트리밍 지원 미들웨어 (using System.Runtime.CompilerServices; — [EnumeratorCancellation])
 public class MyStreamingMiddleware : IAgentMiddleware, IStreamingAgentMiddleware
 {
-    public Task<MessageResponse> InvokeAsync(...) { ... }
+    public Task<MessageResponse> InvokeAsync(
+        IAgent agent,
+        IEnumerable<Message> messages,
+        AgentInvokeOptions? options,
+        Func<IEnumerable<Message>, AgentInvokeOptions?, Task<MessageResponse>> next,
+        CancellationToken cancellationToken = default)
+        => next(messages, options);
 
     public async IAsyncEnumerable<StreamingMessageResponse> InvokeStreamingAsync(
         IAgent agent,
