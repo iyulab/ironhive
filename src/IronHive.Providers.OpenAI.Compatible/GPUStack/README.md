@@ -59,9 +59,9 @@ var config = new GpuStackConfig
     BaseUrl = "http://localhost:8080",
     ApiKey = "bootstrap-key",
 
-    // 매 요청 시 평가 — secret rotation / 콘솔 변경이 무중단 반영됨
-    BaseUrlResolver = () => settings.GetGpuStackEndpoint(),
-    ApiKeyResolver = () => settings.GetGpuStackApiKey(),
+    // 매 요청 시 평가 — secret rotation / 콘솔 변경이 무중단 반영됨 (예: 환경 변수, secret store, DB 조회)
+    BaseUrlResolver = () => Environment.GetEnvironmentVariable("GPUSTACK_ENDPOINT"),
+    ApiKeyResolver = () => Environment.GetEnvironmentVariable("GPUSTACK_API_KEY"),
 };
 ```
 
@@ -117,39 +117,26 @@ builder.AddGpuStackProviders(
 ### 메시지 생성
 
 ```csharp
-var request = new MessageGenerationRequest
+var response = await hive.Messages.GenerateMessageAsync(new MessageRequest
 {
+    Provider = "gpustack",
     Model = "your-deployed-model",
-    Messages =
-    [
-        new UserMessage
-        {
-            Content = [new TextMessageContent { Value = "안녕하세요!" }]
-        }
-    ]
-};
-
-var generator = hiveService.GetMessageGenerator("gpustack");
-var response = await generator.GenerateMessageAsync(request);
+    Messages = [Message.User("안녕하세요!")],
+});
 ```
 
 ### 임베딩 생성
 
 ```csharp
-var embeddingGenerator = hiveService.GetEmbeddingGenerator("gpustack");
-var embeddings = await embeddingGenerator.GenerateEmbeddingsAsync(
-    new[] { "임베딩할 텍스트" },
-    model: "your-embedding-model"
-);
+float[] embedding = await hive.Embeddings.EmbedAsync("gpustack", "your-embedding-model", "임베딩할 텍스트");
 ```
 
 ### 사용 가능한 모델 조회
 
 ```csharp
-var catalog = hiveService.GetModelCatalog("gpustack");
-var models = await catalog.GetModelsAsync();
-foreach (var model in models)
+var catalog = await hive.Models.ListModelsAsync("gpustack");
+foreach (var model in catalog?.Models ?? [])
 {
-    Console.WriteLine($"Model: {model.Id}");
+    Console.WriteLine($"Model: {model.ModelId}");
 }
 ```

@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <PackageReference Include="AwesomeAssertions" />
+    <PackageReference Include="Iyu.Conventions.Testing.Snippets" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     <PackageReference Include="Microsoft.Extensions.AI.OpenAI" />
     <PackageReference Include="OpenAI" />
@@ -24,6 +25,16 @@
     <ProjectReference Include="..\..\src\IronHive.Abstractions\IronHive.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Core\IronHive.Core.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Extensions.AI\IronHive.Extensions.AI.csproj" />
+    <ProjectReference Include="..\..\src\IronHive.Plugins.MCP\IronHive.Plugins.MCP.csproj" />
+    <ProjectReference Include="..\..\src\IronHive.Plugins.OpenAPI\IronHive.Plugins.OpenAPI.csproj" />
+    <ProjectReference Include="..\..\src\IronHive.Providers.Anthropic\IronHive.Providers.Anthropic.csproj" />
+    <ProjectReference Include="..\..\src\IronHive.Providers.GoogleAI\IronHive.Providers.GoogleAI.csproj" />
+    <ProjectReference Include="..\..\src\IronHive.Providers.OpenAI\IronHive.Providers.OpenAI.csproj" />
+    <ProjectReference Include="..\..\src\IronHive.Providers.OpenAI.Compatible\IronHive.Providers.OpenAI.Compatible.csproj" />
+    <ProjectReference Include="..\..\src\IronHive.Storages.Amazon\IronHive.Storages.Amazon.csproj" />
+    <ProjectReference Include="..\..\src\IronHive.Storages.Azure\IronHive.Storages.Azure.csproj" />
+    <ProjectReference Include="..\..\src\IronHive.Storages.Qdrant\IronHive.Storages.Qdrant.csproj" />
+    <ProjectReference Include="..\..\src\IronHive.Storages.RabbitMQ\IronHive.Storages.RabbitMQ.csproj" />
   </ItemGroup>
 
 </Project>

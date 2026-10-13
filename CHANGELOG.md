@@ -3,6 +3,15 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## Unreleased
+
+### Documentation
+- **The GPUStack provider guide's examples compile against the current API.** Message generation uses
+  `hive.Messages.GenerateMessageAsync(new MessageRequest { … Messages = [Message.User(…)] })`, embeddings
+  `hive.Embeddings.EmbedAsync(…)` and model listing `hive.Models.ListModelsAsync("gpustack")`; the old examples called the
+  obsolete `GetMessageGenerator` / `GetEmbeddingGenerator`, a `UserMessage` type and a `GetModelCatalog` that do not exist.
+  The guides' C# blocks are now compiled by the test suite, document by document.
+
 ## 0.65.0 — 2026-10-13
 
 ### Changed

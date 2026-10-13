@@ -136,7 +136,7 @@ var hive = new HiveServiceBuilder()
 // 요청 시 이름으로 라우팅
 var agent = hive.CreateAgentFrom(cfg => {
     cfg.Provider = "claude";  // AnthropicMessageGenerator 사용
-    cfg.Model = "claude-3-5-sonnet-20241022";
+    cfg.Model = "claude-sonnet-5-5";
 });
 ```
 
