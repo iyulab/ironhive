@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## Unreleased
+## 0.66.0 — 2026-10-16
 
 ### Added
 - **`AsEmbeddingGenerator(modelId, dimensions)` reports the model's vector size.** The new overload (and the
