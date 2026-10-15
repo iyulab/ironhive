@@ -11,6 +11,7 @@ public class EmbeddingGeneratorAdapter : IEmbeddingGenerator<string, Embedding<f
     private readonly IronHiveEmbedding.IEmbeddingGenerator _generator;
     private readonly string _modelId;
     private readonly string _providerName;
+    private readonly int? _dimensions;
 
     /// <summary>
     /// EmbeddingGeneratorAdapter의 새 인스턴스를 생성합니다.
@@ -22,20 +23,45 @@ public class EmbeddingGeneratorAdapter : IEmbeddingGenerator<string, Embedding<f
         IronHiveEmbedding.IEmbeddingGenerator generator,
         string modelId,
         string? providerName = null)
+        : this(generator, modelId, providerName, dimensions: null)
+    {
+    }
+
+    /// <summary>
+    /// Creates the adapter for a model whose vector size the caller knows. The size is reported as
+    /// <see cref="EmbeddingGeneratorMetadata.DefaultModelDimensions"/> - IronHive's generator interface does not expose
+    /// one, and consumers that size a store or check vectors (vector indexes, semantic chunkers) read it from there -
+    /// and every vector the model returns is checked against it.
+    /// </summary>
+    /// <param name="generator">The IronHive embedding generator.</param>
+    /// <param name="modelId">The model to embed with.</param>
+    /// <param name="providerName">The provider name to report; "IronHive" when null.</param>
+    /// <param name="dimensions">The model's vector size; null when unknown.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="dimensions"/> is not positive.</exception>
+    public EmbeddingGeneratorAdapter(
+        IronHiveEmbedding.IEmbeddingGenerator generator,
+        string modelId,
+        string? providerName,
+        int? dimensions)
     {
         _generator = generator ?? throw new ArgumentNullException(nameof(generator));
         _modelId = modelId ?? throw new ArgumentNullException(nameof(modelId));
         _providerName = providerName ?? "IronHive";
+        if (dimensions is <= 0)
+            throw new ArgumentOutOfRangeException(nameof(dimensions), dimensions, "The vector size must be positive.");
+        _dimensions = dimensions;
     }
 
     /// <summary>
-    /// The provider name and default model this generator reports — also what <see cref="GetService"/> answers for
-    /// <see cref="EmbeddingGeneratorMetadata"/>, which is where M.E.AI middleware (e.g. OpenTelemetry) looks for it.
+    /// The provider name, default model and (when given) vector size this generator reports — also what
+    /// <see cref="GetService"/> answers for <see cref="EmbeddingGeneratorMetadata"/>, which is where M.E.AI middleware
+    /// (e.g. OpenTelemetry) and consumers that size a vector store look for it.
     /// </summary>
     public EmbeddingGeneratorMetadata Metadata => new(
         providerName: _providerName,
         providerUri: null,
-        defaultModelId: _modelId);
+        defaultModelId: _modelId,
+        defaultModelDimensions: _dimensions);
 
     /// <inheritdoc />
     public async Task<GeneratedEmbeddings<Embedding<float>>> GenerateAsync(
@@ -82,6 +108,16 @@ public class EmbeddingGeneratorAdapter : IEmbeddingGenerator<string, Embedding<f
                     $"{actual}. This provider cannot resize embeddings; request a model or deployment that " +
                     "emits the required size, or leave Dimensions unset to accept the model's native size.");
             }
+        }
+
+        // The reported size is a promise to whoever sized a store from it: a model that answers with another size is
+        // a misconfiguration to surface here, not a vector to hand on.
+        if (_dimensions is int declared && options?.Dimensions is null && embeddings.Count > 0
+            && embeddings[0].Vector.Length != declared)
+        {
+            throw new InvalidOperationException(
+                $"Model '{modelId}' produced vectors of {embeddings[0].Vector.Length} dimension(s), but this generator " +
+                $"reports {declared}. Pass the model's actual size to AsEmbeddingGenerator.");
         }
 
         // Usage carries only what the provider reported. When it reports nothing, Usage stays unset rather than

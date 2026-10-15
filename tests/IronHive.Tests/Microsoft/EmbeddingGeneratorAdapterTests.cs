@@ -65,6 +65,46 @@ public class EmbeddingGeneratorAdapterTests : IDisposable
         _adapter.Metadata.ProviderName.Should().Be("TestProvider");
         _adapter.Metadata.DefaultModelId.Should().Be("test-model");
         _adapter.Metadata.ProviderUri.Should().BeNull();
+        _adapter.Metadata.DefaultModelDimensions.Should().BeNull();
+    }
+
+    [Fact]
+    public void AsEmbeddingGenerator_WithDimensions_ReportsThemInTheMetadata()
+    {
+        using var generator = _mockGenerator.AsEmbeddingGenerator("test-model", dimensions: 3);
+
+        generator.GetService<EmbeddingGeneratorMetadata>()!.DefaultModelDimensions.Should().Be(3);
+    }
+
+    [Fact]
+    public void Constructor_NonPositiveDimensions_Throws()
+    {
+        var act = () => new EmbeddingGeneratorAdapter(_mockGenerator, "model", providerName: null, dimensions: 0);
+
+        act.Should().Throw<ArgumentOutOfRangeException>().And.ParamName.Should().Be("dimensions");
+    }
+
+    [Fact]
+    public async Task GenerateAsync_AModelThatAnswersWithAnotherSizeThanTheReportedOne_Throws()
+    {
+        SetupEmbeddings(s_vec1);   // 3-dimensional
+        using var generator = _mockGenerator.AsEmbeddingGenerator("test-model", dimensions: 1024);
+
+        var act = async () => await generator.GenerateAsync(["a"], cancellationToken: TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>())
+            .Which.Message.Should().Contain("1024").And.Contain("3 dimension");
+    }
+
+    [Fact]
+    public async Task GenerateAsync_AModelThatMatchesTheReportedSize_Passes()
+    {
+        SetupEmbeddings(s_vec1);
+        using var generator = _mockGenerator.AsEmbeddingGenerator("test-model", dimensions: s_vec1.Length);
+
+        var result = await generator.GenerateAsync(["a"], cancellationToken: TestContext.Current.CancellationToken);
+
+        result.Should().ContainSingle();
     }
 
     #endregion

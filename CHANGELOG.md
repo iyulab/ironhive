@@ -5,6 +5,13 @@ changes are expected and used freely for structural correctness.
 
 ## Unreleased
 
+### Added
+- **`AsEmbeddingGenerator(modelId, dimensions)` reports the model's vector size.** The new overload (and the
+  `EmbeddingGeneratorAdapter` constructor taking `dimensions`) sets `EmbeddingGeneratorMetadata.DefaultModelDimensions`, so
+  consumers that size a vector store or check vectors from the metadata (vector indexes, semantic chunkers) need no
+  separate dimension setting; every vector the model returns is checked against it and a different size throws. Without
+  it the metadata reports no size, as before.
+
 ### Documentation
 - **The guides' type listings match the types.** `docs/AGENTS.md` listed `MessageDoneReason` members that do not exist
   (`Stop`, `Length`, `Error` — the enum is `EndTurn`, `ToolCall`, `MaxTokens`, `ContentFilter`, `StopSequence`, `Unknown`);
