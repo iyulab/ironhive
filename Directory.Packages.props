@@ -43,7 +43,7 @@
     <PackageVersion Include="Microsoft.Testing.Extensions.HangDump" Version="2.4.0" />
   </ItemGroup>
   <ItemGroup Label="Serialization">
-    <PackageVersion Include="MessagePack" Version="3.1.8" />
+    <PackageVersion Include="MessagePack" Version="3.1.12" />
     <PackageVersion Include="YamlDotNet" Version="18.1.0" />
     <PackageVersion Include="Tomlyn" Version="2.10.1" />
   </ItemGroup>

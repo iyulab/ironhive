@@ -3,6 +3,14 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## 0.66.1 — Unreleased
+
+### Security
+- **`IronHive.Core` requires `MessagePack` 3.1.12 (was 3.1.8).** MessagePack before 3.1.9 lets nested arrays exceed the
+  buffer length limits (moderate, GHSA-qhrr-8q5h-9q3h, published 2026-10-15); a consumer whose build treats warnings as
+  errors could not restore 0.66.0 once its audit data saw the advisory. Moving `IronHive.Core` to 0.66.1 moves MessagePack
+  with it; no source change.
+
 ## 0.66.0 — 2026-10-16
 
 ### Added
