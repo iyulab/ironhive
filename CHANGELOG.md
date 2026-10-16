@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## 0.66.1 — Unreleased
+## 0.66.1 — 2026-10-16
 
 ### Security
 - **`IronHive.Core` requires `MessagePack` 3.1.12 (was 3.1.8).** MessagePack before 3.1.9 lets nested arrays exceed the
