@@ -1,13 +1,15 @@
 using System.Text;
-using IronHive.Abstractions.Messages;
 
-namespace IronHive.Core.Utilities;
+namespace IronHive.Abstractions.Messages;
 
 /// <summary>
-/// 텍스트 스트림에서 지정 태그를 감지·수집하는 수집기입니다.
-/// 스트리밍에서는 Feed()로 태그를 먹어치우고, 완료 시 Drain()으로 결과를 회수합니다.
+/// The text protocol behind <see cref="SuggestionOptions"/>: the instruction that asks a model to end its answer with
+/// <c>&lt;suggestion&gt;</c> blocks, and a collector that takes those blocks out of the answer text — whole or streamed in
+/// pieces — and returns them as <see cref="Suggestion"/>s. Provider-neutral: any loop that sends text to a model and reads
+/// text back uses the same one.
 /// </summary>
-internal sealed class SuggestionCollector
+/// <remarks>Not thread-safe; one collector per response.</remarks>
+public sealed class SuggestionCollector
 {
     private enum State { Passthrough, Buffering, InTag }
 
@@ -19,7 +21,8 @@ internal sealed class SuggestionCollector
     private const string CTag = "</suggestion>";
 
     /// <summary>
-    /// 제안 옵션을 반영한 시스템 프롬프트를 빌드합니다.
+    /// <paramref name="system"/> with the suggestion instruction for <paramref name="options"/> appended, or
+    /// <paramref name="system"/> unchanged when <paramref name="options"/> is null.
     /// </summary>
     public static string? Prompt(string? system, SuggestionOptions? options)
     {
@@ -44,21 +47,18 @@ internal sealed class SuggestionCollector
         return string.IsNullOrEmpty(system) ? addon : $"{system}\n\n{addon}";
     }
 
-    /// <summary>
-    /// 지금까지 수집된 제안 목록을 회수하고, 내부 컬렉션을 비웁니다.
-    /// </summary>
+    /// <summary>The suggestions collected so far, or null when there are none; the collector forgets them.</summary>
     public List<Suggestion>? Drain()
     {
         if (bucket.Count == 0) return null;
         var result = new List<Suggestion>(bucket);
         bucket.Clear();
-        return result; 
+        return result;
     }
 
     /// <summary>
-    /// 텍스트를 수집기에 공급합니다.
-    /// 태그 구간은 소비(suppress)하고, 그 외 텍스트만 반환합니다.
-    /// 완성된 태그는 내부 컬렉션에 누적됩니다.
+    /// Feeds the next piece of answer text and returns the part of it that is not a suggestion block. A block may span
+    /// pieces; a completed block is collected (<see cref="Drain"/>).
     /// </summary>
     public string Feed(string text)
     {
@@ -75,7 +75,7 @@ internal sealed class SuggestionCollector
                         buffer.Append(c);
                         state = State.Buffering;
                     }
-                    else 
+                    else
                     {
                         output.Append(c);
                     }
@@ -86,7 +86,7 @@ internal sealed class SuggestionCollector
                     var la = buffer.ToString();
                     if (la == OTag)
                     {
-                        buffer.Clear(); // InTag에서 tag 내용 누적용으로 재활용
+                        buffer.Clear(); // reused for the block's content
                         state = State.InTag;
                     }
                     else if (!OTag.StartsWith(la, StringComparison.Ordinal))
@@ -112,6 +112,23 @@ internal sealed class SuggestionCollector
         }
 
         return output.ToString();
+    }
+
+    /// <summary>
+    /// Ends the text: returns what <see cref="Feed"/> held back waiting to see whether it starts a block — a trailing
+    /// <c>&lt;</c> or <c>&lt;sugg</c>, or a block the model never closed — as plain text, and starts over.
+    /// </summary>
+    public string Flush()
+    {
+        var held = state switch
+        {
+            State.Buffering => buffer.ToString(),
+            State.InTag => OTag + buffer,
+            _ => string.Empty,
+        };
+        buffer.Clear();
+        state = State.Passthrough;
+        return held;
     }
 
     private static Suggestion ParseBlock(string inner)

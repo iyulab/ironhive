@@ -59,8 +59,9 @@ public class MessageService : IMessageService
                 // 루프가 끝난 뒤 메시지 전체를 훑으면 재개 시 이어받은 이전 호출의 텍스트까지 다시 파싱해
                 // 그 제안을 이번 응답에 싣고 호출자의 입력을 고치며, 도구 루프의 다음 턴에는 태그가 남은
                 // 원문이 히스토리로 나간다.
+                // A text content arrives whole here, so it is also flushed: a trailing «<» or an unclosed block stays text.
                 if (collector != null && content is TextMessageContent tc)
-                    tc.Value = collector.Feed(tc.Value);
+                    tc.Value = collector.Feed(tc.Value) + collector.Flush();
                 context.CurrentMessage.Content.Add(content);
             }
 
@@ -191,6 +192,17 @@ public class MessageService : IMessageService
                     if (stackItem is ToolMessageContent)
                         continue;
 
+                    // The text is complete: what the collector held back (a trailing «<», an unclosed block) is text after all.
+                    if (parser != null && stackItem is TextMessageContent && parser.Flush() is { Length: > 0 } held)
+                    {
+                        stackItem.Merge(new TextDeltaContent { Value = held });
+                        yield return new StreamingContentDeltaResponse
+                        {
+                            Index = baseIndex + ccr.Index,
+                            Delta = new TextDeltaContent { Value = held }
+                        };
+                    }
+
                     yield return new StreamingContentCompletedResponse
                     {
                         Index = baseIndex + ccr.Index,
@@ -269,7 +281,7 @@ public class MessageService : IMessageService
 
     /// <summary>
     /// MessageContext 생성 시 Core 쪽 보정(제안 프롬프트 병합)을 적용합니다.
-    /// MessageContext(Abstractions)는 Provider 문자열이나 SuggestionCollector(Core 내부)를 알 필요가 없도록
+    /// MessageContext(Abstractions)는 Provider 문자열이나 제안 프롬프트(SuggestionCollector)를 알 필요가 없도록
     /// 이 보정을 MessageService(Core)에서 처리합니다.
     /// </summary>
     private static void ConfigureGeneration(MessageRequest request, MessageGenerationRequest generation)

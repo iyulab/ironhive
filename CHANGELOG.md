@@ -3,6 +3,20 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## Unreleased
+
+### Added
+- **`SuggestionCollector` is public in `IronHive.Abstractions` (`IronHive.Abstractions.Messages`).** The suggestion
+  protocol behind `MessageRequest.Suggestions` — `Prompt(system, options)` for the instruction, `Feed(text)` to take
+  `<suggestion>` blocks out of answer text (whole or streamed), `Drain()` for the collected `Suggestion`s and the new
+  `Flush()` for text held back at the end — so a loop other than `MessageService` (an `IChatClient` agent loop) offers the
+  same suggestions without its own copy.
+
+### Fixed
+- **With `Suggestions` on, answer text ending in `<` (or in an unfinished `<suggestion` tag, or a block the model never
+  closed) is kept.** The parser held such text back waiting for a tag and dropped it when the answer ended; both
+  `GenerateMessageAsync` and the streaming call now return it as text.
+
 ## 0.66.1 — 2026-10-16
 
 ### Security

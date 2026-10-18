@@ -115,6 +115,29 @@ public class MessageServiceStreamingEquivalenceTests
     }
 
     [Fact]
+    public async Task TextTheSuggestionParserHeldBack_IsKeptOnBothHalves()
+    {
+        // With suggestions on, text ending in «<» or an unclosed block was held back waiting for a tag and then lost.
+        const string text = "Compare a < b, then <sugg";
+        Turn[] turns = [new("r1", MessageDoneReason.EndTurn, 5, 2, [new Part.Text(text)])];
+
+        MessageRequest Request() => new()
+        {
+            Provider = Provider,
+            Model = Model,
+            Messages = [Message.User("go")],
+            Suggestions = new SuggestionOptions(),
+        };
+
+        var buffered = await RunBufferedAsync(turns, Request());
+        var streamed = await RunStreamingAsync(turns, Request());
+
+        buffered.Result.Message!.Content.OfType<TextMessageContent>().Single().Value.Should().Be(text);
+        buffered.Result.Suggestions.Should().BeNull();
+        AssertSameResult(buffered, streamed);
+    }
+
+    [Fact]
     public async Task Resume_FromACarriedInAssistantMessage_BothHalvesCarryTheSameResult()
     {
         // The last input message is an assistant message with an approved tool that has not run yet:
