@@ -3,6 +3,15 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## Unreleased
+
+### Removed
+- **Breaking: `HiveTelemetry.StartChatActivity`, `StartEmbeddingActivity`, `StartToolActivity` and `RecordTokenUsage` are gone.**
+  No IronHive code ever called them, so a collector listening to the `IronHive` source never received a chat, embedding or
+  tool span, or a `gen_ai.client.token.usage` point. The `IronHive` source carries what the orchestrators emit — agent and
+  workflow spans and the operation duration and count metrics. Migration: for model-call spans add M.E.AI's
+  `ChatClientBuilder.UseOpenTelemetry(…)` to the chat pipeline; IronHive.Agent's turn spans are on the `IronHive.Agent` source.
+
 ## 0.67.0 — 2026-10-18
 
 ### Added

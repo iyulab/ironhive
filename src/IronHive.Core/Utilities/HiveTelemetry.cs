@@ -84,11 +84,6 @@ public static class HiveTelemetry
     }
 
     // 메트릭 정의
-    private static readonly Counter<long> _tokenUsageCounter = Meter.CreateCounter<long>(
-        "gen_ai.client.token.usage",
-        "tokens",
-        "Number of tokens used in GenAI operations");
-
     private static readonly Histogram<double> _operationDuration = Meter.CreateHistogram<double>(
         "gen_ai.client.operation.duration",
         "s",
@@ -98,36 +93,6 @@ public static class HiveTelemetry
         "gen_ai.client.operation.count",
         "operations",
         "Number of GenAI operations");
-
-    /// <summary>
-    /// 토큰 사용량을 기록합니다.
-    /// </summary>
-    public static void RecordTokenUsage(
-        string providerName,
-        string model,
-        string operationName,
-        long inputTokens,
-        long outputTokens)
-    {
-        var inputTags = new TagList
-        {
-            { Attributes.GenAiProviderName, providerName },
-            { Attributes.GenAiRequestModel, model },
-            { Attributes.GenAiOperationName, operationName },
-            { "token_type", "input" }
-        };
-
-        var outputTags = new TagList
-        {
-            { Attributes.GenAiProviderName, providerName },
-            { Attributes.GenAiRequestModel, model },
-            { Attributes.GenAiOperationName, operationName },
-            { "token_type", "output" }
-        };
-
-        _tokenUsageCounter.Add(inputTokens, inputTags);
-        _tokenUsageCounter.Add(outputTokens, outputTags);
-    }
 
     /// <summary>
     /// 작업 지속 시간을 기록합니다.
@@ -149,77 +114,6 @@ public static class HiveTelemetry
 
         _operationDuration.Record(durationSeconds, tags);
         _operationCounter.Add(1, tags);
-    }
-
-    /// <summary>
-    /// 채팅 완료 작업을 위한 Activity를 시작합니다.
-    /// </summary>
-    public static Activity? StartChatActivity(
-        string providerName,
-        string model,
-        int? maxTokens = null,
-        float? temperature = null,
-        float? topP = null)
-    {
-        var activity = ActivitySource.StartActivity(
-            $"{Operations.Chat} {model}",
-            ActivityKind.Client);
-
-        if (activity != null)
-        {
-            activity.SetTag(Attributes.GenAiProviderName, providerName);
-            activity.SetTag(Attributes.GenAiOperationName, Operations.Chat);
-            activity.SetTag(Attributes.GenAiRequestModel, model);
-
-            if (maxTokens.HasValue)
-                activity.SetTag(Attributes.GenAiRequestMaxTokens, maxTokens.Value);
-            if (temperature.HasValue)
-                activity.SetTag(Attributes.GenAiRequestTemperature, temperature.Value);
-            if (topP.HasValue)
-                activity.SetTag(Attributes.GenAiRequestTopP, topP.Value);
-        }
-
-        return activity;
-    }
-
-    /// <summary>
-    /// 임베딩 생성 작업을 위한 Activity를 시작합니다.
-    /// </summary>
-    public static Activity? StartEmbeddingActivity(string providerName, string model, int inputCount)
-    {
-        var activity = ActivitySource.StartActivity(
-            $"{Operations.Embeddings} {model}",
-            ActivityKind.Client);
-
-        if (activity != null)
-        {
-            activity.SetTag(Attributes.GenAiProviderName, providerName);
-            activity.SetTag(Attributes.GenAiOperationName, Operations.Embeddings);
-            activity.SetTag(Attributes.GenAiRequestModel, model);
-            activity.SetTag("gen_ai.embedding.input_count", inputCount);
-        }
-
-        return activity;
-    }
-
-    /// <summary>
-    /// Tool 호출을 위한 Activity를 시작합니다.
-    /// </summary>
-    public static Activity? StartToolActivity(string toolName, string? callId = null)
-    {
-        var activity = ActivitySource.StartActivity(
-            $"{Operations.ExecuteTool} {toolName}",
-            ActivityKind.Internal);
-
-        if (activity != null)
-        {
-            activity.SetTag(Attributes.GenAiOperationName, Operations.ExecuteTool);
-            activity.SetTag(Attributes.GenAiToolName, toolName);
-            if (callId != null)
-                activity.SetTag(Attributes.GenAiToolCallId, callId);
-        }
-
-        return activity;
     }
 
     /// <summary>

@@ -22,17 +22,6 @@ public sealed class HiveTelemetryTests : IDisposable
     public void Dispose() => _listener.Dispose();
 
     [Fact]
-    public void A_chat_span_names_the_provider_with_gen_ai_provider_name()
-    {
-        using var activity = HiveTelemetry.StartChatActivity("openai", "gpt-5")!;
-
-        activity.DisplayName.Should().Be("chat gpt-5");
-        activity.GetTagItem("gen_ai.operation.name").Should().Be("chat");
-        activity.GetTagItem("gen_ai.provider.name").Should().Be("openai");
-        activity.GetTagItem("gen_ai.system").Should().BeNull();
-    }
-
-    [Fact]
     public void A_failed_span_carries_the_error_type_and_status_but_no_exception_text_attributes()
     {
         using var activity = HiveTelemetry.StartAgentActivity("planner")!;
@@ -44,27 +33,6 @@ public sealed class HiveTelemetryTests : IDisposable
         activity.GetTagItem("exception.message").Should().BeNull();
         activity.GetTagItem("exception.stacktrace").Should().BeNull();
         activity.GetTagItem("exception.type").Should().BeNull();
-    }
-
-    [Fact]
-    public void An_embeddings_span_uses_the_embeddings_operation()
-    {
-        using var activity = HiveTelemetry.StartEmbeddingActivity("openai", "text-embedding-3-small", 2)!;
-
-        activity.DisplayName.Should().Be("embeddings text-embedding-3-small");
-        activity.GetTagItem("gen_ai.operation.name").Should().Be("embeddings");
-        activity.GetTagItem("gen_ai.provider.name").Should().Be("openai");
-    }
-
-    [Fact]
-    public void A_tool_span_is_execute_tool_with_the_call_id()
-    {
-        using var activity = HiveTelemetry.StartToolActivity("read_file", "call_1")!;
-
-        activity.DisplayName.Should().Be("execute_tool read_file");
-        activity.GetTagItem("gen_ai.operation.name").Should().Be("execute_tool");
-        activity.GetTagItem("gen_ai.tool.name").Should().Be("read_file");
-        activity.GetTagItem("gen_ai.tool.call.id").Should().Be("call_1");
     }
 
     [Fact]
