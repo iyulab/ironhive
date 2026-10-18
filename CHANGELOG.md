@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## Unreleased
+## 0.67.0 — 2026-10-18
 
 ### Added
 - **`SuggestionCollector` is public in `IronHive.Abstractions` (`IronHive.Abstractions.Messages`).** The suggestion
