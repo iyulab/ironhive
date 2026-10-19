@@ -12,6 +12,9 @@ changes are expected and used freely for structural correctness.
   workflow spans and the operation duration and count metrics. Migration: for model-call spans add M.E.AI's
   `ChatClientBuilder.UseOpenTelemetry(…)` to the chat pipeline; IronHive.Agent's turn spans are on the `IronHive.Agent` source.
 
+### Dependencies
+- .NET runtime packages 10.0.12 -> 10.0.13 (the 10.0 servicing band; `Microsoft.Extensions.*` and their siblings move together).
+
 ## 0.67.0 — 2026-10-18
 
 ### Added
