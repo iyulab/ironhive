@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## Unreleased
+## 0.68.0 — 2026-10-20
 
 ### Changed
 - **Breaking: the GPUStack provider calls the standard `/v1/` path, not `/v1-openai/`.** GPUStack documents its
