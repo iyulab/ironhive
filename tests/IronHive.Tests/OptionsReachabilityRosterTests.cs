@@ -38,10 +38,10 @@ public class OptionsReachabilityRosterTests
         // A one-member enum: there is nothing to choose between yet, so nothing reads the choice.
         ["IronHive.Abstractions.Memory.SearchOptions"] = ["Mode"],
 
-        // Read, but only by the type's own conversion methods (ResolveBaseUrl / ResolveApiKey feeding
+        // Read, but only by the type's own conversion methods (ResolveBaseUrl / ResolveApiKey / ApiPath feeding
         // ToOpenAICompatibleConfig), and the scan does not count a type reading itself. The provider calls
-        // those methods, so both values do reach the wire.
-        ["IronHive.Providers.OpenAI.Compatible.GpuStack.GpuStackConfig"] = ["ApiKey", "BaseUrl"],
+        // those methods, so all three values do reach the wire.
+        ["IronHive.Providers.OpenAI.Compatible.GpuStack.GpuStackConfig"] = ["ApiKey", "BaseUrl", "Path"],
 
         // Computed, get-only status for the consumer to read (is a key present, is an endpoint usable).
         // They are outputs of the configuration, not inputs to the library.

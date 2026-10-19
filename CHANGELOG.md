@@ -5,6 +5,13 @@ changes are expected and used freely for structural correctness.
 
 ## Unreleased
 
+### Changed
+- **Breaking: the GPUStack provider calls the standard `/v1/` path, not `/v1-openai/`.** GPUStack documents its
+  OpenAI-compatible API at `/v1/` and answers the same at both, so a GPUStack server sees no difference — and the same
+  `GpuStackConfig` now also reaches an OpenAI-compatible gateway put in front of GPUStack, which knows only `/v1/`. The path
+  is a new setting, `GpuStackConfig.Path` (leading and trailing slashes optional). Rerank stays at `/v1/rerank`. Migration:
+  a GPUStack 0.x server with nothing at `/v1/` sets `Path = "/v1-openai/"`.
+
 ### Removed
 - **Breaking: `HiveTelemetry.StartChatActivity`, `StartEmbeddingActivity`, `StartToolActivity` and `RecordTokenUsage` are gone.**
   No IronHive code ever called them, so a collector listening to the `IronHive` source never received a chat, embedding or

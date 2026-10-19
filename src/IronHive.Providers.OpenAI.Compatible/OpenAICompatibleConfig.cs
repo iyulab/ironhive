@@ -7,7 +7,7 @@ namespace IronHive.Providers.OpenAI.Compatible;
 /// Configuration for a generic OpenAI-compatible inference endpoint (Ollama, LM Studio, vLLM,
 /// llama.cpp server, etc.) that exposes the standard <c>/v1</c> OpenAI API surface.
 /// <para>
-/// Unlike vendor-specific compatible providers (e.g. GPUStack's <c>/v1-openai/</c> path), this
+/// Unlike vendor-specific compatible providers (e.g. a GPUStack 0.x server's <c>/v1-openai/</c> path), this
 /// targets the conventional <c>/v1</c> path and treats the API key as optional, matching LAN
 /// services that accept unauthenticated requests.
 /// </para>

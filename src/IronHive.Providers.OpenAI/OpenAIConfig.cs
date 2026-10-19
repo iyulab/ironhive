@@ -21,7 +21,7 @@ public class OpenAIConfig
     /// ⚠️ 같은 이름의 <c>OpenAICompatibleConfig.BaseUrl</c>은 **반대 계약**입니다 — 그쪽은 «API 경로 없는
     /// 서버 주소»이고 <c>Path</c>(기본 <c>/v1</c>)를 어댑터가 덧붙입니다. 두 설정을 오가며 같은 값을
     /// 그대로 옮기면 한쪽에서 404가 됩니다. 경로를 자동으로 붙이지 않는 이유는 그 규칙이 호환 provider마다
-    /// 다르기 때문입니다(예: GPUStack은 <c>/v1-openai</c>).
+    /// 다르기 때문입니다(예: GPUStack 0.x 서버는 <c>/v1-openai</c>).
     /// </para>
     /// </remarks>
     public string BaseUrl { get; set; } = string.Empty;

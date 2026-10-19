@@ -14,7 +14,7 @@ namespace IronHive.Tests.Providers;
 /// message says so — the difference is only visible on the wire.
 /// <para>
 /// These tests pin it there. The adapter deliberately does not synthesise a version segment for the
-/// plain configuration: the rule differs per compatible service (GPUStack serves <c>/v1-openai</c>), so
+/// plain configuration: the rule differs per compatible service (a GPUStack 0.x server serves <c>/v1-openai</c>), so
 /// appending one would corrupt the paths the sibling configurations already build correctly.
 /// </para>
 /// </summary>

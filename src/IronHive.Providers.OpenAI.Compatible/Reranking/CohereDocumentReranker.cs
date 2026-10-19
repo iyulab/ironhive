@@ -24,7 +24,7 @@ namespace IronHive.Providers.OpenAI.Compatible.Reranking;
 /// callers resolve their own config to an <see cref="OpenAIConfig"/> first (via
 /// <see cref="OpenAICompatibleConfig.ToOpenAI"/> or a provider-specific equivalent) because the
 /// rerank path is not always the same as the chat/embeddings path on the same server (GPUStack
-/// serves chat/embeddings at <c>/v1-openai/</c> but rerank at <c>/v1/</c>).
+/// serves rerank at <c>/v1/</c> whatever path its chat/embeddings surface is configured at).
 /// </para>
 /// </summary>
 public class CohereDocumentReranker : IDocumentReranker

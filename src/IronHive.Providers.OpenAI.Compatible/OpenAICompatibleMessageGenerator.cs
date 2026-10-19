@@ -11,7 +11,7 @@ namespace IronHive.Providers.OpenAI.Compatible;
 /// <para>
 /// Also serves GPUStack: <see cref="GpuStack.GpuStackConfig.ToOpenAICompatible"/> converts a
 /// <see cref="GpuStack.GpuStackConfig"/> into an <see cref="OpenAICompatibleConfig"/> targeting
-/// <c>/v1-openai/</c>, so this one class covers both rather than a GPUStack-specific duplicate.
+/// its <see cref="GpuStack.GpuStackConfig.Path"/>, so this one class covers both rather than a GPUStack-specific duplicate.
 /// </para>
 /// </summary>
 public class OpenAICompatibleMessageGenerator : IMessageGenerator

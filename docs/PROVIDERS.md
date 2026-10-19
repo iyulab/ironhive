@@ -106,7 +106,7 @@ var localConfig = new OpenAICompatibleConfig
 ⚠️ 아래 `OpenAICompatibleConfig.BaseUrl`은 **같은 이름에 반대 계약**이다: 그쪽은 «API 경로 없는 서버
 주소»이고 `Path`(기본 `/v1`)를 어댑터가 덧붙인다. 두 설정 사이에서 같은 값을 그대로 옮기면 한쪽이
 404가 된다. 경로를 자동으로 붙이지 않는 이유는 규칙이 호환 서비스마다 다르기 때문이다
-(GPUStack은 `/v1-openai`). 이 계약은 `BaseUrlPathContractTests`가 와이어 레벨로 고정한다.
+(GPUStack 0.x 서버는 `/v1-openai`). 이 계약은 `BaseUrlPathContractTests`가 와이어 레벨로 고정한다.
 
 #### `ApiKey`가 없어도 등록·요청이 가능하다
 
@@ -604,7 +604,7 @@ var results = await hive.Rerank.RerankAsync(
 
 **패키지**: `IronHive.Providers.OpenAI.Compatible`
 
-GPUStack 전용 최적화 프로바이더 (base URL 경로 `/v1-openai/`). 메시지 생성은 별도 클래스 없이 `OpenAICompatibleMessageGenerator`가 처리한다 — `GpuStackConfig.ToOpenAICompatible()`(internal)이 `OpenAICompatibleConfig`로 변환하고(`Path`를 `/v1-openai/`로 고정, resolver·`TokenLimitParameter`·`ConnectTimeout` 그대로 전달), 그 결과를 넘긴다. `OpenAICompatibleConfig`용 제네레이터와 로직이 완전히 동일했기 때문에 GPUStack 전용 클래스는 제거되었다. `GpuStackConfig.ToOpenAI()`도 동일하게 표면을 `ChatCompletions`로 고정한다.
+GPUStack 전용 최적화 프로바이더 (base URL 경로 `GpuStackConfig.Path`, 기본 `/v1/` — GPUStack 0.x 서버는 `Path = "/v1-openai/"`). 메시지 생성은 별도 클래스 없이 `OpenAICompatibleMessageGenerator`가 처리한다 — `GpuStackConfig.ToOpenAICompatible()`(internal)이 `OpenAICompatibleConfig`로 변환하고(`Path`를 `GpuStackConfig.Path`로, resolver·`TokenLimitParameter`·`ConnectTimeout` 그대로 전달), 그 결과를 넘긴다. `OpenAICompatibleConfig`용 제네레이터와 로직이 완전히 동일했기 때문에 GPUStack 전용 클래스는 제거되었다. `GpuStackConfig.ToOpenAI()`도 동일하게 표면을 `ChatCompletions`로 고정한다.
 
 ```csharp
 builder.AddGpuStackProviders("gpustack", new GpuStackConfig
@@ -630,11 +630,11 @@ public enum GpuStackServiceType
 }
 ```
 
-`Images`(SGLang 백엔드)/`Audio`(VoxBox 백엔드, TTS/STT)도 chat/embeddings/models와 같은 `/v1-openai/` 경로를 쓰므로 `config.ToOpenAI()`를 그대로 재사용한다.
+`Images`(SGLang 백엔드)/`Audio`(VoxBox 백엔드, TTS/STT)도 chat/embeddings/models와 같은 `GpuStackConfig.Path` 경로를 쓰므로 `config.ToOpenAI()`를 그대로 재사용한다.
 
 ### 리랭킹
 
-GPUStack은 Jina 호환(Cohere 호환의 상위 호환) `POST /v1/rerank`를 제공한다 — llama-box 백엔드에서만 지원되며, chat/embeddings/models가 쓰는 `/v1-openai/` 경로와 다르다. `GpuStackConfig.ToRerankConfig()`(internal)가 이 경로를 targeting하는 `OpenAIConfig`를 만들고, `CohereDocumentReranker`(`IronHive.Providers.OpenAI.Compatible.Reranking`)에 넘겨진다.
+GPUStack은 Jina 호환(Cohere 호환의 상위 호환) `POST /v1/rerank`를 제공한다 — llama-box 백엔드에서만 지원되며, `GpuStackConfig.Path` 를 바꿔도 이 경로는 `/v1/` 그대로다. `GpuStackConfig.ToRerankConfig()`(internal)가 이 경로를 targeting하는 `OpenAIConfig`를 만들고, `CohereDocumentReranker`(`IronHive.Providers.OpenAI.Compatible.Reranking`)에 넘겨진다.
 
 ```csharp
 builder.AddGpuStackProviders("gpustack", new GpuStackConfig

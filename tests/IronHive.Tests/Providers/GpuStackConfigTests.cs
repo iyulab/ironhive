@@ -11,7 +11,7 @@ public class GpuStackConfigTests
     {
         var config = new GpuStackConfig();
         var openAI = config.ToOpenAI();
-        openAI.BaseUrl.Should().Be("http://localhost:8080/v1-openai/");
+        openAI.BaseUrl.Should().Be("http://localhost:8080/v1/");
     }
 
     [Fact]
@@ -19,7 +19,7 @@ public class GpuStackConfigTests
     {
         var config = new GpuStackConfig { BaseUrl = "http://172.19.10.10:8080" };
         var openAI = config.ToOpenAI();
-        openAI.BaseUrl.Should().Be("http://172.19.10.10:8080/v1-openai/");
+        openAI.BaseUrl.Should().Be("http://172.19.10.10:8080/v1/");
     }
 
     [Fact]
@@ -27,7 +27,7 @@ public class GpuStackConfigTests
     {
         var config = new GpuStackConfig { BaseUrl = "http://172.19.10.10:8080/" };
         var openAI = config.ToOpenAI();
-        openAI.BaseUrl.Should().Be("http://172.19.10.10:8080/v1-openai/");
+        openAI.BaseUrl.Should().Be("http://172.19.10.10:8080/v1/");
     }
 
     [Fact]
@@ -51,7 +51,7 @@ public class GpuStackConfigTests
     {
         var config = new GpuStackConfig { BaseUrl = "" };
         var openAI = config.ToOpenAI();
-        openAI.BaseUrl.Should().Be("http://localhost:8080/v1-openai/");
+        openAI.BaseUrl.Should().Be("http://localhost:8080/v1/");
     }
 
     [Fact]
@@ -94,10 +94,10 @@ public class GpuStackConfigTests
     }
 
     [Fact]
-    public void ToRerankConfig_DefaultBaseUrl_TargetsV1NotV1Openai()
+    public void ToRerankConfig_DefaultBaseUrl_TargetsV1()
     {
         // GPUStack serves its Jina/Cohere-shaped rerank endpoint at /v1/rerank — a different path
-        // than the /v1-openai/ surface ToOpenAI() targets for chat/embeddings/models.
+        // whatever Path the chat/embeddings/models surface is set to.
         var config = new GpuStackConfig();
         var rerankConfig = config.ToRerankConfig();
         rerankConfig.BaseUrl.Should().Be("http://localhost:8080/v1/");
@@ -128,7 +128,7 @@ public class GpuStackConfigTests
         // OpenAICompatibleConfig.ToOpenAI() doesn't add a trailing slash (unlike
         // GpuStackConfig.ToOpenAI()) — both are normalized downstream via EnsureSuffix('/')
         // wherever the BaseUrl is actually dialed, so this is a difference without effect.
-        compatible.ToOpenAI().BaseUrl.Should().Be("http://localhost:8080/v1-openai");
+        compatible.ToOpenAI().BaseUrl.Should().Be("http://localhost:8080/v1");
     }
 
     [Fact]
@@ -161,10 +161,10 @@ public class GpuStackConfigTests
         var config = new GpuStackConfig { BaseUrlResolver = () => current };
         var compatible = config.ToOpenAICompatible();
 
-        compatible.ToOpenAI().BaseUrl.Should().Be("http://localhost:8080/v1-openai");
+        compatible.ToOpenAI().BaseUrl.Should().Be("http://localhost:8080/v1");
 
         current = "http://localhost:9090";
-        compatible.ToOpenAI().BaseUrl.Should().Be("http://localhost:9090/v1-openai");
+        compatible.ToOpenAI().BaseUrl.Should().Be("http://localhost:9090/v1");
     }
 
     [Fact]
@@ -200,12 +200,33 @@ public class GpuStackConfigTests
 
         var compatible = config.ToOpenAICompatible();
 
-        compatible.Path.Should().Be("/v1-openai/", "GPUStack serves chat/embeddings/models there, not at the generic /v1/");
+        compatible.Path.Should().Be("/v1/", "GPUStack documents its OpenAI-compatible surface at the standard /v1/");
         compatible.BaseUrl.Should().Be("http://10.0.0.5:8080", "the resolver's answer is baked in as the static fallback");
         compatible.ApiKey.Should().Be("rotated");
         compatible.BaseUrlResolver.Should().BeSameAs(baseUrl, "rotation keeps working because the delegate is reused, not re-wrapped");
         compatible.ApiKeyResolver.Should().BeSameAs(apiKey);
         compatible.ConnectTimeout.Should().Be(TimeSpan.FromSeconds(7));
         compatible.TokenLimitParameter.Should().Be(TokenLimitParameter.MaxTokens);
+    }
+
+    [Theory]
+    [InlineData("/v1-openai/", "http://gpu:8080/v1-openai/")]
+    [InlineData("v1-openai", "http://gpu:8080/v1-openai/")]
+    [InlineData("/v1-openai", "http://gpu:8080/v1-openai/")]
+    [InlineData("", "http://gpu:8080/")]
+    public void Path_Override_IsNormalizedForBothConversions(string path, string expected)
+    {
+        // A GPUStack 0.x server answers only at /v1-openai/; an empty path serves a gateway mounted at the root.
+        var config = new GpuStackConfig { BaseUrl = "http://gpu:8080", Path = path };
+
+        config.ToOpenAI().BaseUrl.Should().Be(expected);
+        config.ToOpenAICompatible().ToOpenAI().BaseUrl.TrimEnd('/').Should().Be(expected.TrimEnd('/'));
+    }
+
+    [Fact]
+    public void Path_Override_DoesNotMoveRerank()
+    {
+        var config = new GpuStackConfig { BaseUrl = "http://gpu:8080", Path = "/v1-openai/" };
+        config.ToRerankConfig().BaseUrl.Should().Be("http://gpu:8080/v1/");
     }
 }

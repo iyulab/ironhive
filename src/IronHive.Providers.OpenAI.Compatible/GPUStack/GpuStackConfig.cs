@@ -3,18 +3,36 @@ using IronHive.Abstractions.Http;
 namespace IronHive.Providers.OpenAI.Compatible.GpuStack;
 
 /// <summary>
-/// GPUStack service configuration. GPUStack serves OpenAI-compatible APIs at /v1-openai/.
+/// GPUStack service configuration. GPUStack serves its OpenAI-compatible APIs at the standard <c>/v1/</c>
+/// (see <see cref="Path"/>).
 /// </summary>
 public class GpuStackConfig
 {
     private const string DefaultBaseUrl = "http://localhost:8080";
-    private const string ApiPath = "/v1-openai/";
 
     /// <summary>
     /// GPUStack serves its Jina-compatible rerank API (llama-box backend) at <c>/v1/rerank</c>,
-    /// not under <c>/v1-openai/</c> like chat/embeddings/models.
+    /// whatever <see cref="Path"/> says.
     /// </summary>
     private const string RerankApiPath = "/v1/";
+
+    /// <summary>
+    /// The path the OpenAI-compatible surface (chat completions, embeddings, models, images, audio) is served at,
+    /// appended to the base URL. (Default: <c>/v1/</c>, the path GPUStack documents.) GPUStack also answers at its
+    /// older <c>/v1-openai/</c>; set that here only for a GPUStack 0.x server that has nothing at <c>/v1/</c>. The
+    /// standard path also lets the same configuration reach an OpenAI-compatible gateway put in front of GPUStack.
+    /// Leading and trailing slashes are optional.
+    /// </summary>
+    public string Path { get; set; } = "/v1/";
+
+    private string ApiPath
+    {
+        get
+        {
+            var trimmed = (Path ?? string.Empty).Trim().Trim('/');
+            return trimmed.Length == 0 ? "/" : "/" + trimmed + "/";
+        }
+    }
 
     /// <summary>
     /// 인증용 API 키를 가져오거나 설정합니다.
@@ -103,25 +121,10 @@ public class GpuStackConfig
     /// <summary>
     /// Converts the current configuration to an equivalent <see cref="OpenAIConfig"/> instance,
     /// targeting GPUStack's OpenAI-compatible surface (chat completions, embeddings, models) at
-    /// <c>/v1-openai/</c>.
+    /// <see cref="Path"/> (<c>/v1/</c> by default).
     /// </summary>
     public OpenAIConfig ToOpenAI() => ToOpenAIConfig(ApiPath);
 
-    /// <summary>
-    /// Converts the current configuration to an equivalent <see cref="OpenAICompatibleConfig"/>, so
-    /// GPUStack's Chat Completions surface can be served by the same
-    /// <see cref="OpenAICompatibleMessageGenerator"/> that <see cref="OpenAICompatibleConfig"/> uses —
-    /// GPUStack's dynamic base-URL/API-key resolution is otherwise identical, so a GPUStack-specific
-    /// message generator would just duplicate it.
-    /// </summary>
-    /// <remarks>
-    /// This is the public path for building a GPUStack chat generator outside the service registry:
-    /// <c>new OpenAICompatibleMessageGenerator(config.ToOpenAICompatible())</c>. The registry's
-    /// <c>AddGpuStackProviders</c> does exactly this; a consumer that wires generators directly
-    /// (a gateway adapter, for example) needs the same conversion — <see cref="Path"/> set to
-    /// GPUStack's <c>/v1-openai/</c>, the resolvers, <see cref="ConnectTimeout"/> and
-    /// <see cref="TokenLimitParameter"/> carried over — and should not have to re-derive it.
-    /// </remarks>
     /// <summary>
     /// Extra request headers sent on every request — the uniform slot every IronHive provider config
     /// has, passed through to the configurations this one converts to. <c>Authorization</c> is refused
@@ -135,6 +138,21 @@ public class GpuStackConfig
     /// </summary>
     public int? MaxRetries { get; set; }
 
+    /// <summary>
+    /// Converts the current configuration to an equivalent <see cref="OpenAICompatibleConfig"/>, so
+    /// GPUStack's Chat Completions surface can be served by the same
+    /// <see cref="OpenAICompatibleMessageGenerator"/> that <see cref="OpenAICompatibleConfig"/> uses —
+    /// GPUStack's dynamic base-URL/API-key resolution is otherwise identical, so a GPUStack-specific
+    /// message generator would just duplicate it.
+    /// </summary>
+    /// <remarks>
+    /// This is the public path for building a GPUStack chat generator outside the service registry:
+    /// <c>new OpenAICompatibleMessageGenerator(config.ToOpenAICompatible())</c>. The registry's
+    /// <c>AddGpuStackProviders</c> does exactly this; a consumer that wires generators directly
+    /// (a gateway adapter, for example) needs the same conversion — <see cref="OpenAICompatibleConfig.Path"/> set to
+    /// this <see cref="Path"/>, the resolvers, <see cref="ConnectTimeout"/> and
+    /// <see cref="TokenLimitParameter"/> carried over — and should not have to re-derive it.
+    /// </remarks>
     public OpenAICompatibleConfig ToOpenAICompatible() => new()
     {
         // Baked in as the static fallback; BaseUrlResolver/ApiKeyResolver below still take
@@ -157,7 +175,7 @@ public class GpuStackConfig
     /// <summary>
     /// Converts the current configuration to an equivalent <see cref="OpenAIConfig"/> instance,
     /// targeting GPUStack's Jina-compatible rerank endpoint at <c>/v1/rerank</c> rather than
-    /// <see cref="ApiPath"/>.
+    /// <see cref="Path"/>.
     /// </summary>
     internal OpenAIConfig ToRerankConfig() => ToOpenAIConfig(RerankApiPath);
 
