@@ -12,7 +12,7 @@
     <Authors>iyulab</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/iyulab/ironhive</PackageProjectUrl>
-    <PackageTags>iyulab;AI;LLM;RAG;Agent</PackageTags>
+    <PackageTags>iyulab;AI;LLM;Agent</PackageTags>
     <RepositoryUrl>https://github.com/iyulab/ironhive</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>README.md</PackageReadmeFile>

@@ -241,28 +241,13 @@ public interface IQueueStorage : IDisposable
 ### 큐 사용 예시
 
 ```csharp
-// 메시지 발행
-await queueStorage.EnqueueAsync(new MemoryContext
-{
-    Source = new FileMemorySource
-    {
-        Id = "doc-001",
-        StorageName = "local-files",   // 파일을 읽어 올 파일 스토리지
-        FilePath = "./doc.pdf"
-    },
-    Target = new VectorMemoryTarget
-    {
-        StorageName = "qdrant",        // 적재할 벡터 스토리지
-        CollectionName = "documents",
-        EmbeddingProvider = "openai",
-        EmbeddingModel = "text-embedding-3-small"
-    }
-});
+// 메시지 발행 — 메시지는 직렬화 가능한 어떤 타입이든 된다(여기서는 문서 id 문자열)
+await queueStorage.EnqueueAsync("doc-001");
 
 // 소비자 생성 — 메시지가 도착할 때마다 콜백이 불린다
-using var consumer = await queueStorage.CreateConsumerAsync<MemoryContext>(async message =>
+using var consumer = await queueStorage.CreateConsumerAsync<string>(async message =>
 {
-    Console.WriteLine(message.Body.Source.Id);   // 처리
+    Console.WriteLine(message.Body);   // 처리
     await message.CompleteAsync();      // 처리 완료
     // 또는: await message.RequeueAsync();          // 재큐잉
     // 또는: await message.DeadAsync("reason");     // 폐기
@@ -327,5 +312,4 @@ var hive = new HiveServiceBuilder()
 
 ## 관련 문서
 
-- [MEMORY.md](MEMORY.md) — RAG 메모리 파이프라인
 - [SETUP.md](SETUP.md) — 설정 가이드

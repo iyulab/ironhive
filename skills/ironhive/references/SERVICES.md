@@ -13,15 +13,11 @@ public interface IHiveService : IDisposable
     IVideoService       Videos      { get; }
     IAudioService       Audio       { get; }
     IFileStorageService Files       { get; }
-    IMemoryService      Memory      { get; }
 
     IAgent CreateAgentFrom(Action<AgentConfig> configure);
     IAgent CreateAgentFrom(AgentCard card);
     IAgent CreateAgentFromYaml(string yaml);
 }
-
-// Extension method (IronHive.Core):
-// IMemoryWorker CreateMemoryWorkerFrom(this IHiveService service, Func<MemoryWorkerBuilder, MemoryPipelineBuilder> configure, IServiceProvider? sp = null);
 ```
 
 ## IMessageService — LLM Chat
@@ -262,16 +258,6 @@ public interface IFileStorageService
 // Usage
 await hive.Files.WriteFileAsync("s3", "documents/report.pdf", pdfStream);
 var stream = await hive.Files.ReadFileAsync("s3", "documents/report.pdf");
-```
-
-## IMemoryService — Vector Memory
-
-See [MEMORY.md](MEMORY.md) for full RAG pipeline.
-
-```csharp
-await hive.Memory.CreateCollectionAsync("qdrant", "docs", "openai", "text-embedding-3-small");
-var collection = await hive.Memory.GetCollectionAsync("qdrant", "docs");
-var results    = await collection.SemanticSearchAsync("query", new SearchOptions { Limit = 5 });
 ```
 
 ## IFileParserService (separate DI registration)

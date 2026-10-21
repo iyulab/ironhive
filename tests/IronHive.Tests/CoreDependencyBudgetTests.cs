@@ -13,13 +13,12 @@ namespace IronHive.Tests;
 /// </summary>
 public class CoreDependencyBudgetTests
 {
-    // Baseline: 13 PackageReference in src/IronHive.Core/IronHive.Core.csproj (DocumentFormat.
-    // OpenXml, HtmlAgilityPack, MessagePack, Microsoft.Data.Sqlite,
-    // Microsoft.Extensions.AI.Abstractions, Microsoft.Extensions.DependencyInjection,
-    // Microsoft.Extensions.Resilience, OpenTelemetry.Api, PdfPig, Scriban,
-    // SQLitePCLRaw.bundle_e_sqlite3, Tomlyn, YamlDotNet). Lowering this number is the point of
-    // the debt this test tracks; raising it silently defeats that point.
-    private const int Baseline = 13;
+    // Baseline: 10 PackageReference in src/IronHive.Core/IronHive.Core.csproj (DocumentFormat.
+    // OpenXml, MessagePack, Microsoft.Data.Sqlite, Microsoft.Extensions.DependencyInjection,
+    // Microsoft.Extensions.Resilience, OpenTelemetry.Api, PdfPig, SQLitePCLRaw.bundle_e_sqlite3,
+    // Tomlyn, YamlDotNet). Lowering this number is the point of the debt this test tracks;
+    // raising it silently defeats that point.
+    private const int Baseline = 10;
 
     private static DirectoryInfo RepositoryRoot()
     {

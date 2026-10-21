@@ -26,7 +26,6 @@ public class DocsSnippetCompileTests
         "README.md",
         "docs/AGENTS.md",
         "docs/ARCHITECTURE.md",
-        "docs/MEMORY.md",
         "docs/MIDDLEWARE.md",
         "docs/ORCHESTRATION.md",
         "docs/PLUGINS.md",
@@ -35,9 +34,7 @@ public class DocsSnippetCompileTests
         "docs/SETUP.md",
         "docs/STORAGES.md",
         "docs/TOOLS.md",
-        "docs/WORKFLOW.md",
         "skills/ironhive/SKILL.md",
-        "skills/ironhive/references/MEMORY.md",
         "skills/ironhive/references/MIDDLEWARE.md",
         "skills/ironhive/references/ORCHESTRATION.md",
         "skills/ironhive/references/PROVIDERS.md",
@@ -114,8 +111,6 @@ public class DocsSnippetCompileTests
         ["qdrantStorage"] = "IVectorStorage qdrantStorage = null!;",
         ["localStorage"] = "IVectorStorage localStorage = null!;",
         ["mcpClientTool"] = "Microsoft.Extensions.AI.AITool mcpClientTool = null!;",
-        ["collection"] = "IMemoryCollection collection = null!;",
-        ["context"] = "MemoryContext context = null!;",
         ["stoppingToken"] = "CancellationToken stoppingToken = default;",
         ["queueStorage"] = "IQueueStorage queueStorage = null!;",
         ["rabbitMQStorage"] = "IQueueStorage rabbitMQStorage = null!;",
@@ -134,8 +129,6 @@ public class DocsSnippetCompileTests
         ["input"] = "ToolInput input = new();",
         ["output"] = "ToolOutput output = ToolOutput.Success(\"\");",
         ["request"] = "MessageRequest request = null!;",
-        ["factory"] = "WorkflowFactory factory = null!;",
-        ["workflow"] = "IWorkflow<MyContext> workflow = null!;",
         ["delegateFn"] = "Func<string, string> delegateFn = text => text;",
         ["config"] = "OpenAIConfig config = null!;",
         ["qdrantConfig"] = "QdrantConfig qdrantConfig = null!;",
@@ -229,7 +222,7 @@ public class DocsSnippetCompileTests
     public void EveryCheckedBlock_IsFoundAndFragmentsNameRealHeadings()
     {
         Assert.True(Snippets.Count(s => s.File == "README.md") >= 4, "expected the README's C# blocks");
-        Fragments.ShouldMatch([.. Snippets], atLeast: 265);
+        Fragments.ShouldMatch([.. Snippets], atLeast: 237);
     }
 
     /// <summary>
@@ -258,7 +251,7 @@ public class DocsSnippetCompileTests
     {
         // Documents, not HostDocuments: the host compilation takes every block of a document again, and a listing is never a host block.
         var listed = Checked.Sum(d => Documents[d].Value.ListedTypes);
-        Assert.True(listed >= 65, $"expected the guides' type listings to be checked, found {listed}");
+        Assert.True(listed >= 50, $"expected the guides' type listings to be checked, found {listed}");
     }
 
     /// <summary>Positive control: the compiler rejects the GPUStack README's old message example.</summary>

@@ -15,8 +15,7 @@ IHiveService
     ├── Images       (IImageService)
     ├── Videos       (IVideoService)
     ├── Audio        (IAudioService)
-    ├── Files        (IFileStorageService)
-    └── Memory       (IMemoryService)
+    └── Files        (IFileStorageService)
 ```
 
 ---
@@ -33,15 +32,15 @@ IHiveService
 │  │  - Message   │  - BasicAgent  │  Adapters      │  │
 │  │  - Embedding │  - Middleware  │  (M.E.AI)      │  │
 │  │  - Image     │  - Orch.       │                │  │
-│  │  - Audio     │  - Workflow    │                │  │
+│  │  - Audio     │                │                │  │
 │  │  - Video     │                │                │  │
 │  │  - Model     │                │                │  │
 │  └──────────────┴────────────────┴────────────────┘  │
 │  ┌──────────────┬────────────────┬────────────────┐  │
-│  │  Tools       │  Memory        │  Storages      │  │
-│  │  - Function  │  - Collection  │  - Local File  │  │
-│  │  - Collection│  - Worker      │  - Local Vec.  │  │
-│  │              │  - Pipelines   │  - Local Queue │  │
+│  │  Tools       │  Files         │  Storages      │  │
+│  │  - Function  │  - Parsers     │  - Local File  │  │
+│  │  - Collection│                │  - Local Vec.  │  │
+│  │              │                │  - Local Queue │  │
 │  └──────────────┴────────────────┴────────────────┘  │
 ├──────────────────────────────────────────────────────┤
 │  IronHive.Abstractions (인터페이스 & DTO만)           │
@@ -158,22 +157,6 @@ OrchestratorBase (공통 기반)
 
 ---
 
-## RAG 파이프라인
-
-```
-문서/파일 → TextExtraction → TextChunking → CreateVectors → StoreVectors
-                                                 ↑
-                                        IEmbeddingGenerator
-```
-
-`MemoryWorker`가 큐 기반 비동기 ETL을 처리합니다:
-
-```
-IQueueStorage (입력) → Pipeline Steps → IVectorStorage (출력)
-```
-
----
-
 ## Microsoft.Extensions.AI 호환
 
 IronHive 구현체를 M.E.AI 생태계와 연동합니다. 브리지는 별도 패키지 `IronHive.Extensions.AI`(네임스페이스 같음)이고
@@ -257,13 +240,11 @@ src/
 │   ├── Agent/                       # BasicAgent, 미들웨어, 오케스트레이터
 │   │   └── Orchestration/           # 6개 오케스트레이터 + 빌더 + 체크포인트
 │   ├── Files/Parsers/               # PDF, Word, Excel, PPT, Image 파서
-│   ├── Memory/                      # MemoryService, Worker, 파이프라인
 │   ├── Microsoft/                   # M.E.AI 어댑터
 │   ├── Services/                    # 서비스 구현체
 │   ├── Storages/                    # 로컬 파일/벡터/큐 구현체
 │   ├── Tools/                       # ToolCollection
-│   ├── Utilities/                   # HiveTelemetry, MessageSerializer 등
-│   └── Workflow/                    # 워크플로우 엔진
+│   └── Utilities/                   # HiveTelemetry, MessageSerializer 등
 ├── IronHive.Providers.*/            # LLM 프로바이더
 │   ├── IronHive.Providers.OpenAI
 │   ├── IronHive.Providers.Anthropic

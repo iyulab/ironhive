@@ -91,7 +91,7 @@ public interface IVectorStorage : IDisposable
 }
 ```
 
-Used internally by `IMemoryService`. Access via `hive.Memory`.
+`IHiveService` does not expose registered vector storages — call the storage instance directly.
 
 ### Local Vector Storage (SQLite + sqlite-vec)
 
@@ -131,7 +131,7 @@ public interface IQueueStorage : IDisposable
 }
 ```
 
-Used internally by `MemoryWorker` pipeline. Specify name in `UseQueue("name")`.
+`IHiveService` does not expose registered queue storages — call the storage instance directly.
 
 ### Local Queue Storage (file-based: .qmsg / .qlock / .qdead)
 
@@ -180,16 +180,4 @@ var hive = new HiveServiceBuilder()
     .AddVectorStorage("qdrant", new QdrantVectorStorage(qdrantConfig))
     .AddQueueStorage("rabbit", new RabbitMQueueStorage(rabbitConfig))
     .Build();
-
-// Create RAG collection using cloud stack
-await hive.Memory.CreateCollectionAsync("qdrant", "documents", "openai", "text-embedding-3-small");
-
-// MemoryWorker reads from RabbitMQ, writes to Qdrant
-var worker = hive.CreateMemoryWorkerFrom(b =>
-    b.UseQueue("rabbit")
-     .Then<TextExtractionPipeline>("extract")
-     .Then<TextChunkingPipeline, TextChunkingPipeline.Options>("chunk",
-         new TextChunkingPipeline.Options(ChunkSize: 512, ChunkOverlap: 50))
-     .Then<CreateVectorsPipeline>("embed")
-     .Then<StoreVectorsPipeline>("store"));   // CreateMemoryWorkerFrom calls Build()
 ```

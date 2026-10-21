@@ -12,6 +12,21 @@ changes are expected and used freely for structural correctness.
   AI's unmapped image/audio formats. `MessageContent` is unsealed, so a consumer's own content subtype is the usual cause.
   Migration: code that caught `NotImplementedException` from a generator catches `NotSupportedException`.
 
+### Removed
+- **Breaking: the RAG memory pipeline is gone from IronHive.Core and IronHive.Abstractions — `IHiveService.Memory` and
+  `CreateMemoryWorkerFrom` no longer exist.** Removed with them: `IMemoryService`, `IMemoryCollection`, `IMemoryWorker`,
+  `IMemoryPipeline`, the memory sources and targets (`TextMemorySource`, `FileMemorySource`, `WebMemorySource`,
+  `VectorMemoryTarget`), `MemoryContext`, `SearchOptions`/`SearchMode`, `VectorSearchResult` (the collection search result),
+  `MemoryWorkerBuilder`/`MemoryPipelineBuilder` and the pipelines (`TextExtractionPipeline`, `TextChunkingPipeline`,
+  `DialogueExtractionPipeline`, `CreateVectorsPipeline`, `StoreVectorsPipeline`). IronHive.Core no longer depends on `HtmlAgilityPack`. `AddVectorStorage`/`AddQueueStorage`, the
+  vector and queue storages, `IHiveService.Files` and the file parsers stay. Migration: ingest and search documents with
+  FluxIndex and FluxFeed.
+- **Breaking: the YAML/JSON workflow engine is gone — `WorkflowFactory`, `WorkflowBuilder`, `WorkflowEngine<T>`,
+  `WorkflowStepBuilder<T>` and the `IronHive.Abstractions.Workflow` types (`IWorkflow<T>`, `IWorkflowFactory`,
+  `IWorkflowStep`, `WorkflowDefinition`, `WorkflowNode`, `WorkflowStepResult`, `WorkflowEventArgs`) no longer exist.**
+  Agent YAML (`AgentCard.Workflow`, `CreateAgentFromYaml`) is unaffected. Migration: compose steps with the IronHive
+  orchestrators (`SequentialOrchestrator`, `GraphOrchestratorBuilder`, …) or in your own code.
+
 ### Dependencies
 - `Anthropic` 12.53.0 -> 12.60.0 (IronHive.Providers.Anthropic).
 

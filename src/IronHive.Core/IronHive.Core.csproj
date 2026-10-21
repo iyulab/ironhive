@@ -10,7 +10,6 @@
 
   <ItemGroup>
     <PackageReference Include="DocumentFormat.OpenXml" />
-    <PackageReference Include="HtmlAgilityPack" />
     <PackageReference Include="MessagePack" />
     <PackageReference Include="Microsoft.Data.Sqlite" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />

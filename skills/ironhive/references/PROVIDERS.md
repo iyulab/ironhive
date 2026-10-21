@@ -123,9 +123,6 @@ var req = new MessageRequest
 
 // In EmbeddingService
 float[] emb = await hive.Embeddings.EmbedAsync("google", "text-embedding-004", text);
-
-// In Memory collection
-await hive.Memory.CreateCollectionAsync("qdrant", "docs", "openai", "text-embedding-3-small");
 ```
 
 ## Multiple Providers

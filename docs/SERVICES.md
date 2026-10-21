@@ -15,7 +15,6 @@ public interface IHiveService : IDisposable
     IVideoService Videos { get; }
     IAudioService Audio { get; }
     IFileStorageService Files { get; }
-    IMemoryService Memory { get; }
 
     IAgent CreateAgentFrom(Action<AgentConfig> configure);
     IAgent CreateAgentFrom(AgentCard card);
@@ -433,89 +432,6 @@ var stream = await hive.Files.ReadFileAsync("s3", "documents/report.pdf");
 
 ---
 
-## IMemoryService
-
-벡터 컬렉션 관리 및 RAG 서비스입니다.
-
-```csharp
-public interface IMemoryService
-{
-    Task<IMemoryCollection> GetCollectionAsync(string storageName, string collectionName, CancellationToken ct = default);
-    Task<IEnumerable<VectorCollectionInfo>> ListCollectionsAsync(string storageName, string? prefix = null, CancellationToken ct = default);
-    Task<bool> CollectionExistsAsync(string storageName, string collectionName, CancellationToken ct = default);
-    Task CreateCollectionAsync(string storageName, string collectionName, string embeddingProvider, string embeddingModel, CancellationToken ct = default);
-    Task DeleteCollectionAsync(string storageName, string collectionName, CancellationToken ct = default);
-}
-```
-
-### IMemoryCollection
-
-```csharp
-public interface IMemoryCollection
-{
-    string StorageName { get; }
-    string CollectionName { get; }
-    string EmbeddingProvider { get; }
-    string EmbeddingModel { get; }
-
-    // 소스 인덱싱 (큐에 작업 등록)
-    Task IndexSourceAsync(string queueName, IMemorySource source, CancellationToken ct = default);
-
-    // 소스 제거
-    Task DeindexSourceAsync(string sourceId, CancellationToken ct = default);
-
-    // 의미적 유사도 검색
-    Task<VectorSearchResult> SemanticSearchAsync(string query, SearchOptions? options = null, CancellationToken ct = default);
-}
-```
-
-### RAG 검색 예시
-
-```csharp
-// 컬렉션 생성
-await hive.Memory.CreateCollectionAsync("qdrant", "documents", "openai", "text-embedding-3-small");
-
-// 컬렉션 조회 및 검색
-var collection = await hive.Memory.GetCollectionAsync("qdrant", "documents");
-var results = await collection.SemanticSearchAsync("인공지능의 역사", new SearchOptions
-{
-    Limit = 5,          // 기본값 5
-    MinScore = 0.7f
-});
-
-foreach (var hit in results.Results)
-{
-    // hit은 ScoredVectorRecord — 본문은 Payload 항목이다 (키는 적재한 파이프라인이 정한다)
-    hit.Payload.TryGetValue("text", out var text);
-    Console.WriteLine($"[{hit.Score:F2}] {text}");
-}
-```
-
-자세한 RAG 파이프라인은 [MEMORY.md](MEMORY.md)를 참조하세요.
-
----
-
-## MemoryWorker (CreateMemoryWorkerFrom)
-
-`HiveService`의 확장 메서드로 RAG 인제스션 워커를 생성합니다:
-
-```csharp
-var worker = hive.CreateMemoryWorkerFrom(builder =>
-    builder
-        .UseQueue("local-queue")
-        .Then<TextExtractionPipeline>("extract")
-        .Then<TextChunkingPipeline, TextChunkingPipeline.Options>("chunk",
-            new TextChunkingPipeline.Options(ChunkSize: 512, ChunkOverlap: 50))
-        .Then<CreateVectorsPipeline>("embed")
-        .Then<StoreVectorsPipeline>("store"));   // Build()는 CreateMemoryWorkerFrom이 호출한다
-
-await worker.StartAsync();   // 큐 소비 시작 — 중지는 StopAsync(force)
-```
-
-자세한 내용은 [MEMORY.md](MEMORY.md)를 참조하세요.
-
----
-
 ## IFileParserService (별도 DI 등록)
 
 `AddFileParser()`로 등록합니다. `IHiveService`와 독립적입니다.
@@ -593,6 +509,5 @@ var messages = new List<Message>
 
 ## 관련 문서
 
-- [MEMORY.md](MEMORY.md) — RAG 파이프라인
 - [TOOLS.md](TOOLS.md) — 도구 시스템
 - [AGENTS.md](AGENTS.md) — 에이전트

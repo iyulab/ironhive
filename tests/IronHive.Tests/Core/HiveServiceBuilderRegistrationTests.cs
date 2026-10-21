@@ -3,7 +3,6 @@ using IronHive.Abstractions;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Vector;
-using IronHive.Abstractions.Workflow;
 using IronHive.Core;
 using NSubstitute;
 

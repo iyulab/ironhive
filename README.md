@@ -16,7 +16,7 @@
   </a>
 </p>
 
-**IronHive**는 기업용 AI 애플리케이션을 위한 .NET 10 파이프라인 프레임워크입니다. 이름 기반 레지스트리 패턴으로 멀티 Provider LLM 통합, 멀티에이전트 오케스트레이션, RAG 파이프라인, 파일 처리를 제공합니다.
+**IronHive**는 기업용 AI 애플리케이션을 위한 .NET 10 파이프라인 프레임워크입니다. 이름 기반 레지스트리 패턴으로 멀티 Provider LLM 통합, 멀티에이전트 오케스트레이션, 파일 처리를 제공합니다.
 
 ## 주요 기능
 
@@ -25,12 +25,11 @@
 - **사용량 내역** — `MessageTokenUsage` 가 입력·출력 합계 외에 캐시 읽기(`CachedInputTokens`), 캐시 쓰기(`CacheWriteInputTokens`)와 그 TTL 별 내역(`CacheWritesByTtl` — Anthropic 5분/1시간), 추론 토큰(`ReasoningTokens`)을 공급자가 보고하는 만큼 싣는다 — 공급자마다 다르게 매기는 부분을 소비자가 다시 계산할 수 있다. M.E.AI 어댑터는 `UsageDetails.ReasoningTokenCount` 와 `AdditionalCounts[ChatClientAdapter.CacheWriteInputTokenCountKey]` 로 옮긴다
 - **Anthropic 프롬프트 캐싱** — `AnthropicConfig.PromptCaching`(기본 `FiveMinutes`): 요청마다 최상위 `cache_control`(자동 캐싱)을 실어 API 가 마지막 캐시 가능 블록에 브레이크포인트를 두게 한다 — 도구 루프·다회 대화의 다음 요청이 같은 접두를 캐시 읽기 단가로 읽는다. `OneHour` 는 1시간 수명, `Off` 는 끈다. 모델 최소 길이(512~4,096 토큰)보다 짧은 프롬프트는 캐시되지 않는다
 - **멀티에이전트 오케스트레이션** — `SequentialOrchestrator` · `ParallelOrchestrator` · `HubSpokeOrchestrator`(각자의 `…OrchestratorOptions` 로 생성), `HandoffOrchestratorBuilder` · `GroupChatOrchestratorBuilder` · `GraphOrchestratorBuilder`(DAG). 공통 옵션 — 타임아웃 · `StopOnAgentFailure` · 에이전트 미들웨어 · 승인 핸들러 · 컨텍스트 스코프 · 결과 distiller — 은 옵션 객체 또는 빌더의 `Set…` 으로 준다([docs/ORCHESTRATION.md](docs/ORCHESTRATION.md))
-- **RAG 파이프라인** — 텍스트 추출, 청킹, 임베딩, 벡터 검색. 컬렉션은 `hive.Memory`(`CreateCollectionAsync` · `GetCollectionAsync`), 적재 워커는 `hive.CreateMemoryWorkerFrom(builder => …)`. 벡터·큐 스토리지를 먼저 등록해야 한다(로컬: `AddLocalVectorStorage` · `AddLocalQueueStorage`). PDF·Word·Excel·PowerPoint·이미지 파서는 opt-in `services.AddFileParser()`([docs/MEMORY.md](docs/MEMORY.md))
+- **파일 파서** — PDF·Word·Excel·PowerPoint·이미지에서 텍스트를 뽑는 파서는 opt-in `services.AddFileParser()`([docs/SETUP.md](docs/SETUP.md)). 적재·청킹·벡터 검색 같은 RAG 파이프라인은 이 패키지에 없다 — [FluxIndex](https://github.com/iyulab/FluxIndex)·[FluxFeed](https://github.com/iyulab/FluxFeed) 를 쓴다
 - **리랭킹** — `hive.Rerank`. OpenAI Compatible · GPUStack 의 `Rerank` 서비스 타입(Cohere 형태 `/rerank`)이 등록한다
 - **다중 모달리티** — 이미지 생성(`hive.Images`), 음성 TTS/STT(`hive.Audio`), 비디오 생성(`hive.Videos`). 해당 서비스를 가진 provider 를 등록하면 따라온다(OpenAI · OpenAI Compatible · GPUStack: 이미지·오디오, Google AI/Vertex AI: 이미지·비디오·오디오)
 - **플러그인** — MCP: `McpClientManager.AddOrUpdate(new McpHttpClientConfig{…}` / `McpStdioClientConfig{…})` 로 서버를 붙이고 세션의 도구를 에이전트 도구에 더한다(HTTP/Stdio/OAuth). OpenAPI: `new OpenApiClientManager(tools)` 에 `await AddOrUpdateAsync(client)` 로 `OpenApiClient` 를 등록하면 스펙의 연산이 그 `IToolCollection` 에 도구로 들어간다([docs/PLUGINS.md](docs/PLUGINS.md))
 - **M.E.AI 호환** — 패키지 `IronHive.Extensions.AI`(의존: Abstractions 뿐 — Core 없이 provider 를 `IChatClient` 로): `generator.AsChatClient(model, provider)` · `AsEmbeddingGenerator(model[, dimensions])`(차원을 주면 `EmbeddingGeneratorMetadata.DefaultModelDimensions` 로 알리고 벡터 크기를 검사) · `AIToolAdapter`(임의의 `AITool`을 `ITool`로 래핑·실행 — MCP `McpClientTool` 등). 도구 인자 스트리밍(opt-in): `ChatOptions.AdditionalProperties[ChatClientAdapter.StreamToolArgumentsKey] = true` 이면 스트리밍 응답이 인자를 쓰이는 동안 `FunctionCallDeltaContent`(`CallId` · 첫 조각의 `Name` · `ArgumentsFragment`)로도 내고, 완전한 `FunctionCallContent` 가 뒤따른다(Chat Completions·Responses·Anthropic — Anthropic 은 이때 도구마다 `eager_input_streaming` 을 켜서 서버가 입력을 끝까지 모았다 보내지 않게 한다(`MessageGenerationRequest.StreamToolArguments`, 서버 검증 없음). Google 은 호출을 한 번에 보낸다). `using IronHive.Extensions.AI;`
-- **워크플로우** — 코드 기반 타입 안전 워크플로우 엔진. `new WorkflowFactory(sp)` 의 `CreateBuilder()`(Fluent) 또는 `CreateFromYaml<TContext>` · `CreateFromJson<TContext>` 로 만들고 `IWorkflow<TContext>.RunAsync` 로 실행([docs/WORKFLOW.md](docs/WORKFLOW.md))
 - **에이전트 미들웨어** — `RetryMiddleware` · `TimeoutMiddleware` · `CircuitBreakerMiddleware` · `FallbackMiddleware` · `RateLimitMiddleware` · `BulkheadMiddleware` · `CachingMiddleware` · `LoggingMiddleware` · `CompositeMiddleware`. opt-in: `agent.WithMiddleware(…)`. 메시지 단위 미들웨어(예: `ToolResultBudgetMiddleware`)는 `HiveServiceBuilder.AddMessageMiddleware(…)`([docs/MIDDLEWARE.md](docs/MIDDLEWARE.md))
 - **함수 도구** — `tools.AddFunctionTool<T>()`(또는 인스턴스·델리게이트 오버로드)로 .NET 메서드를 에이전트 도구(`IToolCollection`)로 등록([docs/TOOLS.md](docs/TOOLS.md))
 - **스토리지** — 로컬: `AddLocalFileStorage` · `AddLocalVectorStorage` · `AddLocalQueueStorage`(Core). 클라우드: `AddAmazonS3Storage` · `AddAzureBlobStorage` · `AddAzureFilesStorage`. Qdrant · RabbitMQ 는 빌더 확장이 없으므로 인스턴스를 직접 등록한다 — `AddVectorStorage("qdrant", new QdrantVectorStorage(new QdrantConfig { … }))` · `AddQueueStorage("rabbit", new RabbitMQueueStorage(new RabbitMQConfig { … }))`([docs/STORAGES.md](docs/STORAGES.md))
@@ -50,7 +49,7 @@
 
 - **완전한 로컬 추론 루프** — [lm-supply](https://github.com/iyulab/lm-supply)로 LLM 생성·임베딩·리랭킹·OCR까지 GGUF/ONNX 백엔드로 순수 .NET에서 실행합니다. 클라우드 계정이나 네트워크 연결 없이도 에이전트 루프 전체가 동작합니다.
 - **네이티브 .NET, 브리지 불필요** — Microsoft Agent Framework의 로컬 실행 경로(Foundry Local)는 2026년 기준 Python 전용이며, .NET에서 쓰려면 커뮤니티 어댑터를 거쳐야 합니다. IronHive는 로컬 추론이 처음부터 .NET 1급 시민입니다.
-- **RAG 파이프라인 내장** — 문서 처리([FileFlux](https://github.com/iyulab/FileFlux)/[WebFlux](https://github.com/iyulab/WebFlux))부터 하이브리드 검색([FluxIndex](https://github.com/iyulab/FluxIndex))까지 별도 통합 없이 바로 사용합니다.
+- **RAG 는 같은 생태계의 전용 스택으로** — 문서 처리([FileFlux](https://github.com/iyulab/FileFlux)/[WebFlux](https://github.com/iyulab/WebFlux))부터 하이브리드 검색([FluxIndex](https://github.com/iyulab/FluxIndex))까지 같은 .NET 생태계 패키지로 구성합니다.
 
 Azure 생태계에 이미 투자한 팀이라면 Microsoft Agent Framework가 자연스러운 선택입니다. 오프라인/에어갭 환경, 데이터 상주 요구사항, 또는 클라우드 종속을 피하려는 .NET 애플리케이션이라면 IronHive가 그 자리를 채웁니다.
 
@@ -135,7 +134,7 @@ public class ChatService(IHiveService hive)
 | 패키지 | 설명 |
 |--------|------|
 | `IronHive.Abstractions` | 인터페이스 및 계약 (의존: `Microsoft.Extensions.DependencyInjection.Abstractions` 뿐) |
-| `IronHive.Core` | 핵심 구현 (에이전트, 오케스트레이터, 워크플로우) |
+| `IronHive.Core` | 핵심 구현 (에이전트, 오케스트레이터, 서비스) |
 | `IronHive.Extensions.AI` | provider 를 Microsoft.Extensions.AI `IChatClient` / `IEmbeddingGenerator` 로 — Abstractions 만 의존(Core 불필요) |
 | `IronHive.Providers.OpenAI` | OpenAI 전용 (Responses API, Embeddings, 이미지, TTS/STT) — `AddOpenAIProviders`. OpenAI 호환 서비스는 `IronHive.Providers.OpenAI.Compatible` |
 | `IronHive.Providers.Anthropic` | Anthropic Claude — `AddAnthropicProviders` |
@@ -200,9 +199,7 @@ public class ChatService(IHiveService hive)
 | [docs/AGENTS.md](docs/AGENTS.md) | 에이전트 생성 및 호출 |
 | [docs/MIDDLEWARE.md](docs/MIDDLEWARE.md) | 미들웨어 시스템 (Retry, Timeout, CircuitBreaker 등) |
 | [docs/ORCHESTRATION.md](docs/ORCHESTRATION.md) | 멀티에이전트 오케스트레이션 패턴 |
-| [docs/WORKFLOW.md](docs/WORKFLOW.md) | 워크플로우 엔진 (Fluent · YAML · JSON) |
 | [docs/TOOLS.md](docs/TOOLS.md) | FunctionTool 및 커스텀 도구 |
-| [docs/MEMORY.md](docs/MEMORY.md) | RAG 파이프라인 및 MemoryWorker |
 | [docs/PROVIDERS.md](docs/PROVIDERS.md) | AI 프로바이더 설정 |
 | [docs/STORAGES.md](docs/STORAGES.md) | 스토리지 백엔드 설정 |
 | [docs/PLUGINS.md](docs/PLUGINS.md) | MCP / OpenAPI 플러그인 |
@@ -216,7 +213,7 @@ AI 코딩 에이전트(GitHub Copilot, Claude Code, Cursor 등)에서 IronHive S
 npx skills add iyulab/ironhive
 ```
 
-설치 후 에이전트가 IronHive API 패턴, 오케스트레이션, RAG 파이프라인, 툴 사용법을 자동으로 인식합니다.
+설치 후 에이전트가 IronHive API 패턴, 오케스트레이션, 툴 사용법을 자동으로 인식합니다.
 
 ## 요구 사항
 

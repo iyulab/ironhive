@@ -5,11 +5,16 @@
     <Platform Name="x86" />
   </Configurations>
   <Folder Name="/00. docs/">
-    <File Path="docs/AGENT.md" />
-    <File Path="docs/DESIGN.md" />
-    <File Path="docs/ENDREASON.md" />
-    <File Path="docs/STRUCTURE.md" />
-    <File Path="docs/VECTORDB.md" />
+    <File Path="docs/AGENTS.md" />
+    <File Path="docs/ARCHITECTURE.md" />
+    <File Path="docs/MIDDLEWARE.md" />
+    <File Path="docs/ORCHESTRATION.md" />
+    <File Path="docs/PLUGINS.md" />
+    <File Path="docs/PROVIDERS.md" />
+    <File Path="docs/SERVICES.md" />
+    <File Path="docs/SETUP.md" />
+    <File Path="docs/STORAGES.md" />
+    <File Path="docs/TOOLS.md" />
   </Folder>
   <Folder Name="/10. src/">
     <Project Path="src/IronHive.Abstractions/IronHive.Abstractions.csproj" />

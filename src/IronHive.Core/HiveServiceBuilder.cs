@@ -113,8 +113,6 @@ public class HiveServiceBuilder : IHiveServiceBuilder
             images: imageService,
             videos: videoService,
             audio: audioService,
-            files: fileService,
-            vectors: _vectors,
-            queues: _queues);
+            files: fileService);
     }
 }

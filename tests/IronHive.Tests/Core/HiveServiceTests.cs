@@ -2,9 +2,7 @@ using AwesomeAssertions;
 using IronHive.Abstractions;
 using IronHive.Abstractions.Models;
 using IronHive.Abstractions.Embedding;
-using IronHive.Abstractions.Memory;
 using IronHive.Abstractions.Messages;
-using IronHive.Abstractions.Workflow;
 using IronHive.Core;
 using NSubstitute;
 
@@ -69,20 +67,6 @@ public class HiveServiceTests
         // Assert
         service.Embeddings.Should().NotBeNull();
         service.Embeddings.Should().BeAssignableTo<IEmbeddingService>();
-    }
-
-    [Fact]
-    public void Build_ShouldResolve_MemoryService()
-    {
-        // Arrange
-        var builder = new HiveServiceBuilder();
-
-        // Act
-        var service = builder.Build();
-
-        // Assert
-        service.Memory.Should().NotBeNull();
-        service.Memory.Should().BeAssignableTo<IMemoryService>();
     }
 
     [Fact]
