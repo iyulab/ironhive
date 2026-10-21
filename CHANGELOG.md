@@ -45,6 +45,10 @@ changes are expected and used freely for structural correctness.
 ### Dependencies
 - `Anthropic` 12.53.0 -> 12.60.0 (IronHive.Providers.Anthropic).
 
+### Fixed
+- **The README no longer describes a name-based registry or claims Foundry Local is Python-only.** The one-line summary
+  now names the builder and service surface the package has.
+
 ## 0.68.0 — 2026-10-20
 
 ### Changed
