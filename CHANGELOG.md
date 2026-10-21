@@ -13,6 +13,8 @@ changes are expected and used freely for structural correctness.
   Migration: code that caught `NotImplementedException` from a generator catches `NotSupportedException`.
 
 ### Removed
+- **Breaking: `MessageSerializer` (MessagePack helpers) is gone, and IronHive.Core no longer depends on MessagePack.**
+  Nothing in the library used it. Migration: reference MessagePack directly.
 - **Breaking: the RAG memory pipeline is gone from IronHive.Core and IronHive.Abstractions — `IHiveService.Memory` and
   `CreateMemoryWorkerFrom` no longer exist.** Removed with them: `IMemoryService`, `IMemoryCollection`, `IMemoryWorker`,
   `IMemoryPipeline`, the memory sources and targets (`TextMemorySource`, `FileMemorySource`, `WebMemorySource`,

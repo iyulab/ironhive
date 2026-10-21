@@ -241,7 +241,7 @@ src/
 │   ├── Microsoft/                   # M.E.AI 어댑터
 │   ├── Services/                    # 서비스 구현체
 │   ├── Tools/                       # ToolCollection
-│   └── Utilities/                   # HiveTelemetry, MessageSerializer 등
+│   └── Utilities/                   # HiveTelemetry 등
 ├── IronHive.Providers.*/            # LLM 프로바이더
 │   ├── IronHive.Providers.OpenAI
 │   ├── IronHive.Providers.Anthropic

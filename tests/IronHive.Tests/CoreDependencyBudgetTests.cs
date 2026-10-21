@@ -13,11 +13,11 @@ namespace IronHive.Tests;
 /// </summary>
 public class CoreDependencyBudgetTests
 {
-    // Baseline: 6 PackageReference in src/IronHive.Core/IronHive.Core.csproj (MessagePack,
+    // Baseline: 5 PackageReference in src/IronHive.Core/IronHive.Core.csproj (
     // Microsoft.Extensions.DependencyInjection, Microsoft.Extensions.Resilience, OpenTelemetry.Api,
     // Tomlyn, YamlDotNet). Lowering this number is the point of the debt this test tracks;
     // raising it silently defeats that point.
-    private const int Baseline = 6;
+    private const int Baseline = 5;
 
     private static DirectoryInfo RepositoryRoot()
     {
