@@ -555,7 +555,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
                     }
                     else
                     {
-                        throw new NotImplementedException("not supported yet");
+                        throw new NotSupportedException($"OpenAI does not support user message content of type {item.GetType().Name}.");
                     }
                 }
                 options.InputItems.Add(
@@ -597,14 +597,14 @@ public class OpenAIMessageGenerator : IMessageGenerator
                         }
                         else
                         {
-                            throw new NotImplementedException("not supported yet");
+                            throw new NotSupportedException($"OpenAI does not support assistant message content of type {content.GetType().Name}.");
                         }
                     }
                 }
             }
             else
             {
-                throw new NotImplementedException("not supported yet");
+                throw new NotSupportedException($"OpenAI does not support a message of type {msg.GetType().Name} (role {msg.Role}).");
             }
         }
 

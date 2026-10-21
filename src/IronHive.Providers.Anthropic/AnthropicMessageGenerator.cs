@@ -407,7 +407,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
                     }
                     else
                     {
-                        throw new NotSupportedException($"not supported type {item.GetType()}");
+                        throw new NotSupportedException($"Anthropic does not support user message content of type {item.GetType().Name}.");
                     }
                 }
 
@@ -529,7 +529,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
                         }
                         else
                         {
-                            throw new NotImplementedException("not supported yet");
+                            throw new NotSupportedException($"Anthropic does not support assistant message content of type {content.GetType().Name}.");
                         }
                     }
 
@@ -550,7 +550,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
             }
             else
             {
-                throw new NotImplementedException("not supported yet");
+                throw new NotSupportedException($"Anthropic does not support a message of type {message.GetType().Name} (role {message.Role}).");
             }
         }
 

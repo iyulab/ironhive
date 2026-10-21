@@ -5,6 +5,13 @@ changes are expected and used freely for structural correctness.
 
 ## Unreleased
 
+### Changed
+- **Breaking: content or a message a provider does not accept fails with `NotSupportedException` naming the provider and
+  the type** ("OpenAI does not support user message content of type MyContent."), instead of `NotImplementedException`
+  with "not supported yet". All four message generators, user and assistant content, unknown message roles, and Google
+  AI's unmapped image/audio formats. `MessageContent` is unsealed, so a consumer's own content subtype is the usual cause.
+  Migration: code that caught `NotImplementedException` from a generator catches `NotSupportedException`.
+
 ### Dependencies
 - `Anthropic` 12.53.0 -> 12.60.0 (IronHive.Providers.Anthropic).
 

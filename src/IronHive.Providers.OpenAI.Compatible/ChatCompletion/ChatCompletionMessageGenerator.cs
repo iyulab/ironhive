@@ -576,7 +576,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
                     }
                     else
                     {
-                        throw new NotImplementedException("not supported yet");
+                        throw new NotSupportedException($"The OpenAI-compatible provider does not support user message content of type {item.GetType().Name}.");
                     }
                 }
                 messages.Add(new UserChatMessage { Content = parts });
@@ -623,7 +623,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
                         }
                         else
                         {
-                            throw new NotImplementedException("not supported yet");
+                            throw new NotSupportedException($"The OpenAI-compatible provider does not support assistant message content of type {content.GetType().Name}.");
                         }
                     }
 
@@ -646,7 +646,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
             }
             else
             {
-                throw new NotImplementedException("not supported yet");
+                throw new NotSupportedException($"The OpenAI-compatible provider does not support a message of type {msg.GetType().Name} (role {msg.Role}).");
             }
         }
 

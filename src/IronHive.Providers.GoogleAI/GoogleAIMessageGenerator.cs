@@ -575,7 +575,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                     }
                     else
                     {
-                        throw new NotImplementedException("not supported yet");
+                        throw new NotSupportedException($"Google AI does not support user message content of type {item.GetType().Name}.");
                     }
                 }
                 contents.Add(new Content
@@ -692,7 +692,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                     }
                     else
                     {
-                        throw new NotImplementedException("not supported yet");
+                        throw new NotSupportedException($"Google AI does not support assistant message content of type {item.GetType().Name}.");
                     }
                 }
 
@@ -712,7 +712,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
             }
             else
             {
-                throw new NotImplementedException("not supported yet");
+                throw new NotSupportedException($"Google AI does not support a message of type {msg.GetType().Name} (role {msg.Role}).");
             }
         }
 
@@ -868,7 +868,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         ImageFormat.Png => "image/png",
         ImageFormat.Jpeg => "image/jpeg",
         ImageFormat.Webp => "image/webp",
-        _ => throw new NotImplementedException("not supported yet")
+        _ => throw new NotSupportedException($"Google AI does not support image format {format}.")
     };
 
     private static string ToMimeType(AudioFormat format) => format switch
@@ -879,7 +879,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         AudioFormat.Aac => "audio/aac",
         AudioFormat.Ogg => "audio/ogg",
         AudioFormat.Aiff => "audio/aiff",
-        _ => throw new NotImplementedException("not supported yet")
+        _ => throw new NotSupportedException($"Google AI does not support audio format {format}.")
     };
 
 }

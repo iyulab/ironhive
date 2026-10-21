@@ -18,7 +18,7 @@ namespace IronHive.Tests;
 // the failure message is the checklist: decide how each of the 4 IronHive.Providers.*
 // MessageGenerators (Anthropic/OpenAI/OpenAI.Compatible/GoogleAI) should handle it, then update
 // the roster below. This is CI-time, not compile-time, but it is exhaustive where CS8509 cannot
-// be; a runtime `NotImplementedException` deep in a provider is otherwise the only signal.
+// be; a runtime `NotSupportedException` deep in a provider (naming the type) is otherwise the only signal.
 public class MessageContentRosterTests
 {
     private static readonly Type[] KnownContentTypes =
