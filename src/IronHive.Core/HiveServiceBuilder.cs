@@ -5,9 +5,7 @@ using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Images;
 using IronHive.Abstractions.Messages;
-using IronHive.Abstractions.Queue;
 using IronHive.Abstractions.Reranking;
-using IronHive.Abstractions.Vector;
 using IronHive.Abstractions.Videos;
 using IronHive.Core.Files;
 using IronHive.Core.Services;
@@ -25,8 +23,6 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     private readonly Dictionary<string, IVideoGenerator> _videos = new();
     private readonly Dictionary<string, IAudioProcessor> _audios = new();
     private readonly Dictionary<string, IFileStorage> _files = new();
-    private readonly Dictionary<string, IVectorStorage> _vectors = new();
-    private readonly Dictionary<string, IQueueStorage> _queues = new();
 
     public IHiveServiceBuilder AddModelFinder(string name, IModelFinder finder)
     { 
@@ -78,20 +74,8 @@ public class HiveServiceBuilder : IHiveServiceBuilder
 
     public IHiveServiceBuilder AddFileStorage(string name, IFileStorage storage)
     { 
-        _files[name] = storage; 
-        return this; 
-    }
-
-    public IHiveServiceBuilder AddVectorStorage(string name, IVectorStorage storage)
-    { 
-        _vectors[name] = storage; 
-        return this; 
-    }
-
-    public IHiveServiceBuilder AddQueueStorage(string name, IQueueStorage storage)
-    { 
-        _queues[name] = storage; 
-        return this; 
+        _files[name] = storage;
+        return this;
     }
 
     public IHiveService Build()

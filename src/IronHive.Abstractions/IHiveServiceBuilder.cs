@@ -4,9 +4,7 @@ using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Images;
 using IronHive.Abstractions.Messages;
-using IronHive.Abstractions.Queue;
 using IronHive.Abstractions.Reranking;
-using IronHive.Abstractions.Vector;
 using IronHive.Abstractions.Videos;
 
 namespace IronHive.Abstractions;
@@ -22,7 +20,5 @@ public interface IHiveServiceBuilder
     IHiveServiceBuilder AddVideoGenerator(string name, IVideoGenerator generator);
     IHiveServiceBuilder AddAudioProcessor(string name, IAudioProcessor processor);
     IHiveServiceBuilder AddFileStorage(string name, IFileStorage storage);
-    IHiveServiceBuilder AddVectorStorage(string name, IVectorStorage storage);
-    IHiveServiceBuilder AddQueueStorage(string name, IQueueStorage storage);
     IHiveService Build();
 }

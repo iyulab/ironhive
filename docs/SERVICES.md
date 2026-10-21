@@ -432,30 +432,6 @@ var stream = await hive.Files.ReadFileAsync("s3", "documents/report.pdf");
 
 ---
 
-## IFileParserService (별도 DI 등록)
-
-`AddFileParser()`로 등록합니다. `IHiveService`와 독립적입니다.
-
-```csharp
-// DI 등록 (Program.cs)
-builder.Services.AddFileParser();
-
-// 사용
-public class ParseService(IFileParserService parser)
-{
-    public async Task<string> ExtractTextAsync(string fileName, Stream data)
-    {
-        var blocks = await parser.ParseAsync(fileName, data);
-        // 결과는 TextBlock / ImageBlock / BinaryBlock — 텍스트는 TextBlock에만 있다
-        return string.Join("\n", blocks.OfType<TextBlock>().Select(b => b.Text));
-    }
-}
-```
-
-지원 파일: PDF, DOCX, XLSX, PPTX, PNG/JPG 등 이미지, 기타 텍스트 파일
-
----
-
 ## 메시지 타입
 
 ### Message

@@ -10,23 +10,13 @@ IronHive에서 지원하는 스토리지 타입별 구현과 설정 방법입니
 | `IVectorStorage` | 벡터 임베딩 저장 + 유사도 검색 |
 | `IQueueStorage` | 메시지 큐 기반 비동기 처리 |
 
+파일 스토리지는 `HiveServiceBuilder` 에 이름으로 등록하고 `hive.Files` 로 쓴다(`AddFileStorage(name, storage)` 또는 아래 패키지의
+편의 메서드). 벡터·큐 스토리지는 빌더에 등록하지 않는다 — 스토리지를 직접 만들어 그 인스턴스를 쓴다. 문서 적재·검색
+파이프라인이 필요하면 [FluxIndex](https://github.com/iyulab/FluxIndex) 를 쓴다.
+
 ---
 
 ## 파일 스토리지 (IFileStorage)
-
-### 로컬 파일 시스템
-
-**패키지**: `IronHive.Core` (기본 포함)
-
-```csharp
-// 편의 메서드 사용
-builder.AddLocalFileStorage("local");
-
-// 직접 등록
-builder.AddFileStorage("local", new LocalFileStorage());
-```
-
-용도: 개발/테스트 환경, 단일 서버 운영
 
 ### Amazon S3
 
@@ -84,33 +74,17 @@ builder.AddAzureFilesStorage("azure-files", new AzureStorageConfig
 
 ## 벡터 스토리지 (IVectorStorage)
 
-### 로컬 벡터 스토리지 (SQLite)
-
-**패키지**: `IronHive.Core` (기본 포함)
-
-```csharp
-builder.AddLocalVectorStorage("local-vec", new LocalVectorConfig
-{
-    DatabasePath = "./data/vectors.db"
-    // Version 생략 시 SqliteVecInstaller.DefaultVersion
-});
-```
-
-구현 방식: SQLite + sqlite-vec(vec0) 익스텐션. `SqliteVecInstaller`로 자동 설치.
-
-용도: 개발/소규모 환경, 서버 설치 불필요
-
 ### Qdrant
 
 **패키지**: `IronHive.Storages.Qdrant`
 
 ```csharp
-builder.AddVectorStorage("qdrant", new QdrantVectorStorage(new QdrantConfig
+using var vectors = new QdrantVectorStorage(new QdrantConfig
 {
     Host = "localhost",
     Port = 6334,      // gRPC 포트
     ApiKey = "..."    // 선택사항
-}));
+});
 ```
 
 지원 기능: 고성능 벡터 검색, 컬렉션 관리, 페이로드 필터링, 앨리어스 관리
@@ -146,7 +120,7 @@ public interface IVectorStorage : IDisposable
 ### 직접 사용 예시
 
 ```csharp
-IVectorStorage vectorStorage = qdrantStorage;   // 등록한 벡터 스토리지 중 하나
+IVectorStorage vectorStorage = qdrantStorage;   // 직접 만든 스토리지 인스턴스(예: QdrantVectorStorage)
 float[] embeddingVector = await hive.Embeddings.EmbedAsync("openai", "text-embedding-3-small", "문서 내용...");
 
 // 컬렉션 생성 — 이름과 차원, 그 벡터를 만든 임베딩 모델을 함께 기록한다
@@ -185,37 +159,22 @@ foreach (var hit in results)
 
 ## 큐 스토리지 (IQueueStorage)
 
-### 로컬 큐 스토리지
-
-**패키지**: `IronHive.Core` (기본 포함)
-
-```csharp
-builder.AddLocalQueueStorage("local-queue", new LocalQueueConfig
-{
-    DirectoryPath = "./data/queue",
-    // TimeToLive = TimeSpan.FromHours(24),  // 생략 시 만료 없음
-    // CacheSize = 100,                      // 기본값
-});
-```
-
-구현 방식: 파일 시스템 기반 (`.qmsg`, `.qlock`, `.qdead` 확장자). 단일 프로세스 환경에 적합.
-
 ### RabbitMQ
 
 **패키지**: `IronHive.Storages.RabbitMQ`
 
 ```csharp
-builder.AddQueueStorage("rabbitmq", new RabbitMQueueStorage(new RabbitMQConfig
+using var queue = new RabbitMQueueStorage(new RabbitMQConfig
 {
     Host = "localhost",       // 기본값 "localhost"
     Port = 5672,              // 기본값 5672
     UserName = "guest",
     Password = "guest",
     VirtualHost = "/",
-    QueueName = "memory-tasks",   // 필수
+    QueueName = "tasks",          // 필수
     // SslEnabled = true,
     // MessageTTL = 3_600_000,    // ms
-}));
+});
 ```
 
 구성 요소:
@@ -236,7 +195,7 @@ public interface IQueueStorage : IDisposable
 }
 ```
 
-메서드에는 큐 이름 인자가 없다 — 등록한 스토리지 하나가 큐 하나다(`RabbitMQConfig.QueueName`, 로컬 큐는 `LocalQueueConfig.DirectoryPath`). 큐가 여럿이면 스토리지를 이름별로 등록한다.
+메서드에는 큐 이름 인자가 없다 — 스토리지 하나가 큐 하나다(`RabbitMQConfig.QueueName`). 큐가 여럿이면 스토리지를 큐마다 하나씩 만든다.
 
 ### 큐 사용 예시
 
@@ -259,25 +218,21 @@ await consumer.StopAsync();
 
 ---
 
-## 다중 스토리지 구성
+## 다중 파일 스토리지 구성
 
-여러 스토리지를 용도별로 등록하여 이름으로 구분합니다:
+여러 파일 스토리지를 용도별로 등록하여 이름으로 구분합니다:
 
 ```csharp
 var hive = new HiveServiceBuilder()
-    // 파일 스토리지
     .AddAmazonS3Storage("docs", s3Config)
-    .AddLocalFileStorage("temp")
-
-    // 벡터 스토리지
-    .AddVectorStorage("prod-vec", qdrantStorage)
-    .AddLocalVectorStorage("dev-vec", localVecConfig)
-
-    // 큐 스토리지
-    .AddQueueStorage("tasks", rabbitMQStorage)
-    .AddLocalQueueStorage("dev-queue", localQueueConfig)
-
+    .AddAzureBlobStorage("archive", new AzureStorageConfig
+    {
+        ConnectionString = "...",
+        StorageName = "archive"
+    })
     .Build();
+
+await hive.Files.WriteFileAsync("archive", "2026/report.pdf", pdfStream);
 ```
 
 ---
@@ -290,14 +245,14 @@ var hive = new HiveServiceBuilder()
 |----------|------|
 | AWS 환경 | Amazon S3 |
 | Azure 환경 | Azure Blob Storage |
-| 온프레미스 / 개발 | 로컬 파일 시스템 |
+| SMB 호환 공유 | Azure File Share |
 
 ### 벡터 스토리지
 
 | 시나리오 | 추천 |
 |----------|------|
-| 프로덕션 RAG | Qdrant |
-| 개발 / 프로토타이핑 | 로컬 SQLite |
+| 벡터 저장소만 필요 | Qdrant (`IronHive.Storages.Qdrant`) |
+| 문서 적재·하이브리드 검색 | FluxIndex |
 | 대규모 / 고가용성 | Qdrant 클러스터 |
 
 ### 큐 스토리지
@@ -305,7 +260,6 @@ var hive = new HiveServiceBuilder()
 | 시나리오 | 추천 |
 |----------|------|
 | 분산 처리 | RabbitMQ |
-| 단일 서버 / 개발 | 로컬 큐 |
 | 고가용성 | RabbitMQ 클러스터 |
 
 ---

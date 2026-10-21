@@ -1,9 +1,9 @@
 # Storage Backends
 
-IronHive has three storage abstractions: **IFileStorage**, **IVectorStorage**, and **IQueueStorage**.  
-All are registered by name on `HiveServiceBuilder` and referenced by that name at runtime.
-Any implementation can be registered with `AddFileStorage` / `AddVectorStorage` / `AddQueueStorage`;
-some packages add a shortcut extension on top.
+IronHive has three storage abstractions: **IFileStorage**, **IVectorStorage**, and **IQueueStorage**.
+File storages are registered by name on `HiveServiceBuilder` (`AddFileStorage`, or a package's shortcut extension) and
+reached through `hive.Files` by that name. Vector and queue storages are not registered on the builder — construct the
+storage and call the instance directly. For document ingestion and hybrid search use FluxIndex.
 
 ## IFileStorage (File Storage)
 
@@ -24,13 +24,6 @@ Accessed via `hive.Files` (same methods with the storage name first):
 ```csharp
 await hive.Files.WriteFileAsync("my-storage", "path/to/file.pdf", stream);
 var s = await hive.Files.ReadFileAsync("my-storage", "path/to/file.pdf");
-```
-
-### Local File Storage
-
-```csharp
-builder
-.AddLocalFileStorage("local");    // no config — file paths are used as given
 ```
 
 ### Amazon S3
@@ -91,27 +84,17 @@ public interface IVectorStorage : IDisposable
 }
 ```
 
-`IHiveService` does not expose registered vector storages — call the storage instance directly.
-
-### Local Vector Storage (SQLite + sqlite-vec)
-
-```csharp
-builder
-.AddLocalVectorStorage("local-vec", new LocalVectorConfig { DatabasePath = "./data/vectors.db" });
-```
-
 ### Qdrant
 
 ```csharp
-// dotnet add package IronHive.Storages.Qdrant — no shortcut extension; register the storage instance
-builder
-.AddVectorStorage("qdrant", new QdrantVectorStorage(new QdrantConfig
+// dotnet add package IronHive.Storages.Qdrant — construct the storage and use it directly
+using var vectors = new QdrantVectorStorage(new QdrantConfig
 {
     Host   = "localhost",
     Port   = 6334,                 // gRPC port (default)
     Https  = false,
     ApiKey = "..."                 // optional
-}));
+});
 ```
 
 ---
@@ -131,21 +114,11 @@ public interface IQueueStorage : IDisposable
 }
 ```
 
-`IHiveService` does not expose registered queue storages — call the storage instance directly.
-
-### Local Queue Storage (file-based: .qmsg / .qlock / .qdead)
-
-```csharp
-builder
-.AddLocalQueueStorage("local-queue", new LocalQueueConfig { DirectoryPath = "./data/queue" });
-```
-
 ### RabbitMQ
 
 ```csharp
-// dotnet add package IronHive.Storages.RabbitMQ — no shortcut extension; register the storage instance
-builder
-.AddQueueStorage("rabbit", new RabbitMQueueStorage(new RabbitMQConfig
+// dotnet add package IronHive.Storages.RabbitMQ — construct the storage and use it directly
+using var queue = new RabbitMQueueStorage(new RabbitMQConfig
 {
     Host        = "localhost",
     Port        = 5672,
@@ -153,31 +126,21 @@ builder
     Password    = "pass",
     VirtualHost = "/",
     QueueName   = "hive-tasks"     // required
-}));
+});
 ```
 
 ---
 
-## Common Setup Patterns
+## Common Setup Pattern
 
-### Full Local Stack (no external dependencies)
-
-```csharp
-var hive = new HiveServiceBuilder()
-    .AddOpenAIProviders("openai", new OpenAIConfig { ApiKey = "sk-..." })
-    .AddLocalFileStorage("files")
-    .AddLocalVectorStorage("vectors", new LocalVectorConfig { DatabasePath = "./data/vectors.db" })
-    .AddLocalQueueStorage("queue", new LocalQueueConfig { DirectoryPath = "./data/queue" })
-    .Build();
-```
-
-### Production Stack (S3 + Qdrant + RabbitMQ)
+### Providers + file storage, vector and queue storages alongside
 
 ```csharp
 var hive = new HiveServiceBuilder()
     .AddOpenAIProviders("openai", config)
     .AddAmazonS3Storage("s3", s3Config)
-    .AddVectorStorage("qdrant", new QdrantVectorStorage(qdrantConfig))
-    .AddQueueStorage("rabbit", new RabbitMQueueStorage(rabbitConfig))
     .Build();
+
+using var vectors = new QdrantVectorStorage(qdrantConfig);
+using var queue = new RabbitMQueueStorage(rabbitConfig);
 ```

@@ -260,27 +260,6 @@ await hive.Files.WriteFileAsync("s3", "documents/report.pdf", pdfStream);
 var stream = await hive.Files.ReadFileAsync("s3", "documents/report.pdf");
 ```
 
-## IFileParserService (separate DI registration)
-
-Registered via `services.AddFileParser()` — independent of `IHiveService`.
-
-```csharp
-// Program.cs
-builder.Services.AddFileParser();
-
-// Usage
-public class ParseService(IFileParserService parser)
-{
-    public async Task<string> ExtractTextAsync(string fileName, Stream data)
-    {
-        var blocks = await parser.ParseAsync(fileName, data);   // TextBlock | ImageBlock
-        return string.Join("\n", blocks.OfType<TextBlock>().Select(b => b.Text));
-    }
-}
-```
-
-Supported: PDF (`.pdf`), Word (`.docx`), Excel (`.xlsx`), PowerPoint (`.pptx`), Images (`.png`, `.jpg`, etc.), plain text
-
 ## Message Types
 
 ```csharp

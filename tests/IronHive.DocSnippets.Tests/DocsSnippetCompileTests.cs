@@ -109,14 +109,11 @@ public class DocsSnippetCompileTests
         ["openAIGenerator"] = "IMessageGenerator openAIGenerator = null!;",
         ["anthropicGenerator"] = "IMessageGenerator anthropicGenerator = null!;",
         ["qdrantStorage"] = "IVectorStorage qdrantStorage = null!;",
-        ["localStorage"] = "IVectorStorage localStorage = null!;",
+        ["s3Storage"] = "IFileStorage s3Storage = null!;",
         ["mcpClientTool"] = "Microsoft.Extensions.AI.AITool mcpClientTool = null!;",
         ["stoppingToken"] = "CancellationToken stoppingToken = default;",
         ["queueStorage"] = "IQueueStorage queueStorage = null!;",
-        ["rabbitMQStorage"] = "IQueueStorage rabbitMQStorage = null!;",
         ["s3Config"] = "AmazonS3Config s3Config = null!;",
-        ["localVecConfig"] = "LocalVectorConfig localVecConfig = null!;",
-        ["localQueueConfig"] = "LocalQueueConfig localQueueConfig = null!;",
         ["services"] = "IServiceCollection services = new ServiceCollection();",
         ["existingHiveInstance"] = "IHiveService existingHiveInstance = null!;",
         ["yamlString"] = "string yamlString = \"\";",
@@ -222,7 +219,7 @@ public class DocsSnippetCompileTests
     public void EveryCheckedBlock_IsFoundAndFragmentsNameRealHeadings()
     {
         Assert.True(Snippets.Count(s => s.File == "README.md") >= 4, "expected the README's C# blocks");
-        Fragments.ShouldMatch([.. Snippets], atLeast: 237);
+        Fragments.ShouldMatch([.. Snippets], atLeast: 226);
     }
 
     /// <summary>

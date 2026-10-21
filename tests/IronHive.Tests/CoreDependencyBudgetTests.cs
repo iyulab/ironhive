@@ -4,21 +4,20 @@ using Xunit;
 namespace IronHive.Tests;
 
 /// <summary>
-/// IronHive.Core is meant to stay a thin implementation layer, but it currently carries a heavy
-/// third-party footprint (a document format library, a PDF parser, a templating engine, among
-/// others) that a slim core ideally would not need directly. Shrinking that footprint is a
-/// separate, deliberate effort; this test does not attempt it. What it does do is stop further
+/// IronHive.Core is meant to stay a thin implementation layer, but it still carries third-party
+/// dependencies (serializers, resilience, telemetry) that a slim core ideally would not need
+/// directly. Shrinking that footprint is a separate, deliberate effort; this test does not
+/// attempt it. What it does do is stop further
 /// growth from landing silently -- adding a `PackageReference` to `IronHive.Core.csproj` now
 /// requires a conscious bump of the baseline below, in the same commit that explains why.
 /// </summary>
 public class CoreDependencyBudgetTests
 {
-    // Baseline: 10 PackageReference in src/IronHive.Core/IronHive.Core.csproj (DocumentFormat.
-    // OpenXml, MessagePack, Microsoft.Data.Sqlite, Microsoft.Extensions.DependencyInjection,
-    // Microsoft.Extensions.Resilience, OpenTelemetry.Api, PdfPig, SQLitePCLRaw.bundle_e_sqlite3,
+    // Baseline: 6 PackageReference in src/IronHive.Core/IronHive.Core.csproj (MessagePack,
+    // Microsoft.Extensions.DependencyInjection, Microsoft.Extensions.Resilience, OpenTelemetry.Api,
     // Tomlyn, YamlDotNet). Lowering this number is the point of the debt this test tracks;
     // raising it silently defeats that point.
-    private const int Baseline = 10;
+    private const int Baseline = 6;
 
     private static DirectoryInfo RepositoryRoot()
     {

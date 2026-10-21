@@ -32,9 +32,6 @@ builder.Services.AddHiveService((hiveBuilder, sp) =>
             ApiKey = builder.Configuration["OpenAI:ApiKey"]!
         })
         .Build());
-
-// Optional: file parsing service (independent of IHiveService)
-builder.Services.AddFileParser();
 ```
 
 ```csharp
@@ -88,21 +85,7 @@ builder
 });
 ```
 
-## Local Storage Extension Methods
-
-```csharp
-builder
-// File storage (local filesystem — file paths are used as given; no config)
-.AddLocalFileStorage("local-files")
-
-// Vector storage (SQLite + sqlite-vec) — DatabasePath is the SQLite file
-.AddLocalVectorStorage("local-vec", new LocalVectorConfig { DatabasePath = "./data/vectors.db" })
-
-// Queue storage (file-based .qmsg/.qlock/.qdead) — one directory per queue
-.AddLocalQueueStorage("local-queue", new LocalQueueConfig { DirectoryPath = "./data/queue" });
-```
-
-## External Storage
+## File Storage
 
 ```csharp
 builder
@@ -127,19 +110,25 @@ builder
 {
     ConnectionString = "...",
     StorageName      = "hive-share"
-})
+});
+```
 
-// Qdrant vector DB (gRPC, default port 6334) — no shortcut extension; register the storage instance
-.AddVectorStorage("qdrant", new QdrantVectorStorage(new QdrantConfig { Host = "localhost", Port = 6334 }))
+## Vector and Queue Storage
+
+Not registered on the builder — construct the storage and use the instance directly.
+
+```csharp
+// Qdrant vector DB (gRPC, default port 6334)
+using var vectors = new QdrantVectorStorage(new QdrantConfig { Host = "localhost", Port = 6334 });
 
 // RabbitMQ queue — one IQueueStorage per queue
-.AddQueueStorage("rabbit", new RabbitMQueueStorage(new RabbitMQConfig
+using var queue = new RabbitMQueueStorage(new RabbitMQConfig
 {
     Host      = "localhost",
     UserName  = "guest",
     Password  = "guest",
     QueueName = "hive-tasks"
-}));
+});
 ```
 
 ## HiveServiceBuilder Full Signature (key methods)
@@ -156,15 +145,9 @@ public class HiveServiceBuilder
     IHiveServiceBuilder AddOpenAICompatibleProviders(string name, OpenAICompatibleConfig config, OpenAICompatibleServiceType serviceType = OpenAICompatibleServiceType.All);
     IHiveServiceBuilder AddGpuStackProviders(string name, GpuStackConfig config, GpuStackServiceType serviceType = GpuStackServiceType.All);
 
-    // Storage (IronHive.Core extensions)
-    IHiveServiceBuilder AddLocalFileStorage(string name);
-    IHiveServiceBuilder AddLocalVectorStorage(string name, LocalVectorConfig config);
-    IHiveServiceBuilder AddLocalQueueStorage(string name, LocalQueueConfig config);
-
-    // Any storage instance (IHiveServiceBuilder members)
+    // File storage (storage package extensions: AddAmazonS3Storage, AddAzureBlobStorage, AddAzureFilesStorage)
+    // Any file storage instance (IHiveServiceBuilder member)
     IHiveServiceBuilder AddFileStorage(string name, IFileStorage storage);
-    IHiveServiceBuilder AddVectorStorage(string name, IVectorStorage storage);
-    IHiveServiceBuilder AddQueueStorage(string name, IQueueStorage storage);
 
     // Build
     IHiveService Build();

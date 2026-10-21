@@ -36,12 +36,11 @@ IHiveService
 │  │  - Video     │                │                │  │
 │  │  - Model     │                │                │  │
 │  └──────────────┴────────────────┴────────────────┘  │
-│  ┌──────────────┬────────────────┬────────────────┐  │
-│  │  Tools       │  Files         │  Storages      │  │
-│  │  - Function  │  - Parsers     │  - Local File  │  │
-│  │  - Collection│                │  - Local Vec.  │  │
-│  │              │                │  - Local Queue │  │
-│  └──────────────┴────────────────┴────────────────┘  │
+│  ┌──────────────┬────────────────┐                   │
+│  │  Tools       │  Files         │                   │
+│  │  - Function  │  - Storage     │                   │
+│  │  - Collection│    service     │                   │
+│  └──────────────┴────────────────┘                   │
 ├──────────────────────────────────────────────────────┤
 │  IronHive.Abstractions (인터페이스 & DTO만)           │
 ├───────────┬─────────────┬──────────────┬─────────────┤
@@ -69,9 +68,9 @@ IronHive.Abstractions   ← Providers, Storages, Plugins도 여기에 의존
 
 - **Abstractions** — 인터페이스, DTO, enum만. 외부 패키지 의존 없음.
 - **Core** — Abstractions 구현. OpenTelemetry, System.Text.Json 의존.
-- **Providers** — Core + Abstractions 참조. 각 LLM SDK 의존.
-- **Storages** — Core + Abstractions 참조. 각 저장소 SDK 의존.
-- **Plugins** — Core + Abstractions 참조.
+- **Providers** — Abstractions 참조(Core 비참조). 각 LLM SDK 의존.
+- **Storages** — Abstractions 참조(Core 비참조). 각 저장소 SDK 의존.
+- **Plugins** — Abstractions 참조(Core 비참조).
 
 ---
 
@@ -122,14 +121,13 @@ IronHive.Abstractions   ← Providers, Storages, Plugins도 여기에 의존
 
 ## 이름 기반 라우팅
 
-모든 Generator/Storage는 문자열 키(이름)로 등록됩니다. 요청 시 `Provider` 필드로 어떤 구현을 사용할지 결정합니다:
+모든 Generator와 파일 스토리지는 문자열 키(이름)로 등록됩니다. 요청 시 `Provider` 필드로 어떤 구현을 사용할지 결정합니다:
 
 ```csharp
 var hive = new HiveServiceBuilder()
     .AddMessageGenerator("openai", openAIGenerator)
     .AddMessageGenerator("claude", anthropicGenerator)
-    .AddVectorStorage("qdrant-prod", qdrantStorage)
-    .AddVectorStorage("local", localStorage)
+    .AddFileStorage("s3", s3Storage)
     .Build();
 
 // 요청 시 이름으로 라우팅
@@ -239,10 +237,9 @@ src/
 ├── IronHive.Core/                   # 핵심 구현
 │   ├── Agent/                       # BasicAgent, 미들웨어, 오케스트레이터
 │   │   └── Orchestration/           # 6개 오케스트레이터 + 빌더 + 체크포인트
-│   ├── Files/Parsers/               # PDF, Word, Excel, PPT, Image 파서
+│   ├── Files/                       # FileStorageService (이름으로 등록한 IFileStorage 라우팅)
 │   ├── Microsoft/                   # M.E.AI 어댑터
 │   ├── Services/                    # 서비스 구현체
-│   ├── Storages/                    # 로컬 파일/벡터/큐 구현체
 │   ├── Tools/                       # ToolCollection
 │   └── Utilities/                   # HiveTelemetry, MessageSerializer 등
 ├── IronHive.Providers.*/            # LLM 프로바이더

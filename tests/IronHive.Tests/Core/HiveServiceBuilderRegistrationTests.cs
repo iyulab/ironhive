@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using IronHive.Abstractions;
 using IronHive.Abstractions.Embedding;
 using IronHive.Abstractions.Messages;
-using IronHive.Abstractions.Vector;
 using IronHive.Core;
 using NSubstitute;
 
@@ -61,22 +60,6 @@ public class HiveServiceBuilderRegistrationTests
         builder.AddEmbeddingGenerator("openai", gen1);
 
         var act = () => builder.AddEmbeddingGenerator("openai", gen2);
-
-        act.Should().NotThrow();
-    }
-
-    // --- AddVectorStorage (dict-based, last-write-wins) ---
-
-    [Fact]
-    public void AddVectorStorage_DuplicateName_OverwritesPrevious()
-    {
-        var builder = new HiveServiceBuilder();
-        var storage1 = Substitute.For<IVectorStorage>();
-        var storage2 = Substitute.For<IVectorStorage>();
-
-        builder.AddVectorStorage("main", storage1);
-
-        var act = () => builder.AddVectorStorage("main", storage2);
 
         act.Should().NotThrow();
     }

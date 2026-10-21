@@ -18,14 +18,27 @@ changes are expected and used freely for structural correctness.
   `IMemoryPipeline`, the memory sources and targets (`TextMemorySource`, `FileMemorySource`, `WebMemorySource`,
   `VectorMemoryTarget`), `MemoryContext`, `SearchOptions`/`SearchMode`, `VectorSearchResult` (the collection search result),
   `MemoryWorkerBuilder`/`MemoryPipelineBuilder` and the pipelines (`TextExtractionPipeline`, `TextChunkingPipeline`,
-  `DialogueExtractionPipeline`, `CreateVectorsPipeline`, `StoreVectorsPipeline`). IronHive.Core no longer depends on `HtmlAgilityPack`. `AddVectorStorage`/`AddQueueStorage`, the
-  vector and queue storages, `IHiveService.Files` and the file parsers stay. Migration: ingest and search documents with
-  FluxIndex and FluxFeed.
+  `DialogueExtractionPipeline`, `CreateVectorsPipeline`, `StoreVectorsPipeline`). IronHive.Core no longer depends on `HtmlAgilityPack`. `IHiveService.Files` stays. Migration: ingest
+  and search documents with FluxIndex and FluxFeed.
 - **Breaking: the YAML/JSON workflow engine is gone — `WorkflowFactory`, `WorkflowBuilder`, `WorkflowEngine<T>`,
   `WorkflowStepBuilder<T>` and the `IronHive.Abstractions.Workflow` types (`IWorkflow<T>`, `IWorkflowFactory`,
   `IWorkflowStep`, `WorkflowDefinition`, `WorkflowNode`, `WorkflowStepResult`, `WorkflowEventArgs`) no longer exist.**
   Agent YAML (`AgentCard.Workflow`, `CreateAgentFromYaml`) is unaffected. Migration: compose steps with the IronHive
   orchestrators (`SequentialOrchestrator`, `GraphOrchestratorBuilder`, …) or in your own code.
+- **Breaking: the document parsers are gone — `services.AddFileParser()`, `IFileParserService`, `IFileParser`, the
+  parsers (`PdfParser`, `WordParser`, `ExcelParser`, `PowerPointParser`, `ImageParser`), `FileParserService` and the
+  parse results `FileBlock` (`TextBlock`, `ImageBlock`, `BinaryBlock`) no longer exist.** IronHive.Core no longer depends
+  on `PdfPig` or `DocumentFormat.OpenXml`. Migration: parse documents with FileFlux.
+- **Breaking: the local storages are gone from IronHive.Core — `AddLocalFileStorage`, `AddLocalVectorStorage`,
+  `AddLocalQueueStorage`, `LocalFileStorage`, `LocalVectorStorage`/`LocalVectorConfig`, `LocalQueueStorage`/
+  `LocalQueueConfig` (with its consumer and message types) and `SqliteVecInstaller` no longer exist.** IronHive.Core no
+  longer depends on `Microsoft.Data.Sqlite` or `SQLitePCLRaw.bundle_e_sqlite3`. Migration: for document storage and
+  search use FluxIndex; for a file storage register an `IronHive.Storages.Amazon`/`.Azure` storage (or your own
+  `IFileStorage`) with `AddFileStorage`; for vectors or queues construct an `IronHive.Storages.Qdrant`/`.RabbitMQ` storage.
+- **Breaking: `IHiveServiceBuilder.AddVectorStorage` and `AddQueueStorage` are removed — they had no effect.** A storage
+  registered with them was reachable from nothing `Build()` returned. Migration: delete the call and keep the storage
+  instance you constructed (`new QdrantVectorStorage(…)`, `new RabbitMQueueStorage(…)`) to call it directly. The
+  `IVectorStorage`/`IQueueStorage` abstractions, `AddFileStorage` and `IHiveService.Files` are unchanged.
 
 ### Dependencies
 - `Anthropic` 12.53.0 -> 12.60.0 (IronHive.Providers.Anthropic).

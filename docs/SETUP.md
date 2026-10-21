@@ -7,13 +7,14 @@ IronHive 초기 설정 및 DI 통합 방법입니다.
 ```bash
 dotnet add package IronHive.Core
 dotnet add package IronHive.Providers.OpenAI    # 또는 Anthropic, GoogleAI 등
+dotnet add package IronHive.Storages.Amazon     # 선택: 파일 스토리지(또는 Azure)
 ```
 
 ---
 
 ## HiveServiceBuilder
 
-`HiveServiceBuilder`로 프로바이더와 스토리지를 등록한 후 `IHiveService`를 빌드합니다.
+`HiveServiceBuilder`로 프로바이더와 파일 스토리지를 등록한 후 `IHiveService`를 빌드합니다.
 
 ### 기본 패턴
 
@@ -26,13 +27,13 @@ var hive = new HiveServiceBuilder()
     .AddOpenAIProviders("openai", new OpenAIConfig { ApiKey = "..." })
     .AddAnthropicProviders("anthropic", new AnthropicConfig { ApiKey = "..." })
 
-    // 스토리지 등록
-    .AddLocalVectorStorage("local-vec", new LocalVectorConfig { DatabasePath = "./data/vectors.db" })
-    .AddLocalQueueStorage("local-queue", new LocalQueueConfig { DirectoryPath = "./data/queue" })
-    .AddLocalFileStorage("local-files")
+    // 파일 스토리지 등록 (hive.Files 가 이름으로 찾는다)
+    .AddAmazonS3Storage("s3", s3Config)
 
     .Build();
 ```
+
+벡터·큐 스토리지(`IVectorStorage`·`IQueueStorage`)는 빌더에 등록하지 않는다 — `IronHive.Storages.Qdrant`·`IronHive.Storages.RabbitMQ` 의 스토리지를 직접 만들어 쓴다([STORAGES.md](STORAGES.md)).
 
 ### IHiveServiceBuilder 메서드
 
@@ -45,8 +46,6 @@ var hive = new HiveServiceBuilder()
 | `AddVideoGenerator(name, gen)` | 비디오 생성기 등록 |
 | `AddAudioProcessor(name, proc)` | 오디오 처리기 등록 |
 | `AddFileStorage(name, storage)` | 파일 스토리지 등록 |
-| `AddVectorStorage(name, storage)` | 벡터 스토리지 등록 |
-| `AddQueueStorage(name, storage)` | 큐 스토리지 등록 |
 | `Build()` | `IHiveService` 인스턴스 생성 |
 
 ---
@@ -97,27 +96,6 @@ builder.AddOpenAIProviders("openai", new OpenAIConfig { ApiKey = "sk-..." },
 
 ---
 
-## 로컬 스토리지 편의 메서드
-
-```csharp
-// 로컬 파일 스토리지 (디렉토리 기반)
-builder.AddLocalFileStorage("local");
-
-// 로컬 벡터 스토리지 (SQLite + sqlite-vec)
-builder.AddLocalVectorStorage("local-vec", new LocalVectorConfig
-{
-    DatabasePath = "./vectors.db"
-});
-
-// 로컬 큐 스토리지 (파일 시스템 기반)
-builder.AddLocalQueueStorage("local-queue", new LocalQueueConfig
-{
-    DirectoryPath = "./queue-data"
-});
-```
-
----
-
 ## ASP.NET Core DI 통합
 
 ```csharp
@@ -128,11 +106,7 @@ builder.Services.AddHiveService((hiveBuilder, serviceProvider) =>
         {
             ApiKey = builder.Configuration["OpenAI:ApiKey"]!
         })
-        .AddLocalVectorStorage("local", new LocalVectorConfig { DatabasePath = "./vectors.db" })
         .Build());
-
-// 파일 파서 등록 (PDF, Word, Excel, PPT, Image)
-builder.Services.AddFileParser();
 ```
 
 ### DI에서 사용
@@ -192,38 +166,6 @@ services.AddHiveService((builder, sp) =>
 
 // 기존 인스턴스 직접 등록
 services.AddHiveService(existingHiveInstance);
-```
-
----
-
-## 파일 파서 등록
-
-`AddFileParser()`는 다음 파서를 DI에 등록합니다:
-
-| 파서 | 지원 형식 |
-|------|----------|
-| `PdfParser` | PDF |
-| `WordParser` | DOCX |
-| `ExcelParser` | XLSX |
-| `PowerPointParser` | PPTX |
-| `ImageParser` | PNG, JPG, GIF 등 |
-
-미지원 형식은 null byte 휴리스틱으로 텍스트/바이너리 자동 판별.
-
-```csharp
-services.AddFileParser();
-
-// DI에서 사용
-public class DocumentService(IFileParserService parserService)
-{
-    public async Task<string> ParseAsync(string fileName, Stream stream)
-    {
-        // 파일명(확장자)이 파서를 고른다
-        var blocks = await parserService.ParseAsync(fileName, stream);
-        // 블록은 TextBlock · ImageBlock · BinaryBlock 중 하나다
-        return string.Concat(blocks.OfType<TextBlock>().Select(b => b.Text));
-    }
-}
 ```
 
 ---
