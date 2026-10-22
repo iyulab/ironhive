@@ -4,7 +4,7 @@ namespace IronHive.Tests.Resources;
 
 /// <summary>
 /// Tests to verify SemaphoreSlim resources are properly disposed.
-/// Issue #5: SemaphoreSlim not disposed in RabbitMQueueStorage and McpSession.
+/// Issue #5: SemaphoreSlim not disposed in McpSession.
 /// </summary>
 public class SemaphoreSlimDisposeTests
 {

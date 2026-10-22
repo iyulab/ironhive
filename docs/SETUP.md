@@ -7,14 +7,13 @@ IronHive 초기 설정 및 DI 통합 방법입니다.
 ```bash
 dotnet add package IronHive.Core
 dotnet add package IronHive.Providers.OpenAI    # 또는 Anthropic, GoogleAI 등
-dotnet add package IronHive.Storages.Amazon     # 선택: 파일 스토리지(또는 Azure)
 ```
 
 ---
 
 ## HiveServiceBuilder
 
-`HiveServiceBuilder`로 프로바이더와 파일 스토리지를 등록한 후 `IHiveService`를 빌드합니다.
+`HiveServiceBuilder`로 프로바이더를 등록한 후 `IHiveService`를 빌드합니다.
 
 ### 기본 패턴
 
@@ -26,14 +25,8 @@ var hive = new HiveServiceBuilder()
     // 프로바이더 등록 (이름으로 식별)
     .AddOpenAIProviders("openai", new OpenAIConfig { ApiKey = "..." })
     .AddAnthropicProviders("anthropic", new AnthropicConfig { ApiKey = "..." })
-
-    // 파일 스토리지 등록 (hive.Files 가 이름으로 찾는다)
-    .AddAmazonS3Storage("s3", s3Config)
-
     .Build();
 ```
-
-벡터·큐 스토리지(`IVectorStorage`·`IQueueStorage`)는 빌더에 등록하지 않는다 — `IronHive.Storages.Qdrant`·`IronHive.Storages.RabbitMQ` 의 스토리지를 직접 만들어 쓴다([STORAGES.md](STORAGES.md)).
 
 ### IHiveServiceBuilder 메서드
 
@@ -42,10 +35,10 @@ var hive = new HiveServiceBuilder()
 | `AddModelFinder(name, finder)` | 모델 목록 조회기 등록 |
 | `AddMessageGenerator(name, gen)` | LLM 텍스트 생성기 등록 |
 | `AddEmbeddingGenerator(name, gen)` | 임베딩 생성기 등록 |
+| `AddDocumentReranker(name, reranker)` | 리랭커 등록 |
 | `AddImageGenerator(name, gen)` | 이미지 생성기 등록 |
 | `AddVideoGenerator(name, gen)` | 비디오 생성기 등록 |
 | `AddAudioProcessor(name, proc)` | 오디오 처리기 등록 |
-| `AddFileStorage(name, storage)` | 파일 스토리지 등록 |
 | `Build()` | `IHiveService` 인스턴스 생성 |
 
 ---
@@ -173,5 +166,4 @@ services.AddHiveService(existingHiveInstance);
 ## 관련 문서
 
 - [PROVIDERS.md](PROVIDERS.md) — 프로바이더 상세 설정
-- [STORAGES.md](STORAGES.md) — 스토리지 백엔드
 - [ARCHITECTURE.md](ARCHITECTURE.md) — 전체 아키텍처

@@ -35,12 +35,19 @@ changes are expected and used freely for structural correctness.
   `AddLocalQueueStorage`, `LocalFileStorage`, `LocalVectorStorage`/`LocalVectorConfig`, `LocalQueueStorage`/
   `LocalQueueConfig` (with its consumer and message types) and `SqliteVecInstaller` no longer exist.** IronHive.Core no
   longer depends on `Microsoft.Data.Sqlite` or `SQLitePCLRaw.bundle_e_sqlite3`. Migration: for document storage and
-  search use FluxIndex; for a file storage register an `IronHive.Storages.Amazon`/`.Azure` storage (or your own
-  `IFileStorage`) with `AddFileStorage`; for vectors or queues construct an `IronHive.Storages.Qdrant`/`.RabbitMQ` storage.
-- **Breaking: `IHiveServiceBuilder.AddVectorStorage` and `AddQueueStorage` are removed — they had no effect.** A storage
-  registered with them was reachable from nothing `Build()` returned. Migration: delete the call and keep the storage
-  instance you constructed (`new QdrantVectorStorage(…)`, `new RabbitMQueueStorage(…)`) to call it directly. The
-  `IVectorStorage`/`IQueueStorage` abstractions, `AddFileStorage` and `IHiveService.Files` are unchanged.
+  search use FluxIndex (and FluxFeed); see the next entry for the storage packages.
+- **Breaking: the storage packages and contracts are gone — `IronHive.Storages.Amazon`, `IronHive.Storages.Azure`,
+  `IronHive.Storages.Qdrant` and `IronHive.Storages.RabbitMQ` are no longer published, and `IFileStorage`,
+  `IFileStorageService`, `IVectorStorage` (with `VectorRecord`, `ScoredVectorRecord`, `VectorCollectionInfo`,
+  `VectorRecordFilter`), `IQueueStorage`/`IQueueConsumer`/`IQueueMessage`, `IHiveServiceBuilder.AddFileStorage`,
+  `AddVectorStorage`, `AddQueueStorage` and `IHiveService.Files` no longer exist.** Nothing in the library read a
+  registered storage, and the last published versions of the four packages stay on nuget.org (marked deprecated).
+  Migration: for documents and vectors use FluxIndex (and FluxFeed); for files, queues or a vector database, call the
+  vendor SDK (AWS S3, Azure Storage, Qdrant, RabbitMQ) directly.
+- **Breaking: `IronHive.Plugins.OpenAPI` is no longer published** (`OpenApiClientManager`, `OpenApiClient`,
+  `OpenApiTool` and the `IOpenApiCredential` types). The last published version stays on nuget.org, marked deprecated.
+  Migration: expose a REST API to an agent as an MCP server (`IronHive.Plugins.MCP`) or as `[FunctionTool]` methods.
+  IronHive no longer depends on `Microsoft.OpenApi`, `JsonSchema.Net`, the AWS, Azure Storage, Qdrant or RabbitMQ clients.
 
 ### Dependencies
 - `Anthropic` 12.53.0 -> 12.60.0 (IronHive.Providers.Anthropic).

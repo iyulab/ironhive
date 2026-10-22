@@ -2,12 +2,10 @@ using IronHive.Abstractions;
 using IronHive.Abstractions.Audio;
 using IronHive.Abstractions.Models;
 using IronHive.Abstractions.Embedding;
-using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Images;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Reranking;
 using IronHive.Abstractions.Videos;
-using IronHive.Core.Files;
 using IronHive.Core.Services;
 
 namespace IronHive.Core;
@@ -22,7 +20,6 @@ public class HiveServiceBuilder : IHiveServiceBuilder
     private readonly Dictionary<string, IImageGenerator> _images = new();
     private readonly Dictionary<string, IVideoGenerator> _videos = new();
     private readonly Dictionary<string, IAudioProcessor> _audios = new();
-    private readonly Dictionary<string, IFileStorage> _files = new();
 
     public IHiveServiceBuilder AddModelFinder(string name, IModelFinder finder)
     { 
@@ -72,12 +69,6 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         return this; 
     }
 
-    public IHiveServiceBuilder AddFileStorage(string name, IFileStorage storage)
-    { 
-        _files[name] = storage;
-        return this;
-    }
-
     public IHiveService Build()
     {
         var modelService = new ModelService(_models);
@@ -87,7 +78,6 @@ public class HiveServiceBuilder : IHiveServiceBuilder
         var imageService = new ImageService(_images);
         var videoService = new VideoService(_videos);
         var audioService = new AudioService(_audios);
-        var fileService = new FileStorageService(_files);
 
         return new HiveService(
             models: modelService,
@@ -96,7 +86,6 @@ public class HiveServiceBuilder : IHiveServiceBuilder
             rerank: rerankService,
             images: imageService,
             videos: videoService,
-            audio: audioService,
-            files: fileService);
+            audio: audioService);
     }
 }

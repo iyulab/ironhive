@@ -6,7 +6,7 @@ namespace IronHive.Tests;
 
 // Enforces docs/LAYERING.md (layer rules). Two invariants:
 //   1. IronHive.Abstractions references no implementation assembly (acyclic, downward-only deps).
-//   2. Implementation assemblies (Core/Providers/Storages/Plugins) do not declare types in the
+//   2. Implementation assemblies (Core/Providers/Plugins) do not declare types in the
 //      IronHive.Abstractions namespace tree, so the abstraction namespace stays free of
 //      provider/implementation surface and layer boundaries remain legible.
 // Carve-out: DI registration entrypoints (HiveServiceBuilderExtensions) may declare
@@ -62,7 +62,7 @@ public class ArchitectureConventionTests
             .ToList();
 
         Assert.True(offenders.Count == 0,
-            "IronHive.Abstractions must not reference implementation assemblies (Core/Providers/Storages/Plugins):\n  "
+            "IronHive.Abstractions must not reference implementation assemblies (Core/Providers/Plugins):\n  "
             + string.Join("\n  ", offenders));
     }
 

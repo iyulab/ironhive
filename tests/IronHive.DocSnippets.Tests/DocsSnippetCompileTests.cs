@@ -32,7 +32,6 @@ public class DocsSnippetCompileTests
         "docs/PROVIDERS.md",
         "docs/SERVICES.md",
         "docs/SETUP.md",
-        "docs/STORAGES.md",
         "docs/TOOLS.md",
         "skills/ironhive/SKILL.md",
         "skills/ironhive/references/MIDDLEWARE.md",
@@ -40,7 +39,6 @@ public class DocsSnippetCompileTests
         "skills/ironhive/references/PROVIDERS.md",
         "skills/ironhive/references/SERVICES.md",
         "skills/ironhive/references/SETUP.md",
-        "skills/ironhive/references/STORAGES.md",
         "skills/ironhive/references/TOOLS.md",
         "src/IronHive.Providers.OpenAI.Compatible/GPUStack/README.md",
     ];
@@ -61,10 +59,9 @@ public class DocsSnippetCompileTests
     private static readonly string[] AssembliesToLoad =
     [
         "IronHive.Abstractions", "IronHive.Core", "IronHive.Extensions.AI",
-        "IronHive.Plugins.MCP", "IronHive.Plugins.OpenAPI",
+        "IronHive.Plugins.MCP",
         "IronHive.Providers.Anthropic", "IronHive.Providers.GoogleAI", "IronHive.Providers.OpenAI",
         "IronHive.Providers.OpenAI.Compatible",
-        "IronHive.Storages.Amazon", "IronHive.Storages.Azure", "IronHive.Storages.Qdrant", "IronHive.Storages.RabbitMQ",
         "Microsoft.Extensions.AI.Abstractions", "Microsoft.Extensions.Configuration.Abstractions",
         "Microsoft.Extensions.DependencyInjection", "Microsoft.Extensions.DependencyInjection.Abstractions",
         "Microsoft.Extensions.Hosting.Abstractions", "Microsoft.Extensions.Logging.Abstractions",
@@ -108,12 +105,8 @@ public class DocsSnippetCompileTests
         ["cancellationToken"] = "CancellationToken cancellationToken = default;",
         ["openAIGenerator"] = "IMessageGenerator openAIGenerator = null!;",
         ["anthropicGenerator"] = "IMessageGenerator anthropicGenerator = null!;",
-        ["qdrantStorage"] = "IVectorStorage qdrantStorage = null!;",
-        ["s3Storage"] = "IFileStorage s3Storage = null!;",
         ["mcpClientTool"] = "Microsoft.Extensions.AI.AITool mcpClientTool = null!;",
         ["stoppingToken"] = "CancellationToken stoppingToken = default;",
-        ["queueStorage"] = "IQueueStorage queueStorage = null!;",
-        ["s3Config"] = "AmazonS3Config s3Config = null!;",
         ["services"] = "IServiceCollection services = new ServiceCollection();",
         ["existingHiveInstance"] = "IHiveService existingHiveInstance = null!;",
         ["yamlString"] = "string yamlString = \"\";",
@@ -121,15 +114,12 @@ public class DocsSnippetCompileTests
         ["tomlString"] = "string tomlString = \"\";",
         ["json"] = "string json = \"{}\";",
         ["mcpManager"] = "McpClientManager mcpManager = null!;",
-        ["apiManager"] = "OpenApiClientManager apiManager = null!;",
         ["messageService"] = "IMessageService messageService = null!;",
         ["input"] = "ToolInput input = new();",
         ["output"] = "ToolOutput output = ToolOutput.Success(\"\");",
         ["request"] = "MessageRequest request = null!;",
         ["delegateFn"] = "Func<string, string> delegateFn = text => text;",
         ["config"] = "OpenAIConfig config = null!;",
-        ["qdrantConfig"] = "QdrantConfig qdrantConfig = null!;",
-        ["rabbitConfig"] = "RabbitMQConfig rabbitConfig = null!;",
         ["secretStore"] = "ISecretStore secretStore = null!;",
         ["chatClient"] = "Microsoft.Extensions.AI.IChatClient chatClient = null!;",
         ["text"] = "string text = \"\";",
@@ -219,7 +209,7 @@ public class DocsSnippetCompileTests
     public void EveryCheckedBlock_IsFoundAndFragmentsNameRealHeadings()
     {
         Assert.True(Snippets.Count(s => s.File == "README.md") >= 4, "expected the README's C# blocks");
-        Fragments.ShouldMatch([.. Snippets], atLeast: 226);
+        Fragments.ShouldMatch([.. Snippets], atLeast: 196);
     }
 
     /// <summary>
@@ -248,7 +238,7 @@ public class DocsSnippetCompileTests
     {
         // Documents, not HostDocuments: the host compilation takes every block of a document again, and a listing is never a host block.
         var listed = Checked.Sum(d => Documents[d].Value.ListedTypes);
-        Assert.True(listed >= 50, $"expected the guides' type listings to be checked, found {listed}");
+        Assert.True(listed >= 43, $"expected the guides' type listings to be checked, found {listed}");
     }
 
     /// <summary>Positive control: the compiler rejects the GPUStack README's old message example.</summary>

@@ -85,52 +85,6 @@ builder
 });
 ```
 
-## File Storage
-
-```csharp
-builder
-// Amazon S3
-.AddAmazonS3Storage("s3", new AmazonS3Config
-{
-    BucketName      = "my-bucket",
-    RegionCode      = "us-east-1",
-    AccessKey       = "...",
-    SecretAccessKey = "..."
-})
-
-// Azure Blob — StorageName is the container name
-.AddAzureBlobStorage("azure-blob", new AzureStorageConfig
-{
-    ConnectionString = "DefaultEndpointsProtocol=...",
-    StorageName      = "hive-files"
-})
-
-// Azure File Share — StorageName is the share name
-.AddAzureFilesStorage("azure-files", new AzureStorageConfig
-{
-    ConnectionString = "...",
-    StorageName      = "hive-share"
-});
-```
-
-## Vector and Queue Storage
-
-Not registered on the builder — construct the storage and use the instance directly.
-
-```csharp
-// Qdrant vector DB (gRPC, default port 6334)
-using var vectors = new QdrantVectorStorage(new QdrantConfig { Host = "localhost", Port = 6334 });
-
-// RabbitMQ queue — one IQueueStorage per queue
-using var queue = new RabbitMQueueStorage(new RabbitMQConfig
-{
-    Host      = "localhost",
-    UserName  = "guest",
-    Password  = "guest",
-    QueueName = "hive-tasks"
-});
-```
-
 ## HiveServiceBuilder Full Signature (key methods)
 
 ```csharp
@@ -144,10 +98,6 @@ public class HiveServiceBuilder
     IHiveServiceBuilder AddVertexAIProviders(string name, VertexAIConfig config, GoogleAIServiceType serviceType = GoogleAIServiceType.All);
     IHiveServiceBuilder AddOpenAICompatibleProviders(string name, OpenAICompatibleConfig config, OpenAICompatibleServiceType serviceType = OpenAICompatibleServiceType.All);
     IHiveServiceBuilder AddGpuStackProviders(string name, GpuStackConfig config, GpuStackServiceType serviceType = GpuStackServiceType.All);
-
-    // File storage (storage package extensions: AddAmazonS3Storage, AddAzureBlobStorage, AddAzureFilesStorage)
-    // Any file storage instance (IHiveServiceBuilder member)
-    IHiveServiceBuilder AddFileStorage(string name, IFileStorage storage);
 
     // Build
     IHiveService Build();

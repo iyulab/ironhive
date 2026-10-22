@@ -1,7 +1,6 @@
 using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Models;
 using IronHive.Abstractions.Embedding;
-using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Images;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Reranking;
@@ -19,7 +18,6 @@ public interface IHiveService : IDisposable
     IImageService Images { get; }
     IVideoService Videos { get; }
     IAudioService Audio { get; }
-    IFileStorageService Files { get; }
 
     IAgent CreateAgentFrom(Action<AgentConfig> configure);
     IAgent CreateAgentFrom(AgentCard card);

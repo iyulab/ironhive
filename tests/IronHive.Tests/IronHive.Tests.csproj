@@ -33,12 +33,7 @@
     <ProjectReference Include="..\..\src\IronHive.Providers.OpenAI\IronHive.Providers.OpenAI.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Providers.Anthropic\IronHive.Providers.Anthropic.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Providers.GoogleAI\IronHive.Providers.GoogleAI.csproj" />
-    <ProjectReference Include="..\..\src\IronHive.Storages.Qdrant\IronHive.Storages.Qdrant.csproj" />
-    <ProjectReference Include="..\..\src\IronHive.Storages.RabbitMQ\IronHive.Storages.RabbitMQ.csproj" />
-    <ProjectReference Include="..\..\src\IronHive.Storages.Amazon\IronHive.Storages.Amazon.csproj" />
-    <ProjectReference Include="..\..\src\IronHive.Storages.Azure\IronHive.Storages.Azure.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Plugins.MCP\IronHive.Plugins.MCP.csproj" />
-    <ProjectReference Include="..\..\src\IronHive.Plugins.OpenAPI\IronHive.Plugins.OpenAPI.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Providers.OpenAI.Compatible\IronHive.Providers.OpenAI.Compatible.csproj" />
   </ItemGroup>
 

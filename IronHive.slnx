@@ -13,7 +13,6 @@
     <File Path="docs/PROVIDERS.md" />
     <File Path="docs/SERVICES.md" />
     <File Path="docs/SETUP.md" />
-    <File Path="docs/STORAGES.md" />
     <File Path="docs/TOOLS.md" />
   </Folder>
   <Folder Name="/10. src/">
@@ -23,19 +22,12 @@
   </Folder>
   <Folder Name="/10. src/Plugins/">
     <Project Path="src/IronHive.Plugins.MCP/IronHive.Plugins.MCP.csproj" />
-    <Project Path="src/IronHive.Plugins.OpenAPI/IronHive.Plugins.OpenAPI.csproj" />
   </Folder>
   <Folder Name="/10. src/Providers/">
     <Project Path="src/IronHive.Providers.Anthropic/IronHive.Providers.Anthropic.csproj" />
     <Project Path="src/IronHive.Providers.GoogleAI/IronHive.Providers.GoogleAI.csproj" />
     <Project Path="src/IronHive.Providers.OpenAI.Compatible/IronHive.Providers.OpenAI.Compatible.csproj" Id="10957542-bbbc-4d74-80b6-fc0d6ef13b55" />
     <Project Path="src/IronHive.Providers.OpenAI/IronHive.Providers.OpenAI.csproj" />
-  </Folder>
-  <Folder Name="/10. src/Storages/">
-    <Project Path="src/IronHive.Storages.Amazon/IronHive.Storages.Amazon.csproj" />
-    <Project Path="src/IronHive.Storages.Azure/IronHive.Storages.Azure.csproj" />
-    <Project Path="src/IronHive.Storages.Qdrant/IronHive.Storages.Qdrant.csproj" />
-    <Project Path="src/IronHive.Storages.RabbitMQ/IronHive.Storages.RabbitMQ.csproj" />
   </Folder>
   <Folder Name="/20. samples/">
     <Project Path="samples/ConsoleApp/ConsoleApp.csproj" />

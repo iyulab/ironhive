@@ -12,7 +12,6 @@ public interface IHiveService : IDisposable
     IImageService       Images      { get; }
     IVideoService       Videos      { get; }
     IAudioService       Audio       { get; }
-    IFileStorageService Files       { get; }
 
     IAgent CreateAgentFrom(Action<AgentConfig> configure);
     IAgent CreateAgentFrom(AgentCard card);
@@ -238,26 +237,6 @@ public interface IModelService
 var list = await hive.Models.ListModelsAsync("openai");
 foreach (var m in list?.Models ?? [])
     Console.WriteLine($"{m.ModelId} — {m.Description}");
-```
-
-## IFileStorageService — File Storage
-
-```csharp
-public interface IFileStorageService
-{
-    Task<IEnumerable<string>> ListAsync(string storageName, string? prefix = null, int depth = 1, CancellationToken ct = default);
-    Task<bool> ExistsFileAsync(string storageName, string filePath, CancellationToken ct = default);
-    Task<Stream> ReadFileAsync(string storageName, string filePath, CancellationToken ct = default);
-    Task WriteFileAsync(string storageName, string filePath, Stream data, bool overwrite = true, CancellationToken ct = default);
-    Task DeleteFileAsync(string storageName, string filePath, CancellationToken ct = default);
-    Task DeleteDirectoryAsync(string storageName, string directoryPath, CancellationToken ct = default);
-}
-```
-
-```csharp
-// Usage
-await hive.Files.WriteFileAsync("s3", "documents/report.pdf", pdfStream);
-var stream = await hive.Files.ReadFileAsync("s3", "documents/report.pdf");
 ```
 
 ## Message Types

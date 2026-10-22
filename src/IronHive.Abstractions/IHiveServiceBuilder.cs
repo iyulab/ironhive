@@ -1,7 +1,6 @@
 using IronHive.Abstractions.Audio;
 using IronHive.Abstractions.Models;
 using IronHive.Abstractions.Embedding;
-using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Images;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Reranking;
@@ -19,6 +18,5 @@ public interface IHiveServiceBuilder
     IHiveServiceBuilder AddImageGenerator(string name, IImageGenerator generator);
     IHiveServiceBuilder AddVideoGenerator(string name, IVideoGenerator generator);
     IHiveServiceBuilder AddAudioProcessor(string name, IAudioProcessor processor);
-    IHiveServiceBuilder AddFileStorage(string name, IFileStorage storage);
     IHiveService Build();
 }

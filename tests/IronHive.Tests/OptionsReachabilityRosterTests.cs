@@ -19,15 +19,10 @@ public class OptionsReachabilityRosterTests
         Assembly.Load("IronHive.Core"),
         Assembly.Load("IronHive.Extensions.AI"),
         Assembly.Load("IronHive.Plugins.MCP"),
-        Assembly.Load("IronHive.Plugins.OpenAPI"),
         Assembly.Load("IronHive.Providers.Anthropic"),
         Assembly.Load("IronHive.Providers.GoogleAI"),
         Assembly.Load("IronHive.Providers.OpenAI"),
         Assembly.Load("IronHive.Providers.OpenAI.Compatible"),
-        Assembly.Load("IronHive.Storages.Amazon"),
-        Assembly.Load("IronHive.Storages.Azure"),
-        Assembly.Load("IronHive.Storages.Qdrant"),
-        Assembly.Load("IronHive.Storages.RabbitMQ"),
     ];
 
     /// <summary>

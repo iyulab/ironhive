@@ -8,7 +8,7 @@ public interface ITool
     string UniqueName { get; }      // the name the LLM calls the tool by
     string? Description { get; }
     object? Parameters { get; }     // JSON Schema of the input
-    bool RequiresApproval { get; }  // default: false (true for MCP/OpenAPI tools)
+    bool RequiresApproval { get; }  // default: false (true for MCP tools)
 
     Task<ToolOutput> InvokeAsync(ToolInput input, CancellationToken cancellationToken = default);
 }
@@ -166,26 +166,6 @@ IEnumerable<McpTool> tools = session is null ? [] : await session.ListToolsAsync
 ```
 
 MCP tool `UniqueName` format: `"mcp_{ServerName}_{ToolName}"`, `RequiresApproval = true`
-
-## OpenAPI Tools
-
-```csharp
-using IronHive.Plugins.OpenAPI;
-
-agent.Tools ??= new ToolCollection();
-var openApiManager = new OpenApiClientManager(agent.Tools);
-
-// The request base URL comes from the spec's `servers`, not from an option
-var client = await OpenApiClientFactory.CreateFromUrlAsync(
-    "petstore", "https://petstore.swagger.io/v2/swagger.json");
-
-await openApiManager.AddOrUpdateAsync(client);   // on return the spec's operations are in agent.Tools; a failure throws and registers nothing
-```
-
-Credentials and default headers go in `OpenApiClientOptions` (`Credentials` keyed by security scheme name,
-`DefaultHeaders`, `TimeoutSeconds`), passed as the factory's `options` argument.
-
-OpenAPI tool `UniqueName` format: `"openapi_{ClientName}_{OperationId}"`, `RequiresApproval = true`
 
 ## ToolOptions — Intercepting Invocation
 

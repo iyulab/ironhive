@@ -12,10 +12,10 @@ IHiveService
     ├── Models       (IModelService)
     ├── Messages     (IMessageService)
     ├── Embeddings   (IEmbeddingService)
+    ├── Rerank       (IRerankService)
     ├── Images       (IImageService)
     ├── Videos       (IVideoService)
-    ├── Audio        (IAudioService)
-    └── Files        (IFileStorageService)
+    └── Audio        (IAudioService)
 ```
 
 ---
@@ -36,20 +36,20 @@ IHiveService
 │  │  - Video     │                │                │  │
 │  │  - Model     │                │                │  │
 │  └──────────────┴────────────────┴────────────────┘  │
-│  ┌──────────────┬────────────────┐                   │
-│  │  Tools       │  Files         │                   │
-│  │  - Function  │  - Storage     │                   │
-│  │  - Collection│    service     │                   │
-│  └──────────────┴────────────────┘                   │
+│  ┌──────────────┐                                    │
+│  │  Tools       │                                    │
+│  │  - Function  │                                    │
+│  │  - Collection│                                    │
+│  └──────────────┘                                    │
 ├──────────────────────────────────────────────────────┤
 │  IronHive.Abstractions (인터페이스 & DTO만)           │
-├───────────┬─────────────┬──────────────┬─────────────┤
-│ Providers │ Storages    │ Plugins      │             │
-│ - OpenAI  │ - Qdrant    │ - MCP        │             │
-│ - Anthrop.│ - Amazon    │ - OpenAPI    │             │
-│ - GoogleAI│ - Azure     │              │             │
-│ - OAI Compat│ - RabbitMQ│              │             │
-└───────────┴─────────────┴──────────────┴─────────────┘
+├───────────────┬──────────────────────────────────────┤
+│ Providers     │ Plugins                              │
+│ - OpenAI      │ - MCP                                │
+│ - Anthropic   │                                      │
+│ - GoogleAI    │                                      │
+│ - OAI Compat  │                                      │
+└───────────────┴──────────────────────────────────────┘
 ```
 
 ---
@@ -63,13 +63,12 @@ Application
     ↓
 IronHive.Core
     ↓
-IronHive.Abstractions   ← Providers, Storages, Plugins도 여기에 의존
+IronHive.Abstractions   ← Providers, Plugins도 여기에 의존
 ```
 
 - **Abstractions** — 인터페이스, DTO, enum만. 외부 패키지 의존 없음.
 - **Core** — Abstractions 구현. OpenTelemetry, System.Text.Json 의존.
 - **Providers** — Abstractions 참조(Core 비참조). 각 LLM SDK 의존.
-- **Storages** — Abstractions 참조(Core 비참조). 각 저장소 SDK 의존.
 - **Plugins** — Abstractions 참조(Core 비참조).
 
 ---
@@ -102,14 +101,6 @@ IronHive.Abstractions   ← Providers, Storages, Plugins도 여기에 의존
 | `ISpeakerSelector` | GroupChat 발언자 선택 전략 |
 | `ITerminationCondition` | GroupChat 종료 조건 |
 
-### 스토리지
-
-| 인터페이스 | 역할 |
-|-----------|------|
-| `IFileStorage` | 파일 업로드/다운로드/삭제 |
-| `IVectorStorage` | 벡터 CRUD + 유사도 검색 |
-| `IQueueStorage` | 메시지 큐 (enqueue/dequeue) |
-
 ### 도구
 
 | 인터페이스 | 역할 |
@@ -121,13 +112,12 @@ IronHive.Abstractions   ← Providers, Storages, Plugins도 여기에 의존
 
 ## 이름 기반 라우팅
 
-모든 Generator와 파일 스토리지는 문자열 키(이름)로 등록됩니다. 요청 시 `Provider` 필드로 어떤 구현을 사용할지 결정합니다:
+모든 Generator는 문자열 키(이름)로 등록됩니다. 요청 시 `Provider` 필드로 어떤 구현을 사용할지 결정합니다:
 
 ```csharp
 var hive = new HiveServiceBuilder()
     .AddMessageGenerator("openai", openAIGenerator)
     .AddMessageGenerator("claude", anthropicGenerator)
-    .AddFileStorage("s3", s3Storage)
     .Build();
 
 // 요청 시 이름으로 라우팅
@@ -237,7 +227,6 @@ src/
 ├── IronHive.Core/                   # 핵심 구현
 │   ├── Agent/                       # BasicAgent, 미들웨어, 오케스트레이터
 │   │   └── Orchestration/           # 6개 오케스트레이터 + 빌더 + 체크포인트
-│   ├── Files/                       # FileStorageService (이름으로 등록한 IFileStorage 라우팅)
 │   ├── Microsoft/                   # M.E.AI 어댑터
 │   ├── Services/                    # 서비스 구현체
 │   ├── Tools/                       # ToolCollection
@@ -247,12 +236,6 @@ src/
 │   ├── IronHive.Providers.Anthropic
 │   ├── IronHive.Providers.GoogleAI  # Gemini + Vertex AI
 │   └── IronHive.Providers.OpenAI.Compatible  # Ollama, GPUStack 등
-├── IronHive.Storages.*/             # 외부 스토리지
-│   ├── IronHive.Storages.Qdrant
-│   ├── IronHive.Storages.Amazon
-│   ├── IronHive.Storages.Azure
-│   └── IronHive.Storages.RabbitMQ
 └── IronHive.Plugins.*/              # 플러그인
-    ├── IronHive.Plugins.MCP
-    └── IronHive.Plugins.OpenAPI
+    └── IronHive.Plugins.MCP
 ```

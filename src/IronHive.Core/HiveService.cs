@@ -2,7 +2,6 @@ using IronHive.Abstractions;
 using IronHive.Abstractions.Agent;
 using IronHive.Abstractions.Models;
 using IronHive.Abstractions.Embedding;
-using IronHive.Abstractions.Files;
 using IronHive.Abstractions.Images;
 using IronHive.Abstractions.Messages;
 using IronHive.Abstractions.Reranking;
@@ -23,8 +22,7 @@ public class HiveService : IHiveService
         IRerankService rerank,
         IImageService images,
         IVideoService videos,
-        IAudioService audio,
-        IFileStorageService files)
+        IAudioService audio)
     {
         Models = models;
         Messages = messages;
@@ -33,7 +31,6 @@ public class HiveService : IHiveService
         Images = images;
         Videos = videos;
         Audio = audio;
-        Files = files;
         _agents = new AgentService(messages);
     }
 
@@ -44,7 +41,6 @@ public class HiveService : IHiveService
     public IImageService Images { get; }
     public IVideoService Videos { get; }
     public IAudioService Audio { get; }
-    public IFileStorageService Files { get; }
 
     public IAgent CreateAgentFrom(Action<AgentConfig> configure)
         => _agents.CreateAgent(configure);

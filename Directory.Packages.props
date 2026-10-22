@@ -9,23 +9,11 @@
     <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.10.1" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.13" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.13" />
     <PackageVersion Include="Microsoft.Extensions.Resilience" Version="10.9.0" />
-    <PackageVersion Include="Microsoft.OpenApi" Version="3.10.2" />
-    <PackageVersion Include="Microsoft.OpenApi.YamlReader" Version="3.10.2" />
     <PackageVersion Include="OpenAI" Version="2.14.0" />
   </ItemGroup>
   <ItemGroup Label="OpenTelemetry">
     <PackageVersion Include="OpenTelemetry.Api" Version="1.18.0" />
-  </ItemGroup>
-  <ItemGroup Label="Azure">
-    <PackageVersion Include="Azure.Identity" Version="1.21.0" />
-    <PackageVersion Include="Azure.Storage.Blobs" Version="12.29.2" />
-    <PackageVersion Include="Azure.Storage.Files.Shares" Version="12.27.1" />
-  </ItemGroup>
-  <ItemGroup Label="AWS">
-    <PackageVersion Include="AWSSDK.S3" Version="4.0.102.5" />
   </ItemGroup>
   <ItemGroup Label="Testing">
     <!-- xUnit v3/MTP native mode: no Microsoft.NET.Test.Sdk needed, coverlet.collector was a dead
@@ -40,17 +28,9 @@
     <PackageVersion Include="YamlDotNet" Version="18.1.0" />
     <PackageVersion Include="Tomlyn" Version="2.10.1" />
   </ItemGroup>
-  <ItemGroup Label="JSON Schema">
-    <PackageVersion Include="JsonSchema.Net" Version="9.4.0" />
-    <PackageVersion Include="JsonSchema.Net.Generation" Version="7.3.11" />
-  </ItemGroup>
   <ItemGroup Label="Tokenizers">
     <PackageVersion Include="Tiktoken.Core" Version="3.1.5" />
     <PackageVersion Include="Tiktoken.Encodings.cl100k" Version="3.1.5" />
-  </ItemGroup>
-  <ItemGroup Label="Infrastructure">
-    <PackageVersion Include="Qdrant.Client" Version="1.19.0" />
-    <PackageVersion Include="RabbitMQ.Client" Version="7.2.2" />
   </ItemGroup>
   <ItemGroup Label="Utilities">
     <PackageVersion Include="dotenv.net" Version="4.0.2" />

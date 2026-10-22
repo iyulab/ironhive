@@ -16,7 +16,7 @@
   </a>
 </p>
 
-**IronHive**는 기업용 AI 애플리케이션을 위한 .NET 10 파이프라인 프레임워크입니다. `HiveServiceBuilder` 로 멀티 Provider LLM(OpenAI · Anthropic · Google AI · OpenAI 호환)을 등록하고, `IHiveService` 로 에이전트 · 멀티에이전트 오케스트레이션 · 파일 스토리지를 씁니다.
+**IronHive**는 기업용 AI 애플리케이션을 위한 .NET 10 파이프라인 프레임워크입니다. `HiveServiceBuilder` 로 멀티 Provider LLM(OpenAI · Anthropic · Google AI · OpenAI 호환)을 등록하고, `IHiveService` 로 에이전트 · 멀티에이전트 오케스트레이션을 씁니다.
 
 ## 주요 기능
 
@@ -28,11 +28,10 @@
 - **문서 처리는 이 패키지에 없다** — 문서 파싱은 [FileFlux](https://github.com/iyulab/FileFlux), 적재·청킹·벡터 검색 같은 RAG 파이프라인은 [FluxIndex](https://github.com/iyulab/FluxIndex)·[FluxFeed](https://github.com/iyulab/FluxFeed) 를 쓴다
 - **리랭킹** — `hive.Rerank`. OpenAI Compatible · GPUStack 의 `Rerank` 서비스 타입(Cohere 형태 `/rerank`)이 등록한다
 - **다중 모달리티** — 이미지 생성(`hive.Images`), 음성 TTS/STT(`hive.Audio`), 비디오 생성(`hive.Videos`). 해당 서비스를 가진 provider 를 등록하면 따라온다(OpenAI · OpenAI Compatible · GPUStack: 이미지·오디오, Google AI/Vertex AI: 이미지·비디오·오디오)
-- **플러그인** — MCP: `McpClientManager.AddOrUpdate(new McpHttpClientConfig{…}` / `McpStdioClientConfig{…})` 로 서버를 붙이고 세션의 도구를 에이전트 도구에 더한다(HTTP/Stdio/OAuth). OpenAPI: `new OpenApiClientManager(tools)` 에 `await AddOrUpdateAsync(client)` 로 `OpenApiClient` 를 등록하면 스펙의 연산이 그 `IToolCollection` 에 도구로 들어간다([docs/PLUGINS.md](docs/PLUGINS.md))
+- **플러그인** — MCP: `McpClientManager.AddOrUpdate(new McpHttpClientConfig{…}` / `McpStdioClientConfig{…})` 로 서버를 붙이고 세션의 도구를 에이전트 도구에 더한다(HTTP/Stdio/OAuth)([docs/PLUGINS.md](docs/PLUGINS.md))
 - **M.E.AI 호환** — 패키지 `IronHive.Extensions.AI`(의존: Abstractions 뿐 — Core 없이 provider 를 `IChatClient` 로): `generator.AsChatClient(model, provider)` · `AsEmbeddingGenerator(model[, dimensions])`(차원을 주면 `EmbeddingGeneratorMetadata.DefaultModelDimensions` 로 알리고 벡터 크기를 검사) · `AIToolAdapter`(임의의 `AITool`을 `ITool`로 래핑·실행 — MCP `McpClientTool` 등). 도구 인자 스트리밍(opt-in): `ChatOptions.AdditionalProperties[ChatClientAdapter.StreamToolArgumentsKey] = true` 이면 스트리밍 응답이 인자를 쓰이는 동안 `FunctionCallDeltaContent`(`CallId` · 첫 조각의 `Name` · `ArgumentsFragment`)로도 내고, 완전한 `FunctionCallContent` 가 뒤따른다(Chat Completions·Responses·Anthropic — Anthropic 은 이때 도구마다 `eager_input_streaming` 을 켜서 서버가 입력을 끝까지 모았다 보내지 않게 한다(`MessageGenerationRequest.StreamToolArguments`, 서버 검증 없음). Google 은 호출을 한 번에 보낸다). `using IronHive.Extensions.AI;`
 - **에이전트 미들웨어** — `RetryMiddleware` · `TimeoutMiddleware` · `CircuitBreakerMiddleware` · `FallbackMiddleware` · `RateLimitMiddleware` · `BulkheadMiddleware` · `CachingMiddleware` · `LoggingMiddleware` · `CompositeMiddleware`. opt-in: `agent.WithMiddleware(…)`. 메시지 단위 미들웨어(예: `ToolResultBudgetMiddleware`)는 `HiveServiceBuilder.AddMessageMiddleware(…)`([docs/MIDDLEWARE.md](docs/MIDDLEWARE.md))
 - **함수 도구** — `tools.AddFunctionTool<T>()`(또는 인스턴스·델리게이트 오버로드)로 .NET 메서드를 에이전트 도구(`IToolCollection`)로 등록([docs/TOOLS.md](docs/TOOLS.md))
-- **스토리지** — 파일: `AddAmazonS3Storage` · `AddAzureBlobStorage` · `AddAzureFilesStorage`(또는 임의의 `IFileStorage` 를 `AddFileStorage(name, storage)`)로 등록하면 `hive.Files` 가 이름으로 찾는다. 벡터·큐: `IVectorStorage`(`new QdrantVectorStorage(new QdrantConfig { … })`) · `IQueueStorage`(`new RabbitMQueueStorage(new RabbitMQConfig { … })`)는 빌더에 등록하지 않고 직접 만들어 쓴다([docs/STORAGES.md](docs/STORAGES.md))
 - **텔레메트리** — 오케스트레이터가 `HiveTelemetry.SourceName`(`"IronHive"`) 이름의 `ActivitySource` · `Meter` 로 trace·metric 을 낸다. OpenTelemetry 의 `AddSource`/`AddMeter` 로 구독하면 켜진다
 - **구조화 출력** — `OutputFormat.For<T>()`/`For(schema)` 는 스키마로 구속, `OutputFormat.Json` 은 스키마 없는 JSON 모드(provider 네이티브 JSON 모드로 번역 — OpenAI `json_object`, Gemini `responseMimeType`, Anthropic 은 시스템 지시). `AgentInvokeOptions.OutputFormat` 또는 `IChatClient` 의 `ChatOptions.ResponseFormat` 으로 켠다
 - **도구 결과 텍스트화** — `ToolOutput.ToText()`가 결과 블록을 문자열 하나로 평탄화(텍스트는 줄바꿈으로, 텍스트 아닌 블록은 `[image content omitted]` 또는 호출자가 준 문구) — 텍스트만 나르는 소비자·wire 용([docs/TOOLS.md](docs/TOOLS.md))
@@ -139,12 +138,7 @@ public class ChatService(IHiveService hive)
 | `IronHive.Providers.Anthropic` | Anthropic Claude — `AddAnthropicProviders` |
 | `IronHive.Providers.GoogleAI` | Google Gemini + Vertex AI (이미지, 비디오, 오디오 포함) — `AddGoogleAIProviders` · `AddVertexAIProviders` |
 | `IronHive.Providers.OpenAI.Compatible` | Ollama, LM Studio, vLLM, llama.cpp, GPUStack 등 — Chat Completions · 임베딩 · 리랭킹(`/rerank`) · 이미지 · 오디오. `AddOpenAICompatibleProviders` · `AddGpuStackProviders` |
-| `IronHive.Storages.Qdrant` | Qdrant 벡터 데이터베이스 — `QdrantVectorStorage` |
-| `IronHive.Storages.Amazon` | Amazon S3 파일 저장소 — `AddAmazonS3Storage` |
-| `IronHive.Storages.Azure` | Azure Blob / File Share — `AddAzureBlobStorage` · `AddAzureFilesStorage` |
-| `IronHive.Storages.RabbitMQ` | RabbitMQ 큐 — `RabbitMQueueStorage` |
 | `IronHive.Plugins.MCP` | Model Context Protocol (HTTP/Stdio/OAuth) — `McpClientManager` |
-| `IronHive.Plugins.OpenAPI` | OpenAPI 도구 자동 생성 — `OpenApiClientManager` |
 
 > **출력 길이 파라미터 선택 (0.16.0~)** — OpenAI 가 `max_tokens` 를 `max_completion_tokens` 로
 > 개명하면서 생태계가 갈렸다. 최신 OpenAI 모델은 구 이름을 **거부**하고, 다수의 self-hosted 서버는
@@ -200,8 +194,7 @@ public class ChatService(IHiveService hive)
 | [docs/ORCHESTRATION.md](docs/ORCHESTRATION.md) | 멀티에이전트 오케스트레이션 패턴 |
 | [docs/TOOLS.md](docs/TOOLS.md) | FunctionTool 및 커스텀 도구 |
 | [docs/PROVIDERS.md](docs/PROVIDERS.md) | AI 프로바이더 설정 |
-| [docs/STORAGES.md](docs/STORAGES.md) | 스토리지 백엔드 설정 |
-| [docs/PLUGINS.md](docs/PLUGINS.md) | MCP / OpenAPI 플러그인 |
+| [docs/PLUGINS.md](docs/PLUGINS.md) | MCP 플러그인 |
 | [docs/SERVICES.md](docs/SERVICES.md) | IHiveService 서비스 상세 |
 
 ## Skills (AI 코딩 에이전트용)

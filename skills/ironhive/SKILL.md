@@ -1,6 +1,6 @@
 ---
 name: ironhive
-description: IronHive is a .NET 10 enterprise AI pipeline framework. Use when building .NET AI applications with multi-provider LLM integration (OpenAI, Anthropic, GoogleAI, Vertex AI, OpenAI-compatible), multi-agent orchestration (Sequential, Parallel, Handoff, GroupChat, HubSpoke, Graph/DAG), function tools with [FunctionTool] attribute, MCP/OpenAPI plugins, file storage, and M.E.AI compatibility adapters.
+description: IronHive is a .NET 10 enterprise AI pipeline framework. Use when building .NET AI applications with multi-provider LLM integration (OpenAI, Anthropic, GoogleAI, Vertex AI, OpenAI-compatible), multi-agent orchestration (Sequential, Parallel, Handoff, GroupChat, HubSpoke, Graph/DAG), function tools with [FunctionTool] attribute, MCP plugins, and M.E.AI compatibility adapters.
 license: MIT
 compatibility: Requires .NET 10+
 metadata:
@@ -10,7 +10,7 @@ metadata:
 
 # IronHive
 
-A .NET 10 AI pipeline framework built on a **Named Registry + Builder** pattern. All providers, file storages, and services are registered by name and resolved at runtime via `IHiveService`.
+A .NET 10 AI pipeline framework built on a **Named Registry + Builder** pattern. All providers and services are registered by name and resolved at runtime via `IHiveService`.
 
 ## Quick Reference Index
 
@@ -23,7 +23,6 @@ A .NET 10 AI pipeline framework built on a **Named Registry + Builder** pattern.
 | Function tools & tool collection | [references/TOOLS.md](references/TOOLS.md) |
 | IHiveService services (chat, embed, image…) | [references/SERVICES.md](references/SERVICES.md) |
 | AI provider configurations | [references/PROVIDERS.md](references/PROVIDERS.md) |
-| Storage backends | [references/STORAGES.md](references/STORAGES.md) |
 
 ## Minimal Example
 
@@ -50,7 +49,6 @@ var response = await agent.InvokeAsync("Hello!");
 - `HiveServiceBuilder` → `IHiveService` (builder pattern, all registrations by name string)
 - Agents are created from `IHiveService`, not from DI
 - Tools live on `IAgent.Tools` (`IToolCollection`), not on the builder
-- File storage and provider names are arbitrary strings — you choose them and reference them later
-- Vector and queue storages are not registered on the builder — construct them (`IronHive.Storages.Qdrant` / `.RabbitMQ`) and use them directly
-- Document parsing is not in IronHive — use FileFlux
-- All services accessed via `hive.Models`, `hive.Messages`, `hive.Embeddings`, `hive.Rerank`, `hive.Images`, `hive.Videos`, `hive.Audio`, `hive.Files`
+- Provider names are arbitrary strings — you choose them and reference them later
+- Document parsing is not in IronHive — use FileFlux; document storage and search (RAG) use FluxIndex / FluxFeed
+- All services accessed via `hive.Models`, `hive.Messages`, `hive.Embeddings`, `hive.Rerank`, `hive.Images`, `hive.Videos`, `hive.Audio`

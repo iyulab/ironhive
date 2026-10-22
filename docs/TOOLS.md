@@ -349,6 +349,6 @@ builder.AddMessageMiddleware(new ToolResultBudgetMiddleware(maxTotalChars: 12_00
 
 ## 관련 문서
 
-- [PLUGINS.md](PLUGINS.md) — MCP, OpenAPI 플러그인
+- [PLUGINS.md](PLUGINS.md) — MCP 플러그인
 - [AGENTS.md](AGENTS.md) — 에이전트와 도구 연동
 - [SERVICES.md](SERVICES.md) — MessageService 도구 실행 루프
