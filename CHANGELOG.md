@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## Unreleased
+## 0.69.0 — 2026-10-23
 
 ### Changed
 - **Breaking: content or a message a provider does not accept fails with `NotSupportedException` naming the provider and
