@@ -9,6 +9,9 @@ changes are expected and used freely for structural correctness.
 - **Anthropic SDK 12.60.0 → 13.1.0** (13.0.0 targets Anthropic API version 2026-10-21). `IronHive.Providers.Anthropic` builds its
   request messages through the 13.x message types; requests and responses are otherwise unchanged. An app that also references the
   Anthropic SDK directly moves to 13.x with this release.
+- `Microsoft.Extensions.AI.Abstractions` / `.OpenAI` 10.10.1 -> 10.11.0, `Microsoft.Extensions.Resilience` 10.9.0 -> 10.11.0,
+  `ModelContextProtocol` / `.AspNetCore` 2.2.0 -> 2.3.0, `OpenTelemetry.Api` 1.18.0 -> 1.20.1, `Google.GenAI` 1.24.0 -> 1.27.0,
+  `Markdig` 1.3.2 -> 1.4.2, `dotenv.net` 4.0.2 -> 4.2.0. Test tooling: xunit.v3 4.0.2, MTP HangDump 2.5.1.
 
 ## 0.69.0 — 2026-10-23
 
