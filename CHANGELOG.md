@@ -3,6 +3,13 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## Unreleased
+
+### Dependencies
+- **Anthropic SDK 12.60.0 → 13.1.0** (13.0.0 targets Anthropic API version 2026-10-21). `IronHive.Providers.Anthropic` builds its
+  request messages through the 13.x message types; requests and responses are otherwise unchanged. An app that also references the
+  Anthropic SDK directly moves to 13.x with this release.
+
 ## 0.69.0 — 2026-10-23
 
 ### Changed

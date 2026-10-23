@@ -411,11 +411,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
                     }
                 }
 
-                messages.Add(new MessageParam
-                {
-                    Role = Role.User,
-                    Content = blocks
-                });
+                messages.Add(new UserMessageParam(blocks));
             }
             // AI 메시지
             else if (message is { Role: IronHiveMessageRole.Assistant } assistant)
@@ -533,18 +529,10 @@ public class AnthropicMessageGenerator : IMessageGenerator
                         }
                     }
 
-                    messages.Add(new MessageParam
-                    {
-                        Role = Role.Assistant,
-                        Content = assistantBlocks
-                    });
+                    messages.Add(new AssistantMessageParam(assistantBlocks));
                     if (userBlocks.Count > 0)
                     {
-                        messages.Add(new MessageParam
-                        {
-                            Role = Role.User,
-                            Content = userBlocks
-                        });
+                        messages.Add(new UserMessageParam(userBlocks));
                     }
                 }
             }
