@@ -5,6 +5,16 @@ changes are expected and used freely for structural correctness.
 
 ## Unreleased
 
+### Changed
+- **Breaking: Anthropic requests carry the API key as `Authorization: Bearer <key>` instead of `x-api-key`** (Anthropic SDK 13;
+  api.anthropic.com accepts both). `ApiKeyResolver` follows. A gateway in front of Anthropic that reads only `x-api-key` has to
+  accept the Bearer form. Setting `ApiKey` (or `ApiKeyResolver`) **and** `AuthToken` now fails at construction with an
+  `ArgumentException` naming both — the SDK takes one credential. Migration: keep one of them.
+- **Breaking: a Gemini stream that carries an error event (`{"error":{"code":503,…}}`) fails with `ProviderHttpException` with
+  that status** (`ServiceUnavailable` for an overload) instead of `ProviderResponseException` — Google.GenAI 1.27 raises the event.
+  The text already streamed is kept. Migration: code that caught `ProviderResponseException` for this case catches
+  `ProviderHttpException` (a transient status is now visible to retry logic).
+
 ### Dependencies
 - **Anthropic SDK 12.60.0 → 13.1.0** (13.0.0 targets Anthropic API version 2026-10-21). `IronHive.Providers.Anthropic` builds its
   request messages through the 13.x message types; requests and responses are otherwise unchanged. An app that also references the

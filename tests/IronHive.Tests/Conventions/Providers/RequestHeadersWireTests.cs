@@ -69,6 +69,7 @@ public class RequestHeadersWireTests
     [InlineData("openai", "Authorization")]
     [InlineData("compatible", "authorization")]
     [InlineData("anthropic", "x-api-key")]
+    [InlineData("anthropic", "Authorization")]
     [InlineData("google", "x-goog-api-key")]
     public async Task A_request_header_naming_the_credential_is_refused(string provider, string credentialHeader)
     {
@@ -150,11 +151,8 @@ public class RequestHeadersWireTests
     {
         switch (provider)
         {
-            case "openai" or "compatible":
+            case "openai" or "compatible" or "anthropic":
                 Assert.Equal("Bearer test-key", sent["Authorization"]);
-                break;
-            case "anthropic":
-                Assert.Equal("test-key", sent["x-api-key"]);
                 break;
             case "google":
                 Assert.Equal("test-key", sent["x-goog-api-key"]);

@@ -44,6 +44,20 @@ public class AnthropicClientFactoryTests
         client.ApiKey.Should().NotBe(Gateway);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Create_ApiKeyAndAuthTokenTogether_IsRefusedNamingBoth(bool viaResolver)
+    {
+        var config = viaResolver
+            ? new AnthropicConfig { ApiKeyResolver = () => "k", AuthToken = "t" }
+            : new AnthropicConfig { ApiKey = "k", AuthToken = "t" };
+
+        var act = () => AnthropicClientFactory.Create(config);
+
+        act.Should().Throw<ArgumentException>().WithMessage("*ApiKey*AuthToken*not both*");
+    }
+
     [Fact]
     public void Create_TimeoutAndMaxRetries_ReachTheClient()
     {

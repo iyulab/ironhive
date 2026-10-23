@@ -382,7 +382,7 @@ public enum GoogleAIServiceType
 
 키를 OS 자격증명 저장소 같은 곳에 두고 거기서 교체·회수한다면, 키 값을 config 에 복사해 넣는 대신
 「어디서 가져오는지」를 넘긴다. 리졸버는 **요청마다** 호출되고, 그 값이 provider 의 자격증명 헤더
-(`Authorization: Bearer …` · `x-api-key` · `x-goog-api-key`)로 나간다 — 교체한 키가 provider 를 다시 만들지 않아도 다음
+(`Authorization: Bearer …` — OpenAI 계열과 Anthropic · `x-goog-api-key` — Google)로 나간다 — 교체한 키가 provider 를 다시 만들지 않아도 다음
 호출부터 쓰인다. null/빈 값이면 `ApiKey` 로 돌아간다.
 
 ```csharp
@@ -419,7 +419,7 @@ var gatewayConfig = new OpenAICompatibleConfig
 - 키는 준 그대로 보낸다. 키가 없으면 자격증명 헤더 자체를 보내지 않는다.
 - `Headers` 는 `Authorization` 과 이 placement 의 헤더 이름을 거부한다(아래 절의 규칙 그대로 — 자격증명은 헤더가 아니다).
 - `GpuStackConfig`·`OpenAICompatibleConfig` 의 값은 변환되는 모든 config(`ToOpenAI` · `ToOpenAICompatible` · rerank)로 넘어간다.
-- Anthropic · Google 와이어는 대상이 아니다 — 벤더 헤더(`x-api-key` · `x-goog-api-key`)를 그대로 쓴다.
+- Anthropic · Google 와이어는 대상이 아니다 — 벤더 SDK 의 헤더(Anthropic `Authorization: Bearer` · Google `x-goog-api-key`)를 그대로 쓴다. Anthropic 은 SDK 13 부터 `x-api-key` 대신 Bearer 로 보낸다 — `x-api-key` 만 읽는 게이트웨이는 Bearer 를 받아야 한다.
 
 ## 추가 요청 헤더 (`Headers`) — 네 provider 공통
 

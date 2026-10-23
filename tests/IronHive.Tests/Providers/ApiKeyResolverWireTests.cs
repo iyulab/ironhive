@@ -112,9 +112,9 @@ public sealed class ApiKeyResolverWireTests : IDisposable
         var key = "key-1";
         var finder = new AnthropicModelFinder(new AnthropicConfig { BaseUrl = _origin, ApiKey = "static-key", ApiKeyResolver = () => key });
 
-        (await SentAsync(() => finder.ListModelsAsync(), "x-api-key")).Should().Be("key-1");
+        (await SentAsync(() => finder.ListModelsAsync(), "Authorization")).Should().Be("Bearer key-1");
         key = "key-2";
-        (await SentAsync(() => finder.ListModelsAsync(), "x-api-key")).Should().Be("key-2");
+        (await SentAsync(() => finder.ListModelsAsync(), "Authorization")).Should().Be("Bearer key-2");
     }
 
     [Fact]

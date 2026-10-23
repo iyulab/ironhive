@@ -238,15 +238,16 @@ public class ProviderResponseFailureTests
     [Fact]
     public async Task Gemini_ErrorDataLine_Throws()
     {
-        // Google.GenAI reads this event as an empty response and raises nothing; the stream then ends without a finish
-        // reason, which is what the generator catches.
+        // Google.GenAI (1.27+) raises the error event as a ServerError, which the generator maps like any provider HTTP
+        // failure: the status the event carries (503 here, a transient overload) and the text already streamed.
         var sse = StubHttpHandler.SseData(
             GeminiChunk("""[{"text":"Hel"}]""", finishReason: null),
             """{"error":{"code":503,"message":"The model is overloaded. Please try again later.","status":"UNAVAILABLE"}}""");
 
         var (frames, error) = await RunAsync(Gemini(sse));
 
-        error.Should().BeOfType<ProviderResponseException>();
+        error.Should().BeOfType<ProviderHttpException>()
+            .Which.StatusCode.Should().Be(System.Net.HttpStatusCode.ServiceUnavailable);
         TextOf(frames).Should().Be("Hel");
         frames.OfType<StreamingMessageDoneResponse>().Should().BeEmpty();
     }

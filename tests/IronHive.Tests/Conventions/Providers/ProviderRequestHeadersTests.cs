@@ -146,7 +146,7 @@ public class ProviderRequestHeadersTests
         var sent = Assert.Single(handler.Headers);
         Assert.Equal("g1", sent[Gateway]);
         Assert.Equal("ws", sent["anthropic-workspace-id"]);
-        Assert.Equal("test-key", sent["x-api-key"]);
+        Assert.Equal("Bearer test-key", sent["Authorization"]);
     }
 
     [Fact]

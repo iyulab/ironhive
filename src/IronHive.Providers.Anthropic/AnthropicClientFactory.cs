@@ -13,6 +13,10 @@ internal static class AnthropicClientFactory
         if (!string.IsNullOrWhiteSpace(config.BaseUrl))
             options.BaseUrl = config.BaseUrl;
         var initialKey = config.ResolveApiKey();
+        // The SDK (13.x) takes one credential and throws when a second is set; say which settings collide.
+        if ((!string.IsNullOrWhiteSpace(initialKey) || config.ApiKeyResolver != null) && !string.IsNullOrWhiteSpace(config.AuthToken))
+            throw new ArgumentException(
+                $"{nameof(AnthropicConfig)}: set either {nameof(AnthropicConfig.ApiKey)} (or {nameof(AnthropicConfig.ApiKeyResolver)}) or {nameof(AnthropicConfig.AuthToken)}, not both - both are sent as 'Authorization: Bearer'.");
         if (!string.IsNullOrWhiteSpace(initialKey))
             options.ApiKey = initialKey;
         if (!string.IsNullOrWhiteSpace(config.AuthToken))
@@ -33,7 +37,7 @@ internal static class AnthropicClientFactory
 
         HttpMessageHandler transport = ProviderConnect.CreateHandler(config.ConnectTimeout);
         if (config.ApiKeyResolver != null)
-            transport = new ResolvedCredentialHandler("x-api-key", config.ApiKeyResolver, config.ApiKey, format: null, transport);
+            transport = new ResolvedCredentialHandler("Authorization", config.ApiKeyResolver, config.ApiKey, k => $"Bearer {k}", transport);
 
         options.HttpClient = config.HttpClient ?? new HttpClient(transport)
         {

@@ -4,11 +4,12 @@ namespace IronHive.Providers.Anthropic;
 /// Anthropic API 호출에 필요한 설정 정보를 나타냅니다.
 /// </summary>
 /// <remarks>
-/// 인증 방식은 다음 두 가지 중 하나를 사용할 수 있습니다.
+/// 인증 방식은 다음 두 가지 중 하나를 사용할 수 있습니다(둘 다 설정하면 생성 시 <see cref="ArgumentException"/>).
 /// <list type="bullet">
 /// <item>
 /// <description>
-/// <see cref="ApiKey"/>: 기본 인증 방식. HTTP 헤더 <c>x-api-key</c> 로 전송됩니다.
+/// <see cref="ApiKey"/>: 기본 인증 방식. HTTP 헤더 <c>Authorization: Bearer &lt;key&gt;</c> 로 전송됩니다(Anthropic SDK 13 부터 —
+/// 그 전에는 <c>x-api-key</c>).
 /// </description>
 /// </item>
 /// <item>
@@ -31,8 +32,8 @@ public class AnthropicConfig
     /// Anthropic API 인증에 사용되는 API Key입니다.
     /// </summary>
     /// <remarks>
-    /// HTTP 요청 시 <c>x-api-key</c> 헤더에 포함되어 전송됩니다.
-    /// <see cref="AuthToken"/>이 설정되지 않은 경우 필수입니다.
+    /// HTTP 요청 시 <c>Authorization: Bearer &lt;key&gt;</c> 헤더로 전송됩니다.
+    /// <see cref="AuthToken"/>이 설정되지 않은 경우 필수이고, 함께 설정할 수 없습니다.
     /// </remarks>
     public string? ApiKey { get; set; }
 
@@ -56,7 +57,7 @@ public class AnthropicConfig
     /// </summary>
     /// <remarks>
     /// HTTP 요청 시 <c>Authorization: Bearer &lt;token&gt;</c> 헤더에 포함되어 전송됩니다.
-    /// <see cref="ApiKey"/>가 설정되지 않은 경우 필수입니다.
+    /// <see cref="ApiKey"/>가 설정되지 않은 경우 필수이고, 함께 설정할 수 없습니다.
     /// </remarks>
     public string? AuthToken { get; set; }
 
