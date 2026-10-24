@@ -229,4 +229,23 @@ public class GpuStackConfigTests
         var config = new GpuStackConfig { BaseUrl = "http://gpu:8080", Path = "/v1-openai/" };
         config.ToRerankConfig().BaseUrl.Should().Be("http://gpu:8080/v1/");
     }
+
+    [Fact]
+    public void EverySettingOfTheCompatibleConfig_ExistsOnTheGpuStackConfig()
+    {
+        // GPUStack is an OpenAI-compatible route with its own config class; a setting added to OpenAICompatibleConfig
+        // but not here cannot be turned on for GPUStack (0.70.0 shipped InstructionsAsSeparateSystemMessage that way).
+        var gpuStack = typeof(GpuStackConfig).GetProperties().Where(p => p.CanWrite).Select(p => p.Name).ToHashSet();
+
+        typeof(OpenAICompatibleConfig).GetProperties().Where(p => p.CanWrite).Select(p => p.Name)
+            .Where(name => !gpuStack.Contains(name))
+            .Should().BeEmpty("each OpenAICompatibleConfig setting needs its GpuStackConfig twin, carried by ToOpenAICompatible()");
+    }
+
+    [Fact]
+    public void ToOpenAICompatible_CarriesTheInstructionsPlacement()
+    {
+        new GpuStackConfig { InstructionsAsSeparateSystemMessage = true }.ToOpenAICompatible()
+            .InstructionsAsSeparateSystemMessage.Should().BeTrue();
+    }
 }

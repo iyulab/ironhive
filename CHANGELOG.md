@@ -3,6 +3,12 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## Unreleased
+
+### Added
+- **`GpuStackConfig.InstructionsAsSeparateSystemMessage`** — the GPUStack config carries the per-request instructions placement
+  that `OpenAICompatibleConfig` gained in 0.70.0 (it was missing there, so a GPUStack route could not opt in).
+
 ## 0.70.0 — 2026-10-24
 
 ### Fixed
