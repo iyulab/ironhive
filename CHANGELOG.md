@@ -3,6 +3,15 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## Unreleased
+
+### Fixed
+- **Streamed tool calls on GPUStack no longer fail when the model fills a nullable parameter.** GPUStack's streaming tool-call
+  parser ends the stream with `unhashable type: 'list'` when a parameter's schema has a type list (`"type": ["string", "null"]`,
+  what a .NET optional nullable parameter exports). The GPUStack route now sends tool schemas with `"null"` taken out of every
+  type list, at every depth; the tool's own schema and every other route are unchanged. A filled parameter cannot be sent as
+  `null` on that route — leaving it out has the same meaning for an optional parameter. Removed when GPUStack accepts type lists.
+
 ## 0.71.0 — 2026-10-24
 
 ### Added

@@ -171,6 +171,7 @@ public class GpuStackConfig
         TokenLimitParameter = TokenLimitParameter,
         CarryImageToolResultsAsUserMessage = CarryImageToolResultsAsUserMessage,
         InstructionsPlacement = InstructionsPlacement,
+        StripNullFromSchemaTypeLists = true,
         Headers = Headers,
         ApiKeyPlacement = ApiKeyPlacement,
         MaxRetries = MaxRetries,

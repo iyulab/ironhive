@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using IronHive.Abstractions.Exceptions;
 using IronHive.Abstractions.Messages;
@@ -57,6 +58,9 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
     /// <inheritdoc cref="OpenAICompatibleConfig.InstructionsPlacement"/>
     public InstructionsPlacement InstructionsPlacement { get; set; }
 
+    /// <inheritdoc cref="OpenAICompatibleConfig.StripNullFromSchemaTypeLists"/>
+    internal bool StripNullFromSchemaTypeLists { get; set; }
+
     /// <inheritdoc />
     public void Dispose()
     {
@@ -69,7 +73,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var req = BuildRequest(request, TokenLimitParameter, CarryImageToolResultsAsUserMessage, InstructionsPlacement);
+        var req = BuildRequest(request, TokenLimitParameter, CarryImageToolResultsAsUserMessage, InstructionsPlacement, StripNullFromSchemaTypeLists);
         var res = await _client.PostAsync(req, request.Headers, cancellationToken);
         var choice = res.Choices?.FirstOrDefault();
         var content = new List<MessageContent>();
@@ -126,7 +130,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var req = BuildRequest(request, TokenLimitParameter, CarryImageToolResultsAsUserMessage, InstructionsPlacement);
+        var req = BuildRequest(request, TokenLimitParameter, CarryImageToolResultsAsUserMessage, InstructionsPlacement, StripNullFromSchemaTypeLists);
 
         var reason = MessageDoneReason.EndTurn;
         var usage = new MessageTokenUsage();
@@ -376,11 +380,55 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
             "a server-specific implementation (e.g. llama.cpp/vLLM's /tokenize endpoint) if you need one.");
     }
 
+    /// <summary>
+    /// A copy of <paramref name="schema"/> with <c>"null"</c> removed from every <c>type</c> list, at every depth (properties,
+    /// array items, combinators); a list left with one type becomes that type. The caller's schema is not changed; a
+    /// schema that is not JSON (<see cref="JsonNode"/> or <see cref="JsonElement"/>) is returned as it is.
+    /// </summary>
+    internal static object StripNullFromTypeLists(object schema)
+    {
+        JsonNode? copy = schema switch
+        {
+            JsonNode node => node.DeepClone(),
+            JsonElement element => JsonNode.Parse(element.GetRawText()),
+            _ => null,
+        };
+        if (copy is null)
+            return schema;
+        Strip(copy);
+        return copy;
+
+        static void Strip(JsonNode? node)
+        {
+            switch (node)
+            {
+                case JsonObject obj:
+                    if (obj["type"] is JsonArray types)
+                    {
+                        var kept = types.Where(t => t?.GetValueKind() != JsonValueKind.String || t.GetValue<string>() != "null")
+                            .Select(t => t?.DeepClone()).ToList();
+                        if (kept.Count == 1)
+                            obj["type"] = kept[0];
+                        else if (kept.Count > 1 && kept.Count < types.Count)
+                            obj["type"] = new JsonArray([.. kept]);
+                    }
+                    foreach (var (_, child) in obj.ToList())
+                        Strip(child);
+                    break;
+                case JsonArray array:
+                    foreach (var child in array)
+                        Strip(child);
+                    break;
+            }
+        }
+    }
+
     internal static ChatCompletionRequest BuildRequest(
         MessageGenerationRequest request,
         TokenLimitParameter tokenLimitParameter = TokenLimitParameter.MaxCompletionTokens,
         bool carryImageToolResults = false,
-        InstructionsPlacement instructionsPlacement = InstructionsPlacement.SystemAppend)
+        InstructionsPlacement instructionsPlacement = InstructionsPlacement.SystemAppend,
+        bool stripNullFromSchemaTypeLists = false)
     {
         // The budget fits inside MaxTokens, which reasoning and answer share: a budget the cap cannot hold leaves no answer.
         // When no budget fits, reasoning is turned off for this request — a short answer instead of none.
@@ -419,11 +467,13 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
                     {
                         Name = t.UniqueName,
                         Description = t.Description,
-                        Parameters = t.Parameters ?? new JsonObject
-                        {
-                            ["type"] = "object",
-                            ["properties"] = new JsonObject()
-                        }
+                        Parameters = t.Parameters is null
+                            ? new JsonObject
+                            {
+                                ["type"] = "object",
+                                ["properties"] = new JsonObject()
+                            }
+                            : stripNullFromSchemaTypeLists ? StripNullFromTypeLists(t.Parameters) : t.Parameters
                     }
                 }),
             ToolChoice = BuildToolChoice(request.ToolChoice),
