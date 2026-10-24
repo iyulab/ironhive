@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## 0.71.0 — Unreleased
+## 0.71.0 — 2026-10-24
 
 ### Added
 - **Per-request instructions can lead the last user turn on Chat Completions routes** — `InstructionsPlacement.LeadingUserTurn`
