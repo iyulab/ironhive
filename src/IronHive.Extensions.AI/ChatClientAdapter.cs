@@ -276,11 +276,16 @@ public class ChatClientAdapter : IChatClient
         // call of that id and silently replace the earlier ones.
         var pendingCalls = new PendingToolCalls();
 
+        // Every System-role message is part of the system prompt, in conversation order. A caller that builds its context
+        // from several of them (the prompt, then project instructions, a scratchpad, a compaction summary) loses the
+        // earlier ones if the last one replaces the rest — the prompt itself first of all.
+        var systemParts = new List<string>();
         foreach (var msg in chatMessages)
         {
             if (msg.Role == ChatRole.System)
             {
-                request.System = msg.Text;
+                if (!string.IsNullOrWhiteSpace(msg.Text))
+                    systemParts.Add(msg.Text);
                 continue;
             }
 
@@ -298,6 +303,9 @@ public class ChatClientAdapter : IChatClient
                 }
             }
         }
+
+        if (systemParts.Count > 0)
+            request.System = string.Join(Environment.NewLine + Environment.NewLine, systemParts);
 
         if (options is not null)
         {

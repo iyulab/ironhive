@@ -5,6 +5,11 @@ changes are expected and used freely for structural correctness.
 
 ## Unreleased
 
+### Fixed
+- **Several System-role messages sent through `AsChatClient()` all reach the system prompt, in order.** Only the last one
+  survived: a conversation that carried the prompt plus further system messages (project instructions, a scratchpad, a
+  compaction summary) reached the provider without the prompt. They are now joined with a blank line between them.
+
 ### Changed
 - **Breaking: Anthropic requests carry the API key as `Authorization: Bearer <key>` instead of `x-api-key`** (Anthropic SDK 13;
   api.anthropic.com accepts both). `ApiKeyResolver` follows. A gateway in front of Anthropic that reads only `x-api-key` has to

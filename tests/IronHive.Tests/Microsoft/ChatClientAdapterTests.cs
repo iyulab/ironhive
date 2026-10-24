@@ -404,6 +404,22 @@ public class ChatClientAdapterTests : IDisposable
     }
 
     [Fact]
+    public async Task SeveralLeadingSystemMessages_AllReachTheSystemPrompt()
+    {
+        var capturedRequest = SetupGeneratorReturns();
+
+        await _adapter.GetResponseAsync(
+            [
+                new ChatMessage(ChatRole.System, "You are a travel guide."),
+                new ChatMessage(ChatRole.System, "Scratchpad: the user prefers trains."),
+                new ChatMessage(ChatRole.User, "Hi"),
+            ],
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        capturedRequest().System.Should().Contain("You are a travel guide.").And.Contain("Scratchpad: the user prefers trains.");
+    }
+
+    [Fact]
     public async Task EveryDeclaredOptionKnob_ReachesItsRequestSink()
     {
         // Each knob is set on its own so a sink filled by the wrong source cannot pass by accident.
