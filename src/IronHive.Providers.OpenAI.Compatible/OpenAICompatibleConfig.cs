@@ -110,6 +110,20 @@ public class OpenAICompatibleConfig
     public bool CarryImageToolResultsAsUserMessage { get; set; }
 
     /// <summary>
+    /// Whether a request's per-request instructions (<c>MessageGenerationRequest.Instructions</c>) are sent as a second
+    /// <c>system</c> message after the first, rather than appended to the end of the first.
+    /// (Default: <see langword="false"/> — appended, which every chat template accepts.)
+    /// </summary>
+    /// <remarks>
+    /// Both keep the system prompt as the leading text, so a prefix cache reuses it when only the instructions change.
+    /// A server whose chat template renders the tool definitions inside the first system turn (Qwen 2.5/3, Llama 3.x)
+    /// puts a second system message after the tools, so the tools stay cached too — turn this on for such a model.
+    /// Templates differ in what they do with a second system message: Gemma 3 rejects it, the DeepSeek-R1 distills
+    /// keep only the last one (the prompt is lost), gpt-oss keeps only the first (the instructions are lost).
+    /// </remarks>
+    public bool InstructionsAsSeparateSystemMessage { get; set; }
+
+    /// <summary>
     /// True when a base URL is resolvable, i.e. the endpoint can be contacted. A key-optional LAN
     /// service is usable without a key (distinct from <see cref="IsConfigured"/>).
     /// </summary>

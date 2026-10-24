@@ -84,6 +84,9 @@ public class MessageRequest
     /// </summary>
     public string? System { get; set; }
 
+    /// <inheritdoc cref="MessageGenerationRequest.Instructions"/>
+    public string? Instructions { get; set; }
+
     /// <summary>
     /// 모델에 전달될 대화 메시지 컬렉션입니다.
     /// </summary>

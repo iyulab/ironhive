@@ -12,6 +12,12 @@ namespace IronHive.Abstractions.Agent;
 public class AgentInvokeOptions
 {
     /// <summary>
+    /// 이번 호출에만 해당하는 지시입니다. 에이전트의 Instructions(시스템 프롬프트)를 바꾸지 않고 그 뒤에 놓입니다 —
+    /// <see cref="MessageRequest.Instructions"/>.
+    /// </summary>
+    public string? Instructions { get; set; }
+
+    /// <summary>
     /// 모델의 사고 노력 수준을 정의합니다.
     /// null 이면 추론에 대해 아무것도 보내지 않아 provider·모델 기본 동작을 따릅니다 — 기본으로 추론하는 모델
     /// (예: OpenAI 호환 서버의 Qwen·DeepSeek 계열)은 추론합니다. 추론을 끄려면 <see cref="MessageThinkingEffort.None"/>

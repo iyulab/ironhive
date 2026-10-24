@@ -816,10 +816,10 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         var config = new GenerateContentConfig
         {
             HttpOptions = RequestHttpOptions(request),
-            SystemInstruction = string.IsNullOrWhiteSpace(request.System) ? null : new Content
-            {
-                Parts = [new Part { Text = request.System }]
-            },
+            // Per-request instructions follow the prompt as their own part, so the prompt stays the leading text.
+            SystemInstruction = new[] { request.System, request.Instructions }.Where(t => !string.IsNullOrWhiteSpace(t)).ToList() is { Count: > 0 } systemTexts
+                ? new Content { Parts = systemTexts.Select(t => new Part { Text = t }).ToList() }
+                : null,
             Tools = tools,
             // FunctionCallingConfig.AllowedFunctionNames가 여러 함수 이름을 그대로 지원하므로,
             // 다른 프로바이더와 달리 도구 목록을 별도로 필터링할 필요가 없습니다.

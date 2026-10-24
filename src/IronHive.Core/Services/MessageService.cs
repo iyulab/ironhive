@@ -269,6 +269,7 @@ public class MessageService : IMessageService
             ThinkingOutput = request.ThinkingOutput,
             Messages = request.Messages,
             System = request.System,
+            Instructions = request.Instructions,
             Tools = request.Tools,
             OutputFormat = request.OutputFormat,
             MaxTokens = request.MaxTokens,

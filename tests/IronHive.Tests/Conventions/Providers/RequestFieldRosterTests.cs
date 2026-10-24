@@ -31,7 +31,7 @@ public class RequestFieldRosterTests
     {
         ["OpenAI (Responses)"] = ("src/IronHive.Providers.OpenAI/OpenAIMessageGenerator.cs", new()
         {
-            ["Model"] = Carried, ["System"] = Carried, ["Messages"] = Carried, ["MaxTokens"] = Carried,
+            ["Model"] = Carried, ["System"] = Carried, ["Instructions"] = Carried, ["Messages"] = Carried, ["MaxTokens"] = Carried,
             ["Temperature"] = Carried, ["TopP"] = Carried, ["ThinkingEffort"] = Carried, ["ThinkingOutput"] = Carried,
             ["Tools"] = Carried, ["ToolChoice"] = Carried, ["OutputFormat"] = Carried,
             ["ExtraBody"] = Rejected, ["LogProbabilities"] = Rejected, ["Headers"] = Carried,
@@ -42,7 +42,7 @@ public class RequestFieldRosterTests
         }),
         ["Anthropic"] = ("src/IronHive.Providers.Anthropic/AnthropicMessageGenerator.cs", new()
         {
-            ["Model"] = Carried, ["System"] = Carried, ["Messages"] = Carried, ["MaxTokens"] = Carried,
+            ["Model"] = Carried, ["System"] = Carried, ["Instructions"] = Carried, ["Messages"] = Carried, ["MaxTokens"] = Carried,
             ["StopSequences"] = Carried, ["ThinkingEffort"] = Carried, ["ThinkingOutput"] = Carried,
             ["Tools"] = Carried, ["ToolChoice"] = Carried, ["OutputFormat"] = Carried,
             ["ExtraBody"] = Rejected, ["LogProbabilities"] = Rejected, ["Headers"] = Carried,
@@ -54,7 +54,7 @@ public class RequestFieldRosterTests
         }),
         ["Google AI"] = ("src/IronHive.Providers.GoogleAI/GoogleAIMessageGenerator.cs", new()
         {
-            ["Model"] = Carried, ["System"] = Carried, ["Messages"] = Carried, ["MaxTokens"] = Carried,
+            ["Model"] = Carried, ["System"] = Carried, ["Instructions"] = Carried, ["Messages"] = Carried, ["MaxTokens"] = Carried,
             ["Temperature"] = Carried, ["TopP"] = Carried, ["TopK"] = Carried, ["StopSequences"] = Carried,
             ["ThinkingEffort"] = Carried, ["ThinkingOutput"] = Carried,
             ["Tools"] = Carried, ["ToolChoice"] = Carried, ["OutputFormat"] = Carried,
@@ -64,7 +64,7 @@ public class RequestFieldRosterTests
         }),
         ["OpenAI-compatible (Chat Completions)"] = ("src/IronHive.Providers.OpenAI.Compatible/ChatCompletion/ChatCompletionMessageGenerator.cs", new()
         {
-            ["Model"] = Carried, ["System"] = Carried, ["Messages"] = Carried, ["MaxTokens"] = Carried,
+            ["Model"] = Carried, ["System"] = Carried, ["Instructions"] = Carried, ["Messages"] = Carried, ["MaxTokens"] = Carried,
             ["Temperature"] = Carried, ["TopP"] = Carried, ["TopK"] = Carried, ["StopSequences"] = Carried,
             ["ThinkingEffort"] = Carried, ["Tools"] = Carried, ["ToolChoice"] = Carried, ["OutputFormat"] = Carried,
             ["ExtraBody"] = Carried, ["LogProbabilities"] = Carried, ["Headers"] = Carried,

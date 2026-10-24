@@ -11,6 +11,15 @@ changes are expected and used freely for structural correctness.
   compaction summary) reached the provider without the prompt. They are now joined with a blank line between them.
 
 ### Changed
+- **Breaking: per-request instructions (`ChatOptions.Instructions`) follow the system prompt and the tools instead of leading
+  the request.** They reach the new `MessageGenerationRequest.Instructions` / `MessageRequest.Instructions` instead of being
+  joined ahead of `System`, and each provider places them after the stable prefix: Anthropic as a second system block, Gemini
+  as a second system part, OpenAI Responses as a developer message opening the input, Chat Completions at the end of the system
+  message — or as a second system message with the new `OpenAICompatibleConfig.InstructionsAsSeparateSystemMessage` (for chat
+  templates that render tools inside the first system turn). A prefix cache now reuses the prompt (and, where the wire allows,
+  the tools) when only the instructions change. Instructions with no system prompt are the prompt, as before. Migration: text
+  that must frame the system prompt belongs in the system prompt; a generator or middleware that reads `System` also reads
+  `Instructions`.
 - **Breaking: Anthropic requests carry the API key as `Authorization: Bearer <key>` instead of `x-api-key`** (Anthropic SDK 13;
   api.anthropic.com accepts both). `ApiKeyResolver` follows. A gateway in front of Anthropic that reads only `x-api-key` has to
   accept the Bearer form. Setting `ApiKey` (or `ApiKeyResolver`) **and** `AuthToken` now fails at construction with an

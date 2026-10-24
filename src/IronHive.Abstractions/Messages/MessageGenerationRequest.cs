@@ -83,6 +83,13 @@ public class MessageGenerationRequest
     public string? System { get; set; }
 
     /// <summary>
+    /// 이번 요청에만 해당하는 지시입니다. 요청마다 달라질 수 있는 텍스트이므로 프로바이더는 이것을 안정된 앞부분
+    /// (<see cref="System"/>과 도구 정의) 뒤에 둡니다 — 지시가 바뀌어도 접두부 캐시가 시스템 프롬프트와 도구를 다시 쓰도록.
+    /// <see cref="System"/>이 비어 있으면 지시가 그 자리를 대신합니다.
+    /// </summary>
+    public string? Instructions { get; set; }
+
+    /// <summary>
     /// 모델에 전달될 대화 메시지 컬렉션입니다.
     /// </summary>
     public ICollection<Message> Messages { get; set; } = [];

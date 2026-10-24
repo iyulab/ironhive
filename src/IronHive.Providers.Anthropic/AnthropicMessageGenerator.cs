@@ -355,8 +355,9 @@ public class AnthropicMessageGenerator : IMessageGenerator
             Messages = createParams.Messages,
             // The system prompt the create call actually sends — it can carry instructions the translation adds
             // (JSON mode, forced-tool-choice emulation), and those tokens are part of what the request costs.
-            System = new MessageCountTokensParamsSystem(
-                createParams.System is { } system && system.TryPickString(out var systemText) ? systemText : request.System ?? string.Empty),
+            System = createParams.System is { } system
+                ? system.Match(text => new MessageCountTokensParamsSystem(text), blocks => new MessageCountTokensParamsSystem(blocks))
+                : new MessageCountTokensParamsSystem(string.Empty),
             Tools = createParams.Tools?.Select(t =>
             {
                 t.TryPickTool(out var tool);
@@ -670,10 +671,21 @@ public class AnthropicMessageGenerator : IMessageGenerator
         if (request.OutputFormat is { Schema: null })
             system = AnthropicHelper.AppendJsonModeInstruction(system);
 
+        // Per-request instructions go in a second system block: Anthropic's cache prefix runs tools → system → messages,
+        // so a block after the prompt keeps the tools and the prompt cacheable when only the instructions change.
+        var instructions = string.IsNullOrWhiteSpace(request.Instructions) ? null : request.Instructions;
+        MessageCreateParamsSystem systemParam = (system.Length, instructions) switch
+        {
+            (_, null) => new MessageCreateParamsSystem(system),
+            (0, _) => new MessageCreateParamsSystem(instructions),
+            _ => new MessageCreateParamsSystem(
+                (IReadOnlyList<TextBlockParam>)[new TextBlockParam { Text = system }, new TextBlockParam { Text = instructions }]),
+        };
+
         return new MessageCreateParams
         {
             Model = request.Model,
-            System = new MessageCreateParamsSystem(system),
+            System = systemParam,
             Messages = messages,
             // 필수요청사항으로 64K로 기본값을 설정합니다.
             MaxTokens = request.MaxTokens ?? 64000,

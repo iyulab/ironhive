@@ -535,6 +535,16 @@ public class OpenAIMessageGenerator : IMessageGenerator
             _ => null
         };
 
+        // Per-request instructions open the input as a developer message: after `instructions` (the prompt) and the
+        // tools, so a change to them leaves the prompt and the tools in the cached prefix. Alone, they are the prompt.
+        if (!string.IsNullOrWhiteSpace(request.Instructions))
+        {
+            if (string.IsNullOrWhiteSpace(options.Instructions))
+                options.Instructions = request.Instructions;
+            else
+                options.InputItems.Add(ResponseItem.CreateDeveloperMessageItem(request.Instructions));
+        }
+
         foreach (var msg in request.Messages)
         {
             if (msg is { Role: IronHiveMessageRole.User } user)

@@ -69,6 +69,7 @@ public class MessageContext
             ThinkingOutput = request.ThinkingOutput,
             Messages = new List<Message>(request.Messages),
             System = request.System,
+            Instructions = request.Instructions,
             Tools = request.Tools,
             OutputFormat = request.OutputFormat,
             MaxTokens = request.MaxTokens,

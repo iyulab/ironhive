@@ -54,6 +54,9 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
     /// <inheritdoc cref="OpenAICompatibleConfig.CarryImageToolResultsAsUserMessage"/>
     public bool CarryImageToolResultsAsUserMessage { get; set; }
 
+    /// <inheritdoc cref="OpenAICompatibleConfig.InstructionsAsSeparateSystemMessage"/>
+    public bool InstructionsAsSeparateSystemMessage { get; set; }
+
     /// <inheritdoc />
     public void Dispose()
     {
@@ -66,7 +69,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var req = BuildRequest(request, TokenLimitParameter, CarryImageToolResultsAsUserMessage);
+        var req = BuildRequest(request, TokenLimitParameter, CarryImageToolResultsAsUserMessage, InstructionsAsSeparateSystemMessage);
         var res = await _client.PostAsync(req, request.Headers, cancellationToken);
         var choice = res.Choices?.FirstOrDefault();
         var content = new List<MessageContent>();
@@ -123,7 +126,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var req = BuildRequest(request, TokenLimitParameter, CarryImageToolResultsAsUserMessage);
+        var req = BuildRequest(request, TokenLimitParameter, CarryImageToolResultsAsUserMessage, InstructionsAsSeparateSystemMessage);
 
         var reason = MessageDoneReason.EndTurn;
         var usage = new MessageTokenUsage();
@@ -376,7 +379,8 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
     internal static ChatCompletionRequest BuildRequest(
         MessageGenerationRequest request,
         TokenLimitParameter tokenLimitParameter = TokenLimitParameter.MaxCompletionTokens,
-        bool carryImageToolResults = false)
+        bool carryImageToolResults = false,
+        bool instructionsAsSeparateSystemMessage = false)
     {
         // The budget fits inside MaxTokens, which reasoning and answer share: a budget the cap cannot hold leaves no answer.
         // When no budget fits, reasoning is turned off for this request — a short answer instead of none.
@@ -391,7 +395,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         var built = new ChatCompletionRequest
         {
             Model = request.Model,
-            Messages = BuildMessages(request, carryImageToolResults),
+            Messages = BuildMessages(request, carryImageToolResults, instructionsAsSeparateSystemMessage),
             Logprobs = request.LogProbabilities is null ? null : true,
             TopLogprobs = request.LogProbabilities is { TopAlternatives: > 0 } lp ? lp.TopAlternatives : null,
             MaxCompletionTokens = sendsNewName ? request.MaxTokens : null,
@@ -529,12 +533,31 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         });
     }
 
-    internal static List<ChatMessage> BuildMessages(MessageGenerationRequest request, bool carryImageToolResults = false)
+    internal static List<ChatMessage> BuildMessages(
+        MessageGenerationRequest request,
+        bool carryImageToolResults = false,
+        bool instructionsAsSeparateSystemMessage = false)
     {
         var messages = new List<ChatMessage>();
 
-        if (!string.IsNullOrWhiteSpace(request.System))
-            messages.Add(new SystemChatMessage { Content = request.System });
+        // The prompt leads; per-request instructions follow it — in the same system message, or (opt-in) as a second
+        // one, which templates that render the tools inside the first system turn place after the tools.
+        var system = string.IsNullOrWhiteSpace(request.System) ? null : request.System;
+        var instructions = string.IsNullOrWhiteSpace(request.Instructions) ? null : request.Instructions;
+        if (system is not null && instructions is not null && instructionsAsSeparateSystemMessage)
+        {
+            messages.Add(new SystemChatMessage { Content = system });
+            messages.Add(new SystemChatMessage { Content = instructions });
+        }
+        else if (system is not null || instructions is not null)
+        {
+            messages.Add(new SystemChatMessage
+            {
+                Content = system is not null && instructions is not null
+                    ? $"{system}{Environment.NewLine}{Environment.NewLine}{instructions}"
+                    : system ?? instructions!,
+            });
+        }
 
         foreach (var msg in request.Messages)
         {

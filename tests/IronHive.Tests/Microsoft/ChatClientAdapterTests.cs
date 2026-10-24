@@ -273,7 +273,7 @@ public class ChatClientAdapterTests : IDisposable
         ["ToolMode"] = "ToolChoice",
         ["Reasoning"] = "ThinkingEffort",
         ["ResponseFormat"] = "OutputFormat",
-        ["Instructions"] = "System",
+        ["Instructions"] = "Instructions",
         ["AllowMultipleToolCalls"] = "AllowParallelToolCalls"
     };
 
@@ -377,14 +377,15 @@ public class ChatClientAdapterTests : IDisposable
     }
 
     [Fact]
-    public async Task Instructions_BecomeTheSystemPrompt()
+    public async Task Instructions_ReachTheRequestsInstructions()
     {
         var capturedRequest = SetupGeneratorReturns();
         var options = new ChatOptions { Instructions = "Answer in one sentence." };
 
         await _adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "Hi")], options, TestContext.Current.CancellationToken);
 
-        capturedRequest().System.Should().Be("Answer in one sentence.");
+        capturedRequest().Instructions.Should().Be("Answer in one sentence.");
+        capturedRequest().System.Should().BeNull();
     }
 
     [Fact]
@@ -398,9 +399,9 @@ public class ChatClientAdapterTests : IDisposable
             options,
             TestContext.Current.CancellationToken);
 
-        var system = capturedRequest().System!;
-        system.Should().Contain("Answer in one sentence.").And.Contain("You are a travel guide.",
-            "both are the caller asking for a system prompt; dropping either is the silent loss this fixes");
+        capturedRequest().System.Should().Be("You are a travel guide.",
+            "the conversation's system prompt stays the leading text, unchanged when the per-request instructions change");
+        capturedRequest().Instructions.Should().Be("Answer in one sentence.");
     }
 
     [Fact]
