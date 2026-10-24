@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## Unreleased
+## 0.70.0 — Unreleased
 
 ### Fixed
 - **Several System-role messages sent through `AsChatClient()` all reach the system prompt, in order.** Only the last one
