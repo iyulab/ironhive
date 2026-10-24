@@ -86,8 +86,8 @@ public class GpuStackConfig
     /// <inheritdoc cref="OpenAICompatibleConfig.CarryImageToolResultsAsUserMessage"/>
     public bool CarryImageToolResultsAsUserMessage { get; set; }
 
-    /// <inheritdoc cref="OpenAICompatibleConfig.InstructionsAsSeparateSystemMessage"/>
-    public bool InstructionsAsSeparateSystemMessage { get; set; }
+    /// <inheritdoc cref="OpenAICompatibleConfig.InstructionsPlacement"/>
+    public InstructionsPlacement InstructionsPlacement { get; set; }
 
     /// <summary>
     /// 현재 유효한 BaseUrl을 반환합니다.
@@ -170,7 +170,7 @@ public class GpuStackConfig
         StreamIdleTimeout = StreamIdleTimeout,
         TokenLimitParameter = TokenLimitParameter,
         CarryImageToolResultsAsUserMessage = CarryImageToolResultsAsUserMessage,
-        InstructionsAsSeparateSystemMessage = InstructionsAsSeparateSystemMessage,
+        InstructionsPlacement = InstructionsPlacement,
         Headers = Headers,
         ApiKeyPlacement = ApiKeyPlacement,
         MaxRetries = MaxRetries,

@@ -110,18 +110,18 @@ public class OpenAICompatibleConfig
     public bool CarryImageToolResultsAsUserMessage { get; set; }
 
     /// <summary>
-    /// Whether a request's per-request instructions (<c>MessageGenerationRequest.Instructions</c>) are sent as a second
-    /// <c>system</c> message after the first, rather than appended to the end of the first.
-    /// (Default: <see langword="false"/> — appended, which every chat template accepts.)
+    /// Where a request's per-request instructions (<c>MessageGenerationRequest.Instructions</c>) go.
+    /// (Default: <see cref="InstructionsPlacement.SystemAppend"/> — appended to the system message, which every chat
+    /// template accepts.)
     /// </summary>
     /// <remarks>
-    /// Both keep the system prompt as the leading text, so a prefix cache reuses it when only the instructions change.
-    /// A server whose chat template renders the tool definitions inside the first system turn (Qwen 2.5/3, Llama 3.x)
-    /// puts a second system message after the tools, so the tools stay cached too — turn this on for such a model.
-    /// Templates differ in what they do with a second system message: Gemma 3 rejects it, the DeepSeek-R1 distills
-    /// keep only the last one (the prompt is lost), gpt-oss keeps only the first (the instructions are lost).
+    /// Every placement keeps the system prompt as the leading text, so a prefix cache reuses it when only the
+    /// instructions change. For a server whose chat template renders the tool definitions inside the system turn, choose
+    /// <see cref="InstructionsPlacement.LeadingUserTurn"/> (every template) or
+    /// <see cref="InstructionsPlacement.SeparateSystemMessage"/> (templates that accept a second system message) so the
+    /// tools stay cached too — see <see cref="InstructionsPlacement"/>.
     /// </remarks>
-    public bool InstructionsAsSeparateSystemMessage { get; set; }
+    public InstructionsPlacement InstructionsPlacement { get; set; }
 
     /// <summary>
     /// True when a base URL is resolvable, i.e. the endpoint can be contacted. A key-optional LAN

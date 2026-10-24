@@ -234,7 +234,7 @@ public class GpuStackConfigTests
     public void EverySettingOfTheCompatibleConfig_ExistsOnTheGpuStackConfig()
     {
         // GPUStack is an OpenAI-compatible route with its own config class; a setting added to OpenAICompatibleConfig
-        // but not here cannot be turned on for GPUStack (0.70.0 shipped InstructionsAsSeparateSystemMessage that way).
+        // but not here cannot be turned on for GPUStack (0.70.0 shipped the instructions placement that way).
         var gpuStack = typeof(GpuStackConfig).GetProperties().Where(p => p.CanWrite).Select(p => p.Name).ToHashSet();
 
         typeof(OpenAICompatibleConfig).GetProperties().Where(p => p.CanWrite).Select(p => p.Name)
@@ -245,7 +245,7 @@ public class GpuStackConfigTests
     [Fact]
     public void ToOpenAICompatible_CarriesTheInstructionsPlacement()
     {
-        new GpuStackConfig { InstructionsAsSeparateSystemMessage = true }.ToOpenAICompatible()
-            .InstructionsAsSeparateSystemMessage.Should().BeTrue();
+        new GpuStackConfig { InstructionsPlacement = InstructionsPlacement.LeadingUserTurn }.ToOpenAICompatible()
+            .InstructionsPlacement.Should().Be(InstructionsPlacement.LeadingUserTurn);
     }
 }

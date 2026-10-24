@@ -54,8 +54,8 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
     /// <inheritdoc cref="OpenAICompatibleConfig.CarryImageToolResultsAsUserMessage"/>
     public bool CarryImageToolResultsAsUserMessage { get; set; }
 
-    /// <inheritdoc cref="OpenAICompatibleConfig.InstructionsAsSeparateSystemMessage"/>
-    public bool InstructionsAsSeparateSystemMessage { get; set; }
+    /// <inheritdoc cref="OpenAICompatibleConfig.InstructionsPlacement"/>
+    public InstructionsPlacement InstructionsPlacement { get; set; }
 
     /// <inheritdoc />
     public void Dispose()
@@ -69,7 +69,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var req = BuildRequest(request, TokenLimitParameter, CarryImageToolResultsAsUserMessage, InstructionsAsSeparateSystemMessage);
+        var req = BuildRequest(request, TokenLimitParameter, CarryImageToolResultsAsUserMessage, InstructionsPlacement);
         var res = await _client.PostAsync(req, request.Headers, cancellationToken);
         var choice = res.Choices?.FirstOrDefault();
         var content = new List<MessageContent>();
@@ -126,7 +126,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var req = BuildRequest(request, TokenLimitParameter, CarryImageToolResultsAsUserMessage, InstructionsAsSeparateSystemMessage);
+        var req = BuildRequest(request, TokenLimitParameter, CarryImageToolResultsAsUserMessage, InstructionsPlacement);
 
         var reason = MessageDoneReason.EndTurn;
         var usage = new MessageTokenUsage();
@@ -380,7 +380,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         TokenLimitParameter tokenLimitParameter = TokenLimitParameter.MaxCompletionTokens,
         bool carryImageToolResults = false,
-        bool instructionsAsSeparateSystemMessage = false)
+        InstructionsPlacement instructionsPlacement = InstructionsPlacement.SystemAppend)
     {
         // The budget fits inside MaxTokens, which reasoning and answer share: a budget the cap cannot hold leaves no answer.
         // When no budget fits, reasoning is turned off for this request — a short answer instead of none.
@@ -395,7 +395,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         var built = new ChatCompletionRequest
         {
             Model = request.Model,
-            Messages = BuildMessages(request, carryImageToolResults, instructionsAsSeparateSystemMessage),
+            Messages = BuildMessages(request, carryImageToolResults, instructionsPlacement),
             Logprobs = request.LogProbabilities is null ? null : true,
             TopLogprobs = request.LogProbabilities is { TopAlternatives: > 0 } lp ? lp.TopAlternatives : null,
             MaxCompletionTokens = sendsNewName ? request.MaxTokens : null,
@@ -536,15 +536,24 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
     internal static List<ChatMessage> BuildMessages(
         MessageGenerationRequest request,
         bool carryImageToolResults = false,
-        bool instructionsAsSeparateSystemMessage = false)
+        InstructionsPlacement instructionsPlacement = InstructionsPlacement.SystemAppend)
     {
         var messages = new List<ChatMessage>();
 
-        // The prompt leads; per-request instructions follow it — in the same system message, or (opt-in) as a second
-        // one, which templates that render the tools inside the first system turn place after the tools.
+        // The prompt leads; per-request instructions follow it — in the same system message, as a second one (which
+        // templates that render the tools inside the first system turn place after the tools), or at the head of the
+        // last user turn, after the prompt, the tools and the earlier turns in every template.
         var system = string.IsNullOrWhiteSpace(request.System) ? null : request.System;
         var instructions = string.IsNullOrWhiteSpace(request.Instructions) ? null : request.Instructions;
-        if (system is not null && instructions is not null && instructionsAsSeparateSystemMessage)
+        var lastUser = instructions is not null && instructionsPlacement == InstructionsPlacement.LeadingUserTurn
+            ? request.Messages.LastOrDefault(m => m.Role == IronHiveMessageRole.User)
+            : null;
+        if (lastUser is not null)
+        {
+            if (system is not null)
+                messages.Add(new SystemChatMessage { Content = system });
+        }
+        else if (system is not null && instructions is not null && instructionsPlacement == InstructionsPlacement.SeparateSystemMessage)
         {
             messages.Add(new SystemChatMessage { Content = system });
             messages.Add(new SystemChatMessage { Content = instructions });
@@ -602,6 +611,8 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
                         throw new NotSupportedException($"The OpenAI-compatible provider does not support user message content of type {item.GetType().Name}.");
                     }
                 }
+                if (ReferenceEquals(msg, lastUser))
+                    LeadWith(parts, instructions!);
                 messages.Add(new UserChatMessage { Content = parts });
             }
             else if (msg is { Role: IronHiveMessageRole.Assistant } assistant)
@@ -729,6 +740,16 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         ImageFormat.Webp => "image/webp",
         _ => "image",
     };
+
+    // The instructions open the turn: merged into its first text part (a blank line apart), or as a part of their own when
+    // the turn starts with an image or audio.
+    private static void LeadWith(List<ChatMessageContent> parts, string instructions)
+    {
+        if (parts.Count > 0 && parts[0] is TextChatMessageContent first)
+            parts[0] = new TextChatMessageContent { Text = $"{instructions}{Environment.NewLine}{Environment.NewLine}{first.Text}" };
+        else
+            parts.Insert(0, new TextChatMessageContent { Text = instructions });
+    }
 
     private static string EnsureBase64Url(ImageMessageContent image)
     {

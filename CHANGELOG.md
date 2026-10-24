@@ -6,8 +6,19 @@ changes are expected and used freely for structural correctness.
 ## Unreleased
 
 ### Added
-- **`GpuStackConfig.InstructionsAsSeparateSystemMessage`** — the GPUStack config carries the per-request instructions placement
-  that `OpenAICompatibleConfig` gained in 0.70.0 (it was missing there, so a GPUStack route could not opt in).
+- **Per-request instructions can lead the last user turn on Chat Completions routes** — `InstructionsPlacement.LeadingUserTurn`
+  puts `MessageGenerationRequest.Instructions` (`ChatOptions.Instructions`) at the head of the request's last user message, a
+  blank line before its text, and leaves the system message to the prompt alone. Every chat template accepts it, and the
+  prompt, the tool definitions and the earlier turns stay in the server's prefix cache when only the instructions change —
+  including on templates that reject or drop a second system message (Gemma 3, the DeepSeek-R1 distills, gpt-oss). The
+  conversation is not changed; a request with no user message falls back to appending to the system message.
+- **`GpuStackConfig.InstructionsPlacement`** — the GPUStack config carries the placement too (it was missing in 0.70.0, so a
+  GPUStack route could not opt in).
+
+### Changed
+- **Breaking: `OpenAICompatibleConfig.InstructionsAsSeparateSystemMessage` (bool) is now `InstructionsPlacement`** (enum:
+  `SystemAppend` default · `SeparateSystemMessage` · `LeadingUserTurn`). Migration: `InstructionsAsSeparateSystemMessage = true`
+  → `InstructionsPlacement = InstructionsPlacement.SeparateSystemMessage`.
 
 ### Dependencies
 - Anthropic SDK 13.1.0 -> 13.3.0.

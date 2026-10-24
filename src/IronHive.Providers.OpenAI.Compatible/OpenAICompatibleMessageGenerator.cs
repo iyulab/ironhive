@@ -45,7 +45,7 @@ public class OpenAICompatibleMessageGenerator : IMessageGenerator
         {
             TokenLimitParameter = config.TokenLimitParameter,
             CarryImageToolResultsAsUserMessage = config.CarryImageToolResultsAsUserMessage,
-            InstructionsAsSeparateSystemMessage = config.InstructionsAsSeparateSystemMessage,
+            InstructionsPlacement = config.InstructionsPlacement,
         };
 
     private ChatCompletionMessageGenerator GetOrUpdateInner()

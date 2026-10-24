@@ -2,9 +2,11 @@ using System.ClientModel.Primitives;
 using System.Reflection;
 using AwesomeAssertions;
 using IronHive.Abstractions.Messages;
+using IronHive.Abstractions.Messages.Content;
 using IronHive.Providers.Anthropic;
 using IronHive.Providers.GoogleAI;
 using IronHive.Providers.OpenAI;
+using IronHive.Providers.OpenAI.Compatible;
 using IronHive.Providers.OpenAI.Compatible.ChatCompletion;
 using OpenAI.Responses;
 
@@ -119,7 +121,7 @@ public class ProviderInstructionsPlacementTests
     public void ChatCompletions_OptIn_InstructionsAreASecondSystemMessage()
     {
         var messages = ChatCompletionMessageGenerator.BuildMessages(
-            Request("m", Prompt, Instructions), instructionsAsSeparateSystemMessage: true);
+            Request("m", Prompt, Instructions), instructionsPlacement: InstructionsPlacement.SeparateSystemMessage);
 
         messages.OfType<SystemChatMessage>().Select(m => m.Content).Should().Equal(Prompt, Instructions);
         messages[2].Should().BeOfType<UserChatMessage>();
@@ -129,8 +131,51 @@ public class ProviderInstructionsPlacementTests
     public void ChatCompletions_InstructionsAloneAreTheSystemMessage()
     {
         var messages = ChatCompletionMessageGenerator.BuildMessages(
-            Request("m", null, Instructions), instructionsAsSeparateSystemMessage: true);
+            Request("m", null, Instructions), instructionsPlacement: InstructionsPlacement.SeparateSystemMessage);
 
         messages.OfType<SystemChatMessage>().Should().ContainSingle().Which.Content.Should().Be(Instructions);
     }
+
+    [Fact]
+    public void ChatCompletions_LeadingUserTurn_InstructionsOpenTheLastUserMessage()
+    {
+        var request = Request("m", Prompt, Instructions);
+        request.Messages = [Message.User("Earlier ask."), Message.User("Tidy up.")];
+
+        var messages = ChatCompletionMessageGenerator.BuildMessages(request, instructionsPlacement: InstructionsPlacement.LeadingUserTurn);
+
+        messages.OfType<SystemChatMessage>().Should().ContainSingle().Which.Content.Should().Be(Prompt, "the system turn holds the prompt alone");
+        var users = messages.OfType<UserChatMessage>().ToList();
+        UserText(users[0]).Should().Be("Earlier ask.", "earlier turns are sent as they were");
+        UserText(users[1]).Should().Be($"{Instructions}{Environment.NewLine}{Environment.NewLine}Tidy up.");
+        request.Messages.Last().Content.OfType<TextMessageContent>().Single().Value.Should().Be("Tidy up.", "the conversation itself is not changed");
+    }
+
+    [Fact]
+    public void ChatCompletions_LeadingUserTurn_RequestsThatDifferOnlyInInstructionsShareEverythingBeforeTheLastUserMessage()
+    {
+        var a = ChatCompletionMessageGenerator.BuildRequest(Request("m", Prompt, Instructions), instructionsPlacement: InstructionsPlacement.LeadingUserTurn);
+        var b = ChatCompletionMessageGenerator.BuildRequest(Request("m", Prompt, "Another run: only /drafts."), instructionsPlacement: InstructionsPlacement.LeadingUserTurn);
+
+        var wireA = System.Text.Json.JsonSerializer.Serialize(a);
+        var wireB = System.Text.Json.JsonSerializer.Serialize(b);
+        var shared = wireA.IndexOf(Instructions, StringComparison.Ordinal);
+        shared.Should().BeGreaterThan(wireA.IndexOf(Prompt, StringComparison.Ordinal), "the instructions come after the prompt on the wire");
+        wireB[..shared].Should().Be(wireA[..shared]);
+    }
+
+    [Fact]
+    public void ChatCompletions_LeadingUserTurn_WithNoUserMessage_AppendsToTheSystemMessage()
+    {
+        var request = Request("m", Prompt, Instructions);
+        request.Messages = [];
+
+        var messages = ChatCompletionMessageGenerator.BuildMessages(request, instructionsPlacement: InstructionsPlacement.LeadingUserTurn);
+
+        messages.Should().ContainSingle().Which.Should().BeOfType<SystemChatMessage>()
+            .Which.Content.Should().Be($"{Prompt}{Environment.NewLine}{Environment.NewLine}{Instructions}");
+    }
+
+    private static string UserText(UserChatMessage message) =>
+        string.Concat(message.Content.OfType<TextChatMessageContent>().Select(t => t.Text));
 }

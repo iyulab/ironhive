@@ -182,7 +182,7 @@ Chat Completions 계열 wire는 도구 메시지에 이미지 자리가 없어 �
 `ChatOptions` 의 요청 knob 은 `MessageGenerationRequest` 로 간다 — `MaxOutputTokens` → `MaxTokens`, 샘플링
 파라미터, `Tools`/`ToolMode`, `Instructions` → `Instructions`(요청별 지시 — 각 provider 가 시스템 프롬프트와 도구 **뒤**에 둔다:
 Anthropic 둘째 system block · Gemini 둘째 system part · OpenAI Responses 첫 input 의 developer 메시지 · Chat Completions 는
-system 메시지 끝, `InstructionsAsSeparateSystemMessage` 면 둘째 system 메시지. 대화 안의 System 메시지는 전부 순서대로 `System` 이 된다),
+system 메시지 끝 — `InstructionsPlacement` 로 둘째 system 메시지 또는 마지막 user 메시지 앞머리. 대화 안의 System 메시지는 전부 순서대로 `System` 이 된다),
 `ResponseFormat` → `OutputFormat`(스키마를 실은 JSON 은 그 스키마로, 스키마 없는 JSON 은
 `OutputFormat.Json` — 스키마를 지어내지 않는다: 속성 없는 object 스키마는 Gemini·Anthropic 이 «빈 객체»로 읽어 `{}` 만 답한다, `Text` 는 null), 그리고 `Reasoning.Effort` → `ThinkingEffort`(`ExtraHigh` → `XHigh`),
 `Reasoning.Output` → `ThinkingOutput`(노출만 — 추론 여부와 무관). `Effort = None` 은
