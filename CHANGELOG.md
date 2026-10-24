@@ -9,6 +9,9 @@ changes are expected and used freely for structural correctness.
 - **`GpuStackConfig.InstructionsAsSeparateSystemMessage`** — the GPUStack config carries the per-request instructions placement
   that `OpenAICompatibleConfig` gained in 0.70.0 (it was missing there, so a GPUStack route could not opt in).
 
+### Dependencies
+- Anthropic SDK 13.1.0 -> 13.3.0.
+
 ## 0.70.0 — 2026-10-24
 
 ### Fixed
