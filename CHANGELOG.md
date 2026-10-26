@@ -18,6 +18,10 @@ changes are expected and used freely for structural correctness.
   type list, at every depth; the tool's own schema and every other route are unchanged. A filled parameter cannot be sent as
   `null` on that route — leaving it out has the same meaning for an optional parameter. Removed when GPUStack accepts type lists.
 
+### Dependencies
+
+- Re-pinned third-party packages: 2 .NET servicing pins (Microsoft.Extensions) 10.0.13 -> 10.0.14 (the 10.0.14 security servicing release); `Markdig` 1.4.2 -> 1.5.0.
+
 ## 0.71.0 — 2026-10-24
 
 ### Added
