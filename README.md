@@ -181,6 +181,8 @@ public class ChatService(IHiveService hive)
 > **요청별 지시 `MessageGenerationRequest.Instructions` (0.70.0~)** — `ChatOptions.Instructions`(M.E.AI)가 여기로 온다. 요청마다
 > 달라질 수 있는 텍스트라 provider 는 시스템 프롬프트와 도구 정의 **뒤**에 둔다 — 지시만 바뀐 요청도 접두부 캐시가 프롬프트와
 > 도구를 다시 쓴다. Chat Completions(OpenAI 호환)는 기본으로 system 메시지 끝에 붙이고(모든 chat template 이 받는다),
+> sliding-window attention 모델(Gemma 3n/4 E-series)을 llama-server 로 돌리면 `--swa-full` 없이는 프롬프트 앞쪽이 바뀐 요청이 전부 다시 계산된다
+> (Gemma 4 E4B 실측: 기본 `SystemAppend` 0/601 토큰 캐시, `--swa-full` 56/601, `LeadingUserTurn` 579/601) — 그런 서버에는 `LeadingUserTurn` 을 고른다.
 > 도구를 system 턴 안에 그리는 template 의 서버에는 `InstructionsPlacement` 로 위치를 고른다 — `LeadingUserTurn`(0.71.0~)은 지시를
 > 마지막 user 메시지 앞머리에 두어 모든 template 에서 프롬프트 · 도구 · 이전 턴까지 캐시에 남기고, `SeparateSystemMessage` 는 둘째
 > system 메시지로 보낸다(Qwen 2.5/3 · Llama 3.x 는 도구 뒤에 둔다; Gemma 3 는 거부, DeepSeek-R1 distill 은 프롬프트를, gpt-oss 는 지시를 버린다).

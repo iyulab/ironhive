@@ -5,6 +5,12 @@ changes are expected and used freely for structural correctness.
 
 ## Unreleased
 
+### Changed
+- **`InstructionsPlacement` documentation no longer promises that `SystemAppend` keeps the system prompt cached.** On a llama-server
+  running a sliding-window-attention model (Gemma 3n/4 E-series) a change early in the prompt re-evaluates all of it (measured on Gemma 4
+  E4B: 0 of 601 tokens cached under `SystemAppend`, 56 with `--swa-full`, 579 under `LeadingUserTurn`). Choose `LeadingUserTurn` there.
+  No behaviour change.
+
 ### Fixed
 - **Streamed tool calls on GPUStack no longer fail when the model fills a nullable parameter.** GPUStack's streaming tool-call
   parser ends the stream with `unhashable type: 'list'` when a parameter's schema has a type list (`"type": ["string", "null"]`,

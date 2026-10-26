@@ -115,8 +115,11 @@ public class OpenAICompatibleConfig
     /// template accepts.)
     /// </summary>
     /// <remarks>
-    /// Every placement keeps the system prompt as the leading text, so a prefix cache reuses it when only the
-    /// instructions change. For a server whose chat template renders the tool definitions inside the system turn, choose
+    /// Every placement keeps the system prompt as the leading text, but a prefix cache reuses it across different
+    /// instructions only on a server that can roll back to an early divergence point - a llama-server running a
+    /// sliding-window-attention model (Gemma 3n/4 E-series) re-evaluates the whole prompt unless started with
+    /// <c>--swa-full</c> (measured: 0 of 601 prompt tokens cached under <see cref="InstructionsPlacement.SystemAppend"/>,
+    /// 579 of 601 under <see cref="InstructionsPlacement.LeadingUserTurn"/>). For a server whose chat template renders the tool definitions inside the system turn, choose
     /// <see cref="InstructionsPlacement.LeadingUserTurn"/> (every template) or
     /// <see cref="InstructionsPlacement.SeparateSystemMessage"/> (templates that accept a second system message) so the
     /// tools stay cached too — see <see cref="InstructionsPlacement"/>.

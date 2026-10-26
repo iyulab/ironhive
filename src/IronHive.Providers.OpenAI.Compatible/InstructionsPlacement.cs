@@ -5,9 +5,13 @@ namespace IronHive.Providers.OpenAI.Compatible;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Every placement keeps the system prompt as the leading text, and none stores the instructions in the conversation, so
-/// a server's prefix cache reuses the prompt when only the instructions change. They differ in what else stays cached,
-/// and in which chat templates accept them.
+/// Every placement keeps the system prompt as the leading text, and none stores the instructions in the conversation.
+/// Whether a server's prefix cache then reuses the prompt when only the instructions change depends on the server: one
+/// that can roll its cache back to an early divergence point (full-attention models, block prefix caching) does; a
+/// llama-server running a sliding-window-attention model (Gemma 3n/4 E-series) keeps only the window's KV for those
+/// layers, so a change early in the prompt re-evaluates all of it unless the server runs with <c>--swa-full</c>.
+/// <see cref="LeadingUserTurn"/> keeps the change at the end of the prompt and is the placement that stays cached there.
+/// They also differ in what else stays cached, and in which chat templates accept them.
 /// </para>
 /// <para>
 /// A template that renders the tool definitions inside the first system turn (Qwen 2.5/3, Llama 3.x) puts anything
