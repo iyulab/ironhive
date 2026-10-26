@@ -17,6 +17,9 @@ changes are expected and used freely for structural correctness.
   what a .NET optional nullable parameter exports). The GPUStack route now sends tool schemas with `"null"` taken out of every
   type list, at every depth; the tool's own schema and every other route are unchanged. A filled parameter cannot be sent as
   `null` on that route — leaving it out has the same meaning for an optional parameter. Removed when GPUStack accepts type lists.
+- **An `ANTHROPIC_BASE_URL` that exists but is blank no longer breaks every Anthropic call.** The vendor SDK reads that variable itself
+  and took a blank value (a CI template, a shell profile) as a base URL, so each request threw `UriFormatException` before it was sent.
+  With no `BaseUrl` configured, a blank or unset variable now means the API root; a variable naming a gateway is still read by the SDK.
 
 ### Dependencies
 

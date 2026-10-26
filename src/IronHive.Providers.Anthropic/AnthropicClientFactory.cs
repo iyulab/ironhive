@@ -6,12 +6,19 @@ namespace IronHive.Providers.Anthropic;
 
 internal static class AnthropicClientFactory
 {
+    internal const string BaseUrlVariable = "ANTHROPIC_BASE_URL";
+    internal const string DefaultBaseUrl = "https://api.anthropic.com";
+
     internal static IAnthropicClient Create(AnthropicConfig config)
     {
         var options = new ClientOptions();
 
         if (!string.IsNullOrWhiteSpace(config.BaseUrl))
             options.BaseUrl = config.BaseUrl;
+        else if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(BaseUrlVariable)))
+            // The SDK reads this variable itself. One that exists but is blank (a CI template, a shell profile) is taken as
+            // a base URL: every request then throws UriFormatException before it is sent. Blank means unset.
+            options.BaseUrl = DefaultBaseUrl;
         var initialKey = config.ResolveApiKey();
         // The SDK (13.x) takes one credential and throws when a second is set; say which settings collide.
         if ((!string.IsNullOrWhiteSpace(initialKey) || config.ApiKeyResolver != null) && !string.IsNullOrWhiteSpace(config.AuthToken))
