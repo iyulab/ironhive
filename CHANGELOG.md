@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## Unreleased
+## 0.72.0 — 2026-10-28
 
 ### Added
 - **`MessageDoneReason.Paused` and `ContextExceeded`.** A turn the provider stopped before it was finished (Anthropic `pause_turn`) and a generation that ended because the context window was full (`model_context_window_exceeded`) are told apart from a finished turn and from `MaxTokens`. The message loop does not continue a `Paused` turn; it ends with that reason and resuming is the caller's decision. Through the M.E.AI adapter `ContextExceeded` is `ChatFinishReason.Length` and `Paused` is `new ChatFinishReason("pause_turn")`.
