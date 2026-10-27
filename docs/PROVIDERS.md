@@ -378,6 +378,14 @@ public enum GoogleAIServiceType
 
 ---
 
+## 공급자가 한 일을 응답이 알린다 — 종료 사유 · 경고 · 병렬 호출 제어
+
+- **종료 사유는 호출자가 다르게 대응하는 경우를 서로 구분한다.** Anthropic `pause_turn` 은 `Paused`(턴이 끝나지 않았다 — 응답을 그대로 다시 보내야 이어진다. 메시지 루프는 이어 가지 않고 이 사유로 턴을 끝낸다), `refusal` 은 `ContentFilter`, `model_context_window_exceeded` 는 `ContextExceeded`(출력 한도를 올려서는 풀리지 않고 컨텍스트를 줄여야 한다). 알 수 없는 값은 `null` 이며 위 어느 것도 아니다. M.E.AI 어댑터에서 `ContextExceeded` 는 `ChatFinishReason.Length`, `Paused` 는 `new ChatFinishReason("pause_turn")` 이다.
+- **적용하지 못한 사고(thinking)는 응답에 실린다.** 사고 예산은 `MaxTokens` 안에서 답의 자리를 먼저 남기고 정해지는데(`ThinkingBudget.FitWithin`), 남는 예산이 공급자의 최소(Anthropic 1,024 · Gemini 2.5 512, OpenAI 호환은 1)에도 못 미치면 사고를 켜지 않는다. 이때 `MessageResponse.Warnings`(스트리밍은 마지막 `StreamingMessageDoneResponse.Warnings`)에 코드 `thinking_not_applied` 항목이 실린다. M.E.AI 에서는 `ChatResponse.AdditionalProperties[ChatClientAdapter.WarningsKey]`(`"IronHive.Warnings"`). `MaxTokens` 를 자동으로 올리지 않는다(비용이 달라진다) — 사고가 필요하면 호출자가 올린다.
+- **`AllowParallelToolCalls = false` 는 지키거나 거절한다.** Anthropic 은 `disable_parallel_tool_use`, OpenAI · OpenAI 호환은 `parallel_tool_calls` 로 보낸다. Google AI 에는 이를 막는 제어가 없어서 도구를 보내면서 `false` 를 주면 `NotSupportedException` 을 던진다(안전을 위한 제어를 조용히 무시하지 않는다). `null`·`true` 와 도구 없는 요청은 그대로다.
+
+---
+
 ## 요청마다 해석되는 키 (`ApiKeyResolver`) — OpenAI · Anthropic · Google AI · OpenAI Compatible · GPUStack
 
 키를 OS 자격증명 저장소 같은 곳에 두고 거기서 교체·회수한다면, 키 값을 config 에 복사해 넣는 대신

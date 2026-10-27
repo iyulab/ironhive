@@ -74,6 +74,14 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         if (request.ExtraBody is { Count: > 0 })
             throw new NotSupportedException(
                 "MessageGenerationRequest.ExtraBody is not supported by the GoogleAI provider; the OpenAI-compatible provider honours it.");
+
+        // Anthropic and OpenAI honour AllowParallelToolCalls = false; Gemini has no switch for it. The control exists to keep
+        // tools that are not safe side by side from running that way, so a silent no-op would surface later as a race in the
+        // caller. null and true ask for nothing Gemini does not do.
+        if (request.AllowParallelToolCalls is false && request.Tools is { Count: > 0 })
+            throw new NotSupportedException(
+                "MessageGenerationRequest.AllowParallelToolCalls = false is not supported by the GoogleAI provider: Gemini cannot be told to call one tool at a time. " +
+                "Leave it unset to accept parallel calls, or use a provider that honours it (Anthropic, OpenAI, OpenAI-compatible).");
     }
 
     /// <inheritdoc />
@@ -82,7 +90,8 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         CancellationToken cancellationToken = default)
     {
         RejectUnsupported(request);
-        var (contents, config) = ToGoogleAIParams(request);
+        var warnings = new List<MessageWarning>();
+        var (contents, config) = ToGoogleAIParams(request, warnings);
         var response = await _client.Models.GenerateContentAsync(
             request.Model, contents, config, cancellationToken)
             .MapException(ex => GoogleAIExceptionMapper.Map(ex, _keyUsesRetiredFormat, cancellationToken));
@@ -181,6 +190,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
             TokenUsage = usage,
             LogProbabilities = request.LogProbabilities is null ? null : ToLogProbabilities(first.LogprobsResult) ?? [],
             Model = response.ModelVersion,
+            Warnings = warnings.Count > 0 ? warnings : null,
         };
     }
 
@@ -190,7 +200,8 @@ public class GoogleAIMessageGenerator : IMessageGenerator
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         RejectUnsupported(request);
-        var (contents, config) = ToGoogleAIParams(request);
+        var warnings = new List<MessageWarning>();
+        var (contents, config) = ToGoogleAIParams(request, warnings);
 
         // 인덱스 추적 관리용
         (int, MessageContent)? current = null;
@@ -435,6 +446,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
             Model = model,
             TokenUsage = usage,
             LogProbabilities = logProbabilities,
+            Warnings = warnings.Count > 0 ? warnings : null,
         };
     }
 
@@ -529,7 +541,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
     // Internal so that the request translation can be asserted without a network: the model-generation
     // policy (GoogleAIModelCapabilities) decides what reaches the wire, and that is what the facts check.
     internal (List<Content> contents, GenerateContentConfig config) ToGoogleAIParams(
-        MessageGenerationRequest request)
+        MessageGenerationRequest request, List<MessageWarning>? warnings = null)
     {
         var capabilities = GoogleAIModelCapabilities.Resolve(request.Model, _capabilityOverrides);
         var contents = new List<Content>();
@@ -758,6 +770,12 @@ public class GoogleAIMessageGenerator : IMessageGenerator
             budget = ThinkingBudget.FitWithin(effortBudget, request.MaxTokens) is var fitted && fitted >= GeminiMinThinkingBudget ? fitted : null;
         var thinkingOff = request.ThinkingEffort is MessageThinkingEffort.None
             || (capabilities.ThinkingControl == GoogleAIThinkingControl.Budget && request.ThinkingEffort is not null && budget is null);
+        // Thinking was asked for and the fit left no room for the smallest budget: the request goes out with thinking minimised, not as asked.
+        if (request.ThinkingEffort is not null and not MessageThinkingEffort.None
+            && capabilities.ThinkingControl == GoogleAIThinkingControl.Budget && budget is null)
+        {
+            warnings?.Add(MessageWarning.ThinkingNotApplied(GeminiMinThinkingBudget, request.MaxTokens));
+        }
 
         if (thinkingOff)
         {

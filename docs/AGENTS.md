@@ -207,6 +207,7 @@ public class MessageResponse
 {
     public string? ResponseId { get; set; }           // 응답 ID
     public MessageDoneReason? DoneReason { get; set; } // 완료 이유
+    public IReadOnlyList<MessageWarning>? Warnings { get; set; } // 요청과 다르게 처리한 것(예: 사고를 적용하지 못함). 없으면 null
     public Message? Message { get; set; }             // 생성된 메시지
     public MessageTokenUsage? TokenUsage { get; set; } // 토큰 사용량
     public string Model { get; set; }                 // 사용된 모델
@@ -220,7 +221,9 @@ public enum MessageDoneReason
     MaxTokens,      // 최대 출력 토큰 도달
     ContentFilter,  // 콘텐츠 필터가 응답을 막음
     StopSequence,   // 중단 시퀀스를 만남
-    Unknown         // 그 밖의 이유
+    Unknown,        // 그 밖의 이유
+    Paused,         // 턴이 끝나지 않고 멈춤(Anthropic pause_turn) — 이어 갈지는 호출자가 정함
+    ContextExceeded // 컨텍스트 창이 가득 참 — MaxTokens 와 달리 컨텍스트를 줄여야 풀림
 }
 ```
 

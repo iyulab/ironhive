@@ -19,6 +19,13 @@ public class ChatClientAdapter : IChatClient
     private readonly string _providerName;
 
     /// <summary>
+    /// <c>ChatResponse.AdditionalProperties</c> / <c>ChatResponseUpdate.AdditionalProperties</c> 키 — 요청과 다르게 처리한 것
+    /// (예: 요청한 사고를 적용하지 못함)을 알리는 <see cref="IReadOnlyList{T}"/> of <see cref="MessageWarning"/>. 알릴 것이
+    /// 없으면 키가 없습니다. 스트리밍에서는 마지막 업데이트에 실립니다.
+    /// </summary>
+    public const string WarningsKey = "IronHive.Warnings";
+
+    /// <summary>
     /// <c>FunctionCallContent.AdditionalProperties</c> 키 — provider가 멀티턴 연속성을 위해 tool call에
     /// 붙인 서명(<c>MessageContent.Signature</c>, 예: Gemini 3의 <c>thought_signature</c>)을 IChatClient
     /// 왕복 사이에 나릅니다. 이 어댑터가 만든 <see cref="FunctionCallContent"/>를 그대로 히스토리에 넣어 다시
@@ -557,7 +564,7 @@ public class ChatClientAdapter : IChatClient
             FinishReason = ConvertDoneReason(response.DoneReason),
             ModelId = response.Model ?? _modelId,
             Usage = response.TokenUsage != null ? ToUsageDetails(response.TokenUsage) : null,
-            AdditionalProperties = ToAdditionalProperties(response.ExtraBody),
+            AdditionalProperties = ToAdditionalProperties(response.ExtraBody, response.Warnings),
         };
     }
 
@@ -578,14 +585,22 @@ public class ChatClientAdapter : IChatClient
         };
     }
 
-    private static AdditionalPropertiesDictionary? ToAdditionalProperties(JsonObject? extraBody)
+    private static AdditionalPropertiesDictionary? ToAdditionalProperties(JsonObject? extraBody, IReadOnlyList<MessageWarning>? warnings = null)
     {
-        if (extraBody is not { Count: > 0 })
-            return null;
+        AdditionalPropertiesDictionary? props = null;
+        if (extraBody is { Count: > 0 })
+        {
+            props = new AdditionalPropertiesDictionary();
+            foreach (var (key, value) in extraBody)
+                props[key] = value is null ? null : JsonSerializer.SerializeToElement(value);
+        }
 
-        var props = new AdditionalPropertiesDictionary();
-        foreach (var (key, value) in extraBody)
-            props[key] = value is null ? null : JsonSerializer.SerializeToElement(value);
+        if (warnings is { Count: > 0 })
+        {
+            props ??= new AdditionalPropertiesDictionary();
+            props[WarningsKey] = warnings;
+        }
+
         return props;
     }
 
@@ -631,7 +646,7 @@ public class ChatClientAdapter : IChatClient
                     CreatedAt = done.Timestamp,
                     FinishReason = ConvertDoneReason(done.DoneReason),
                     ModelId = done.Model,
-                    AdditionalProperties = ToAdditionalProperties(done.ExtraBody),
+                    AdditionalProperties = ToAdditionalProperties(done.ExtraBody, done.Warnings),
                     // The done frame is where a streamed turn reports its usage. Without carrying it as UsageContent the
                     // streamed half reported none at all, while the buffered half of the same turn reported it in full.
                     Contents = done.TokenUsage is { } usage
@@ -644,6 +659,10 @@ public class ChatClientAdapter : IChatClient
         }
     }
 
+    // The finish reason of a response that stopped before the turn was finished (Anthropic pause_turn): send the response
+    // back to continue it.
+    private static readonly ChatFinishReason PausedFinishReason = new("pause_turn");
+
     private static ChatFinishReason? ConvertDoneReason(MessageDoneReason? reason)
     {
         return reason switch
@@ -653,6 +672,11 @@ public class ChatClientAdapter : IChatClient
             MessageDoneReason.MaxTokens => ChatFinishReason.Length,
             MessageDoneReason.ToolCall => ChatFinishReason.ToolCalls,
             MessageDoneReason.ContentFilter => ChatFinishReason.ContentFilter,
+            // M.E.AI's Length covers the output limit and the context window alike; the two are told apart by
+            // MessageDoneReason for a caller that holds the IronHive response.
+            MessageDoneReason.ContextExceeded => ChatFinishReason.Length,
+            // A turn that is not finished is not a Stop: the value of its own tells a caller it must be resumed.
+            MessageDoneReason.Paused => PausedFinishReason,
             _ => null
         };
     }

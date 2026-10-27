@@ -111,6 +111,7 @@ public class MessageContext
     /// </summary>
     /// <remarks>
     /// 그 밖의 종료 사유(<see cref="MessageDoneReason.MaxTokens"/> · <see cref="MessageDoneReason.ContentFilter"/> ·
+    /// <see cref="MessageDoneReason.Paused"/> · <see cref="MessageDoneReason.ContextExceeded"/> ·
     /// <see cref="MessageDoneReason.Unknown"/> · 사유 없음)는 턴을 끝냅니다. 생각만 하다 잘린 턴은 다시 보낼 것이 없어
     /// 같은 요청이 <see cref="MaxTurns"/> 번까지 반복되고, 글이 잘린 턴을 다시 보내면 chat-completion 서버는 그것을 끝난
     /// 답으로 읽어 새 답을 시작하고(요청만 커져 컨텍스트 창을 넘는다) Anthropic 은 prefill 로 이어 쓰지만 호출자가 정한

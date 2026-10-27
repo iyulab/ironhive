@@ -110,7 +110,8 @@ public class MessageGenerationRequest
     /// Whether the model may call several tools in one turn. <see langword="null"/> (default) leaves the provider's
     /// default (parallel calls allowed); <see langword="false"/> asks for at most one call per turn. Sent as
     /// <c>parallel_tool_calls</c> (OpenAI, OpenAI-compatible) or <c>tool_choice.disable_parallel_tool_use</c>
-    /// (Anthropic), only when tools are sent. Google AI has no such control and ignores it.
+    /// (Anthropic), only when tools are sent. Google AI has no such control: <see langword="false"/> with tools makes that
+    /// provider throw <see cref="NotSupportedException"/> instead of ignoring a control that exists for safety.
     /// </summary>
     public bool? AllowParallelToolCalls { get; set; }
 

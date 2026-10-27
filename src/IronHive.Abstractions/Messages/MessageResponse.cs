@@ -45,4 +45,10 @@ public class MessageResponse
     /// 파이프라인(MessageContext)이 처리 과정에서 누적한 공유 데이터입니다.
     /// </summary>
     public MessageContextItems Items { get; set; } = new();
+
+    /// <summary>
+    /// 요청과 다르게 처리한 것(예: 요청한 사고를 적용하지 못함). 없으면 <see langword="null"/> — 알릴 것이 없다는 뜻입니다.
+    /// 스트리밍 응답은 마지막 <see cref="StreamingMessageDoneResponse"/> 에 실립니다.
+    /// </summary>
+    public IReadOnlyList<MessageWarning>? Warnings { get; set; }
 }

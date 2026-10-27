@@ -59,7 +59,7 @@ public class RequestFieldRosterTests
             ["ThinkingEffort"] = Carried, ["ThinkingOutput"] = Carried,
             ["Tools"] = Carried, ["ToolChoice"] = Carried, ["OutputFormat"] = Carried,
             ["ExtraBody"] = Rejected, ["LogProbabilities"] = Rejected, ["Headers"] = Carried,
-            ["AllowParallelToolCalls"] = Ignored("the Gemini API has no control over parallel function calls"),
+            ["AllowParallelToolCalls"] = Rejected, // false with tools: the Gemini API has no control over parallel function calls
             ["StreamToolArguments"] = Ignored("the Gemini API sends each function call whole"),
         }),
         ["OpenAI-compatible (Chat Completions)"] = ("src/IronHive.Providers.OpenAI.Compatible/ChatCompletion/ChatCompletionMessageGenerator.cs", new()

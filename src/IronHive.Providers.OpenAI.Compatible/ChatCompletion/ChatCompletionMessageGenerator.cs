@@ -73,7 +73,8 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var req = BuildRequest(request, TokenLimitParameter, CarryImageToolResultsAsUserMessage, InstructionsPlacement, StripNullFromSchemaTypeLists);
+        var warnings = new List<MessageWarning>();
+        var req = BuildRequest(request, TokenLimitParameter, CarryImageToolResultsAsUserMessage, InstructionsPlacement, StripNullFromSchemaTypeLists, warnings);
         var res = await _client.PostAsync(req, request.Headers, cancellationToken);
         var choice = res.Choices?.FirstOrDefault();
         var content = new List<MessageContent>();
@@ -106,6 +107,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         {
             ResponseId = res.Id,
             DoneReason = reason,
+            Warnings = warnings.Count > 0 ? warnings : null,
             Message = new IronHiveMessage
             {
                 Role = IronHiveMessageRole.Assistant,
@@ -130,7 +132,8 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         MessageGenerationRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var req = BuildRequest(request, TokenLimitParameter, CarryImageToolResultsAsUserMessage, InstructionsPlacement, StripNullFromSchemaTypeLists);
+        var warnings = new List<MessageWarning>();
+        var req = BuildRequest(request, TokenLimitParameter, CarryImageToolResultsAsUserMessage, InstructionsPlacement, StripNullFromSchemaTypeLists, warnings);
 
         var reason = MessageDoneReason.EndTurn;
         var usage = new MessageTokenUsage();
@@ -320,6 +323,7 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         {
             ResponseId = id,
             DoneReason = reason,
+            Warnings = warnings.Count > 0 ? warnings : null,
             Model = model,
             TokenUsage = usage,
             ExtraBody = extraBody,
@@ -428,12 +432,18 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
         TokenLimitParameter tokenLimitParameter = TokenLimitParameter.MaxCompletionTokens,
         bool carryImageToolResults = false,
         InstructionsPlacement instructionsPlacement = InstructionsPlacement.SystemAppend,
-        bool stripNullFromSchemaTypeLists = false)
+        bool stripNullFromSchemaTypeLists = false,
+        List<MessageWarning>? warnings = null)
     {
         // The budget fits inside MaxTokens, which reasoning and answer share: a budget the cap cannot hold leaves no answer.
         // When no budget fits, reasoning is turned off for this request — a short answer instead of none.
         int? budget = request.ThinkingEffort is { } effort ? ThinkingBudget.FitWithin(EffortBudget(effort), request.MaxTokens) : null;
         var enabledReasoning = budget > 0;
+        if (request.ThinkingEffort is not null and not MessageThinkingEffort.None && !enabledReasoning)
+        {
+            // Reasoning was asked for and the cap leaves it no room: the request goes out with reasoning off, not as asked.
+            warnings?.Add(MessageWarning.ThinkingNotApplied(1, request.MaxTokens));
+        }
 
         // Only the selected spelling is populated; the other stays null and the serializer omits it,
         // so a server never receives a name the caller did not ask for.

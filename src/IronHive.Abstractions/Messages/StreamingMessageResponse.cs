@@ -105,6 +105,11 @@ public class StreamingMessageDoneResponse : StreamingMessageResponse
     public JsonObject? ExtraBody { get; set; }
 
     /// <summary>
+    /// 요청과 다르게 처리한 것 — <see cref="MessageResponse.Warnings"/> 와 같습니다. 없으면 <see langword="null"/>.
+    /// </summary>
+    public IReadOnlyList<MessageWarning>? Warnings { get; set; }
+
+    /// <summary>
     /// The log probability of each output text token, in order, when the request asked for them
     /// (<c>LogProbabilities</c>); <see langword="null"/> otherwise. From the last generation call of the request.
     /// </summary>

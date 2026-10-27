@@ -52,6 +52,22 @@ public class AnthropicMessageGenerator : IMessageGenerator
         GC.SuppressFinalize(this);
     }
 
+    // The vendor's stop reason as the standard done reason, one value per case a caller acts on differently: pause_turn is
+    // a turn that is not finished (the response must be sent back to continue), refusal is a policy refusal, and
+    // model_context_window_exceeded needs a trimmed context where max_tokens needs a larger limit. A value this library
+    // does not know yet is null, never one of the above.
+    internal static MessageDoneReason? ToDoneReason(StopReason? reason) => reason switch
+    {
+        StopReason.ToolUse => MessageDoneReason.ToolCall,
+        StopReason.EndTurn => MessageDoneReason.EndTurn,
+        StopReason.PauseTurn => MessageDoneReason.Paused,
+        StopReason.MaxTokens => MessageDoneReason.MaxTokens,
+        StopReason.ModelContextWindowExceeded => MessageDoneReason.ContextExceeded,
+        StopReason.StopSequence => MessageDoneReason.StopSequence,
+        StopReason.Refusal => MessageDoneReason.ContentFilter,
+        _ => null
+    };
+
     // Request features this provider does not carry. The official SDK builds its request body, which this library does
     // not extend, and this provider does not return token log probabilities; dropping either silently would answer a
     // request other than the one asked for.
@@ -73,7 +89,8 @@ public class AnthropicMessageGenerator : IMessageGenerator
         CancellationToken cancellationToken = default)
     {
         RejectUnsupported(request);
-        var req = ToMessageCreateParams(request);
+        var warnings = new List<MessageWarning>();
+        var req = ToMessageCreateParams(request, warnings);
         var res = await ClientFor(request).Messages.Create(req, cancellationToken)
             .MapException(ex => AnthropicExceptionMapper.Map(ex, cancellationToken));
 
@@ -124,14 +141,8 @@ public class AnthropicMessageGenerator : IMessageGenerator
         return new MessageResponse
         {
             ResponseId = res.ID,
-            DoneReason = res.StopReason?.Value() switch
-            {
-                StopReason.ToolUse => MessageDoneReason.ToolCall,
-                StopReason.EndTurn or StopReason.PauseTurn => MessageDoneReason.EndTurn,
-                StopReason.MaxTokens => MessageDoneReason.MaxTokens,
-                StopReason.StopSequence or StopReason.Refusal => MessageDoneReason.StopSequence,
-                _ => null
-            },
+            DoneReason = ToDoneReason(res.StopReason?.Value()),
+            Warnings = warnings.Count > 0 ? warnings : null,
             Message = new IronHiveMessage 
             { 
                 Role = IronHiveMessageRole.Assistant,
@@ -160,7 +171,8 @@ public class AnthropicMessageGenerator : IMessageGenerator
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         RejectUnsupported(request);
-        var req = ToMessageCreateParams(request);
+        var warnings = new List<MessageWarning>();
+        var req = ToMessageCreateParams(request, warnings);
         var client = ClientFor(request);
 
         string? id = null;
@@ -314,14 +326,8 @@ public class AnthropicMessageGenerator : IMessageGenerator
                 {
                     ResponseId = id,
                     Model = model,
-                    DoneReason = mde.Delta.StopReason?.Value() switch
-                    {
-                        StopReason.ToolUse => MessageDoneReason.ToolCall,
-                        StopReason.EndTurn or StopReason.PauseTurn => MessageDoneReason.EndTurn,
-                        StopReason.MaxTokens => MessageDoneReason.MaxTokens,
-                        StopReason.StopSequence or StopReason.Refusal => MessageDoneReason.StopSequence,
-                        _ => null
-                    },
+                    DoneReason = ToDoneReason(mde.Delta.StopReason?.Value()),
+                    Warnings = warnings.Count > 0 ? warnings : null,
                     TokenUsage = usage
                 };
             }
@@ -373,7 +379,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
     /// </summary>
     // Internal so that the request translation can be asserted without a network: the model-generation
     // policy (AnthropicModelCapabilities) decides what reaches the wire, and that is what the facts check.
-    internal MessageCreateParams ToMessageCreateParams(MessageGenerationRequest request)
+    internal MessageCreateParams ToMessageCreateParams(MessageGenerationRequest request, List<MessageWarning>? warnings = null)
     {
         var capabilities = AnthropicModelCapabilities.Resolve(request.Model, _capabilityOverrides);
 
@@ -621,6 +627,10 @@ public class AnthropicMessageGenerator : IMessageGenerator
                 {
                     var fitted = ThinkingBudget.FitWithin((int)effortBudget, request.MaxTokens);
                     budget = fitted >= AnthropicMinThinkingBudget ? fitted : null;
+                    if (budget is null)
+                    {
+                        warnings?.Add(MessageWarning.ThinkingNotApplied(AnthropicMinThinkingBudget, request.MaxTokens));
+                    }
                 }
 
                 if (budget is { } b)

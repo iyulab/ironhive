@@ -5,7 +5,13 @@ changes are expected and used freely for structural correctness.
 
 ## Unreleased
 
+### Added
+- **`MessageDoneReason.Paused` and `ContextExceeded`.** A turn the provider stopped before it was finished (Anthropic `pause_turn`) and a generation that ended because the context window was full (`model_context_window_exceeded`) are told apart from a finished turn and from `MaxTokens`. The message loop does not continue a `Paused` turn; it ends with that reason and resuming is the caller's decision. Through the M.E.AI adapter `ContextExceeded` is `ChatFinishReason.Length` and `Paused` is `new ChatFinishReason("pause_turn")`.
+- **`MessageResponse.Warnings` (and the streaming done frame) report what the provider could not apply.** Thinking that is asked for but cannot be applied because `MaxTokens` leaves less than the provider's minimum thinking budget is no longer dropped silently: the response carries a `thinking_not_applied` warning (Anthropic, Google AI, OpenAI-compatible). `MaxTokens` is not raised for the caller. Through the adapter: `ChatResponse.AdditionalProperties[ChatClientAdapter.WarningsKey]`.
+
 ### Changed
+- **Breaking** (observed values): an Anthropic `refusal` now reads `ContentFilter` (was `StopSequence`) and `pause_turn` reads `Paused` (was `EndTurn`); `model_context_window_exceeded` reads `ContextExceeded` (was `null`). A caller that compared `DoneReason` with `StopSequence`/`EndTurn` to detect these must compare with the new values.
+- **Breaking** (behaviour): the Google AI provider throws `NotSupportedException` for `AllowParallelToolCalls = false` when tools are sent, instead of ignoring it (Gemini cannot be told to call one tool at a time; Anthropic, OpenAI and OpenAI-compatible honour it). Leave the property unset to accept parallel calls.
 - **`InstructionsPlacement` documentation no longer promises that `SystemAppend` keeps the system prompt cached.** On a llama-server
   running a sliding-window-attention model (Gemma 3n/4 E-series) a change early in the prompt re-evaluates all of it (measured on Gemma 4
   E4B: 0 of 601 tokens cached under `SystemAppend`, 56 with `--swa-full`, 579 under `LeadingUserTurn`). Choose `LeadingUserTurn` there.
