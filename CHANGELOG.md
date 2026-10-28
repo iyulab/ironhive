@@ -3,6 +3,11 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## [Unreleased]
+
+### Removed
+- **`IronHive.Core` no longer depends on `OpenTelemetry.Api`**: its telemetry uses `System.Diagnostics` (`ActivitySource`) only, and nothing in the package referenced OpenTelemetry types. A consumer that took `OpenTelemetry.Api` transitively through `IronHive.Core` must reference it themselves.
+
 ## 0.73.0 — 2026-10-28
 
 ### Added
