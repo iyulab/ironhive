@@ -33,7 +33,11 @@ public sealed record ProviderDeclaration
     /// </summary>
     public string BaseUrl { get; init; } = string.Empty;
 
-    /// <summary>The API key, or <see langword="null"/> for a server that takes none (a LAN Ollama).</summary>
+    /// <summary>
+    /// The API key, or <see langword="null"/> for a server that takes none (a LAN Ollama). The declaration is the whole credential
+    /// decision: no key here means no credential on the wire, whatever the vendor SDKs would otherwise read from the machine's
+    /// environment (<c>ANTHROPIC_API_KEY</c>, <c>GOOGLE_API_KEY</c>, ...).
+    /// </summary>
     public string? ApiKey { get; init; }
 
     /// <summary>

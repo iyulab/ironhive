@@ -6,11 +6,18 @@ namespace IronHive.Providers.GoogleAI;
 
 internal static class GoogleAIClientFactory
 {
+    internal const string UnresolvedKeyPlaceholder = "unresolved";
+
     internal static Client Create(GoogleAIConfig config)
     {
         return new Client(
             vertexAI: false,
-            apiKey: config.ResolveApiKey(),
+            // A resolver with nothing to say must not leave the SDK an empty slot: it would fill it from GOOGLE_API_KEY /
+            // GEMINI_API_KEY and send that to whatever address this client was pointed at. The placeholder stops the search;
+            // the resolver's handler (ResolveHttpClientFactory) replaces the header the SDK writes with the resolver's answer, or none.
+            apiKey: config.ResolveApiKey() is { } resolved && !string.IsNullOrWhiteSpace(resolved)
+                ? resolved
+                : config.ApiKeyResolver != null ? UnresolvedKeyPlaceholder : null,
             httpOptions: ResolveHttpOptions(config.HttpOptions, config.Timeout, config.Headers, nameof(GoogleAIConfig), nameof(GoogleAIConfig.ApiKey)),
             clientOptions: new ClientOptions
             {

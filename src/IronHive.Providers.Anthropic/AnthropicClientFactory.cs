@@ -8,6 +8,7 @@ internal static class AnthropicClientFactory
 {
     internal const string BaseUrlVariable = "ANTHROPIC_BASE_URL";
     internal const string DefaultBaseUrl = "https://api.anthropic.com";
+    internal const string UnresolvedKeyPlaceholder = "unresolved";
 
     internal static IAnthropicClient Create(AnthropicConfig config)
     {
@@ -26,6 +27,12 @@ internal static class AnthropicClientFactory
                 $"{nameof(AnthropicConfig)}: set either {nameof(AnthropicConfig.ApiKey)} (or {nameof(AnthropicConfig.ApiKeyResolver)}) or {nameof(AnthropicConfig.AuthToken)}, not both - both are sent as 'Authorization: Bearer'.");
         if (!string.IsNullOrWhiteSpace(initialKey))
             options.ApiKey = initialKey;
+        else if (config.ApiKeyResolver != null && string.IsNullOrWhiteSpace(config.AuthToken))
+            // A resolver with nothing to say (a declaration whose credential is not the vendor's, a secret store still empty) must
+            // not leave the SDK an empty slot: it would fill it from ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN or the machine's
+            // Anthropic profile and send that to whatever address this client was pointed at. A placeholder stops the search; the
+            // handler below replaces the header the SDK writes with the resolver's answer, or with none.
+            options.ApiKey = UnresolvedKeyPlaceholder;
         if (!string.IsNullOrWhiteSpace(config.AuthToken))
             options.AuthToken = config.AuthToken;
         var headers = ProviderRequestHeaders.Resolve(

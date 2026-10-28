@@ -5,6 +5,18 @@ changes are expected and used freely for structural correctness.
 
 ## [Unreleased]
 
+### Fixed
+- **Security: a provider built from a `ProviderDeclaration` no longer sends the machine's own credential to the declared address.**
+  A declaration with no `ApiKey` (on Anthropic also one that carries its key in a header of its own) left the vendor SDK an empty
+  credential slot, and the SDK filled it from the process environment — `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN`, and
+  `GOOGLE_API_KEY` / `GEMINI_API_KEY` on Gemini — so a person's own key for that vendor went, as `Authorization: Bearer` or
+  `x-goog-api-key`, to whatever third-party address they had declared. The declaration is now the whole credential decision
+  (`ApiKey` null means no credential on the wire). The same holds for an `AnthropicConfig` / `GoogleAIConfig` whose `ApiKeyResolver`
+  answers nothing: the SDK no longer searches the environment on its behalf, and the request carries the resolver's key or none.
+  **Breaking** for a declaration that relied on the ambient key by leaving `ApiKey` unset: set `ApiKey`. Declarations already
+  published as 0.73.0 may have exposed an environment key to their declared address — rotate it if that address is not the vendor's.
+  An `AnthropicConfig` / `GoogleAIConfig` with neither a key nor a resolver still reads the environment, as documented.
+
 ### Removed
 - **`IronHive.Core` no longer depends on `OpenTelemetry.Api`**: its telemetry uses `System.Diagnostics` (`ActivitySource`) only, and nothing in the package referenced OpenTelemetry types. A consumer that took `OpenTelemetry.Api` transitively through `IronHive.Core` must reference it themselves.
 

@@ -83,12 +83,18 @@ public static class ProviderClientFactory
     // so those two cannot carry a key any other way: a gateway's own header does, anything else is refused.
     private static AnthropicMessageGenerator CreateAnthropic(string baseUrl, string? key, CredentialPlacement? placement, Dictionary<string, string>? headers, string who)
     {
-        var config = new AnthropicConfig { BaseUrl = baseUrl, Headers = headers };
+        // The declaration is the whole credential decision: a vendor SDK left with an empty credential slot fills it from the
+        // machine (ANTHROPIC_API_KEY, the Anthropic profile) and would send a person's own key to the declared address. The
+        // resolver that answers nothing keeps the SDK from looking and keeps the header off the wire.
+        var config = new AnthropicConfig { BaseUrl = baseUrl, Headers = headers, ApiKeyResolver = NoVendorCredential };
         if (key is null)
             return new AnthropicMessageGenerator(config);
 
         if (placement is null || (placement.UsesAuthorizationHeader && string.Equals(placement.Scheme, "Bearer", StringComparison.OrdinalIgnoreCase)))
+        {
             config.ApiKey = key;
+            config.ApiKeyResolver = null;
+        }
         else if (placement.UsesAuthorizationHeader || SameHeader(placement.Header, AnthropicVendorKeyHeader))
             throw new ArgumentException(
                 $"{who}: the key cannot be sent as '{placement}' on the Anthropic wire; the vendor SDK sends it as 'Authorization: Bearer'. " +
@@ -109,12 +115,16 @@ public static class ProviderClientFactory
             HttpOptions = new Google.GenAI.Types.HttpOptions { BaseUrl = baseUrl },
             Headers = headers,
             ApiKey = key,
+            // No declared key: the SDK would read GOOGLE_API_KEY / GEMINI_API_KEY and send the machine's key to the declared address.
+            ApiKeyResolver = key is null ? NoVendorCredential : null,
         };
         if (key is not null && placement is not null && !(SameHeader(placement.Header, GoogleKeyHeader) && placement.Scheme is null))
             config.Headers = WithKeyHeader(headers, placement, key, who);
 
         return new GoogleAIMessageGenerator(config);
     }
+
+    private static string? NoVendorCredential() => null;
 
     private static Dictionary<string, string> WithKeyHeader(Dictionary<string, string>? headers, CredentialPlacement placement, string key, string who)
     {
