@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## [Unreleased]
+## 0.74.0 — 2026-10-29
 
 ### Fixed
 - **Security: a provider built from a `ProviderDeclaration` no longer sends the machine's own credential to the declared address.**
