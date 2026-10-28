@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## Unreleased
+## 0.73.0 — 2026-10-28
 
 ### Added
 - **A provider can be declared as data and turned into a client: `IronHive.Providers.Declarations`.** A `ProviderDeclaration` (`Id`,
