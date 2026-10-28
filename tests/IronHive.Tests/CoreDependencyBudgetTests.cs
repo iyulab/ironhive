@@ -4,20 +4,23 @@ using Xunit;
 namespace IronHive.Tests;
 
 /// <summary>
-/// IronHive.Core is meant to stay a thin implementation layer, but it still carries third-party
-/// dependencies (serializers, resilience, telemetry) that a slim core ideally would not need
-/// directly. Shrinking that footprint is a separate, deliberate effort; this test does not
-/// attempt it. What it does do is stop further
-/// growth from landing silently -- adding a `PackageReference` to `IronHive.Core.csproj` now
-/// requires a conscious bump of the baseline below, in the same commit that explains why.
+/// IronHive.Core stays a thin implementation layer: heavy third-party dependencies (document parsers,
+/// template engines, stores) belong in satellite packages, or nowhere when no consumer needs them.
+/// This test makes that a rule instead of a hope -- the packages `IronHive.Core.csproj` may reference
+/// are the named list below, so adding one (or swapping one for another) requires editing this list in
+/// the same commit that explains why. Removing a package never fails.
 /// </summary>
 public class CoreDependencyBudgetTests
 {
-    // Baseline: 5 PackageReference in src/IronHive.Core/IronHive.Core.csproj (
-    // Microsoft.Extensions.DependencyInjection, Microsoft.Extensions.Resilience, OpenTelemetry.Api,
-    // Tomlyn, YamlDotNet). Lowering this number is the point of the debt this test tracks;
-    // raising it silently defeats that point.
-    private const int Baseline = 5;
+    // The allowed third-party PackageReference set of src/IronHive.Core/IronHive.Core.csproj. A count alone would let a
+    // heavy package replace a light one unnoticed, so the names are the budget.
+    private static readonly string[] AllowedPackages =
+    [
+        "Microsoft.Extensions.DependencyInjection",
+        "Microsoft.Extensions.Resilience",
+        "Tomlyn",
+        "YamlDotNet",
+    ];
 
     private static DirectoryInfo RepositoryRoot()
     {
@@ -44,15 +47,17 @@ public class CoreDependencyBudgetTests
     }
 
     [Fact]
-    public void Core_DoesNotExceedTheDocumentedDependencyBaseline()
+    public void Core_ReferencesOnlyAllowedPackages()
     {
-        var packages = CorePackageReferences();
+        var added = CorePackageReferences()
+            .Except(AllowedPackages, StringComparer.Ordinal)
+            .ToList();
 
-        Assert.True(packages.Count <= Baseline,
-            $"IronHive.Core references {packages.Count} package(s), exceeding the baseline of "
-            + $"{Baseline} recorded above. Update Baseline in the same commit if this growth is "
-            + "intentional, or move the dependency to a satellite package instead.\n  "
-            + string.Join("\n  ", packages));
+        Assert.True(added.Count == 0,
+            "IronHive.Core references package(s) outside the allowed list above:\n  "
+            + string.Join("\n  ", added)
+            + "\nMove the dependency to a satellite package (or drop the feature if no consumer needs it); "
+            + "add it to AllowedPackages in the same commit only when it truly belongs in the core.");
     }
 
     [Fact]
