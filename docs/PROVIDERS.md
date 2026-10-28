@@ -657,6 +657,39 @@ var results = await hive.Rerank.RerankAsync(
 
 ---
 
+## 데이터로 선언하는 provider (`ProviderDeclaration`) — `IronHive.Providers.Declarations`
+
+사람이 엔드포인트를 추가하는 호스트(설정 파일, "연결 추가" 화면)는 와이어마다 config 타입이 달라 같은 switch 를 직접 쓰게 된다.
+`ProviderDeclaration` 은 그 선언을 **직렬화되는 데이터**로 두고, 팩토리가 어댑터의 규칙을 한 곳에서 적용한다.
+
+```csharp
+using Microsoft.Extensions.AI;
+
+var declaration = new ProviderDeclaration
+{
+    Id = "corp-gateway",                              // 호스트가 정하는 이름 — 클라이언트의 provider 이름이 된다
+    Wire = WireFormat.OpenAIChatCompletions,          // OpenAIChatCompletions · OpenAIResponses · Anthropic · GoogleAI
+    BaseUrl = "https://gateway.example.com/v1",       // 버전 세그먼트까지 포함한 엔드포인트 (끝의 / 는 무시)
+    ApiKey = "…",                                     // 키가 없는 서버면 null
+    KeyHeader = "api-key",                            // 키를 싣는 헤더 — null 이면 와이어 기본
+    Models = new Dictionary<string, ModelDeclaration>
+    {
+        ["claude-x"] = new() { Wire = WireFormat.Anthropic, BaseUrl = "https://gateway.example.com/anthropic" },
+    },
+};
+
+IChatClient client = ProviderClientFactory.Create(declaration, "llama-3.3");
+```
+
+- `Wire` 는 이름으로 직렬화된다(`"Wire":"OpenAIChatCompletions"`). 선언은 JSON·YAML 로 저장하고 그대로 읽는다.
+- `KeyHeader` / `KeyScheme`: 기본(null)은 OpenAI 와이어 `Authorization: Bearer`, Anthropic 벤더 SDK 의 `Authorization: Bearer`, Gemini `x-goog-api-key`.
+  `KeyScheme` 을 비우면(`""`) 키만, `"Basic"` 같은 단어를 주면 그 scheme 으로 보낸다. 게이트웨이 자기 헤더(`api-key`)는 모든 와이어에서 쓸 수 있다 —
+  Gemini 는 벤더 SDK 가 `x-goog-api-key` 를 항상 쓰므로 그 헤더에도 키가 함께 나간다.
+- 와이어가 실을 수 없는 조합(Anthropic 의 `x-api-key` · Bearer 가 아닌 `Authorization`, Gemini 의 `Authorization`)은 조용히 떨어지지 않고 provider 이름을 단 `ArgumentException` 이다.
+- 저장소·UI·같은 id 의 선언이 여럿일 때 무엇이 이기는가는 호스트의 몫이다. 키 회전이 필요하면 팩토리 대신 각 config 의 `ApiKeyResolver` 를 쓴다.
+
+---
+
 ## 공통 메시지 요청 파라미터
 
 에이전트의 `AgentParametersConfig` 또는 `MessageRequest`에서 설정:

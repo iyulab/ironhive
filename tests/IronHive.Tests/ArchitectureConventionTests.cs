@@ -82,6 +82,41 @@ public class ArchitectureConventionTests
             + string.Join("\n  ", offenders));
     }
 
+    // IronHive.Providers.Declarations turns a declared provider into a client, so it sits above the four wire adapters. It
+    // may take the adapters, the M.E.AI bridge and Abstractions - never Core or a plugin - and nothing below it may take it.
+    [Fact]
+    public void Declarations_ReferencesOnlyTheAdaptersTheBridgeAndAbstractions()
+    {
+        string[] allowed =
+        [
+            "IronHive.Abstractions", "IronHive.Extensions.AI", "IronHive.Providers.OpenAI", "IronHive.Providers.OpenAI.Compatible",
+            "IronHive.Providers.Anthropic", "IronHive.Providers.GoogleAI",
+        ];
+        var declarations = typeof(IronHive.Providers.Declarations.ProviderClientFactory).Assembly;
+        var offenders = declarations.GetReferencedAssemblies()
+            .Select(a => a.Name!)
+            .Where(n => n.StartsWith("IronHive.", StringComparison.Ordinal) && !allowed.Contains(n))
+            .ToList();
+
+        Assert.True(offenders.Count == 0,
+            "IronHive.Providers.Declarations may reference only Abstractions, Extensions.AI and the four provider adapters:\n  "
+            + string.Join("\n  ", offenders));
+    }
+
+    [Fact]
+    public void NothingReferencesDeclarations_ItIsTheTopOfTheProviderStack()
+    {
+        var offenders = ImplementationAssemblies()
+            .Where(a => a.GetName().Name != "IronHive.Providers.Declarations")
+            .Where(a => a.GetReferencedAssemblies().Any(r => r.Name == "IronHive.Providers.Declarations"))
+            .Select(a => a.GetName().Name!)
+            .ToList();
+
+        Assert.True(offenders.Count == 0,
+            "No IronHive assembly may reference IronHive.Providers.Declarations (it is the layer above the providers):\n  "
+            + string.Join("\n  ", offenders));
+    }
+
     [Theory]
     [MemberData(nameof(ImplementationAssemblyNames))]
     public void ImplementationAssembly_DoesNotDeclareAbstractionsNamespace(string assemblyName)

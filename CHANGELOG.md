@@ -3,6 +3,20 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## Unreleased
+
+### Added
+- **A provider can be declared as data and turned into a client: `IronHive.Providers.Declarations`.** A `ProviderDeclaration` (`Id`,
+  `Wire` - `OpenAIChatCompletions`, `OpenAIResponses`, `Anthropic` or `GoogleAI`, `BaseUrl`, `ApiKey`, `KeyHeader`/`KeyScheme`, `Headers`,
+  per-model `Models` overrides of the wire and endpoint) is plain serialisable data a host stores (JSON, YAML, a database row);
+  `ProviderClientFactory.Create(declaration, modelId)` returns the `IChatClient` and `CreateGenerator` the `IMessageGenerator`, applying each
+  adapter's rules in one place: the base URL is the whole endpoint with its version segment (a trailing slash is ignored), the key goes where the
+  declaration puts it (an OpenAI wire in `Authorization` with any scheme or in a header of its own; Anthropic as the vendor SDK's bearer key or in a
+  gateway header; Gemini as `x-goog-api-key`, plus a gateway header when declared), and a setting the wire cannot carry (`x-api-key` or a
+  non-Bearer `Authorization` on Anthropic, `Authorization` on Gemini) is an `ArgumentException` naming the provider instead of a silent drop.
+  A host with an "add an endpoint" screen no longer keeps its own four-way switch over the adapters. The assembly sits above the Providers and
+  references no Core.
+
 ## 0.72.0 — 2026-10-28
 
 ### Added

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>IronHive provider declarations - an endpoint, a wire format, a credential placement and a model, as data, turned into an IChatClient</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="IronHive.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\IronHive.Abstractions\IronHive.Abstractions.csproj" />
+    <ProjectReference Include="..\IronHive.Extensions.AI\IronHive.Extensions.AI.csproj" />
+    <ProjectReference Include="..\IronHive.Providers.OpenAI\IronHive.Providers.OpenAI.csproj" />
+    <ProjectReference Include="..\IronHive.Providers.OpenAI.Compatible\IronHive.Providers.OpenAI.Compatible.csproj" />
+    <ProjectReference Include="..\IronHive.Providers.Anthropic\IronHive.Providers.Anthropic.csproj" />
+    <ProjectReference Include="..\IronHive.Providers.GoogleAI\IronHive.Providers.GoogleAI.csproj" />
+  </ItemGroup>
+
+</Project>

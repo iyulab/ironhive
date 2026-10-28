@@ -61,7 +61,7 @@ public class DocsSnippetCompileTests
         "IronHive.Abstractions", "IronHive.Core", "IronHive.Extensions.AI",
         "IronHive.Plugins.MCP",
         "IronHive.Providers.Anthropic", "IronHive.Providers.GoogleAI", "IronHive.Providers.OpenAI",
-        "IronHive.Providers.OpenAI.Compatible",
+        "IronHive.Providers.OpenAI.Compatible", "IronHive.Providers.Declarations",
         "Microsoft.Extensions.AI.Abstractions", "Microsoft.Extensions.Configuration.Abstractions",
         "Microsoft.Extensions.DependencyInjection", "Microsoft.Extensions.DependencyInjection.Abstractions",
         "Microsoft.Extensions.Hosting.Abstractions", "Microsoft.Extensions.Logging.Abstractions",

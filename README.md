@@ -138,6 +138,7 @@ public class ChatService(IHiveService hive)
 | `IronHive.Providers.Anthropic` | Anthropic Claude — `AddAnthropicProviders` |
 | `IronHive.Providers.GoogleAI` | Google Gemini + Vertex AI (이미지, 비디오, 오디오 포함) — `AddGoogleAIProviders` · `AddVertexAIProviders` |
 | `IronHive.Providers.OpenAI.Compatible` | Ollama, LM Studio, vLLM, llama.cpp, GPUStack 등 — Chat Completions · 임베딩 · 리랭킹(`/rerank`) · 이미지 · 오디오. `AddOpenAICompatibleProviders` · `AddGpuStackProviders` |
+| `IronHive.Providers.Declarations` | provider 를 데이터로 — `ProviderDeclaration`(id · 와이어 · 엔드포인트 · 키 위치 · 모델별 예외)을 `ProviderClientFactory.Create(declaration, model)` 로 `IChatClient`(또는 `CreateGenerator` 로 `IMessageGenerator`)로. "엔드포인트 추가" 화면이 있는 호스트가 어댑터 네 개 위의 switch 를 직접 갖지 않는다 |
 | `IronHive.Plugins.MCP` | Model Context Protocol (HTTP/Stdio/OAuth) — `McpClientManager` |
 
 > **출력 길이 파라미터 선택 (0.16.0~)** — OpenAI 가 `max_tokens` 를 `max_completion_tokens` 로
