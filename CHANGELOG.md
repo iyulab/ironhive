@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## [Unreleased]
+## 0.75.0 — 2026-10-29
 
 ### Added
 - **A provider declaration carries the per-server settings a host used to set in code: `ProviderDeclaration.Settings` / `ModelDeclaration.Settings` (`ServerSettings`).** `ConnectTimeout`,
