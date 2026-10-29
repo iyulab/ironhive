@@ -34,6 +34,7 @@
     <ProjectReference Include="..\..\src\IronHive.Providers.Anthropic\IronHive.Providers.Anthropic.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Providers.GoogleAI\IronHive.Providers.GoogleAI.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Plugins.MCP\IronHive.Plugins.MCP.csproj" />
+    <ProjectReference Include="..\..\src\IronHive.Plugins.OpenAPI\IronHive.Plugins.OpenAPI.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Providers.OpenAI.Compatible\IronHive.Providers.OpenAI.Compatible.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Providers.Declarations\IronHive.Providers.Declarations.csproj" />
     <ProjectReference Include="..\..\src\IronHive.Providers.Endpoints\IronHive.Providers.Endpoints.csproj" />

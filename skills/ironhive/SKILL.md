@@ -1,6 +1,6 @@
 ---
 name: ironhive
-description: IronHive is a .NET 10 enterprise AI pipeline framework. Use when building .NET AI applications with multi-provider LLM integration (OpenAI, Anthropic, GoogleAI, Vertex AI, OpenAI-compatible), multi-agent orchestration (Sequential, Parallel, Handoff, GroupChat, HubSpoke, Graph/DAG), function tools with [FunctionTool] attribute, MCP plugins, and M.E.AI compatibility adapters.
+description: IronHive is a .NET 10 enterprise AI pipeline framework. Use when building .NET AI applications with multi-provider LLM integration (OpenAI, Anthropic, GoogleAI, Vertex AI, OpenAI-compatible), multi-agent orchestration (Sequential, Parallel, Handoff, GroupChat, HubSpoke, Graph/DAG), function tools with [FunctionTool] attribute, MCP/OpenAPI plugins, and M.E.AI compatibility adapters.
 license: MIT
 compatibility: Requires .NET 10+
 metadata:

@@ -1,12 +1,13 @@
 # 플러그인 시스템
 
-외부 서비스를 LLM 도구로 연결하는 플러그인 시스템입니다.
+외부 서비스를 LLM 도구로 연결하는 두 가지 플러그인 시스템입니다.
 
 ## 개요
 
 | 플러그인 | 용도 |
 |----------|------|
 | **MCP** | Model Context Protocol 기반 도구 서버 연결 |
+| **OpenAPI** | REST API 스펙에서 도구 자동 생성 |
 
 ---
 
@@ -113,6 +114,92 @@ var alive = await session.HealthAsync();
 
 ---
 
+## OpenAPI 플러그인
+
+**패키지**: `IronHive.Plugins.OpenAPI`
+
+OpenAPI(Swagger) 스펙에서 자동으로 LLM 도구를 생성합니다.
+
+### 클라이언트 생성
+
+`OpenApiClientManager`는 등록된 클라이언트의 도구를 **생성자로 받은 `IToolCollection`에 자동 반영**한다.
+스펙 파싱은 호출자가 한다 — 옵션에 스펙 URL을 넣는 자리는 없고, `Microsoft.OpenApi`로 읽은
+`OpenApiDocument`를 넘긴다.
+
+```csharp
+var tools = new ToolCollection();
+var apiManager = new OpenApiClientManager(tools);
+
+// 스펙을 읽어 OpenApiDocument로 만든다 (Microsoft.OpenApi)
+using var stream = await new HttpClient().GetStreamAsync(
+    "https://petstore.swagger.io/v2/swagger.json");
+var result = await OpenApiDocument.LoadAsync(stream);
+
+var client = new OpenApiClient(result.Document!, new OpenApiClientOptions
+{
+    // 키는 스펙의 security scheme 이름이다
+    Credentials = new Dictionary<string, IOpenApiCredential>
+    {
+        ["api_key"] = new ApiKeyCredential("special-key")
+    },
+    TimeoutSeconds = 60,
+})
+{
+    ClientName = "petstore"   // required
+};
+
+await apiManager.AddOrUpdateAsync(client);   // 반환되면 tools 컬렉션에 도구가 등록돼 있다
+// 도구 목록을 만들지 못하면 예외 — 아무것도 등록되지 않고, 같은 이름의 기존 클라이언트는 그대로 남는다
+```
+
+요청을 보낼 base URL은 옵션이 아니라 **스펙의 `servers`** 에서 온다 — operation → path item →
+document 순으로 처음 발견된 것을 쓴다.
+
+### 인증 방식
+
+전부 **positional record** 이며, 자격증명은 스펙의 security scheme 이름으로 매핑한다.
+헤더·쿼리·경로·쿠키 중 어디에 실릴지는 자격증명이 아니라 **스펙의 `in`/`name`** 이 정한다.
+
+```csharp
+IOpenApiCredential apiKey = new ApiKeyCredential("...");             // apiKey — 위치는 스펙이 정한다
+IOpenApiCredential bearer = new HttpBearerCredential("...");         // http, scheme: bearer
+IOpenApiCredential basic  = new HttpBasicCredential("user", "pass"); // http, scheme: basic
+IOpenApiCredential oauth2 = new OAuth2Credential("...");             // oauth2 (access token)
+IOpenApiCredential oidc   = new OpenIdConnectCredential("...");      // openIdConnect (access token)
+```
+
+각 타입의 `Match(scheme)`가 스펙의 스킴과 맞는지 검사하므로, 스킴 이름이 같아도 종류가 다르면 적용되지 않는다.
+
+### 도구 사용
+
+```csharp
+if (apiManager.TryGetClient("petstore", out var client))
+{
+    var apiTools = await client.ListToolsAsync();
+
+    foreach (var tool in apiTools)
+        agent.Tools?.Add(tool);
+}
+
+// 등록된 전체 클라이언트
+foreach (var c in apiManager.Clients)
+    Console.WriteLine($"{c.ClientName}: {c.Title}");
+
+// 제거 — 해당 클라이언트의 도구도 함께 정리된다
+apiManager.Remove("petstore");
+```
+
+`ListToolsAsync`는 스펙의 모든 operation을 도구로 만든다(첫 호출 결과를 캐시한다).
+일부만 노출하려면 도구 컬렉션에 넣을 때 걸러낸다.
+
+### OpenApiTool 특성
+
+- `UniqueName`: `"openapi_{ClientName}_{OperationId}"` 형식
+- `RequiresApproval`: 기본값 `true`
+- 파라미터 위치 자동 처리: Path / Query / Header / Body
+
+---
+
 ## 커스텀 도구 구현
 
 플러그인 외에도 직접 도구를 구현할 수 있습니다.
@@ -176,7 +263,8 @@ IToolCollection.TryGet(name, out tool)
        ▼
 ITool.InvokeAsync(input)
     ├─ FunctionTool: 메서드 호출
-    └─ McpTool:      MCP 서버 요청
+    ├─ McpTool:      MCP 서버 요청
+    └─ OpenApiTool:  REST API 호출
        │
        ▼
 ToolOutput (성공/오류)
@@ -191,6 +279,7 @@ LLM에 결과 전달 → 다음 응답 생성
 
 | 시나리오 | 추천 |
 |----------|------|
+| 기존 REST API 통합 | OpenAPI |
 | MCP 호환 도구 서버 | MCP (HTTP) |
 | 로컬 CLI 도구 | MCP (Stdio) |
 | 인증 필요 원격 MCP | MCP (HTTP + OAuth) |

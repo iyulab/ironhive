@@ -5,6 +5,11 @@ changes are expected and used freely for structural correctness.
 
 ## [Unreleased]
 
+### Added
+- **`IronHive.Plugins.OpenAPI` is published again.** Register an OpenAPI (Swagger) description with `OpenApiClientManager` and its operations become tools in the agent's `IToolCollection`,
+  with per-scheme credentials (`IOpenApiCredential`). The code is the 0.68.0 code built against the current abstractions, so existing call sites compile unchanged; 0.69.0 to 0.75.0 did not
+  publish the package. It depends on `Microsoft.OpenApi` 3.11, `Microsoft.OpenApi.YamlReader` 3.11 and `JsonSchema.Net` 9.5 again (`IronHive.Core` still does not) and, unlike 0.68.0, no longer brings `JsonSchema.Net.Generation` or `Microsoft.Extensions.Http` with it — nothing in the plugin used them. Guide: `docs/PLUGINS.md`.
+
 ### Fixed
 - **`IronHive.Providers.Endpoints` answers more malformed or failing cases in the wire's own error shape.** A `ClientResolver` or `ConfigureChatOptions` hook that throws is a 500
   `server_error` (its message is not echoed unless `ExposeErrorDetails` is set) instead of an unhandled exception reaching the caller; a number the parser cannot read

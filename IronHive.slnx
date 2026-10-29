@@ -22,6 +22,7 @@
   </Folder>
   <Folder Name="/10. src/Plugins/">
     <Project Path="src/IronHive.Plugins.MCP/IronHive.Plugins.MCP.csproj" />
+    <Project Path="src/IronHive.Plugins.OpenAPI/IronHive.Plugins.OpenAPI.csproj" />
   </Folder>
   <Folder Name="/10. src/Providers/">
     <Project Path="src/IronHive.Providers.Declarations/IronHive.Providers.Declarations.csproj" />

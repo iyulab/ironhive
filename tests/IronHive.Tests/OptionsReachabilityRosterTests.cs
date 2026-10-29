@@ -19,6 +19,7 @@ public class OptionsReachabilityRosterTests
         Assembly.Load("IronHive.Core"),
         Assembly.Load("IronHive.Extensions.AI"),
         Assembly.Load("IronHive.Plugins.MCP"),
+        Assembly.Load("IronHive.Plugins.OpenAPI"),
         Assembly.Load("IronHive.Providers.Anthropic"),
         Assembly.Load("IronHive.Providers.Declarations"),
         Assembly.Load("IronHive.Providers.Endpoints"),

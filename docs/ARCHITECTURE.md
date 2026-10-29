@@ -46,7 +46,7 @@ IHiveService
 ├───────────────┬──────────────────────────────────────┤
 │ Providers     │ Plugins                              │
 │ - OpenAI      │ - MCP                                │
-│ - Anthropic   │                                      │
+│ - Anthropic   │ - OpenAPI                            │
 │ - GoogleAI    │                                      │
 │ - OAI Compat  │                                      │
 └───────────────┴──────────────────────────────────────┘
@@ -239,5 +239,6 @@ src/
 │   ├── IronHive.Providers.GoogleAI  # Gemini + Vertex AI
 │   └── IronHive.Providers.OpenAI.Compatible  # Ollama, GPUStack 등
 └── IronHive.Plugins.*/              # 플러그인
-    └── IronHive.Plugins.MCP
+    ├── IronHive.Plugins.MCP
+    └── IronHive.Plugins.OpenAPI
 ```

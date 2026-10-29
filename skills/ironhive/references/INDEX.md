@@ -7,6 +7,6 @@ Quick lookup for IronHive APIs. Each file covers one area of the framework.
 | [SETUP.md](SETUP.md) | HiveServiceBuilder, provider registration, DI integration |
 | [MIDDLEWARE.md](MIDDLEWARE.md) | WithMiddleware(), Retry, Timeout, RateLimit, CircuitBreaker, Bulkhead, Caching, Logging, Fallback |
 | [ORCHESTRATION.md](ORCHESTRATION.md) | Sequential, Parallel, Handoff, GroupChat, HubSpoke, Graph orchestrators; AsAgent(); checkpoints |
-| [TOOLS.md](TOOLS.md) | [FunctionTool] attribute, IToolCollection, ToolOptions (OnBeforeInvoke/OnAfterInvoke), TextCompactor, MCP tools, custom ITool |
+| [TOOLS.md](TOOLS.md) | [FunctionTool] attribute, IToolCollection, ToolOptions (OnBeforeInvoke/OnAfterInvoke), TextCompactor, MCP tools, OpenAPI tools, custom ITool |
 | [SERVICES.md](SERVICES.md) | IHiveService, IMessageService, IMessageMiddleware, ContextOverflowException, IEmbeddingService, IImageService, IAudioService, IVideoService, M.E.AI adapters |
 | [PROVIDERS.md](PROVIDERS.md) | OpenAI, Anthropic, GoogleAI, VertexAI, OpenAI Compatible, GPUStack configs |

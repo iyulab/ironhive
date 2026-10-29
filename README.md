@@ -28,7 +28,7 @@
 - **문서 처리는 이 패키지에 없다** — 문서 파싱은 [FileFlux](https://github.com/iyulab/FileFlux), 적재·청킹·벡터 검색 같은 RAG 파이프라인은 [FluxIndex](https://github.com/iyulab/FluxIndex)·[FluxFeed](https://github.com/iyulab/FluxFeed) 를 쓴다
 - **리랭킹** — `hive.Rerank`. OpenAI Compatible · GPUStack 의 `Rerank` 서비스 타입(Cohere 형태 `/rerank`)이 등록한다
 - **다중 모달리티** — 이미지 생성(`hive.Images`), 음성 TTS/STT(`hive.Audio`), 비디오 생성(`hive.Videos`). 해당 서비스를 가진 provider 를 등록하면 따라온다(OpenAI · OpenAI Compatible · GPUStack: 이미지·오디오, Google AI/Vertex AI: 이미지·비디오·오디오)
-- **플러그인** — MCP: `McpClientManager.AddOrUpdate(new McpHttpClientConfig{…}` / `McpStdioClientConfig{…})` 로 서버를 붙이고 세션의 도구를 에이전트 도구에 더한다(HTTP/Stdio/OAuth)([docs/PLUGINS.md](docs/PLUGINS.md))
+- **플러그인** — MCP: `McpClientManager.AddOrUpdate(new McpHttpClientConfig{…}` / `McpStdioClientConfig{…})` 로 서버를 붙이고 세션의 도구를 에이전트 도구에 더한다(HTTP/Stdio/OAuth). OpenAPI: `new OpenApiClientManager(tools)` 에 `await AddOrUpdateAsync(client)` 로 `OpenApiClient` 를 등록하면 스펙의 연산이 그 `IToolCollection` 에 도구로 들어간다([docs/PLUGINS.md](docs/PLUGINS.md))
 - **M.E.AI 호환** — 패키지 `IronHive.Extensions.AI`(의존: Abstractions 뿐 — Core 없이 provider 를 `IChatClient` 로): `generator.AsChatClient(model, provider)` · `AsEmbeddingGenerator(model[, dimensions])`(차원을 주면 `EmbeddingGeneratorMetadata.DefaultModelDimensions` 로 알리고 벡터 크기를 검사) · `AIToolAdapter`(임의의 `AITool`을 `ITool`로 래핑·실행 — MCP `McpClientTool` 등). 도구 인자 스트리밍(opt-in): `ChatOptions.AdditionalProperties[ChatClientAdapter.StreamToolArgumentsKey] = true` 이면 스트리밍 응답이 인자를 쓰이는 동안 `FunctionCallDeltaContent`(`CallId` · 첫 조각의 `Name` · `ArgumentsFragment`)로도 내고, 완전한 `FunctionCallContent` 가 뒤따른다(Chat Completions·Responses·Anthropic — Anthropic 은 이때 도구마다 `eager_input_streaming` 을 켜서 서버가 입력을 끝까지 모았다 보내지 않게 한다(`MessageGenerationRequest.StreamToolArguments`, 서버 검증 없음). Google 은 호출을 한 번에 보낸다). `using IronHive.Extensions.AI;`
 - **에이전트 미들웨어** — `RetryMiddleware` · `TimeoutMiddleware` · `CircuitBreakerMiddleware` · `FallbackMiddleware` · `RateLimitMiddleware` · `BulkheadMiddleware` · `CachingMiddleware` · `LoggingMiddleware` · `CompositeMiddleware`. opt-in: `agent.WithMiddleware(…)`. 메시지 단위 미들웨어(예: `ToolResultBudgetMiddleware`)는 `HiveServiceBuilder.AddMessageMiddleware(…)`([docs/MIDDLEWARE.md](docs/MIDDLEWARE.md))
 - **함수 도구** — `tools.AddFunctionTool<T>()`(또는 인스턴스·델리게이트 오버로드)로 .NET 메서드를 에이전트 도구(`IToolCollection`)로 등록([docs/TOOLS.md](docs/TOOLS.md))
@@ -141,6 +141,7 @@ public class ChatService(IHiveService hive)
 | `IronHive.Providers.Declarations` | provider 를 데이터로 — `ProviderDeclaration`(id · 와이어 · 엔드포인트 · 키 위치 · 모델별 예외)을 `ProviderClientFactory.Create(declaration, model)` 로 `IChatClient`(또는 `CreateGenerator` 로 `IMessageGenerator`)로. "엔드포인트 추가" 화면이 있는 호스트가 어댑터 네 개 위의 switch 를 직접 갖지 않는다 |
 | `IronHive.Providers.Endpoints` | `IChatClient` 를 provider 형태 HTTP 엔드포인트로 — `Declarations` 의 안쪽 짝. `app.MapOpenAIChatCompletions("/v1/chat/completions", o => o.ClientResolver = …)` 가 키 없는 페이지·OpenAI SDK 클라이언트를 호스트가 고른 모델로 응답한다(텍스트·이미지·도구·`response_format`·usage). 마운트 경로·인증·모델 선택은 호스트의 몫이고 기본으로 켜지는 것은 없다. 다른 IronHive 어셈블리를 참조하지 않는다. Chat Completions(`MapOpenAIChatCompletions`) · Responses 무상태 부분집합(`MapOpenAIResponses`) · Anthropic Messages(`MapAnthropicMessages`) · Gemini(`MapGeminiGenerateContent`), 모두 스트리밍 포함. 대화 상태(`previous_response_id` 등)는 지키지 않는다 |
 | `IronHive.Plugins.MCP` | Model Context Protocol (HTTP/Stdio/OAuth) — `McpClientManager` |
+| `IronHive.Plugins.OpenAPI` | OpenAPI 도구 자동 생성 — `OpenApiClientManager` |
 
 > **출력 길이 파라미터 선택 (0.16.0~)** — OpenAI 가 `max_tokens` 를 `max_completion_tokens` 로
 > 개명하면서 생태계가 갈렸다. 최신 OpenAI 모델은 구 이름을 **거부**하고, 다수의 self-hosted 서버는
@@ -205,7 +206,7 @@ public class ChatService(IHiveService hive)
 | [docs/ORCHESTRATION.md](docs/ORCHESTRATION.md) | 멀티에이전트 오케스트레이션 패턴 |
 | [docs/TOOLS.md](docs/TOOLS.md) | FunctionTool 및 커스텀 도구 |
 | [docs/PROVIDERS.md](docs/PROVIDERS.md) | AI 프로바이더 설정 |
-| [docs/PLUGINS.md](docs/PLUGINS.md) | MCP 플러그인 |
+| [docs/PLUGINS.md](docs/PLUGINS.md) | MCP / OpenAPI 플러그인 |
 | [docs/SERVICES.md](docs/SERVICES.md) | IHiveService 서비스 상세 |
 
 ## Skills (AI 코딩 에이전트용)

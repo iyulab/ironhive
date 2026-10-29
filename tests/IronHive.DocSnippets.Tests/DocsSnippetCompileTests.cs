@@ -59,7 +59,7 @@ public class DocsSnippetCompileTests
     private static readonly string[] AssembliesToLoad =
     [
         "IronHive.Abstractions", "IronHive.Core", "IronHive.Extensions.AI",
-        "IronHive.Plugins.MCP",
+        "IronHive.Plugins.MCP", "IronHive.Plugins.OpenAPI",
         "IronHive.Providers.Anthropic", "IronHive.Providers.GoogleAI", "IronHive.Providers.OpenAI",
         "IronHive.Providers.OpenAI.Compatible", "IronHive.Providers.Declarations", "IronHive.Providers.Endpoints",
         "Microsoft.AspNetCore", "Microsoft.AspNetCore.Http.Abstractions", "Microsoft.AspNetCore.Routing", "Microsoft.AspNetCore.Routing.Abstractions",
@@ -116,6 +116,7 @@ public class DocsSnippetCompileTests
         ["tomlString"] = "string tomlString = \"\";",
         ["json"] = "string json = \"{}\";",
         ["mcpManager"] = "McpClientManager mcpManager = null!;",
+        ["apiManager"] = "OpenApiClientManager apiManager = null!;",
         ["messageService"] = "IMessageService messageService = null!;",
         ["input"] = "ToolInput input = new();",
         ["output"] = "ToolOutput output = ToolOutput.Success(\"\");",
@@ -211,7 +212,7 @@ public class DocsSnippetCompileTests
     public void EveryCheckedBlock_IsFoundAndFragmentsNameRealHeadings()
     {
         Assert.True(Snippets.Count(s => s.File == "README.md") >= 4, "expected the README's C# blocks");
-        Fragments.ShouldMatch([.. Snippets], atLeast: 196);
+        Fragments.ShouldMatch([.. Snippets], atLeast: 202);
     }
 
     /// <summary>
