@@ -58,6 +58,12 @@ public sealed record ProviderDeclaration
     /// <summary>Extra headers sent on every request (a gateway's routing or subscription header). The credential header is refused here.</summary>
     public IDictionary<string, string>? Headers { get; init; }
 
+    /// <summary>
+    /// Per-server behaviour - timeouts, retries, and the layouts and spellings a particular server needs - for all models of this provider
+    /// (<see langword="null"/> keeps every adapter default). A model's own <see cref="ModelDeclaration.Settings"/> override these per property.
+    /// </summary>
+    public ServerSettings? Settings { get; init; }
+
     /// <summary>Models of this provider that differ from the rest, by model id.</summary>
     public IDictionary<string, ModelDeclaration>? Models { get; init; }
 }
@@ -70,4 +76,7 @@ public sealed record ModelDeclaration
 
     /// <summary>The endpoint this model is reached under (same form as <see cref="ProviderDeclaration.BaseUrl"/>), or <see langword="null"/> for the provider's.</summary>
     public string? BaseUrl { get; init; }
+
+    /// <summary>Settings that differ for this model; each one set here replaces the provider's (<see cref="ProviderDeclaration.Settings"/>), the rest fall through.</summary>
+    public ServerSettings? Settings { get; init; }
 }

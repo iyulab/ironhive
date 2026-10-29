@@ -6,6 +6,11 @@ changes are expected and used freely for structural correctness.
 ## [Unreleased]
 
 ### Added
+- **A provider declaration carries the per-server settings a host used to set in code: `ProviderDeclaration.Settings` / `ModelDeclaration.Settings` (`ServerSettings`).** `ConnectTimeout`,
+  `Timeout`, `StreamIdleTimeout` (every wire), `MaxRetries` (Responses and Anthropic), `InstructionsPlacement`, `TokenLimitParameter` and `CarryImageToolResultsAsUserMessage` (Chat Completions)
+  are applied by `ProviderClientFactory` to the adapter that owns them; a model's value replaces the provider's per property, and `null` keeps the adapter default, so a stored declaration
+  without `Settings` behaves as before. A setting the effective wire cannot carry, a non-positive timeout and a negative retry count are an `ArgumentException` naming the provider and the
+  setting path. Enums serialise by name and timeouts as `hh:mm:ss`.
 - **`IronHive.Providers.Endpoints`: serve an `IChatClient` as the HTTP endpoint a provider-shaped client calls.** The mirror of `IronHive.Providers.Declarations`:
   where that turns a declared endpoint into a client, `app.MapOpenAIChatCompletions("/v1/chat/completions", o => o.ClientResolver = ...)` turns a client into an
   OpenAI Chat Completions endpoint, so a keyless page or an OpenAI-SDK client pointed at the host's own origin is answered by whichever model the host chose. It reads
@@ -24,6 +29,10 @@ changes are expected and used freely for structural correctness.
   `app.MapOpenAIResponses("/v1/responses", ...)` serves the stateless subset of the OpenAI Responses wire: the whole conversation arrives as `input` (a string, messages, `function_call` and
   `function_call_output` items), with `instructions`, function tools, `tool_choice`, `text.format` and streaming (`response.created` ... `response.completed`, or `response.incomplete` for a
   length-limited reply); nothing is kept, so `previous_response_id`, `conversation` and `background` are a 400 and built-in tools are refused.
+
+### Fixed
+- **`OpenAICompatibleConfig.MaxRetries` documentation no longer promises retries for chat completions.** The value reaches the OpenAI-SDK services (embeddings, images, audio, model listing); this
+  adapter's own chat HTTP client sends each request once, whatever the value (observed: `MaxRetries = 1` against a failing server sends one request). Documentation only - no behaviour change.
 
 ## 0.74.0 — 2026-10-29
 

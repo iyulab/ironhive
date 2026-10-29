@@ -78,7 +78,9 @@ public class OpenAICompatibleConfig
 
     /// <summary>
     /// How many times a failed request is retried before it surfaces — <see cref="OpenAIConfig.MaxRetries"/>,
-    /// passed through. Null keeps the SDK default (3); 0 sends one request.
+    /// passed through. Null keeps the SDK default (3); 0 sends one request. It reaches the services built on the OpenAI SDK
+    /// (embeddings, images, audio, model listing); a chat completion is sent once by this adapter's own HTTP client, whatever the
+    /// value, so retry above it where a chat request must survive a transient failure.
     /// </summary>
     public int? MaxRetries { get; set; }
 

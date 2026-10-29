@@ -672,6 +672,11 @@ var declaration = new ProviderDeclaration
     BaseUrl = "https://gateway.example.com/v1",       // 버전 세그먼트까지 포함한 엔드포인트 (끝의 / 는 무시)
     ApiKey = "…",                                     // 키가 없는 서버면 null
     KeyHeader = "api-key",                            // 키를 싣는 헤더 — null 이면 와이어 기본
+    Settings = new ServerSettings                     // 서버마다 다른 동작 — 비운 항목은 어댑터 기본값 그대로
+    {
+        StreamIdleTimeout = TimeSpan.FromMinutes(2),                    // 첫 토큰이 느린 로컬 서버
+        InstructionsPlacement = InstructionsPlacement.LeadingUserTurn,  // 두 번째 system 메시지를 거부하는 채팅 템플릿
+    },
     Models = new Dictionary<string, ModelDeclaration>
     {
         ["claude-x"] = new() { Wire = WireFormat.Anthropic, BaseUrl = "https://gateway.example.com/anthropic" },
@@ -686,6 +691,10 @@ IChatClient client = ProviderClientFactory.Create(declaration, "llama-3.3");
   `KeyScheme` 을 비우면(`""`) 키만, `"Basic"` 같은 단어를 주면 그 scheme 으로 보낸다. 게이트웨이 자기 헤더(`api-key`)는 모든 와이어에서 쓸 수 있다 —
   Gemini 는 벤더 SDK 가 `x-goog-api-key` 를 항상 쓰므로 그 헤더에도 키가 함께 나간다.
 - 와이어가 실을 수 없는 조합(Anthropic 의 `x-api-key` · Bearer 가 아닌 `Authorization`, Gemini 의 `Authorization`)은 조용히 떨어지지 않고 provider 이름을 단 `ArgumentException` 이다.
+- `Settings`(`ServerSettings`): 호스트가 코드에서 서버마다 따로 고르던 동작을 선언에 둔다 — `ConnectTimeout` · `Timeout` · `StreamIdleTimeout`(모든 와이어), `MaxRetries`(Responses · Anthropic 만 —
+  Chat Completions 어댑터는 요청을 한 번만 보내고 Gemini 어댑터에는 이 설정이 없다), `InstructionsPlacement` · `TokenLimitParameter` · `CarryImageToolResultsAsUserMessage`(Chat Completions 만).
+  비운 항목(`null`)은 어댑터 기본값이므로 `Settings` 가 없는 기존 선언은 그대로다. `Models[id].Settings` 는 항목 단위로 provider 의 값을 덮어쓴다(채팅 템플릿·추론 속도는 모델마다 다르다).
+  와이어가 실을 수 없는 항목과 0 이하의 시간·음수 재시도는 조용히 버려지지 않고 provider 이름과 항목 경로(`Settings.X` · `Models['id'].Settings.X`)를 단 `ArgumentException` 이다. 열거형은 이름으로, 시간은 `hh:mm:ss` 로 직렬화된다.
 - 저장소·UI·같은 id 의 선언이 여럿일 때 무엇이 이기는가는 호스트의 몫이다. 키 회전이 필요하면 팩토리 대신 각 config 의 `ApiKeyResolver` 를 쓴다.
 
 ---
