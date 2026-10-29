@@ -128,7 +128,8 @@ public class OpenAICompatibleConfig
     /// </remarks>
     public InstructionsPlacement InstructionsPlacement { get; set; }
 
-    // TODO(upstream): remove when GPUStack's streaming tool-call parser accepts a JSON Schema type list. Until then a
+    // TODO(upstream: https://github.com/gpustack/gpustack/issues/6598): remove when GPUStack's streaming tool-call parser
+    // accepts a JSON Schema type list. Until then a
     // streamed tool call that fills a parameter typed ["string", "null"] ends the stream with a server error.
     /// <summary>
     /// Whether tool parameter schemas go out with <c>"null"</c> removed from every <c>type</c> list (a one-type list
