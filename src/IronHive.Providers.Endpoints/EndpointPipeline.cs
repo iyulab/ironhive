@@ -22,14 +22,15 @@ internal static partial class EndpointPipeline
             {
                 document = await ReadBodyAsync(context.Request, options.MaxRequestBodyBytes, cancellationToken).ConfigureAwait(false);
             }
-            catch (BodyTooLargeException)
+            catch (Exception ex) when (ex is BodyTooLargeException || ex is BadHttpRequestException { StatusCode: StatusCodes.Status413PayloadTooLarge })
             {
+                // Our own limit or the server's (Kestrel's MaxRequestBodySize) - the caller sees the wire's error either way.
                 await codec.WriteErrorAsync(context,
                     new WireError(StatusCodes.Status413PayloadTooLarge, WireErrorKind.PayloadTooLarge,
                         $"The request body is larger than {options.MaxRequestBodyBytes} bytes."), cancellationToken).ConfigureAwait(false);
                 return;
             }
-            catch (JsonException)
+            catch (Exception ex) when (ex is JsonException || ex is BadHttpRequestException)
             {
                 await codec.WriteErrorAsync(context,
                     new WireError(StatusCodes.Status400BadRequest, WireErrorKind.InvalidRequest, "The request body is not valid JSON."),
@@ -51,8 +52,32 @@ internal static partial class EndpointPipeline
                         cancellationToken).ConfigureAwait(false);
                     return;
                 }
+                catch (Exception ex) when (ex is FormatException or InvalidOperationException or OverflowException or ArgumentException or JsonException)
+                {
+                    // A body shape the parser did not anticipate (a number out of range, a value of the wrong kind): the caller's, not the server's.
+                    await codec.WriteErrorAsync(context,
+                        new WireError(StatusCodes.Status400BadRequest, WireErrorKind.InvalidRequest, "The request could not be read."),
+                        cancellationToken).ConfigureAwait(false);
+                    return;
+                }
 
-                var client = await options.ClientResolver!(context, request.Model).ConfigureAwait(false);
+                IChatClient? client;
+                try
+                {
+                    client = await options.ClientResolver!(context, request.Model).ConfigureAwait(false);
+                    if (client is not null && options.ConfigureChatOptions is { } configure)
+                    {
+                        await configure(context, request.Options).ConfigureAwait(false);
+                    }
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+                {
+                    // The host's own code threw: answer in the wire's shape instead of letting the exception reach the caller.
+                    LogHostFailure(logger, codec.Name, ex);
+                    await codec.WriteErrorAsync(context, ToWireError(ex, options), cancellationToken).ConfigureAwait(false);
+                    return;
+                }
+
                 if (client is null)
                 {
                     await codec.WriteErrorAsync(context,
@@ -60,11 +85,6 @@ internal static partial class EndpointPipeline
                             request.Model is null ? "No model is available for this request." : $"The model '{request.Model}' does not exist or is not available.",
                             "model"), cancellationToken).ConfigureAwait(false);
                     return;
-                }
-
-                if (options.ConfigureChatOptions is { } configure)
-                {
-                    await configure(context, request.Options).ConfigureAwait(false);
                 }
 
                 if (request.Stream)
@@ -187,6 +207,9 @@ internal static partial class EndpointPipeline
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The chat client failed while answering a {Wire} request")]
     private static partial void LogClientFailure(ILogger logger, string wire, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The client resolver or the chat options hook failed while answering a {Wire} request")]
+    private static partial void LogHostFailure(ILogger logger, string wire, Exception exception);
 
     private sealed class BodyTooLargeException : Exception;
 }

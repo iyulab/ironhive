@@ -22,7 +22,7 @@ internal sealed class OpenAIChatCompletionsCodec : IWireCodec
             throw new WireRequestException("The request body must be a JSON object.");
         }
 
-        if (body.TryGetProperty("n", out var n) && n.ValueKind == JsonValueKind.Number && n.GetInt32() != 1)
+        if (body.TryGetProperty("n", out var n) && n.ValueKind == JsonValueKind.Number && !(n.TryGetInt32(out var choices) && choices == 1))
         {
             throw new WireRequestException("Only one choice per request is supported (n must be 1).", "n");
         }

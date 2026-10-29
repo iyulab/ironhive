@@ -28,7 +28,8 @@ public sealed class ProviderEndpointOptions
 
     /// <summary>
     /// The largest request body accepted, in bytes (default 32 MiB, enough for a few inline images). A larger body is answered
-    /// with a 413 in the wire's error shape.
+    /// with a 413 in the wire's error shape. The server's own limit (Kestrel's <c>MaxRequestBodySize</c>, about 28 MiB by default)
+    /// applies as well and is answered the same way; raise it with <c>RequestSizeLimit</c> on the endpoint when this value is larger.
     /// </summary>
     public long MaxRequestBodyBytes { get; set; } = 32L * 1024 * 1024;
 

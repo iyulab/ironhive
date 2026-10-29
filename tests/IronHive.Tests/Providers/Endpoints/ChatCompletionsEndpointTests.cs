@@ -185,6 +185,8 @@ public sealed class ChatCompletionsEndpointTests
     [InlineData("""[1,2]""", "must be a JSON object", null)]
     [InlineData("""{"model":"m"}""", "'messages' is required", "messages")]
     [InlineData("""{"model":"m","messages":[{"role":"user","content":"u"}],"n":2}""", "n must be 1", "n")]
+    [InlineData("""{"model":"m","messages":[{"role":"user","content":"u"}],"n":2.5}""", "n must be 1", "n")]
+    [InlineData("""{"model":"m","messages":[{"role":"user","content":"u"}],"n":1e30}""", "n must be 1", "n")]
     [InlineData("""{"model":"m","messages":[{"role":"wizard","content":"u"}]}""", "'wizard' is not supported", "messages[0].role")]
     [InlineData("""{"model":"m","messages":[{"role":"tool","content":"x"}]}""", "needs a 'tool_call_id'", "messages[0].tool_call_id")]
     [InlineData("""{"model":"m","messages":[{"role":"user","content":[{"type":"image_url","image_url":{"url":"data:image/png;base64,@@"}}]}]}""", "not a valid data URI", "messages[0].content[0].image_url.url")]
@@ -239,6 +241,31 @@ public sealed class ChatCompletionsEndpointTests
     }
 
     [Fact]
+    public async Task AThrowingResolverOrOptionsHook_IsAProviderShaped500_NotAnUnhandledException()
+    {
+        var served = new ScriptedChatClient((_, _) => new ChatResponse(new ChatMessage(ChatRole.Assistant, "ok")));
+        await using var resolverFails = await EndpointHost.StartAsync(e => e.MapOpenAIChatCompletions("/v1/chat/completions", o =>
+            o.ClientResolver = (_, _) => throw new InvalidOperationException("lookup failed: db password hunter2")));
+        await using var hookFails = await EndpointHost.StartAsync(e => e.MapOpenAIChatCompletions("/v1/chat/completions", o =>
+        {
+            o.ClientResolver = (_, _) => new ValueTask<IChatClient?>(served);
+            o.ConfigureChatOptions = (_, _) => throw new InvalidOperationException("policy store down: hunter2");
+        }));
+        const string body = """{"model":"m","messages":[{"role":"user","content":"u"}]}""";
+
+        var (status1, text1) = await resolverFails.Post("/v1/chat/completions", body);
+        var (status2, text2) = await hookFails.Post("/v1/chat/completions", body);
+
+        status1.Should().Be(HttpStatusCode.InternalServerError);
+        JsonDocument.Parse(text1).RootElement.GetProperty("error").GetProperty("type").GetString().Should().Be("server_error");
+        text1.Should().NotContain("hunter2");
+        status2.Should().Be(HttpStatusCode.InternalServerError);
+        JsonDocument.Parse(text2).RootElement.GetProperty("error").GetProperty("type").GetString().Should().Be("server_error");
+        text2.Should().NotContain("hunter2");
+        served.Calls.Should().Be(0, "a failed hook does not reach the chat client");
+    }
+
+    [Fact]
     public async Task OversizedBody_Is413()
     {
         var served = new ScriptedChatClient((_, _) => throw new InvalidOperationException("must not be called"));
@@ -252,6 +279,21 @@ public sealed class ChatCompletionsEndpointTests
             """{"model":"m","messages":[{"role":"user","content":"a message that is longer than sixty-four bytes in total"}]}""");
 
         status.Should().Be(HttpStatusCode.RequestEntityTooLarge);
+        served.Calls.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task TheServersOwnBodyLimit_IsAlsoA413InTheWiresShape()
+    {
+        var served = new ScriptedChatClient((_, _) => throw new InvalidOperationException("must not be called"));
+        await using var host = await EndpointHost.StartAsync(e => e.MapOpenAIChatCompletions("/v1/chat/completions", served)
+            .WithMetadata(new global::Microsoft.AspNetCore.Mvc.RequestSizeLimitAttribute(64)));
+
+        var (status, text) = await host.Post("/v1/chat/completions",
+            """{"model":"m","messages":[{"role":"user","content":"a message that is longer than sixty-four bytes in total"}]}""");
+
+        status.Should().Be(HttpStatusCode.RequestEntityTooLarge);
+        JsonDocument.Parse(text).RootElement.GetProperty("error").GetProperty("code").GetString().Should().Be("request_too_large");
         served.Calls.Should().Be(0);
     }
 

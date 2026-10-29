@@ -3,6 +3,14 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## [Unreleased]
+
+### Fixed
+- **`IronHive.Providers.Endpoints` answers more malformed or failing cases in the wire's own error shape.** A `ClientResolver` or `ConfigureChatOptions` hook that throws is a 500
+  `server_error` (its message is not echoed unless `ExposeErrorDetails` is set) instead of an unhandled exception reaching the caller; a number the parser cannot read
+  (`"n": 2.5`, `"n": 1e30`) is a 400 instead of a 500; and the server's own request-body limit (Kestrel's `MaxRequestBodySize`, or `RequestSizeLimit` on the endpoint) is a 413 in the
+  wire's shape like `MaxRequestBodyBytes`. No request that worked before changes.
+
 ## 0.75.0 — 2026-10-29
 
 ### Added
