@@ -690,6 +690,57 @@ IChatClient client = ProviderClientFactory.Create(declaration, "llama-3.3");
 
 ---
 
+## `IChatClient` 를 provider 엔드포인트로 서빙 — `IronHive.Providers.Endpoints`
+
+`Declarations` 가 «선언한 엔드포인트 → `IChatClient`» 라면, 이 패키지는 그 반대다: **`IChatClient` → provider 형태 HTTP 엔드포인트**. 키 없는 로컬 페이지나 OpenAI/Anthropic/Gemini SDK 클라이언트가
+호스트 자신의 origin 으로 말하면, 호스트가 고른 모델이 답한다 — 클라이언트의 코드는 모델이 바뀌어도 그대로다. 마운트는 명시적이고 기본으로 켜지는 것은 없다.
+
+```csharp
+using IronHive.Providers.Endpoints;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.AI;
+
+var builder = WebApplication.CreateBuilder();
+var app = builder.Build();
+
+IChatClient client = ProviderClientFactory.Create(new ProviderDeclaration
+{
+    Id = "corp-gateway",
+    Wire = WireFormat.OpenAIChatCompletions,
+    BaseUrl = "https://gateway.example.com/v1",
+    ApiKey = "…",
+}, "llama-3.3");
+
+// 같은 클라이언트를 네 와이어로 — 클라이언트 SDK 의 base URL 을 이 서버로 돌리면 된다
+app.MapOpenAIChatCompletions("/v1/chat/completions", client);   // POST /v1/chat/completions
+app.MapOpenAIResponses("/v1/responses", client);                // POST /v1/responses (무상태 부분집합)
+app.MapAnthropicMessages("/v1/messages", client);               // POST /v1/messages
+app.MapGeminiGenerateContent("/v1beta", client);                // POST /v1beta/models/{model}:generateContent · :streamGenerateContent
+
+// 어떤 모델이 답하는지, 호출자가 무엇을 요청할 수 있는지는 호스트의 몫이다
+app.MapOpenAIChatCompletions("/local/v1/chat/completions", o =>
+{
+    o.ClientResolver = (http, model) => new ValueTask<IChatClient?>(model == "fast" ? client : null);   // null 이면 «모델 없음» 오류
+    o.ConfigureChatOptions = (http, chat) =>
+    {
+        chat.MaxOutputTokens = Math.Min(chat.MaxOutputTokens ?? 1024, 1024);                           // 호출자가 요청한 값을 깎는다
+        return ValueTask.CompletedTask;
+    };
+});
+```
+
+- **번역만 한다.** 마운트 경로 · 인증 · CORS · 어느 모델 · 키 처리는 호스트의 몫이다(`Map*` 가 돌려주는 `IEndpointConventionBuilder` 에 `RequireAuthorization()` 등을 단다). 패키지는 다른 IronHive 어셈블리를 참조하지 않는다.
+- **상태가 없다.** 호출자의 도구는 호출되지 않는 선언(`AIFunctionDeclaration`)으로 `IChatClient` 에 닿고, 모델의 도구 호출은 호출자에게 돌아가며 결과는 다음 턴 요청에 실려 온다. 도구를 스스로 호출하는 클라이언트
+  (`UseFunctionInvocation`)를 `ClientResolver` 가 돌려주면 그 선언을 호출하려 한다 — 그것을 고르는 것도 호스트의 몫이다.
+- **지원 범위.** 텍스트 · 이미지(Chat Completions 는 오디오도) · 도구와 도구 결과 · `tool_choice` · 구조화 출력(`response_format` / `generationConfig.responseMimeType`) · 샘플링 파라미터 · usage · 스트리밍.
+  선택지가 여럿(`n` / `candidateCount` > 1)이거나 서버 도구 · 내장 도구 · 확장 사고는 서빙하지 않고 와이어의 오류 모양으로 400 을 준다.
+  Responses 는 **무상태 부분집합**만이다: 대화 전체가 `input` 으로 오고(문자열 · 메시지 · `function_call` · `function_call_output` 항목) 아무것도 저장하지 않으므로 `previous_response_id` · `conversation` · `background` 는 400 이다.
+- **오류는 와이어 모양이다**(OpenAI `error{message,type,param,code}` · Anthropic `{type:"error",error}` · Gemini `error{code,message,status}`): 잘못된 요청 400 · 없는 모델 404 · 큰 본문 413 · 업스트림 429 는 429.
+  예상 밖 실패는 500 이고 업스트림 메시지(주소 · 키 조각)는 `ExposeErrorDetails` 를 켜야만 담긴다. 스트림이 시작되기 전 실패는 일반 오류 응답이고 시작된 뒤 실패는 스트림 안의 오류 이벤트로 끝난다.
+- Gemini 의 함수 호출 결과는 id 가 없으면 이름으로 호출과 짝지어진다(양쪽에서 이름이 id 를 대신한다).
+
+---
+
 ## 공통 메시지 요청 파라미터
 
 에이전트의 `AgentParametersConfig` 또는 `MessageRequest`에서 설정:

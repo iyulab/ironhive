@@ -117,6 +117,29 @@ public class ArchitectureConventionTests
             + string.Join("\n  ", offenders));
     }
 
+    // IronHive.Providers.Endpoints serves a chat client as the HTTP endpoints a provider-shaped client calls. It speaks the wires
+    // with its own types, so it needs no IronHive assembly at all - not Core, not a provider adapter - and nothing may take it:
+    // it is a leaf a host mounts, the inbound mirror of the provider stack.
+    [Fact]
+    public void Endpoints_ReferencesNoIronHiveAssembly_AndNothingReferencesIt()
+    {
+        var endpoints = typeof(IronHive.Providers.Endpoints.ProviderEndpointOptions).Assembly;
+        var references = endpoints.GetReferencedAssemblies()
+            .Select(a => a.Name!)
+            .Where(n => n.StartsWith("IronHive.", StringComparison.Ordinal))
+            .ToList();
+        var referencedBy = ImplementationAssemblies()
+            .Where(a => a.GetName().Name != "IronHive.Providers.Endpoints")
+            .Where(a => a.GetReferencedAssemblies().Any(r => r.Name == "IronHive.Providers.Endpoints"))
+            .Select(a => a.GetName().Name!)
+            .ToList();
+
+        Assert.True(references.Count == 0,
+            "IronHive.Providers.Endpoints must reference no other IronHive assembly:\n  " + string.Join("\n  ", references));
+        Assert.True(referencedBy.Count == 0,
+            "No IronHive assembly may reference IronHive.Providers.Endpoints (a host mounts it):\n  " + string.Join("\n  ", referencedBy));
+    }
+
     [Theory]
     [MemberData(nameof(ImplementationAssemblyNames))]
     public void ImplementationAssembly_DoesNotDeclareAbstractionsNamespace(string assemblyName)

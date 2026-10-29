@@ -139,6 +139,7 @@ public class ChatService(IHiveService hive)
 | `IronHive.Providers.GoogleAI` | Google Gemini + Vertex AI (이미지, 비디오, 오디오 포함) — `AddGoogleAIProviders` · `AddVertexAIProviders` |
 | `IronHive.Providers.OpenAI.Compatible` | Ollama, LM Studio, vLLM, llama.cpp, GPUStack 등 — Chat Completions · 임베딩 · 리랭킹(`/rerank`) · 이미지 · 오디오. `AddOpenAICompatibleProviders` · `AddGpuStackProviders` |
 | `IronHive.Providers.Declarations` | provider 를 데이터로 — `ProviderDeclaration`(id · 와이어 · 엔드포인트 · 키 위치 · 모델별 예외)을 `ProviderClientFactory.Create(declaration, model)` 로 `IChatClient`(또는 `CreateGenerator` 로 `IMessageGenerator`)로. "엔드포인트 추가" 화면이 있는 호스트가 어댑터 네 개 위의 switch 를 직접 갖지 않는다 |
+| `IronHive.Providers.Endpoints` | `IChatClient` 를 provider 형태 HTTP 엔드포인트로 — `Declarations` 의 안쪽 짝. `app.MapOpenAIChatCompletions("/v1/chat/completions", o => o.ClientResolver = …)` 가 키 없는 페이지·OpenAI SDK 클라이언트를 호스트가 고른 모델로 응답한다(텍스트·이미지·도구·`response_format`·usage). 마운트 경로·인증·모델 선택은 호스트의 몫이고 기본으로 켜지는 것은 없다. 다른 IronHive 어셈블리를 참조하지 않는다. Chat Completions(`MapOpenAIChatCompletions`) · Responses 무상태 부분집합(`MapOpenAIResponses`) · Anthropic Messages(`MapAnthropicMessages`) · Gemini(`MapGeminiGenerateContent`), 모두 스트리밍 포함. 대화 상태(`previous_response_id` 등)는 지키지 않는다 |
 | `IronHive.Plugins.MCP` | Model Context Protocol (HTTP/Stdio/OAuth) — `McpClientManager` |
 
 > **출력 길이 파라미터 선택 (0.16.0~)** — OpenAI 가 `max_tokens` 를 `max_completion_tokens` 로

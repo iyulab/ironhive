@@ -3,6 +3,28 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## [Unreleased]
+
+### Added
+- **`IronHive.Providers.Endpoints`: serve an `IChatClient` as the HTTP endpoint a provider-shaped client calls.** The mirror of `IronHive.Providers.Declarations`:
+  where that turns a declared endpoint into a client, `app.MapOpenAIChatCompletions("/v1/chat/completions", o => o.ClientResolver = ...)` turns a client into an
+  OpenAI Chat Completions endpoint, so a keyless page or an OpenAI-SDK client pointed at the host's own origin is answered by whichever model the host chose. It reads
+  text, image and audio parts, tools and tool results, `tool_choice`, `response_format` (`json_object`, `json_schema`) and the sampling parameters, and replies with
+  `finish_reason`, tool calls and `usage`; a malformed request is a 400, an unknown model a 404 and a rate-limited upstream a 429, all in the wire's error shape, and an
+  unexpected failure does not echo the upstream message unless `ExposeErrorDetails` is set. The endpoint is stateless - the caller's tools reach the client as
+  non-invocable declarations and the model's tool calls go back to the caller. The host keeps the mount path, the authentication and origin policy, which client answers
+  (`ClientResolver`) and what the caller may ask for (`ConfigureChatOptions`); nothing is mounted by default. The package references no other IronHive assembly.
+  Streaming (`stream: true`: server-sent `chat.completion.chunk` events, tool-call deltas, a usage chunk with `stream_options.include_usage`, `[DONE]`) is included; a
+  failure before the first event is an ordinary error response and one after it ends the stream with an error event. `app.MapAnthropicMessages("/v1/messages", ...)` serves the
+  Anthropic Messages wire the same way: a `system` prompt, text and image blocks, client tools with `tool_use` / `tool_result` (a user turn's results become a tool message, thinking blocks are not
+  carried), `tool_choice`, the sampling parameters, and streaming as `message_start` ... `message_stop`; a request without `max_tokens` is a 400 in Anthropic's error shape, and server tools are
+  refused. `app.MapGeminiGenerateContent("/v1beta", ...)` serves the Gemini wire (`models/{model}:generateContent` and `:streamGenerateContent`; the model name comes from the route):
+  `systemInstruction`, text, inline and file data, function declarations with `functionCall` / `functionResponse` (a result is paired with its call by name when there is no id), `toolConfig`,
+  `generationConfig` including `responseMimeType` with a schema, and usage; Gemini's capitalised schema types are lower-cased for the chat client behind it, and built-in tools are refused.
+  `app.MapOpenAIResponses("/v1/responses", ...)` serves the stateless subset of the OpenAI Responses wire: the whole conversation arrives as `input` (a string, messages, `function_call` and
+  `function_call_output` items), with `instructions`, function tools, `tool_choice`, `text.format` and streaming (`response.created` ... `response.completed`, or `response.incomplete` for a
+  length-limited reply); nothing is kept, so `previous_response_id`, `conversation` and `background` are a 400 and built-in tools are refused.
+
 ## 0.74.0 — 2026-10-29
 
 ### Fixed
