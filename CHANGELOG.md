@@ -16,6 +16,9 @@ changes are expected and used freely for structural correctness.
   (`"n": 2.5`, `"n": 1e30`) is a 400 instead of a 500; and the server's own request-body limit (Kestrel's `MaxRequestBodySize`, or `RequestSizeLimit` on the endpoint) is a 413 in the
   wire's shape like `MaxRequestBodyBytes`. No request that worked before changes.
 
+### Dependencies
+- Re-pinned third-party packages: `Google.GenAI` 1.27.0 -> 1.28.0.
+
 ## 0.75.0 — 2026-10-29
 
 ### Added
