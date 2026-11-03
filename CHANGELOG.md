@@ -19,6 +19,7 @@ changes are expected and used freely for structural correctness.
 ### Dependencies
 - Re-pinned third-party packages: `Google.GenAI` 1.27.0 -> 1.28.0.
 - Re-pinned third-party packages: `JsonSchema.Net` 9.5.0 -> 9.6.0.
+- Re-pinned third-party packages: `Anthropic` 13.3.0 -> 13.4.0, `ModelContextProtocol` 2.3.0 -> 2.3.1.
 
 ## 0.75.0 — 2026-10-29
 
