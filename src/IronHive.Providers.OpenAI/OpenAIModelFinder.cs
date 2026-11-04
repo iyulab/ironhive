@@ -6,6 +6,7 @@ using OpenAI.Models;
 
 namespace IronHive.Providers.OpenAI;
 
+/// <summary>Lists the models an OpenAI account (or a gateway that speaks the OpenAI model list) offers, and looks one up by id.</summary>
 public class OpenAIModelFinder : IModelFinder
 {
     private readonly OpenAIModelClient _client;

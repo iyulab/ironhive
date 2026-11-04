@@ -3,6 +3,7 @@ using Microsoft.Extensions.AI;
 
 namespace IronHive.Extensions.AI;
 
+/// <summary>Extension methods that expose an IronHive message generator as a <c>Microsoft.Extensions.AI</c> <c>IChatClient</c>.</summary>
 public static class MessageGeneratorExtensions
 {
     /// <summary>

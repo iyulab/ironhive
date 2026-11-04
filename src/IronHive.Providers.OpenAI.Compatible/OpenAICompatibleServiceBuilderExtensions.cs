@@ -4,6 +4,7 @@ using IronHive.Providers.OpenAI.Compatible.Reranking;
 
 namespace IronHive.Abstractions;
 
+/// <summary>Registers OpenAI-compatible providers (Ollama, LM Studio, vLLM, llama.cpp server and the like) on an <c>IHiveServiceBuilder</c>.</summary>
 public static partial class CompatibleHiveServiceBuilderExtensions
 {
     /// <summary>

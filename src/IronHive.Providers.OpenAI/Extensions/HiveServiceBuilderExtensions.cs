@@ -2,6 +2,7 @@ using IronHive.Providers.OpenAI;
 
 namespace IronHive.Abstractions;
 
+/// <summary>Registers the OpenAI providers (model finder, message, embedding, image and audio services) on an <c>IHiveServiceBuilder</c>.</summary>
 public static class HiveServiceBuilderExtensions
 {
     /// <summary>

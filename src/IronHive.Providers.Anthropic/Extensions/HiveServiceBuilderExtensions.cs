@@ -2,6 +2,7 @@ using IronHive.Providers.Anthropic;
 
 namespace IronHive.Abstractions;
 
+/// <summary>Registers the Anthropic providers (model finder, message generator) on an <c>IHiveServiceBuilder</c>.</summary>
 public static class HiveServiceBuilderExtensions
 {
     /// <summary>

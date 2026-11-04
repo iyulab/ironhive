@@ -104,6 +104,7 @@ internal class ChatResponseFormat
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public JsonSchemaFormat? JsonSchema { get; }
 
+    /// <summary>The <c>json_schema</c> part of a response format: the schema's name and the JSON Schema the reply has to follow.</summary>
     public class JsonSchemaFormat
     {
         [JsonPropertyName("name")]
@@ -126,6 +127,7 @@ internal class ChatTool
     [JsonPropertyName("function")]
     public required FunctionSchema Function { get; set; }
 
+    /// <summary>A tool the model may call: its name, a description and the JSON Schema of its parameters.</summary>
     public class FunctionSchema
     {
         [JsonPropertyName("name")]
@@ -160,6 +162,7 @@ internal class ChatToolCall
     [JsonPropertyName("function")]
     public FunctionCall? Function { get; set; }
 
+    /// <summary>A tool call the model made: the tool's name and its arguments as a JSON string.</summary>
     public class FunctionCall
     {
         [JsonPropertyName("name")]
@@ -183,6 +186,7 @@ internal class ChatToolCallDelta
     [JsonPropertyName("function")]
     public FunctionCallDelta? Function { get; set; }
 
+    /// <summary>A fragment of a tool call on a streaming delta: the name arrives once, the arguments in pieces.</summary>
     public class FunctionCallDelta
     {
         [JsonPropertyName("name")]
@@ -211,6 +215,7 @@ internal class ImageChatMessageContent : ChatMessageContent
     [JsonPropertyName("image_url")]
     public required ImageSource ImageUrl { get; set; }
 
+    /// <summary>Where an image content part reads its image from: a URL or a base64 data URL, and an optional detail level.</summary>
     public class ImageSource
     {
         /// <summary>Either a URL of the image or the base64-encoded data URL.</summary>
@@ -227,6 +232,7 @@ internal class AudioChatMessageContent : ChatMessageContent
     [JsonPropertyName("input_audio")]
     public required AudioSource InputAudio { get; set; }
 
+    /// <summary>The audio of an input-audio content part: base64 data and its format.</summary>
     public class AudioSource
     {
         /// <summary>Base64-encoded audio data.</summary>

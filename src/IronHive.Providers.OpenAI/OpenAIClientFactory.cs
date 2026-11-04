@@ -5,6 +5,7 @@ using OpenAI;
 
 namespace IronHive.Providers.OpenAI;
 
+/// <summary>Builds the vendor <c>OpenAIClient</c> that every OpenAI-based service of this package shares, from an <see cref="OpenAIConfig"/>.</summary>
 public static class OpenAIClientFactory
 {
     /// <summary>

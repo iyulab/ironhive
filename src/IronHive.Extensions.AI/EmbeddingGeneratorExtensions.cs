@@ -3,6 +3,7 @@ using IHiveEmbeddingGenerator = IronHive.Abstractions.Embedding.IEmbeddingGenera
 
 namespace IronHive.Extensions.AI;
 
+/// <summary>Extension methods that expose an IronHive embedding generator as a <c>Microsoft.Extensions.AI</c> one.</summary>
 public static class EmbeddingGeneratorExtensions
 {
     /// <summary>

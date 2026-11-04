@@ -22,6 +22,7 @@ internal static class RequestHeadersScope
         return new Scope(previous);
     }
 
+    /// <summary>The scope <see cref="Begin"/> returns; disposing it makes the headers that were current before it current again.</summary>
     public readonly struct Scope(IReadOnlyDictionary<string, string>? previous) : IDisposable
     {
         public void Dispose() => s_current.Value = previous;

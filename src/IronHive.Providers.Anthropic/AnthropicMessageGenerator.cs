@@ -794,6 +794,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
 
 }
 
+/// <summary>Lists of Anthropic model ids the provider treats specially when it builds a request.</summary>
 public static class AnthropicHelper
 {
     /// <summary>
