@@ -11,7 +11,7 @@ changes are expected and used freely for structural correctness.
   publish the package. It depends on `Microsoft.OpenApi` 3.11, `Microsoft.OpenApi.YamlReader` 3.11 and `JsonSchema.Net` 9.5 again (`IronHive.Core` still does not) and, unlike 0.68.0, no longer brings `JsonSchema.Net.Generation` or `Microsoft.Extensions.Http` with it — nothing in the plugin used them. Guide: `docs/PLUGINS.md`.
 
 ### Changed
-- **The public types of `IronHive.Extensions.AI`, `IronHive.Providers.Anthropic`, `IronHive.Providers.OpenAI` and `IronHive.Providers.OpenAI.Compatible` are documented.** The XML documentation file of those packages left 23 to 39 % of their public types without a summary, so an IDE showed nothing for the service-builder extensions, the model finder, the client factory or the Chat Completions payload classes.
+- **The public types of `IronHive.Extensions.AI`, `IronHive.Providers.Anthropic`, `IronHive.Providers.OpenAI` and `IronHive.Providers.OpenAI.Compatible` are documented.** The XML documentation file of those packages left 23 to 39 % of their public types without a summary, so an IDE showed nothing for the service-builder extensions, the model finder, the client factory or the Chat Completions payload classes. The members of `OpenAIClientFactory` and `OpenAIModelFinder` (`Create`, both constructors) are documented too, and the summary of `BuildOptions`, which had slipped above an unrelated field, is back on it.
 
 ### Fixed
 - **`IronHive.Providers.Endpoints` answers more malformed or failing cases in the wire's own error shape.** A `ClientResolver` or `ConfigureChatOptions` hook that throws is a 500

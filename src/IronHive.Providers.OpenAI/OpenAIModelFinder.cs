@@ -11,10 +11,14 @@ public class OpenAIModelFinder : IModelFinder
 {
     private readonly OpenAIModelClient _client;
 
+    /// <summary>Creates a finder for the OpenAI API with <paramref name="apiKey"/> and otherwise default settings.</summary>
+    /// <param name="apiKey">The API key.</param>
     public OpenAIModelFinder(string apiKey)
         : this(new OpenAIConfig { ApiKey = apiKey })
     { }
 
+    /// <summary>Creates a finder for the endpoint and credential described by <paramref name="config"/> (a gateway that speaks the OpenAI model list works too).</summary>
+    /// <param name="config">The connection settings.</param>
     public OpenAIModelFinder(OpenAIConfig config)
     {
         _client = OpenAIClientFactory.Create(config).GetOpenAIModelClient();

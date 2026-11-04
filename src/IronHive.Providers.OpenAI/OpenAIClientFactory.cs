@@ -23,6 +23,9 @@ public static class OpenAIClientFactory
     /// </remarks>
     private const string NoCredential = "no-credential-required";
 
+    /// <summary>Creates the vendor client for <paramref name="config"/>: its endpoint, organization, project, timeouts, retry budget and credential placement.</summary>
+    /// <param name="config">The connection settings. A missing key is replaced by a placeholder so an endpoint that needs no credential still works.</param>
+    /// <returns>A client every OpenAI-based service of this package can share.</returns>
     public static OpenAIClient Create(OpenAIConfig config)
     {
         var initial = config.ResolveApiKey();
@@ -30,14 +33,14 @@ public static class OpenAIClientFactory
         return new OpenAIClient(new ApiKeyCredential(key), BuildOptions(config));
     }
 
+    /// <summary>The longest budget a timer accepts — about 24.8 days, i.e. no limit in practice.</summary>
+    internal static readonly TimeSpan NoNetworkTimeout = TimeSpan.FromMilliseconds(int.MaxValue);
+
     /// <summary>
     /// Maps the config onto the vendor client's options. Split out so the mapping can be asserted:
     /// the constructed client exposes none of these values, and a field routed to the wrong slot is
     /// invisible at compile time.
     /// </summary>
-    /// <summary>The longest budget a timer accepts — about 24.8 days, i.e. no limit in practice.</summary>
-    internal static readonly TimeSpan NoNetworkTimeout = TimeSpan.FromMilliseconds(int.MaxValue);
-
     internal static OpenAIClientOptions BuildOptions(OpenAIConfig config)
     {
         var options = new OpenAIClientOptions();
