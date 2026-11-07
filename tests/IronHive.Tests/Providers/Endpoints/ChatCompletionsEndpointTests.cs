@@ -423,6 +423,22 @@ public sealed class ChatCompletionsEndpointTests
     }
 
     [Fact]
+    public async Task Streaming_ClientThatThrowsWhenCalled_IsAnOrdinaryErrorResponse_LikeAFailureOnTheFirstRead()
+    {
+        // A guard clause or middleware that rejects the options before it returns the enumerable throws at the call, not while enumerating.
+        var served = new ScriptedStreamingChatClient((_, _, _) => throw new InvalidOperationException("middleware rejected key sk-secret"));
+        await using var host = await EndpointHost.StartAsync(e => e.MapOpenAIChatCompletions("/v1/chat/completions", served));
+
+        var (status, contentType, body) = await host.PostStream("/v1/chat/completions",
+            """{"model":"m","stream":true,"messages":[{"role":"user","content":"u"}]}""");
+
+        status.Should().Be(HttpStatusCode.InternalServerError);
+        contentType.Should().Be("application/json");
+        JsonDocument.Parse(body).RootElement.GetProperty("error").GetProperty("type").GetString().Should().Be("server_error");
+        body.Should().NotContain("sk-secret");
+    }
+
+    [Fact]
     public async Task Streaming_FailureMidStream_EndsWithAnErrorEventAndNoDone()
     {
         var served = new ScriptedStreamingChatClient((_, _, _) => Failing(

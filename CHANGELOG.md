@@ -17,7 +17,9 @@ changes are expected and used freely for structural correctness.
 - **`IronHive.Providers.Endpoints` answers more malformed or failing cases in the wire's own error shape.** A `ClientResolver` or `ConfigureChatOptions` hook that throws is a 500
   `server_error` (its message is not echoed unless `ExposeErrorDetails` is set) instead of an unhandled exception reaching the caller; a number the parser cannot read
   (`"n": 2.5`, `"n": 1e30`) is a 400 instead of a 500; and the server's own request-body limit (Kestrel's `MaxRequestBodySize`, or `RequestSizeLimit` on the endpoint) is a 413 in the
-  wire's shape like `MaxRequestBodyBytes`. No request that worked before changes.
+  wire's shape like `MaxRequestBodyBytes`; and a streaming request whose chat client throws when `GetStreamingResponseAsync` is called (a guard clause or middleware that rejects the options
+  before it returns the enumerable, not an iterator that faults on its first read) is answered like a failure on the first read - a 500 `server_error` in the wire's shape - instead of an
+  empty-body 500 with an unhandled-exception log. No request that worked before changes.
 
 ### Dependencies
 - Re-pinned third-party packages: `Google.GenAI` 1.27.0 -> 1.28.0.

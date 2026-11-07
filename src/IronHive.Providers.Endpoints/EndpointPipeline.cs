@@ -118,36 +118,49 @@ internal static partial class EndpointPipeline
         HttpContext context, IWireCodec codec, ProviderEndpointOptions options, IChatClient client, WireRequest request,
         ILogger logger, CancellationToken cancellationToken)
     {
-        await using var enumerator = client.GetStreamingResponseAsync(request.Messages, request.Options, cancellationToken)
-            .GetAsyncEnumerator(cancellationToken);
-        bool hasFirst;
+        IAsyncEnumerator<ChatResponseUpdate>? enumerator = null;
         try
         {
-            // The first update is read before anything is sent, so an upstream failure that comes first is still an ordinary error response.
-            hasFirst = await enumerator.MoveNextAsync().ConfigureAwait(false);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
-        {
-            LogClientFailure(logger, codec.Name, ex);
-            await codec.WriteErrorAsync(context, ToWireError(ex, options), cancellationToken).ConfigureAwait(false);
-            return;
-        }
-
-        try
-        {
-            await codec.WriteStreamAsync(context, request, Replay(enumerator, hasFirst, cancellationToken), cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
-        {
-            LogClientFailure(logger, codec.Name, ex);
-            var error = ToWireError(ex, options);
-            if (context.Response.HasStarted)
+            bool hasFirst;
+            try
             {
-                await codec.WriteStreamErrorAsync(context, error, cancellationToken).ConfigureAwait(false);
+                // Obtaining the enumerable is part of the first read: a client (or middleware) that rejects the call before it returns
+                // anything throws here, and that is still an ordinary error response - nothing has been sent yet.
+                enumerator = client.GetStreamingResponseAsync(request.Messages, request.Options, cancellationToken)
+                    .GetAsyncEnumerator(cancellationToken);
+                // The first update is read before anything is sent, so an upstream failure that comes first is still an ordinary error response.
+                hasFirst = await enumerator.MoveNextAsync().ConfigureAwait(false);
             }
-            else
+            catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
             {
-                await codec.WriteErrorAsync(context, error, cancellationToken).ConfigureAwait(false);
+                LogClientFailure(logger, codec.Name, ex);
+                await codec.WriteErrorAsync(context, ToWireError(ex, options), cancellationToken).ConfigureAwait(false);
+                return;
+            }
+
+            try
+            {
+                await codec.WriteStreamAsync(context, request, Replay(enumerator, hasFirst, cancellationToken), cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+            {
+                LogClientFailure(logger, codec.Name, ex);
+                var error = ToWireError(ex, options);
+                if (context.Response.HasStarted)
+                {
+                    await codec.WriteStreamErrorAsync(context, error, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    await codec.WriteErrorAsync(context, error, cancellationToken).ConfigureAwait(false);
+                }
+            }
+        }
+        finally
+        {
+            if (enumerator is not null)
+            {
+                await enumerator.DisposeAsync().ConfigureAwait(false);
             }
         }
     }
