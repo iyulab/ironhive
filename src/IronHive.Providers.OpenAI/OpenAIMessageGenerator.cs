@@ -54,6 +54,18 @@ public class OpenAIMessageGenerator : IMessageGenerator
         GC.SuppressFinalize(this);
     }
 
+    // The SDK's streaming call is awaited for the open stream (OpenAI 2.15 returns Task<AsyncStreamingResult<T>>; 2.14 returned
+    // the stream itself), so the stream is opened and enumerated in one iterator that the idle-timeout wrapper can drive.
+    private async IAsyncEnumerable<StreamingResponseUpdate> OpenResponseStreamAsync(
+        CreateResponseOptions options, [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var stream = await _client.CreateResponseStreamingAsync(options, cancellationToken).ConfigureAwait(false);
+        await foreach (var update in stream.WithCancellation(cancellationToken).ConfigureAwait(false))
+        {
+            yield return update;
+        }
+    }
+
     private IReadOnlyDictionary<string, string>? ResolveRequestHeaders(MessageGenerationRequest request)
         => ProviderRequestHeaders.ResolveRequest(nameof(OpenAIConfig), nameof(OpenAIConfig.ApiKey), _credentialHeaders, request.Headers);
 
@@ -188,7 +200,7 @@ public class OpenAIMessageGenerator : IMessageGenerator
         int? stoppedIndex = null;
         var finished = false;
         await foreach (var update in ProviderStreams.WithIdleTimeout(
-                ct => _client.CreateResponseStreamingAsync(options, ct), _streamIdleTimeout, cancellationToken)
+                ct => OpenResponseStreamAsync(options, ct), _streamIdleTimeout, cancellationToken)
             .MapException(ex => OpenAIExceptionMapper.Map(ex, cancellationToken), cancellationToken))
         {
             // An error after the 200 arrives as an event: «error» for a stream-level failure, «response.failed» for a

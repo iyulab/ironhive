@@ -70,8 +70,9 @@ internal static partial class AnthropicExceptionMapper
     {
         var (type, body, status) = exception switch
         {
-            AnthropicApiException apiEx => (apiEx.ErrorType, apiEx.ResponseBody ?? apiEx.Message, (System.Net.HttpStatusCode?)apiEx.StatusCode),
-            AnthropicSseException sse => (sse.ErrorType, SseBody(sse), null),
+            // ApiEnum.Value() is (ErrorType)(-1) for a name the SDK does not know, which matches none of the cases below.
+            AnthropicApiException apiEx => (apiEx.Type?.Value(), apiEx.ResponseBody ?? apiEx.Message, (System.Net.HttpStatusCode?)apiEx.StatusCode),
+            AnthropicSseException sse => (sse.Type?.Value(), SseBody(sse), null),
             _ => (null, (string?)null, null),
         };
         if (body is null)
