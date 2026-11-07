@@ -39,6 +39,37 @@ public class GoogleAIClientFactoryTests
         options.BaseUrl.Should().Be(expected);
     }
 
+    // Google.GenAI 2.0.0 moved the Gemini Developer API default from v1beta to v1, where the *-latest model aliases do not exist.
+    // The provider keeps what it always sent unless the configuration or the environment names a version.
+    [Fact]
+    public void GoogleAI_NoApiVersionAnywhere_KeepsV1Beta()
+    {
+        var options = GoogleAIClientFactory.KeepDeveloperApiVersion(new HttpOptions(), environmentApiVersion: null);
+
+        options.ApiVersion.Should().Be("v1beta");
+    }
+
+    [Theory]
+    [InlineData("v1")]
+    [InlineData("v1alpha")]
+    public void GoogleAI_ConfiguredApiVersion_IsNotReplaced(string configured)
+    {
+        var options = GoogleAIClientFactory.KeepDeveloperApiVersion(new HttpOptions { ApiVersion = configured }, environmentApiVersion: null);
+
+        options.ApiVersion.Should().Be(configured);
+    }
+
+    [Theory]
+    [InlineData("v1")]
+    [InlineData("beta")]
+    public void GoogleAI_EnvironmentApiVersion_IsLeftToTheSdk(string fromEnvironment)
+    {
+        // GOOGLE_GENAI_API_VERSION is the operator's switch; a value written into the options would outrank it.
+        var options = GoogleAIClientFactory.KeepDeveloperApiVersion(new HttpOptions(), fromEnvironment);
+
+        options.ApiVersion.Should().BeNull();
+    }
+
     [Fact]
     public void GoogleAI_NoTimeoutConfigured_LeavesTheRequestUnbounded()
     {

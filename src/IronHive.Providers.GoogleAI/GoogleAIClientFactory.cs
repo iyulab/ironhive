@@ -18,12 +18,28 @@ internal static class GoogleAIClientFactory
             apiKey: config.ResolveApiKey() is { } resolved && !string.IsNullOrWhiteSpace(resolved)
                 ? resolved
                 : config.ApiKeyResolver != null ? UnresolvedKeyPlaceholder : null,
-            httpOptions: ResolveHttpOptions(config.HttpOptions, config.Timeout, config.Headers, nameof(GoogleAIConfig), nameof(GoogleAIConfig.ApiKey)),
+            httpOptions: KeepDeveloperApiVersion(
+                ResolveHttpOptions(config.HttpOptions, config.Timeout, config.Headers, nameof(GoogleAIConfig), nameof(GoogleAIConfig.ApiKey)),
+                System.Environment.GetEnvironmentVariable(ApiVersionEnvironmentVariable)),
             clientOptions: new ClientOptions
             {
                 HttpClientFactory = ResolveHttpClientFactory(config)
             });
     }
+
+    /// <summary>The vendor SDK's own switch for the API version (Google.GenAI 2.0.0).</summary>
+    internal const string ApiVersionEnvironmentVariable = "GOOGLE_GENAI_API_VERSION";
+
+    /// <summary>
+    /// Google.GenAI 2.0.0 changed the Gemini Developer API default from <c>v1beta</c> to <c>v1</c>, where the
+    /// <c>*-latest</c> model aliases do not exist. This provider keeps sending what it always sent: <c>v1beta</c>, unless the
+    /// configuration's <see cref="HttpOptions.ApiVersion"/> or the environment (<see cref="ApiVersionEnvironmentVariable"/>, which the
+    /// SDK reads only while the options leave the version unset) names one. Vertex AI is unaffected by the change and not touched.
+    /// </summary>
+    internal static HttpOptions KeepDeveloperApiVersion(HttpOptions options, string? environmentApiVersion)
+        => options.ApiVersion is { Length: > 0 } || !string.IsNullOrWhiteSpace(environmentApiVersion)
+            ? options
+            : options with { ApiVersion = "v1beta" };
 
     internal static Client Create(VertexAIConfig config)
     {

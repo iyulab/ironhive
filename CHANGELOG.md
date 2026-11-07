@@ -11,6 +11,7 @@ changes are expected and used freely for structural correctness.
   publish the package. It depends on `Microsoft.OpenApi` 3.11, `Microsoft.OpenApi.YamlReader` 3.11 and `JsonSchema.Net` 9.5 again (`IronHive.Core` still does not) and, unlike 0.68.0, no longer brings `JsonSchema.Net.Generation` or `Microsoft.Extensions.Http` with it — nothing in the plugin used them. Guide: `docs/PLUGINS.md`.
 
 ### Changed
+- **The Gemini Developer API provider keeps sending `v1beta` when Google.GenAI 2.0.0 would send `v1`.** `GoogleAIConfig` builds its client with `HttpOptions.ApiVersion = "v1beta"` unless the configuration's own `HttpOptions.ApiVersion` or the vendor's `GOOGLE_GENAI_API_VERSION` environment variable names a version (the variable is left to the SDK; a value written into the options would outrank it). So `gemini-flash-latest`, `gemini-pro-latest` and the other `*-latest` aliases keep working after the vendor upgrade; set `HttpOptions = new HttpOptions { ApiVersion = "v1" }` to move to `v1`. Vertex AI is unaffected (the vendor did not change its default).
 - **The public types of `IronHive.Extensions.AI`, `IronHive.Providers.Anthropic`, `IronHive.Providers.OpenAI` and `IronHive.Providers.OpenAI.Compatible` are documented.** The XML documentation file of those packages left 23 to 39 % of their public types without a summary, so an IDE showed nothing for the service-builder extensions, the model finder, the client factory or the Chat Completions payload classes. The members of `OpenAIClientFactory` and `OpenAIModelFinder` (`Create`, both constructors) are documented too, and the summary of `BuildOptions`, which had slipped above an unrelated field, is back on it.
 
 ### Fixed
@@ -22,7 +23,7 @@ changes are expected and used freely for structural correctness.
   empty-body 500 with an unhandled-exception log. No request that worked before changes.
 
 ### Dependencies
-- Re-pinned third-party packages: `Google.GenAI` 1.27.0 -> 1.28.0.
+- Re-pinned third-party packages: `Google.GenAI` 1.27.0 -> 2.0.0 (1.28.0, then the 2.0.0 major: the vendor moved the Gemini Developer API default from `v1beta` to `v1`, where the `*-latest` model aliases do not exist; the Gemini provider keeps `v1beta` - see Changed).
 - Re-pinned third-party packages: `JsonSchema.Net` 9.5.0 -> 9.6.0.
 - Re-pinned third-party packages: `Anthropic` 13.3.0 -> 13.4.0, `ModelContextProtocol` 2.3.0 -> 2.3.1.
 - Re-pinned third-party packages: `Anthropic` 13.4.0 -> 13.6.0, `ModelContextProtocol` 2.3.1 -> 2.4.0, `OpenAI` 2.14.0 -> 2.15.0, `Tomlyn` 2.10.1 -> 2.10.2.
