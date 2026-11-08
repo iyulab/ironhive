@@ -27,6 +27,7 @@ changes are expected and used freely for structural correctness.
 - Re-pinned third-party packages: `JsonSchema.Net` 9.5.0 -> 9.6.0.
 - Re-pinned third-party packages: `Anthropic` 13.3.0 -> 13.4.0, `ModelContextProtocol` 2.3.0 -> 2.3.1.
 - Re-pinned third-party packages: `Anthropic` 13.4.0 -> 13.6.0, `ModelContextProtocol` 2.3.1 -> 2.4.0, `OpenAI` 2.14.0 -> 2.15.0, `Tomlyn` 2.10.1 -> 2.10.2.
+- Re-pinned third-party packages: `Tomlyn` 2.10.2 -> 2.11.0.
 
 ## 0.75.0 — 2026-10-29
 

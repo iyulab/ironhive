@@ -27,7 +27,7 @@
   </ItemGroup>
   <ItemGroup Label="Serialization">
     <PackageVersion Include="YamlDotNet" Version="18.1.0" />
-    <PackageVersion Include="Tomlyn" Version="2.10.2" />
+    <PackageVersion Include="Tomlyn" Version="2.11.0" />
   </ItemGroup>
   <ItemGroup Label="JSON Schema">
     <PackageVersion Include="JsonSchema.Net" Version="9.6.0" />
