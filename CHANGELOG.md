@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## [Unreleased]
+## 0.76.0 — 2026-11-09
 
 ### Added
 - **`IronHive.Plugins.OpenAPI` is published again.** Register an OpenAPI (Swagger) description with `OpenApiClientManager` and its operations become tools in the agent's `IToolCollection`,
