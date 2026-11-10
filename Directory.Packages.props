@@ -3,7 +3,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup Label="Microsoft">
-    <PackageVersion Include="Anthropic" Version="13.6.0" />
+    <PackageVersion Include="Anthropic" Version="13.7.0" />
     <PackageVersion Include="Google.GenAI" Version="2.0.0" />
     <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.11.0" />
     <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.11.0" />
@@ -21,13 +21,13 @@
          reference (CI never invoked the coverage collector flag) -->
     <PackageVersion Include="AwesomeAssertions" Version="9.6.0" />
     <PackageVersion Include="NSubstitute" Version="6.2.0" />
-    <PackageVersion Include="xunit.v3" Version="4.0.2" />
+    <PackageVersion Include="xunit.v3" Version="4.0.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
     <PackageVersion Include="Microsoft.Testing.Extensions.HangDump" Version="2.5.2" />
   </ItemGroup>
   <ItemGroup Label="Serialization">
     <PackageVersion Include="YamlDotNet" Version="18.1.0" />
-    <PackageVersion Include="Tomlyn" Version="2.11.0" />
+    <PackageVersion Include="Tomlyn" Version="2.11.1" />
   </ItemGroup>
   <ItemGroup Label="JSON Schema">
     <PackageVersion Include="JsonSchema.Net" Version="9.6.0" />

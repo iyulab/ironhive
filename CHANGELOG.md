@@ -3,6 +3,11 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## Unreleased
+
+### Dependencies
+- Re-pinned third-party packages: `Anthropic` 13.6.0 -> 13.7.0, `Tomlyn` 2.11.0 -> 2.11.1.
+
 ## 0.76.0 — 2026-11-09
 
 ### Added
