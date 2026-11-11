@@ -5,6 +5,12 @@ changes are expected and used freely for structural correctness.
 
 ## Unreleased
 
+### Added
+- **`ToolNames.ProviderSafe(name)` gives the name a function-calling provider accepts.** A name that already matches `[a-zA-Z0-9_-]{1,64}` is returned unchanged; any other becomes its safe characters plus `_` and ten hex characters of the SHA-256 of the whole name, cut to 64 characters.
+
+### Fixed
+- **An MCP or OpenAPI tool whose name a provider rejects no longer fails every request that offers it.** `McpTool.UniqueName` and `OpenApiTool.UniqueName` (`mcp_{server}_{tool}`, `openapi_{client}_{operationId}`) pass through `ToolNames.ProviderSafe`, so a tool called `message.send` or an `operationId` such as `GET /pets.v2/{id}`, or a composed name over 64 characters, is offered under a safe name and the model's call by that name reaches the tool (the name is the collection key and the lookup key, so no mapping back is needed). Names that were already accepted keep their `UniqueName`.
+
 ### Dependencies
 - Re-pinned third-party packages: `Anthropic` 13.6.0 -> 13.7.0, `Tomlyn` 2.11.0 -> 2.11.1.
 

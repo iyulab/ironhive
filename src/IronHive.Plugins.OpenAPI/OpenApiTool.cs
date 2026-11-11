@@ -33,8 +33,12 @@ public sealed class OpenApiTool : ITool
     /// <summary> 이 도구에서 사용되는 보안 요구사항(스키마)들입니다. </summary>
     public IEnumerable<OpenApiSecurityRequirement>? Requirements { get; init; }
 
+    /// <remarks>
+    /// <c>openapi_{ClientName}_{OperationId}</c>, made acceptable to a function-calling provider by <see cref="ToolNames.ProviderSafe"/>:
+    /// an <c>operationId</c> often holds dots or slashes. A composed name that already matches <c>[a-zA-Z0-9_-]{1,64}</c> is unchanged.
+    /// </remarks>
     /// <inheritdoc />
-    public string UniqueName => $"openapi_{ClientName}_{OperationId}";
+    public string UniqueName => ToolNames.ProviderSafe($"openapi_{ClientName}_{OperationId}");
     /// <inheritdoc />
     public string? Description { get; init; }
     /// <inheritdoc />

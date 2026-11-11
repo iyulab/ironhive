@@ -105,7 +105,7 @@ var alive = await session.HealthAsync();
 
 ### McpTool 특성
 
-- `UniqueName`: `"mcp_{ServerName}_{ToolName}"` 형식
+- `UniqueName`: `"mcp_{ServerName}_{ToolName}"` 형식. 제공자가 받는 함수 이름(`[a-zA-Z0-9_-]{1,64}`)이 아니면(`message.send` 같은 점·슬래시, 64자 초과) `ToolNames.ProviderSafe` 가 안전한 문자 + 전체 이름의 해시 10자리로 바꾼다. 이미 맞는 이름은 그대로
 - `RequiresApproval`: 기본값 `true`
 - JSON 폴리모픽 타입: `"mcp"`
 - 실패 의미: 서버가 `isError`로 답하면 그 내용이, 전송·프로토콜 실패(서버 프로세스 사망, 연결 거부/리셋,
@@ -194,7 +194,7 @@ apiManager.Remove("petstore");
 
 ### OpenApiTool 특성
 
-- `UniqueName`: `"openapi_{ClientName}_{OperationId}"` 형식
+- `UniqueName`: `"openapi_{ClientName}_{OperationId}"` 형식. `operationId` 에 점·슬래시가 있거나 64자를 넘으면 `ToolNames.ProviderSafe` 가 제공자가 받는 이름(`[a-zA-Z0-9_-]{1,64}`)으로 바꾼다. 이미 맞는 이름은 그대로
 - `RequiresApproval`: 기본값 `true`
 - 파라미터 위치 자동 처리: Path / Query / Header / Body
 

@@ -24,8 +24,13 @@ public class McpTool : ITool
         _tool = tool ?? throw new ArgumentNullException(nameof(tool));
     }
 
+    /// <remarks>
+    /// <c>mcp_{ServerName}_{Name}</c>, made acceptable to a function-calling provider by <see cref="ToolNames.ProviderSafe"/>:
+    /// an MCP tool called <c>message.send</c> is legal in MCP but is not a legal function name. A composed name that already
+    /// matches <c>[a-zA-Z0-9_-]{1,64}</c> is unchanged.
+    /// </remarks>
     /// <inheritdoc />
-    public string UniqueName => $"mcp_{ServerName}_{Name}";
+    public string UniqueName => ToolNames.ProviderSafe($"mcp_{ServerName}_{Name}");
 
     /// <summary>
     /// 현재 MCP 툴이 속한 서버의 이름입니다.

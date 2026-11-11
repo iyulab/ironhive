@@ -165,7 +165,7 @@ var session = mcpManager.GetSession("my-server");
 IEnumerable<McpTool> tools = session is null ? [] : await session.ListToolsAsync();
 ```
 
-MCP tool `UniqueName` format: `"mcp_{ServerName}_{ToolName}"`, `RequiresApproval = true`
+MCP tool `UniqueName` format: `"mcp_{ServerName}_{ToolName}"` (made provider-safe, `[a-zA-Z0-9_-]{1,64}`, by `ToolNames.ProviderSafe` when the name holds other characters), `RequiresApproval = true`
 
 ## OpenAPI Tools
 
@@ -185,7 +185,7 @@ await openApiManager.AddOrUpdateAsync(client);   // on return the spec's operati
 Credentials and default headers go in `OpenApiClientOptions` (`Credentials` keyed by security scheme name,
 `DefaultHeaders`, `TimeoutSeconds`), passed as the factory's `options` argument.
 
-OpenAPI tool `UniqueName` format: `"openapi_{ClientName}_{OperationId}"`, `RequiresApproval = true`
+OpenAPI tool `UniqueName` format: `"openapi_{ClientName}_{OperationId}"` (made provider-safe the same way), `RequiresApproval = true`
 
 ## ToolOptions — Intercepting Invocation
 
