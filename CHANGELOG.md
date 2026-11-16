@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## Unreleased
+## 0.77.0 — 2026-11-16
 
 ### Added
 - **`ToolNames.ProviderSafe(name)` gives the name a function-calling provider accepts.** A name that already matches `[a-zA-Z0-9_-]{1,64}` is returned unchanged; any other becomes its safe characters plus `_` and ten hex characters of the SHA-256 of the whole name, cut to 64 characters.
