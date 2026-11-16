@@ -355,15 +355,40 @@ public class ChatCompletionMessageGeneratorTests
     }
 
     [Fact]
-    public void BuildRequest_ToolChoiceNone_OmitsToolsEntirely_NotJustToolChoice()
+    public void BuildRequest_ToolChoiceNone_NoToolCallInHistory_OmitsTheToolsAndSendsNone()
     {
-        // Not just tool_choice:"none" — the tool catalog itself must be gone, since some self-hosted
-        // backends only partially honor tool_choice as a hint.
+        // Nothing in the history needs the definitions, and a first turn that still declares them under
+        // "none" can make a local model write its tool-call syntax as plain text (measured on a local
+        // llama-server): an empty catalog is the one construction that cannot produce a call.
         var payload = SerializePayload(
             ChatCompletionMessageGenerator.BuildRequest(RequestWithTools(ToolChoice.None)));
 
+        payload.Should().Contain("\"tool_choice\":\"none\"");
         payload.Should().NotContain("get_weather");
         payload.Should().NotContain("\"tools\"");
+    }
+
+    [Fact]
+    public void BuildRequest_ToolChoiceNone_WithToolCallsInHistory_StillDeclaresTheTools()
+    {
+        // The final «answer now» round of an agent: the history already holds an assistant tool call
+        // and its result, and the request must still carry the definitions of those tools.
+        var request = RequestWithTools(ToolChoice.None);
+        request.Messages =
+        [
+            Message.User("weather?"),
+            Message.Assistant(new ToolMessageContent
+            {
+                Id = "call_1", Name = "get_weather", Input = "{}", Output = ToolOutput.Success("sunny"), IsApproved = true,
+            }),
+        ];
+
+        var payload = SerializePayload(ChatCompletionMessageGenerator.BuildRequest(request));
+
+        payload.Should().Contain("\"tool_choice\":\"none\"");
+        payload.Should().Contain("\"tools\"");
+        payload.Should().Contain("get_forecast");
+        payload.Should().Contain("call_1");
     }
 
     [Fact]

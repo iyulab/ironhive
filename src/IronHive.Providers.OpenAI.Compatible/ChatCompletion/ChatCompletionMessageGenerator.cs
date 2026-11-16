@@ -463,11 +463,16 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
             TopK = request.TopK,
             Stop = request.StopSequences,
             ResponseFormat = BuildResponseFormat(request),
-            // NoneToolChoice omits Tools entirely rather than relying on tool_choice:"none" alone —
-            // some self-hosted/local backends (llama.cpp-family servers in particular) only partially
-            // honor tool_choice as a soft hint and still expose the tool grammar/schema regardless. An
-            // empty tool catalog is the one construction that structurally cannot produce a tool call.
-            Tools = request.ToolChoice is NoneToolChoice
+            // NoneToolChoice sends tool_choice:"none" and, while the history holds tool calls, keeps the tool
+            // definitions (OpenAI semantics: the model may not call a tool, the tools stay defined): a server
+            // that validates the history against the definitions - an Anthropic-backed gateway refuses
+            // assistant tool calls without them - needs the catalog on the final «answer now» request of an
+            // agent loop. With no tool call in the history nothing needs the definitions, so they are omitted:
+            // measured on a local llama-server with a Gemma 4 model, a first turn that still declares the tools
+            // under "none" can come back with the model's own tool-call syntax as plain text in the answer, an
+            // empty catalog is the one construction that cannot produce a call, and with a tool result in the
+            // history the model answers the same either way.
+            Tools = request.ToolChoice is NoneToolChoice && !HistoryHasToolCalls(request)
                 ? null
                 : (request.ToolChoice is FunctionToolChoice { Names.Count: > 1 } multi
                     ? request.Tools?.FilterBy(multi.Names)
@@ -592,6 +597,10 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
             Strict = false,
         });
     }
+
+    /// <summary>True when an earlier assistant turn of the request holds a tool call (and its result).</summary>
+    private static bool HistoryHasToolCalls(MessageGenerationRequest request) =>
+        request.Messages.Any(m => m.Content.OfType<ToolMessageContent>().Any());
 
     internal static List<ChatMessage> BuildMessages(
         MessageGenerationRequest request,
