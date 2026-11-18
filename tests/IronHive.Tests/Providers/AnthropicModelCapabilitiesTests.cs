@@ -57,9 +57,15 @@ public class AnthropicModelCapabilitiesTests
 
     // Opus 5.5 rejects forced tool choice like Fable 5.1 (live 2026-09-24: 400 "tool_choice: type \"tool\" and
     // \"any\" are not supported for this model"); with no row it fell to Default and sent `any`.
+    // Vendor migration guides (read 2026-11-19): Fable 5.2 / Mythos 5.2 are "unchanged from Fable 5.1", Sonnet 5.5 "rejects both
+    // [any and tool] with a 400". Before their rows existed Sonnet 5.5 matched the Sonnet 5 row and the 5.2 ids matched nothing.
     [Theory]
     [InlineData("claude-fable-5-1")]
+    [InlineData("claude-fable-5-2")]
+    [InlineData("claude-mythos-5-2")]
     [InlineData("claude-opus-5-5")]
+    [InlineData("claude-sonnet-5-5")]
+    [InlineData("claude-sonnet-5-5-20261101")]
     public void RequiredToolChoice_OnAModelWithoutForcedChoice_LeavesAsAutoWithInstruction(string model)
     {
         var req = Generator().ToMessageCreateParams(Request(model, new RequiredToolChoice(), system: "Be brief."));
@@ -81,6 +87,8 @@ public class AnthropicModelCapabilitiesTests
 
     [Theory]
     [InlineData("claude-sonnet-4-5")]
+    [InlineData("claude-sonnet-5")]   // the 5.5 row is a longer prefix; Sonnet 5 itself still takes `any`
+    [InlineData("claude-haiku-5-5")]  // vendor guide: "accepts a forced tool_choice"
     [InlineData("claude-opus-5")]   // the 5.5 row is a longer prefix; Opus 5 itself still takes `any`
     public void RequiredToolChoice_OnAModelThatAcceptsIt_KeepsTheForcedWireValue(string model)
     {

@@ -141,11 +141,15 @@ public sealed record AnthropicModelCapabilities
             table[legacy] = budget;
         }
 
-        // Claude 5.1 (Fable / Mythos) and Opus 5.5 — adaptive thinking; tool_choice any/tool return 400.
-        // Opus 5.5 also rejects disabled thinking at every effort level, which the default already covers.
+        // Claude 5.1 / 5.2 (Fable / Mythos), Opus 5.5 and Sonnet 5.5 — adaptive thinking; tool_choice any/tool return 400
+        // (vendor migration guides: Fable 5.2 "unchanged from Fable 5.1", Opus 5.5, Sonnet 5.5 "rejects both with a 400").
+        // Opus 5.5 also rejects disabled thinking at every effort level, which the default already covers. Haiku 5.5
+        // accepts a forced choice, so it stays on the default.
         var noForcedToolChoice = new AnthropicModelCapabilities { SupportsForcedToolChoice = false };
         table["claude-fable-5-1"] = noForcedToolChoice;
+        table["claude-fable-5-2"] = noForcedToolChoice;
         table["claude-mythos-5-1"] = noForcedToolChoice;
+        table["claude-mythos-5-2"] = noForcedToolChoice;
         table["claude-opus-5-5"] = noForcedToolChoice;
 
         // Adaptive thinking-off and effort rows (vendor docs 2026-09): disabled is accepted by Sonnet 5 and
@@ -155,7 +159,7 @@ public sealed record AnthropicModelCapabilities
         var canDisable = new AnthropicModelCapabilities { ThinkingOffStyle = AnthropicThinkingOffStyle.Disabled };
         var canDisableNoXHigh = canDisable with { SupportsXHighEffort = false };
         table["claude-sonnet-5"] = canDisable;
-        table["claude-sonnet-5-5"] = canDisable with { ThinkingOffStyle = AnthropicThinkingOffStyle.BetweenTools };
+        table["claude-sonnet-5-5"] = noForcedToolChoice with { ThinkingOffStyle = AnthropicThinkingOffStyle.BetweenTools };
         table["claude-opus-4-8"] = canDisable;
         table["claude-opus-4-7"] = canDisable;
         table["claude-opus-4-6"] = canDisableNoXHigh;

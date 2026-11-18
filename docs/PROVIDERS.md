@@ -207,7 +207,7 @@ vendor 지식이라 provider 안의 `AnthropicModelCapabilities`가 갖는다 �
 | 세대 | `ThinkingStyle` | `SupportsForcedToolChoice` | 번역 |
 |---|---|---|---|
 | Claude 4.x (`claude-sonnet-4-5` 등) | `Budget` — `thinking: {type: enabled, budget_tokens}` | `true` | `RequiredToolChoice` → `tool_choice: any` |
-| Claude 5.1 (`claude-fable-5-1`, `claude-mythos-5-1`) · Opus 5.5 (`claude-opus-5-5`) | `Adaptive` | **`false`** — `any`/`tool`은 400 | `tool_choice: auto` + 시스템 프롬프트 끝에 도구 호출 지시(vendor 마이그레이션 가이드의 처방) |
+| Claude 5.1 / 5.2 (`claude-fable-5-1`, `claude-fable-5-2`, `claude-mythos-5-1`, `claude-mythos-5-2`) · Opus 5.5 (`claude-opus-5-5`) · Sonnet 5.5 (`claude-sonnet-5-5`) | `Adaptive` | **`false`** — `any`/`tool`은 400 | `tool_choice: auto` + 시스템 프롬프트 끝에 도구 호출 지시(vendor 마이그레이션 가이드의 처방) |
 
 `Adaptive` 세대는 요청의 노력도를 `output_config.effort` 로 싣는다(Minimal·Low → `low` · Medium → `medium` · High →
 `high` · XHigh → `xhigh`, `SupportsXHighEffort=false`(4.6 세대)는 `high`). `MessageThinkingEffort.None` 은 «꺼 달라»다 —
