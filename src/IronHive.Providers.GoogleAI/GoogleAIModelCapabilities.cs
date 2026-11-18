@@ -144,7 +144,7 @@ public sealed record GoogleAIModelCapabilities
             ["gemini-3.1-pro"] = new GoogleAIModelCapabilities { SupportsMinimalThinking = false },
             ["gemini-3.6-flash"] = new GoogleAIModelCapabilities { SupportsZeroThinkingBudget = true },
             ["gemini-3.7-flash"] = new GoogleAIModelCapabilities { SupportsMinimalThinking = false, SupportsZeroThinkingBudget = true },
-            // Gemini 4 (Argon / Carbon / Hydrogen; vendor thinking guide read 2026-11-19, not measured against the API): levels low..high
+            // Gemini 4 (Argon / Carbon / Hydrogen; vendor thinking guide and generateContent, both 2026-11-19: minimal is a 400 on all three): levels low..high
             // (Hydrogen also xhigh), «minimal» is «Not supported on Gemini 4 models», so None and Minimal leave as low. Hydrogen's
             // what's-new page says to remove temperature / topP / topK (out-of-range values are a 400). The family prefix is the
             // vendor's own grouping; the thinking guide lists no budget form, so a zero budget is not sent.

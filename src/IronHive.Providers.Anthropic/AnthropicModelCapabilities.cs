@@ -35,8 +35,9 @@ public enum AnthropicThinkingOffStyle
     Disabled,
 
     /// <summary>
-    /// <c>thinking: {type: "between_tools"}</c> — Claude Sonnet 5.5 는 <c>disabled</c> 를 400 으로 거절하고 이 값으로 끕니다.
-    /// 이 값은 effort <c>xhigh</c>/<c>max</c>, <c>display</c>, <c>budget_tokens</c> 와 함께 보내면 400 이라 생성기는 effort 를 싣지 않습니다.
+    /// <c>thinking: {type: "between_tools"}</c> — Claude Sonnet 5.5 는 <c>disabled</c> 를 400 으로 거절하고 이 값으로 끕니다
+    /// (생각 전 사고만 끄고 도구 호출 사이의 생각은 남습니다). 이 값은 <c>high</c> 이하의 effort 만 받고(<c>xhigh</c>/<c>max</c> 는 400),
+    /// <c>display</c> · <c>budget_tokens</c> 와 함께 보낼 수 없습니다 — 생성기는 끄기 요청에 가장 낮은 effort(<c>low</c>)를 함께 보냅니다.
     /// </summary>
     BetweenTools,
 }

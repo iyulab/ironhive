@@ -594,7 +594,9 @@ public class AnthropicMessageGenerator : IMessageGenerator
             // None 은 「보내지 않음」이 아니라 「꺼 달라」입니다 — Claude Sonnet 5 · Opus 5 · Fable 은 thinking 을
             // 생략해도 adaptive 로 생각합니다. 끌 수 있는 모델에는 그 모델이 받는 끄기(disabled, Sonnet 5.5 는 between_tools)를,
             // 끌 수 없는 모델(Fable: disabled 는 400)과 vendor 가 끄기 대신 낮은 effort 를 권하는 모델(Opus 5)에는 가장 낮은
-            // effort 를 보냅니다. between_tools 는 effort · display · budget_tokens 와 함께 가면 400 이라 이 경로는 effort 를 싣지 않습니다.
+            // effort 를 보냅니다. between_tools 는 「생각 전 사고」만 끄고(도구 호출 사이의 생각은 남음) high 이하의 effort 만 받으며
+            // (xhigh/max 는 400, 2026-11-19 실측), display · budget_tokens · block_binding 과는 함께 갈 수 없습니다. 끄기 요청이므로
+            // 다른 끄지 못하는 모델과 같게 가장 낮은 effort 를 함께 보냅니다(effort 를 생략하면 vendor 기본 high 가 됩니다).
             // Budget 세대는 생략이 곧 off 라 아무것도 보내지 않습니다.
             switch (capabilities.ThinkingOffStyle)
             {
@@ -603,6 +605,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
                     break;
                 case AnthropicThinkingOffStyle.BetweenTools:
                     thinking = new ThinkingConfigBetweenTools();
+                    effort = Effort.Low;
                     break;
                 default:
                     effort = Effort.Low;

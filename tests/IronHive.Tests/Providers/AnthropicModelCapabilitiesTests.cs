@@ -185,22 +185,23 @@ public class AnthropicModelCapabilitiesTests
         WireOf(req).Should().NotContain("\"effort\"");
     }
 
-    // Sonnet 5.5 refuses `disabled` (400 "To turn thinking off on this model, send between_tools instead", reported
-    // 2026-11-18) and turns thinking off with `between_tools`, which in turn is a 400 beside an effort, a display or a budget.
-    // The Sonnet 5 row is a shorter prefix of the 5.5 id, so before the 5.5 row existed this request carried `disabled`.
+    // Sonnet 5.5 refuses `disabled` (400 "To turn thinking off on this model, send between_tools instead", live 2026-11-19) and
+    // turns thinking off with `between_tools`, which takes effort low..high (xhigh / max: 400 "not supported when thinking is disabled
+    // on this model") and no display / budget. A request that asks for thinking off carries the lowest effort, like the other models
+    // that cannot switch it off. The Sonnet 5 row is a shorter prefix of the 5.5 id, so before the 5.5 row existed this request
+    // carried `disabled`.
     [Theory]
     [InlineData("claude-sonnet-5-5")]
     [InlineData("claude-sonnet-5-5-20261101")]
-    public void NoThinking_OnSonnet55_IsBetweenToolsAlone(string model)
+    public void NoThinking_OnSonnet55_IsBetweenToolsWithTheLowestEffort(string model)
     {
         var req = Generator().ToMessageCreateParams(Request(model, effort: MessageThinkingEffort.None));
 
         req.Thinking!.TryPickBetweenTools(out _).Should().BeTrue();
         req.Thinking!.TryPickDisabled(out _).Should().BeFalse("Sonnet 5.5 answers disabled with a 400");
         var wire = WireOf(req);
-        wire.Should().Contain("\"type\":\"between_tools\"");
-        wire.Should().NotContain("\"effort\"").And.NotContain("\"display\"").And.NotContain("budget_tokens");
-        req.OutputConfig.Should().BeNull("between_tools is a 400 beside an effort, so the off request carries none");
+        wire.Should().Contain("\"type\":\"between_tools\"").And.Contain("\"effort\":\"low\"");
+        wire.Should().NotContain("\"display\"").And.NotContain("budget_tokens").And.NotContain("xhigh").And.NotContain("max\"");
     }
 
     [Fact]

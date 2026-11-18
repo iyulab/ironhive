@@ -132,7 +132,7 @@ var localConfig = new OpenAICompatibleConfig
 | gpt-6-sol · gpt-6-luna · gpt-6.1-terra | 기본 행(none 있음) | None → `none` |
 | o1 · o3 · o4 | low · medium · high | None → `low` · XHigh → `high` |
 
-gpt-5 이하 행은 2026-09-17 `POST /v1/responses` 값 검증 오류 원문으로 실측했고, gpt-6 행은 2026-11-19 vendor 모델 페이지의 «reasoning.effort supports …» 문구로 적었다(API 로 실측하지 않았다).
+gpt-5 이하 행은 2026-09-17, gpt-6 행은 2026-11-19 `POST /v1/responses` 값 검증 오류 원문으로 실측했다(`none` 은 gpt-6-astra · gpt-6.1-sol · gpt-6.2-* 에서 400 «Supported values are: low … max», gpt-6-sol · luna · 6.1-terra 에서 200).
 
 ### 지원 기능
 
@@ -215,7 +215,7 @@ vendor 지식이라 provider 안의 `AnthropicModelCapabilities`가 갖는다 �
 `high` · XHigh → `xhigh`, `SupportsXHighEffort=false`(4.6 세대)는 `high`). `MessageThinkingEffort.None` 은 «꺼 달라»다 —
 Claude Sonnet 5 · Opus 5 · Fable 은 `thinking` 을 생략해도 생각한다. 어떻게 끄는지는 모델이 받는 것이 달라
 `ThinkingOffStyle` 이 정한다: `Disabled`(Sonnet 5 · Opus 4.6~4.8)는 `thinking: {type: "disabled"}`, `BetweenTools`(Sonnet 5.5 —
-disabled 는 400)는 `thinking: {type: "between_tools"}` 하나만(effort · display · budget 과 함께 가면 400 이라 싣지 않는다),
+disabled 는 400)는 `thinking: {type: "between_tools"}` + `output_config.effort: low`(`between_tools` 는 high 이하 effort 만 받고 xhigh/max 는 400, display · budget 과는 함께 갈 수 없다 — 2026-11-19 실측; 도구 호출 사이의 생각은 남는다),
 `LowEffort`(기본: Fable · Opus 5.5: disabled 는 400 · Opus 5: vendor 가 끄기 대신 낮은 effort 를 권함 · 모르는 모델)는
 `output_config.effort: low` 를 보낸다. `AnthropicConfig.ModelCapabilities` 로 모델별로 덮어쓸 수 있다. `Budget` 세대는 생략이 곧 off 이고 `effort` 를 받지 않는다(Haiku 4.5 는
 400) — 아무것도 보내지 않는다. 2026-09-17 실키 실측(sonnet-5 · opus-5 · haiku-4-5, None/Low/XHigh 전부 400 없음).
@@ -344,7 +344,7 @@ Anthropic 과 같은 형태로 `GoogleAIModelCapabilities`가 세대별 wire 규
 | Gemini 4 (Argon · Carbon) | `Level` — low · medium · high | **`false`** — «Not supported on Gemini 4 models» → `low` | `false` | `true` | `true` |
 | Gemini 4 Hydrogen | `Level` — low · … · xhigh(`XHigh` 요청은 아직 `high` 로 간다) | **`false`** | `false` | **`false`** — vendor: `temperature`/`top_p`/`top_k` 를 빼라 | `true` |
 
-Gemini 4 행은 2026-11-19 vendor thinking 가이드 · Hydrogen 안내 페이지의 문구로 적었다(API 로 실측하지 않았다).
+Gemini 4 행은 2026-11-19 vendor 가이드와 `generateContent` 실측으로 적었다(`thinkingLevel: minimal` 은 세 모델 모두 400, `low` 는 200; Hydrogen 의 `temperature` 는 범위 안이면 받아서 무시하고 범위 밖이면 400).
 
 **`MessageThinkingEffort.None`(= `ChatOptions.Reasoning.Effort = None`)은 «보내지 않음»이 아니라 «꺼 달라»다.**
 Gemini 2.5·3 계열 대부분은 기본으로 생각하고 thinking 토큰이 `maxOutputTokens` 에 포함되므로, 끄지 않으면 짧은

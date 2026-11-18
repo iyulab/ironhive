@@ -122,7 +122,7 @@ public sealed record OpenAIModelCapabilities
             ["gpt-5."] = Default,
             ["gpt-5.1"] = new() { ReasoningEfforts = ["none", "low", "medium", "high"] },
             ["gpt-5.6"] = new() { ReasoningEfforts = ["none", "low", "medium", "high", "xhigh", "max"] },
-            // gpt-6 generation (vendor model pages read 2026-11-19, not measured against the API): Sol, Luna and Terra 6.1 keep
+            // gpt-6 generation (vendor model pages and /v1/responses, both 2026-11-19: `none` is a 400 on the four ids below, «Supported values are: low .. max»): Sol, Luna and Terra 6.1 keep
             // none; Astra, Sol 6.1 and the 6.2 models list low..max and the 6.2 page says the API rejects `none`. The
             // unlisted ids (gpt-6-sol, gpt-6-luna, gpt-6.1-terra) take the default row, which already has none.
             ["gpt-6-astra"] = new() { ReasoningEfforts = ["low", "medium", "high", "xhigh", "max"] },
