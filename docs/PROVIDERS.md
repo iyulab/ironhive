@@ -128,9 +128,11 @@ var localConfig = new OpenAICompatibleConfig
 | gpt-5.1 | none · low · medium · high | Minimal → `low` · XHigh → `high` |
 | gpt-5.x (기본 · 모르는 모델) | none · low · medium · high · xhigh | Minimal → `low` |
 | gpt-5.6 | none · … · xhigh · max | |
+| gpt-6-astra · gpt-6.1-sol · gpt-6.2-sol · gpt-6.2-astra | low · medium · high · xhigh · max | None → `low` (the 6.2 models reject `none`) |
+| gpt-6-sol · gpt-6-luna · gpt-6.1-terra | 기본 행(none 있음) | None → `none` |
 | o1 · o3 · o4 | low · medium · high | None → `low` · XHigh → `high` |
 
-표는 2026-09-17 `POST /v1/responses` 값 검증 오류 원문으로 실측했다.
+gpt-5 이하 행은 2026-09-17 `POST /v1/responses` 값 검증 오류 원문으로 실측했고, gpt-6 행은 2026-11-19 vendor 모델 페이지의 «reasoning.effort supports …» 문구로 적었다(API 로 실측하지 않았다).
 
 ### 지원 기능
 

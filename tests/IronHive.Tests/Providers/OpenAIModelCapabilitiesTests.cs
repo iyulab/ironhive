@@ -42,6 +42,17 @@ public class OpenAIModelCapabilitiesTests
     [InlineData("o3", MessageThinkingEffort.XHigh, "high")]
     [InlineData("gpt-5.5", MessageThinkingEffort.XHigh, "xhigh")]
     [InlineData("gpt-5.6-luna", MessageThinkingEffort.XHigh, "xhigh")]
+    // gpt-6 generation (vendor model pages, 2026-11-19): Astra, Sol 6.1 and the 6.2 models have no `none` (the 6.2 page: "The API
+    // rejects requests that set reasoning effort to `none`"), so None goes out as their lowest value; Sol, Luna and Terra 6.1 keep none.
+    [InlineData("gpt-6.2-sol", MessageThinkingEffort.None, "low")]
+    [InlineData("gpt-6.2-astra", MessageThinkingEffort.None, "low")]
+    [InlineData("gpt-6.1-sol", MessageThinkingEffort.None, "low")]
+    [InlineData("gpt-6-astra", MessageThinkingEffort.None, "low")]
+    [InlineData("gpt-6-sol", MessageThinkingEffort.None, "none")]
+    [InlineData("gpt-6-luna", MessageThinkingEffort.None, "none")]
+    [InlineData("gpt-6.1-terra", MessageThinkingEffort.None, "none")]
+    [InlineData("gpt-6.2-sol", MessageThinkingEffort.XHigh, "xhigh")]
+    [InlineData("gpt-6.2-astra", MessageThinkingEffort.Minimal, "low")]
     // A model newer than the table is assumed to be the latest generation.
     [InlineData("gpt-7", MessageThinkingEffort.Medium, "medium")]
     public void Effort_IsAValueTheModelAccepts(string model, MessageThinkingEffort effort, string expected)
