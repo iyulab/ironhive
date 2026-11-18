@@ -3,6 +3,14 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## [Unreleased]
+
+### Changed
+- **Breaking: `AnthropicModelCapabilities.SupportsDisabledThinking` (bool) is replaced by `ThinkingOffStyle` (`AnthropicThinkingOffStyle`: `LowEffort`, `Disabled`, `BetweenTools`).** How Claude turns thinking off differs per model, so a bool could not say it: Sonnet 5 and Opus 4.6-4.8 take `thinking: {type: "disabled"}`, Sonnet 5.5 takes `{type: "between_tools"}`, and Fable, Opus 5 and Opus 5.5 take the lowest effort instead. **Migration**: an override that set `SupportsDisabledThinking = true` becomes `ThinkingOffStyle = AnthropicThinkingOffStyle.Disabled`; `false` is the default (`LowEffort`) and needs no line.
+
+### Fixed
+- **`MessageThinkingEffort.None` on `claude-sonnet-5-5` no longer fails every request with HTTP 400.** The model was matched to the Sonnet 5 row and sent `thinking: {type: "disabled"}`, which Sonnet 5.5 refuses; it now has a row of its own and sends `thinking: {type: "between_tools"}` with no effort, display or budget beside it (the vendor answers 400 to that combination). Sonnet 5 keeps `disabled`; a request with a thinking level other than `None` is unchanged.
+
 ## 0.77.0 — 2026-11-16
 
 ### Added

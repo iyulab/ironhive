@@ -177,6 +177,63 @@ public class AnthropicModelCapabilitiesTests
         WireOf(req).Should().NotContain("\"effort\"");
     }
 
+    // Sonnet 5.5 refuses `disabled` (400 "To turn thinking off on this model, send between_tools instead", reported
+    // 2026-11-18) and turns thinking off with `between_tools`, which in turn is a 400 beside an effort, a display or a budget.
+    // The Sonnet 5 row is a shorter prefix of the 5.5 id, so before the 5.5 row existed this request carried `disabled`.
+    [Theory]
+    [InlineData("claude-sonnet-5-5")]
+    [InlineData("claude-sonnet-5-5-20261101")]
+    public void NoThinking_OnSonnet55_IsBetweenToolsAlone(string model)
+    {
+        var req = Generator().ToMessageCreateParams(Request(model, effort: MessageThinkingEffort.None));
+
+        req.Thinking!.TryPickBetweenTools(out _).Should().BeTrue();
+        req.Thinking!.TryPickDisabled(out _).Should().BeFalse("Sonnet 5.5 answers disabled with a 400");
+        var wire = WireOf(req);
+        wire.Should().Contain("\"type\":\"between_tools\"");
+        wire.Should().NotContain("\"effort\"").And.NotContain("\"display\"").And.NotContain("budget_tokens");
+        req.OutputConfig.Should().BeNull("between_tools is a 400 beside an effort, so the off request carries none");
+    }
+
+    [Fact]
+    public void ThinkingOffStyle_FollowsTheLongestPrefix_SoSonnet5KeepsDisabled()
+    {
+        AnthropicModelCapabilities.Resolve("claude-sonnet-5").ThinkingOffStyle.Should().Be(AnthropicThinkingOffStyle.Disabled);
+        AnthropicModelCapabilities.Resolve("claude-sonnet-5-20261001").ThinkingOffStyle.Should().Be(AnthropicThinkingOffStyle.Disabled);
+        AnthropicModelCapabilities.Resolve("claude-sonnet-5-5").ThinkingOffStyle.Should().Be(AnthropicThinkingOffStyle.BetweenTools);
+        AnthropicModelCapabilities.Resolve("claude-opus-5-5").ThinkingOffStyle.Should().Be(AnthropicThinkingOffStyle.LowEffort);
+        AnthropicModelCapabilities.Resolve("claude-some-new-model").ThinkingOffStyle.Should().Be(AnthropicThinkingOffStyle.LowEffort);
+    }
+
+    // A thinking level other than None on Sonnet 5.5 is an ordinary adaptive request: between_tools is only the way it is turned off.
+    [Fact]
+    public void Thinking_OnSonnet55_WithAnEffort_IsAdaptive()
+    {
+        var req = Generator().ToMessageCreateParams(Request("claude-sonnet-5-5", effort: MessageThinkingEffort.Medium));
+
+        req.Thinking!.TryPickAdaptive(out _).Should().BeTrue();
+        WireOf(req).Should().Contain("\"effort\":\"medium\"").And.NotContain("between_tools");
+    }
+
+    [Theory]
+    [InlineData(AnthropicThinkingOffStyle.Disabled, "disabled")]
+    [InlineData(AnthropicThinkingOffStyle.BetweenTools, "between_tools")]
+    public void NoThinking_ConsumerOverrideChoosesTheOffStyle(AnthropicThinkingOffStyle style, string wireType)
+    {
+        var config = new AnthropicConfig
+        {
+            ApiKey = "test-key",
+            ModelCapabilities = new Dictionary<string, AnthropicModelCapabilities>
+            {
+                ["claude-sonnet-5-5"] = new() { ThinkingOffStyle = style },
+            },
+        };
+
+        var req = Generator(config).ToMessageCreateParams(Request("claude-sonnet-5-5", effort: MessageThinkingEffort.None));
+
+        WireOf(req).Should().Contain($"\"type\":\"{wireType}\"");
+    }
+
     [Theory]
     [InlineData("claude-fable-5-1")]
     [InlineData("claude-opus-5")]

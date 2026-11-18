@@ -19,6 +19,29 @@ public enum AnthropicThinkingStyle
 }
 
 /// <summary>
+/// <see cref="IronHive.Abstractions.Messages.MessageThinkingEffort.None"/>(「생각을 꺼 달라」)을 모델이 받는 wire 로 옮기는 방법입니다.
+/// </summary>
+public enum AnthropicThinkingOffStyle
+{
+    /// <summary>
+    /// 가장 낮은 effort(<c>output_config.effort: low</c>)를 보냅니다 — 끄기를 받지 않거나 vendor 가 끄기 대신 낮은 effort 를
+    /// 권하는 모델(Claude Fable, Opus 5, Opus 5.5)과 모르는 모델의 기본값입니다. 생각이 완전히 꺼지지는 않습니다.
+    /// </summary>
+    LowEffort,
+
+    /// <summary>
+    /// <c>thinking: {type: "disabled"}</c> — Claude Sonnet 5 와 Opus 4.6~4.8.
+    /// </summary>
+    Disabled,
+
+    /// <summary>
+    /// <c>thinking: {type: "between_tools"}</c> — Claude Sonnet 5.5 는 <c>disabled</c> 를 400 으로 거절하고 이 값으로 끕니다.
+    /// 이 값은 effort <c>xhigh</c>/<c>max</c>, <c>display</c>, <c>budget_tokens</c> 와 함께 보내면 400 이라 생성기는 effort 를 싣지 않습니다.
+    /// </summary>
+    BetweenTools,
+}
+
+/// <summary>
 /// 특정 Claude 모델(세대)이 wire 에서 받아들이는 것 — 「요청된 의도」를 「그 모델이 받는 wire」로 번역할 때
 /// 생성기가 참조하는 정책입니다.
 /// </summary>
@@ -50,13 +73,13 @@ public sealed record AnthropicModelCapabilities
     public AnthropicThinkingStyle ThinkingStyle { get; init; } = AnthropicThinkingStyle.Adaptive;
 
     /// <summary>
-    /// <c>thinking: {type: "disabled"}</c>을 받는지 여부(<see cref="AnthropicThinkingStyle.Adaptive"/> 세대에서만 의미) —
-    /// 요청의 <see cref="IronHive.Abstractions.Messages.MessageThinkingEffort.None"/>을 번역할 때 참조합니다.
-    /// <c>false</c>이면 끌 수 없는 모델로 보고 <c>output_config.effort: low</c>를 보냅니다(Claude Fable 은 disabled 가 400,
-    /// Claude Opus 5 는 disabled 에서 도구 호출이 본문 텍스트로 새는 실패 형태가 있어 vendor 가 낮은 effort 를 권함).
-    /// 기본값 <c>false</c> — 모르는 새 모델에 disabled 를 보내 400 이 되는 것보다 낮은 effort 가 안전합니다.
+    /// 요청의 <see cref="IronHive.Abstractions.Messages.MessageThinkingEffort.None"/>(「생각을 꺼 달라」)을 이 모델이 받는
+    /// wire 로 옮기는 방법(<see cref="AnthropicThinkingStyle.Adaptive"/> 세대에서만 의미). Budget 세대는 생략이 곧 off 라 이 값을
+    /// 보지 않습니다. 기본값 <see cref="AnthropicThinkingOffStyle.LowEffort"/> — 모르는 새 모델에 <c>disabled</c> 나
+    /// <c>between_tools</c> 를 보내 400 이 되는 것보다 낮은 effort 가 안전합니다. 모델마다 받는 끄기가 달라(Sonnet 5 는
+    /// <c>disabled</c>, Sonnet 5.5 는 <c>between_tools</c>, Fable · Opus 5.5 는 둘 다 400) 불리언이 아니라 열거형입니다.
     /// </summary>
-    public bool SupportsDisabledThinking { get; init; }
+    public AnthropicThinkingOffStyle ThinkingOffStyle { get; init; } = AnthropicThinkingOffStyle.LowEffort;
 
     /// <summary>
     /// <c>output_config.effort: xhigh</c>를 받는지 여부(<see cref="AnthropicThinkingStyle.Adaptive"/> 세대). <c>false</c>이면
@@ -127,10 +150,12 @@ public sealed record AnthropicModelCapabilities
 
         // Adaptive thinking-off and effort rows (vendor docs 2026-09): disabled is accepted by Sonnet 5 and
         // Opus 4.6/4.7/4.8; Fable and Opus 5.5 reject it (400) and Opus 5 is steered to low effort instead; xhigh arrived
-        // with Opus 4.7, so the 4.6 generation tops out at high.
-        var canDisable = new AnthropicModelCapabilities { SupportsDisabledThinking = true };
+        // with Opus 4.7, so the 4.6 generation tops out at high. Sonnet 5.5 rejects disabled too (400, 2026-11-18) and
+        // turns thinking off with `between_tools` - a row of its own, since the Sonnet 5 row is its shorter prefix.
+        var canDisable = new AnthropicModelCapabilities { ThinkingOffStyle = AnthropicThinkingOffStyle.Disabled };
         var canDisableNoXHigh = canDisable with { SupportsXHighEffort = false };
         table["claude-sonnet-5"] = canDisable;
+        table["claude-sonnet-5-5"] = canDisable with { ThinkingOffStyle = AnthropicThinkingOffStyle.BetweenTools };
         table["claude-opus-4-8"] = canDisable;
         table["claude-opus-4-7"] = canDisable;
         table["claude-opus-4-6"] = canDisableNoXHigh;

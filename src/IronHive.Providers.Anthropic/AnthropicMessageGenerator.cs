@@ -592,16 +592,21 @@ public class AnthropicMessageGenerator : IMessageGenerator
         if (request.ThinkingEffort is MessageThinkingEffort.None && capabilities.ThinkingStyle == AnthropicThinkingStyle.Adaptive)
         {
             // None 은 「보내지 않음」이 아니라 「꺼 달라」입니다 — Claude Sonnet 5 · Opus 5 · Fable 은 thinking 을
-            // 생략해도 adaptive 로 생각합니다. 끌 수 있는 모델에는 disabled 를, 끌 수 없는 모델(Fable: disabled 는 400)과
-            // vendor 가 끄기 대신 낮은 effort 를 권하는 모델(Opus 5)에는 가장 낮은 effort 를 보냅니다.
+            // 생략해도 adaptive 로 생각합니다. 끌 수 있는 모델에는 그 모델이 받는 끄기(disabled, Sonnet 5.5 는 between_tools)를,
+            // 끌 수 없는 모델(Fable: disabled 는 400)과 vendor 가 끄기 대신 낮은 effort 를 권하는 모델(Opus 5)에는 가장 낮은
+            // effort 를 보냅니다. between_tools 는 effort · display · budget_tokens 와 함께 가면 400 이라 이 경로는 effort 를 싣지 않습니다.
             // Budget 세대는 생략이 곧 off 라 아무것도 보내지 않습니다.
-            if (capabilities.SupportsDisabledThinking)
+            switch (capabilities.ThinkingOffStyle)
             {
-                thinking = new ThinkingConfigDisabled();
-            }
-            else
-            {
-                effort = Effort.Low;
+                case AnthropicThinkingOffStyle.Disabled:
+                    thinking = new ThinkingConfigDisabled();
+                    break;
+                case AnthropicThinkingOffStyle.BetweenTools:
+                    thinking = new ThinkingConfigBetweenTools();
+                    break;
+                default:
+                    effort = Effort.Low;
+                    break;
             }
         }
         else if (request.ThinkingEffort is not null and not MessageThinkingEffort.None)
