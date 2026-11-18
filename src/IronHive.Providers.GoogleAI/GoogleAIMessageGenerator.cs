@@ -806,6 +806,8 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                         MessageThinkingEffort.Low => ThinkingLevel.Low,
                         MessageThinkingEffort.Medium => ThinkingLevel.Medium,
                         MessageThinkingEffort.High => ThinkingLevel.High,
+                        // Gemini 4 Hydrogen accepts xhigh (the other Level models answer 400), but Google.GenAI 2.0.0 has no ThinkingLevel value for it,
+                        // so the top request goes out as high everywhere until the SDK carries the level.
                         MessageThinkingEffort.XHigh => ThinkingLevel.High,
                         _ => ThinkingLevel.ThinkingLevelUnspecified
                     }

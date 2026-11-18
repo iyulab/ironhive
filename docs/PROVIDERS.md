@@ -342,7 +342,7 @@ Anthropic 과 같은 형태로 `GoogleAIModelCapabilities`가 세대별 wire 규
 | Gemini 3.7 Flash | `Level` | **`false`** | **`true`** | `true` | `true` |
 | Gemini 3.8 Flash | `Level` | **`false`** — `minimal`은 오류 → `low`로 강등 | **`true`** | **`false`** — `temperature`/`topP`/`topK`를 보내지 않음 | `true` |
 | Gemini 4 (Argon · Carbon) | `Level` — low · medium · high | **`false`** — «Not supported on Gemini 4 models» → `low` | `false` | `true` | `true` |
-| Gemini 4 Hydrogen | `Level` — low · … · xhigh(`XHigh` 요청은 아직 `high` 로 간다) | **`false`** | `false` | **`false`** — vendor: `temperature`/`top_p`/`top_k` 를 빼라 | `true` |
+| Gemini 4 Hydrogen | `Level` — low · … · xhigh(API 는 받지만 Google.GenAI 2.0.0 의 `ThinkingLevel` 에 값이 없어 `XHigh` 요청은 `high` 로 간다) | **`false`** | `false` | **`false`** — vendor: `temperature`/`top_p`/`top_k` 를 빼라 | `true` |
 
 Gemini 4 행은 2026-11-19 vendor 가이드와 `generateContent` 실측으로 적었다(`thinkingLevel: minimal` 은 세 모델 모두 400, `low` 는 200; Hydrogen 의 `temperature` 는 범위 안이면 받아서 무시하고 범위 밖이면 400).
 
