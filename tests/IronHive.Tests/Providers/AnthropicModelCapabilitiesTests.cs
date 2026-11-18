@@ -234,11 +234,12 @@ public class AnthropicModelCapabilitiesTests
             ApiKey = "test-key",
             ModelCapabilities = new Dictionary<string, AnthropicModelCapabilities>
             {
-                ["claude-sonnet-5-5"] = new() { ThinkingOffStyle = style },
+                // Opus 5.5's built-in style is LowEffort, so each case differs from the built-in row and only passes if the override wins.
+                ["claude-opus-5-5"] = new() { ThinkingOffStyle = style },
             },
         };
 
-        var req = Generator(config).ToMessageCreateParams(Request("claude-sonnet-5-5", effort: MessageThinkingEffort.None));
+        var req = Generator(config).ToMessageCreateParams(Request("claude-opus-5-5", effort: MessageThinkingEffort.None));
 
         WireOf(req).Should().Contain($"\"type\":\"{wireType}\"");
     }

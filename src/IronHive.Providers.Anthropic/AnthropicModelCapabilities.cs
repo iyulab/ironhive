@@ -155,7 +155,7 @@ public sealed record AnthropicModelCapabilities
 
         // Adaptive thinking-off and effort rows (vendor docs 2026-09): disabled is accepted by Sonnet 5 and
         // Opus 4.6/4.7/4.8; Fable and Opus 5.5 reject it (400) and Opus 5 is steered to low effort instead; xhigh arrived
-        // with Opus 4.7, so the 4.6 generation tops out at high. Sonnet 5.5 rejects disabled too (400, 2026-11-18) and
+        // with Opus 4.7, so the 4.6 generation tops out at high. Sonnet 5.5 rejects disabled too (400, reported 2026-11-18, measured 2026-11-19) and
         // turns thinking off with `between_tools` - a row of its own, since the Sonnet 5 row is its shorter prefix.
         var canDisable = new AnthropicModelCapabilities { ThinkingOffStyle = AnthropicThinkingOffStyle.Disabled };
         var canDisableNoXHigh = canDisable with { SupportsXHighEffort = false };

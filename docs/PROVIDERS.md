@@ -217,7 +217,7 @@ Claude Sonnet 5 · Opus 5 · Fable 은 `thinking` 을 생략해도 생각한다.
 `ThinkingOffStyle` 이 정한다: `Disabled`(Sonnet 5 · Opus 4.6~4.8)는 `thinking: {type: "disabled"}`, `BetweenTools`(Sonnet 5.5 —
 disabled 는 400)는 `thinking: {type: "between_tools"}` + `output_config.effort: low`(`between_tools` 는 high 이하 effort 만 받고 xhigh/max 는 400, display · budget 과는 함께 갈 수 없다 — 2026-11-19 실측; 도구 호출 사이의 생각은 남는다),
 `LowEffort`(기본: Fable · Opus 5.5: disabled 는 400 · Opus 5: vendor 가 끄기 대신 낮은 effort 를 권함 · 모르는 모델)는
-`output_config.effort: low` 를 보낸다. `AnthropicConfig.ModelCapabilities` 로 모델별로 덮어쓸 수 있다. `Budget` 세대는 생략이 곧 off 이고 `effort` 를 받지 않는다(Haiku 4.5 는
+`output_config.effort: low` 를 보낸다. `AnthropicConfig.ModelCapabilities` 로 모델별로 덮어쓸 수 있다(덮어쓰기도 가장 긴 접두로 찾으므로 `claude-sonnet-5` 로 건 항목은 `claude-sonnet-5-5` 도 덮는다 — 5.5 는 자기 id 로 따로 건다). `Budget` 세대는 생략이 곧 off 이고 `effort` 를 받지 않는다(Haiku 4.5 는
 400) — 아무것도 보내지 않는다. 2026-09-17 실키 실측(sonnet-5 · opus-5 · haiku-4-5, None/Low/XHigh 전부 400 없음).
 2026-09-24 실키 실측(opus-5-5): `tool_choice: any` 400 · `thinking: disabled` 400 · `effort: low` 정상.
 
