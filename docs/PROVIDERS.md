@@ -341,6 +341,10 @@ Anthropic 과 같은 형태로 `GoogleAIModelCapabilities`가 세대별 wire 규
 | Gemini 3.6 Flash | `Level` | `true` | **`true`** | `true` | `true` |
 | Gemini 3.7 Flash | `Level` | **`false`** | **`true`** | `true` | `true` |
 | Gemini 3.8 Flash | `Level` | **`false`** — `minimal`은 오류 → `low`로 강등 | **`true`** | **`false`** — `temperature`/`topP`/`topK`를 보내지 않음 | `true` |
+| Gemini 4 (Argon · Carbon) | `Level` — low · medium · high | **`false`** — «Not supported on Gemini 4 models» → `low` | `false` | `true` | `true` |
+| Gemini 4 Hydrogen | `Level` — low · … · xhigh(`XHigh` 요청은 아직 `high` 로 간다) | **`false`** | `false` | **`false`** — vendor: `temperature`/`top_p`/`top_k` 를 빼라 | `true` |
+
+Gemini 4 행은 2026-11-19 vendor thinking 가이드 · Hydrogen 안내 페이지의 문구로 적었다(API 로 실측하지 않았다).
 
 **`MessageThinkingEffort.None`(= `ChatOptions.Reasoning.Effort = None`)은 «보내지 않음»이 아니라 «꺼 달라»다.**
 Gemini 2.5·3 계열 대부분은 기본으로 생각하고 thinking 토큰이 `maxOutputTokens` 에 포함되므로, 끄지 않으면 짧은

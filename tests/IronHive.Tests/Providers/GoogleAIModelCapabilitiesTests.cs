@@ -143,6 +143,34 @@ public class GoogleAIModelCapabilitiesTests
         config.ThinkingConfig.ThinkingBudget.Should().BeNull();
     }
 
+    // Vendor thinking guide (2026-11-19): minimal is «Not supported on Gemini 4 models or gemini-3.8-flash»; Hydrogen «rejects minimal with
+    // an error» and says to remove temperature / topP / topK. Before the rows existed these ids took the default (minimal accepted).
+    [Theory]
+    [InlineData("gemini-4-argon")]
+    [InlineData("gemini-4-carbon")]
+    [InlineData("gemini-4-hydrogen")]
+    public void Minimal_And_NoThinking_OnGemini4_LeaveAsLow(string model)
+    {
+        var (_, minimal) = Generator().ToGoogleAIParams(Request(model, MessageThinkingEffort.Minimal));
+        var (_, off) = Generator().ToGoogleAIParams(Request(model, MessageThinkingEffort.None));
+
+        minimal.ThinkingConfig!.ThinkingLevel.Should().Be(ThinkingLevel.Low);
+        off.ThinkingConfig!.ThinkingLevel.Should().Be(ThinkingLevel.Low);
+        off.ThinkingConfig.ThinkingBudget.Should().BeNull("the Gemini 4 thinking guide lists levels only");
+    }
+
+    [Fact]
+    public void SamplingParameters_OnGemini4_AreDroppedOnHydrogenOnly()
+    {
+        var (_, hydrogen) = Generator().ToGoogleAIParams(Request("gemini-4-hydrogen", temperature: 0.2f));
+        var (_, argon) = Generator().ToGoogleAIParams(Request("gemini-4-argon", temperature: 0.2f));
+
+        hydrogen.Temperature.Should().BeNull();
+        hydrogen.TopP.Should().BeNull();
+        hydrogen.TopK.Should().BeNull();
+        argon.Temperature.Should().Be(0.2f, "the vendor names the sampling restriction for Hydrogen only");
+    }
+
     [Fact]
     public void MinimalThinking_OnGemini36Flash_StaysMinimal()
     {
