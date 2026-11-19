@@ -141,9 +141,10 @@ public class OpenAIConfig
     /// <remarks>
     /// The credential is not a header: <c>Authorization</c> is refused here and belongs to
     /// <see cref="ApiKey"/>. See <see cref="IronHive.Abstractions.Http.ProviderRequestHeaders"/> for the
-    /// rules, which are the same for every provider.
+    /// rules, which are the same for every provider. The dictionary is empty by default (names compare
+    /// case-insensitively), so <c>config.Headers["X"] = "v"</c> works without assigning one first.
     /// </remarks>
-    public IDictionary<string, string>? Headers { get; set; }
+    public IDictionary<string, string>? Headers { get; set; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// How many times the SDK retries a failed request (a transport failure, 408, 429 or 5xx) before it surfaces.

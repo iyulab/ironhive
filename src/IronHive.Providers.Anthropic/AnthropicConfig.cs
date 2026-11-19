@@ -62,9 +62,9 @@ public class AnthropicConfig
     public string? AuthToken { get; set; }
 
     /// <summary>
-    /// 추가적인 HTTP 요청 헤더를 설정할 수 있는 딕셔너리입니다.
+    /// 추가적인 HTTP 요청 헤더를 설정할 수 있는 딕셔너리입니다. 기본값은 빈 딕셔너리이며 이름은 대소문자를 구분하지 않습니다.
     /// </summary>
-    public IDictionary<string, string>? ExtraHeaders { get; set; }
+    public IDictionary<string, string>? ExtraHeaders { get; set; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Extra request headers sent on every request — the uniform slot every IronHive provider config
@@ -76,9 +76,10 @@ public class AnthropicConfig
     /// <remarks>
     /// The credential is not a header: <c>Authorization</c> and <c>x-api-key</c> are refused here and belong
     /// to <see cref="ApiKey"/> / <see cref="AuthToken"/>. See
-    /// <see cref="IronHive.Abstractions.Http.ProviderRequestHeaders"/> for the rules.
+    /// <see cref="IronHive.Abstractions.Http.ProviderRequestHeaders"/> for the rules. The dictionary is empty by
+    /// default (names compare case-insensitively), so <c>config.Headers["X"] = "v"</c> works without assigning one first.
     /// </remarks>
-    public IDictionary<string, string>? Headers { get; set; }
+    public IDictionary<string, string>? Headers { get; set; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// API 호출 실패 시 재시도할 최대 횟수입니다.

@@ -8,6 +8,9 @@ changes are expected and used freely for structural correctness.
 ### Added
 - **`AnthropicModelFinder` carries the model's `capabilities` onto the card it returns.** `LanguageModelCard.InputModalities` lists `text` plus `image` / `pdf` when the Models API reports `image_input` / `pdf_input` as supported, and `LanguageModelCard.Features` lists `thinking`, `effort`, `structured-output`, `citations`, `batch`, `web-search` and `code-execution` for the capabilities it reports as supported — so a consumer can tell whether a model thinks or takes images without a name table or the model's first answer. Both lists stay `null` when the answer has no `capabilities` (a gateway that echoes only the id and the limits); a model that reports every capability as unsupported gets an empty `Features`. The thinking types and effort levels behind `thinking` / `effort` are not carried yet.
 
+### Fixed
+- **`config.Headers["User-Agent"] = "..."` in a provider configuration callback no longer throws `NullReferenceException` at the first request.** The header dictionaries of `OpenAIConfig`, `OpenAICompatibleConfig`, `GpuStackConfig`, `AnthropicConfig` (`Headers` and `ExtraHeaders`), `GoogleAIConfig` and `VertexAIConfig` were `null` until assigned, and because the provider is built lazily the callback ran inside a user's first turn, with a stack that named nobody's configuration. They now start as an empty dictionary (names compare case-insensitively); assigning a dictionary of your own still works and nothing is sent when it stays empty. Observable only by code that tested these properties for `null` (they are empty now) or serialized a default config (`{}` instead of `null`). A convention test reads the header slots from the provider assemblies, so a new config type or slot is covered without editing the test.
+
 ## 0.78.0 — 2026-11-19
 
 ### Changed

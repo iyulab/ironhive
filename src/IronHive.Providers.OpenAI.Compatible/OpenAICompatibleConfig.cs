@@ -72,9 +72,10 @@ public class OpenAICompatibleConfig
     /// Extra request headers sent on every request — the uniform slot every IronHive provider config
     /// has. Passed through to the <see cref="OpenAIConfig"/> this configuration converts to, so the
     /// SDK path and the chat-completions path send the same set. <c>Authorization</c> is refused here
-    /// and belongs to <see cref="ApiKey"/>.
+    /// and belongs to <see cref="ApiKey"/>. The dictionary is empty by default (names compare case-insensitively),
+    /// so <c>config.Headers["X"] = "v"</c> works without assigning one first.
     /// </summary>
-    public IDictionary<string, string>? Headers { get; set; }
+    public IDictionary<string, string>? Headers { get; set; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// How many times a failed request is retried before it surfaces — <see cref="OpenAIConfig.MaxRetries"/>,

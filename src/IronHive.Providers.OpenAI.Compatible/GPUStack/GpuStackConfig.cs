@@ -131,9 +131,10 @@ public class GpuStackConfig
     /// <summary>
     /// Extra request headers sent on every request — the uniform slot every IronHive provider config
     /// has, passed through to the configurations this one converts to. <c>Authorization</c> is refused
-    /// and belongs to the API key.
+    /// and belongs to the API key. The dictionary is empty by default (names compare case-insensitively), so
+    /// <c>config.Headers["X"] = "v"</c> works without assigning one first.
     /// </summary>
-    public IDictionary<string, string>? Headers { get; set; }
+    public IDictionary<string, string>? Headers { get; set; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// How many times a failed request is retried before it surfaces, passed through to the configurations this

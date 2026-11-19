@@ -442,7 +442,8 @@ var gatewayConfig = new OpenAICompatibleConfig
 게이트웨이 뒤의 엔드포인트(API 관리 계층·사내 프록시·테넌트 라우팅)는 자기 헤더를 요구한다 — 구독 키, 테넌트
 id, 추적 헤더. 네 provider config(`OpenAIConfig`·`OpenAICompatibleConfig`·`AnthropicConfig`·`GoogleAIConfig`/
 `VertexAIConfig`)가 같은 이름·같은 타입의 `Headers`(`IDictionary<string, string>?`)를 갖고, 그 provider가 보내는
-**모든 요청**에 실린다. 소비자는 어느 벤더 SDK가 뒤에 있는지 보지 않고 설정한다.
+**모든 요청**에 실린다. 소비자는 어느 벤더 SDK가 뒤에 있는지 보지 않고 설정한다. 기본값은 빈 딕셔너리(이름은 대소문자 무시)라
+설정 콜백에서 `config.Headers["User-Agent"] = "…"` 처럼 바로 넣을 수 있고, 비어 있으면 아무것도 보내지 않는다.
 
 ```csharp
 var anthropicConfig = new AnthropicConfig

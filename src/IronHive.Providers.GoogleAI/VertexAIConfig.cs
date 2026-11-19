@@ -90,9 +90,10 @@ public class VertexAIConfig
     /// <remarks>
     /// The credential is not a header: <c>x-goog-api-key</c> and <c>Authorization</c> are refused here and
     /// belong to <see cref="Credential"/>. See <see cref="IronHive.Abstractions.Http.ProviderRequestHeaders"/>
-    /// for the rules.
+    /// for the rules. The dictionary is empty by default (names compare case-insensitively), so
+    /// <c>config.Headers["X"] = "v"</c> works without assigning one first.
     /// </remarks>
-    public IDictionary<string, string>? Headers { get; set; }
+    public IDictionary<string, string>? Headers { get; set; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// 모델(또는 모델 id 접두)별 능력 정책 덮어쓰기입니다. 내장 표(<see cref="GoogleAIModelCapabilities.BuiltIn"/>)보다
