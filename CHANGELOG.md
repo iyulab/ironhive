@@ -3,6 +3,11 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
+## [Unreleased]
+
+### Added
+- **`AnthropicModelFinder` carries the model's `capabilities` onto the card it returns.** `LanguageModelCard.InputModalities` lists `text` plus `image` / `pdf` when the Models API reports `image_input` / `pdf_input` as supported, and `LanguageModelCard.Features` lists `thinking`, `effort`, `structured-output`, `citations`, `batch`, `web-search` and `code-execution` for the capabilities it reports as supported — so a consumer can tell whether a model thinks or takes images without a name table or the model's first answer. Both lists stay `null` when the answer has no `capabilities` (a gateway that echoes only the id and the limits); a model that reports every capability as unsupported gets an empty `Features`. The thinking types and effort levels behind `thinking` / `effort` are not carried yet.
+
 ## 0.78.0 — 2026-11-19
 
 ### Changed

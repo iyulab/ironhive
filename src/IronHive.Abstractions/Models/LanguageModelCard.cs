@@ -27,11 +27,17 @@ public sealed record LanguageModelCard : ModelCard
 
     /// <summary>
     /// 모델이 제공하는 기능(예: tool-calling, structured output, web-search 등).
+    /// <para>
+    /// <b>best-effort — null이 정상값이다.</b> 모델 목록 API가 능력을 알려 줄 때만 채워진다(Anthropic의 <c>capabilities</c>:
+    /// <c>thinking</c>, <c>effort</c>, <c>structured-output</c>, <c>citations</c>, <c>batch</c>, <c>web-search</c>,
+    /// <c>code-execution</c> 중 지원한다고 보고한 것). 목록이 있는데 비어 있으면 «전부 미지원으로 보고됨», null이면 «알려 주지 않음»이다.
+    /// </para>
     /// </summary>
     public IReadOnlyCollection<string>? Features { get; init; }
 
     /// <summary>
-    /// 허용 입력 모달리티(예: "text", "image", "audio").
+    /// 허용 입력 모달리티(예: "text", "image", "audio"). <see cref="Features"/>와 같이 best-effort — Anthropic은
+    /// <c>text</c> + 지원한다고 보고한 <c>image</c>·<c>pdf</c>.
     /// </summary>
     public IReadOnlyCollection<string>? InputModalities { get; init; }
 
