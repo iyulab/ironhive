@@ -342,7 +342,10 @@ Anthropic 과 같은 형태로 `GoogleAIModelCapabilities`가 세대별 wire 규
 | Gemini 3.7 Flash | `Level` | **`false`** | **`true`** | `true` | `true` |
 | Gemini 3.8 Flash | `Level` | **`false`** — `minimal`은 오류 → `low`로 강등 | **`true`** | **`false`** — `temperature`/`topP`/`topK`를 보내지 않음 | `true` |
 | Gemini 4 (Argon · Carbon) | `Level` — low · medium · high | **`false`** — «Not supported on Gemini 4 models» → `low` | `false` | `true` | `true` |
-| Gemini 4 Hydrogen | `Level` — low · … · xhigh(API 는 받지만 Google.GenAI 2.0.0 의 `ThinkingLevel` 에 값이 없어 `XHigh` 요청은 `high` 로 간다) | **`false`** | `false` | **`false`** — vendor: `temperature`/`top_p`/`top_k` 를 빼라 | `true` |
+| Gemini 4 Hydrogen | `Level` — low · … · **xhigh**(`XHigh` 요청이 `xhigh` 로 나간다 — 2026-11-20 실측, Google.GenAI 2.2.0) | **`false`** | `false` | **`false`** — vendor: `temperature`/`top_p`/`top_k` 를 빼라 | `true` |
+| Gemini 4 Neon | `Level` — low · … · **xhigh**(Hydrogen 처럼 받는다 — 실측) | **`false`**(Gemini 4 행 그대로) | `false` | `true`(Gemini 4 행 그대로) | `true` |
+
+`xhigh` 는 모델별로 갈린다 — 2026-11-20 실키 실측: Hydrogen · Neon 은 200, Argon · Carbon · 3.7 Flash 는 400 «Thinking level XHIGH is not supported for this model». 그래서 `GoogleAIModelCapabilities.SupportsXHighThinking`(기본 `false`)이 정하고, 받지 않는 모델의 `XHigh` 요청은 그 모델의 최고 단계 `high` 로 간다. Neon 행은 `xhigh` 만 프로브했고 나머지 칸은 Gemini 4 행을 따른다.
 
 Gemini 4 행은 2026-11-19 vendor 가이드와 `generateContent` 실측으로 적었다(`thinkingLevel: minimal` 은 세 모델 모두 400, `low` 는 200; Hydrogen 의 `temperature` 는 범위 안이면 받아서 무시하고 범위 밖이면 400).
 

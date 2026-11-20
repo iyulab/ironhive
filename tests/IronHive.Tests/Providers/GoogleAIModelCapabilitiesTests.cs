@@ -159,6 +159,39 @@ public class GoogleAIModelCapabilitiesTests
         off.ThinkingConfig.ThinkingBudget.Should().BeNull("the Gemini 4 thinking guide lists levels only");
     }
 
+    // Live 2026-11-20 (Google.GenAI 2.2.0): xhigh answers 200 on Hydrogen and Neon and 400 «Thinking level XHIGH is not supported for this model»
+    // on Argon, Carbon and gemini-3.7-flash. Both directions are pinned - a mapping that sent xhigh everywhere would break three models.
+    [Theory]
+    [InlineData("gemini-4-hydrogen")]
+    [InlineData("gemini-4-neon")]
+    public void XHigh_OnTheModelsThatAcceptIt_GoesOutAsXhigh(string model)
+    {
+        var (_, config) = Generator().ToGoogleAIParams(Request(model, MessageThinkingEffort.XHigh));
+
+        config.ThinkingConfig!.ThinkingLevel.Should().Be(ThinkingLevel.Xhigh);
+    }
+
+    [Theory]
+    [InlineData("gemini-4-argon")]
+    [InlineData("gemini-4-carbon")]
+    [InlineData("gemini-3.7-flash")]
+    [InlineData("gemini-3-pro")]
+    public void XHigh_OnTheLevelModelsThatRejectIt_GoesOutAsHigh(string model)
+    {
+        var (_, config) = Generator().ToGoogleAIParams(Request(model, MessageThinkingEffort.XHigh));
+
+        config.ThinkingConfig!.ThinkingLevel.Should().Be(ThinkingLevel.High);
+    }
+
+    [Fact]
+    public void XHighSupport_IsOptInPerModel()
+    {
+        GoogleAIModelCapabilities.Default.SupportsXHighThinking.Should().BeFalse("an unknown model gets the level every Level model has");
+        GoogleAIModelCapabilities.Resolve("gemini-4-hydrogen").SupportsXHighThinking.Should().BeTrue();
+        GoogleAIModelCapabilities.Resolve("gemini-4-neon-preview").SupportsXHighThinking.Should().BeTrue("the longer id prefix wins over gemini-4");
+        GoogleAIModelCapabilities.Resolve("gemini-4-argon").SupportsXHighThinking.Should().BeFalse();
+    }
+
     [Fact]
     public void SamplingParameters_OnGemini4_AreDroppedOnHydrogenOnly()
     {

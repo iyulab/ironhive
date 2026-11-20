@@ -54,6 +54,15 @@ public sealed record GoogleAIModelCapabilities
     public bool SupportsMinimalThinking { get; init; } = true;
 
     /// <summary>
+    /// <c>thinkingLevel: xhigh</c>를 받는지 여부(<see cref="ThinkingControl"/>이 <see cref="GoogleAIThinkingControl.Level"/>일
+    /// 때만 의미). <c>true</c>이면 <see cref="IronHive.Abstractions.Messages.MessageThinkingEffort.XHigh"/> 요청이
+    /// <c>xhigh</c>로 나가고, <c>false</c>이면 모델이 받는 최고 단계 <c>high</c>로 갑니다(다른 Level 모델은 <c>xhigh</c>에
+    /// 400 «Thinking level XHIGH is not supported for this model»). 기본값 <c>false</c>. 2026-11-20 실키 실측: Gemini 4
+    /// Hydrogen · Neon 만 받고 Argon · Carbon · 3.7 Flash 는 거부합니다.
+    /// </summary>
+    public bool SupportsXHighThinking { get; init; }
+
+    /// <summary>
     /// <c>thinkingConfig.thinkingBudget: 0</c>이 이 모델에서 thinking 을 끄는지 여부 — 요청의
     /// <see cref="IronHive.Abstractions.Messages.MessageThinkingEffort.None"/>을 번역할 때 참조합니다.
     /// <c>true</c>이면 제어 형태와 무관하게 예산 0 을 보냅니다(Gemini 3 flash 도 호환 파라미터로 받음).
@@ -149,7 +158,11 @@ public sealed record GoogleAIModelCapabilities
             // what's-new page says to remove temperature / topP / topK (out-of-range values are a 400). The family prefix is the
             // vendor's own grouping; the thinking guide lists no budget form, so a zero budget is not sent.
             ["gemini-4"] = new GoogleAIModelCapabilities { SupportsMinimalThinking = false },
-            ["gemini-4-hydrogen"] = new GoogleAIModelCapabilities { SupportsMinimalThinking = false, SupportsSamplingParameters = false },
+            // xhigh: live 2026-11-20 with Google.GenAI 2.2.0 (`ThinkingLevel.Xhigh`) - Hydrogen and Neon answer 200, Argon / Carbon answer 400
+            // «Thinking level XHIGH is not supported for this model» (as does gemini-3.7-flash), so the row is per id, not per family.
+            // Neon is the family row (minimal off, sampling parameters as the family) plus xhigh: only the level was probed.
+            ["gemini-4-hydrogen"] = new GoogleAIModelCapabilities { SupportsMinimalThinking = false, SupportsSamplingParameters = false, SupportsXHighThinking = true },
+            ["gemini-4-neon"] = new GoogleAIModelCapabilities { SupportsMinimalThinking = false, SupportsXHighThinking = true },
             // Gemini 3.8 Flash — minimal level returns an error; sampling parameters must not be set.
             ["gemini-3.8-flash"] = new GoogleAIModelCapabilities
             {
