@@ -13,6 +13,7 @@ changes are expected and used freely for structural correctness.
 
 ### Dependencies
 - Re-pinned third-party packages: `JsonSchema.Net` 9.6.0 -> 9.7.0.
+- Re-pinned third-party packages: `Anthropic` 13.7.0 -> 13.11.0.
 
 ## 0.78.0 — 2026-11-19
 
