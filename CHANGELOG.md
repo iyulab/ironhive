@@ -11,6 +11,9 @@ changes are expected and used freely for structural correctness.
 ### Fixed
 - **`config.Headers["User-Agent"] = "..."` in a provider configuration callback no longer throws `NullReferenceException` at the first request.** The header dictionaries of `OpenAIConfig`, `OpenAICompatibleConfig`, `GpuStackConfig`, `AnthropicConfig` (`Headers` and `ExtraHeaders`), `GoogleAIConfig` and `VertexAIConfig` were `null` until assigned, and because the provider is built lazily the callback ran inside a user's first turn, with a stack that named nobody's configuration. They now start as an empty dictionary (names compare case-insensitively); assigning a dictionary of your own still works and nothing is sent when it stays empty. Observable only by code that tested these properties for `null` (they are empty now) or serialized a default config (`{}` instead of `null`). A convention test reads the header slots from the provider assemblies, so a new config type or slot is covered without editing the test.
 
+### Dependencies
+- Re-pinned third-party packages: `JsonSchema.Net` 9.6.0 -> 9.7.0.
+
 ## 0.78.0 — 2026-11-19
 
 ### Changed
