@@ -244,6 +244,16 @@ var capabilities = new AnthropicConfig
 };
 ```
 
+행을 손으로 베끼는 대신 모델 목록 API 가 모델마다 알려 주는 것(`capabilities.thinking.types` · `capabilities.effort`)으로 정책을 얻을 수 있다 — `AnthropicModelFinder` 의 `FindCapabilitiesAsync(modelId)` / `ListCapabilitiesAsync()` 가 `AnthropicModelCapabilities` 를 돌려준다. `adaptive` 를 받으면 `Adaptive`(`enabled` 만 받으면 `Budget`), 끄기는 `between_tools` → `disabled` → 낮은 effort 순으로 받는 쪽, `xhigh` 는 effort 의 `xhigh` 플래그다. API 가 말하지 않는 값(강제 `tool_choice`)과 `capabilities` 가 없는 답(게이트웨이)은 내장 표(또는 소비자 항목)의 값 그대로다. 결과는 자동으로 적용되지 않는다 — 한 번 불러 `ModelCapabilities` 에 넘긴다(생성기는 API 를 부르지 않는다):
+
+```csharp
+var discovered = new AnthropicConfig { ApiKey = "sk-ant-..." };
+using var capabilityFinder = new AnthropicModelFinder(discovered);
+discovered.ModelCapabilities = await capabilityFinder.ListCapabilitiesAsync();   // 새 Claude 모델도 코드 수정 없이 받는 끄기·effort 로 나간다
+```
+
+벤더가 `disabled` 를 받는다고 답해도 낮은 effort 를 권하는 모델(Claude Opus 5)은 내장 표가 권고를 따르고, `FindCapabilitiesAsync` 는 답을 따른다.
+
 `HttpClient`를 직접 설정하지 않으면 어댑터가 `ConnectTimeout`을 적용하고 `HttpClient.Timeout`을
 무제한으로 설정한 기본 클라이언트를 만든다 — 연결 자체가 안 되는 호스트만 `ConnectTimeout` 안에
 빠르게 실패하고, 응답이 느린 요청은 `Timeout`을 명시적으로 설정하지 않는 한 무한정 기다린다.

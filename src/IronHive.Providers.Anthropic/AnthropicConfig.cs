@@ -129,7 +129,8 @@ public class AnthropicConfig
 
     /// <summary>
     /// 모델(또는 모델 id 접두)별 능력 정책 덮어쓰기입니다. 내장 표(<see cref="AnthropicModelCapabilities.BuiltIn"/>)보다
-    /// 우선하며, 내장 표에 없는 새 모델을 코드 수정 없이 선언할 때 씁니다.
+    /// 우선하며, 내장 표에 없는 새 모델을 코드 수정 없이 선언할 때 씁니다. 모델 목록 API 가 모델마다 알려 주는 값으로 채우려면
+    /// <see cref="AnthropicModelFinder.ListCapabilitiesAsync"/> 의 결과를 넘깁니다.
     /// </summary>
     /// <example>
     /// <code>

@@ -1,3 +1,5 @@
+using Anthropic.Models.Models;
+
 namespace IronHive.Providers.Anthropic;
 
 /// <summary>
@@ -95,6 +97,44 @@ public sealed record AnthropicModelCapabilities
     public static AnthropicModelCapabilities Default { get; } = new();
 
     /// <summary>
+    /// Models API 가 모델에 대해 알려 준 것(<c>capabilities.thinking.types</c> · <c>capabilities.effort</c>)을 정책으로 옮깁니다.
+    /// API 가 말하지 않는 값(강제 <c>tool_choice</c>)과 <paramref name="reported"/> 가 없는 답(게이트웨이)은 <paramref name="fallback"/> 의
+    /// 값 그대로입니다. 규칙은 <see cref="AnthropicModelFinder.FindCapabilitiesAsync"/> 에 있습니다.
+    /// </summary>
+    internal static AnthropicModelCapabilities FromReported(ModelCapabilities? reported, AnthropicModelCapabilities fallback)
+    {
+        if (reported is null)
+            return fallback;
+
+        var result = fallback;
+
+        if (reported.Thinking is { Supported: true, Types: { } types })
+        {
+            if (types.Adaptive.Supported)
+            {
+                // Adaptive 세대만 끄기 방식이 의미가 있다 — Budget 세대는 생략이 곧 off.
+                result = result with
+                {
+                    ThinkingStyle = AnthropicThinkingStyle.Adaptive,
+                    ThinkingOffStyle = types.BetweenTools.Supported ? AnthropicThinkingOffStyle.BetweenTools
+                        : types.Disabled.Supported ? AnthropicThinkingOffStyle.Disabled
+                        : AnthropicThinkingOffStyle.LowEffort,
+                };
+            }
+            else if (types.Enabled.Supported)
+            {
+                result = result with { ThinkingStyle = AnthropicThinkingStyle.Budget };
+            }
+        }
+
+        // A level the answer leaves out is not reported, so the fallback's value stays.
+        if (reported.Effort is { Supported: true, Xhigh: { } xhigh })
+            result = result with { SupportsXHighEffort = xhigh.Supported };
+
+        return result;
+    }
+
+    /// <summary>
     /// 내장 표. 키는 모델 id 또는 그 접두(날짜 접미사 없이).
     /// </summary>
     public static IReadOnlyDictionary<string, AnthropicModelCapabilities> BuiltIn { get; } = BuildBuiltIn();
@@ -160,6 +200,9 @@ public sealed record AnthropicModelCapabilities
         var canDisable = new AnthropicModelCapabilities { ThinkingOffStyle = AnthropicThinkingOffStyle.Disabled };
         var canDisableNoXHigh = canDisable with { SupportsXHighEffort = false };
         table["claude-sonnet-5"] = canDisable;
+        // Haiku 5.5 accepts forced tool choice and `disabled` thinking (Models API `thinking.types.disabled = true`; a live request with
+        // `thinking: {type: "disabled"}` answered 200 on 2026-11-21) - before this row it fell to the LowEffort default and kept thinking on.
+        table["claude-haiku-5-5"] = canDisable;
         table["claude-sonnet-5-5"] = noForcedToolChoice with { ThinkingOffStyle = AnthropicThinkingOffStyle.BetweenTools };
         table["claude-opus-4-8"] = canDisable;
         table["claude-opus-4-7"] = canDisable;
