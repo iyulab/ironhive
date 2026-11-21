@@ -753,8 +753,53 @@ public class ChatCompletionMessageGenerator : IMessageGenerator
             }
         }
 
-        return messages;
+        return MergeAdjacentTextTurns(messages);
     }
+
+    /// <summary>
+    /// Joins neighbouring text-only messages of one role (user with user, assistant with assistant) into one message, a
+    /// blank line between. A turn that failed before any reply leaves the person's message without an answer, so the
+    /// next request would carry <c>user, user</c> — a server whose chat template checks that roles alternate refuses it
+    /// while rendering, and every later turn of that conversation fails the same way. A message that carries a tool call,
+    /// a tool result or a non-text part (an image, audio) is never merged: the sequences the servers validate stay as built.
+    /// </summary>
+    internal static List<ChatMessage> MergeAdjacentTextTurns(List<ChatMessage> messages)
+    {
+        var merged = new List<ChatMessage>(messages.Count);
+        foreach (var message in messages)
+        {
+            var previous = merged.Count > 0 ? merged[^1] : null;
+            if (previous is UserChatMessage earlierUser && message is UserChatMessage user
+                && earlierUser.Content.Count > 0 && user.Content.Count > 0
+                && IsTextOnly(earlierUser) && IsTextOnly(user))
+            {
+                var parts = earlierUser.Content.ToList();
+                var first = true;
+                foreach (var part in user.Content.Cast<TextChatMessageContent>())
+                {
+                    parts.Add(new TextChatMessageContent { Text = first ? "\n\n" + part.Text : part.Text });
+                    first = false;
+                }
+                merged[^1] = new UserChatMessage { Content = parts };
+            }
+            else if (previous is AssistantChatMessage earlierAssistant && message is AssistantChatMessage assistant
+                && IsTextOnly(earlierAssistant) && IsTextOnly(assistant))
+            {
+                merged[^1] = new AssistantChatMessage { Content = earlierAssistant.Content + "\n\n" + assistant.Content };
+            }
+            else
+            {
+                merged.Add(message);
+            }
+        }
+        return merged;
+    }
+
+    private static bool IsTextOnly(UserChatMessage message) =>
+        message.Content.All(part => part is TextChatMessageContent);
+
+    private static bool IsTextOnly(AssistantChatMessage message) =>
+        message.Content is not null && message.ToolCalls is not { Count: > 0 };
 
     internal static MessageDoneReason MapFinishReason(ChatFinishReason? reason) => reason switch
     {
