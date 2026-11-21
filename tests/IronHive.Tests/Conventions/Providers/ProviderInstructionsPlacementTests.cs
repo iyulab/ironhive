@@ -140,7 +140,7 @@ public class ProviderInstructionsPlacementTests
     public void ChatCompletions_LeadingUserTurn_InstructionsOpenTheLastUserMessage()
     {
         var request = Request("m", Prompt, Instructions);
-        request.Messages = [Message.User("Earlier ask."), Message.User("Tidy up.")];
+        request.Messages = [Message.User("Earlier ask."), Message.Assistant("Earlier answer."), Message.User("Tidy up.")];
 
         var messages = ChatCompletionMessageGenerator.BuildMessages(request, instructionsPlacement: InstructionsPlacement.LeadingUserTurn);
 
