@@ -121,6 +121,37 @@ public class OpenAICompatibleModelFinderTests
     }
 
     [Fact]
+    public async Task An_entry_whose_limits_or_created_are_not_numbers_does_not_cost_the_rest_of_the_list()
+    {
+        // OpenRouter lists router entries with null limits beside ordinary ones; a string, a fraction and an
+        // out-of-range time are skipped the same way, and the next name in the field list is still tried.
+        const string body = """
+            {"object":"list","data":[
+              {"id":"router","created":null,"context_length":null,"top_provider":{"context_length":null,"max_completion_tokens":null}},
+              {"id":"odd","created":"yesterday","context_length":"128000","max_context_length":32768,"top_provider":{"max_completion_tokens":1.5}},
+              {"id":"far","created":99999999999999999,"context_length":65536},
+              {"id":"m","created":1790000000,"context_length":1000000,"top_provider":{"context_length":null,"max_completion_tokens":64000}}
+            ]}
+            """;
+        using var finder = Finder(body, out _, listOnly: true);
+
+        var cards = await finder.ListModelsAsync(TestContext.Current.CancellationToken);
+
+        cards.Select(c => c.ModelId).Should().BeEquivalentTo(["router", "odd", "far", "m"]);
+        cards.Single(c => c.ModelId == "router").Should().BeOfType<ModelCard>()
+            .Which.CreatedAt.Should().BeNull();
+        var odd = cards.Single(c => c.ModelId == "odd").Should().BeOfType<LanguageModelCard>().Subject;
+        odd.ContextWindow.Should().Be(32768);
+        odd.MaxOutputTokens.Should().BeNull();
+        odd.CreatedAt.Should().BeNull();
+        cards.Single(c => c.ModelId == "far").CreatedAt.Should().BeNull();
+        var m = cards.Single(c => c.ModelId == "m").Should().BeOfType<LanguageModelCard>().Subject;
+        m.ContextWindow.Should().Be(1000000);
+        m.MaxOutputTokens.Should().Be(64000);
+        (await finder.FindModelAsync("m", TestContext.Current.CancellationToken)).Should().NotBeNull();
+    }
+
+    [Fact]
     public async Task The_OpenAI_finder_pointed_at_a_gateway_keeps_the_limits_too()
     {
         // OpenAI's own /models reports no limits; a gateway serving the same wire under OpenAIConfig.BaseUrl does.

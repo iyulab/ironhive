@@ -14,6 +14,8 @@ namespace IronHive.Providers.OpenAI;
 /// (OpenRouter).</para>
 /// <para>Maximum output, first one present: <c>max_output_tokens</c>, <c>max_completion_tokens</c> (Groq),
 /// <c>top_provider.max_completion_tokens</c> (OpenRouter).</para>
+/// <para>A field whose value is not a positive whole number (<c>null</c>, a string, a fraction) counts as absent, so the
+/// next name is tried; one odd entry never costs the rest of the list.</para>
 /// <para>An entry with either limit is a <see cref="LanguageModelCard"/>; any other is a plain <see cref="ModelCard"/>.
 /// llama.cpp's <c>meta.n_ctx_train</c> is deliberately not read: it is the context the model was trained with, not the
 /// context the server was started with, and a larger number than the server accepts is worse than none.</para>
@@ -22,6 +24,8 @@ internal static class OpenAIModelCards
 {
     private static readonly string[] ContextFields = ["max_model_len", "context_length", "context_window", "max_context_length"];
     private static readonly string[] OutputFields = ["max_output_tokens", "max_completion_tokens"];
+    private static readonly long MinUnixSeconds = DateTimeOffset.MinValue.ToUnixTimeSeconds();
+    private static readonly long MaxUnixSeconds = DateTimeOffset.MaxValue.ToUnixTimeSeconds();
 
     /// <summary>One model object as a card, or null when it has no id.</summary>
     public static IModelCard? FromEntry(JsonElement entry)
@@ -37,7 +41,10 @@ internal static class OpenAIModelCards
         var ownedBy = entry.TryGetProperty("owned_by", out var owner) && owner.ValueKind == JsonValueKind.String
             ? owner.GetString()
             : null;
-        DateTime? createdAt = entry.TryGetProperty("created", out var created) && created.TryGetInt64(out var seconds)
+        DateTime? createdAt = entry.TryGetProperty("created", out var created)
+            && created.ValueKind == JsonValueKind.Number
+            && created.TryGetInt64(out var seconds)
+            && seconds >= MinUnixSeconds && seconds <= MaxUnixSeconds
             ? DateTimeOffset.FromUnixTimeSeconds(seconds).UtcDateTime
             : null;
 
@@ -91,10 +98,17 @@ internal static class OpenAIModelCards
         if (element is not { ValueKind: JsonValueKind.Object } obj)
             return null;
 
+        // A value that is not a whole number (null - OpenRouter's router entries -, a string, a fraction) is skipped
+        // like an absent field: TryGetInt32 throws on a non-number element instead of returning false.
         foreach (var name in names)
         {
-            if (obj.TryGetProperty(name, out var value) && value.TryGetInt32(out var number) && number > 0)
+            if (obj.TryGetProperty(name, out var value)
+                && value.ValueKind == JsonValueKind.Number
+                && value.TryGetInt32(out var number)
+                && number > 0)
+            {
                 return number;
+            }
         }
         return null;
     }
