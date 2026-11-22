@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Nodes;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
@@ -354,9 +355,19 @@ public class MessageService : IMessageService
         // OnBeforeInvoke에서 이미 Output을 채웠다면 실제 도구 실행을 스킵합니다.
         if (tmc.Output is null)
         {
-            var input = new ToolInput(tmc.Input);
-
-            if (tools?.TryGet(tmc.Name, out var tool) == true)
+            ITool? tool = null;
+            if (tools?.TryGet(tmc.Name, out tool) != true || tool is null)
+            {
+                tmc.Output = ToolOutput.Failure($"Could not find tool '{tmc.Name}', invocation failed.");
+            }
+            else if (!TryReadInput(tmc.Input, out var input))
+            {
+                // Arguments the model wrote are not one JSON object (cut off, an array, a bare value): a per-call
+                // failure like a missing tool or a timeout, so the model sees it and can send the call again.
+                tmc.Output = ToolOutput.Failure(
+                    $"Tool '{tmc.Name}' received input that is not a JSON object, so it was not run. Send the arguments as one JSON object.");
+            }
+            else
             {
                 var timeout = toolOptions?.Timeout;
                 using var timeoutCts = timeout.HasValue
@@ -374,15 +385,25 @@ public class MessageService : IMessageService
                     tmc.Output = ToolOutput.Failure($"Tool '{tmc.Name}' timed out after {timeout!.Value.TotalSeconds:0.#}s.");
                 }
             }
-            else
-            {
-                tmc.Output = ToolOutput.Failure($"Could not find tool '{tmc.Name}', invocation failed.");
-            }
         }
 
         if (toolOptions?.OnAfterInvoke is not null)
         {
             await toolOptions.OnAfterInvoke(tmc, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static bool TryReadInput(object? raw, [NotNullWhen(true)] out ToolInput? input)
+    {
+        try
+        {
+            input = new ToolInput(raw);
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            input = null;
+            return false;
         }
     }
 

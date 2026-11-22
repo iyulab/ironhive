@@ -406,6 +406,53 @@ public class MessageServiceStreamingEquivalenceTests
         AssertSameResult(buffered, streamed);
     }
 
+    // A model that writes arguments which are not a JSON object (cut off mid-object, or an array) gets a
+    // failure for that call -- the tool is not run, OnAfterInvoke still runs, the valid call beside it
+    // completes and the turn goes on, so the model can correct the call. It used to end the whole turn.
+    [Fact]
+    public async Task InputThatIsNotAnObject_FailsOnlyThatCallOnBothHalves()
+    {
+        Turn[] turns =
+        [
+            new("r1", MessageDoneReason.ToolCall, 10, 4,
+            [
+                new Part.Tool("call-1", "echo", """{"minRisk": 1"""),
+                new Part.Tool("call-2", "echo", "[1,2]"),
+                new Part.Tool("call-3", "echo", "{}"),
+            ]),
+            new("r2", MessageDoneReason.EndTurn, 30, 2, [new Part.Text("done")]),
+        ];
+
+        var afterInvoke = 0;
+        MessageRequest Request() => new()
+        {
+            Provider = Provider,
+            Model = Model,
+            Messages = [Message.User("run them")],
+            Tools = new ToolCollection([new EchoTool()]),
+            ToolOptions = new ToolOptions
+            {
+                OnAfterInvoke = (_, _) =>
+                {
+                    Interlocked.Increment(ref afterInvoke);
+                    return Task.CompletedTask;
+                },
+            },
+        };
+
+        var buffered = await RunBufferedAsync(turns, Request());
+        var streamed = await RunStreamingAsync(turns, Request());
+
+        buffered.Generator.Calls.Should().Be(2, "the turn must go on after the tool step");
+        buffered.Result.Message!.Content.OfType<ToolMessageContent>().Select(t => OutputOf(t.Output)).Should().SatisfyRespectively(
+            o => o.Should().StartWith("False:").And.Contain("not a JSON object"),
+            o => o.Should().StartWith("False:").And.Contain("not a JSON object"),
+            o => o.Should().StartWith("True:", "the valid call beside them still runs"));
+        afterInvoke.Should().Be(6, "OnAfterInvoke runs for every call on both halves");
+
+        AssertSameResult(buffered, streamed);
+    }
+
     // A tool the provider marks unapproved pauses the loop for the caller: the call ends on that turn,
     // and nothing runs -- not even the approved call beside it -- until the caller resumes.
     [Fact]
