@@ -454,6 +454,28 @@ public class GoogleAIMessageGenerator : IMessageGenerator
     /// Gemini's per-position result in IronHive's shape: <c>chosenCandidates[i]</c> is the token at position i and
     /// <c>topCandidates[i]</c> its alternatives. Null when the candidate carried none.
     /// </summary>
+    /// <summary>
+    /// A replayed call's arguments as the object <c>functionCall.args</c> must be. Arguments the model wrote that are
+    /// not one JSON object (cut off at the token limit, an array, a bare value) were never run - the tool loop gave the
+    /// call a failure result - so they replay as empty args instead of failing the whole next request.
+    /// </summary>
+    private static Dictionary<string, object> ReplayedToolArgs(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return [];
+        try
+        {
+            using var document = JsonDocument.Parse(input);
+            return document.RootElement.ValueKind == JsonValueKind.Object
+                ? JsonSerializer.Deserialize<Dictionary<string, object>>(document.RootElement) ?? []
+                : [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
     internal static List<TokenLogProbability>? ToLogProbabilities(LogprobsResult? result)
     {
         if (result?.ChosenCandidates is not { } chosen)
@@ -631,7 +653,7 @@ public class GoogleAIMessageGenerator : IMessageGenerator
                             {
                                 Id = tool.Id,
                                 Name = tool.Name,
-                                Args = JsonSerializer.Deserialize<Dictionary<string, object>>(tool.Input ?? "{}")
+                                Args = ReplayedToolArgs(tool.Input)
                             },
                             ThoughtSignature = !string.IsNullOrWhiteSpace(tool.Signature)
                                 ? Convert.FromBase64String(tool.Signature)

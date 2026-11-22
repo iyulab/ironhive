@@ -216,6 +216,52 @@ public class ProviderToolWireShapeTests
 
     // ── (b) replayed provider-private continuity values ──────────────────────────────────────────
 
+    // A model can write arguments that are not one JSON object (cut off at max_tokens, an array, a bare value). The
+    // tool loop records a failure for that call and goes on; the next request replays the call, and the provider's
+    // wire wants an object there - so the replay sends an empty object (the failure result says what was wrong)
+    // instead of throwing while the request is built.
+    public static TheoryData<string> ArgumentsThatAreNotAnObject => new() { """{"path": "a""", "[1,2]", "42", "\"text\"", "not json" };
+
+    [Theory]
+    [MemberData(nameof(ArgumentsThatAreNotAnObject))]
+    public void Anthropic_ReplayedCallWhoseArgumentsAreNotAnObject_SendsAnEmptyObject(string input)
+    {
+        var call = Call("call-1", ToolOutput.Failure("received input that is not a JSON object"));
+        call.Input = input;
+
+        var blocks = ReplayedAssistantBlocks(Request("claude-sonnet-5", Tool(null), Message.User("read a.txt"), Assistant(call)));
+
+        var toolUse = blocks.Single(b => b.GetProperty("type").GetString() == "tool_use");
+        toolUse.GetProperty("input").ValueKind.Should().Be(JsonValueKind.Object);
+        toolUse.GetProperty("input").EnumerateObject().Should().BeEmpty();
+    }
+
+    [Theory]
+    [MemberData(nameof(ArgumentsThatAreNotAnObject))]
+    public void GoogleAI_ReplayedCallWhoseArgumentsAreNotAnObject_SendsEmptyArgs(string input)
+    {
+        var generator = new GoogleAIMessageGenerator(new GoogleAIConfig { ApiKey = "test-key" });
+        var call = Call("call-1", ToolOutput.Failure("received input that is not a JSON object"));
+        call.Input = input;
+
+        var (contents, _) = generator.ToGoogleAIParams(Request("gemini-3-pro", Tool(null), Message.User("read a.txt"), Assistant(call)));
+
+        contents.SelectMany(c => c.Parts ?? []).Single(p => p.FunctionCall is not null)
+            .FunctionCall!.Args.Should().NotBeNull().And.BeEmpty();
+    }
+
+    [Fact]
+    public void Replayed_object_arguments_still_reach_both_wires()
+    {
+        // Positive control for the two facts above: a valid object is replayed as it was written.
+        var blocks = ReplayedAssistantBlocks(Request("claude-sonnet-5", Tool(null), Message.User("read a.txt"), Assistant(Call("call-1", ToolOutput.Success("c")))));
+        blocks.Single(b => b.GetProperty("type").GetString() == "tool_use").GetProperty("input").GetProperty("path").GetString().Should().Be("a.txt");
+
+        var generator = new GoogleAIMessageGenerator(new GoogleAIConfig { ApiKey = "test-key" });
+        var (contents, _) = generator.ToGoogleAIParams(Request("gemini-3-pro", Tool(null), Message.User("read a.txt"), Assistant(Call("call-1", ToolOutput.Success("c")))));
+        contents.SelectMany(c => c.Parts ?? []).Single(p => p.FunctionCall is not null).FunctionCall!.Args.Should().ContainKey("path");
+    }
+
     [Fact]
     public void GoogleAI_ReplayedFunctionCall_CarriesItsThoughtSignature()
     {

@@ -488,9 +488,7 @@ public class AnthropicMessageGenerator : IMessageGenerator
                             {
                                 ID = tool.Id,
                                 Name = tool.Name,
-                                Input = !string.IsNullOrWhiteSpace(tool.Input)
-                                    ? JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(tool.Input) ?? new()
-                                    : new Dictionary<string, JsonElement>()
+                                Input = ReplayedToolInput(tool.Input)
                             });
                             // 텍스트/이미지는 각각 TextBlockParam/ImageBlockParam으로 그대로 매핑하고,
                             // Anthropic이 블록으로 지원하지 않는 콘텐츠(오디오 등)는 설명 텍스트로 대체합니다.
@@ -784,6 +782,28 @@ public class AnthropicMessageGenerator : IMessageGenerator
     /// The thinking share of <c>output_tokens</c> (<c>output_tokens_details.thinking_tokens</c>) — part of the output count,
     /// not added to it; null when the response does not report it.
     /// </summary>
+    /// <summary>
+    /// A replayed call's arguments as the object <c>tool_use.input</c> must be. Arguments the model wrote that are not
+    /// one JSON object (cut off at the token limit, an array, a bare value) were never run - the tool loop gave the call
+    /// a failure result - so they replay as an empty object instead of failing the whole next request.
+    /// </summary>
+    private static Dictionary<string, JsonElement> ReplayedToolInput(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return [];
+        try
+        {
+            using var document = JsonDocument.Parse(input);
+            return document.RootElement.ValueKind == JsonValueKind.Object
+                ? document.RootElement.EnumerateObject().ToDictionary(p => p.Name, p => p.Value.Clone())
+                : [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
     internal static int? ThinkingTokensOf(OutputTokensDetails? details)
         => details?.ThinkingTokens is { } thinking ? (int)thinking : null;
 
