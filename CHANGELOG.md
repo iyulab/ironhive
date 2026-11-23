@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## [Unreleased]
+## 0.79.0 — 2026-11-23
 
 ### Added
 - **`AnthropicModelFinder.FindCapabilitiesAsync(modelId)` / `ListCapabilitiesAsync()` return the wire policy of a Claude model from what the Models API reports for it.** The thinking types (`adaptive`, `enabled`, `disabled`, `between_tools`) and the effort levels the vendor states per model become an `AnthropicModelCapabilities` (thinking style, how «thinking off» is sent, `xhigh` support); a forced `tool_choice` is not in `capabilities`, so it and every answer without `capabilities` keep the built-in row's value. `ListCapabilitiesAsync()` returns a dictionary to assign to `AnthropicConfig.ModelCapabilities`, so a model the built-in table does not know is turned off and effort-capped the way it accepts without copying a row by hand; nothing is automatic - the generator never calls the API.
