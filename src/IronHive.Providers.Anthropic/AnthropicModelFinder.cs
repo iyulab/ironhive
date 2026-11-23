@@ -34,7 +34,7 @@ public class AnthropicModelFinder : IModelFinder
     {
         var models = await ListModelInfosAsync(cancellationToken);
         return models.Select(model =>
-            ToCard(model.ID, model.DisplayName, model.CreatedAt, model.MaxInputTokens, model.MaxTokens, model.Capabilities)).ToList();
+            ToCard(model.ID, model.DisplayName, model.CreatedAt, model.MaxInputTokens, model.MaxTokens, ReportedSupport.CapabilitiesOf(model))).ToList();
     }
 
     /// <summary>
@@ -52,7 +52,7 @@ public class AnthropicModelFinder : IModelFinder
         var models = await ListModelInfosAsync(cancellationToken);
         var policies = new Dictionary<string, AnthropicModelCapabilities>(StringComparer.Ordinal);
         foreach (var model in models)
-            policies[model.ID] = DeriveCapabilities(model.ID, model.Capabilities);
+            policies[model.ID] = DeriveCapabilities(model.ID, ReportedSupport.CapabilitiesOf(model));
         return policies;
     }
 
@@ -80,7 +80,7 @@ public class AnthropicModelFinder : IModelFinder
                 ModelID = modelId
             }, cancellationToken);
 
-            return DeriveCapabilities(model.ID, model.Capabilities);
+            return DeriveCapabilities(model.ID, ReportedSupport.CapabilitiesOf(model));
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
@@ -126,8 +126,8 @@ public class AnthropicModelFinder : IModelFinder
             {
                 ModelID = modelId
             }, cancellationToken);
-            
-            return ToCard(model.ID, model.DisplayName, model.CreatedAt, model.MaxInputTokens, model.MaxTokens, model.Capabilities);
+
+            return ToCard(model.ID, model.DisplayName, model.CreatedAt, model.MaxInputTokens, model.MaxTokens, ReportedSupport.CapabilitiesOf(model));
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
@@ -175,8 +175,9 @@ public class AnthropicModelFinder : IModelFinder
 
     /// <summary>
     /// What the Models API says the model accepts, in the card's own vocabulary. Only a capability the vendor reports as
-    /// supported is listed — an absent entry means «not reported as supported», and both lists stay <see langword="null"/>
-    /// when the answer carries no <c>capabilities</c> at all (a gateway that echoes only the id).
+    /// supported is listed — an absent entry means «not reported as supported» (a member the answer leaves out, or gives another
+    /// shape than the documented one, is read as not reported, member by member), and both lists stay <see langword="null"/>
+    /// when the answer carries no <c>capabilities</c> at all or none that is an object (a gateway that echoes only the id).
     /// <list type="bullet">
     /// <item><description><see cref="LanguageModelCard.InputModalities"/>: <c>text</c> (every language model),
     /// <c>image</c> (<c>image_input</c>), <c>pdf</c> (<c>pdf_input</c>).</description></item>
@@ -191,18 +192,19 @@ public class AnthropicModelFinder : IModelFinder
         if (capabilities is null)
             return (null, null);
 
+        // Member by member: an answer that passes on only some of the object (a gateway) lists what it does report.
         var input = new List<string> { "text" };
-        if (capabilities.ImageInput is { Supported: true }) input.Add("image");
-        if (capabilities.PdfInput is { Supported: true }) input.Add("pdf");
+        if (ReportedSupport.IsSupported(() => capabilities.ImageInput?.Supported)) input.Add("image");
+        if (ReportedSupport.IsSupported(() => capabilities.PdfInput?.Supported)) input.Add("pdf");
 
         var features = new List<string>();
-        if (capabilities.Thinking is { Supported: true }) features.Add("thinking");
-        if (capabilities.Effort is { Supported: true }) features.Add("effort");
-        if (capabilities.StructuredOutputs is { Supported: true }) features.Add("structured-output");
-        if (capabilities.Citations is { Supported: true }) features.Add("citations");
-        if (capabilities.Batch is { Supported: true }) features.Add("batch");
-        if (capabilities.ServerTools?.WebSearch is { Supported: true }) features.Add("web-search");
-        if (capabilities.ServerTools?.CodeExecution is { Supported: true }) features.Add("code-execution");
+        if (ReportedSupport.IsSupported(() => capabilities.Thinking?.Supported)) features.Add("thinking");
+        if (ReportedSupport.IsSupported(() => capabilities.Effort?.Supported)) features.Add("effort");
+        if (ReportedSupport.IsSupported(() => capabilities.StructuredOutputs?.Supported)) features.Add("structured-output");
+        if (ReportedSupport.IsSupported(() => capabilities.Citations?.Supported)) features.Add("citations");
+        if (ReportedSupport.IsSupported(() => capabilities.Batch?.Supported)) features.Add("batch");
+        if (ReportedSupport.IsSupported(() => capabilities.ServerTools?.WebSearch?.Supported)) features.Add("web-search");
+        if (ReportedSupport.IsSupported(() => capabilities.ServerTools?.CodeExecution?.Supported)) features.Add("code-execution");
 
         return (features, input);
     }

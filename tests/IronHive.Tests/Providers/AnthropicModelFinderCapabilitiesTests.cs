@@ -166,6 +166,95 @@ public sealed class AnthropicModelFinderCapabilitiesTests
         card.Should().BeOfType<ModelCard>();
     }
 
+    // A gateway or an older upstream passes on a subset of the documented `capabilities` object: the members it does not know are
+    // absent, not `supported: false`. A missing member is «not reported»; it must not cost the card or the limits beside it.
+
+    private static JsonObject PartialCapabilities() => new()
+    {
+        ["thinking"] = Support(true),
+        ["image_input"] = Support(true),
+    };
+
+    [Fact]
+    public async Task A_partial_capabilities_object_keeps_the_card_the_limits_and_what_it_does_report()
+    {
+        using var finder = Finder(Single(Model("claude-partial", PartialCapabilities())));
+
+        var card = await finder.FindModelAsync("claude-partial", TestContext.Current.CancellationToken);
+
+        var language = card.Should().BeOfType<LanguageModelCard>().Subject;
+        language.ContextWindow.Should().Be(1_000_000);
+        language.MaxOutputTokens.Should().Be(128_000);
+        language.InputModalities.Should().Equal("text", "image");
+        language.Features.Should().Equal("thinking");
+    }
+
+    [Fact]
+    public async Task A_partial_capabilities_object_does_not_make_the_whole_list_unreadable()
+    {
+        using var finder = Finder(Page(
+            Model("claude-partial", PartialCapabilities()),
+            Model("claude-full", Capabilities("pdf"))));
+
+        var cards = (await finder.ListModelsAsync(TestContext.Current.CancellationToken)).Cast<LanguageModelCard>().ToList();
+
+        cards.Select(c => c.ModelId).Should().Equal("claude-partial", "claude-full");
+        cards[0].InputModalities.Should().Equal("text", "image");
+        cards[1].InputModalities.Should().Equal("text", "pdf");
+    }
+
+    [Fact]
+    public async Task A_capabilities_value_that_is_not_an_object_leaves_both_lists_null_and_keeps_the_limits()
+    {
+        var model = Model("claude-odd", capabilities: null);
+        model["capabilities"] = "not-an-object";
+        using var finder = Finder(Single(model));
+
+        var language = (await finder.FindModelAsync("claude-odd", TestContext.Current.CancellationToken))
+            .Should().BeOfType<LanguageModelCard>().Subject;
+
+        language.ContextWindow.Should().Be(1_000_000);
+        language.MaxOutputTokens.Should().Be(128_000);
+        language.Features.Should().BeNull();
+        language.InputModalities.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task A_capability_member_of_the_wrong_shape_is_not_reported_and_the_rest_still_is()
+    {
+        var capabilities = PartialCapabilities();
+        capabilities["pdf_input"] = "yes";
+        using var finder = Finder(Single(Model("claude-wrong-shape", capabilities)));
+
+        var language = (await finder.FindModelAsync("claude-wrong-shape", TestContext.Current.CancellationToken))
+            .Should().BeOfType<LanguageModelCard>().Subject;
+
+        language.InputModalities.Should().Equal("text", "image");
+        language.Features.Should().Equal("thinking");
+    }
+
+    [Fact]
+    public async Task The_policy_of_a_partial_answer_reads_what_is_there_and_keeps_the_built_in_row_for_the_rest()
+    {
+        // thinking.types names only `adaptive`; `enabled` / `disabled` / `between_tools` and `effort` are absent.
+        var capabilities = new JsonObject
+        {
+            ["thinking"] = new JsonObject
+            {
+                ["supported"] = true,
+                ["types"] = new JsonObject { ["adaptive"] = Support(true) },
+            },
+        };
+        using var finder = Finder(Single(Model("claude-next-partial", capabilities)));
+
+        var policy = await finder.FindCapabilitiesAsync("claude-next-partial", TestContext.Current.CancellationToken);
+
+        policy.Should().NotBeNull("a partial answer is still an answer");
+        policy!.ThinkingStyle.Should().Be(AnthropicThinkingStyle.Adaptive);
+        policy.ThinkingOffStyle.Should().Be(AnthropicThinkingOffStyle.LowEffort, "neither between_tools nor disabled is reported");
+        policy.SupportsXHighEffort.Should().Be(AnthropicModelCapabilities.Default.SupportsXHighEffort, "effort is not reported, the row's value stays");
+    }
+
     private sealed class StubHandler(string body) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>

@@ -108,28 +108,31 @@ public sealed record AnthropicModelCapabilities
 
         var result = fallback;
 
-        if (reported.Thinking is { Supported: true, Types: { } types })
+        // Member by member (ReportedSupport): an answer that passes on only part of `capabilities` still yields what it does say;
+        // a member it leaves out is not reported, so the fallback's value stays.
+        if (ReportedSupport.IsSupported(() => reported.Thinking?.Supported))
         {
-            if (types.Adaptive.Supported)
+            if (ReportedSupport.IsSupported(() => reported.Thinking?.Types?.Adaptive?.Supported))
             {
                 // Adaptive 세대만 끄기 방식이 의미가 있다 — Budget 세대는 생략이 곧 off.
                 result = result with
                 {
                     ThinkingStyle = AnthropicThinkingStyle.Adaptive,
-                    ThinkingOffStyle = types.BetweenTools.Supported ? AnthropicThinkingOffStyle.BetweenTools
-                        : types.Disabled.Supported ? AnthropicThinkingOffStyle.Disabled
+                    ThinkingOffStyle = ReportedSupport.IsSupported(() => reported.Thinking?.Types?.BetweenTools?.Supported) ? AnthropicThinkingOffStyle.BetweenTools
+                        : ReportedSupport.IsSupported(() => reported.Thinking?.Types?.Disabled?.Supported) ? AnthropicThinkingOffStyle.Disabled
                         : AnthropicThinkingOffStyle.LowEffort,
                 };
             }
-            else if (types.Enabled.Supported)
+            else if (ReportedSupport.IsSupported(() => reported.Thinking?.Types?.Enabled?.Supported))
             {
                 result = result with { ThinkingStyle = AnthropicThinkingStyle.Budget };
             }
         }
 
         // A level the answer leaves out is not reported, so the fallback's value stays.
-        if (reported.Effort is { Supported: true, Xhigh: { } xhigh })
-            result = result with { SupportsXHighEffort = xhigh.Supported };
+        if (ReportedSupport.IsSupported(() => reported.Effort?.Supported)
+            && ReportedSupport.Read(() => reported.Effort?.Xhigh?.Supported) is { } xhigh)
+            result = result with { SupportsXHighEffort = xhigh };
 
         return result;
     }
