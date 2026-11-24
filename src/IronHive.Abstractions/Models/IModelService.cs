@@ -27,7 +27,8 @@ public interface IModelService
 
     /// <summary>
     /// 지정된 공급자와 모델 ID를 기준으로 모델 정보를 비동기적으로 가져옵니다.
-    /// 찾는 모델이 없으면 null을 반환합니다.
+    /// 찾는 모델이 없으면(또는 공급자가 등록되지 않았으면) null을 반환합니다. 조회 자체가 실패하면
+    /// (거부된 키, 서버 오류, 닿지 않는 서버) 목록 조회와 같은 예외를 던집니다.
     /// </summary>
     /// <param name="provider">모델 공급자 키</param>
     /// <param name="modelId">모델 ID</param>
@@ -54,7 +55,8 @@ public interface IModelService
 
     /// <summary>
     /// 지정된 공급자와 모델 ID와 타입을 기준으로 모델 정보를 비동기적으로 가져옵니다.
-    /// 찾는 모델이 없으면 null을 반환합니다.
+    /// 찾는 모델이 없으면(또는 공급자가 등록되지 않았으면) null을 반환합니다. 조회 자체가 실패하면
+    /// (거부된 키, 서버 오류, 닿지 않는 서버) 목록 조회와 같은 예외를 던집니다.
     /// </summary>
     /// <param name="provider">모델 공급자 키</param>
     /// <param name="modelId">모델 ID</param>

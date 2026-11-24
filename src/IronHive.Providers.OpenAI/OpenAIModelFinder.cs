@@ -1,4 +1,5 @@
 using IronHive.Abstractions.Extensions;
+using IronHive.Abstractions.Exceptions;
 using System.ClientModel.Primitives;
 using System.Text.Json;
 using IronHive.Abstractions.Models;
@@ -53,9 +54,12 @@ public class OpenAIModelFinder : IModelFinder
             using var document = JsonDocument.Parse(result.GetRawResponse().Content);
             return OpenAIModelCards.FromEntry(document.RootElement);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        catch (Exception ex) when (OpenAIExceptionMapper.Map(ex, cancellationToken) is { } mapped)
         {
-            return null;
+            // Only «no such model» is an answer; any other failure is the one the list lookup would throw.
+            if (mapped is ProviderHttpException { StatusCode: System.Net.HttpStatusCode.NotFound })
+                return null;
+            throw mapped;
         }
     }
 }

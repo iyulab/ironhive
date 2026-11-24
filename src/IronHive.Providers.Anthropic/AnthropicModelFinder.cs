@@ -1,6 +1,7 @@
 using Anthropic;
 using Anthropic.Models.Models;
 using IronHive.Abstractions.Models;
+using IronHive.Abstractions.Exceptions;
 
 namespace IronHive.Providers.Anthropic;
 
@@ -82,9 +83,12 @@ public class AnthropicModelFinder : IModelFinder
 
             return DeriveCapabilities(model.ID, ReportedSupport.CapabilitiesOf(model));
         }
-        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        catch (Exception ex) when (AnthropicExceptionMapper.Map(ex, cancellationToken) is { } mapped)
         {
-            return null;
+            // Only «no such model» is an answer; any other failure is the one the list lookup would throw.
+            if (mapped is ProviderHttpException { StatusCode: System.Net.HttpStatusCode.NotFound })
+                return null;
+            throw mapped;
         }
     }
 
@@ -129,9 +133,12 @@ public class AnthropicModelFinder : IModelFinder
 
             return ToCard(model.ID, model.DisplayName, model.CreatedAt, model.MaxInputTokens, model.MaxTokens, ReportedSupport.CapabilitiesOf(model));
         }
-        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        catch (Exception ex) when (AnthropicExceptionMapper.Map(ex, cancellationToken) is { } mapped)
         {
-            return null;
+            // Only «no such model» is an answer; any other failure is the one the list lookup would throw.
+            if (mapped is ProviderHttpException { StatusCode: System.Net.HttpStatusCode.NotFound })
+                return null;
+            throw mapped;
         }
     }
 

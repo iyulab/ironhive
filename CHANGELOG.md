@@ -9,6 +9,12 @@ changes are expected and used freely for structural correctness.
 - **The OpenAI-wire finders (`OpenAIModelFinder`, `OpenAICompatibleModelFinder`) fill `LanguageModelCard.InputModalities` when a model list states it.** OpenRouter-shaped entries carry `architecture.input_modalities` (read first) or `architecture.modality` (`"text+image->text"` gives `text`, `image`); words are the vendor's, lower-cased (`file`, not `pdf`). A value of another shape, an empty array and non-string elements count as not stated, and a list that states nothing (vLLM, llama.cpp) leaves the field `null`. An entry that states only modalities is now a `LanguageModelCard` instead of a plain `ModelCard`. `GoogleAIModelFinder` still leaves it `null`: Gemini's `models.list` reports no modalities.
 
 ### Fixed
+- **Breaking: a failed single-model lookup throws instead of answering `null`.** `FindModelAsync` (Anthropic, Google AI, OpenAI and
+  OpenAI-compatible finders, and `ModelService.FindModelAsync` over them) and `AnthropicModelFinder.FindCapabilitiesAsync` now return
+  `null` only when there is no such model - the server's 404, or, for the OpenAI-compatible finder, a list that does not name the id.
+  A refused key, a server error, a rate limit, a timeout or an unreachable server throws what `ListModelsAsync` throws (for an HTTP
+  refusal a `ProviderHttpException` with the status), so an expired key no longer reads as a missing model. Migration: a caller that
+  relied on `null` for «could not ask» - for example probing a local server that may be off - catches the exception.
 - **`AnthropicModelFinder` keeps the model's card and limits when the answer carries only some of `capabilities`.** A gateway or an older upstream that passes on a subset of the object (say `thinking` and `image_input` only) made `FindModelAsync` return `null` and `ListModelsAsync` / `ListCapabilitiesAsync` throw the SDK's `AnthropicInvalidDataException`, losing `max_input_tokens` / `max_tokens` with it. Each member is now read on its own: what the answer reports as supported is listed (`InputModalities` / `Features`), a member it leaves out or gives another shape is «not reported», a `capabilities` value that is not an object leaves both lists `null` — and the card, with its context window and output limit, is returned in every case. `FindCapabilitiesAsync` / `ListCapabilitiesAsync` read the thinking types and the effort levels the same way and keep the built-in row's value for what the answer does not say.
 
 ## 0.79.0 — 2026-11-23

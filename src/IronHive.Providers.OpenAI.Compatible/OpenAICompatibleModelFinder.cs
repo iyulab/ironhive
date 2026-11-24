@@ -58,21 +58,13 @@ public class OpenAICompatibleModelFinder : IModelFinder
     /// <remarks>
     /// The list is the one route every OpenAI-compatible server serves: vLLM and llama.cpp's server have no
     /// <c>/v1/models/{id}</c>, so asking for the model by id finds nothing on exactly the servers that report a context
-    /// length. Ids are compared ordinally, as the servers do.
+    /// length. Ids are compared ordinally, as the servers do. <see langword="null"/> means the list does not name the model;
+    /// a list that could not be read throws what <see cref="ListModelsAsync"/> throws.
     /// </remarks>
     public virtual async Task<IModelCard?> FindModelAsync(string modelId, CancellationToken cancellationToken)
     {
-        try
-        {
-            var models = await ListModelsAsync(cancellationToken).ConfigureAwait(false);
-            return models.FirstOrDefault(model => string.Equals(model.ModelId, modelId, StringComparison.Ordinal));
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            // Same contract as the OpenAI finder this replaces: a model that cannot be found, or a server that cannot
-            // be asked, is null to the caller (ModelService passes it through). Cancellation still propagates.
-            return null;
-        }
+        var models = await ListModelsAsync(cancellationToken).ConfigureAwait(false);
+        return models.FirstOrDefault(model => string.Equals(model.ModelId, modelId, StringComparison.Ordinal));
     }
 
     /// <summary>One list entry as a card, or null when it has no id — <see cref="OpenAIModelCards"/>'s reading.</summary>

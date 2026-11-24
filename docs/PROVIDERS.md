@@ -252,7 +252,7 @@ using var capabilityFinder = new AnthropicModelFinder(discovered);
 discovered.ModelCapabilities = await capabilityFinder.ListCapabilitiesAsync();   // 새 Claude 모델도 코드 수정 없이 받는 끄기·effort 로 나간다
 ```
 
-벤더가 `disabled` 를 받는다고 답해도 낮은 effort 를 권하는 모델(Claude Opus 5)은 내장 표가 권고를 따르고, `FindCapabilitiesAsync` 는 답을 따른다.
+벤더가 `disabled` 를 받는다고 답해도 낮은 effort 를 권하는 모델(Claude Opus 5)은 내장 표가 권고를 따르고, `FindCapabilitiesAsync` 는 답을 따른다. `FindCapabilitiesAsync` · `FindModelAsync` 의 `null` 은 API 가 그 모델을 모른다는 뜻뿐이다 — 거부된 키나 서버 오류는 목록 조회와 같은 예외가 된다.
 
 `HttpClient`를 직접 설정하지 않으면 어댑터가 `ConnectTimeout`을 적용하고 `HttpClient.Timeout`을
 무제한으로 설정한 기본 클라이언트를 만든다 — 연결 자체가 안 되는 호스트만 `ConnectTimeout` 안에

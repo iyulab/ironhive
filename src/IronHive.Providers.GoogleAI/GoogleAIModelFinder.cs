@@ -1,5 +1,6 @@
 using Google.GenAI;
 using IronHive.Abstractions.Models;
+using IronHive.Abstractions.Exceptions;
 
 namespace IronHive.Providers.GoogleAI;
 
@@ -64,9 +65,12 @@ public class GoogleAIModelFinder : IModelFinder
             var model = await _client.Models.GetAsync(modelId, cancellationToken: cancellationToken);
             return ConvertToModelCard(model);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        catch (Exception ex) when (GoogleAIExceptionMapper.Map(ex, cancellationToken) is { } mapped)
         {
-            return null;
+            // Only «no such model» is an answer; any other failure is the one the list lookup would throw.
+            if (mapped is ProviderHttpException { StatusCode: System.Net.HttpStatusCode.NotFound })
+                return null;
+            throw mapped;
         }
     }
 

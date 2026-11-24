@@ -93,11 +93,14 @@ public class OpenAICompatibleModelFinderTests
     }
 
     [Fact]
-    public async Task A_server_that_cannot_be_asked_is_null()
+    public async Task A_server_that_refuses_to_list_is_a_failure_not_a_missing_model()
     {
         using var finder = Finder("""{"error":{"message":"unauthorized"}}""", out _, HttpStatusCode.Unauthorized);
 
-        (await finder.FindModelAsync("qwen3-8b", TestContext.Current.CancellationToken)).Should().BeNull();
+        var find = () => finder.FindModelAsync("qwen3-8b", TestContext.Current.CancellationToken);
+
+        (await find.Should().ThrowAsync<IronHive.Abstractions.Exceptions.ProviderHttpException>())
+            .Which.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Theory]

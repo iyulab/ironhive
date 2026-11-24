@@ -389,6 +389,7 @@ public interface IModelService
         string provider,
         CancellationToken cancellationToken = default);
 
+    // null 은 «그런 모델 없음»(또는 등록되지 않은 프로바이더)뿐이다 — 조회 실패는 목록 조회와 같은 예외를 던진다
     Task<IModelCard?> FindModelAsync(
         string provider,
         string modelId,
