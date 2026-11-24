@@ -5,6 +5,9 @@ changes are expected and used freely for structural correctness.
 
 ## [Unreleased]
 
+### Added
+- **The OpenAI-wire finders (`OpenAIModelFinder`, `OpenAICompatibleModelFinder`) fill `LanguageModelCard.InputModalities` when a model list states it.** OpenRouter-shaped entries carry `architecture.input_modalities` (read first) or `architecture.modality` (`"text+image->text"` gives `text`, `image`); words are the vendor's, lower-cased (`file`, not `pdf`). A value of another shape, an empty array and non-string elements count as not stated, and a list that states nothing (vLLM, llama.cpp) leaves the field `null`. An entry that states only modalities is now a `LanguageModelCard` instead of a plain `ModelCard`. `GoogleAIModelFinder` still leaves it `null`: Gemini's `models.list` reports no modalities.
+
 ### Fixed
 - **`AnthropicModelFinder` keeps the model's card and limits when the answer carries only some of `capabilities`.** A gateway or an older upstream that passes on a subset of the object (say `thinking` and `image_input` only) made `FindModelAsync` return `null` and `ListModelsAsync` / `ListCapabilitiesAsync` throw the SDK's `AnthropicInvalidDataException`, losing `max_input_tokens` / `max_tokens` with it. Each member is now read on its own: what the answer reports as supported is listed (`InputModalities` / `Features`), a member it leaves out or gives another shape is «not reported», a `capabilities` value that is not an object leaves both lists `null` — and the card, with its context window and output limit, is returned in every case. `FindCapabilitiesAsync` / `ListCapabilitiesAsync` read the thinking types and the effort levels the same way and keep the built-in row's value for what the answer does not say.
 

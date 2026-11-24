@@ -37,7 +37,9 @@ public sealed record LanguageModelCard : ModelCard
 
     /// <summary>
     /// 허용 입력 모달리티(예: "text", "image", "audio"). <see cref="Features"/>와 같이 best-effort — Anthropic은
-    /// <c>text</c> + 지원한다고 보고한 <c>image</c>·<c>pdf</c>.
+    /// <c>text</c> + 지원한다고 보고한 <c>image</c>·<c>pdf</c>, OpenAI 와이어 게이트웨이는 목록이 말할 때만(OpenRouter의
+    /// <c>architecture.input_modalities</c>, 없으면 <c>architecture.modality</c>의 입력 쪽 — 낱말은 벤더가 쓴 그대로 소문자,
+    /// 예: <c>file</c>). vLLM·llama.cpp 목록은 아무것도 말하지 않으므로 null이 정상이다.
     /// </summary>
     public IReadOnlyCollection<string>? InputModalities { get; init; }
 

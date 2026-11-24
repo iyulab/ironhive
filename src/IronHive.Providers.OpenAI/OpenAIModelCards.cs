@@ -16,7 +16,9 @@ namespace IronHive.Providers.OpenAI;
 /// <c>top_provider.max_completion_tokens</c> (OpenRouter).</para>
 /// <para>A field whose value is not a positive whole number (<c>null</c>, a string, a fraction) counts as absent, so the
 /// next name is tried; one odd entry never costs the rest of the list.</para>
-/// <para>An entry with either limit is a <see cref="LanguageModelCard"/>; any other is a plain <see cref="ModelCard"/>.
+/// <para>Input modalities, first one present: <c>architecture.input_modalities</c> (OpenRouter), else the input side of
+/// <c>architecture.modality</c>. Null when neither is stated (vLLM and llama.cpp lists state nothing).</para>
+/// <para>An entry with a limit or input modalities is a <see cref="LanguageModelCard"/>; any other is a plain <see cref="ModelCard"/>.
 /// llama.cpp's <c>meta.n_ctx_train</c> is deliberately not read: it is the context the model was trained with, not the
 /// context the server was started with, and a larger number than the server accepts is worse than none.</para>
 /// </remarks>
@@ -54,7 +56,9 @@ internal static class OpenAIModelCards
         var contextWindow = FirstPositive(entry, ContextFields) ?? FirstPositive(topProvider, ["context_length"]);
         var maxOutput = FirstPositive(entry, OutputFields) ?? FirstPositive(topProvider, ["max_completion_tokens"]);
 
-        if (contextWindow is null && maxOutput is null)
+        var inputModalities = ReadInputModalities(entry);
+
+        if (contextWindow is null && maxOutput is null && inputModalities is null)
         {
             return new ModelCard
             {
@@ -73,7 +77,51 @@ internal static class OpenAIModelCards
             CreatedAt = createdAt,
             ContextWindow = contextWindow,
             MaxOutputTokens = maxOutput,
+            InputModalities = inputModalities,
         };
+    }
+
+    /// <summary>
+    /// The input modalities an entry states, lower-cased and de-duplicated in the order given, or null when it states none:
+    /// <c>architecture.input_modalities</c> (OpenRouter, an array of strings), else the input side of
+    /// <c>architecture.modality</c> (<c>"text+image-&gt;text"</c> gives <c>text</c>, <c>image</c>). A value of another shape, an
+    /// empty array and non-string elements count as absent, so the next source is tried and one odd entry costs nothing.
+    /// </summary>
+    private static string[]? ReadInputModalities(JsonElement entry)
+    {
+        if (!entry.TryGetProperty("architecture", out var architecture) || architecture.ValueKind != JsonValueKind.Object)
+            return null;
+
+        if (architecture.TryGetProperty("input_modalities", out var listed) && listed.ValueKind == JsonValueKind.Array)
+        {
+            var fromArray = Distinct(listed.EnumerateArray()
+                .Where(e => e.ValueKind == JsonValueKind.String)
+                .Select(e => e.GetString()));
+            if (fromArray is not null)
+                return fromArray;
+        }
+
+        if (architecture.TryGetProperty("modality", out var modality)
+            && modality.ValueKind == JsonValueKind.String
+            && modality.GetString() is { } text)
+        {
+            var arrow = text.IndexOf("->", StringComparison.Ordinal);
+            var inputSide = arrow >= 0 ? text[..arrow] : text;
+            return Distinct(inputSide.Split('+'));
+        }
+
+        return null;
+    }
+
+    private static string[]? Distinct(IEnumerable<string?> names)
+    {
+        var result = names
+            .Select(n => n?.Trim().ToLowerInvariant())
+            .Where(n => !string.IsNullOrEmpty(n))
+            .Distinct()
+            .Select(n => n!)
+            .ToArray();
+        return result.Length == 0 ? null : result;
     }
 
     /// <summary>Every entry of a list response's <c>data</c> array as cards, newest first.</summary>

@@ -120,6 +120,45 @@ public class OpenAICompatibleModelFinderTests
         language.MaxOutputTokens.Should().Be(maxOutput);
     }
 
+    [Theory]
+    // OpenRouter: the array wins over the combined string.
+    [InlineData("""{"object":"list","data":[{"id":"m","created":1,"context_length":1000,"architecture":{"input_modalities":["text","image","file"],"modality":"text->text"}}]}""", new[] { "text", "image", "file" })]
+    // Only the combined string: its input side, lower-cased.
+    [InlineData("""{"object":"list","data":[{"id":"m","created":1,"context_length":1000,"architecture":{"modality":"Text+Image->text"}}]}""", new[] { "text", "image" })]
+    // A non-array value, an empty array and non-string elements are skipped like absent ones; the next source is tried.
+    [InlineData("""{"object":"list","data":[{"id":"m","created":1,"context_length":1000,"architecture":{"input_modalities":"text","modality":"text+audio->text"}}]}""", new[] { "text", "audio" })]
+    [InlineData("""{"object":"list","data":[{"id":"m","created":1,"context_length":1000,"architecture":{"input_modalities":[],"modality":"text+image->text"}}]}""", new[] { "text", "image" })]
+    [InlineData("""{"object":"list","data":[{"id":"m","created":1,"context_length":1000,"architecture":{"input_modalities":[1,null,"image","Image"]}}]}""", new[] { "image" })]
+    // Nothing usable: null, not an empty list.
+    [InlineData("""{"object":"list","data":[{"id":"m","created":1,"context_length":1000,"architecture":{"input_modalities":[1],"modality":5}}]}""", null)]
+    [InlineData("""{"object":"list","data":[{"id":"m","created":1,"context_length":1000,"architecture":"text"}]}""", null)]
+    [InlineData("""{"object":"list","data":[{"id":"m","created":1,"context_length":1000}]}""", null)]
+    public async Task A_gateway_listing_carries_the_input_modalities_it_states(string body, string[]? expected)
+    {
+        using var finder = Finder(body, out _);
+
+        var card = (await finder.ListModelsAsync(TestContext.Current.CancellationToken)).Single();
+
+        var language = card.Should().BeOfType<LanguageModelCard>().Subject;
+        if (expected is null)
+            language.InputModalities.Should().BeNull();
+        else
+            language.InputModalities.Should().Equal(expected);
+    }
+
+    [Fact]
+    public async Task An_entry_that_states_only_modalities_is_still_a_language_card()
+    {
+        const string body = """{"object":"list","data":[{"id":"m","created":1,"architecture":{"modality":"text+image->text"}}]}""";
+        using var finder = Finder(body, out _);
+
+        var card = (await finder.ListModelsAsync(TestContext.Current.CancellationToken)).Single();
+
+        var language = card.Should().BeOfType<LanguageModelCard>().Subject;
+        language.InputModalities.Should().Equal("text", "image");
+        language.ContextWindow.Should().BeNull();
+    }
+
     [Fact]
     public async Task An_entry_whose_limits_or_created_are_not_numbers_does_not_cost_the_rest_of_the_list()
     {
