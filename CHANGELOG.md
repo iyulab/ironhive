@@ -3,7 +3,7 @@
 All notable changes to IronHive are documented here. Pre-1.0 (0.x): breaking
 changes are expected and used freely for structural correctness.
 
-## [Unreleased]
+## 0.80.0 — 2026-11-26
 
 ### Added
 - **The OpenAI-wire finders (`OpenAIModelFinder`, `OpenAICompatibleModelFinder`) fill `LanguageModelCard.InputModalities` when a model list states it.** OpenRouter-shaped entries carry `architecture.input_modalities` (read first) or `architecture.modality` (`"text+image->text"` gives `text`, `image`); words are the vendor's, lower-cased (`file`, not `pdf`). A value of another shape, an empty array and non-string elements count as not stated, and a list that states nothing (vLLM, llama.cpp) leaves the field `null`. An entry that states only modalities is now a `LanguageModelCard` instead of a plain `ModelCard`. `GoogleAIModelFinder` still leaves it `null`: Gemini's `models.list` reports no modalities.
